@@ -2,7 +2,7 @@
   "name": "Weight Console",
   "short_name": "Console",
   "description": "Personal training & nutrition console — daily reference",
-  "start_url": "./console.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
