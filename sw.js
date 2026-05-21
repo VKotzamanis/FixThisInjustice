@@ -2,7 +2,7 @@
 // Caches everything once, serves from cache, falls back to network.
 // Bump CACHE_NAME to force a refresh after a deploy.
 
-const CACHE_NAME = "weight-console-v3";
+const CACHE_NAME = "weight-console-v4";
 const SHELL = [
   "./",
   "./index.html",
