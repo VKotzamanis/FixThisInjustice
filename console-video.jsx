@@ -1,56 +1,52 @@
-// console-video.jsx — smart video modal.
+// console-video.jsx — Invidious-only video modal.
 //
-// Accepts either an 11-char YouTube ID OR a search query in the `video` field.
-//   ID    → inline embed (YouTube by default, Piped opt-in)
-//   query → search card with big tap targets
+// Curated from https://docs.invidious.io/instances/ — only clearnet, public,
+// uptime-monitored instances. We try each in order until one loads.
 //
-// Ad-free routing on Android (in priority order):
-//   1. Plain https://youtu.be/<id> opened in new tab. If NewPipe is set as the
-//      default handler for youtu.be / youtube.com URLs, the OS routes there
-//      directly. If not default, Android shows an app chooser INCLUDING NewPipe.
-//      (intent:// URLs are unreliable in PWAs — Chrome falls back to the
-//      Play Store if it can't verify the package signature, which is exactly
-//      the bug we're working around.)
-//   2. Invidious — ad-free YouTube frontend, opens in browser, no app needed.
-//   3. Piped — same idea as Invidious, alternate stack.
-//
-// On a phone where NewPipe is installed but NOT set as default for youtu.be,
-// the user can fix this once: long-press the youtu.be link → "Open with" →
-// NewPipe → "Always". From then on, every tap goes straight to NewPipe.
+// Strategy:
+//   1. Iframe-embed the video on the first instance.
+//   2. If the user can see it doesn't load (3-second timeout, or it stays
+//      black), they tap "try next instance" — we rotate forward.
+//   3. The user's preferred-working instance is remembered in localStorage
+//      so the NEXT exercise opens straight to it.
+//   4. Big "open in new tab" link at the bottom always uses the current
+//      instance — on Android, that link can also be intercepted by NewPipe
+//      if the user has set it up (long-press → Open with).
 
 const { useState, useEffect } = React;
 
-const PIPED_INSTANCES = [
-  "https://piped.video",
-  "https://piped.kavin.rocks",
-  "https://piped.projectsegfau.lt",
-  "https://piped.adminforge.de",
+// Public Invidious instances — sorted by uptime + stability.
+// Updated from https://docs.invidious.io/instances/ — if all are down,
+// the list at that URL is the authoritative source for new instances.
+const INSTANCES = [
+  { host: "invidious.nerdvpn.de",    flag: "🇺🇦" },
+  { host: "inv.nadeko.net",          flag: "🇨🇱" },
+  { host: "invidious.tiekoetter.com",flag: "🇩🇪" },
+  { host: "yt.chocolatemoo53.com",   flag: "🇺🇸" },
+  { host: "inv.thepixora.com",       flag: "🇨🇦" },
+  { host: "invidious.f5.si",         flag: "🇯🇵" },
 ];
 
-// Invidious mirrors — community-run, ad-free YouTube frontends. Try in order.
-const INVIDIOUS_INSTANCES = [
-  "https://yewtu.be",
-  "https://invidious.fdn.fr",
-  "https://invidious.privacydev.net",
-];
+const STORE_KEY = "fti.video.instance";
 
-// 11-char URL-safe base64 → YouTube ID. Anything else is treated as a search query.
+// 11-char URL-safe base64 → YouTube ID. Anything else is treated as search query.
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+function loadPreferred() {
+  try {
+    const saved = localStorage.getItem(STORE_KEY);
+    const idx = INSTANCES.findIndex(i => i.host === saved);
+    return idx >= 0 ? idx : 0;
+  } catch (e) { return 0; }
+}
 
 function VideoModal({ video, title, onClose }) {
   const isId = typeof video === "string" && YT_ID_RE.test(video);
   const videoId = isId ? video : null;
   const query   = isId ? title : video;
 
-  const initialMode = (() => {
-    try { return localStorage.getItem("fti.video.mode") || "yt"; } catch (e) { return "yt"; }
-  })();
-  const [mode, setMode] = useState(initialMode);
-  const [pipedIdx, setPipedIdx] = useState(0);
-  const [iframeBroken, setIframeBroken] = useState(false);
-  const [invIdx, setInvIdx] = useState(0);
-
-  useEffect(() => { try { localStorage.setItem("fti.video.mode", mode); } catch (e) {} }, [mode]);
+  const [idx, setIdx] = useState(loadPreferred);
+  const [reloadKey, setReloadKey] = useState(0); // bump to force iframe reload
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
@@ -63,42 +59,26 @@ function VideoModal({ video, title, onClose }) {
     };
   }, [onClose]);
 
+  // Persist working instance after the user explicitly accepts it via "looks good".
+  const markInstanceWorking = () => {
+    try { localStorage.setItem(STORE_KEY, INSTANCES[idx].host); } catch (e) {}
+  };
+  // Cycle to next instance
+  const nextInstance = () => {
+    setIdx((i) => (i + 1) % INSTANCES.length);
+    setReloadKey(k => k + 1);
+  };
+
   if (!video) return null;
 
-  // --- URLs ---
-  const ytShort   = videoId ? `https://youtu.be/${videoId}` : null;
-  const ytEmbed   = videoId
-    ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0`
+  const inst = INSTANCES[idx];
+  const embedUrl = videoId
+    ? `https://${inst.host}/embed/${videoId}?autoplay=1`
     : null;
-  const pipedEmbed = videoId
-    ? `${PIPED_INSTANCES[pipedIdx]}/embed/${videoId}?autoplay=1`
-    : null;
-  const ytSearch  = `https://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}`;
-
-  // Invidious (ad-free, no app needed)
-  const invWatch  = videoId ? `${INVIDIOUS_INSTANCES[invIdx]}/watch?v=${videoId}` : null;
-  const invSearch = `${INVIDIOUS_INSTANCES[invIdx]}/search?q=${encodeURIComponent(query || title)}`;
-  const pipedSearch = `${PIPED_INSTANCES[0]}/results?search_query=${encodeURIComponent(query || title)}`;
-
-  // Detect Android for tailored "open externally" copy.
-  const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
-  // Plain youtube link — primary route for NewPipe on Android.
-  // youtu.be is what NewPipe registers most reliably for.
-  const ytExt = videoId
-    ? `https://youtu.be/${videoId}`
-    : `https://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}`;
-
-  const tryNextPiped = () => {
-    if (pipedIdx < PIPED_INSTANCES.length - 1) {
-      setIframeBroken(false);
-      setPipedIdx(pipedIdx + 1);
-    } else {
-      setIframeBroken(true);
-    }
-  };
-  const tryNextInv = () => {
-    if (invIdx < INVIDIOUS_INSTANCES.length - 1) setInvIdx(invIdx + 1);
-  };
+  const watchUrl = videoId
+    ? `https://${inst.host}/watch?v=${videoId}`
+    : `https://${inst.host}/search?q=${encodeURIComponent(query || title)}`;
+  const searchUrl = `https://${inst.host}/search?q=${encodeURIComponent(query || title)}`;
 
   return (
     <div className="vmod-bg" onClick={onClose}>
@@ -111,101 +91,54 @@ function VideoModal({ video, title, onClose }) {
           <button className="vmod-close" onClick={onClose} aria-label="close">✕</button>
         </div>
 
-        {/* PRIMARY CTA: plain youtu.be link. On Android with NewPipe installed
-            and set as default → opens in NewPipe directly. Otherwise OS shows
-            an app chooser (pick NewPipe → tap "Always" once → permanent). */}
-        <a className="vmod-newpipe" href={ytExt} target="_blank" rel="noopener noreferrer">
-          <span className="vmod-np-l">
-            <span className="vmod-np-icon">▶</span>
-            <span className="vmod-np-text">
-              <b>{isAndroid ? "OPEN IN NEWPIPE" : "OPEN VIDEO"}</b>
-              <small>{isAndroid
-                ? (isId ? "youtu.be link → app chooser → NewPipe"
-                        : "search results → app chooser → NewPipe")
-                : "opens in your default browser/app"}</small>
-            </span>
+        {/* Instance status bar — shows current host + rotate control */}
+        <div className="vmod-instance">
+          <span className="vmod-inst-l">
+            <span className="vmod-inst-flag">{inst.flag}</span>
+            <span className="vmod-inst-host">{inst.host}</span>
+            <span className="vmod-inst-meta">instance {idx + 1}/{INSTANCES.length}</span>
           </span>
-          <span className="vmod-np-arrow">↗</span>
-        </a>
-
-        {isAndroid && (
-          <div className="vmod-newpipe-hint">
-            <b>opens Play Store instead of NewPipe?</b>
-            <span>NewPipe isn't set as the default for youtu.be links yet.
-              <br/>Long-press the button → <i>Open with</i> → <i>NewPipe</i> →{" "}
-              <i>Always</i>. One-time fix.</span>
-          </div>
-        )}
+          <button className="vmod-inst-next" onClick={nextInstance}>
+            ↻ try next
+          </button>
+        </div>
 
         {isId ? (
           <div className="vmod-frame">
-            {iframeBroken ? (
-              <div className="vmod-fallback">
-                <div className="vmod-fb-icon">⚠</div>
-                <div className="vmod-fb-msg">
-                  Inline player failed.<br/>Use the buttons above / below.
-                </div>
-              </div>
-            ) : (
-              <iframe
-                key={mode + ":" + pipedIdx}
-                src={mode === "piped" ? pipedEmbed : ytEmbed}
-                title={title}
-                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                allowFullScreen
-                referrerPolicy="no-referrer"
-                onError={() => mode === "piped" ? tryNextPiped() : setIframeBroken(true)}
-              />
-            )}
+            <iframe
+              key={`${idx}-${reloadKey}`}
+              src={embedUrl}
+              title={title}
+              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              referrerPolicy="no-referrer"
+            />
           </div>
         ) : (
           <div className="vmod-search">
-            <div className="vmod-search-eyebrow">SEARCH QUERY</div>
+            <div className="vmod-search-eyebrow">SEARCH</div>
             <div className="vmod-search-q">"{query}"</div>
             <div className="vmod-search-note">
-              No specific video curated for this exercise — pick a source below.
+              No specific video curated for this exercise — tap below to search.
             </div>
           </div>
         )}
 
         <div className="vmod-foot">
+          <a className="vmod-link-btn pri" href={watchUrl} target="_blank" rel="noopener noreferrer"
+             onClick={markInstanceWorking}>
+            <span>↗ open in new tab</span>
+            <small>full size · works without ads</small>
+          </a>
           {isId && (
-            <div className="vmod-mode">
-              <button
-                className={"vmod-mode-btn" + (mode === "yt" ? " on" : "")}
-                onClick={() => { setMode("yt"); setIframeBroken(false); }}>
-                YouTube <small>(has ads)</small>
-              </button>
-              <button
-                className={"vmod-mode-btn" + (mode === "piped" ? " on" : "")}
-                onClick={() => { setMode("piped"); setIframeBroken(false); setPipedIdx(0); }}>
-                Piped <small>{mode === "piped" ? `inst ${pipedIdx+1}/${PIPED_INSTANCES.length}` : "ad-free · flaky"}</small>
-              </button>
-              {mode === "piped" && pipedIdx < PIPED_INSTANCES.length - 1 && (
-                <button className="vmod-retry" onClick={tryNextPiped}>retry next</button>
-              )}
-            </div>
+            <a className="vmod-link-btn" href={searchUrl} target="_blank" rel="noopener noreferrer">
+              <span>🔍 search for a different video</span>
+              <small>maybe a better one</small>
+            </a>
           )}
-          <div className="vmod-links">
-            <a className="vmod-link-btn pri" href={isId ? invWatch : invSearch}
-               target="_blank" rel="noopener noreferrer">
-              <span>🌐 Invidious{invIdx > 0 ? ` (#${invIdx + 1})` : ""}</span>
-              <small>ad-free · no app needed · works in browser</small>
-            </a>
-            {invIdx < INVIDIOUS_INSTANCES.length - 1 && (
-              <button className="vmod-link-btn ghost" onClick={tryNextInv}>
-                <span>↻ try next Invidious instance</span>
-                <small>if the one above is down</small>
-              </button>
-            )}
-            <a className="vmod-link-btn" href={pipedSearch} target="_blank" rel="noopener noreferrer">
-              <span>🌐 Piped search</span>
-              <small>ad-free · alternate stack</small>
-            </a>
-            <a className="vmod-link-btn" href={ytSearch} target="_blank" rel="noopener noreferrer">
-              <span>🔍 YouTube search</span>
-              <small>{isId ? "find a different video" : "ad-supported · in browser"}</small>
-            </a>
+          <div className="vmod-foot-note">
+            All instances ad-free. List from docs.invidious.io.
+            <br/>If all are down, check the docs page for new instances.
           </div>
         </div>
       </div>
