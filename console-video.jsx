@@ -1,48 +1,72 @@
-// console-video.jsx — inline video modal.
-// Uses Piped (open-source, ad-free YouTube frontend) for the in-app embed,
-// and exposes an "Open in NewPipe" button that fires the youtu.be URL —
-// on Android with NewPipe installed, the OS intent dialog routes it to NewPipe.
-// Falls back to YouTube if Piped is blocked.
+// console-video.jsx — smart video modal.
+// Accepts either an 11-char YouTube ID OR a search query in the `video` field.
+//   ID    → inline embed (YouTube by default, Piped opt-in toggle)
+//   query → "search card" with big tap targets — no broken iframe.
+//
+// PRIMARY ad-free route on phone: "Open in NewPipe" intent. Two taps total
+// from any exercise card to ad-free native playback.
 
 const { useState, useEffect } = React;
 
-// Curated Piped instances. First one that loads wins.
 const PIPED_INSTANCES = [
   "https://piped.video",
   "https://piped.kavin.rocks",
   "https://piped.projectsegfau.lt",
+  "https://piped.adminforge.de",
 ];
 
-function VideoModal({ videoId, title, onClose }) {
-  const [instance, setInstance] = useState(0);
-  const [showIframe, setShowIframe] = useState(true);
+// 11-char URL-safe base64 → YouTube ID. Anything else is a search query.
+const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+function VideoModal({ video, title, onClose }) {
+  const isId = typeof video === "string" && YT_ID_RE.test(video);
+  const videoId = isId ? video : null;
+  const query   = isId ? title : video; // when it's a query we fall back to using it as the search string
+
+  const initialMode = (() => {
+    try { return localStorage.getItem("fti.video.mode") || "yt"; } catch (e) { return "yt"; }
+  })();
+  const [mode, setMode] = useState(initialMode);
+  const [pipedIdx, setPipedIdx] = useState(0);
+  const [iframeBroken, setIframeBroken] = useState(false);
+
+  useEffect(() => { try { localStorage.setItem("fti.video.mode", mode); } catch (e) {} }, [mode]);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
     };
   }, [onClose]);
 
-  if (!videoId) return null;
+  if (!video) return null;
 
-  const ytShort = `https://youtu.be/${videoId}`;
-  const ytFull  = `https://www.youtube.com/watch?v=${videoId}`;
-  const piped   = `${PIPED_INSTANCES[instance]}/embed/${videoId}?autoplay=1`;
+  // --- URLs ---
+  const ytShort   = videoId ? `https://youtu.be/${videoId}` : null;
+  const ytEmbed   = videoId
+    ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0`
+    : null;
+  const pipedEmbed = videoId
+    ? `${PIPED_INSTANCES[pipedIdx]}/embed/${videoId}?autoplay=1`
+    : null;
+  const ytSearch  = `https://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}`;
+  // NewPipe intercepts youtu.be / youtube.com URLs on Android.
+  const npVideo   = videoId
+    ? `intent://youtu.be/${videoId}#Intent;package=org.schabi.newpipe;scheme=https;end`
+    : null;
+  const npSearch  = `intent://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}#Intent;package=org.schabi.newpipe;scheme=https;end`;
+  const pipedSearch = `${PIPED_INSTANCES[0]}/results?search_query=${encodeURIComponent(query || title)}`;
 
-  // NewPipe registers as an Android intent handler for youtu.be / youtube.com URLs.
-  // Tapping a regular YouTube link on a device with NewPipe installed shows the
-  // OS chooser. We can also try a direct intent: URL for Android Chrome.
-  const newpipeIntent = `intent://youtu.be/${videoId}#Intent;package=org.schabi.newpipe;scheme=https;end`;
-
-  const tryNextInstance = () => {
-    if (instance < PIPED_INSTANCES.length - 1) {
-      setInstance(instance + 1);
+  const tryNextPiped = () => {
+    if (pipedIdx < PIPED_INSTANCES.length - 1) {
+      setIframeBroken(false);
+      setPipedIdx(pipedIdx + 1);
     } else {
-      setShowIframe(false);
+      setIframeBroken(true);
     }
   };
 
@@ -51,51 +75,91 @@ function VideoModal({ videoId, title, onClose }) {
       <div className="vmod" onClick={(e) => e.stopPropagation()}>
         <div className="vmod-head">
           <div className="vmod-title">
-            <span className="vmod-eyebrow">▶ FORM REFERENCE</span>
-            <span className="vmod-name">{title}</span>
+            <div className="vmod-eyebrow">▶ FORM REFERENCE</div>
+            <div className="vmod-name">{title}</div>
           </div>
-          <button className="vmod-close" onClick={onClose} aria-label="close">ESC ✕</button>
+          <button className="vmod-close" onClick={onClose} aria-label="close">✕</button>
         </div>
 
-        <div className="vmod-frame">
-          {showIframe ? (
-            <iframe
-              key={instance}
-              src={piped}
-              title={title}
-              allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-              allowFullScreen
-              referrerPolicy="no-referrer"
-              onError={tryNextInstance}
-            />
-          ) : (
-            <div className="vmod-fallback">
-              <div className="vmod-fb-icon">⚠</div>
-              <div className="vmod-fb-msg">
-                Inline player blocked.<br/>
-                Open externally below — NewPipe will intercept on Android.
+        {/* Big primary CTA: open in NewPipe (ad-free, native, instant on Android). */}
+        <a className="vmod-newpipe" href={isId ? npVideo : npSearch}>
+          <span className="vmod-np-l">
+            <span className="vmod-np-icon">▶</span>
+            <span className="vmod-np-text">
+              <b>OPEN IN NEWPIPE</b>
+              <small>{isId ? "ad-free · native player" : "ad-free · search results"}</small>
+            </span>
+          </span>
+          <span className="vmod-np-arrow">↗</span>
+        </a>
+
+        {isId ? (
+          // ---- Direct video ID: inline embed ----
+          <div className="vmod-frame">
+            {iframeBroken ? (
+              <div className="vmod-fallback">
+                <div className="vmod-fb-icon">⚠</div>
+                <div className="vmod-fb-msg">
+                  Inline player failed.<br/>Use the buttons above / below.
+                </div>
               </div>
+            ) : (
+              <iframe
+                key={mode + ":" + pipedIdx}
+                src={mode === "piped" ? pipedEmbed : ytEmbed}
+                title={title}
+                allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+                allowFullScreen
+                referrerPolicy="no-referrer"
+                onError={() => mode === "piped" ? tryNextPiped() : setIframeBroken(true)}
+              />
+            )}
+          </div>
+        ) : (
+          // ---- Search query: no iframe, just clean tap targets ----
+          <div className="vmod-search">
+            <div className="vmod-search-eyebrow">SEARCH QUERY</div>
+            <div className="vmod-search-q">"{query}"</div>
+            <div className="vmod-search-note">
+              No specific video curated for this exercise — tap NewPipe above for instant ad-free playback,
+              or pick a source below.
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="vmod-foot">
-          <div className="vmod-foot-l">
-            via Piped <span className="muted">· no ads · no tracking</span>
-            {showIframe && instance > 0 && (
-              <span className="muted"> · instance {instance + 1}/{PIPED_INSTANCES.length}</span>
-            )}
-            {showIframe && (
-              <button className="vmod-link" onClick={tryNextInstance}>retry on next instance</button>
-            )}
-          </div>
-          <div className="vmod-foot-r">
-            <a className="vmod-btn pri" href={newpipeIntent}>
-              ↗ OPEN IN NEWPIPE
+          {isId && (
+            <div className="vmod-mode">
+              <button
+                className={"vmod-mode-btn" + (mode === "yt" ? " on" : "")}
+                onClick={() => { setMode("yt"); setIframeBroken(false); }}>
+                YouTube <small>(has ads)</small>
+              </button>
+              <button
+                className={"vmod-mode-btn" + (mode === "piped" ? " on" : "")}
+                onClick={() => { setMode("piped"); setIframeBroken(false); setPipedIdx(0); }}>
+                Piped <small>{mode === "piped" ? `inst ${pipedIdx+1}/${PIPED_INSTANCES.length}` : "ad-free · flaky"}</small>
+              </button>
+              {mode === "piped" && pipedIdx < PIPED_INSTANCES.length - 1 && (
+                <button className="vmod-retry" onClick={tryNextPiped}>retry next</button>
+              )}
+            </div>
+          )}
+          <div className="vmod-links">
+            <a className="vmod-link-btn" href={ytSearch} target="_blank" rel="noopener noreferrer">
+              <span>🔍 YouTube search</span>
+              <small>{isId ? "find a better video" : "ad-supported · in browser"}</small>
             </a>
-            <a className="vmod-btn" href={ytShort} target="_blank" rel="noopener noreferrer">
-              youtu.be
+            <a className="vmod-link-btn" href={pipedSearch} target="_blank" rel="noopener noreferrer">
+              <span>🔍 Piped search</span>
+              <small>ad-free · in browser</small>
             </a>
+            {isId && (
+              <a className="vmod-link-btn" href={ytShort} target="_blank" rel="noopener noreferrer">
+                <span>↗ youtu.be</span>
+                <small>this exact video</small>
+              </a>
+            )}
           </div>
         </div>
       </div>
@@ -103,12 +167,17 @@ function VideoModal({ videoId, title, onClose }) {
   );
 }
 
-// Hook: call openVideo({id, title}) to show the modal.
 function useVideoModal() {
-  const [video, setVideo] = useState(null);
-  const open = (id, title) => setVideo({ id, title });
-  const close = () => setVideo(null);
-  const node = video ? <VideoModal videoId={video.id} title={video.title} onClose={close} /> : null;
+  const [entry, setEntry] = useState(null);
+  // Back-compat: open(idOrQuery, title) OR open({video, title}).
+  const open = (a, b) => {
+    if (typeof a === "object" && a !== null) setEntry({ video: a.video, title: a.title });
+    else setEntry({ video: a, title: b });
+  };
+  const close = () => setEntry(null);
+  const node = entry
+    ? <VideoModal video={entry.video} title={entry.title} onClose={close} />
+    : null;
   return { open, close, node };
 }
 

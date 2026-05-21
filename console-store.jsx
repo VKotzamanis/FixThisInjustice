@@ -5,6 +5,40 @@ const { useState, useEffect, useMemo, useRef, useCallback, createContext, useCon
 
 const STORE_KEY_V2 = "fti.console.v2";
 
+// Coach-style comment on a just-logged set vs plan/history.
+// Returns short string or null.
+function makeCoachLine(ctx) {
+  const { weight, reps, repsLo, repsHi, suggested, lastBest } = ctx;
+  if (!weight || !reps) return null;
+  // PR check (vs lifetime best by weight)
+  if (lastBest && weight > lastBest.weight) return `weight PR · prev best ${lastBest.weight} kg`;
+  if (lastBest && weight === lastBest.weight && reps > lastBest.reps) return `rep PR at ${weight} kg · prev best ${lastBest.reps}`;
+  // Compare vs suggested (from store.suggestedLoad)
+  if (suggested && weight > suggested.weight + 0.5) {
+    const diff = (weight - suggested.weight).toFixed(1);
+    return `+${diff} kg over suggested · pushing hard`;
+  }
+  if (suggested && weight < suggested.weight - 2.5) {
+    const diff = (suggested.weight - weight).toFixed(1);
+    return `${diff} kg under suggested · save it for next set if recovered`;
+  }
+  // Compare reps vs target rep range (from plan)
+  if (repsHi && reps > repsHi) {
+    return `${reps - repsHi} rep${reps - repsHi === 1 ? "" : "s"} over target — earn the load bump next session`;
+  }
+  if (repsLo && reps < repsLo) {
+    return `${reps} reps short of target range · expected ${repsLo}-${repsHi || repsLo}`;
+  }
+  if (repsHi && reps === repsHi) {
+    return `top of range at ${weight} kg × ${reps} · +2.5 kg next session`;
+  }
+  // Within target
+  if (repsLo && reps >= repsLo && (!repsHi || reps <= repsHi)) {
+    return `${weight} kg × ${reps} · clean rep in target range`;
+  }
+  return null;
+}
+
 function loadV2() {
   try {
     const raw = localStorage.getItem(STORE_KEY_V2);
@@ -63,6 +97,14 @@ function defaultState() {
     mealSwaps: {},           // mealIndex -> swap text
     mealOutNote: "",         // single planned-meal-out note
     streak: { last: null, count: 0 },
+    // fun mechanics
+    specimens: {},           // cardId -> { acquiredAt, exercise }
+    totalSetsLogged: 0,      // milestone counter
+    lastDrop: null,          // { card, ts } — UI watches this to show drop toast
+    lastTelemetry: null,     // { msg, ts } — UI watches this to show telemetry toast
+    lastMilestone: null,     // { count, ts } — UI watches this for milestone toasts
+    lastPhaseSeen: 1,        // detect phase transitions
+    timeCapsule: null,       // { note, writtenAt, opened }
     // tweaks
     tweaks: { accent: "#a3e635", scanlines: true, flicker: true, density: "comfortable" },
   };
@@ -110,16 +152,71 @@ function usePlanStore() {
   const setKey = (wk, day, exIdx, setN) => `${wk}-${day}-${exIdx}-${setN}`;
   const logSet = (wk, day, exIdx, setN, payload) => {
     const k = setKey(wk, day, exIdx, setN);
-    update((p) => ({ ...p, sets: { ...p.sets, [k]: { ...payload, ts: Date.now() } } }));
+    const wasNew = !s.sets[k];
+    update((p) => {
+      const next = { ...p, sets: { ...p.sets, [k]: { ...payload, ts: Date.now() } } };
+      // Side effects only for genuinely new sets, and only if it has weight+reps (real logged set).
+      if (wasNew && payload.weight && payload.reps && payload.exName) {
+        const newCount = (p.totalSetsLogged || 0) + 1;
+        next.totalSetsLogged = newCount;
+        // Build coach line first (preferred when there's a meaningful comment to make).
+        let toastMsg = null, toastTone = "telemetry";
+        try {
+          const coachLine = makeCoachLine({
+            weight: payload.weight,
+            reps: payload.reps,
+            repsLo: payload.repsLo,
+            repsHi: payload.repsHi,
+            suggested: payload.suggested,
+            lastBest: payload.lastBest,
+          });
+          if (coachLine) { toastMsg = coachLine; toastTone = "coach"; }
+        } catch (e) {}
+        // Fall back to telemetry pool.
+        if (!toastMsg) {
+          try {
+            toastMsg = window.buildTelemetryMsg
+              ? window.buildTelemetryMsg({ s: next }, { week: wk, day, exName: payload.exName, weight: payload.weight, reps: payload.reps, exIdx })
+              : null;
+          } catch (e) {}
+        }
+        if (toastMsg) next.lastTelemetry = { msg: toastMsg, tone: toastTone, ts: Date.now() };
+        // Specimen drop — 15% chance
+        if (Math.random() < 0.15 && window.drawSpecimen) {
+          const card = window.drawSpecimen(p.specimens || {});
+          if (card) {
+            next.specimens = { ...(p.specimens || {}), [card.id]: { acquiredAt: Date.now(), exercise: payload.exName } };
+            next.lastDrop = { card, ts: Date.now() };
+          }
+        }
+        // Milestone toast on 50/100/250/500/1000
+        if ([50, 100, 250, 500, 1000].includes(newCount)) {
+          next.lastMilestone = { count: newCount, ts: Date.now() };
+        }
+      }
+      return next;
+    });
   };
   const clearSet = (wk, day, exIdx, setN) => {
     const k = setKey(wk, day, exIdx, setN);
+    const wasThere = s.sets[k];
     update((p) => {
       const next = { ...p.sets };
       delete next[k];
-      return { ...p, sets: next };
+      // Stash the deleted set for undo (6-second window).
+      return {
+        ...p,
+        sets: next,
+        lastDeletedSet: wasThere ? { key: k, set: wasThere, ts: Date.now() } : (p.lastDeletedSet || null),
+      };
     });
   };
+  const undoDeleteSet = () => update((p) => {
+    if (!p.lastDeletedSet) return p;
+    const { key, set } = p.lastDeletedSet;
+    return { ...p, sets: { ...p.sets, [key]: set }, lastDeletedSet: null };
+  });
+  const clearUndo = () => update((p) => ({ ...p, lastDeletedSet: null }));
 
   // Mark an exercise complete (separately from per-set logging).
   const toggleExercise = (wk, day, exIdx) => {
@@ -166,6 +263,19 @@ function usePlanStore() {
   const setNoteToday = (text) => update((p) => ({ ...p, notes: { ...p.notes, [todayISO()]: text } }));
   const setMealSwap = (i, text) => update((p) => ({ ...p, mealSwaps: { ...(p.mealSwaps || {}), [i]: text } }));
   const setMealOutNote = (text) => update({ mealOutNote: text });
+
+  // ---- Custom exercises ("+" feature): user-added extras beyond the plan.
+  // Stored as: s.customEx[`${wk}-${day}`] = [ { name, sets, reps, note } ]
+  const addCustomExercise = (wk, day, def) => update((p) => {
+    const key = `${wk}-${day}`;
+    const cur = (p.customEx || {})[key] || [];
+    return { ...p, customEx: { ...(p.customEx || {}), [key]: [...cur, def] } };
+  });
+  const removeCustomExercise = (wk, day, customIdx) => update((p) => {
+    const key = `${wk}-${day}`;
+    const cur = (p.customEx || {})[key] || [];
+    return { ...p, customEx: { ...(p.customEx || {}), [key]: cur.filter((_, i) => i !== customIdx) } };
+  });
 
   const reset = () => {
     if (confirm("Reset ALL logged data? This cannot be undone.")) {
@@ -252,6 +362,8 @@ function usePlanStore() {
     logSet, clearSet, toggleExercise, lastLoggedSet, suggestedLoad,
     logWeight, removeWeight, logPushups, setWaterToday, setNoteToday,
     setMealSwap, setMealOutNote,
+    addCustomExercise, removeCustomExercise,
+    undoDeleteSet, clearUndo,
     reset,
   };
 }

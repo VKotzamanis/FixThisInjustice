@@ -225,6 +225,13 @@ function TodayView({ store }) {
         </div>
       </div>
 
+      {/* TIME CAPSULE */}
+      {window.TimeCapsule && (
+        <div className="today-grid" style={{gridTemplateColumns:"1fr"}}>
+          <TimeCapsule store={store} />
+        </div>
+      )}
+
       {/* QUICK LINKS */}
       <div className="today-quick">
         <button onClick={() => setView("log")}>view log →</button>
@@ -312,7 +319,11 @@ function PlanView({ store }) {
                 <div className="pd-name">
                   {ex.name}
                   {ex.video && (
-                    <button className="pd-vid" onClick={() => window.__videoModal && window.__videoModal.open(ex.video, ex.name)} title="form breakdown · plays inline">▶ video</button>
+                    <button className="pd-vid" onClick={() => window.__videoModal && window.__videoModal.open(ex.video, ex.name)} title="form reference">▶ video</button>
+                  )}
+                  {window.FORM_CUES && window.FORM_CUES[ex.name] && (
+                    <button className="pd-vid" style={{color:"var(--warn)",borderBottomColor:"var(--warn)"}}
+                      onClick={() => window.__formCuesModal && window.__formCuesModal.open(ex.name)} title="form cues">▣ cues</button>
                   )}
                   {ex.note && <div className="pd-note">↳ {ex.note}</div>}
                 </div>
@@ -576,10 +587,43 @@ function FallbackTrigger({ store }) {
   );
 }
 
-// ============ EXPORT ============
+// ============ EXPORT / IMPORT ============
 function ExportView({ store }) {
   const { s, derived } = store;
   const [tab, setTab] = useState("summary");
+  const [importText, setImportText] = useState("");
+  const [importStatus, setImportStatus] = useState(null);
+
+  const doImport = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(importText);
+    } catch (e) {
+      setImportStatus({ ok: false, msg: "parse error · not valid JSON" });
+      return;
+    }
+    // sanity check
+    if (typeof parsed !== "object" || parsed === null) {
+      setImportStatus({ ok: false, msg: "not an object — expected an export from this app" });
+      return;
+    }
+    if (!confirm("Replace ALL current data with the imported snapshot? Your current logs will be overwritten.")) return;
+    try {
+      // Merge defaults so missing fields don't break the app.
+      const fresh = { ...defaultState(), ...parsed, bootSeen: true };
+      localStorage.setItem("fti.console.v2", JSON.stringify(fresh));
+      setImportStatus({ ok: true, msg: "imported · reloading…" });
+      setTimeout(() => location.reload(), 800);
+    } catch (e) {
+      setImportStatus({ ok: false, msg: "write failed · " + (e.message || "unknown") });
+    }
+  };
+
+  const importFile = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => { setImportText(String(e.target.result || "")); };
+    reader.readAsText(file);
+  };
 
   const exportText = useMemo(() => {
     const lines = [];
@@ -689,6 +733,36 @@ function ExportView({ store }) {
       </div>
 
       <pre className="export-pre">{tab === "json" ? JSON.stringify(s, null, 2) : exportText}</pre>
+
+      <div className="import-block">
+        <div className="import-head">
+          <div className="card-eyebrow">RESTORE FROM BACKUP</div>
+          <div className="card-h">Paste a previous .json export</div>
+        </div>
+        <p className="import-note">
+          Replaces ALL current data on this device. Use when restoring on a new phone,
+          after a factory reset, or to roll back. Your current data is wiped.
+        </p>
+        <textarea className="import-area" rows={5}
+          placeholder='// paste the contents of fti-state-YYYY-MM-DD.json here, or use the file picker'
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)} />
+        <div className="import-actions">
+          <label className="import-file-btn">
+            ↑ choose file
+            <input type="file" accept="application/json,.json"
+              onChange={(e) => e.target.files[0] && importFile(e.target.files[0])} />
+          </label>
+          <button className="import-btn" onClick={doImport} disabled={!importText.trim()}>
+            ⬆ RESTORE
+          </button>
+        </div>
+        {importStatus && (
+          <div className={"import-status " + (importStatus.ok ? "ok" : "err")}>
+            {importStatus.ok ? "✓" : "✗"} {importStatus.msg}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

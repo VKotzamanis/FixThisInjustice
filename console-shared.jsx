@@ -36,7 +36,7 @@ function TopBar({ store }) {
         <button className="todaybtn" onClick={goToday} title="Jump to today (T)" disabled={!s.startDate}>
           ⌖ TODAY
         </button>
-        <span className="kbd-hint">⌘K</span>
+        <span className="kbd-hint" onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("__open-spotlight")); }} title="Open spotlight (⌘K)">⌘K</span>
       </div>
     </header>
   );
@@ -49,7 +49,8 @@ const VIEWS = [
   { id: "plan",      label: "PLAN",      hot: "3", icon: "◫" },
   { id: "log",       label: "LOG",       hot: "4", icon: "◈" },
   { id: "protocols", label: "PROTOCOLS", hot: "5", icon: "△" },
-  { id: "export",    label: "EXPORT",    hot: "6", icon: "↗" },
+  { id: "atlas",     label: "ATLAS",     hot: "6", icon: "◆" },
+  { id: "export",    label: "EXPORT",    hot: "7", icon: "↗" },
 ];
 
 function Nav({ store }) {
