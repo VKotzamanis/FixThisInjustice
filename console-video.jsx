@@ -1,10 +1,22 @@
 // console-video.jsx — smart video modal.
-// Accepts either an 11-char YouTube ID OR a search query in the `video` field.
-//   ID    → inline embed (YouTube by default, Piped opt-in toggle)
-//   query → "search card" with big tap targets — no broken iframe.
 //
-// PRIMARY ad-free route on phone: "Open in NewPipe" intent. Two taps total
-// from any exercise card to ad-free native playback.
+// Accepts either an 11-char YouTube ID OR a search query in the `video` field.
+//   ID    → inline embed (YouTube by default, Piped opt-in)
+//   query → search card with big tap targets
+//
+// Ad-free routing on Android (in priority order):
+//   1. Plain https://youtu.be/<id> opened in new tab. If NewPipe is set as the
+//      default handler for youtu.be / youtube.com URLs, the OS routes there
+//      directly. If not default, Android shows an app chooser INCLUDING NewPipe.
+//      (intent:// URLs are unreliable in PWAs — Chrome falls back to the
+//      Play Store if it can't verify the package signature, which is exactly
+//      the bug we're working around.)
+//   2. Invidious — ad-free YouTube frontend, opens in browser, no app needed.
+//   3. Piped — same idea as Invidious, alternate stack.
+//
+// On a phone where NewPipe is installed but NOT set as default for youtu.be,
+// the user can fix this once: long-press the youtu.be link → "Open with" →
+// NewPipe → "Always". From then on, every tap goes straight to NewPipe.
 
 const { useState, useEffect } = React;
 
@@ -15,13 +27,20 @@ const PIPED_INSTANCES = [
   "https://piped.adminforge.de",
 ];
 
-// 11-char URL-safe base64 → YouTube ID. Anything else is a search query.
+// Invidious mirrors — community-run, ad-free YouTube frontends. Try in order.
+const INVIDIOUS_INSTANCES = [
+  "https://yewtu.be",
+  "https://invidious.fdn.fr",
+  "https://invidious.privacydev.net",
+];
+
+// 11-char URL-safe base64 → YouTube ID. Anything else is treated as a search query.
 const YT_ID_RE = /^[A-Za-z0-9_-]{11}$/;
 
 function VideoModal({ video, title, onClose }) {
   const isId = typeof video === "string" && YT_ID_RE.test(video);
   const videoId = isId ? video : null;
-  const query   = isId ? title : video; // when it's a query we fall back to using it as the search string
+  const query   = isId ? title : video;
 
   const initialMode = (() => {
     try { return localStorage.getItem("fti.video.mode") || "yt"; } catch (e) { return "yt"; }
@@ -29,6 +48,7 @@ function VideoModal({ video, title, onClose }) {
   const [mode, setMode] = useState(initialMode);
   const [pipedIdx, setPipedIdx] = useState(0);
   const [iframeBroken, setIframeBroken] = useState(false);
+  const [invIdx, setInvIdx] = useState(0);
 
   useEffect(() => { try { localStorage.setItem("fti.video.mode", mode); } catch (e) {} }, [mode]);
 
@@ -54,12 +74,19 @@ function VideoModal({ video, title, onClose }) {
     ? `${PIPED_INSTANCES[pipedIdx]}/embed/${videoId}?autoplay=1`
     : null;
   const ytSearch  = `https://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}`;
-  // NewPipe intercepts youtu.be / youtube.com URLs on Android.
-  const npVideo   = videoId
-    ? `intent://youtu.be/${videoId}#Intent;package=org.schabi.newpipe;scheme=https;end`
-    : null;
-  const npSearch  = `intent://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}#Intent;package=org.schabi.newpipe;scheme=https;end`;
+
+  // Invidious (ad-free, no app needed)
+  const invWatch  = videoId ? `${INVIDIOUS_INSTANCES[invIdx]}/watch?v=${videoId}` : null;
+  const invSearch = `${INVIDIOUS_INSTANCES[invIdx]}/search?q=${encodeURIComponent(query || title)}`;
   const pipedSearch = `${PIPED_INSTANCES[0]}/results?search_query=${encodeURIComponent(query || title)}`;
+
+  // Detect Android for tailored "open externally" copy.
+  const isAndroid = typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+  // Plain youtube link — primary route for NewPipe on Android.
+  // youtu.be is what NewPipe registers most reliably for.
+  const ytExt = videoId
+    ? `https://youtu.be/${videoId}`
+    : `https://www.youtube.com/results?search_query=${encodeURIComponent(query || title)}`;
 
   const tryNextPiped = () => {
     if (pipedIdx < PIPED_INSTANCES.length - 1) {
@@ -68,6 +95,9 @@ function VideoModal({ video, title, onClose }) {
     } else {
       setIframeBroken(true);
     }
+  };
+  const tryNextInv = () => {
+    if (invIdx < INVIDIOUS_INSTANCES.length - 1) setInvIdx(invIdx + 1);
   };
 
   return (
@@ -81,20 +111,33 @@ function VideoModal({ video, title, onClose }) {
           <button className="vmod-close" onClick={onClose} aria-label="close">✕</button>
         </div>
 
-        {/* Big primary CTA: open in NewPipe (ad-free, native, instant on Android). */}
-        <a className="vmod-newpipe" href={isId ? npVideo : npSearch}>
+        {/* PRIMARY CTA: plain youtu.be link. On Android with NewPipe installed
+            and set as default → opens in NewPipe directly. Otherwise OS shows
+            an app chooser (pick NewPipe → tap "Always" once → permanent). */}
+        <a className="vmod-newpipe" href={ytExt} target="_blank" rel="noopener noreferrer">
           <span className="vmod-np-l">
             <span className="vmod-np-icon">▶</span>
             <span className="vmod-np-text">
-              <b>OPEN IN NEWPIPE</b>
-              <small>{isId ? "ad-free · native player" : "ad-free · search results"}</small>
+              <b>{isAndroid ? "OPEN IN NEWPIPE" : "OPEN VIDEO"}</b>
+              <small>{isAndroid
+                ? (isId ? "youtu.be link → app chooser → NewPipe"
+                        : "search results → app chooser → NewPipe")
+                : "opens in your default browser/app"}</small>
             </span>
           </span>
           <span className="vmod-np-arrow">↗</span>
         </a>
 
+        {isAndroid && (
+          <div className="vmod-newpipe-hint">
+            <b>opens Play Store instead of NewPipe?</b>
+            <span>NewPipe isn't set as the default for youtu.be links yet.
+              <br/>Long-press the button → <i>Open with</i> → <i>NewPipe</i> →{" "}
+              <i>Always</i>. One-time fix.</span>
+          </div>
+        )}
+
         {isId ? (
-          // ---- Direct video ID: inline embed ----
           <div className="vmod-frame">
             {iframeBroken ? (
               <div className="vmod-fallback">
@@ -116,13 +159,11 @@ function VideoModal({ video, title, onClose }) {
             )}
           </div>
         ) : (
-          // ---- Search query: no iframe, just clean tap targets ----
           <div className="vmod-search">
             <div className="vmod-search-eyebrow">SEARCH QUERY</div>
             <div className="vmod-search-q">"{query}"</div>
             <div className="vmod-search-note">
-              No specific video curated for this exercise — tap NewPipe above for instant ad-free playback,
-              or pick a source below.
+              No specific video curated for this exercise — pick a source below.
             </div>
           </div>
         )}
@@ -146,20 +187,25 @@ function VideoModal({ video, title, onClose }) {
             </div>
           )}
           <div className="vmod-links">
+            <a className="vmod-link-btn pri" href={isId ? invWatch : invSearch}
+               target="_blank" rel="noopener noreferrer">
+              <span>🌐 Invidious{invIdx > 0 ? ` (#${invIdx + 1})` : ""}</span>
+              <small>ad-free · no app needed · works in browser</small>
+            </a>
+            {invIdx < INVIDIOUS_INSTANCES.length - 1 && (
+              <button className="vmod-link-btn ghost" onClick={tryNextInv}>
+                <span>↻ try next Invidious instance</span>
+                <small>if the one above is down</small>
+              </button>
+            )}
+            <a className="vmod-link-btn" href={pipedSearch} target="_blank" rel="noopener noreferrer">
+              <span>🌐 Piped search</span>
+              <small>ad-free · alternate stack</small>
+            </a>
             <a className="vmod-link-btn" href={ytSearch} target="_blank" rel="noopener noreferrer">
               <span>🔍 YouTube search</span>
-              <small>{isId ? "find a better video" : "ad-supported · in browser"}</small>
+              <small>{isId ? "find a different video" : "ad-supported · in browser"}</small>
             </a>
-            <a className="vmod-link-btn" href={pipedSearch} target="_blank" rel="noopener noreferrer">
-              <span>🔍 Piped search</span>
-              <small>ad-free · in browser</small>
-            </a>
-            {isId && (
-              <a className="vmod-link-btn" href={ytShort} target="_blank" rel="noopener noreferrer">
-                <span>↗ youtu.be</span>
-                <small>this exact video</small>
-              </a>
-            )}
           </div>
         </div>
       </div>
@@ -169,7 +215,6 @@ function VideoModal({ video, title, onClose }) {
 
 function useVideoModal() {
   const [entry, setEntry] = useState(null);
-  // Back-compat: open(idOrQuery, title) OR open({video, title}).
   const open = (a, b) => {
     if (typeof a === "object" && a !== null) setEntry({ video: a.video, title: a.title });
     else setEntry({ video: a, title: b });
