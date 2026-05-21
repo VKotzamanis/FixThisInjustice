@@ -2,12 +2,14 @@
 // Caches everything once, serves from cache, falls back to network.
 // Bump CACHE_NAME to force a refresh after a deploy.
 
-const CACHE_NAME = "weight-console-v2";
+const CACHE_NAME = "weight-console-v3";
 const SHELL = [
   "./",
-  "./console.html",
+  "./index.html",
   "./manifest.json",
   "./data.js",
+  "./console-content.js",
+  "./core.jsx",
   "./tweaks-panel.jsx",
   "./console-store.jsx",
   "./console-shared.jsx",
@@ -15,6 +17,8 @@ const SHELL = [
   "./console-views.jsx",
   "./console-today-extras.jsx",
   "./console-video.jsx",
+  "./console-fun.jsx",
+  "./console-app.jsx",
   "./icon-192.png",
   "./icon-512.png",
   "./icon-maskable-512.png",
