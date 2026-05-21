@@ -766,5 +766,4 @@ function ExportView({ store }) {
     </div>
   );
 }
-
 Object.assign(window, { TodayView, PlanView, LogView, ProtocolsView, ExportView });
