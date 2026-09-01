@@ -1,0 +1,116 @@
+# Publishes dist/ to GitHub Pages on every push to main. The build job repeats
+# CI's build and its two grep gates so nothing un-gated can reach the live site;
+# lint, types and the four-zone suite run in parallel in ci.yml on the same push.
+#
+# One-time manual step, documented in docs/DEPLOY-CUTOVER-NOTE.md:
+# Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time. Queued runs are not cancelled: a half-finished Pages
+# deployment is worse than a slightly stale one.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Node 22 comes from .nvmrc, the floor package.json `engines` declares.
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # npm ci installs the exact package-lock.json tree; a drifted lockfile fails here.
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        env:
+          # P5 populates these repository variables; empty is a valid build because the reminder worker is optional.
+          VITE_REMINDER_API: ${{ vars.VITE_REMINDER_API }}
+          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+        run: npm run build
+
+      - name: Build hygiene
+        run: |
+          set -euo pipefail
+
+          # Gate 1: no inline <script> — the CSP is script-src 'self', so an inline script is dead code the browser refuses to run.
+          if grep -o '<script[^>]*>' dist/index.html | grep -v 'src='; then
+            echo "FAIL: dist/index.html contains a <script> without src="
+            exit 1
+          fi
+          echo "PASS: every <script> in dist/index.html has src="
+
+          # Gate 2: no CDN and no in-browser compiler — the legacy console pulled React from unpkg and compiled JSX at runtime as text/babel.
+          if grep -niE 'unpkg|text/babel' dist/index.html; then
+            echo "FAIL: dist/index.html references a CDN or an in-browser compiler"
+            exit 1
+          fi
+          echo "PASS: no unpkg, no text/babel"
+
+          # Gate 3: the CSP meta tag survives the build — GitHub Pages cannot set response headers, so the meta tag is the only enforcement point.
+          if ! grep -q 'http-equiv="Content-Security-Policy"' dist/index.html; then
+            echo "FAIL: CSP meta tag absent from dist/index.html"
+            exit 1
+          fi
+          echo "PASS: CSP meta tag present"
+
+          # Gate 4a: the built frame-src equals the host list build/cspPlugin.ts read from src/config/videoInstances.ts, so policy and runtime list cannot drift.
+          from_config=$(grep -oE "host: '[^']+'" src/config/videoInstances.ts | sed -E "s|host: '(.+)'|https://\1|" | tr '\n' ' ' | sed 's/ *$//')
+          from_build=$(grep -o 'frame-src [^;"]*' dist/index.html | sed 's/^frame-src //; s/ *$//')
+          if [ "$from_build" != "$from_config" ]; then
+            echo "FAIL: dist frame-src has drifted from src/config/videoInstances.ts"
+            echo "  dist:   $from_build"
+            echo "  config: $from_config"
+            exit 1
+          fi
+
+          # Gate 4b: that list is still the six hosts master plan section 3 approved, so the frame allowlist cannot widen without a plan amendment.
+          approved='https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.tiekoetter.com https://yt.chocolatemoo53.com https://inv.thepixora.com https://invidious.f5.si'
+          if [ "$from_build" != "$approved" ]; then
+            echo "FAIL: frame-src host list differs from master plan section 3; amend the plan before widening it"
+            echo "  built:    $from_build"
+            echo "  approved: $approved"
+            exit 1
+          fi
+          echo "PASS: frame-src equals the six hosts in src/config/videoInstances.ts"
+
+      - name: No personal health data in shipped source
+        run: |
+          set -euo pipefail
+          # One-character classes keep the pattern from matching its own definition; git grep exits 1 on no match, which is the passing case, and also when a pathspec (worker/, added by P5) matches no tracked file.
+          if ! git grep -nEi 'vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e]' -- 'src/' 'worker/' 'public/' 'index.html'; then
+            echo "PASS: no medication or location identifier in src/, worker/, public/ or index.html"
+          else
+            echo "FAIL: personal health data found in shipped source"
+            exit 1
+          fi
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
