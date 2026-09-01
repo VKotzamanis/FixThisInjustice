@@ -1,0 +1,20 @@
+# dependencies and build output
+node_modules/
+dist/
+dev-dist/
+coverage/
+.vite/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# tooling caches and local editor state
+graphify-out/cache/
+.nodeterm/
+.design-canvas.state.json
+
+# working directories that are not part of the deployed artifact
+uploads/
+screenshots/
