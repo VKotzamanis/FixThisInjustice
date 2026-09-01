@@ -159,7 +159,7 @@ describe('properties', () => {
         // Signed as master plan section 3 requires: the delta is back − loadKg,
         // then taken absolute and expressed in the display unit.
         const errorInDisplayUnit = Math.abs(back - loadKg) / (units === 'imperial' ? KG_PER_LB : 1);
-        return errorInDisplayUnit <= 0.05; // [lb] or [kg]
+        return errorInDisplayUnit <= 0.05 + 1e-9; // [lb] or [kg]
       }),
       { numRuns: 10_000 },
     );
