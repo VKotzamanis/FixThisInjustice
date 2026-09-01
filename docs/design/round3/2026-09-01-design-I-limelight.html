@@ -1,0 +1,745 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design I - limelight</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<style>
+/* ============================================================================
+   DESIGN I - LIMELIGHT   (skin id: "limelight")
+   Round three. E (brat summer) and F (stan twitter) merged into one skin.
+
+   FROM E: the flat lime field, lowercase, Archivo at wdth 62, size-only
+           hierarchy, the mascot.  DROPPED: the 0.4px resample blur.
+   FROM F: the marquee, the quote-tweet, the MOTHER stamp and sparkle fan, the
+           drop-shadowed display face.  DROPPED: the aubergine ground, white
+           body type, card rotation on anything but the stamp.
+
+   Contrast, computed (WCAG 2.1 relative luminance), not guessed:
+     #000000 on #8ACE00 ...... 10.91:1   all display and body type
+     #454545 on #8ACE00 ....... 4.98:1   fine-print floor
+     #FFFFFF on #8ACE00 ....... 1.92:1   BANNED, no white on lime anywhere
+     #FF5FCB on #8ACE00 ....... 1.41:1   BANNED as type, at every size
+     #9E0050 on #8ACE00 ....... 4.25:1   the darkest readable pink, STILL FAILS
+     #000000 on #FF5FCB ....... 7.75:1   pink as a FILL, black type on it
+     #FFFFFF on #000000 ...... 21.00:1   inside an inverted panel
+     #8ACE00 on #000000 ...... 10.91:1   lime type inside an inverted panel
+     #FF5FCB on #000000 ....... 7.75:1   the ONLY place pink is ever type
+
+   THE PALETTE RULE, absolute and with no size exception:
+     pink is never type on lime. pink is type only inside a black panel.
+     The silhouette of every icon is carried by its OUTLINE (black on lime at
+     10.91:1, lime on black at 10.91:1), never by its fill.
+
+   THE TONE RULE: the joke is about the app, or about the week. Never about the
+   user. Numbers, units and control semantics are never skinned.
+
+   NO EMOJI CHARACTERS ANYWHERE IN THIS FILE, including these comments and the
+   copy table. All 16 icons are original pixel art generated for this project.
+   ========================================================================== */
+:root{
+  --lime:#8ACE00;
+  --ink:#000000;
+  --ink-mute:#454545;
+  --pink:#FF5FCB;
+  --panel:#000000;
+  --panel-ink:#FFFFFF;
+  --panel-mute:#CCCCCC;
+  --panel-lime:#8ACE00;
+  --panel-pink:#FF5FCB;
+  --sans:"Archivo","Arial Narrow","Helvetica Neue Condensed",Arial,sans-serif;
+  --tap:48px; --dock:174px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#d7dad4;color:#14160f;font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- page chrome (not part of the skin) ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 8px;font-size:22px;font-weight:800;letter-spacing:-.02em;
+  font-variation-settings:"wdth" 84,"wght" 800;word-spacing:.06em;text-shadow:3px 3px 0 var(--pink)}
+.pagehead p{margin:0 0 8px;max-width:76ch;color:#2c2f28;font-size:13.5px}
+.pagehead code{font-size:12.5px;background:#c3c7bf;padding:1px 5px}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 26px}
+figure{margin:0}
+figcaption{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#2c2f28;padding:0 0 8px 2px;font-weight:700}
+figcaption b{color:#0d0f0a}
+@media(max-width:430px){.frames{padding:14px 0 26px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone frame ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--lime);color:var(--ink);border:1px solid #5f7300;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-bottom:calc(var(--dock) + 10px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.phone *{text-transform:lowercase}
+.phone .keep{text-transform:none}
+.phone .shout{text-transform:uppercase}
+
+.sys{display:flex;justify-content:space-between;padding:10px 18px 0;font-size:11.5px;
+  color:var(--ink-mute);letter-spacing:.04em;font-weight:700;font-variation-settings:"wdth" 88}
+
+/* ---- THE MARQUEE: the one inverted strip on the page, and a real control ---- */
+.mq{display:block;width:100%;min-height:44px;margin-top:9px;padding:0;overflow:hidden;
+  background:var(--panel);border:0;border-top:3px solid var(--ink);border-bottom:3px solid var(--ink);
+  cursor:pointer;touch-action:pan-y;text-align:left;font:inherit;color:var(--panel-lime)}
+.mq .track{display:inline-block;white-space:nowrap;padding:11px 0;
+  animation:scroll 24s linear infinite;will-change:transform}
+.mq .item{padding:0 14px;font-size:15px;font-weight:800;letter-spacing:.01em;
+  font-variation-settings:"wdth" 80,"wght" 800;word-spacing:.06em;vertical-align:middle}
+.mq .item.hot{color:var(--panel-pink)}
+.mq .item.plain{color:var(--panel-ink)}
+.mq img{width:20px;height:20px;vertical-align:-4px;image-rendering:pixelated}
+.mq:active .track{animation-play-state:paused}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ---- display type: hard offset shadow, never a blur ---- */
+.disp{font-size:76px;line-height:.86;font-weight:800;letter-spacing:-.045em;margin:0;
+  font-variation-settings:"wdth" 62,"wght" 800;text-shadow:4px 4px 0 var(--pink);word-spacing:.18em}
+.disp.sm{font-size:52px;text-shadow:3px 3px 0 var(--pink)}
+.sub{font-size:15px;font-weight:600;color:var(--ink);margin:10px 0 0;letter-spacing:.01em}
+.mute{color:var(--ink-mute)}
+.block{padding:14px 18px 18px}
+.block.tight{padding-bottom:8px}
+.huge{font-size:104px;line-height:.82;font-weight:800;letter-spacing:-.06em;margin:2px 0 0;
+  font-variation-settings:"wdth" 70,"wght" 800;font-variant-numeric:tabular-nums}
+.mid{font-size:29px;line-height:1.02;font-weight:800;letter-spacing:-.03em;margin:0;
+  font-variation-settings:"wdth" 74,"wght" 800;font-variant-numeric:tabular-nums;word-spacing:.1em}
+
+/* ---- icons ---- */
+.ic{width:22px;height:22px;vertical-align:-5px;image-rendering:pixelated;image-rendering:crisp-edges}
+.ic.lg{width:28px;height:28px;vertical-align:-7px}
+.illus{display:block;image-rendering:pixelated;image-rendering:crisp-edges}
+.masc{position:absolute;top:96px;right:12px;width:104px;height:104px;image-rendering:pixelated}
+
+/* ---- plain unruled list (from E: no cards for a list of numbers) ---- */
+.plain{padding:2px 18px 14px;margin:0;list-style:none}
+.plain li{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+  min-height:34px;padding:5px 0;font-size:17px;font-weight:600}
+.plain li .rx{font-size:14px;font-weight:700;color:var(--ink-mute);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+
+/* ---- inverted panel ---- */
+.panel{background:var(--panel);color:var(--panel-ink);padding:18px;margin:0}
+.panel .k{font-size:12px;font-weight:800;letter-spacing:.16em;color:var(--panel-lime);margin:0}
+.panel .clock{font-size:78px;line-height:.86;font-weight:800;letter-spacing:-.055em;margin:6px 0 0;
+  font-variation-settings:"wdth" 70,"wght" 800;font-variant-numeric:tabular-nums;color:var(--panel-ink)}
+.panel .of{font-size:13.5px;color:var(--panel-mute);margin:6px 0 0;font-variant-numeric:tabular-nums;font-weight:600}
+.dep{height:10px;background:#3a3a3a;margin-top:14px;position:relative;border:2px solid #555}
+.dep i{position:absolute;inset:0 auto 0 0;background:var(--panel-pink);display:block}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.split button{min-height:60px;border:3px solid var(--ink);border-top:0;background:transparent;
+  color:var(--ink);font:inherit;font-size:18px;font-weight:800;letter-spacing:-.01em;cursor:pointer;
+  font-variation-settings:"wdth" 74,"wght" 800;word-spacing:.1em;display:flex;align-items:center;justify-content:center;gap:8px}
+.split button:first-child{border-right-width:2px}
+.split button:last-child{border-left-width:1px}
+.split button:active{background:var(--ink);color:var(--lime)}
+
+/* ---- exercise ---- */
+.ex{padding:16px 18px 6px;border-top:3px solid var(--ink)}
+.ex .nm{font-size:25px;font-weight:800;letter-spacing:-.03em;line-height:1.02;margin:0;
+  font-variation-settings:"wdth" 72,"wght" 800;word-spacing:.1em}
+.ex .rx{font-size:13.5px;color:var(--ink-mute);margin:5px 0 0;font-variant-numeric:tabular-nums;font-weight:600}
+.load{font-size:30px;font-weight:800;letter-spacing:-.03em;margin:8px 0 0;
+  font-variation-settings:"wdth" 74,"wght" 800;font-variant-numeric:tabular-nums;
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+
+/* ---- the why? disclosure: the ONLY place a reason appears ---- */
+details{margin:0}
+details>summary{list-style:none;display:inline-flex;align-items:center;min-height:44px;
+  padding:0 14px;border:2px solid var(--ink);background:transparent;cursor:pointer;
+  font-size:15px;font-weight:800;letter-spacing:-.01em;font-variation-settings:"wdth" 80,"wght" 800}
+details>summary::-webkit-details-marker{display:none}
+details>summary::marker{content:""}
+details[open]>summary{background:var(--ink);color:var(--lime)}
+details .why{font-size:14px;font-weight:600;margin:9px 0 0;line-height:1.45;color:var(--ink);
+  border-left:4px solid var(--ink);padding-left:10px}
+
+/* ---- set rows: markers are drawn, never typed ---- */
+.srow{display:grid;grid-template-columns:54px 1fr auto 30px;gap:10px;align-items:center;
+  min-height:44px;padding:4px 0;border-bottom:2px solid rgba(0,0,0,.22)}
+.srow:last-of-type{border-bottom:0}
+.srow .sn{font-size:12px;color:var(--ink-mute);font-weight:800;letter-spacing:.08em}
+.srow .ld{font-size:28px;font-weight:800;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+  font-variation-settings:"wdth" 74,"wght" 800}
+.srow .ld small{font-size:12px;color:var(--ink-mute);font-weight:800;margin-left:4px;letter-spacing:.06em}
+.srow .rp{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.srow .rp.open{color:var(--ink-mute)}
+.mk{width:26px;height:26px;border:3px solid var(--ink);background:var(--ink)}
+.srow.open .mk{background:transparent}
+
+/* ---- the MOTHER stamp ---- */
+.stampwrap{position:relative;margin:8px 0 2px;min-height:188px;display:flex;
+  flex-direction:column;align-items:center;justify-content:flex-start}
+.stamp{font-size:44px;font-weight:800;color:var(--panel-pink);border:6px solid var(--panel-pink);
+  padding:4px 18px 8px;transform:rotate(-6deg);letter-spacing:.02em;background:var(--panel);
+  position:relative;z-index:3;margin-top:-30px;font-variation-settings:"wdth" 74,"wght" 800;
+  line-height:1.02}
+.spark{position:absolute;left:calc(50% - 11px);top:84px;width:22px;height:22px;z-index:2;
+  image-rendering:pixelated}
+.crownfig{position:relative;width:118px;height:118px;z-index:1;image-rendering:pixelated}
+.stampnote{font-size:12.5px;color:var(--ink-mute);margin:8px 0 0;text-align:center;line-height:1.5;font-weight:600}
+
+/* ---- week strip: solid / hatched / dashed, never colour alone ---- */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:6px 18px 0}
+.dc{height:58px;border:3px solid var(--ink);display:flex;align-items:center;justify-content:center}
+.dc .d{font-size:11.5px;font-weight:800;letter-spacing:.03em}
+.dc.on{background:var(--ink)}
+.dc.on .d{color:var(--lime)}
+.dc.sk{background:var(--pink);
+  background-image:repeating-linear-gradient(135deg,transparent 0 5px,rgba(0,0,0,.55) 5px 10px)}
+.dc.no{border-style:dashed;border-color:var(--ink-mute)}
+.dc.no .d{color:var(--ink-mute)}
+
+/* ---- quote-tweet: F's one irreplaceable form, re-grounded on lime ---- */
+.qt{margin:12px 18px 0;border:3px solid var(--ink);border-left-width:10px;padding:11px 12px;
+  background:transparent}
+.qt .h{font-size:12px;color:var(--ink-mute);font-weight:800;margin:0;letter-spacing:.02em}
+.qt .b{font-size:19px;margin:5px 0 0;line-height:1.24;font-weight:800;letter-spacing:-.02em;
+  font-variation-settings:"wdth" 78,"wght" 800;word-spacing:.08em}
+.qt .n{font-size:13.5px;margin:7px 0 0;color:var(--ink);font-weight:600;line-height:1.4}
+
+/* ---- targets ---- */
+.tg{padding:6px 18px 0}
+.tr{padding:12px 0;border-top:3px solid var(--ink)}
+.tr:first-child{border-top:0}
+.tr .k{font-size:13px;font-weight:800;color:var(--ink-mute);letter-spacing:.02em;margin:0}
+.tr .v{display:flex;align-items:baseline;gap:8px;margin:2px 0 0}
+.tr .v b{font-size:34px;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;
+  font-variation-settings:"wdth" 74,"wght" 800}
+.tr .v span{font-size:13.5px;color:var(--ink-mute);font-weight:700;font-variant-numeric:tabular-nums}
+.tb{height:12px;background:transparent;border:2px solid var(--ink);margin-top:9px;position:relative}
+.tb i{position:absolute;inset:0 auto 0 0;background:var(--ink);display:block}
+.tb .band{position:absolute;top:-5px;bottom:-5px;border-left:4px solid var(--ink);border-right:4px solid var(--ink)}
+.tb .tick{position:absolute;top:-6px;bottom:-6px;width:4px;background:var(--ink)}
+
+.fine{padding:10px 18px 16px;font-size:12.5px;color:var(--ink-mute);line-height:1.55;font-weight:600}
+
+/* ---- dock ---- */
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:40;background:var(--lime);
+  padding:12px 18px 20px;border-top:3px solid var(--ink)}
+.minor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+.minor button{min-height:var(--tap);border:3px solid var(--ink);background:transparent;color:var(--ink);
+  font:inherit;font-size:13px;font-weight:800;letter-spacing:-.01em;cursor:pointer;padding:4px 2px;
+  font-variation-settings:"wdth" 80,"wght" 800;word-spacing:.08em;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;line-height:1.1}
+.minor button:active{background:var(--ink);color:var(--lime)}
+.minor img{width:18px;height:18px;image-rendering:pixelated}
+.go{width:100%;min-height:64px;border:3px solid var(--ink);background:var(--pink);color:var(--ink);
+  font:inherit;font-size:26px;font-weight:800;letter-spacing:-.01em;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  font-variation-settings:"wdth" 70,"wght" 800;word-spacing:.14em;box-shadow:5px 5px 0 var(--ink)}
+.go:active{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--ink)}
+.go img{width:26px;height:26px;image-rendering:pixelated}
+
+/* ---- the intervention modal ---- */
+.dim{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.62);
+  display:flex;align-items:flex-end}
+.modal{width:100%;background:var(--lime);border-top:4px solid var(--ink);padding:0 0 20px}
+.modal .mhead{display:flex;align-items:center;gap:10px;padding:16px 18px 0}
+.modal .mtitle{font-size:38px;font-weight:800;letter-spacing:-.035em;margin:0;line-height:.98;
+  font-variation-settings:"wdth" 66,"wght" 800;text-shadow:3px 3px 0 var(--pink);word-spacing:.16em}
+.modal .body{font-size:20px;font-weight:700;margin:12px 18px 0;line-height:1.3;letter-spacing:-.015em}
+.modal .counts{font-size:13px;color:var(--ink-mute);margin:10px 18px 0;font-weight:600;
+  font-variant-numeric:tabular-nums}
+.modal .art{display:block;margin:6px auto 0;width:176px;height:176px;image-rendering:pixelated}
+.modal .dismiss{display:block;width:calc(100% - 36px);margin:14px 18px 0;min-height:60px;
+  border:3px solid var(--ink);background:var(--pink);color:var(--ink);font:inherit;font-size:22px;
+  font-weight:800;cursor:pointer;font-variation-settings:"wdth" 72,"wght" 800;word-spacing:.12em;
+  box-shadow:5px 5px 0 var(--ink)}
+
+/* ---- settings ---- */
+.srow2{display:flex;align-items:center;gap:12px;min-height:60px;padding:10px 18px;
+  border-bottom:3px solid var(--ink)}
+.srow2 .lab{flex:1}
+.srow2 .lab b{display:block;font-size:19px;font-weight:800;letter-spacing:-.02em;
+  font-variation-settings:"wdth" 76,"wght" 800;word-spacing:.08em}
+.srow2 .lab span{display:block;font-size:12.5px;color:var(--ink-mute);font-weight:600;margin-top:1px}
+.skins{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 18px 4px}
+.skins button{min-height:56px;border:3px solid var(--ink);background:transparent;color:var(--ink);
+  font:inherit;font-size:15px;font-weight:800;cursor:pointer;padding:6px 8px;text-align:left;
+  font-variation-settings:"wdth" 80,"wght" 800;word-spacing:.07em;display:flex;align-items:center;gap:8px}
+.skins button.sel{background:var(--ink);color:var(--lime);box-shadow:4px 4px 0 var(--pink)}
+.skins img{width:20px;height:20px;image-rendering:pixelated}
+.toggle{width:72px;min-height:44px;border:3px solid var(--ink);background:transparent;cursor:pointer;
+  position:relative;padding:0;font:inherit;display:flex;align-items:center}
+.toggle i{display:block;width:30px;height:30px;background:var(--ink);margin:0 3px}
+.toggle.on{background:var(--pink)}
+.toggle.on i{margin-left:33px}
+.tstate{font-size:12px;font-weight:800;color:var(--ink-mute);width:26px;letter-spacing:.06em}
+
+/* ---- reference tables (page chrome) ---- */
+.copy{max-width:900px;margin:0 auto;padding:8px 20px 30px}
+.copy h2{font-size:17px;font-weight:800;margin:0 0 4px;font-variation-settings:"wdth" 84,"wght" 800;word-spacing:.06em}
+.copy p{margin:0 0 12px;font-size:13px;color:#2c2f28;max-width:72ch}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #b6bab2;vertical-align:top}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#2c2f28;font-weight:800}
+td.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#2c2f28;white-space:nowrap}
+td.s{font-weight:800;color:#14160f}
+.iconstrip{display:flex;flex-wrap:wrap;gap:10px;background:var(--lime);border:2px solid #5f7300;
+  padding:12px;margin:0 0 14px}
+.iconstrip figure{display:flex;flex-direction:column;align-items:center;gap:4px;width:66px}
+.iconstrip img{width:32px;height:32px;image-rendering:pixelated}
+.iconstrip figcaption{font-size:10px;padding:0;color:#14160f;letter-spacing:.02em}
+.lic{max-width:900px;margin:0 auto;padding:0 20px 60px;font-size:12px;color:#2c2f28;line-height:1.65}
+
+/* ---- the three orchestrated moments, and nothing else moves ---- */
+@keyframes snap{
+  from{text-shadow:12px 12px 0 var(--pink);letter-spacing:.06em;opacity:.4}
+  to{text-shadow:4px 4px 0 var(--pink);letter-spacing:-.045em;opacity:1}
+}
+@keyframes land{
+  0%{transform:rotate(-14deg) scale(2.4);opacity:0}
+  55%{opacity:1}
+  100%{transform:rotate(-6deg) scale(1);opacity:1}
+}
+@keyframes fan{
+  0%{transform:translate(0,0) scale(.2) rotate(0deg);opacity:0}
+  34%{opacity:1}
+  100%{transform:translate(var(--dx),var(--dy)) scale(1) rotate(var(--rz));opacity:.94}
+}
+.disp{animation:snap .26s cubic-bezier(.2,.7,.3,1) both}
+.disp.d2{animation-delay:.08s}
+.disp.d3{animation-delay:.16s}
+.stamp{animation:land .7s cubic-bezier(.16,1.2,.3,1) both}
+.spark{animation:fan .7s .24s ease-out both}
+@media(prefers-reduced-motion:reduce){
+  .disp{animation:none;text-shadow:4px 4px 0 var(--pink);letter-spacing:-.045em;opacity:1}
+  .mq .track{animation:none;transform:none;display:block;text-align:center}
+  .mq .item:not(.first){display:none}
+  .stamp{animation:none;transform:rotate(-6deg) scale(1);opacity:1}
+  .spark{animation:none;opacity:.94;transform:translate(var(--dx),var(--dy))}
+}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design I &middot; limelight</h1>
+  <p>Round three. Direction <b>E (brat summer)</b> and direction <b>F (stan twitter)</b> merged into one skin, skin id <code>limelight</code>. From E: the flat lime field <code>#8ACE00</code>, lowercase, Archivo at <code>wdth 62</code>, hierarchy by size alone, the mascot. From F: the marquee, the quote-tweet, the MOTHER stamp and its sparkle fan, the drop-shadowed display face.</p>
+  <p><b>The palette rule, computed and absolute:</b> black on lime is <b>10.91:1</b>; pink on lime is <b>1.41:1</b> and the darkest pink that still reads as pink is <b>4.25:1</b>, so <b>pink is never type on lime at any size</b>. Pink is a fill, an outline and an offset shadow. Pink is type in exactly one place: inside a black panel, at <b>7.75:1</b>. Every icon silhouette is carried by its outline, never its fill, which is why the same drawings work on both grounds.</p>
+  <p><b>No emoji characters anywhere in this file.</b> All sixteen icons are original pixel art generated for this project and palette-snapped to the mascot&rsquo;s own colours. <b>No arithmetic on any screen:</b> reasons live behind a <code>why?</code> disclosure, one sentence each.</p>
+</header>
+
+<div class="frames">
+
+<!-- ========================= 1 &middot; TODAY ========================= -->
+<figure>
+  <figcaption><b>1 &middot; today</b> &middot; 390 &times; 844</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>tue 1 sep</span></div>
+
+      <button class="mq" type="button" aria-label="ticker, press to pause">
+        <span class="track">
+          <span class="item first"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""> ep. 12 of 48 &middot; upper</span
+          ><span class="item hot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""> 1 of 4 this week</span
+          ><span class="item plain">10 served. 1 skipped. 37 to go.</span
+          ><span class="item"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAnUlEQVR42mNgGAWjYBSMdMCIS6LrHMN/dLEyI9zqydXLNNAhwITN9cg+eDw/l+Hx/FySDUbXhy1U6B4C2BzBhMv11Aa4zBzwNMBCKI4IBSG50QDLFSzowSSbOJnkYEQHhMxAlh88UUDI5cTIkxM6LOglFb54pqQkxGXG4CsJqRXUxJrJgiuIqJHliIk+FkqyFDX0DXgaGAWjYBSMAgCv2T2ZLe9NKQAAAABJRU5ErkJggg==" alt=""> 6 exercises, about 55 min</span
+          ><span class="item"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""> ep. 12 of 48 &middot; upper</span
+          ><span class="item hot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""> 1 of 4 this week</span
+          ><span class="item plain">10 served. 1 skipped. 37 to go.</span
+          ><span class="item"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAnUlEQVR42mNgGAWjYBSMdMCIS6LrHMN/dLEyI9zqydXLNNAhwITN9cg+eDw/l+Hx/FySDUbXhy1U6B4C2BzBhMv11Aa4zBzwNMBCKI4IBSG50QDLFSzowSSbOJnkYEQHhMxAlh88UUDI5cTIkxM6LOglFb54pqQkxGXG4CsJqRXUxJrJgiuIqJHliIk+FkqyFDX0DXgaGAWjYBSMAgCv2T2ZLe9NKQAAAABJRU5ErkJggg==" alt=""> 6 exercises, about 55 min</span>
+        </span>
+      </button>
+
+      <div class="block tight">
+        <p class="disp">upper</p>
+        <p class="sub">ep. 12 of 48</p>
+      </div>
+
+      <img class="illus" style="width:210px;height:210px;margin:0 auto" alt="the mascot pressing a barbell overhead" src="data:image/png;base64,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">
+
+      <div class="block tight">
+        <p class="sub mute">tonight</p>
+        <p class="huge tabnum">18:00</p>
+        <p class="sub">starts in 8 min. six exercises, about 55 min.</p>
+      </div>
+
+      <div class="block tight">
+        <p class="sub mute">the plan</p>
+        <p class="mid tabnum">10 served. 1 skipped. 37 to go.</p>
+      </div>
+
+      <div class="block tight"><p class="sub mute"><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAg0lEQVR42u2VUQrAMAhDbel1c5oe2P2NUbpWZWzC8n6tkkZREULI3ymLmDrfh3Lr1w7UG/XnDwAIAHfhSZ5mcEBNAiI/tjiScgbarkeG6Y62oYwCBID03t02juxqXOOpWrBUbolH3GmTTaXBzWmdlZJ+Ez5itbVmW1ik8sLh4zUkhJADGaUnbCOOccIAAAAASUVORK5CYII=" alt=""> the setlist</p></div>
+      <ul class="plain">
+        <li><span>barbell bench press</span><span class="rx">3 &times; 6&ndash;8</span></li>
+        <li><span>barbell row (pendlay)</span><span class="rx">3 &times; 6&ndash;8</span></li>
+        <li><span>overhead press</span><span class="rx">3 &times; 8&ndash;10</span></li>
+        <li><span>lat pulldown</span><span class="rx">3 &times; 10&ndash;14</span></li>
+        <li><span>face pull</span><span class="rx">2 &times; 12&ndash;15</span></li>
+        <li><span>barbell curl</span><span class="rx">2 &times; 10&ndash;12</span></li>
+      </ul>
+
+      <div class="fine">on hiatus keeps ur place at ep. 12 and pauses the weekly target. not today satan moves u to ep. 13 and asks why. plot twist offers push or pull, the labels still owed this week.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor">
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABkklEQVR42u1WsWrDMBB9Sg0ZAvqCLs2QfkChnjo07Wzo7vxA4Ib8Qf+gg8A/UO8Bz3EzS5AlW/sZgg6BgrpEIokjHMsNaUsOBAKJe+/ene4EnO34ZtbrZOD41eCdI4PXkmAnkGwLM/LdklIGec/zHACQpmnlLI7j2hSwzcvWWVtwnRV7wX0KMJsKIQQA4OX2yQu6GPTcPtEcfJzg5uPTnemsQMF14yJ0SgghMJ+VXgc6K5DnuYveglsruHaBEBGrK0LvU/p6fascTtTURW6jTDTH/eMDFoPeruys8TMkImZZR6OhV4lNifk4qYDvi/xQBSpqENFWTcxnpSOQpqlLhZW9DuOiAYFnAFBK4Y5f4qrfd4pcr7p4766wXC63wImIKaUaNSI0qYmJmjbOeVsCjshuUUajYZDf4FkwUVMsBj3MZ6V7DS2DOtyICACMlNIQkWkz8zvHGjKnIIAzgTOBP0kg9I9viMhIKVv3giigAVVs5wtmhBDM3t+Yiq0IGA9YhcR6HJufbssmZPkUC1GA4b/aN+KaszeqHswBAAAAAElFTkSuQmCC" alt="">on hiatus</button>
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABBklEQVR42uVXQQ6EIAwshDO/8soXfAEv8OwLfIFf8Oqv+gH2AhvWmLXQAsnuJCZqDG2mM20F+Heo7D4QvilBoMQ217fnvHw8HxbDtm1ViXjvwaHNz4J41hu6J91ZMoqcgEObWAnZJQYyA+e8gPeeWl/5BCpERoIpraGLIo2CCgyX8BhwaFNJWNrQQqoeogGOOINoH0hWvdi1DwN33a9kBBho0O2SUwAHMNBdhNwm9nsMHBZh2leY9hUOi48i1NLBr/O+KwPZ4qKaDKM7TPvKWt80l/JhLript2q+D0gFrSpBi+BFCbQITkogNZbMXkrSukZQ2VVOGf5rpr4tE6Vt9Wkx4ZzXDC+r5WMNM1kdgQAAAABJRU5ErkJggg==" alt="">not today satan</button>
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABYklEQVR42u1Xy62EMAx0EOd0xZUWqMAVcKaCqYAWuNJVGvBe1nnBAgIoCyvts4T4RfJgz0wM0a+HW3vIzPEawGPg5H3cXgHRCiRf7z4FoLJl13MbvK3GZwGkidLkzKyg5A4Ai5i7PrZBQaQELRF1wnaZu54orC9sgydiJgBSkhNVboF+8eSD5cU9ADQpAJp8KE7K6siiNvjIh7nri4KoiL7HikWZvxWTDwSAjFG5UkbkNEmOD4ag8kgL2uCLqGIXQDMO1IzDoiraosmH3WoVrYCRYHzWBp+2QYoBMMnc2lzAzNGcEnuWywCU0UcGkNSc9P7qHlGdkKtrxmEXlGmHnNqMLqmg66kZB2LmP1UsxznJDTRnZegsGbX0qhj7LleV0z5gFWG9AMCCGzmvqKlAaDsWEWjVOwCIui6ASwAcAKF33y/xBkMcah7fDeutPtMBXZewYrfxQ5L9eyowkDj6j2+IFyKYs1uXB5k/AAAAAElFTkSuQmCC" alt="">plot twist</button>
+      </div>
+      <button class="go shout" type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABQklEQVR42t1W0RHCIAxNev1mq/52BSfIBH53gkzgCv11KxaIH6IXEQsEtGruuKMcJOHl5VGAfzIiqj4zWpwz832NmUVtw3deUNS4rxGREJGEebXToQfMs3c3ZCSRcJcEJAomJftDstIVgdiYGVbnNTJxsn1KQERARLA6n0wiF+wVP0bLjWPHBTeVcA6bEpi9A7i2XtFtJ14evgNJsYkDs3dF5FL7NhEykbCEXHpfijfduqDVxk8E2eLMUCi5eOt36yP1qg2HzAGxBIs50krCqkdGB4sUsj4B1b/m2uc6Zsw5OB+OMJ2Wp1KcD8frxCfWKgy3YI/hrNGA2FbnISXHu+vAsIWMte26CBEzIwDIbKjrW5TQWvumHxIiwum07MKB3Un41EItps5jqQ5kdaHGVBnRWoKm1/D3OaBQwACjdXyfXQDympfMYr+kkQAAAABJRU5ErkJggg==" alt="">let&rsquo;s go babes</button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 2 &middot; TRAIN ========================= -->
+<figure>
+  <figcaption><b>2 &middot; train</b> &middot; rest running, MOTHER stamped</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span>upper &middot; ep. 12 &middot; 31 min</span></div>
+
+      <button class="mq" type="button" aria-label="ticker, press to pause">
+        <span class="track">
+          <span class="item first"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""> set 3 of 3 &middot; bench</span
+          ><span class="item hot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""> 140 lb &times; 8 is a record</span
+          ><span class="item plain"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB4ElEQVR42u1XO3KDMBB9MKTlBjqE06T0DTgBjQ6gcZeG2o07ZmfS0ugE3CClm+QQ3ECtC1LEYhaNEALZVbKVMWJ/7+1HwF+XbOsHly+Moffvr9t0Fnu8HjqFypSz//rSQEjarCvf44CQhL40ycZ3OWBTzA3a3770r0GWpxCoL80sEz7jQ6fSSKiUAhFBKQUhaYzkSCYkTcaFJAydygCAiLaRUEgaLxIACIe2iUvN6Tw5WpkSaBvgdB6tE9EZ4PhZ4yHC8er4Pp29mXEzkMUYt4pdvK0jLs72LHd0qT8UsTXPjdd1DQDQnfOs9ZSlypToO7Vanlkoem5cSMLxdo2iwOfLmxcOHwSLZXhom1XjWuspai7H23XWrELkzd3IL18YOeGswq1iv7HRH9rmt6KcxpSHmswjZOhUUFce6vecYEtnQiSz34bO7G7FHHsfDx4yjISkJOVa69UyLNbwW4Kgrmvgdn9XL0OguydB8LSVzDdCQ0SM5YmF1G3J+cIona1c5qNPMl6ZcjaSgw7wVhmabDFrG9cRDYFS0xIxpswCd3wvTcNsbZ2yEXin4T3N7jOPfM2BImbv4zOeG7JptmPZ3QeSLyaP2ohCl5Vsy00odieMNR59NePEjN2KfRvwv/jkBwpMJCq2JlV0AAAAAElFTkSuQmCC" alt=""> rest 2:00</span
+          ><span class="item">lat pulldown is up next</span
+          ><span class="item"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""> set 3 of 3 &middot; bench</span
+          ><span class="item hot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""> 140 lb &times; 8 is a record</span
+          ><span class="item plain"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB4ElEQVR42u1XO3KDMBB9MKTlBjqE06T0DTgBjQ6gcZeG2o07ZmfS0ugE3CClm+QQ3ECtC1LEYhaNEALZVbKVMWJ/7+1HwF+XbOsHly+Moffvr9t0Fnu8HjqFypSz//rSQEjarCvf44CQhL40ycZ3OWBTzA3a3770r0GWpxCoL80sEz7jQ6fSSKiUAhFBKQUhaYzkSCYkTcaFJAydygCAiLaRUEgaLxIACIe2iUvN6Tw5WpkSaBvgdB6tE9EZ4PhZ4yHC8er4Pp29mXEzkMUYt4pdvK0jLs72LHd0qT8UsTXPjdd1DQDQnfOs9ZSlypToO7Vanlkoem5cSMLxdo2iwOfLmxcOHwSLZXhom1XjWuspai7H23XWrELkzd3IL18YOeGswq1iv7HRH9rmt6KcxpSHmswjZOhUUFce6vecYEtnQiSz34bO7G7FHHsfDx4yjISkJOVa69UyLNbwW4Kgrmvgdn9XL0OguydB8LSVzDdCQ0SM5YmF1G3J+cIona1c5qNPMl6ZcjaSgw7wVhmabDFrG9cRDYFS0xIxpswCd3wvTcNsbZ2yEXin4T3N7jOPfM2BImbv4zOeG7JptmPZ3QeSLyaP2ohCl5Vsy00odieMNR59NePEjN2KfRvwv/jkBwpMJCq2JlV0AAAAAElFTkSuQmCC" alt=""> rest 2:00</span
+          ><span class="item">lat pulldown is up next</span>
+        </span>
+      </button>
+
+      <div class="panel">
+        <p class="k"><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB4ElEQVR42u1XO3KDMBB9MKTlBjqE06T0DTgBjQ6gcZeG2o07ZmfS0ugE3CClm+QQ3ECtC1LEYhaNEALZVbKVMWJ/7+1HwF+XbOsHly+Moffvr9t0Fnu8HjqFypSz//rSQEjarCvf44CQhL40ycZ3OWBTzA3a3770r0GWpxCoL80sEz7jQ6fSSKiUAhFBKQUhaYzkSCYkTcaFJAydygCAiLaRUEgaLxIACIe2iUvN6Tw5WpkSaBvgdB6tE9EZ4PhZ4yHC8er4Pp29mXEzkMUYt4pdvK0jLs72LHd0qT8UsTXPjdd1DQDQnfOs9ZSlypToO7Vanlkoem5cSMLxdo2iwOfLmxcOHwSLZXhom1XjWuspai7H23XWrELkzd3IL18YOeGswq1iv7HRH9rmt6KcxpSHmswjZOhUUFce6vecYEtnQiSz34bO7G7FHHsfDx4yjISkJOVa69UyLNbwW4Kgrmvgdn9XL0OguydB8LSVzDdCQ0SM5YmF1G3J+cIona1c5qNPMl6ZcjaSgw7wVhmabDFrG9cRDYFS0xIxpswCd3wvTcNsbZ2yEXin4T3N7jOPfM2BImbv4zOeG7JptmPZ3QeSLyaP2ohCl5Vsy00odieMNR59NePEjN2KfRvwv/jkBwpMJCq2JlV0AAAAAElFTkSuQmCC" alt=""> catch ur breath</p>
+        <p class="clock tabnum">1:47</p>
+        <p class="of">of 2:00. ends 18:24:52.</p>
+        <div class="dep"><i style="width:89.2%"></i></div>
+      </div>
+      <div class="split">
+        <button type="button">+30s</button>
+        <button type="button">i&rsquo;m ready</button>
+      </div>
+
+      <div class="ex">
+        <p class="nm">barbell bench press</p>
+        <p class="rx">3 &times; 6&ndash;8 &middot; rest 2:00 &middot; lb</p>
+        <p class="load"><span class="tabnum">140 lb. up 5.</span>
+          <details><summary>why?</summary><p class="why">all sets hit 8 reps last time.</p></details>
+        </p>
+
+        <div class="stampwrap">
+          <img class="crownfig" alt="the mascot being crowned" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAQAAAAEACAYAAABccqhmAAAKHElEQVR42u3dP2sb2RoH4Hcu6QL6FENwH1gXqXKTFNMYtkrhXLYL7IUpUm+xuEi9hWAD24W7TaqAminWvq62sCH9EuZTCNJd0BbXCrbiGVljaTR/ngcMSRzZ8tHMzzrnnfdMBAAAAAAAADAwiSEYlzRNF2VZRpqmN/59+W9lWTomRuSBIRinsiwNAvEPQwACABAAgAAAwiIgg5Dn+dc/F0Vxp/87nU4NXCgDEr0v+0VZlovl3//44ad4+vzZjf9zfnoWERE//vnha3VASdAUgJFYDQQEACAA6LssywwCAgAQAIAAIFYqAE+fPzNdEADEFrvuIuLWj6vPsWa8lv+22rmIAAjdduMZQ2MpAAABwC7XAdZdJowAYOAhgABgQO7yW92lwAKA2G+33vIjtn8l4CJN01h+1P32Xy0D7uL5ELoBR2LR8muyqOoG/Ovn32rf+l9/B3B9KvDi/dttP8+F49Q7AKLbnYGmBAIArcAIAEAAAAIACJuCEvfepy/qV8qTqs09ur5ZZ9PGHdf7C4AY0y49v3z3/a2fOzh5fWMTz7h5UU8fymGLqpP5tg1JV35uB4cpgHAAARAu3QUBAAgAQtchAgAIVYChevfkZcyyedWnF9PpNFnZRy8idrN4eFs3YFEUkWVZFEWxuMsipjUNAUBs2IxT8bmDk9c3Ouqul82qyorbfB7np2dx9ORlzGJeW7K7/lyWf76++zACgB43Ds0uP2o6sgbAWB3NJwZBAAACABAAQFgEJFovEe5jTl61Yaj1AQFAtF8iHOPzwBQAEACAAAAEACAACC3ChCpAdGhzzGUTzZur6+lXy2ZDvmb+/PQsZpNbOh0n68fOfoHh3oADCodGG2f2Xd3Gn3meJ13f8dgUABAAgAAABAAgAAABAAgAQAAAAgAQAIAAAAQAIAAAAQAIAEAAAAIAEACAAADCpqCD9uL920j//BBtbYa5ugGnzTcFAHvW5knohDcFAAQAIAAAAQCERUCq5Xne6HFFURi8by3yPN/4TlXuJhRuDRYdvMVXk/sGhupGkxB2SzFTAEAAAAIAEABE59ZMDIIAAEIVYBC/tVQBYr8VgquxTPQ5CICdBUBZlgsnci+bkhzfpgCAAAAEACAAAAEAoRuQ6s6+oigWRifaqrZ8raxsoypQ162pgSiUSa4fKNPpdKFuH6MoE16FjWPfFAAEACAAAAEACAAgVAFiwJ19y5Xlur39VABicNWBa6XGpKocKQCGqRelvj6HUd3Js4vnr4vQFAAQAIAAAARAuOQVBABh519iFKudeZ4Ponsvy7Lo8z0F657/tisc237HtO55DK2J6MGY3kL3odSX53n88t33rZ1AbT9/x48pACAAAAEACABAAAChChBjvdDnaD5p/HU3XaXu0kVHLoASAK7OcxJhCgAIAEAAAAIAEAAQGzX2LD+25eLiInQD7v+FXbS5D9+7Jy8rH/f0+bM4Pz2LiIjJv4/u/Twef/5S+/lPjx7e+L/X/171ter+z7rnsu6xq99jk+ffZBxWHz//dVb5NV68f9tqu3MfOwUTm3uuD4C/fv7Nr9OeOT8920kADO18MgUAawCAAAAEACAAgNAMFLtctY/q1fykC80tZVnGwcnr6PMGo1V79K3T5587Ola2bngsJ7oBQ5fdfRRF0TgAdBeaAjBSTS8eQgAwAOuu6GMY76QEAHgHAAiA6H7jztC6sawBxODvidjlOwoluz7JsyyLV69ebfw1j4+PW719U5N5WpqmlffBW2c6nXb+hp11DVJNfu66W5sNOQR2cQ5kWZZs4xh60MZCR9MFpb4cLJvu5DubzKPvi1BNdi8uIka72NfkHKj7etu6z6I1gJa1ffLDXgOgL7e0bvM3IYwmAJrOkYf6G11goAzoHcDobGO7NARAb94BjHGuf/0kn03mXz8i6vfuI9wabFXdPnwP/vXPzr8DKIoiph2oYjTd0/DTo4dxeHhYe7KvntTzX2cxm8y/KXFOR3Ai5XneuOnKOwBAAAACgB4wpxcAhHZgBAAo88XIqwB1DSe3dZYN5TdMV8p9dY0ou/ias1j5uX//PcIlEbHN7ss2ugiTfW4K2rR0UlcGbLMbsEsuLi5aC9U93XYrhlgGPDh5XXfsJaYAmLMjAPqywQIIAEAAAAIACM1AUbWifJunz5/FJnsM7GrjkeV6w/J7Lr9PlmWt73G33Itv9Wfdx54LeZ5HURTffO99jUkb+w/W7YVY1xZ+fnr2tVzctfbxJDp6z7Q/fvipNgSiQQfbtrvp3lx+bHVzzzZLfU11aUy23TXatLOybkzyPI/pdJqYAoRSGON7zYuiSKwBAAIA73AQAIS79SAAgBh4GfCuXYSPP3+JT48e3uttcN33alIyOppPomjxsuS6n31ZTl1ty73PeK2O//J7rKvO9OFS7W0fC7Xv0C67OyZJdLSz7fj4eOMS4boutaqSUV35sGnpp/Ukryh53ef5V33NvmyA2WRM6kp293lcWZaJKcAdbbuWv+63ocU16w3WABzsIAAAAQAIACCUAaNT5ZvZZB6zy4/ffnKyfq5/24Lf489fIs/z6PuedLFhx2Wd2eV80GMS92h2GpKkp8970eRB//vPf8eZ8g264vpS/uxYN2NiCgAIAEAAAAIAEABAKANG9zq5YuC3rYoGnY4M/9jrZQBUdVZdbbC4cJje1IfOvb6c/F3t6jMFAAQAIAAAAQAIAEAAAAIAEACAAAABAAiAgWuyNRYIAGCQkhhP59uiKIpbO7bGuv/dWJ2fnsWPf36o/HyWZZXnxT32CwzdgC2oeYGSppuJMjx1rbtDO8lNAQABAAgAQAAAAiBcN0AoA47Eoslmj0qEwwrw2WS+bqU/8Q4AEACAAAAEwPhkWWYQEACAAIBem03mBiHGWwaMbd5SLM9zt93as4OT1xvfky9N0xsdf2Nq/omhdwNC3K9r1BQAEACAAAAEABAWAfmqKIo4mk82ftzT588MXui8DGXA7kvTdLFpmSmUD6ONct46FxcXyeHhocE1BRCSY+TkFwCAAAAEACAAgFAGjA2aR6LBHWZC2auXrw3EHct5i/j/RqM+9vRx9RpgChB7uRCIUKYVAIAAAAQAIACAsIASAygzLbqwZXjdNlZ15bBdqCqxXe23F11YiC3L0vEdrgPY2cEeEa129RVpUflc9nCwV4Ziq2NSFOr9pgD7OflBAACmADHQ+wKkaer24B1W9dp8evQwDg8PK19T6wPeATBgjz9/MQgCADAF6JE3lx9rS1tV5b49LFYmyz0Tl1WI5Z8PTl7f+oB3T17aEFUAEA3LWmmaJl2rSlyfS5dlmRRFUb2J6hOvrykAIAAIt+ZGAAACABAAQKgCxF43l1xdxX5z+bEzG132faPONsfy6oq/wYwr+20HbutjyBbG0hQAEACAAAAEACAAgFAGjKFunrrsmItxblxpEw4AAAAAAACA3fobnheFS17qs9oAAAAASUVORK5CYII=">
+          <img class="spark" style="--dx:-84px;--dy:-44px;--rz:120deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:78px;--dy:-46px;--rz:-90deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:-92px;--dy:34px;--rz:60deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:90px;--dy:38px;--rz:-140deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:-46px;--dy:-58px;--rz:200deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABUElEQVR42u1WO66DMBAcUGqOQ49I2kicgBNskZr61RR7gicOECktCelzHGqkTRMQ+BPM5+UVYSR39ux4d3ZtYMMyyGvNhr8w+GL4AEBEa2QCnyQRIpKmqKQpKiEi51K8Liu2Eshfm4aZxeoBVd3aICJRyz0QkIeJKRNznS4Gnn6MyV3QkkmZZgOiPEzU7MnsNmyKakBWpplTlxzrQDNbu0yijQJOj7NKJjP8IUTUcfRNd7/euhiaACLymBn36w3qbDjWQUc4Nxu9LgAA760Hon3cpesS1FCNGu1j45mmqIyCbGdGTdgUFZhZE+GC9oxNVIud4/AATwh++P1xLpfvODqdCae+K6MZyMMEIG1Qvd3PYJRphiiMR/d7tjZyCTYFp8dZ64Cl/wGs9h/YBHy1AM/27K7wT9SGmSnmv2dgZ5tma88B0CALmwfGBXz40l+MJ+8OmWCURxucAAAAAElFTkSuQmCC" alt="">
+          <img class="spark" style="--dx:52px;--dy:-60px;--rz:-160deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABUElEQVR42u1WO66DMBAcUGqOQ49I2kicgBNskZr61RR7gicOECktCelzHGqkTRMQ+BPM5+UVYSR39ux4d3ZtYMMyyGvNhr8w+GL4AEBEa2QCnyQRIpKmqKQpKiEi51K8Liu2Eshfm4aZxeoBVd3aICJRyz0QkIeJKRNznS4Gnn6MyV3QkkmZZgOiPEzU7MnsNmyKakBWpplTlxzrQDNbu0yijQJOj7NKJjP8IUTUcfRNd7/euhiaACLymBn36w3qbDjWQUc4Nxu9LgAA760Hon3cpesS1FCNGu1j45mmqIyCbGdGTdgUFZhZE+GC9oxNVIud4/AATwh++P1xLpfvODqdCae+K6MZyMMEIG1Qvd3PYJRphiiMR/d7tjZyCTYFp8dZ64Cl/wGs9h/YBHy1AM/27K7wT9SGmSnmv2dgZ5tma88B0CALmwfGBXz40l+MJ+8OmWCURxucAAAAAElFTkSuQmCC" alt="">
+          <img class="spark" style="--dx:-112px;--dy:-6px;--rz:40deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:110px;--dy:-4px;--rz:-40deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:-66px;--dy:52px;--rz:150deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:70px;--dy:56px;--rz:-110deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:-24px;--dy:-70px;--rz:20deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <img class="spark" style="--dx:28px;--dy:-72px;--rz:-20deg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt="">
+          <span class="stamp shout">mother</span>
+        </div>
+        <p class="stampnote">new best. mother. 140 lb &times; 8 reps on barbell bench press. previous best 135 lb &times; 8 on 25 aug.</p>
+
+        <div class="srow"><span class="sn">set 1</span><span class="ld tabnum">140<small>lb</small></span><span class="rp tabnum">8 reps</span><span class="mk"></span></div>
+        <div class="srow"><span class="sn">set 2</span><span class="ld tabnum">140<small>lb</small></span><span class="rp tabnum">7 reps</span><span class="mk"></span></div>
+        <div class="srow open"><span class="sn">set 3</span><span class="ld tabnum">140<small>lb</small></span><span class="rp open tabnum">&ndash;&ndash; reps</span><span class="mk"></span></div>
+      </div>
+
+      <div class="block tight">
+        <p class="sub"><img class="ic lg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABqElEQVR42u1WPW+DMBB9kMz+M5W8u8BqiZ2KvdINnZmZGfwLomSv1JUm7Ej9A/0ZSN0SuUNC5HyQ2HxkaU9CSBjfPb97vjvg34aZBqCJCETUy4E/FMF2uQEArZTSffbP+wYmIi0bNphCfwD1EGEAAJANe2wKzoO1QFpgUwPQAFDw2ArcZBo4t4LHkClDpHINwJsKgC7TDCyR+ALw9P3zUBFqIgJ7lUBHcBEGKNPMSQu+K82c85v/iDBodaBHAXBNVPeoNwR6F4Rnq/pDxbNX98uzVQzfJu+uwVvANqnwbE7ft8oppVyYvtntTt7mY367tn6PgbmNCGXDoAAkSXJ+sr3gCJOYLtNMb5cbXaZZ18n0drnpPDkRmXv71wERBhdCNMVZ8PhCJ2WadfaL3qX4UOX21pyuyYZBGutGhxwPgI1T28CjdMPqc30M+sH2lIhHzYTV5xrRIke0yI9VzybnzoWIiFDwGLNEYLeqnJy/1e/tlfUGM7BbVZglYvS77rvkuq5rZ32M0Q2Pk5CNytvA0SK38u+5DqNlmnWCaIXp4tvrOxWP7PMP2y/KqMd1Cg+7egAAAABJRU5ErkJggg==" alt=""> <b>hydrate or diedrate</b></p>
+        <p class="sub mute">31 min in. drink to thirst.</p>
+      </div>
+
+      <div class="ex">
+        <p class="nm">lat pulldown</p>
+        <p class="rx">3 &times; 10&ndash;14 &middot; rest 1:30 &middot; kg stack</p>
+        <p class="load"><span class="tabnum">45 kg. holding.</span>
+          <details><summary>why?</summary><p class="why">the smallest pin is too big a jump.</p></details>
+        </p>
+        <div class="srow"><span class="sn">set 1</span><span class="ld tabnum">45<small>kg</small></span><span class="rp tabnum">12 reps</span><span class="mk"></span></div>
+        <div class="srow open"><span class="sn">set 2</span><span class="ld tabnum">45<small>kg</small></span><span class="rp open tabnum">&ndash;&ndash; reps</span><span class="mk"></span></div>
+        <div class="srow open"><span class="sn">set 3</span><span class="ld tabnum">45<small>kg</small></span><span class="rp open tabnum">&ndash;&ndash; reps</span><span class="mk"></span></div>
+        <p class="fine" style="padding-left:0;padding-right:0">the stack is marked in kg. it stays kg whatever the app is set to.</p>
+      </div>
+    </div>
+
+    <div class="dock">
+      <div class="minor">
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABkklEQVR42u1WsWrDMBB9Sg0ZAvqCLs2QfkChnjo07Wzo7vxA4Ib8Qf+gg8A/UO8Bz3EzS5AlW/sZgg6BgrpEIokjHMsNaUsOBAKJe+/ene4EnO34ZtbrZOD41eCdI4PXkmAnkGwLM/LdklIGec/zHACQpmnlLI7j2hSwzcvWWVtwnRV7wX0KMJsKIQQA4OX2yQu6GPTcPtEcfJzg5uPTnemsQMF14yJ0SgghMJ+VXgc6K5DnuYveglsruHaBEBGrK0LvU/p6fascTtTURW6jTDTH/eMDFoPeruys8TMkImZZR6OhV4lNifk4qYDvi/xQBSpqENFWTcxnpSOQpqlLhZW9DuOiAYFnAFBK4Y5f4qrfd4pcr7p4766wXC63wImIKaUaNSI0qYmJmjbOeVsCjshuUUajYZDf4FkwUVMsBj3MZ6V7DS2DOtyICACMlNIQkWkz8zvHGjKnIIAzgTOBP0kg9I9viMhIKVv3giigAVVs5wtmhBDM3t+Yiq0IGA9YhcR6HJufbssmZPkUC1GA4b/aN+KaszeqHswBAAAAAElFTkSuQmCC" alt="">on hiatus</button>
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABBklEQVR42uVXQQ6EIAwshDO/8soXfAEv8OwLfIFf8Oqv+gH2AhvWmLXQAsnuJCZqDG2mM20F+Heo7D4QvilBoMQ217fnvHw8HxbDtm1ViXjvwaHNz4J41hu6J91ZMoqcgEObWAnZJQYyA+e8gPeeWl/5BCpERoIpraGLIo2CCgyX8BhwaFNJWNrQQqoeogGOOINoH0hWvdi1DwN33a9kBBho0O2SUwAHMNBdhNwm9nsMHBZh2leY9hUOi48i1NLBr/O+KwPZ4qKaDKM7TPvKWt80l/JhLript2q+D0gFrSpBi+BFCbQITkogNZbMXkrSukZQ2VVOGf5rpr4tE6Vt9Wkx4ZzXDC+r5WMNM1kdgQAAAABJRU5ErkJggg==" alt="">not today satan</button>
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABYklEQVR42u1Xy62EMAx0EOd0xZUWqMAVcKaCqYAWuNJVGvBe1nnBAgIoCyvts4T4RfJgz0wM0a+HW3vIzPEawGPg5H3cXgHRCiRf7z4FoLJl13MbvK3GZwGkidLkzKyg5A4Ai5i7PrZBQaQELRF1wnaZu54orC9sgydiJgBSkhNVboF+8eSD5cU9ADQpAJp8KE7K6siiNvjIh7nri4KoiL7HikWZvxWTDwSAjFG5UkbkNEmOD4ag8kgL2uCLqGIXQDMO1IzDoiraosmH3WoVrYCRYHzWBp+2QYoBMMnc2lzAzNGcEnuWywCU0UcGkNSc9P7qHlGdkKtrxmEXlGmHnNqMLqmg66kZB2LmP1UsxznJDTRnZegsGbX0qhj7LleV0z5gFWG9AMCCGzmvqKlAaDsWEWjVOwCIui6ASwAcAKF33y/xBkMcah7fDeutPtMBXZewYrfxQ5L9eyowkDj6j2+IFyKYs1uXB5k/AAAAAElFTkSuQmCC" alt="">plot twist</button>
+      </div>
+      <button class="go" type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAg0lEQVR42u2VUQrAMAhDbel1c5oe2P2NUbpWZWzC8n6tkkZREULI3ymLmDrfh3Lr1w7UG/XnDwAIAHfhSZ5mcEBNAiI/tjiScgbarkeG6Y62oYwCBID03t02juxqXOOpWrBUbolH3GmTTaXBzWmdlZJ+Ez5itbVmW1ik8sLh4zUkhJADGaUnbCOOccIAAAAASUVORK5CYII=" alt="">next set</button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 3 &middot; THE REUNION ========================= -->
+<figure>
+  <figcaption><b>3 &middot; the reunion</b> &middot; week review, delta &minus;2</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>24&ndash;30 aug</span></div>
+
+      <button class="mq" type="button" aria-label="ticker, press to pause">
+        <span class="track">
+          <span class="item first"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""> 2 of 4 this week</span
+          ><span class="item hot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""> 1 skipped. 1 not logged.</span
+          ><span class="item plain">last week was 4 of 4</span
+          ><span class="item">next week starts monday</span
+          ><span class="item"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""> 2 of 4 this week</span
+          ><span class="item hot"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""> 1 skipped. 1 not logged.</span
+          ><span class="item plain">last week was 4 of 4</span
+          ><span class="item">next week starts monday</span>
+        </span>
+      </button>
+
+      <div class="block tight">
+        <p class="disp sm d3"><img class="ic lg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABs0lEQVR42u1WO46DQAx9rKg5Dn1ItkXiAIgTuEhNvTWFT7DiAJHSkpA+x6FGmhQbj4bvMFmyzfKqxAK/5/GzB2DDhv8Oz/F5tXZez4W4ynLsDnsdPN5PKMKk8+DtcsXn9xcAgIg8Zp5N/GEhVQBUleUA0CG3ocpyMLOynZo/RU5EAIC4CX6In1Utxe6wRwXgHDQAoJjZW3oCSoiLMNFVExGO99Ms6e1yxTloIOJ3h73ZIuXUgqdyjSJMwMy4Xa6Ye4eZB77oFycCtQAikqBqyxptWWuTucJMbuYw8nZEmH1RQtx3tBmXhEWYdKbAjGuDpdFgciQu3P4SI/lphL44G6bIZ6dgrAoRIdXGTYBz0OB4P4GZAePE4ybQefrkYlDbIur0R4/ghB+YedBz07R9YmMpebZNqIWIiN6G61TdJ5B2CfkYscvuV21Z661IRIqI9O8qywfxtqzNd15exQDgEZH3dC2qLNd9HkPcBCAi+GkEP41ARM4VLzoRs9qx/1M7YY3r2HYtO+fzX2Efq8x27a4pQJkzP3ZvvPOLaPCBAkDGc3XDuZjy5QT+b9jfMWYbNvw5Hjdu+/aKge0RAAAAAElFTkSuQmCC" alt=""> the reunion</p>
+      </div>
+
+      <div class="block tight">
+        <p class="huge tabnum">&minus;2</p>
+        <p class="sub" style="font-size:22px;font-weight:800;letter-spacing:-.02em">
+          <img class="ic lg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABOElEQVR42u1Xy23DMAwljZy1Difo1RNoggAcoxMI6L0AJ/AWXEcLqJfYSBVRH9dJUCQ8CbYkPv4eKYD/Jsx86H2440w68k4cUcbM4L2H+LWYBxYXIYTQrQcb7r6x1ntfRSwiN99CCKaeU+mjqgIRpR6FLYAXQMkyFi23q+qhyUZERX3Ts6vq0QBSC0Bi5sPdv4b0wiHppUPwBtBHRC12s8ipd98QABEpcXuR8fJ9c3TgzvP+EFjKe+Xj+7PYG6oAQgjNQ3vEMqbogZbVc3Tbutaae+6cBtszqOqvuC4ubjnRwaCY6zg1LTVGsNyla1LmI9u1t4arwJ1n8IOxHp0fnk5EODoPXsuagHmtGxmPu5mwFqJ79gIEAGRm/KOHsebpaaR+RQSICERkW5f+vdvxvZ5m6QHPvheUH6WEfxuAtnRnAAAAAElFTkSuQmCC" alt=""> 2 of 4. flop era.</p>
+        <p class="sub mute tabnum">1 skipped. 1 not logged.</p>
+      </div>
+
+      <img class="illus" style="width:200px;height:200px;margin:0 auto" alt="the mascot collapsed across a couch" src="data:image/png;base64,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">
+
+      <div class="qt">
+        <p class="h"><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA7UlEQVR42u1VwRGEIAxcbnzblV9bsIJU4NsKUoEt+LUrGsh9jhnkBANyd49jZ/yAYQPZTYCGhoYfwyj/E0WslJz/KCQP1yUzVp2hAAARYbT9YWPrLZgZmv0Uj0kR79Ncpc7DukS5zhaFiADg7Val8F7DRDXgSB1qkbuzXufLlQhln+aq5GdJ+Jc1IbniGS9Fd6UdXxMmxzKf6EGdvxLqIAbPXsiND2O7EuFxhFwTP06zK8FRA0QEZpZa3tfaMXSBGdYFW2+/Qn5IIGybNZNINaLULKhSjhT5rWGUQZwz9qOWkpKPiNTWbmho+F88AZDQfzAB/je4AAAAAElFTkSuQmCC" alt=""> quoting last week &middot; 17&ndash;23 aug</p>
+        <p class="b">&ldquo;4 of 4. she delivered.&rdquo;</p>
+        <p class="n">same target, same four slots.</p>
+      </div>
+
+      <div class="strip">
+        <div class="dc no"><span class="d">mon</span></div>
+        <div class="dc on"><span class="d">tue</span></div>
+        <div class="dc no"><span class="d">wed</span></div>
+        <div class="dc sk"><span class="d">thu</span></div>
+        <div class="dc no"><span class="d">fri</span></div>
+        <div class="dc on"><span class="d">sat</span></div>
+        <div class="dc no"><span class="d">sun</span></div>
+      </div>
+      <div class="fine">solid = done. hatched = skipped, with a reason on file. dashed = no slot.</div>
+
+      <div class="tg">
+        <div class="tr">
+          <p class="k">energy</p>
+          <p class="v"><b class="tabnum">2110</b><span>kcal of 2340</span></p>
+          <div class="tb"><i style="width:72.1%"></i><span class="tick" style="left:80%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="k">protein</p>
+          <p class="v"><b class="tabnum">142</b><span>g, band 130&ndash;160 g</span></p>
+          <div class="tb"><i style="width:71%"></i><span class="band" style="left:65%;right:20%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="k">fluid</p>
+          <p class="v"><b class="tabnum">2400</b><span>ml of 2900</span></p>
+          <div class="tb"><i style="width:66.2%"></i><span class="tick" style="left:80%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="k">body mass</p>
+          <p class="v"><b class="tabnum">61.2</b><span>kg, &minus;0.4 kg on 4 weeks</span></p>
+          <div class="tb"><i style="width:58%"></i></div>
+        </div>
+      </div>
+
+      <div class="fine">bars run to 1.25 &times; the target, so the three share a scale and compare by length. the protein band is the whole range, not a point.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor">
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABkklEQVR42u1WsWrDMBB9Sg0ZAvqCLs2QfkChnjo07Wzo7vxA4Ib8Qf+gg8A/UO8Bz3EzS5AlW/sZgg6BgrpEIokjHMsNaUsOBAKJe+/ene4EnO34ZtbrZOD41eCdI4PXkmAnkGwLM/LdklIGec/zHACQpmnlLI7j2hSwzcvWWVtwnRV7wX0KMJsKIQQA4OX2yQu6GPTcPtEcfJzg5uPTnemsQMF14yJ0SgghMJ+VXgc6K5DnuYveglsruHaBEBGrK0LvU/p6fascTtTURW6jTDTH/eMDFoPeruys8TMkImZZR6OhV4lNifk4qYDvi/xQBSpqENFWTcxnpSOQpqlLhZW9DuOiAYFnAFBK4Y5f4qrfd4pcr7p4766wXC63wImIKaUaNSI0qYmJmjbOeVsCjshuUUajYZDf4FkwUVMsBj3MZ6V7DS2DOtyICACMlNIQkWkz8zvHGjKnIIAzgTOBP0kg9I9viMhIKVv3giigAVVs5wtmhBDM3t+Yiq0IGA9YhcR6HJufbssmZPkUC1GA4b/aN+KaszeqHswBAAAAAElFTkSuQmCC" alt="">on hiatus</button>
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABBklEQVR42uVXQQ6EIAwshDO/8soXfAEv8OwLfIFf8Oqv+gH2AhvWmLXQAsnuJCZqDG2mM20F+Heo7D4QvilBoMQ217fnvHw8HxbDtm1ViXjvwaHNz4J41hu6J91ZMoqcgEObWAnZJQYyA+e8gPeeWl/5BCpERoIpraGLIo2CCgyX8BhwaFNJWNrQQqoeogGOOINoH0hWvdi1DwN33a9kBBho0O2SUwAHMNBdhNwm9nsMHBZh2leY9hUOi48i1NLBr/O+KwPZ4qKaDKM7TPvKWt80l/JhLript2q+D0gFrSpBi+BFCbQITkogNZbMXkrSukZQ2VVOGf5rpr4tE6Vt9Wkx4ZzXDC+r5WMNM1kdgQAAAABJRU5ErkJggg==" alt="">not today satan</button>
+        <button type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABYklEQVR42u1Xy62EMAx0EOd0xZUWqMAVcKaCqYAWuNJVGvBe1nnBAgIoCyvts4T4RfJgz0wM0a+HW3vIzPEawGPg5H3cXgHRCiRf7z4FoLJl13MbvK3GZwGkidLkzKyg5A4Ai5i7PrZBQaQELRF1wnaZu54orC9sgydiJgBSkhNVboF+8eSD5cU9ADQpAJp8KE7K6siiNvjIh7nri4KoiL7HikWZvxWTDwSAjFG5UkbkNEmOD4ag8kgL2uCLqGIXQDMO1IzDoiraosmH3WoVrYCRYHzWBp+2QYoBMMnc2lzAzNGcEnuWywCU0UcGkNSc9P7qHlGdkKtrxmEXlGmHnNqMLqmg66kZB2LmP1UsxznJDTRnZegsGbX0qhj7LleV0z5gFWG9AMCCGzmvqKlAaDsWEWjVOwCIui6ASwAcAKF33y/xBkMcah7fDeutPtMBXZewYrfxQ5L9eyowkDj6j2+IFyKYs1uXB5k/AAAAAElFTkSuQmCC" alt="">plot twist</button>
+      </div>
+      <button class="go" type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABTUlEQVR42u1XwY2DMBAcLL8pJ7wJuS8dRKnAFeSdClzBtXBfQLxpxw04j0DkWNjxLuZ0J2UlHpi11+udmTXAx/652flhm+BMUkrBC2znMbIV3MyVUmhNCQD4+r6x1yu2Bl/spzTQWpPXFDmCA0BryrXS5MeAG7w+NahPzeq3VJMcALhB3fexH3ZjgQVgu8v1OTD2A+T5CHk+vgSefexuJfCzj3yzWTdA4TnFV6QIzoL8WPbuKbiMeLcZGQuutX7U3dCB2poSmNeIaYPIUfstvsENaK3Z+k4RJ5EiOpSMYsLFKgE3uK+SFBCSUJ+yke7RMe1aA5Q+6jl8rw9Nsq/PCsGpm8v31AYU8pPc2o/98LyIdAkSHWpUwqVdd7myWiqFEX6zklzUL+BKnRM6BbF2tLmpRu4FnIvFZnMkc/dnmqbgCRS/kWxVVZ9fur9jd6LHrqg5LHKpAAAAAElFTkSuQmCC" alt="">the intervention</button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 4 &middot; THE INTERVENTION ========================= -->
+<figure>
+  <figcaption><b>4 &middot; the intervention</b> &middot; missed week, highest tone risk</figcaption>
+  <div class="phone">
+    <div class="scroll" aria-hidden="true">
+      <div class="sys"><span>17:52</span><span>tue 1 sep</span></div>
+      <div class="block tight">
+        <p class="sub mute">tonight</p>
+        <p class="huge tabnum">18:00</p>
+        <p class="sub">starts in 8 min. six exercises, about 55 min.</p>
+      </div>
+      <ul class="plain">
+        <li><span>barbell bench press</span><span class="rx">3 &times; 6&ndash;8</span></li>
+        <li><span>barbell row (pendlay)</span><span class="rx">3 &times; 6&ndash;8</span></li>
+        <li><span>overhead press</span><span class="rx">3 &times; 8&ndash;10</span></li>
+      </ul>
+    </div>
+
+    <div class="dim">
+      <div class="modal">
+        <div class="mhead">
+          <img class="ic lg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABTUlEQVR42u1XwY2DMBAcLL8pJ7wJuS8dRKnAFeSdClzBtXBfQLxpxw04j0DkWNjxLuZ0J2UlHpi11+udmTXAx/652flhm+BMUkrBC2znMbIV3MyVUmhNCQD4+r6x1yu2Bl/spzTQWpPXFDmCA0BryrXS5MeAG7w+NahPzeq3VJMcALhB3fexH3ZjgQVgu8v1OTD2A+T5CHk+vgSefexuJfCzj3yzWTdA4TnFV6QIzoL8WPbuKbiMeLcZGQuutX7U3dCB2poSmNeIaYPIUfstvsENaK3Z+k4RJ5EiOpSMYsLFKgE3uK+SFBCSUJ+yke7RMe1aA5Q+6jl8rw9Nsq/PCsGpm8v31AYU8pPc2o/98LyIdAkSHWpUwqVdd7myWiqFEX6zklzUL+BKnRM6BbF2tLmpRu4FnIvFZnMkc/dnmqbgCRS/kWxVVZ9fur9jd6LHrqg5LHKpAAAAAElFTkSuQmCC" alt="">
+          <p class="mtitle">the intervention</p>
+        </div>
+        <img class="art" alt="the mascot resting on a bench with a drink" src="data:image/png;base64,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">
+        <p class="body"><img class="ic lg" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABK0lEQVR42u1Xyw2DMAx9RpzZqWp77QpM4Ak4dwJP0BW40qo7ZYH0QqNAyRcKlaglLiTPv2c7CbB3Ic+azsAlY4qpn8zs9ZqZ9XgPM+sAJi2Srm6cys636xivASARM+mAieyiKqeytlIAABEZRJeAIS8FPkWu9RyMcaCPQHd1M9h4OB3NN6XQl3KXEz3G1Evp2mwbfd4fTqVd3QAqvw0Lm8stpAht8EW/igPflnKryKe64DdrYO3DSDNzcKjkSlupuEm4KwrGDpCI2CfXYvLWycwUakMCoNtKLVYL1klIsRSQiBjg0oUXeyWLumjEpN1np4hp05xMWBia2wXJdITSnkJBMh0xac+dAzQyMNt4ziBy1kQs50tMwo+aSOF8Tg2EXkGEDUQHnmN/CcoLMyp9ejN/oBQAAAAASUVORK5CYII=" alt=""> the week flopped, not you. monday is the next slot.</p>
+        <p class="counts">24&ndash;30 aug: 2 completed, 1 skipped, 1 not logged. target 4.</p>
+        <button class="dismiss" type="button">ok bestie</button>
+      </div>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 5 &middot; SETTINGS ========================= -->
+<figure>
+  <figcaption><b>5 &middot; settings</b> &middot; skin picker and the sounds toggle</figcaption>
+  <div class="phone">
+    <div class="scroll" style="padding-bottom:20px">
+      <div class="sys"><span>17:52</span><span>settings</span></div>
+
+      <div class="block tight"><p class="disp sm">settings</p></div>
+
+      <div class="srow2" style="border-top:3px solid var(--ink)">
+        <div class="lab"><b><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABUElEQVR42u1WO66DMBAcUGqOQ49I2kicgBNskZr61RR7gicOECktCelzHGqkTRMQ+BPM5+UVYSR39ux4d3ZtYMMyyGvNhr8w+GL4AEBEa2QCnyQRIpKmqKQpKiEi51K8Liu2Eshfm4aZxeoBVd3aICJRyz0QkIeJKRNznS4Gnn6MyV3QkkmZZgOiPEzU7MnsNmyKakBWpplTlxzrQDNbu0yijQJOj7NKJjP8IUTUcfRNd7/euhiaACLymBn36w3qbDjWQUc4Nxu9LgAA760Hon3cpesS1FCNGu1j45mmqIyCbGdGTdgUFZhZE+GC9oxNVIud4/AATwh++P1xLpfvODqdCae+K6MZyMMEIG1Qvd3PYJRphiiMR/d7tjZyCTYFp8dZ64Cl/wGs9h/YBHy1AM/27K7wT9SGmSnmv2dgZ5tma88B0CALmwfGBXz40l+MJ+8OmWCURxucAAAAAElFTkSuQmCC" alt=""> the look</b>
+          <span>the words and the colours. never the numbers.</span></div>
+      </div>
+      <div class="skins">
+        <button type="button"><span>clinical</span></button>
+        <button class="sel" type="button"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABa0lEQVR42u1WO46DMBQcEHVuwCHYgj5K6pU4Agd4iqDYhnobikWIA7jIASJtnZA+Bak4ATdIHclbGfFzsAMUKzEVhd+88bx5FsCKCYgL8LgAn8JhTmk+xyVMACCiyU7MYqfOWSLiz2POn8ecE5HyKIio1ctcwtZXsP2MSzNQMVpUBBHxipE8hInr9Zx4N+ndOvEtemhvgSCIC3AnjVpEieu13NMR3BMQlnmLzEkjdG0bwudjg+44K0Z16LqiBwUEt1OLrHkT1XzEBXjFqOZohu56vtQ9egIqRobtZ7ieL3XD5u0E4btuNLYAXx8wXmZgu9/Vdv1uHugGdbvfDdaEZT4oSFYzGsKwzGH7WU+ECkSNTJSApfh44K7R/H74hq04rtE1bJKoEKqc0XIgcT0ErP1QjZ3/QQYnjRBK5t6EIVsjlWY6CG6n3gZM+h+YC6uAVYAle3jE6s34J/SPHFjkHWDDLqwZsHQLVsyNP+9jwsdTZKK7AAAAAElFTkSuQmCC" alt=""><span>the limelight</span></button>
+        <button type="button"><span>the board</span></button>
+      </div>
+      <div class="fine">brat summer and stan twitter are one skin now. the limelight is opt in and is never the default.</div>
+
+      <div class="srow2">
+        <div class="lab"><b><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABTElEQVR42u1WMW6EMBCcRdQ8J66j5FqkvIAX+AXUV6eYF5zuAZFoSS41eQ71SU4RDjmALwZs0jCSW894dne8wI5tYLozQhKTVWsNF/FmL9dam7oonQ6kkez2RhLJ9k0EmKmTtxmu5wuu54vXJelaC32JvAXcs5DkIpsHj5NJAU3TQCllACBvM1eBQRJ5m+Hx+SmIiL4HlFKmLko3eaAG7UpmNgmiIaYel+CfsQv4JaDK2qhkVdbi8/3DKUBIRhVBEofTEfYYpoMxEZKGf1x0OB1RA0uzQJxJ2CWd2HN6Sz07BW9OVV9vo9tfH168ye99x9L95f3s0pplWoJGs17MS8m1+4BMlMfgp85xBFhNKh6iTPAcsPpkieggJZhDLiRNEAfqouy33Jn7gFhnvgDbPus3C7Zqi8+GWxflKIgWlGO5gJV9sGoKghHtcOEb4Ld87LzAa0oAAAAASUVORK5CYII=" alt=""> sounds</b>
+          <span>four short sounds. off by default.</span></div>
+        <span class="tstate">off</span>
+        <button class="toggle" type="button" aria-label="sounds, currently off"><i></i></button>
+      </div>
+      <div class="fine">nothing plays until you touch the screen once. the rest timer is the only one that does any work, so if you keep one, keep that.</div>
+
+      <div class="srow2">
+        <div class="lab"><b><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAg0lEQVR42u2VUQrAMAhDbel1c5oe2P2NUbpWZWzC8n6tkkZREULI3ymLmDrfh3Lr1w7UG/XnDwAIAHfhSZ5mcEBNAiI/tjiScgbarkeG6Y62oYwCBID03t02juxqXOOpWrBUbolH3GmTTaXBzWmdlZJ+Ez5itbVmW1ik8sLh4zUkhJADGaUnbCOOccIAAAAASUVORK5CYII=" alt=""> units</b>
+          <span>what loads are shown in. storage never changes.</span></div>
+        <span class="tstate">lb</span>
+        <button class="toggle on" type="button" aria-label="units, currently pounds"><i></i></button>
+      </div>
+
+      <div class="srow2">
+        <div class="lab"><b><img class="ic" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAe0lEQVR42mNgGOmAEYf4fxL1/ifXLhZ8OnbHV2OIbeL7xDB58mSi1TMwMDC4LmzFaQcTqUHm94mPqlHANNBpYNQBow4YdcCoA0YdMOqAUQeMOmDUAaMOGHUA3o7JJr5PJBlGqvpB0TXD5QCG3NxcrOK4umW41OPTMygAAEXlFu5qz52DAAAAAElFTkSuQmCC" alt=""> reduce motion</b>
+          <span>follows the system setting. the ticker stops.</span></div>
+        <span class="tstate">sys</span>
+        <button class="toggle" type="button" aria-label="reduce motion, following the system"><i></i></button>
+      </div>
+
+      <div class="fine">the limelight changes strings, colours and icons. it never changes a number, a unit, or what a control does. on hiatus still holds ur place. not today satan still moves u on and asks why.</div>
+    </div>
+  </div>
+</figure>
+
+</div>
+
+<section class="copy">
+  <h2>The sixteen icons that replaced every emoji</h2>
+  <p>Generated as one 4 &times; 4 sheet with <code>agy</code> / Nano Banana, sliced by connected component, downscaled with a premultiplied area average and snapped to seven opaque colours plus alpha. The palette is the mascot&rsquo;s own, which is what makes the icons and the illustrations one drawn world. 180 to 492 bytes each. Shown here at their true 32 &times; 32.</p>
+  <div class="iconstrip">
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABqElEQVR42u1WPW+DMBB9kMz+M5W8u8BqiZ2KvdINnZmZGfwLomSv1JUm7Ej9A/0ZSN0SuUNC5HyQ2HxkaU9CSBjfPb97vjvg34aZBqCJCETUy4E/FMF2uQEArZTSffbP+wYmIi0bNphCfwD1EGEAAJANe2wKzoO1QFpgUwPQAFDw2ArcZBo4t4LHkClDpHINwJsKgC7TDCyR+ALw9P3zUBFqIgJ7lUBHcBEGKNPMSQu+K82c85v/iDBodaBHAXBNVPeoNwR6F4Rnq/pDxbNX98uzVQzfJu+uwVvANqnwbE7ft8oppVyYvtntTt7mY367tn6PgbmNCGXDoAAkSXJ+sr3gCJOYLtNMb5cbXaZZ18n0drnpPDkRmXv71wERBhdCNMVZ8PhCJ2WadfaL3qX4UOX21pyuyYZBGutGhxwPgI1T28CjdMPqc30M+sH2lIhHzYTV5xrRIke0yI9VzybnzoWIiFDwGLNEYLeqnJy/1e/tlfUGM7BbVZglYvS77rvkuq5rZ32M0Q2Pk5CNytvA0SK38u+5DqNlmnWCaIXp4tvrOxWP7PMP2y/KqMd1Cg+7egAAAABJRU5ErkJggg==" alt=""><figcaption>drop</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABUElEQVR42u1WO66DMBAcUGqOQ49I2kicgBNskZr61RR7gicOECktCelzHGqkTRMQ+BPM5+UVYSR39ux4d3ZtYMMyyGvNhr8w+GL4AEBEa2QCnyQRIpKmqKQpKiEi51K8Liu2Eshfm4aZxeoBVd3aICJRyz0QkIeJKRNznS4Gnn6MyV3QkkmZZgOiPEzU7MnsNmyKakBWpplTlxzrQDNbu0yijQJOj7NKJjP8IUTUcfRNd7/euhiaACLymBn36w3qbDjWQUc4Nxu9LgAA760Hon3cpesS1FCNGu1j45mmqIyCbGdGTdgUFZhZE+GC9oxNVIud4/AATwh++P1xLpfvODqdCae+K6MZyMMEIG1Qvd3PYJRphiiMR/d7tjZyCTYFp8dZ64Cl/wGs9h/YBHy1AM/27K7wT9SGmSnmv2dgZ5tma88B0CALmwfGBXz40l+MJ+8OmWCURxucAAAAAElFTkSuQmCC" alt=""><figcaption>crown</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABQklEQVR42t1W0RHCIAxNev1mq/52BSfIBH53gkzgCv11KxaIH6IXEQsEtGruuKMcJOHl5VGAfzIiqj4zWpwz832NmUVtw3deUNS4rxGREJGEebXToQfMs3c3ZCSRcJcEJAomJftDstIVgdiYGVbnNTJxsn1KQERARLA6n0wiF+wVP0bLjWPHBTeVcA6bEpi9A7i2XtFtJ14evgNJsYkDs3dF5FL7NhEykbCEXHpfijfduqDVxk8E2eLMUCi5eOt36yP1qg2HzAGxBIs50krCqkdGB4sUsj4B1b/m2uc6Zsw5OB+OMJ2Wp1KcD8frxCfWKgy3YI/hrNGA2FbnISXHu+vAsIWMte26CBEzIwDIbKjrW5TQWvumHxIiwum07MKB3Un41EItps5jqQ5kdaHGVBnRWoKm1/D3OaBQwACjdXyfXQDympfMYr+kkQAAAABJRU5ErkJggg==" alt=""><figcaption>nails</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAA7UlEQVR42u1VwRGEIAxcbnzblV9bsIJU4NsKUoEt+LUrGsh9jhnkBANyd49jZ/yAYQPZTYCGhoYfwyj/E0WslJz/KCQP1yUzVp2hAAARYbT9YWPrLZgZmv0Uj0kR79Ncpc7DukS5zhaFiADg7Val8F7DRDXgSB1qkbuzXufLlQhln+aq5GdJ+Jc1IbniGS9Fd6UdXxMmxzKf6EGdvxLqIAbPXsiND2O7EuFxhFwTP06zK8FRA0QEZpZa3tfaMXSBGdYFW2+/Qn5IIGybNZNINaLULKhSjhT5rWGUQZwz9qOWkpKPiNTWbmho+F88AZDQfzAB/je4AAAAAElFTkSuQmCC" alt=""><figcaption>lips</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABs0lEQVR42u1WO46DQAx9rKg5Dn1ItkXiAIgTuEhNvTWFT7DiAJHSkpA+x6FGmhQbj4bvMFmyzfKqxAK/5/GzB2DDhv8Oz/F5tXZez4W4ynLsDnsdPN5PKMKk8+DtcsXn9xcAgIg8Zp5N/GEhVQBUleUA0CG3ocpyMLOynZo/RU5EAIC4CX6In1Utxe6wRwXgHDQAoJjZW3oCSoiLMNFVExGO99Ms6e1yxTloIOJ3h73ZIuXUgqdyjSJMwMy4Xa6Ye4eZB77oFycCtQAikqBqyxptWWuTucJMbuYw8nZEmH1RQtx3tBmXhEWYdKbAjGuDpdFgciQu3P4SI/lphL44G6bIZ6dgrAoRIdXGTYBz0OB4P4GZAePE4ybQefrkYlDbIur0R4/ghB+YedBz07R9YmMpebZNqIWIiN6G61TdJ5B2CfkYscvuV21Z661IRIqI9O8qywfxtqzNd15exQDgEZH3dC2qLNd9HkPcBCAi+GkEP41ARM4VLzoRs9qx/1M7YY3r2HYtO+fzX2Efq8x27a4pQJkzP3ZvvPOLaPCBAkDGc3XDuZjy5QT+b9jfMWYbNvw5Hjdu+/aKge0RAAAAAElFTkSuQmCC" alt=""><figcaption>fan</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABYklEQVR42u1Xy62EMAx0EOd0xZUWqMAVcKaCqYAWuNJVGvBe1nnBAgIoCyvts4T4RfJgz0wM0a+HW3vIzPEawGPg5H3cXgHRCiRf7z4FoLJl13MbvK3GZwGkidLkzKyg5A4Ai5i7PrZBQaQELRF1wnaZu54orC9sgydiJgBSkhNVboF+8eSD5cU9ADQpAJp8KE7K6siiNvjIh7nri4KoiL7HikWZvxWTDwSAjFG5UkbkNEmOD4ag8kgL2uCLqGIXQDMO1IzDoiraosmH3WoVrYCRYHzWBp+2QYoBMMnc2lzAzNGcEnuWywCU0UcGkNSc9P7qHlGdkKtrxmEXlGmHnNqMLqmg66kZB2LmP1UsxznJDTRnZegsGbX0qhj7LleV0z5gFWG9AMCCGzmvqKlAaDsWEWjVOwCIui6ASwAcAKF33y/xBkMcah7fDeutPtMBXZewYrfxQ5L9eyowkDj6j2+IFyKYs1uXB5k/AAAAAElFTkSuQmCC" alt=""><figcaption>heel</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABkklEQVR42u1WsWrDMBB9Sg0ZAvqCLs2QfkChnjo07Wzo7vxA4Ib8Qf+gg8A/UO8Bz3EzS5AlW/sZgg6BgrpEIokjHMsNaUsOBAKJe+/ene4EnO34ZtbrZOD41eCdI4PXkmAnkGwLM/LdklIGec/zHACQpmnlLI7j2hSwzcvWWVtwnRV7wX0KMJsKIQQA4OX2yQu6GPTcPtEcfJzg5uPTnemsQMF14yJ0SgghMJ+VXgc6K5DnuYveglsruHaBEBGrK0LvU/p6fascTtTURW6jTDTH/eMDFoPeruys8TMkImZZR6OhV4lNifk4qYDvi/xQBSpqENFWTcxnpSOQpqlLhZW9DuOiAYFnAFBK4Y5f4qrfd4pcr7p4766wXC63wImIKaUaNSI0qYmJmjbOeVsCjshuUUajYZDf4FkwUVMsBj3MZ6V7DS2DOtyICACMlNIQkWkz8zvHGjKnIIAzgTOBP0kg9I9viMhIKVv3giigAVVs5wtmhBDM3t+Yiq0IGA9YhcR6HJufbssmZPkUC1GA4b/aN+KaszeqHswBAAAAAElFTkSuQmCC" alt=""><figcaption>martini</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABOElEQVR42u1Xy23DMAwljZy1Difo1RNoggAcoxMI6L0AJ/AWXEcLqJfYSBVRH9dJUCQ8CbYkPv4eKYD/Jsx86H2440w68k4cUcbM4L2H+LWYBxYXIYTQrQcb7r6x1ntfRSwiN99CCKaeU+mjqgIRpR6FLYAXQMkyFi23q+qhyUZERX3Ts6vq0QBSC0Bi5sPdv4b0wiHppUPwBtBHRC12s8ipd98QABEpcXuR8fJ9c3TgzvP+EFjKe+Xj+7PYG6oAQgjNQ3vEMqbogZbVc3Tbutaae+6cBtszqOqvuC4ubjnRwaCY6zg1LTVGsNyla1LmI9u1t4arwJ1n8IOxHp0fnk5EODoPXsuagHmtGxmPu5mwFqJ79gIEAGRm/KOHsebpaaR+RQSICERkW5f+vdvxvZ5m6QHPvheUH6WEfxuAtnRnAAAAAElFTkSuQmCC" alt=""><figcaption>skull</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABpElEQVR42u1XwY2EMAx0EG/aoYL9UgESFbgC3lRg6f4rpQK+VEA7aSD3OSOTC05I2NedpdUKNvHEnontBfjrZgr2+Cd9tiWnRkQYXHd6t3YOiOi2r6bkAEQEa+eqwUspOGjYphkAAF7vRfPnNZymRkBr506ZiIEjYp1K2cHPt8/58FpE9Ih4vIsdxtxRPac8ZUyJFOvrvQAimlAr5i64JrgQMPL7rQP40HHINzsLU8trAzBTVAdi4OM4ntbws7X2yNLgOgDE5PU0WvQSnIhg3/csDfR9H6UjRsHlNdymOQlurT2ilrbv+6lYaeJtIpF7KTh2eNd4D0e/TTMQkQ97SaMVmScMEVVfjVbvY4IL12gi473amuJSLLmP6eCRbkhEVc6ttclr2Kb4u6JgHEeVno9T8MmR7FcLTUWaoxORCaNmgKuVHLnc11oFPrgOiAgQ0SQpkHxpnS1nbJM+sing9BORr+kFkfZt7s6EXjaUWDfkNIfPMvLUAdqcuU/2eAl0db1is0PpVPzURGRqxvLimTAHI+efkWFhvmjxkNcBTaoC/hvbNyf7FYbvH9FOAAAAAElFTkSuQmCC" alt=""><figcaption>stopwatch</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAg0lEQVR42u2VUQrAMAhDbel1c5oe2P2NUbpWZWzC8n6tkkZREULI3ymLmDrfh3Lr1w7UG/XnDwAIAHfhSZ5mcEBNAiI/tjiScgbarkeG6Y62oYwCBID03t02juxqXOOpWrBUbolH3GmTTaXBzWmdlZJ+Ez5itbVmW1ik8sLh4zUkhJADGaUnbCOOccIAAAAASUVORK5CYII=" alt=""><figcaption>barbell</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAe0lEQVR42mNgGOmAEYf4fxL1/ifXLhZ8OnbHV2OIbeL7xDB58mSi1TMwMDC4LmzFaQcTqUHm94mPqlHANNBpYNQBow4YdcCoA0YdMOqAUQeMOmDUAaMOGHUA3o7JJr5PJBlGqvpB0TXD5QCG3NxcrOK4umW41OPTMygAAEXlFu5qz52DAAAAAElFTkSuQmCC" alt=""><figcaption>pause</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABBklEQVR42uVXQQ6EIAwshDO/8soXfAEv8OwLfIFf8Oqv+gH2AhvWmLXQAsnuJCZqDG2mM20F+Heo7D4QvilBoMQ217fnvHw8HxbDtm1ViXjvwaHNz4J41hu6J91ZMoqcgEObWAnZJQYyA+e8gPeeWl/5BCpERoIpraGLIo2CCgyX8BhwaFNJWNrQQqoeogGOOINoH0hWvdi1DwN33a9kBBho0O2SUwAHMNBdhNwm9nsMHBZh2leY9hUOi48i1NLBr/O+KwPZ4qKaDKM7TPvKWt80l/JhLript2q+D0gFrSpBi+BFCbQITkogNZbMXkrSukZQ2VVOGf5rpr4tE6Vt9Wkx4ZzXDC+r5WMNM1kdgQAAAABJRU5ErkJggg==" alt=""><figcaption>skip</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABTUlEQVR42u1XwY2DMBAcLL8pJ7wJuS8dRKnAFeSdClzBtXBfQLxpxw04j0DkWNjxLuZ0J2UlHpi11+udmTXAx/652flhm+BMUkrBC2znMbIV3MyVUmhNCQD4+r6x1yu2Bl/spzTQWpPXFDmCA0BryrXS5MeAG7w+NahPzeq3VJMcALhB3fexH3ZjgQVgu8v1OTD2A+T5CHk+vgSefexuJfCzj3yzWTdA4TnFV6QIzoL8WPbuKbiMeLcZGQuutX7U3dCB2poSmNeIaYPIUfstvsENaK3Z+k4RJ5EiOpSMYsLFKgE3uK+SFBCSUJ+yke7RMe1aA5Q+6jl8rw9Nsq/PCsGpm8v31AYU8pPc2o/98LyIdAkSHWpUwqVdd7myWiqFEX6zklzUL+BKnRM6BbF2tLmpRu4FnIvFZnMkc/dnmqbgCRS/kWxVVZ9fur9jd6LHrqg5LHKpAAAAAElFTkSuQmCC" alt=""><figcaption>alert</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABK0lEQVR42u1Xyw2DMAx9RpzZqWp77QpM4Ak4dwJP0BW40qo7ZYH0QqNAyRcKlaglLiTPv2c7CbB3Ic+azsAlY4qpn8zs9ZqZ9XgPM+sAJi2Srm6cys636xivASARM+mAieyiKqeytlIAABEZRJeAIS8FPkWu9RyMcaCPQHd1M9h4OB3NN6XQl3KXEz3G1Evp2mwbfd4fTqVd3QAqvw0Lm8stpAht8EW/igPflnKryKe64DdrYO3DSDNzcKjkSlupuEm4KwrGDpCI2CfXYvLWycwUakMCoNtKLVYL1klIsRSQiBjg0oUXeyWLumjEpN1np4hp05xMWBia2wXJdITSnkJBMh0xac+dAzQyMNt4ziBy1kQs50tMwo+aSOF8Tg2EXkGEDUQHnmN/CcoLMyp9ejN/oBQAAAAASUVORK5CYII=" alt=""><figcaption>heart</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABZ0lEQVR42u1XsW6DQAz10WyV+Iz+QKTuNOmK1D0VX+AhM3PnDvcFFdkjZaWFmZPyA/0MpG5E7hIjkyIgRwqJxJNOOk5wz/azfQfAhH6g47CGM7YHt20AIgIiDm/AkZT83JW5cJsSWGc/IlIRJRQHISGidTUoy9KDIkoqi7PXJ6v9eklwt/Jg/3A/aBISIkIchOXC/PsHOCI2UjjndDxEBD93wVsuKlFg+LlbVkhXQ5wONU6SgMklMc+95QJEaZYRa+oVqi3ZEBHeH1/+aF+HwyatPK/NFrTWjVzqlJBJ2ZM6j7uAjUk/vwAA4PnjrZa7NQd4A2MMGGNaieV7/O3Oza9XgnPOfIqDkIoooSJK6BS8HgchyW8uUYaKx87Ny7BKb3m+NlsOtxLjco1Iaw3SiLpkEyH/32sYy5BlGRVRYn0YzfpYctikMB/hRqRYbw49zwcDt+g4CGXWj3Mjamoy03/BZMCELvgFBavTGR/pzsgAAAAASUVORK5CYII=" alt=""><figcaption>sparkle</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABTElEQVR42u1WMW6EMBCcRdQ8J66j5FqkvIAX+AXUV6eYF5zuAZFoSS41eQ71SU4RDjmALwZs0jCSW894dne8wI5tYLozQhKTVWsNF/FmL9dam7oonQ6kkez2RhLJ9k0EmKmTtxmu5wuu54vXJelaC32JvAXcs5DkIpsHj5NJAU3TQCllACBvM1eBQRJ5m+Hx+SmIiL4HlFKmLko3eaAG7UpmNgmiIaYel+CfsQv4JaDK2qhkVdbi8/3DKUBIRhVBEofTEfYYpoMxEZKGf1x0OB1RA0uzQJxJ2CWd2HN6Sz07BW9OVV9vo9tfH168ye99x9L95f3s0pplWoJGs17MS8m1+4BMlMfgp85xBFhNKh6iTPAcsPpkieggJZhDLiRNEAfqouy33Jn7gFhnvgDbPus3C7Zqi8+GWxflKIgWlGO5gJV9sGoKghHtcOEb4Ld87LzAa0oAAAAASUVORK5CYII=" alt=""><figcaption>megaphone</figcaption></figure>
+  </div>
+  <p>Five carry a derived panel variant in which the black outline is remapped to lime, because a black outline is invisible on a black panel. Outline lime on black is <b>10.91:1</b>; fills stay pink at <b>7.75:1</b>.</p>
+  <div class="iconstrip" style="background:#000;border-color:#000">
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjklEQVR42u1WO47CMBB9QdD6Bj7BVqGAml1qpD1CDmAhUdBQp0mxq2gOkCMgpd4FUbJFXHGC3CAX8BZ85A0xihMn0kpMkyIjvzdvZp4NPKOHiDKoKIOq+jfoElgIARNwLwR4QCpPBPx4Y8wZdiG3Tb5zBfJEWOUPXVfqxwyz0w4A8PHyak/AVsLVBewWc7RT4JGEPKD7nImdausxvEoCx+MRh9FU5QmwKFjlAWkiwAPComCYzd8at04ncRvCw2iq/HhjBHc1oKvT7k+bO/WBclQV1yuB3p3w/xFIWdEpWMoK7L++qwmsx/B4QJ2S4AFBLkPoazgsrYnHA1LSdMDlK5chEKORFxiNCACICCB4+p5eXU93watS6c/2DuBz8l4b3HgZrcdnEnkibrsrtV2WGqFy7GM7l2z1HqiqKMpCJRF2RyBlBbgBvEyqzs06aDLJJvBHpJ0pYAN+niVSTlrgxxukrECUkcoT4RGRE8IDG/m020y5Mievzruv/KyWy9C6Ha0ItJmDVlvgEugZpvgF69ebpCH5WowAAAAASUVORK5CYII=" alt=""><figcaption style="color:#8ACE00">megaphone</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABjElEQVR42u1XsW7CMBQ8026V8gdZu3SiSN0pzJG6d8kHWBUdujB3ydAK+QM8wI7EDGSOpaZTl67+g0jdQO5QXmQoEJKUMDQ3WVbsd753fn4BapRAEMMEMUyZPRqnPsTJCZyXWawlX41EtQpwzhHEMF7ipF74Xx5wfWG05Gh3O/ASB1rywiqwIlcPAB4/5mvzL1e3eLrOv1+pFJzdt/F2eVFdCoIYRkuO5qCfzrU+v0CKcM5zF6ZGnoqnJYeXOGh3O2sqEGw/HEqE7btqZDiaaw76aXA7MAAsRyEAIJzO8P7wbNcKBgBCiHwE6ARacrze3P3K/TYQCUJPjeH6P4F3GZRtBqSgVGR2nTgLtiIA1lSxCWV6gDZQSkEplRnY/o7WTpwkvwcqT0EWkaImzCpOLOcjZOxrSCQoeE+NsXI8O0ohcn2BiZOkud1mNpL86G3YYjg3xhgTRZFZDOeFW7NSDclyFKJV9XNMpqJ8h9NZOq5MAS05c31hwoGT5r3IU/wnHdG+IlP/F9QEahyCb+Q20xSQuBdmAAAAAElFTkSuQmCC" alt=""><figcaption style="color:#8ACE00">sparkle</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAnUlEQVR42mNgGAWjYBSMdMCIS6LrHMN/dLEyI9zqydXLNNAhwITN9cg+eDw/l+Hx/FySDUbXhy1U6B4C2BzBhMv11Aa4zBzwNMBCKI4IBSG50QDLFSzowSSbOJnkYEQHhMxAlh88UUDI5cTIkxM6LOglFb54pqQkxGXG4CsJqRXUxJrJgiuIqJHliIk+FkqyFDX0DXgaGAWjYBSMAgCv2T2ZLe9NKQAAAABJRU5ErkJggg==" alt=""><figcaption style="color:#8ACE00">barbell</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAB4ElEQVR42u1XO3KDMBB9MKTlBjqE06T0DTgBjQ6gcZeG2o07ZmfS0ugE3CClm+QQ3ECtC1LEYhaNEALZVbKVMWJ/7+1HwF+XbOsHly+Moffvr9t0Fnu8HjqFypSz//rSQEjarCvf44CQhL40ycZ3OWBTzA3a3770r0GWpxCoL80sEz7jQ6fSSKiUAhFBKQUhaYzkSCYkTcaFJAydygCAiLaRUEgaLxIACIe2iUvN6Tw5WpkSaBvgdB6tE9EZ4PhZ4yHC8er4Pp29mXEzkMUYt4pdvK0jLs72LHd0qT8UsTXPjdd1DQDQnfOs9ZSlypToO7Vanlkoem5cSMLxdo2iwOfLmxcOHwSLZXhom1XjWuspai7H23XWrELkzd3IL18YOeGswq1iv7HRH9rmt6KcxpSHmswjZOhUUFce6vecYEtnQiSz34bO7G7FHHsfDx4yjISkJOVa69UyLNbwW4Kgrmvgdn9XL0OguydB8LSVzDdCQ0SM5YmF1G3J+cIona1c5qNPMl6ZcjaSgw7wVhmabDFrG9cRDYFS0xIxpswCd3wvTcNsbZ2yEXin4T3N7jOPfM2BImbv4zOeG7JptmPZ3QeSLyaP2ohCl5Vsy00odieMNR59NePEjN2KfRvwv/jkBwpMJCq2JlV0AAAAAElFTkSuQmCC" alt=""><figcaption style="color:#8ACE00">stopwatch</figcaption></figure>
+    <figure><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAABa0lEQVR42u1WO46DMBQcEHVuwCHYgj5K6pU4Agd4iqDYhnobikWIA7jIASJtnZA+Bak4ATdIHclbGfFzsAMUKzEVhd+88bx5FsCKCYgL8LgAn8JhTmk+xyVMACCiyU7MYqfOWSLiz2POn8ecE5HyKIio1ctcwtZXsP2MSzNQMVpUBBHxipE8hInr9Zx4N+ndOvEtemhvgSCIC3AnjVpEieu13NMR3BMQlnmLzEkjdG0bwudjg+44K0Z16LqiBwUEt1OLrHkT1XzEBXjFqOZohu56vtQ9egIqRobtZ7ieL3XD5u0E4btuNLYAXx8wXmZgu9/Vdv1uHugGdbvfDdaEZT4oSFYzGsKwzGH7WU+ECkSNTJSApfh44K7R/H74hq04rtE1bJKoEKqc0XIgcT0ErP1QjZ3/QQYnjRBK5t6EIVsjlWY6CG6n3gZM+h+YC6uAVYAle3jE6s34J/SPHFjkHWDDLqwZsHQLVsyNP+9jwsdTZKK7AAAAAElFTkSuQmCC" alt=""><figcaption style="color:#8ACE00">crown</figcaption></figure>
+  </div>
+</section>
+
+<section class="copy">
+  <h2>Copy table &middot; default to limelight</h2>
+  <p>Same components, same data, same numbers. Only the strings move. The clinical column is the default table under <code>UiPrefs.skin === "clinical"</code>; the limelight column is the override merged over it. Twenty-one keys: round two&rsquo;s sixteen plus the five this round adds, marked <b>new</b>. Five strings the user asked to keep are marked <b>kept</b>.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Key</th><th>Default (clinical)</th><th>limelight</th></tr></thead>
+    <tbody>
+      <tr><td class="k">start_session</td><td>Start</td><td class="s">LET&rsquo;S GO BABES <i>kept</i></td></tr>
+      <tr><td class="k">rest</td><td>Rest</td><td class="s">catch ur breath</td></tr>
+      <tr><td class="k">skip_today</td><td>Skip today</td><td class="s">not today satan <i>kept</i></td></tr>
+      <tr><td class="k">pause_plan</td><td>Pause</td><td class="s">on hiatus</td></tr>
+      <tr><td class="k">train_other</td><td>Train other</td><td class="s">plot twist</td></tr>
+      <tr><td class="k">week_delta_negative</td><td>2 sessions below target</td><td class="s">2 of 4. flop era. <i>kept</i></td></tr>
+      <tr><td class="k">week_delta_zero</td><td>Target met</td><td class="s">4 of 4. she delivered.</td></tr>
+      <tr><td class="k">week_delta_positive</td><td>1 session above target</td><td class="s">5 of 4. no crumbs.</td></tr>
+      <tr><td class="k">hydration_cue</td><td>Drink to thirst.</td><td class="s">hydrate or diedrate <i>kept</i></td></tr>
+      <tr><td class="k">pr_reached</td><td>Personal record</td><td class="s">new best. mother.</td></tr>
+      <tr><td class="k">motivation_title</td><td>Missed week</td><td class="s">the intervention</td></tr>
+      <tr><td class="k">session_cursor</td><td>Session 12 of 48</td><td class="s">ep. 12 of 48</td></tr>
+      <tr><td class="k">plan_progress</td><td>10 completed &middot; 1 skipped &middot; 37 remaining</td><td class="s">10 served. 1 skipped. 37 to go.</td></tr>
+      <tr><td class="k">add_30s</td><td>+30 s</td><td class="s">+30s</td></tr>
+      <tr><td class="k">skip_rest</td><td>Skip rest</td><td class="s">i&rsquo;m ready</td></tr>
+      <tr><td class="k">week_review_title</td><td>Week review</td><td class="s">the reunion</td></tr>
+      <tr><td class="k">why_progression <b>new</b></td><td>Why this load?</td><td class="s">why?</td></tr>
+      <tr><td class="k">session_done <b>new</b></td><td>Session complete</td><td class="s">ate.</td></tr>
+      <tr><td class="k">pr_stamp <b>new</b></td><td>Personal record</td><td class="s">MOTHER <i>kept</i></td></tr>
+      <tr><td class="k">intervention_body <b>new</b></td><td>You missed 2 sessions this week.</td><td class="s">the week flopped, not you. monday is the next slot.</td></tr>
+      <tr><td class="k">settings_skin <b>new</b></td><td>Skin</td><td class="s">the look</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>The rules every entry was checked against.</b> Buttons at most 3 words, hero lines at most 8, advice lines at most 12. Everything lowercase except three shouted strings, and the list is closed at three. No em-dashes. No emoji. No arithmetic: a percentage, a rounding step, a delta formula and a unit conversion are justifications and live behind <code>why?</code>; a load, a rep count and a rest duration are instructions and stay on screen. Numbers, units and control semantics are never skinned. The joke is about the app or the week, never about the user, which is why <code>plan_progress</code> reads <i>1 skipped</i> and not <i>1 flop</i>: a week can be a flop era, one session someone missed for a reason on file cannot.</p>
+</section>
+
+<section class="lic">
+  <b>Assets and licences.</b>
+  Type: <b>Archivo</b> (variable, <code>wdth,wght</code>), Google Fonts, SIL Open Font License 1.1, one family at two widths carrying both the 76 px display and the 12.5 px footnote. Bungee, which direction F used for display, is gone: it has no width axis and no usable small-size range, and this skin needed one family that could do both jobs.
+  Icons: <b>sixteen originals plus five derived panel variants</b>, generated for this project with Gemini / Nano Banana through <code>agy</code>, sliced, downscaled and palette-snapped here. Own work, no third-party rights, no attribution obligation.
+  Illustrations: <b>four originals</b> (mascot lifting, being crowned, flopped, resting) plus round two&rsquo;s mascot, same provenance, 2.6 to 4.0 kB each after palette-snapping to 256 &times; 256.
+  Pixelarticons (MIT, 1036 icons, 24 &times; 24) and Kenney&rsquo;s 1-Bit Pack (CC0 1.0, 1078 tiles, 16 &times; 16) were evaluated and not used: neither holds any of the camp pictograms, Pixelarticons rescales 24 to 32 at a non-integer ratio, and the Kenney pack ships tilesheets with no per-icon names.
+  No third-party character, no real person, no brand, no song lyric, no album text and no artist name appears anywhere in this file, and there is not one emoji character in it.
+</section>
+
+<script>
+// The rest countdown, so the timer is a real clock rather than a screenshot of one.
+// Under prefers-reduced-motion the clock is held still, as in round two.
+(function () {
+  var el = document.querySelector('.panel .clock');
+  var dep = document.querySelector('.dep i');
+  if (!el || !dep) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var remainS = 107;            // seconds remaining, 1:47 of a 120 s rest
+  var totalS = 120;             // seconds
+  setInterval(function () {
+    remainS = remainS > 0 ? remainS - 1 : totalS;
+    var m = Math.floor(remainS / 60), s = remainS % 60;
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    dep.style.width = (100 * remainS / totalS).toFixed(1) + '%';
+  }, 1000);
+})();
+</script>
+</body>
+</html>
