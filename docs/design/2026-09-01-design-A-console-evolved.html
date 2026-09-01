@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design A — Console, evolved</title>
+<style>
+/* ============================================================================
+   DESIGN A — CONSOLE, EVOLVED
+   Keeps the phosphor-on-black terminal identity of the current build, rebuilt
+   for a phone held in one hand on a gym floor.
+   Token set: inherited from legacy/index.html :root, with three changes
+     --text-3 raised from #5a6270 (3.1:1, fails) to #7e8896 (5.4:1, passes)
+     --tap    new: 44px minimum control height
+     --dock   new: docked primary action band height
+   Sample data is consistent with docs/plans/2026-09-01-00-master-plan.md §5.
+   ========================================================================== */
+:root{
+  --bg:#0a0b0c; --bg-2:#13161a; --bg-3:#1c2026; --bg-4:#252a32;
+  --line:rgba(220,230,240,.10); --line-2:rgba(220,230,240,.20);
+  --text:#dde3ea; --text-2:#9aa4b1; --text-3:#7e8896;
+  --accent:#a3e635; --accent-d:#84cc16;
+  --warn:#fbbf24; --danger:#f87171; --info:#67e8f9;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --tap:44px; --dock:130px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#d8dade;color:#15181c;font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+/* ---- mockup page chrome (not part of the app) ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 6px;font-size:19px;letter-spacing:-.01em}
+.pagehead p{margin:0;max-width:70ch;color:#3c434c;font-size:13.5px}
+.pagehead code{font-family:var(--mono);font-size:12.5px;background:#c9ccd1;padding:1px 5px}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 60px}
+figure{margin:0}
+figcaption{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:#2b3138;padding:0 0 8px 2px}
+figcaption b{color:#000;font-weight:600}
+.note{font-family:var(--sans);font-size:12px;color:#3c434c;max-width:390px;padding:10px 2px 0;text-transform:none;letter-spacing:0}
+@media(max-width:430px){.frames{padding:14px 0 40px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone frame ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;
+  border:1px solid #2a2e33;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.phone::after{content:"";position:absolute;inset:0;pointer-events:none;z-index:60;
+  background-image:linear-gradient(rgba(255,255,255,.020) 50%,transparent 50%);background-size:100% 3px}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-bottom:calc(var(--dock) + 56px);
+  scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ---- status + top bar ---- */
+.sys{display:flex;justify-content:space-between;align-items:center;padding:8px 16px 0;
+  font-size:11px;color:var(--text-3);letter-spacing:.04em}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 16px;border-bottom:1px solid var(--line);font-size:11px;color:var(--text-2);letter-spacing:.05em}
+.brand{font-family:var(--sans);font-weight:700;font-size:13px;letter-spacing:.05em;color:var(--text)}
+.brand .acc{color:var(--accent)}
+.dot{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 8px var(--accent);display:inline-block}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- hero ---- */
+.hero{position:relative;padding:20px 16px 16px;border-bottom:1px solid var(--line);overflow:hidden}
+.hero-bg{position:absolute;right:-96px;top:-64px;width:300px;height:300px;opacity:.11;
+  filter:grayscale(.15) contrast(1.1);pointer-events:none;
+  -webkit-mask-image:radial-gradient(circle at 50% 50%,#000 40%,transparent 72%);
+          mask-image:radial-gradient(circle at 50% 50%,#000 40%,transparent 72%)}
+.eyebrow{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3);
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hero h1{font-family:var(--sans);font-size:44px;line-height:1;font-weight:800;letter-spacing:-.02em;
+  margin:10px 0 0;color:var(--text);position:relative}
+.cursor-line{margin-top:10px;font-size:15px;color:var(--accent);letter-spacing:.02em;position:relative}
+.cursor-line small{color:var(--text-2);font-size:13px}
+.when{margin-top:6px;font-size:13px;color:var(--text-2);position:relative}
+.when b{color:var(--text);font-weight:500}
+
+/* ---- weekly compliance strip ---- */
+.strip-wrap{padding:14px 16px;border-bottom:1px solid var(--line)}
+.strip-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.lbl{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--text-3)}
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cell{height:36px;border:1px solid var(--line-2);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:2px;background:transparent}
+.cell i{font-style:normal;font-size:9.5px;color:var(--text-3);letter-spacing:.06em}
+.cell .mk{font-size:13px;line-height:1;color:var(--text-3)}
+.cell.done{background:var(--accent);border-color:var(--accent)}
+.cell.done i,.cell.done .mk{color:#0a0b0c;font-weight:600}
+.cell.skip{border-color:var(--text-2);
+  background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(220,230,240,.16) 4px 5px)}
+.cell.skip .mk,.cell.skip i{color:var(--text-2)}
+.cell.plan{border-style:dashed;border-color:var(--accent)}
+.cell.plan .mk,.cell.plan i{color:var(--accent)}
+.strip-foot{margin-top:8px;font-size:12px;color:var(--text-2);display:flex;justify-content:space-between}
+.strip-foot b{color:var(--text);font-weight:500}
+
+/* ---- exercise preview ---- */
+.sect{padding:14px 16px;border-bottom:1px solid var(--line)}
+.exrow{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:center;
+  min-height:var(--tap);border-bottom:1px solid var(--line)}
+.exrow:last-child{border-bottom:0}
+.exrow .n{color:var(--text-3);font-size:11px}
+.exrow .nm{font-family:var(--sans);font-size:14px;color:var(--text);letter-spacing:0}
+.exrow .rx{font-size:12px;color:var(--text-2)}
+
+/* ---- controls ---- */
+.minor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 0 8px}
+.btn-min{min-height:var(--tap);border:1px solid var(--line-2);background:transparent;color:var(--text-2);
+  font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;padding:6px 4px}
+.btn-min:active{background:var(--bg-3)}
+.dockwrap{position:absolute;left:0;right:0;bottom:56px;z-index:40;padding:10px 16px 12px;
+  background:var(--bg);border-top:1px solid var(--line)}
+.dockwrap::before{content:"";position:absolute;left:0;right:0;top:-26px;height:26px;pointer-events:none;
+  background:linear-gradient(to top,var(--bg),rgba(10,11,12,0))}
+.btn-primary{width:100%;min-height:56px;border:0;background:var(--accent);color:#0a0b0c;
+  font-family:var(--sans);font-weight:700;font-size:16px;letter-spacing:.08em;cursor:pointer}
+.btn-primary:active{background:var(--accent-d)}
+.nav{position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;z-index:41;
+  border-top:1px solid var(--line-2);background:rgba(10,11,12,.96)}
+.nav button{flex:1;min-height:56px;background:transparent;border:0;border-top:2px solid transparent;
+  color:var(--text-3);font:inherit;font-size:10px;letter-spacing:.08em;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.nav button .g{font-size:15px;font-family:var(--sans)}
+.nav button.on{color:var(--accent);border-top-color:var(--accent)}
+
+/* ---- train screen ---- */
+.card{margin:14px 16px;border:1px solid var(--line-2);background:var(--bg-2)}
+.card-h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  padding:12px 14px;border-bottom:1px solid var(--line)}
+.card-h .nm{font-family:var(--sans);font-size:16px;font-weight:600}
+.card-h .rx{font-size:11.5px;color:var(--text-2);margin-top:3px;letter-spacing:.04em}
+.chip{font-size:10px;letter-spacing:.1em;padding:3px 6px;border:1px solid var(--line-2);color:var(--text-2)}
+.chip.kg{border-color:var(--info);color:var(--info)}
+.advice{padding:10px 14px;border-bottom:1px solid var(--line);font-size:12px;color:var(--text-2);line-height:1.55}
+.advice b{color:var(--accent);font-weight:500}
+.setrow{display:grid;grid-template-columns:26px 1fr 1fr 34px;gap:8px;align-items:center;
+  padding:7px 14px;min-height:var(--tap);border-bottom:1px solid var(--line)}
+.setrow:last-child{border-bottom:0}
+.setrow .sn{font-size:11px;color:var(--text-3)}
+.fld{min-height:38px;border:1px solid var(--line-2);background:var(--bg);display:flex;
+  align-items:baseline;justify-content:center;gap:4px;padding:0 6px}
+.fld .v{font-family:var(--sans);font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.fld .u{font-size:10.5px;color:var(--text-3);letter-spacing:.06em}
+.setrow.open .fld{border-style:dashed}
+.setrow.open .fld .v{color:var(--text-3)}
+.tick{width:34px;height:34px;border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:14px}
+.setrow.done .tick{background:var(--accent);border-color:var(--accent);color:#0a0b0c;font-weight:700}
+
+/* ---- rest timer ---- */
+.rest{margin:14px 16px;border:1px solid var(--accent);background:rgba(163,230,53,.05);padding:16px 14px 14px;
+  display:flex;gap:16px;align-items:center}
+.ring{width:132px;height:132px;flex:0 0 132px;position:relative}
+.ring svg{transform:rotate(-90deg);display:block}
+.ring .rd{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.ring .rd .t{font-family:var(--sans);font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;
+  letter-spacing:-.01em;color:var(--accent);line-height:1}
+.ring .rd .s{font-size:10px;letter-spacing:.12em;color:var(--text-3)}
+.rest-side{flex:1;min-width:0}
+.rest-side .end{font-size:12px;color:var(--text-2);margin-bottom:10px}
+.rest-side .end b{color:var(--text);font-weight:500;font-variant-numeric:tabular-nums}
+.rest-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rest-btns button{min-height:var(--tap);border:1px solid var(--accent);background:transparent;color:var(--accent);
+  font:inherit;font-size:11.5px;letter-spacing:.06em;cursor:pointer}
+.rest-btns button:active{background:var(--accent);color:#0a0b0c}
+.hyd{margin:0 16px 14px;border-left:2px solid var(--info);padding:10px 12px;background:var(--bg-2)}
+.hyd .h{font-family:var(--sans);font-size:14px;color:var(--text);margin-bottom:3px}
+.hyd .s{font-size:11.5px;color:var(--text-2);line-height:1.5}
+
+/* ---- week review ---- */
+.delta{display:flex;align-items:baseline;gap:10px;padding:16px 16px 4px}
+.delta .big{font-family:var(--sans);font-size:56px;font-weight:800;line-height:.9;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--warn)}
+.delta .cap{font-size:12px;color:var(--text-2);line-height:1.45}
+.delta .cap b{color:var(--text);font-weight:500}
+.tgt{padding:12px 16px;border-bottom:1px solid var(--line)}
+.tgt-row{margin-bottom:14px}
+.tgt-row:last-child{margin-bottom:0}
+.tgt-top{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;margin-bottom:6px}
+.tgt-top .k{color:var(--text-2);letter-spacing:.06em;text-transform:uppercase;font-size:10.5px}
+.tgt-top .v{font-family:var(--sans);font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
+.tgt-top .v small{font-size:11px;color:var(--text-3);font-weight:400}
+.track{position:relative;height:14px;border:1px solid var(--line-2);background:var(--bg-2)}
+.track .band{position:absolute;top:0;bottom:0;background:rgba(163,230,53,.18);border-left:1px solid var(--accent-d);border-right:1px solid var(--accent-d)}
+.track .fill{position:absolute;top:0;bottom:0;left:0;background:var(--accent)}
+.track .fill.short{background:var(--warn)}
+.track .pin{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text)}
+.scale{display:flex;justify-content:space-between;font-size:10px;color:var(--text-3);margin-top:4px}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design A — Console, evolved</h1>
+  <p>The current phosphor-on-black identity, rebuilt for one-handed use on a gym floor: 44&nbsp;px minimum controls, a docked primary action, tabular numerals at display size, a rest ring, and a seven-day compliance strip. Token set inherited from <code>legacy/index.html</code>; <code>--text-3</code> raised to <code>#7e8896</code> because the legacy value fails 4.5:1 on body text. Background mark: <code>agy-artifacts/plates.jpg</code> (generated, no text).</p>
+</header>
+
+<div class="frames">
+
+<!-- ============================= 1 · TODAY ============================= -->
+<figure>
+  <figcaption><b>1 · Today</b> — 390 × 844</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span class="tabnum">Tue 1 Sep</span></div>
+      <div class="topbar">
+        <span class="brand">FTI<span class="acc">·</span>CONSOLE</span>
+        <span><span class="dot"></span>&nbsp; PLAN ACTIVE</span>
+      </div>
+
+      <div class="hero">
+        <img class="hero-bg" src="../../agy-artifacts/plates.jpg" alt="" aria-hidden="true" width="300" height="300">
+        <div class="eyebrow"><span>Today's session</span><span>·</span><span>12-week plan</span></div>
+        <h1>UPPER</h1>
+        <div class="cursor-line tabnum">SESSION 12 <small>OF 48</small></div>
+        <div class="when">Scheduled <b class="tabnum">18:00</b> · starts in <b class="tabnum">8 min</b> · 6 exercises · ~55 min</div>
+      </div>
+
+      <div class="strip-wrap">
+        <div class="strip-head">
+          <span class="lbl">This week · Mon 31 Aug</span>
+          <span class="lbl tabnum">Target 4</span>
+        </div>
+        <div class="strip">
+          <div class="cell done"><span class="mk">&#9632;</span><i>M</i></div>
+          <div class="cell plan"><span class="mk">&#9633;</span><i>T</i></div>
+          <div class="cell"><span class="mk">&middot;</span><i>W</i></div>
+          <div class="cell plan"><span class="mk">&#9633;</span><i>T</i></div>
+          <div class="cell"><span class="mk">&middot;</span><i>F</i></div>
+          <div class="cell plan"><span class="mk">&#9633;</span><i>S</i></div>
+          <div class="cell"><span class="mk">&middot;</span><i>S</i></div>
+        </div>
+        <div class="strip-foot">
+          <span><b class="tabnum">1</b> of <b class="tabnum">4</b> completed</span>
+          <span>3 remaining · next Thu 18:00</span>
+        </div>
+      </div>
+
+      <div class="sect">
+        <div class="lbl" style="margin-bottom:6px">Prescription</div>
+        <div class="exrow"><span class="n tabnum">01</span><span class="nm">Barbell bench press</span><span class="rx tabnum">3 &times; 6&ndash;8</span></div>
+        <div class="exrow"><span class="n tabnum">02</span><span class="nm">Barbell row (Pendlay)</span><span class="rx tabnum">3 &times; 6&ndash;8</span></div>
+        <div class="exrow"><span class="n tabnum">03</span><span class="nm">Overhead press</span><span class="rx tabnum">3 &times; 8&ndash;10</span></div>
+        <div class="exrow"><span class="n tabnum">04</span><span class="nm">Lat pulldown</span><span class="rx tabnum">3 &times; 10&ndash;12</span></div>
+        <div class="exrow"><span class="n tabnum">05</span><span class="nm">Face pull</span><span class="rx tabnum">2 &times; 12&ndash;15</span></div>
+        <div class="exrow"><span class="n tabnum">06</span><span class="nm">Barbell curl</span><span class="rx tabnum">2 &times; 10&ndash;12</span></div>
+      </div>
+
+      <div class="sect" style="border-bottom:0;padding-top:0">
+        <div style="font-size:11.5px;color:var(--text-3);line-height:1.55">
+          Pause and skip both leave the cursor where it is until you confirm. Skip advances it to session 13.
+          <br>Train other &rarr; Push, Pull (remaining labels this week).
+        </div>
+      </div>
+    </div>
+
+    <div class="dockwrap">
+      <div class="minor">
+        <button class="btn-min">Pause plan</button>
+        <button class="btn-min">Skip today</button>
+        <button class="btn-min">Train other</button>
+      </div>
+      <button class="btn-primary">START SESSION</button>
+    </div>
+    <nav class="nav">
+      <button class="on"><span class="g">&#9679;</span>TODAY</button>
+      <button><span class="g">&#9632;</span>TRAIN</button>
+      <button><span class="g">&#9636;</span>PLAN</button>
+      <button><span class="g">&#9650;</span>LOG</button>
+      <button><span class="g">&#9678;</span>MORE</button>
+    </nav>
+  </div>
+</figure>
+
+<!-- ============================= 2 · TRAIN ============================= -->
+<figure>
+  <figcaption><b>2 · Train</b> — mid-session, rest running</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span class="tabnum">Session 12 &middot; 31 min</span></div>
+      <div class="topbar">
+        <span class="brand">UPPER<span class="acc"> ·</span> 12/48</span>
+        <span class="tabnum">2 of 6 exercises</span>
+      </div>
+
+      <div class="rest">
+        <div class="ring">
+          <svg width="132" height="132" viewBox="0 0 132 132" aria-hidden="true">
+            <circle cx="66" cy="66" r="58" fill="none" stroke="rgba(220,230,240,.14)" stroke-width="9"></circle>
+            <circle id="arcA" cx="66" cy="66" r="58" fill="none" stroke="#a3e635" stroke-width="9"
+                    stroke-dasharray="364.4" stroke-dashoffset="39.5"></circle>
+          </svg>
+          <div class="rd"><div class="t" id="clkA">1:47</div><div class="s">REST</div></div>
+        </div>
+        <div class="rest-side">
+          <div class="end">Ends <b>18:24:52</b><br>Prescribed <b>2:00</b> &middot; bench press</div>
+          <div class="rest-btns">
+            <button id="addA">+30 s</button>
+            <button id="skipA">SKIP</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="hyd">
+        <div class="h">Drink to thirst.</div>
+        <div class="s">Session active 31 min. This cue repeats at most every 20 min; no fixed volume is prescribed between sets.</div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div><div class="nm">Barbell bench press</div><div class="rx tabnum">3 &times; 6&ndash;8 &middot; rest 2:00</div></div>
+          <span class="chip">LB</span>
+        </div>
+        <div class="advice">Suggested <b>140 lb</b> &mdash; up 5 lb from 135. All three sets reached 8 reps on 25 Aug; +2.5&nbsp;% is 3.4 lb, rounded to the 5 lb barbell step.</div>
+        <div class="setrow done"><span class="sn tabnum">S1</span>
+          <span class="fld"><span class="v">140</span><span class="u">LB</span></span>
+          <span class="fld"><span class="v">8</span><span class="u">REPS</span></span>
+          <span class="tick">&#10003;</span></div>
+        <div class="setrow done"><span class="sn tabnum">S2</span>
+          <span class="fld"><span class="v">140</span><span class="u">LB</span></span>
+          <span class="fld"><span class="v">7</span><span class="u">REPS</span></span>
+          <span class="tick">&#10003;</span></div>
+        <div class="setrow open"><span class="sn tabnum">S3</span>
+          <span class="fld"><span class="v">140</span><span class="u">LB</span></span>
+          <span class="fld"><span class="v">&ndash;&ndash;</span><span class="u">REPS</span></span>
+          <span class="tick">&#9633;</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-h">
+          <div><div class="nm">Lat pulldown</div><div class="rx tabnum">3 &times; 10&ndash;12 &middot; rest 1:30</div></div>
+          <span class="chip kg">KG</span>
+        </div>
+        <div class="advice">Hold <b>45 kg</b>. The smallest stack increment here is 5 kg &mdash; 11&nbsp;% of the current load, above the 10&nbsp;% ceiling. Target range extended to <b>10&ndash;14 reps</b> instead. Stack is marked in kg; logged as entered.</div>
+        <div class="setrow done"><span class="sn tabnum">S1</span>
+          <span class="fld"><span class="v">45</span><span class="u">KG</span></span>
+          <span class="fld"><span class="v">12</span><span class="u">REPS</span></span>
+          <span class="tick">&#10003;</span></div>
+        <div class="setrow open"><span class="sn tabnum">S2</span>
+          <span class="fld"><span class="v">45</span><span class="u">KG</span></span>
+          <span class="fld"><span class="v">&ndash;&ndash;</span><span class="u">REPS</span></span>
+          <span class="tick">&#9633;</span></div>
+        <div class="setrow open"><span class="sn tabnum">S3</span>
+          <span class="fld"><span class="v">45</span><span class="u">KG</span></span>
+          <span class="fld"><span class="v">&ndash;&ndash;</span><span class="u">REPS</span></span>
+          <span class="tick">&#9633;</span></div>
+      </div>
+    </div>
+
+    <div class="dockwrap"><button class="btn-primary">LOG SET 3</button></div>
+    <nav class="nav">
+      <button><span class="g">&#9679;</span>TODAY</button>
+      <button class="on"><span class="g">&#9632;</span>TRAIN</button>
+      <button><span class="g">&#9636;</span>PLAN</button>
+      <button><span class="g">&#9650;</span>LOG</button>
+      <button><span class="g">&#9678;</span>MORE</button>
+    </nav>
+  </div>
+</figure>
+
+<!-- =========================== 3 · WEEK REVIEW ========================== -->
+<figure>
+  <figcaption><b>3 · Week review</b> — closed week</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>08:04</span><span class="tabnum">Mon 31 Aug</span></div>
+      <div class="topbar">
+        <span class="brand">WEEK<span class="acc"> ·</span> REVIEW</span>
+        <span class="tabnum">2026-08-24 &rarr; 08-30</span>
+      </div>
+
+      <div class="delta">
+        <div class="big tabnum">&minus;2</div>
+        <div class="cap"><b>2 of 4 sessions completed.</b><br>1 skipped, 1 not logged.<br>The plan was not paused this week.</div>
+      </div>
+
+      <div class="strip-wrap" style="border-top:1px solid var(--line);margin-top:12px">
+        <div class="strip-head"><span class="lbl">Compliance &middot; Mon&ndash;Sun</span><span class="lbl">Slots: M T T S</span></div>
+        <div class="strip">
+          <div class="cell done"><span class="mk">&#9632;</span><i>M</i></div>
+          <div class="cell done"><span class="mk">&#9632;</span><i>T</i></div>
+          <div class="cell"><span class="mk">&middot;</span><i>W</i></div>
+          <div class="cell skip"><span class="mk">&#10005;</span><i>T</i></div>
+          <div class="cell"><span class="mk">&middot;</span><i>F</i></div>
+          <div class="cell"><span class="mk">&#9633;</span><i>S</i></div>
+          <div class="cell"><span class="mk">&middot;</span><i>S</i></div>
+        </div>
+        <div class="strip-foot">
+          <span>&#9632; completed &nbsp; &#10005; skipped &nbsp; &#9633; not logged</span>
+        </div>
+      </div>
+
+      <div class="tgt">
+        <div class="lbl" style="margin-bottom:10px">Daily targets &middot; week mean</div>
+
+        <div class="tgt-row">
+          <div class="tgt-top"><span class="k">Energy</span>
+            <span class="v tabnum">2,180 <small>/ 2,350 kcal</small></span></div>
+          <div class="track"><div class="fill short" style="width:74.2%"></div><div class="pin" style="left:80%"></div></div>
+          <div class="scale tabnum"><span>0</span><span>target 2,350</span><span>2,940</span></div>
+        </div>
+
+        <div class="tgt-row">
+          <div class="tgt-top"><span class="k">Protein</span>
+            <span class="v tabnum">164 <small>/ 150&ndash;190 g</small></span></div>
+          <div class="track"><div class="band" style="left:60%;width:20%"></div><div class="fill" style="width:65.6%"></div></div>
+          <div class="scale tabnum"><span>0</span><span>band 150&ndash;190</span><span>250</span></div>
+        </div>
+
+        <div class="tgt-row">
+          <div class="tgt-top"><span class="k">Fluid</span>
+            <span class="v tabnum">2,150 <small>/ 3,000 mL</small></span></div>
+          <div class="track"><div class="fill short" style="width:57.3%"></div><div class="pin" style="left:80%"></div></div>
+          <div class="scale tabnum"><span>0</span><span>target 3,000</span><span>3,750</span></div>
+        </div>
+      </div>
+
+      <div class="sect" style="border-bottom:0">
+        <div class="lbl" style="margin-bottom:8px">Body mass</div>
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font-family:var(--sans);font-size:24px;font-weight:700" class="tabnum">185.4</span>
+          <span style="color:var(--text-3);font-size:12px">lb &middot; 84.1 kg</span>
+          <span style="margin-left:auto;color:var(--text-2);font-size:12px" class="tabnum">&minus;0.7 lb vs prior week</span>
+        </div>
+        <div style="font-size:11.5px;color:var(--text-3);margin-top:8px;line-height:1.55">
+          One week of mass change is inside day-to-day fluid variation and is not evidence of a trend.
+        </div>
+      </div>
+    </div>
+
+    <div class="dockwrap"><button class="btn-primary">CLOSE WEEK</button></div>
+    <nav class="nav">
+      <button><span class="g">&#9679;</span>TODAY</button>
+      <button><span class="g">&#9632;</span>TRAIN</button>
+      <button><span class="g">&#9636;</span>PLAN</button>
+      <button class="on"><span class="g">&#9650;</span>LOG</button>
+      <button><span class="g">&#9678;</span>MORE</button>
+    </nav>
+  </div>
+</figure>
+
+</div>
+
+<script>
+/* Rest ring: counts down from an absolute end instant, exactly as restTimer.ts does.
+   Circumference = 2*pi*58 = 364.42 px. Arc drawn = remaining fraction. */
+(function () {
+  var C = 364.42, DUR = 120, rem = 107;
+  var arc = document.getElementById('arcA'), clk = document.getElementById('clkA');
+  var endsAt = Date.now() + rem * 1000;
+  function fmt(s) { var m = Math.floor(s / 60); var r = s % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  function tick() {
+    var s = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+    clk.textContent = s === 0 ? '0:00' : fmt(s);
+    arc.setAttribute('stroke-dashoffset', String(C * (1 - Math.min(1, s / DUR))));
+    if (s === 0) { clk.textContent = 'GO'; clearInterval(h); }
+  }
+  var h = setInterval(tick, 250); tick();
+  document.getElementById('addA').addEventListener('click', function () { endsAt += 30000; tick(); });
+  document.getElementById('skipA').addEventListener('click', function () { endsAt = Date.now(); tick(); });
+})();
+</script>
+</body>
+</html>

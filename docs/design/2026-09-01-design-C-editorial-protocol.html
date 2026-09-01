@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design C — Editorial protocol</title>
+<style>
+/* ============================================================================
+   DESIGN C — EDITORIAL PROTOCOL
+   The typographic direction from the original "Protocol" prototype, modernised
+   for a phone. The session is a printed card: a ruled header band, a numbered
+   prescription set as a table of contents, and clinical notes set as footnotes.
+   Serif display, one restrained accent (oxblood), hairline rules, no fills.
+   Ground texture: agy-artifacts/paper.jpg (generated, no text), laid over the
+   paper colour at 25 % so body contrast stays above 4.5:1.
+   ========================================================================== */
+:root{
+  --paper:#f4efe6; --card:#fcfaf5; --band:#efe8db;
+  --ink:#1b1a17; --ink-2:#3f3b33; --ink-3:#625c4e;
+  --rule:#cec5b4; --rule-2:#b6ab96;
+  --accent:#8c2f21;      /* 7.3:1 on paper */
+  --serif:ui-serif,Georgia,"Iowan Old Style","Palatino Linotype","Times New Roman",serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --tap:44px; --dock:128px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#ded7c9;color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- mockup page chrome ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 6px;font-family:var(--serif);font-size:22px;letter-spacing:-.01em}
+.pagehead p{margin:0;max-width:70ch;color:#3f3b33;font-size:13.5px}
+.pagehead code{font-family:var(--mono);font-size:12.5px;background:#cec5b4;padding:1px 5px}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 60px}
+figure{margin:0}
+figcaption{font-family:var(--sans);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:#3f3b33;padding:0 0 8px 2px}
+figcaption b{color:#1b1a17;font-weight:700}
+@media(max-width:430px){.frames{padding:14px 0 40px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone frame ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--paper);border:1px solid var(--rule-2);box-shadow:0 10px 26px rgba(40,32,20,.20)}
+.grain{position:absolute;inset:0;z-index:1;pointer-events:none;opacity:.25;mix-blend-mode:multiply;
+  background-image:url("../../agy-artifacts/paper.jpg");background-size:390px 390px;background-repeat:repeat}
+.scroll{position:absolute;inset:0;z-index:2;overflow-y:auto;padding-bottom:calc(var(--dock) + 56px);
+  scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ---- masthead ---- */
+.sys{display:flex;justify-content:space-between;padding:8px 20px 0;font-size:11px;color:var(--ink-3);
+  font-family:var(--mono)}
+.masthead{padding:12px 20px 10px;border-bottom:2px solid var(--ink);display:flex;
+  justify-content:space-between;align-items:baseline}
+.masthead .name{font-family:var(--serif);font-size:17px;font-weight:600;letter-spacing:.01em}
+.masthead .meta{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+
+/* ---- printed session card ---- */
+.card{margin:18px 20px;background:var(--card);border:1px solid var(--rule-2);
+  box-shadow:0 1px 0 var(--rule)}
+.cardband{background:var(--band);border-bottom:1px solid var(--rule-2);padding:8px 16px;
+  display:flex;justify-content:space-between;align-items:baseline}
+.cardband span{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.cardbody{padding:18px 16px 16px}
+.kicker{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.cardbody h1{font-family:var(--serif);font-size:42px;line-height:1.02;font-weight:600;
+  letter-spacing:-.015em;margin:8px 0 6px}
+.deck{font-family:var(--serif);font-size:16px;line-height:1.45;color:var(--ink-2);font-style:italic;margin:0}
+.rule{height:1px;background:var(--rule);margin:14px 0}
+.rule.thick{height:2px;background:var(--ink)}
+.dl{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;align-items:baseline;
+  font-size:13.5px}
+.dl dt{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600;
+  grid-column:1}
+.dl .lead{border-bottom:1px dotted var(--rule-2);transform:translateY(-4px);grid-column:2}
+.dl dd{margin:0;font-family:var(--serif);font-size:16px;font-variant-numeric:tabular-nums;grid-column:3}
+
+/* ---- prescription list ---- */
+.toc{margin:0 20px}
+.toc h2{font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:700;margin:0 0 4px;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+.toc-row{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:baseline;
+  min-height:var(--tap);padding:9px 0;border-bottom:1px solid var(--rule)}
+.toc-row .n{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.toc-row .nm{font-family:var(--serif);font-size:17px;line-height:1.2}
+.toc-row .rx{font-family:var(--mono);font-size:12px;color:var(--ink-2);white-space:nowrap}
+
+/* ---- controls ---- */
+.minor{display:flex;gap:10px;padding:0 0 8px;flex-wrap:wrap}
+.btn-min{flex:1 1 0;min-width:96px;min-height:var(--tap);border:1px solid var(--ink);background:transparent;
+  color:var(--ink);font-family:var(--serif);font-size:14.5px;cursor:pointer;padding:6px 8px}
+.btn-min:active{background:var(--band)}
+.foot{padding:12px 20px 20px;font-size:12px;color:var(--ink-3);line-height:1.6;font-family:var(--serif)}
+.foot sup{font-family:var(--sans);font-size:9px;color:var(--accent);font-weight:700}
+.dockwrap{position:absolute;left:0;right:0;bottom:56px;z-index:40;padding:10px 20px 12px;
+  background:var(--paper);border-top:1px solid var(--rule-2)}
+.dockwrap::before{content:"";position:absolute;left:0;right:0;top:-26px;height:26px;pointer-events:none;
+  background:linear-gradient(to top,var(--paper),rgba(244,239,230,0))}
+.btn-primary{width:100%;min-height:54px;border:0;background:var(--accent);color:#fdf8f2;
+  font-family:var(--serif);font-weight:600;font-size:18px;letter-spacing:.02em;cursor:pointer}
+.nav{position:absolute;left:0;right:0;bottom:0;height:56px;display:flex;z-index:41;
+  border-top:1px solid var(--ink);background:var(--band)}
+.nav button{flex:1;min-height:56px;background:transparent;border:0;color:var(--ink-3);
+  font-family:var(--sans);font-size:10px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;font-weight:600}
+.nav button.on{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+
+/* ---- rest timer, engraved ---- */
+.rest{margin:18px 20px;border:1px solid var(--ink);background:var(--card);padding:16px;
+  display:flex;gap:16px;align-items:center}
+.ring{width:124px;height:124px;flex:0 0 124px;position:relative}
+.ring svg{transform:rotate(-90deg);display:block}
+.ring .rd{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .rd .t{font-family:var(--serif);font-size:34px;font-weight:600;font-variant-numeric:tabular-nums;
+  line-height:1;color:var(--ink)}
+.ring .rd .s{font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin-top:4px;font-weight:600}
+.rest-side{flex:1;min-width:0}
+.rest-side p{margin:0 0 12px;font-family:var(--serif);font-size:13.5px;color:var(--ink-2);line-height:1.45}
+.rest-side p b{font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.rest-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rest-btns button{min-height:var(--tap);border:1px solid var(--ink);background:transparent;color:var(--ink);
+  font-family:var(--sans);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-weight:600}
+.hyd{margin:0 20px 18px;padding-left:14px;border-left:3px solid var(--accent)}
+.hyd .h{font-family:var(--serif);font-size:19px;line-height:1.25}
+.hyd .s{font-size:12.5px;color:var(--ink-3);line-height:1.55;margin-top:4px;font-family:var(--serif)}
+
+/* ---- set table ---- */
+.exblock{margin:0 20px 18px}
+.exhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;
+  border-bottom:2px solid var(--ink);padding-bottom:6px}
+.exhead .nm{font-family:var(--serif);font-size:21px;line-height:1.15}
+.exhead .u{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--ink-3);border:1px solid var(--rule-2);padding:3px 6px}
+.exhead .u.kg{color:var(--accent);border-color:var(--accent)}
+.rx-line{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);margin-top:6px;letter-spacing:.04em}
+.note{font-family:var(--serif);font-size:13.5px;color:var(--ink-2);line-height:1.55;margin:10px 0 4px}
+.note b{color:var(--accent);font-weight:600;font-variant-numeric:tabular-nums}
+table.sets{width:100%;border-collapse:collapse;margin-top:8px}
+table.sets th{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);
+  font-weight:700;text-align:right;padding:0 0 6px;border-bottom:1px solid var(--rule)}
+table.sets th:first-child{text-align:left}
+table.sets td{height:var(--tap);border-bottom:1px solid var(--rule);text-align:right;
+  font-family:var(--serif);font-size:19px;font-variant-numeric:tabular-nums}
+table.sets td:first-child{text-align:left;font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+table.sets td .u{font-family:var(--sans);font-size:10.5px;color:var(--ink-3);margin-left:3px;font-weight:600}
+table.sets td.mk{width:34px;font-size:15px;color:var(--accent)}
+table.sets tr.open td{color:var(--ink-3)}
+table.sets tr.open td.mk{color:var(--ink-3)}
+
+/* ---- week review ---- */
+.record{margin:0 20px}
+.record h2{font-family:var(--serif);font-size:26px;font-weight:600;margin:18px 0 2px;letter-spacing:-.01em}
+.record .sub{font-family:var(--mono);font-size:11.5px;color:var(--ink-3);letter-spacing:.06em}
+.bigdelta{display:flex;align-items:baseline;gap:14px;margin:16px 0 4px;padding-bottom:14px;
+  border-bottom:2px solid var(--ink)}
+.bigdelta .n{font-family:var(--serif);font-size:66px;line-height:.85;font-weight:600;
+  font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--accent)}
+.bigdelta .c{font-family:var(--serif);font-size:14.5px;line-height:1.45;color:var(--ink-2)}
+.bigdelta .c b{color:var(--ink);font-weight:600}
+.marks{display:grid;grid-template-columns:repeat(7,1fr);gap:0;margin-top:14px;
+  border:1px solid var(--ink)}
+.mkcell{border-right:1px solid var(--rule);padding:9px 0 7px;text-align:center;min-height:52px}
+.mkcell:last-child{border-right:0}
+.mkcell .g{font-family:var(--serif);font-size:19px;line-height:1}
+.mkcell .d{font-size:9px;letter-spacing:.1em;color:var(--ink-3);margin-top:4px;font-weight:600}
+.mkcell.done .g{color:var(--accent)}
+.mkcell.skip .g{color:var(--ink-2)}
+.mkcell.none .g{color:var(--rule-2)}
+.keyline{font-family:var(--serif);font-size:12px;color:var(--ink-3);margin-top:8px;line-height:1.5}
+table.tg{width:100%;border-collapse:collapse;margin-top:16px}
+table.tg caption{text-align:left;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:700;padding-bottom:6px;border-bottom:1px solid var(--ink)}
+table.tg th{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+  text-align:right;font-weight:700;padding:8px 0 4px}
+table.tg th:first-child{text-align:left}
+table.tg td{padding:10px 0;border-bottom:1px solid var(--rule);font-family:var(--serif);font-size:16px;
+  font-variant-numeric:tabular-nums;text-align:right}
+table.tg td:first-child{text-align:left;font-size:13.5px;font-family:var(--sans);color:var(--ink-2)}
+table.tg td small{color:var(--ink-3);font-size:12px}
+.gauge{height:8px;border:1px solid var(--rule-2);position:relative;margin-top:6px;background:transparent}
+.gauge i{position:absolute;inset:0 auto 0 0;background:var(--ink-2);display:block}
+.gauge i.short{background:repeating-linear-gradient(90deg,var(--ink-2) 0 3px,transparent 3px 5px)}
+.gauge .band{position:absolute;top:-2px;bottom:-2px;border-left:1px solid var(--accent);border-right:1px solid var(--accent);
+  background:rgba(140,47,33,.12)}
+.gauge .t{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--accent)}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design C — Editorial protocol</h1>
+  <p>Paper ground, serif display, hairline rules, one restrained accent. The session is a printed card with a ruled header band; the prescription is set as a table of contents with leader rules; clinical qualifications are set as footnotes rather than pushed into the interface chrome. Ground texture from <code>agy-artifacts/paper.jpg</code>, laid at 25 % opacity so <code>--ink-3</code> stays at 5.4:1.</p>
+</header>
+
+<div class="frames">
+
+<!-- ============================= 1 · TODAY ============================= -->
+<figure>
+  <figcaption><b>1 · Today</b> — 390 × 844</figcaption>
+  <div class="phone">
+    <div class="grain"></div>
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>Tue 1 Sep 2026</span></div>
+      <div class="masthead"><span class="name">The Protocol</span><span class="meta">Session 12 / 48</span></div>
+
+      <div class="card">
+        <div class="cardband"><span>Today &middot; Tuesday 1 September</span><span>Lift</span></div>
+        <div class="cardbody">
+          <div class="kicker">Session twelve of forty-eight</div>
+          <h1>Upper</h1>
+          <p class="deck">Six exercises. Two barbell compounds, one press, three assistance movements. Roughly fifty-five minutes.</p>
+          <div class="rule"></div>
+          <dl class="dl">
+            <dt>Scheduled</dt><span class="lead"></span><dd>18:00</dd>
+            <dt>Starts in</dt><span class="lead"></span><dd>8 min</dd>
+            <dt>This week</dt><span class="lead"></span><dd>1 of 4</dd>
+            <dt>Plan position</dt><span class="lead"></span><dd>12 / 48</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="toc">
+        <h2>Prescription</h2>
+        <div class="toc-row"><span class="n">I</span><span class="nm">Barbell bench press</span><span class="rx">3 &times; 6&ndash;8</span></div>
+        <div class="toc-row"><span class="n">II</span><span class="nm">Barbell row (Pendlay)</span><span class="rx">3 &times; 6&ndash;8</span></div>
+        <div class="toc-row"><span class="n">III</span><span class="nm">Overhead press</span><span class="rx">3 &times; 8&ndash;10</span></div>
+        <div class="toc-row"><span class="n">IV</span><span class="nm">Lat pulldown</span><span class="rx">3 &times; 10&ndash;12</span></div>
+        <div class="toc-row"><span class="n">V</span><span class="nm">Face pull</span><span class="rx">2 &times; 12&ndash;15</span></div>
+        <div class="toc-row"><span class="n">VI</span><span class="nm">Barbell curl</span><span class="rx">2 &times; 10&ndash;12</span></div>
+      </div>
+
+      <div class="foot">
+        <sup>1</sup>&nbsp;Pausing holds the cursor at session 12; weekly targets are suspended for any week the pause overlaps, and that week records a delta of zero.<br>
+        <sup>2</sup>&nbsp;Skipping advances the cursor to session 13 and records the reason. It cannot be undone from this screen.<br>
+        <sup>3</sup>&nbsp;Training something else offers Push or Pull &mdash; the labels still owed this week. The remaining sessions reorder; none is dropped.
+      </div>
+    </div>
+
+    <div class="dockwrap">
+      <div class="minor">
+        <button class="btn-min">Pause plan</button>
+        <button class="btn-min">Skip today</button>
+        <button class="btn-min">Train other</button>
+      </div>
+      <button class="btn-primary">Begin session</button>
+    </div>
+    <nav class="nav">
+      <button class="on">Today</button><button>Train</button><button>Plan</button><button>Log</button><button>More</button>
+    </nav>
+  </div>
+</figure>
+
+<!-- ============================= 2 · TRAIN ============================= -->
+<figure>
+  <figcaption><b>2 · Train</b> — mid-session, rest running</figcaption>
+  <div class="phone">
+    <div class="grain"></div>
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span>Elapsed 31 min</span></div>
+      <div class="masthead"><span class="name">Upper</span><span class="meta">2 of 6 &middot; session 12 / 48</span></div>
+
+      <div class="rest">
+        <div class="ring">
+          <svg width="124" height="124" viewBox="0 0 124 124" aria-hidden="true">
+            <circle cx="62" cy="62" r="54" fill="none" stroke="#cec5b4" stroke-width="1"></circle>
+            <circle cx="62" cy="62" r="48" fill="none" stroke="#cec5b4" stroke-width="1"></circle>
+            <circle id="arcC" cx="62" cy="62" r="51" fill="none" stroke="#8c2f21" stroke-width="5"
+                    stroke-dasharray="320.4" stroke-dashoffset="34.7"></circle>
+          </svg>
+          <div class="rd"><div class="t" id="clkC">1:47</div><div class="s">Rest</div></div>
+        </div>
+        <div class="rest-side">
+          <p>Prescribed <b>2:00</b> after a compound set of six to eight repetitions. Ends at <b>18:24:52</b>.</p>
+          <div class="rest-btns"><button id="addC">+30 s</button><button id="skipC">Skip</button></div>
+        </div>
+      </div>
+
+      <div class="hyd">
+        <div class="h">Drink to thirst.</div>
+        <div class="s">Session active 31 minutes. This cue appears at most once every twenty minutes. No fixed volume is prescribed between sets; replacement is judged from body-mass change across the session.</div>
+      </div>
+
+      <div class="exblock">
+        <div class="exhead"><span class="nm">Barbell bench press</span><span class="u">LB</span></div>
+        <div class="rx-line">3 &times; 6&ndash;8 &middot; rest 2:00 &middot; upper compound</div>
+        <p class="note">Suggested <b>140 lb</b>, five pounds above last session. All three sets reached eight repetitions on 25 August; two and a half per cent of 135 lb is 3.4 lb, rounded up to the five-pound barbell step.</p>
+        <table class="sets">
+          <tr><th>Set</th><th>Load</th><th>Reps</th><th></th></tr>
+          <tr><td>1</td><td>140<span class="u">lb</span></td><td>8</td><td class="mk">&#10003;</td></tr>
+          <tr><td>2</td><td>140<span class="u">lb</span></td><td>7</td><td class="mk">&#10003;</td></tr>
+          <tr class="open"><td>3</td><td>140<span class="u">lb</span></td><td>&mdash;</td><td class="mk">&#9633;</td></tr>
+        </table>
+      </div>
+
+      <div class="exblock">
+        <div class="exhead"><span class="nm">Lat pulldown</span><span class="u kg">KG</span></div>
+        <div class="rx-line">3 &times; 10&ndash;12 &middot; rest 1:30 &middot; machine stack</div>
+        <p class="note">Hold <b>45 kg</b>. The smallest increment on this stack is 5 kg &mdash; eleven per cent of the current load, above the ten per cent ceiling. The repetition target is extended to <b>10&ndash;14</b> instead. The stack is marked in kilograms and is recorded as entered.</p>
+        <table class="sets">
+          <tr><th>Set</th><th>Load</th><th>Reps</th><th></th></tr>
+          <tr><td>1</td><td>45<span class="u">kg</span></td><td>12</td><td class="mk">&#10003;</td></tr>
+          <tr class="open"><td>2</td><td>45<span class="u">kg</span></td><td>&mdash;</td><td class="mk">&#9633;</td></tr>
+          <tr class="open"><td>3</td><td>45<span class="u">kg</span></td><td>&mdash;</td><td class="mk">&#9633;</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="dockwrap"><button class="btn-primary">Record set three</button></div>
+    <nav class="nav">
+      <button>Today</button><button class="on">Train</button><button>Plan</button><button>Log</button><button>More</button>
+    </nav>
+  </div>
+</figure>
+
+<!-- =========================== 3 · WEEK REVIEW ========================== -->
+<figure>
+  <figcaption><b>3 · Week review</b> — closed week</figcaption>
+  <div class="phone">
+    <div class="grain"></div>
+    <div class="scroll">
+      <div class="sys"><span>08:04</span><span>Mon 31 Aug 2026</span></div>
+      <div class="masthead"><span class="name">Record of the week</span><span class="meta">Closed</span></div>
+
+      <div class="record">
+        <h2>Week of 24 August</h2>
+        <div class="sub">2026-08-24 &rarr; 2026-08-30 &middot; target 4 sessions</div>
+
+        <div class="bigdelta">
+          <span class="n tabnum">&minus;2</span>
+          <span class="c"><b>Two of four sessions completed.</b> One skipped, one slot not logged. The plan was not paused, so the shortfall stands as recorded.</span>
+        </div>
+
+        <div class="marks">
+          <div class="mkcell done"><div class="g">&#9679;</div><div class="d">MON</div></div>
+          <div class="mkcell done"><div class="g">&#9679;</div><div class="d">TUE</div></div>
+          <div class="mkcell none"><div class="g">&middot;</div><div class="d">WED</div></div>
+          <div class="mkcell skip"><div class="g">&#10005;</div><div class="d">THU</div></div>
+          <div class="mkcell none"><div class="g">&middot;</div><div class="d">FRI</div></div>
+          <div class="mkcell"><div class="g">&#9675;</div><div class="d">SAT</div></div>
+          <div class="mkcell none"><div class="g">&middot;</div><div class="d">SUN</div></div>
+        </div>
+        <div class="keyline">&#9679; completed &nbsp;&middot;&nbsp; &#10005; skipped &nbsp;&middot;&nbsp; &#9675; slot not logged &nbsp;&middot;&nbsp; &middot; no slot scheduled</div>
+
+        <table class="tg">
+          <caption>Daily targets &middot; mean over the week</caption>
+          <tr><th>Measure</th><th>Recorded</th><th>Target</th></tr>
+          <tr><td>Energy<div class="gauge"><i class="short" style="width:74.1%"></i><span class="t" style="left:79.9%"></span></div></td>
+              <td>2,180 <small>kcal</small></td><td><small>2,350</small></td></tr>
+          <tr><td>Protein<div class="gauge"><span class="band" style="left:60%;width:16%"></span><i style="width:65.6%"></i></div></td>
+              <td>164 <small>g</small></td><td><small>150&ndash;190</small></td></tr>
+          <tr><td>Fluid<div class="gauge"><i class="short" style="width:57.3%"></i><span class="t" style="left:79.9%"></span></div></td>
+              <td>2,150 <small>mL</small></td><td><small>3,000</small></td></tr>
+          <tr><td>Body mass<div class="gauge" style="border-color:transparent"></div></td>
+              <td>185.4 <small>lb</small></td><td><small>&minus;0.7 wk</small></td></tr>
+        </table>
+      </div>
+
+      <div class="foot">
+        <sup>1</sup>&nbsp;Gauges are drawn to a common scale of one and a quarter times the target, so their lengths are comparable across rows. Broken fill marks a shortfall.<br>
+        <sup>2</sup>&nbsp;Protein is a range, not a point. The bracketed region is the target band; 164 g falls inside it.<br>
+        <sup>3</sup>&nbsp;A single week of body-mass change lies inside ordinary day-to-day fluid variation and is not evidence of a trend.
+      </div>
+    </div>
+
+    <div class="dockwrap"><button class="btn-primary">Close the week</button></div>
+    <nav class="nav">
+      <button>Today</button><button>Train</button><button>Plan</button><button class="on">Log</button><button>More</button>
+    </nav>
+  </div>
+</figure>
+
+</div>
+
+<script>
+/* Engraved rest dial. Circumference = 2*pi*51 = 320.44 px. */
+(function () {
+  var C = 320.44, DUR = 120, rem = 107;
+  var arc = document.getElementById('arcC'), clk = document.getElementById('clkC');
+  var endsAt = Date.now() + rem * 1000;
+  function fmt(s) { var m = Math.floor(s / 60), r = s % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  function tick() {
+    var s = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+    clk.textContent = s === 0 ? 'Go' : fmt(s);
+    arc.setAttribute('stroke-dashoffset', String(C * (1 - Math.min(1, s / DUR))));
+    if (s === 0) clearInterval(h);
+  }
+  var h = setInterval(tick, 250); tick();
+  document.getElementById('addC').addEventListener('click', function () { endsAt += 30000; tick(); });
+  document.getElementById('skipC').addEventListener('click', function () { endsAt = Date.now(); tick(); });
+})();
+</script>
+</body>
+</html>
