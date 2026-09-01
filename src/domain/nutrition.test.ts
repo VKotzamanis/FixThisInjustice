@@ -4,6 +4,7 @@ import {
   ACTIVITY_BAND,
   ACTIVITY_FACTOR,
   FAT_LOSS_RATE_BOUND,
+  NUTRITION_DOMAIN,
   computeTargets,
   dailyBeverageTargetML,
   fatFreeMassKg,
@@ -137,9 +138,12 @@ describe('activity factors', () => {
 });
 
 describe('energy target by goal', () => {
-  it('cuts 15 % of TDEE for fat loss', () => {
-    // 1780 x 1.70 = 3026; 3026 x 0.85 = 2572.1 -> 2572 kcal/day
-    expect(computeTargets({ ...base, goal: 'fat-loss' }).targetKcal).toBe(2572); // kcal/day
+  it('cuts 10 % of TDEE for fat loss', () => {
+    // Content review Deliverable 1 section 2.2, row "Plateau response": cut 10-15 % of
+    // current intake. The BOTTOM of that band is used because the activity factor is
+    // already the FAO band floor, so the two conservative choices must not compound.
+    // 1780 x 1.70 = 3026; 3026 x 0.90 = 2723.4 -> 2723 kcal/day
+    expect(computeTargets({ ...base, goal: 'fat-loss' }).targetKcal).toBe(2723); // kcal/day
   });
 
   it('adds 500 kcal for muscle gain', () => {
@@ -163,17 +167,20 @@ describe('expected rate of body-mass change', () => {
 
   it('never exceeds the Helms 0.5-1.0 %BW/week bound at any body mass', () => {
     fc.assert(
-      fc.property(fc.double({ min: 35, max: 250, noNaN: true }), (massKg) => {
-        const t = computeTargets({ ...base, massKg, goal: 'fat-loss' });
-        const rate = t.expectedRateKgPerWeek; // kg/week, signed
-        if (rate === null) return false;
-        const fraction = Math.abs(rate) / massKg; // fraction of body mass per week
-        return (
-          rate < 0 &&
-          fraction >= FAT_LOSS_RATE_BOUND.loFraction - 1e-12 &&
-          fraction <= FAT_LOSS_RATE_BOUND.hiFraction + 1e-12
-        );
-      }),
+      fc.property(
+        fc.double({ min: NUTRITION_DOMAIN.massKg.lo, max: NUTRITION_DOMAIN.massKg.hi, noNaN: true }),
+        (massKg) => {
+          const t = computeTargets({ ...base, massKg, goal: 'fat-loss' });
+          const rate = t.expectedRateKgPerWeek; // kg/week, signed
+          if (rate === null) return false;
+          const fraction = Math.abs(rate) / massKg; // fraction of body mass per week
+          return (
+            rate < 0 &&
+            fraction >= FAT_LOSS_RATE_BOUND.loFraction - 1e-12 &&
+            fraction <= FAT_LOSS_RATE_BOUND.hiFraction + 1e-12
+          );
+        },
+      ),
       { numRuns: 2000 },
     );
   });
@@ -270,7 +277,10 @@ describe('fluid and creatine', () => {
     // Content review Deliverable 2 section 11 engine rule, verbatim: "maintenance
     // max(3 g, 0.1 g/kg), capped near 10 g/d". Kreider 2017, DOI 10.1186/s12970-017-0173-z;
     // Antonio 2021, DOI 10.1186/s12970-021-00412-w. Dose by body mass, not sex.
-    expect(computeTargets({ ...base, creatine: true, massKg: 25 }).creatineG).toBe(3); // 0.1 x 25 = 2.5 -> floor 3 g/day
+    // The 3 g floor is INERT inside the adult domain: NUTRITION_DOMAIN.massKg.lo = 30 kg is
+    // exactly where 0.1 g/kg reaches 3 g, so max(3, 0.1*m) = 0.1*m for every admissible mass.
+    // It is kept as a guard on the constant, not as a live branch. 0.1 x 30 = 3 g/day.
+    expect(computeTargets({ ...base, creatine: true, massKg: 30 }).creatineG).toBe(3); // g/day
     expect(computeTargets({ ...base, creatine: true, massKg: 80 }).creatineG).toBe(8); // 0.1 x 80 = 8 g/day
     expect(computeTargets({ ...base, creatine: true, massKg: 95.3 }).creatineG).toBe(9.5); // 0.1 x 95.3 = 9.53 -> 9.5 g/day
     expect(computeTargets({ ...base, creatine: true, massKg: 140 }).creatineG).toBe(10); // 0.1 x 140 = 14 -> cap 10 g/day
@@ -288,12 +298,25 @@ describe('goal direction is monotone in energy', () => {
     const sexes: Sex[] = ['male', 'female'];
     fc.assert(
       fc.property(
-        fc.double({ min: 35, max: 250, noNaN: true }), // kg
-        fc.double({ min: 120, max: 220, noNaN: true }), // cm
-        fc.integer({ min: 16, max: 90 }), // years
+        // Sampled inside the adult domain the engine validates (NUTRITION_DOMAIN);
+        // outside it computeTargets throws by design, so the property does not apply.
+        fc.double({ min: NUTRITION_DOMAIN.massKg.lo, max: NUTRITION_DOMAIN.massKg.hi, noNaN: true }), // kg
+        fc.double({
+          min: NUTRITION_DOMAIN.heightCm.lo,
+          max: NUTRITION_DOMAIN.heightCm.hi,
+          noNaN: true,
+        }), // cm
+        fc.integer({ min: NUTRITION_DOMAIN.ageYears.lo, max: NUTRITION_DOMAIN.ageYears.hi }), // years
         fc.constantFrom(...sexes),
         fc.constantFrom(...ACTIVITY_LEVELS),
-        fc.option(fc.double({ min: 3, max: 60, noNaN: true }), { nil: null }), // percent
+        fc.option(
+          fc.double({
+            min: NUTRITION_DOMAIN.bodyFatPct.lo,
+            max: NUTRITION_DOMAIN.bodyFatPct.hi,
+            noNaN: true,
+          }),
+          { nil: null },
+        ), // percent
         (massKg, heightCm, ageYears, sex, activity, bodyFatPct) => {
           const shared = { ...base, massKg, heightCm, ageYears, sex, activity, bodyFatPct };
           const lossGoal: GoalKind = 'fat-loss';
@@ -320,5 +343,120 @@ describe('input validation', () => {
     expect(() => computeTargets({ ...base, heightCm: Number.POSITIVE_INFINITY })).toThrow(
       RangeError,
     );
+  });
+});
+
+/**
+ * The adult domain gate. Mifflin-St Jeor was validated on adults aged 19-78 (content review
+ * Deliverable 2 section 1, n=498), so the engine refuses input it cannot stand behind rather
+ * than extrapolating silently. Every message names the offending field so the wizard can
+ * attach the error to the right control (master plan section 6.3, P2 Task 7).
+ */
+describe('adult domain gate', () => {
+  it('publishes the bounds the wizard must reuse', () => {
+    expect(NUTRITION_DOMAIN.ageYears).toEqual({ lo: 18, hi: 80 }); // years
+    expect(NUTRITION_DOMAIN.heightCm).toEqual({ lo: 120, hi: 230 }); // cm
+    expect(NUTRITION_DOMAIN.massKg).toEqual({ lo: 30, hi: 300 }); // kg
+    expect(NUTRITION_DOMAIN.bodyFatPct).toEqual({ lo: 3, hi: 60 }); // percent of body mass
+    expect(NUTRITION_DOMAIN.sessionsPerWeek).toEqual({ lo: 0, hi: 14 }); // sessions/week
+  });
+
+  it('rejects a child and an impossible age, naming ageYears', () => {
+    expect(() => computeTargets({ ...base, ageYears: 8 })).toThrow(RangeError);
+    expect(() => computeTargets({ ...base, ageYears: 8 })).toThrow(/ageYears/);
+    expect(() => computeTargets({ ...base, ageYears: 400 })).toThrow(RangeError);
+    expect(() => computeTargets({ ...base, ageYears: 400 })).toThrow(/ageYears/);
+  });
+
+  it('rejects stature and body mass outside the domain, naming the field', () => {
+    expect(() => computeTargets({ ...base, heightCm: 119.9 })).toThrow(/heightCm/);
+    expect(() => computeTargets({ ...base, heightCm: 230.1 })).toThrow(/heightCm/);
+    expect(() => computeTargets({ ...base, massKg: 29.9 })).toThrow(/massKg/);
+    expect(() => computeTargets({ ...base, massKg: 300.1 })).toThrow(/massKg/);
+  });
+
+  it('rejects a training frequency that is not an integer in [0, 14]', () => {
+    expect(() => computeTargets({ ...base, sessionsPerWeek: Number.NaN })).toThrow(RangeError);
+    expect(() => computeTargets({ ...base, sessionsPerWeek: Number.NaN })).toThrow(
+      /sessionsPerWeek/,
+    );
+    expect(() => computeTargets({ ...base, sessionsPerWeek: -4 })).toThrow(RangeError);
+    expect(() => computeTargets({ ...base, sessionsPerWeek: -4 })).toThrow(/sessionsPerWeek/);
+    expect(() => computeTargets({ ...base, sessionsPerWeek: 15 })).toThrow(/sessionsPerWeek/);
+    expect(() => computeTargets({ ...base, sessionsPerWeek: 3.5 })).toThrow(/sessionsPerWeek/);
+  });
+
+  it('names bodyFatPct, not the internal fat-free-mass helper', () => {
+    // The bound is the engine's own domain, not fatFreeMassKg's wider [0, 100): a caller
+    // fixing the error must be told which INPUT field to change.
+    expect(() => computeTargets({ ...base, bodyFatPct: 2 })).toThrow(/bodyFatPct/);
+    expect(() => computeTargets({ ...base, bodyFatPct: 2 })).not.toThrow(/fatFreeMassKg/);
+    expect(() => computeTargets({ ...base, bodyFatPct: 61 })).toThrow(/bodyFatPct/);
+    expect(() => computeTargets({ ...base, bodyFatPct: Number.NaN })).toThrow(/bodyFatPct/);
+  });
+
+  it('accepts every boundary value', () => {
+    // Inclusive bounds. 18 y and 79-80 y are edge extrapolations of Mifflin's 19-78 y
+    // sample, documented as such in nutrition.ts; they are admitted, not silently ignored.
+    for (const ageYears of [18, 80]) {
+      expect(() => computeTargets({ ...base, ageYears })).not.toThrow();
+    }
+    for (const heightCm of [120, 230]) {
+      expect(() => computeTargets({ ...base, heightCm })).not.toThrow();
+    }
+    for (const massKg of [30, 300]) {
+      expect(() => computeTargets({ ...base, massKg })).not.toThrow();
+    }
+    for (const bodyFatPct of [3, 60]) {
+      expect(() => computeTargets({ ...base, bodyFatPct })).not.toThrow();
+    }
+    for (const sessionsPerWeek of [0, 14]) {
+      expect(() => computeTargets({ ...base, sessionsPerWeek })).not.toThrow();
+    }
+  });
+});
+
+describe('the basis strings disclose the conservative bias and the independence of the two estimates', () => {
+  it('states that the band floor and the band-minimum cut both lean conservative', () => {
+    const rule = computeTargets({ ...base, goal: 'fat-loss' }).basis.deficitRule;
+    expect(rule).toMatch(/10 % cut from TDEE/);
+    expect(rule).toMatch(/band floor/);
+    expect(rule).toMatch(/bottom of that 10-15 % band/);
+    expect(rule).toMatch(/lean conservative/);
+    expect(rule).toMatch(/HEURISTIC/);
+    // Compounding bias: never the top of the band while the PAL is already the floor.
+    expect(rule).not.toMatch(/15 % cut/);
+  });
+
+  it("says the review's row is a plateau response and that the target is re-derived", () => {
+    const rule = computeTargets({ ...base, goal: 'fat-loss' }).basis.deficitRule;
+    expect(rule).toMatch(/plateau response/i);
+    expect(rule).toMatch(/weight-stable/);
+    expect(rule).toMatch(/re-derived at every body-mass re-measure/);
+  });
+
+  it('uses no em-dash or en-dash anywhere in the basis strings', () => {
+    const goals: GoalKind[] = ['fat-loss', 'muscle-gain', 'maintenance', 'recomposition'];
+    for (const goal of goals) {
+      const b = computeTargets({ ...base, goal }).basis;
+      expect(b.deficitRule).not.toMatch(/[\u2013\u2014]/);
+      expect(b.rateRule).not.toMatch(/[\u2013\u2014]/);
+    }
+  });
+
+  it('states on every goal that the two estimates are never converted into each other', () => {
+    const goals: GoalKind[] = ['fat-loss', 'muscle-gain', 'maintenance', 'recomposition'];
+    for (const goal of goals) {
+      expect(computeTargets({ ...base, goal }).basis.rateRule).toMatch(
+        /separate estimates and are not converted into each other/,
+      );
+    }
+  });
+
+  it('keeps the muscle-gain null rate and its stated reason', () => {
+    const t = computeTargets({ ...base, goal: 'muscle-gain' });
+    expect(t.expectedRateKgPerWeek).toBeNull();
+    expect(t.basis.rateRule).toMatch(/no weekly rate/i);
+    expect(t.basis.rateRule).toMatch(/study duration/);
   });
 });
