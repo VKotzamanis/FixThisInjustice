@@ -52,7 +52,31 @@ beforeEach(() => {
   });
 });
 
+/**
+ * Teardowns for every persistence subscription a test started.
+ *
+ * startPersistence() attaches a store subscription and two window listeners
+ * that outlive the test that created them. A test that fails before its
+ * stop() would leave that subscription writing on behalf of every later test
+ * in the file, turning one failure into a cascade whose cause is invisible.
+ * The registry makes the teardown unconditional; stop() stays in the tests
+ * that assert on what it does, and is idempotent through the guard below.
+ */
+const liveTeardowns = new Set<() => void>();
+
+function startPersistenceForTest(): () => void {
+  const stop = startPersistence();
+  const teardown = (): void => {
+    if (!liveTeardowns.has(teardown)) return;
+    liveTeardowns.delete(teardown);
+    stop();
+  };
+  liveTeardowns.add(teardown);
+  return teardown;
+}
+
 afterEach(() => {
+  for (const teardown of [...liveTeardowns]) teardown();
   vi.useRealTimers();
   // Undo any per-test visibilityState stub, restoring the jsdom prototype getter.
   Reflect.deleteProperty(document, 'visibilityState');
@@ -117,7 +141,7 @@ describe('hydrate', () => {
     vi.useFakeTimers();
     const stored = { ...defaultState(), activeProfileId: 'p', profiles: { p: profile('p') } };
     installFakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) });
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
 
     useAppStore.getState().hydrate();
@@ -133,7 +157,7 @@ describe('persistence after a failed hydrate', () => {
   it('never overwrites a document that failed to load', () => {
     vi.useFakeTimers();
     installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
 
     useAppStore.getState().hydrate();
     expect(useAppStore.getState().status.lastLoadError).not.toBeNull();
@@ -149,7 +173,7 @@ describe('persistence after a failed hydrate', () => {
   it('drops a write that was already queued when the load failed', () => {
     vi.useFakeTimers();
     const data = installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     useAppStore.getState().hydrate();
 
     useAppStore.getState().setUi({ lastView: 'train' });
@@ -175,7 +199,7 @@ describe('persistence after a failed hydrate', () => {
   it('resumes writing once wipeAll clears the load error', () => {
     vi.useFakeTimers();
     installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     useAppStore.getState().hydrate();
 
     useAppStore.getState().wipeAll();
@@ -190,7 +214,7 @@ describe('persistence after a failed hydrate', () => {
   it('resumes writing once an import replaces the unreadable document', () => {
     vi.useFakeTimers();
     installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     useAppStore.getState().hydrate();
 
     const text = exportJson({ ...defaultState(), activeProfileId: null });
@@ -299,7 +323,7 @@ describe('wipeAll', () => {
   it('leaves no document behind after the debounce window, until the next change', () => {
     vi.useFakeTimers();
     installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     useAppStore.getState().hydrate();
 
     // A write is already queued when the user clears: it must not land either.
@@ -322,7 +346,7 @@ describe('persistence subscription', () => {
     installFakeStorage();
     useAppStore.getState().hydrate();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
 
     for (let i = 0; i < 3; i += 1) {
       useAppStore.getState().setUi({ lastView: `view-${String(i)}` });
@@ -343,7 +367,7 @@ describe('persistence subscription', () => {
     installFakeStorage();
     useAppStore.getState().hydrate();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
 
     useAppStore.getState().reportSaveResult({ ok: false, reason: 'quota', error: 'full' });
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
@@ -357,7 +381,7 @@ describe('persistence subscription', () => {
     installFakeStorage();
     useAppStore.getState().hydrate();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
 
     useAppStore.getState().replaceState({ ...defaultState(), activeProfileId: null });
     window.dispatchEvent(new Event('pagehide'));
@@ -375,12 +399,17 @@ describe('persistence subscription', () => {
     installFakeStorage();
     useAppStore.getState().hydrate();
     makeStorageFull(new DOMException('full', 'QuotaExceededError'));
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
 
     useAppStore.getState().setUi({ lastView: 'train' });
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
 
-    expect(useAppStore.getState().status.lastSaveError).toBe('quota');
+    // The reason drives the copy; the message is kept for the banner's detail
+    // and for diagnosis, so the status carries both.
+    expect(useAppStore.getState().status.lastSaveError).toEqual({
+      reason: 'quota',
+      error: 'full',
+    });
     // Finding H3: the write failed, so the UI must say so — but the edit itself
     // is not silently rolled back underneath the user.
     expect(useAppStore.getState().ui.lastView).toBe('train');
@@ -392,10 +421,13 @@ describe('persistence subscription', () => {
     vi.useFakeTimers();
     installFakeStorage();
     useAppStore.getState().hydrate();
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
 
     useAppStore.getState().reportSaveResult({ ok: false, reason: 'quota', error: 'full' });
-    expect(useAppStore.getState().status.lastSaveError).toBe('quota');
+    expect(useAppStore.getState().status.lastSaveError).toEqual({
+      reason: 'quota',
+      error: 'full',
+    });
 
     useAppStore.getState().setUi({ lastView: 'today' });
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
@@ -408,7 +440,7 @@ describe('persistence subscription', () => {
     vi.useFakeTimers();
     installFakeStorage();
     useAppStore.getState().hydrate();
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
 
     useAppStore.getState().setUi({ lastView: 'train' });
@@ -440,12 +472,73 @@ describe('persistence subscription', () => {
     vi.useFakeTimers();
     installFakeStorage();
     useAppStore.getState().hydrate();
-    const stop = startPersistence();
+    const stop = startPersistenceForTest();
     stop();
 
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     useAppStore.getState().replaceState({ ...defaultState(), activeProfileId: null });
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+    expect(setItem).not.toHaveBeenCalled();
+  });
+});
+
+describe('retrySave', () => {
+  it('writes immediately and reports the outcome through the same status field', () => {
+    vi.useFakeTimers();
+    const data = installFakeStorage();
+    useAppStore.getState().hydrate();
+    startPersistenceForTest();
+
+    makeStorageFull(new DOMException('full', 'QuotaExceededError'));
+    useAppStore.getState().setUi({ lastView: 'train' });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(useAppStore.getState().status.lastSaveError).not.toBeNull();
+
+    // Storage recovers — the user emptied it in another tab — and the retry is
+    // the user's way of asking for the write again without editing anything.
+    installFakeStorage(Object.fromEntries(data));
+    useAppStore.getState().retrySave();
+
+    expect(useAppStore.getState().status.lastSaveError).toBeNull();
+    expect(readRaw()).toContain('"lastView":"train"');
+  });
+
+  it('refuses to write over a document that failed to load', () => {
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    useAppStore.getState().hydrate();
+    expect(useAppStore.getState().status.lastLoadError).not.toBeNull();
+
+    useAppStore.getState().retrySave();
+
+    // The same freeze the debounced path obeys: a retry is a user action, but
+    // not a decision to replace an unread document.
+    expect(readRaw()).toBe('{"week":999}');
+  });
+});
+
+/**
+ * A pair, in this order. The first test deliberately leaks a subscription; the
+ * second proves the afterEach teardown caught it. Without that teardown the
+ * second test sees the leaked writer and fails, which is the regression this
+ * guards: one failing test silently corrupting every test after it.
+ */
+describe('a leaked persistence subscription cannot reach the next test', () => {
+  it('starts a subscription and never stops it', () => {
+    installFakeStorage();
+    useAppStore.getState().hydrate();
+    startPersistenceForTest();
+    expect(useAppStore.getState().status.hydrated).toBe(true);
+  });
+
+  it('sees no write from the subscription the previous test left running', () => {
+    vi.useFakeTimers();
+    installFakeStorage();
+    useAppStore.setState({ status: { ...useAppStore.getState().status, hydrated: true } });
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+    useAppStore.getState().setUi({ lastView: 'leak-probe' });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+
     expect(setItem).not.toHaveBeenCalled();
   });
 });
@@ -478,14 +571,17 @@ describe('selectors', () => {
   it('exposes hydration and error status', () => {
     useAppStore.setState({
       status: {
-        lastSaveError: 'quota',
+        lastSaveError: { reason: 'quota', error: 'full' },
         lastLoadError: 'bad document',
         lastLoadRaw: '{"week":999}',
         hydrated: true,
       },
     });
     expect(renderHook(() => useHydrated()).result.current).toBe(true);
-    expect(renderHook(() => useSaveError()).result.current).toBe('quota');
+    expect(renderHook(() => useSaveError()).result.current).toEqual({
+      reason: 'quota',
+      error: 'full',
+    });
     expect(renderHook(() => useLoadError()).result.current).toBe('bad document');
   });
 });

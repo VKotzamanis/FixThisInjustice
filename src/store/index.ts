@@ -15,9 +15,23 @@ export const SAVE_DEBOUNCE_MS = 250;
 
 export type SaveErrorReason = SaveFailure;
 
+/**
+ * The last write failure, kept whole rather than reduced to its reason.
+ *
+ * The reason selects the copy and the controls the banner offers; the message
+ * is the thrown value's own text, which is the only thing that distinguishes
+ * one serialisation failure from another when the user reports it. Discarding
+ * it left the banner unable to say anything specific about a document that
+ * could not be serialised.
+ */
+export interface SaveError {
+  reason: SaveErrorReason;
+  error: string;
+}
+
 export interface StoreStatus {
   /** Non-null while the last write failed. The UI shows a blocking banner (H3). */
-  lastSaveError: SaveErrorReason | null;
+  lastSaveError: SaveError | null;
   /** Set when a stored document failed validation; the in-memory state is the last known good one. */
   lastLoadError: string | null;
   /**
@@ -43,6 +57,11 @@ export interface AppActions {
   setUi(patch: Partial<UiPrefs>): void;
   /** Records the outcome of a persistence write. Called only by the subscription below. */
   reportSaveResult(r: SaveResult): void;
+  /**
+   * Writes the current document now and records the outcome, for the user to
+   * invoke from the save-failure banner. The one write not driven by a change.
+   */
+  retrySave(): void;
 }
 
 /**
@@ -95,8 +114,15 @@ let pending: AppState | null = null;
  */
 let suppressWrite = false;
 
-/** Drops a queued write. The state stays; only the intent to store it goes. */
-function cancelPendingSave(): void {
+/**
+ * Drops a queued write. The state stays; only the intent to store it goes.
+ *
+ * Exported for one caller: RootErrorBoundary, which clears storage when the
+ * store itself has thrown and wipeAll() is therefore not reachable. A clear
+ * that leaves a queued write behind re-creates the key one debounce later
+ * (master plan §3), so the cancel has to be available without the store.
+ */
+export function cancelPendingSave(): void {
   if (saveTimer !== null) {
     clearTimeout(saveTimer);
     saveTimer = null;
@@ -217,9 +243,28 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 
   reportSaveResult(r: SaveResult): void {
-    const reason = r.ok ? null : r.reason;
-    if (get().status.lastSaveError === reason) return;
-    set({ status: { ...get().status, lastSaveError: reason } });
+    const next: SaveError | null = r.ok ? null : { reason: r.reason, error: r.error };
+    const prev = get().status.lastSaveError;
+    // Identity comparison is gone with the object, so compare by value: an
+    // unchanged failure must not produce a new status object every 250 ms and
+    // re-render every banner subscriber.
+    if (prev === null && next === null) return;
+    if (prev !== null && next !== null && prev.reason === next.reason && prev.error === next.error) {
+      return;
+    }
+    set({ status: { ...get().status, lastSaveError: next } });
+  },
+
+  retrySave(): void {
+    // The same gate the subscription obeys. A retry is a user action, but not
+    // a decision to replace a document the store never managed to read: that
+    // decision is wipeAll() or replaceState(), and only those reopen writing.
+    if (!canPersist(get().status)) return;
+    // The user asked for this write, so it goes now rather than through the
+    // debounce, and any queued write is dropped: it can only carry an older
+    // document than the one about to be written.
+    cancelPendingSave();
+    get().reportSaveResult(save(selectState(get())));
   },
 }));
 

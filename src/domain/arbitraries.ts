@@ -24,6 +24,7 @@ import type {
   WeeklyReview,
 } from './types';
 import { addDays } from './dates';
+import { MAX_EPOCH_MS } from './schema';
 
 /**
  * fast-check generators for the persisted document.
@@ -76,8 +77,17 @@ const anyIsoWeekday = fc.constantFrom(
   6 as const,
   7 as const,
 );
-/** [ms] Epoch instants inside a plausible app lifetime, kept integral. */
-const anyEpochMs = fc.integer({ min: 1_600_000_000_000, max: 2_200_000_000_000 });
+/**
+ * [ms] Epoch instants, bounded by the schema's own limit rather than by a
+ * plausible app lifetime.
+ *
+ * The bound is imported, not repeated: the round-trip property is the only
+ * check that the generator and EpochMsSchema agree, so a generator with its own
+ * literal would keep passing while the schema moved underneath it — and would
+ * never exercise the extremes the schema now accepts. fc.integer is inclusive
+ * at both ends, so ±MAX_EPOCH_MS themselves are generated.
+ */
+const anyEpochMs = fc.integer({ min: -MAX_EPOCH_MS, max: MAX_EPOCH_MS });
 
 export const anyProfile: fc.Arbitrary<Profile> = fc.record({
   id: anyId,
