@@ -15,6 +15,7 @@ import type {
   PlanTemplate,
   Prescription,
   Profile,
+  PushDevice,
   ReminderSettings,
   SessionAssignment,
   SpecimenInventory,
@@ -210,7 +211,7 @@ export const anyPlanTemplate: fc.Arbitrary<PlanTemplate> = fc.record({
   sessions: fc.array(
     fc.record({
       id: anyId,
-      ordinal: fc.integer({ min: 0, max: 200 }),
+      ordinal: fc.integer({ min: 1, max: 200 }), // 1-based position in the plan
       name: anyText,
       kind: fc.constantFrom('lift' as const, 'cardio' as const),
       label: anyText,
@@ -273,7 +274,12 @@ export const anyLoggedSet: fc.Arbitrary<LoggedSet> = fc.record({
   enteredUnit: anyUnitSystem,
   reps: fc.option(fc.integer({ min: 1, max: 100 }), { nil: null }),
   durationS: fc.option(finite(0, 86_400), { nil: null }), // [s]
-  rpe: fc.option(finite(1, 10), { nil: null }),
+  // dimensionless, 1-10 on the half-point grid the schema enforces. n / 2 for
+  // integral n is exact in binary floating point, so it survives JSON unchanged.
+  rpe: fc.option(
+    fc.integer({ min: 2, max: 20 }).map((n) => n / 2),
+    { nil: null },
+  ),
   loggedAt: anyEpochMs,
 });
 
@@ -365,6 +371,44 @@ const anyNotesForProfile: fc.Arbitrary<Record<LocalDate, string>> = fc
     return out;
   });
 
+/**
+ * base64url is the encoding the Web Push API uses for the subscription keys
+ * (RFC 8291 / RFC 4648 section 5): the URL-safe alphabet, no padding.
+ */
+const BASE64URL_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'.split(
+  '',
+);
+
+function base64Url(length: number): fc.Arbitrary<string> {
+  return fc
+    .array(fc.constantFrom(...BASE64URL_ALPHABET), { minLength: length, maxLength: length })
+    .map((chars) => chars.join(''));
+}
+
+/**
+ * A push subscription as a real user agent hands it over: an https endpoint on a
+ * push service, a 65-byte uncompressed P-256 public key (87 base64url chars) and
+ * a 16-byte auth secret (22 base64url chars).
+ */
+export const anyPushDevice: fc.Arbitrary<PushDevice> = fc.record({
+  deviceId: anyId,
+  secret: base64Url(32),
+  endpoint: fc
+    .tuple(
+      fc.constantFrom(
+        'https://fcm.googleapis.com/fcm/send/',
+        'https://updates.push.services.mozilla.com/wpush/v2/',
+        'https://wns2-par02p.notify.windows.com/w/?token=',
+      ),
+      base64Url(24),
+    )
+    .map(([prefix, token]) => `${prefix}${token}`),
+  keys: fc.record({ p256dh: base64Url(87), auth: base64Url(22) }),
+  createdAt: anyEpochMs, // [ms]
+  lastSyncAt: fc.option(anyEpochMs, { nil: null }), // [ms]
+  lastSyncHash: fc.option(base64Url(43), { nil: null }),
+});
+
 export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   bootSeen: fc.boolean(),
   lastView: anyText,
@@ -420,7 +464,7 @@ export const anyAppState: fc.Arbitrary<AppState> = fc
       intake: byProfile(fc.array(anyIntakeEntry, { maxLength: 3 })),
       weeklyReviews: byProfile(fc.array(anyWeeklyReview, { maxLength: 3 })),
       reminderSettings: byProfile(anyReminderSettings),
-      pushDevice: fc.constant(null),
+      pushDevice: fc.option(anyPushDevice, { nil: null }),
       motivation: byProfile(anyMotivationState),
       specimens: byProfile(anySpecimenInventory),
       capsules: byProfile(fc.option(anyTimeCapsule, { nil: null })),

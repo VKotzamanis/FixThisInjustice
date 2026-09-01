@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, expectTypeOf, it } from 'vitest';
 import fc from 'fast-check';
-import { AppStateSchema, CURRENT_SCHEMA_VERSION, defaultState, parseState } from './schema';
+import type { z } from 'zod';
+import {
+  AppStateSchema,
+  CURRENT_SCHEMA_VERSION,
+  PlannedSessionSchema,
+  defaultState,
+  parseState,
+} from './schema';
 import { anyAppState } from './arbitraries';
+import { MICRO_PLATE_STEP } from './types';
 import type { AppState } from './types';
 
 /**
@@ -13,6 +21,24 @@ const FIXTURES: Record<string, { default: unknown }> = import.meta.glob(
   './migrations/fixtures/*.json',
   { eager: true },
 );
+
+/**
+ * Type identity, not mutual assignability. The two conditional types are equal
+ * only when A and B are the same type to the checker, so a widened field, an
+ * added optional modifier or a field present on one side alone fails the check.
+ * Mutual assignability would not: an extra optional property is assignable both
+ * ways, which is exactly the drift this assertion exists to catch.
+ */
+type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2
+  ? true
+  : false;
+
+/**
+ * Compile-time parity between the schema's inferred output and the hand-written
+ * AppState in types.ts. `npm run typecheck` is the gate that enforces it; the
+ * test below only reads the constant so noUnusedLocals cannot remove it.
+ */
+const schemaInfersAppState: Equal<z.infer<typeof AppStateSchema>, AppState> = true;
 
 /** Deep clone through JSON exactly as persistence does. */
 function throughJson(value: unknown): unknown {
@@ -55,9 +81,11 @@ describe('fixtures', () => {
     }
   });
 
-  it('backfills the fields added after the fixture was captured', () => {
-    // v3-minimal.json predates the section 5 amendments, so it exercises every
-    // Zod default. A document written before a field existed must still load.
+  it('backfills the root-level fields added after the fixture was captured', () => {
+    // v3-minimal.json has empty profiles and no customExercises, so it reaches
+    // only the root and ui defaults. The profile-, exercise- and record-level
+    // defaults are unreachable from an empty document and are covered by the
+    // "legacy document" suite below, which supplies a profile to attach them to.
     const result = parseState(FIXTURES['./migrations/fixtures/v3-minimal.json']?.default);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -225,18 +253,307 @@ describe('hostile input is rejected without throwing', () => {
   });
 });
 
-describe('round trip', () => {
-  it('parse(serialize(state)) deep-equals state over 500 generated documents', () => {
-    fc.assert(
-      fc.property(anyAppState, (state: AppState) => {
-        const result = parseState(throughJson(state));
-        if (!result.ok) {
-          throw new Error(`generated state failed validation: ${result.error}`);
-        }
-        expect(result.state).toEqual(state);
-        return true;
-      }),
-      { numRuns: 500 },
-    );
+describe('the schema and the hand-written AppState are the same type', () => {
+  it('infers AppState exactly, field for field', () => {
+    // The gate is `npm run typecheck`: adding a field to one side and not the
+    // other makes the Equal<> assignment above a compile error. The runtime
+    // assertion only keeps the constant referenced.
+    expect(schemaInfersAppState).toBe(true);
+    expectTypeOf<z.infer<typeof AppStateSchema>>().toEqualTypeOf<AppState>();
   });
+});
+
+/** Profile id used by the legacy-document and record-key suites. */
+const P1 = 'profile-1';
+
+/**
+ * A profile as it was written BEFORE the section 5 amendments: equipmentSteps
+ * without microPlateKg, hydration without weighInOptIn, and no readiness block
+ * at all. Returned as `unknown` because it is deliberately not a valid Profile.
+ */
+function legacyProfile(id: string): unknown {
+  return {
+    id,
+    displayName: 'Legacy',
+    timezone: 'Europe/Athens',
+    units: 'metric',
+    createdAt: 1_700_000_000_000, // [ms]
+    body: {
+      sex: 'male',
+      birthYear: 1990, // [year]
+      heightCm: 180, // [cm]
+      baselineMassKg: 80, // [kg]
+      baselineAt: '2026-01-05',
+      baselineBodyFatPct: null,
+    },
+    activity: 'moderate',
+    experience: 'novice',
+    equipment: 'full-gym',
+    equipmentSteps: {
+      barbellKg: 2.5, // [kg] total on the bar
+      dumbbellPairKg: 5, // [kg] per pair
+      stackKg: 5, // [kg] per pin
+      hasMicroPlates: true,
+      // microPlateKg absent: the field postdates this document.
+    },
+    goal: { kind: 'muscle-gain', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
+    supplements: { creatine: false },
+    hydration: { dailyTargetML: 3_000, cupSizeML: 250 }, // [mL]; weighInOptIn absent
+    // readiness absent: the pre-participation screen postdates this document.
+  };
+}
+
+/** A custom exercise written before secondaryMuscles existed. */
+function legacyExercise(id: string): unknown {
+  return {
+    id,
+    name: 'Sled push',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'machine',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quadriceps'],
+    // secondaryMuscles absent: the half-set tally postdates this document.
+    equipment: ['full-gym'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  };
+}
+
+/**
+ * A whole document from before the amendments: one profile, no customExercises
+ * and no notes maps, and a ui block missing all three additive keys.
+ */
+function legacyDocument(): Record<string, unknown> {
+  return {
+    schemaVersion: 3,
+    activeProfileId: P1,
+    profiles: { [P1]: legacyProfile(P1) },
+    availability: {},
+    plans: {},
+    cursors: {},
+    pauses: {},
+    assignments: {},
+    sets: {},
+    bodyMass: {},
+    hydration: {},
+    intake: {},
+    weeklyReviews: {},
+    reminderSettings: {},
+    pushDevice: null,
+    motivation: {},
+    specimens: {},
+    capsules: {},
+    // customExercises and notes absent.
+    ui: {
+      bootSeen: true,
+      lastView: 'today',
+      accent: '#a3e635',
+      scanlines: true,
+      flicker: false,
+      density: 'normal',
+      // videoInstanceHost, legacyMigration and lastBlockSeenByProfile absent.
+    },
+  };
+}
+
+describe('a document written before the section 5 amendments', () => {
+  it('backfills every default, at the root, the profile and the exercise', () => {
+    const doc = legacyDocument();
+    doc.customExercises = { [P1]: [legacyExercise('custom-1')] };
+
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const state = result.state;
+
+    const profile = state.profiles[P1];
+    expect(profile).toBeDefined();
+    // [kg] The metric micro-plate pair, because the document carried hasMicroPlates
+    // but no step; MICRO_PLATE_STEP.metric is 0.5 kg total.
+    expect(profile?.equipmentSteps.microPlateKg).toBe(MICRO_PLATE_STEP.metric);
+    expect(profile?.hydration.weighInOptIn).toBe(false);
+    expect(profile?.readiness).toEqual({ screenedAt: null, flagged: false });
+
+    expect(state.customExercises[P1]?.[0]?.secondaryMuscles).toEqual([]);
+
+    expect(state.ui.videoInstanceHost).toBeNull();
+    expect(state.ui.legacyMigration).toBe('pending');
+    expect(state.ui.lastBlockSeenByProfile).toEqual({});
+
+    expect(state.notes).toEqual({});
+  });
+
+  it('defaults customExercises and notes to empty maps when both are absent', () => {
+    const result = parseState(legacyDocument());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.customExercises).toEqual({});
+    expect(result.state.notes).toEqual({});
+  });
+
+  it('gives each parse its own default objects, not a shared reference', () => {
+    // Same input document twice: if Zod handed out one default instance per
+    // schema rather than one per parse, the two results would alias and a write
+    // through the first would be visible in the second. Finding a shared default
+    // only after two profiles had corrupted each other is the failure this
+    // forecloses.
+    const doc = legacyDocument();
+    const first = parseState(doc);
+    const second = parseState(doc);
+    expect(first.ok).toBe(true);
+    expect(second.ok).toBe(true);
+    if (!first.ok || !second.ok) return;
+
+    expect(first.state.notes).not.toBe(second.state.notes);
+    expect(first.state.customExercises).not.toBe(second.state.customExercises);
+    expect(first.state.ui.lastBlockSeenByProfile).not.toBe(
+      second.state.ui.lastBlockSeenByProfile,
+    );
+    expect(first.state.profiles[P1]?.readiness).not.toBe(second.state.profiles[P1]?.readiness);
+
+    first.state.notes[P1] = { '2026-01-05': 'written into the first parse' };
+    first.state.customExercises[P1] = [];
+    first.state.ui.lastBlockSeenByProfile[P1] = 4;
+    const firstReadiness = first.state.profiles[P1]?.readiness;
+    if (firstReadiness !== undefined) firstReadiness.flagged = true;
+
+    expect(second.state.notes).toEqual({});
+    expect(second.state.customExercises).toEqual({});
+    expect(second.state.ui.lastBlockSeenByProfile).toEqual({});
+    expect(second.state.profiles[P1]?.readiness).toEqual({ screenedAt: null, flagged: false });
+  });
+});
+
+/** A document with one well-formed profile, ready for a targeted violation. */
+function oneProfileDocument(): Record<string, unknown> {
+  const doc = legacyDocument();
+  doc.customExercises = {};
+  doc.notes = {};
+  return doc;
+}
+
+/** A logged set, keyed elsewhere by the caller. */
+function loggedSet(id: string): unknown {
+  return {
+    id,
+    profileId: P1,
+    assignmentDate: '2026-09-01',
+    sessionId: 's',
+    exerciseId: 'e',
+    setNumber: 1,
+    isBonus: false,
+    loadKg: 60, // [kg]
+    enteredUnit: 'metric',
+    reps: 5, // [reps]
+    durationS: null,
+    rpe: 7.5, // dimensionless, on the half-point grid
+    loggedAt: 1_756_000_000_000, // [ms]
+  };
+}
+
+describe('record keys must agree with the entity they store', () => {
+  it('accepts a document whose keys all agree', () => {
+    const doc = oneProfileDocument();
+    doc.sets = { 'set-1': loggedSet('set-1') };
+    doc.notes = { [P1]: { '2026-09-01': 'a note' } };
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+  });
+
+  it('rejects a profile filed under a key that is not its id', () => {
+    const doc = oneProfileDocument();
+    doc.profiles = { 'wrong-key': legacyProfile(P1) };
+    doc.activeProfileId = null;
+    const result = parseState(doc);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('profiles.wrong-key');
+  });
+
+  it('rejects a set filed under a key that is not its id', () => {
+    const doc = oneProfileDocument();
+    doc.sets = { 'wrong-key': loggedSet('set-1') };
+    const result = parseState(doc);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('sets.wrong-key');
+  });
+
+  it('rejects a per-profile map keyed by an id no profile owns', () => {
+    const doc = oneProfileDocument();
+    doc.notes = { ghost: { '2026-09-01': 'orphan' } };
+    const result = parseState(doc);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('notes.ghost');
+  });
+
+  it('rejects an activeProfileId that names no profile', () => {
+    const doc = oneProfileDocument();
+    doc.activeProfileId = 'ghost';
+    const result = parseState(doc);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('activeProfileId');
+  });
+});
+
+describe('bounds the code review added', () => {
+  it('accepts an rpe on the half-point grid and rejects one off it', () => {
+    const doc = oneProfileDocument();
+    doc.sets = { 'set-1': loggedSet('set-1') };
+    expect(parseState(doc).ok).toBe(true);
+
+    const offGrid = oneProfileDocument();
+    offGrid.sets = { 'set-1': { ...(loggedSet('set-1') as object), rpe: 7.3 } };
+    const result = parseState(offGrid);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('sets.set-1.rpe');
+  });
+
+  it('refuses ordinal 0, because the plan position is 1-based', () => {
+    const session = {
+      id: 'session-1',
+      name: 'Push',
+      kind: 'lift',
+      label: 'Push',
+      exercises: [],
+    };
+    expect(PlannedSessionSchema.safeParse({ ...session, ordinal: 1 }).success).toBe(true);
+    expect(PlannedSessionSchema.safeParse({ ...session, ordinal: 0 }).success).toBe(false);
+  });
+
+  it('refuses a schema version 2 document and names the version', () => {
+    // There is no v2 -> v3 migration yet (P7 adds it), so the chain must refuse
+    // the document loudly rather than hand an unmigrated shape to the validator.
+    const result = parseState({ ...defaultState(), schemaVersion: 2 });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toContain('2');
+      expect(result.error).toBe('no migration from schema version 2 to 3');
+    }
+  });
+});
+
+describe('round trip', () => {
+  it(
+    'parse(serialize(state)) deep-equals state over 500 generated documents',
+    () => {
+      fc.assert(
+        fc.property(anyAppState, (state: AppState) => {
+          const result = parseState(throughJson(state));
+          if (!result.ok) {
+            throw new Error(`generated state failed validation: ${result.error}`);
+          }
+          expect(result.state).toEqual(state);
+          return true;
+        }),
+        { numRuns: 500 },
+      );
+    },
+    // 500 documents through JSON and the validator measures at about 2.6 s on
+    // its own, which the 5 s default cannot absorb once the whole suite runs in
+    // parallel workers. Lowering numRuns would weaken the property instead, so
+    // the timeout moves and the run count does not.
+    30_000,
+  );
 });
