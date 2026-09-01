@@ -90,7 +90,7 @@ describe('RootErrorBoundary', () => {
     );
 
     expect(screen.getByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText('The application could not start')).toBeInTheDocument();
+    expect(screen.getByText('The app could not start')).toBeInTheDocument();
     expect(screen.getByText('store is unreadable')).toBeInTheDocument();
   });
 
@@ -125,7 +125,7 @@ describe('RootErrorBoundary', () => {
     );
 
     const clear = screen.getByRole('button', { name: 'Clear stored data' });
-    const confirm = screen.getByLabelText(/type DELETE below/i);
+    const confirm = screen.getByLabelText(/type DELETE/i);
 
     // Disabled before an export, whatever is typed.
     expect(clear).toBeDisabled();
@@ -183,7 +183,7 @@ describe('RootErrorBoundary', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
-    fireEvent.change(screen.getByLabelText(/type DELETE below/i), { target: { value: 'DELETE' } });
+    fireEvent.change(screen.getByLabelText(/type DELETE/i), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Clear stored data' }));
 
     expect(data.has(STORAGE_KEY)).toBe(false);

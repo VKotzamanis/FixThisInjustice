@@ -37,7 +37,7 @@ beforeEach(() => {
 });
 
 describe('SaveErrorBanner', () => {
-  it('says the document could not be serialised and that nothing was written', () => {
+  it('says the change could not be saved and that the stored copy is unchanged', () => {
     installFakeStorage();
     seedSaveError();
 
@@ -45,8 +45,8 @@ describe('SaveErrorBanner', () => {
 
     // Not "storage is full" and not "storage is unavailable": the store was
     // never touched, so advice about the store would send the user nowhere.
-    expect(screen.getByText(/could not be serialised/i)).toBeInTheDocument();
-    expect(screen.getByText(/nothing was written/i)).toBeInTheDocument();
+    expect(screen.getByText(/could not be saved/i)).toBeInTheDocument();
+    expect(screen.getByText(/stored copy is unchanged/i)).toBeInTheDocument();
     expect(screen.queryByText(/Storage is full/i)).toBeNull();
     expect(screen.queryByText(/Storage is unavailable/i)).toBeNull();
   });
@@ -57,7 +57,7 @@ describe('SaveErrorBanner', () => {
 
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Export last stored document' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Export stored copy' }));
 
     // exportJson() would have produced a pretty-printed AppState. The raw
     // stored text proves this branch never went near it: a document that
