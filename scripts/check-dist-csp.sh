@@ -3,7 +3,8 @@
 # GitHub Pages cannot set response headers, so the meta tag is the only enforcement point (master plan §1.12).
 set -euo pipefail
 html="${1:-dist/index.html}"
-csp=$(grep -o '<meta http-equiv="Content-Security-Policy" content="[^"]*"' "$html" | sed 's/.*content="//; s/"$//')
+# The build serialises attribute quotes as HTML entities (&#39; &quot; &amp;); decode before matching.
+csp=$(grep -o '<meta http-equiv="Content-Security-Policy" content="[^"]*"' "$html" | sed 's/.*content="//; s/"$//' | sed "s/&#39;/'/g; s/&quot;/\"/g; s/&amp;/\&/g")
 if [ -z "$csp" ]; then echo "FAIL: CSP meta tag absent from $html"; exit 1; fi
 required=(
   "default-src 'self'"
