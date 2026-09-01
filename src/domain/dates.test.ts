@@ -138,7 +138,7 @@ describe('calendar arithmetic is zone-free', () => {
         }
       }
     }
-  });
+  }, 30_000); // [ms] explicit timeout: 1.1 s alone, >5 s under CPU contention on a shared CI runner
 
   it('produces the documented endpoints', () => {
     expect(addDays('2026-02-02', 168)).toBe('2026-07-20');

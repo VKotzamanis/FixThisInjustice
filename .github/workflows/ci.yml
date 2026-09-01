@@ -90,6 +90,9 @@ jobs:
           fi
           echo "PASS: frame-src equals the six hosts in src/config/videoInstances.ts"
 
+      - name: CSP content and referrer meta
+        run: bash scripts/check-dist-csp.sh dist/index.html
+
       - name: No personal health data in shipped source
         run: |
           set -euo pipefail
