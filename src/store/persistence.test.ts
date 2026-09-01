@@ -9,6 +9,7 @@ import {
   save,
 } from './persistence';
 import { defaultState } from '../domain/schema';
+import type { AppState } from '../domain/types';
 import {
   domExceptionWithCode,
   installFakeStorage,
@@ -118,6 +119,24 @@ describe('save', () => {
     const result = save(defaultState());
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).toBe('unavailable');
+  });
+
+  it('distinguishes a document that will not serialise from an unreachable store', () => {
+    installFakeStorage();
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+    // A cycle is the one way JSON.stringify throws on an otherwise ordinary
+    // object; the cast is the only way to hand save() a document the type
+    // system already forbids.
+    const circular: { self?: unknown } = {};
+    circular.self = circular;
+
+    const result = save(circular as unknown as AppState);
+
+    expect(result.ok).toBe(false);
+    // The fault is in the document, not in storage, and the two need different
+    // recovery advice: "export now" is useless when the export would throw too.
+    if (!result.ok) expect(result.reason).toBe('serialize');
+    expect(setItem).not.toHaveBeenCalled();
   });
 
   it('never throws, whatever storage does', () => {

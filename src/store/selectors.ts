@@ -1,4 +1,5 @@
 import type { Profile } from '../domain/types';
+import type { SaveErrorReason } from './index';
 import { useAppStore } from './index';
 
 /**
@@ -26,8 +27,12 @@ export function useHydrated(): boolean {
   return useAppStore((s) => s.status.hydrated);
 }
 
-/** Non-null while the last persistence write failed; drives the blocking banner. */
-export function useSaveError(): 'quota' | 'unavailable' | null {
+/**
+ * Non-null while the last persistence write failed; drives the blocking banner.
+ * Typed through SaveErrorReason rather than by repeating its members, so a new
+ * failure mode reaches the UI instead of stopping at a stale literal union.
+ */
+export function useSaveError(): SaveErrorReason | null {
   return useAppStore((s) => s.status.lastSaveError);
 }
 

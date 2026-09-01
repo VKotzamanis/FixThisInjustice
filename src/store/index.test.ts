@@ -11,7 +11,7 @@ import {
 import { STORAGE_KEY, exportJson, readRaw } from './persistence';
 import { useActiveProfile, useHydrated, useLoadError, useSaveError } from './selectors';
 import { installFakeStorage, makeStorageFull } from './testStorage';
-import type { Profile } from '../domain/types';
+import type { AppState, Profile } from '../domain/types';
 
 function profile(id: string): Profile {
   return {
@@ -48,13 +48,23 @@ function profile(id: string): Profile {
 beforeEach(() => {
   useAppStore.setState({
     ...defaultState(),
-    status: { lastSaveError: null, lastLoadError: null, hydrated: false },
+    status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: false },
   });
 });
 
 afterEach(() => {
   vi.useRealTimers();
+  // Undo any per-test visibilityState stub, restoring the jsdom prototype getter.
+  Reflect.deleteProperty(document, 'visibilityState');
 });
+
+/**
+ * jsdom's visibilityState is a prototype getter with no setter, so a test that
+ * needs a hidden page shadows it with an own property and afterEach removes it.
+ */
+function setVisibility(value: DocumentVisibilityState): void {
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => value });
+}
 
 describe('the persisted surface', () => {
   it('carries exactly the fields of a default document, and no store-only field', () => {
@@ -90,6 +100,107 @@ describe('hydrate', () => {
     // The corrupt document is never overwritten: the user can still export it.
     expect(readRaw()).toBe('{"week":999}');
   });
+
+  it('snapshots the unreadable document into status.lastLoadRaw', () => {
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    useAppStore.getState().hydrate();
+    expect(useAppStore.getState().status.lastLoadRaw).toBe('{"week":999}');
+  });
+
+  it('leaves lastLoadRaw null when the load succeeded', () => {
+    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
+    useAppStore.getState().hydrate();
+    expect(useAppStore.getState().status.lastLoadRaw).toBeNull();
+  });
+
+  it('does not write a just-hydrated valid document straight back', () => {
+    vi.useFakeTimers();
+    const stored = { ...defaultState(), activeProfileId: 'p', profiles: { p: profile('p') } };
+    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) });
+    const stop = startPersistence();
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+    useAppStore.getState().hydrate();
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+
+    // Re-serialising what was just read is a write that can only fail, never help.
+    expect(setItem).not.toHaveBeenCalled();
+    stop();
+  });
+});
+
+describe('persistence after a failed hydrate', () => {
+  it('never overwrites a document that failed to load', () => {
+    vi.useFakeTimers();
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    const stop = startPersistence();
+
+    useAppStore.getState().hydrate();
+    expect(useAppStore.getState().status.lastLoadError).not.toBeNull();
+
+    useAppStore.getState().setUi({ lastView: 'train' });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+
+    // The user's only copy of the unreadable data survives the edit.
+    expect(readRaw()).toBe('{"week":999}');
+    stop();
+  });
+
+  it('drops a write that was already queued when the load failed', () => {
+    vi.useFakeTimers();
+    const data = installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
+    const stop = startPersistence();
+    useAppStore.getState().hydrate();
+
+    useAppStore.getState().setUi({ lastView: 'train' });
+    // The document turns unreadable — another tab, a partial write — and the
+    // next load rejects it while a write is still sitting in the debounce.
+    data.set(STORAGE_KEY, '{"week":999}');
+    useAppStore.getState().hydrate();
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+
+    expect(readRaw()).toBe('{"week":999}');
+    stop();
+  });
+
+  it('keeps the failed document exportable after wipeAll clears storage', () => {
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    useAppStore.getState().hydrate();
+    useAppStore.getState().wipeAll();
+
+    expect(readRaw()).toBeNull();
+    expect(useAppStore.getState().status.lastLoadRaw).toBe('{"week":999}');
+  });
+
+  it('resumes writing once wipeAll clears the load error', () => {
+    vi.useFakeTimers();
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    const stop = startPersistence();
+    useAppStore.getState().hydrate();
+
+    useAppStore.getState().wipeAll();
+    expect(useAppStore.getState().status.lastLoadError).toBeNull();
+
+    useAppStore.getState().setUi({ lastView: 'train' });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(readRaw()).toContain('"lastView":"train"');
+    stop();
+  });
+
+  it('resumes writing once an import replaces the unreadable document', () => {
+    vi.useFakeTimers();
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    const stop = startPersistence();
+    useAppStore.getState().hydrate();
+
+    const text = exportJson({ ...defaultState(), activeProfileId: null });
+    expect(useAppStore.getState().importJson(text)).toEqual({ ok: true });
+    expect(useAppStore.getState().status.lastLoadError).toBeNull();
+
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(readRaw()).not.toBe('{"week":999}');
+    stop();
+  });
 });
 
 describe('import and export', () => {
@@ -121,6 +232,36 @@ describe('import and export', () => {
     expect(selectState(useAppStore.getState())).toEqual(before);
     // Reference identity, not just deep equality: nothing was rebuilt either.
     expect(useAppStore.getState().profiles).toBe(before.profiles);
+  });
+
+  it('routes an accepted import through replaceState, so there is one write path', () => {
+    installFakeStorage();
+    // Detached with bind(): the recorder has to call the original action, not
+    // the stand-in about to be installed over it.
+    const real = useAppStore.getState().replaceState.bind(null);
+    const seen: AppState[] = [];
+    try {
+      useAppStore.setState({
+        replaceState: (next: AppState) => {
+          seen.push(next);
+          real(next);
+        },
+      });
+      const text = exportJson({ ...defaultState(), activeProfileId: null });
+      expect(useAppStore.getState().importJson(text)).toEqual({ ok: true });
+      expect(seen).toHaveLength(1);
+    } finally {
+      useAppStore.setState({ replaceState: real });
+    }
+  });
+
+  it('clears a load error when replaceState installs a document', () => {
+    installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    useAppStore.getState().hydrate();
+    expect(useAppStore.getState().status.lastLoadError).not.toBeNull();
+
+    useAppStore.getState().replaceState(defaultState());
+    expect(useAppStore.getState().status.lastLoadError).toBeNull();
   });
 });
 
@@ -154,12 +295,32 @@ describe('wipeAll', () => {
     expect(data.get('other.owner')).toBe('keep me');
     expect(selectState(useAppStore.getState())).toEqual(defaultState());
   });
+
+  it('leaves no document behind after the debounce window, until the next change', () => {
+    vi.useFakeTimers();
+    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
+    const stop = startPersistence();
+    useAppStore.getState().hydrate();
+
+    // A write is already queued when the user clears: it must not land either.
+    useAppStore.getState().setUi({ lastView: 'today' });
+    useAppStore.getState().wipeAll();
+    vi.advanceTimersByTime(1000);
+    expect(readRaw()).toBeNull();
+
+    // The next user-driven change starts persistence again from a clean slate.
+    useAppStore.getState().setUi({ lastView: 'train' });
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    expect(readRaw()).toContain('"lastView":"train"');
+    stop();
+  });
 });
 
 describe('persistence subscription', () => {
   it('coalesces a burst of changes into one write', () => {
     vi.useFakeTimers();
     installFakeStorage();
+    useAppStore.getState().hydrate();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const stop = startPersistence();
 
@@ -180,6 +341,7 @@ describe('persistence subscription', () => {
   it('does not write when only status changed', () => {
     vi.useFakeTimers();
     installFakeStorage();
+    useAppStore.getState().hydrate();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const stop = startPersistence();
 
@@ -193,6 +355,7 @@ describe('persistence subscription', () => {
   it('flushes on pagehide instead of losing the last burst', () => {
     vi.useFakeTimers();
     installFakeStorage();
+    useAppStore.getState().hydrate();
     const setItem = vi.spyOn(Storage.prototype, 'setItem');
     const stop = startPersistence();
 
@@ -210,6 +373,7 @@ describe('persistence subscription', () => {
   it('records a quota failure in status while keeping the change in memory', () => {
     vi.useFakeTimers();
     installFakeStorage();
+    useAppStore.getState().hydrate();
     makeStorageFull(new DOMException('full', 'QuotaExceededError'));
     const stop = startPersistence();
 
@@ -227,6 +391,7 @@ describe('persistence subscription', () => {
   it('clears the save error once a write succeeds again', () => {
     vi.useFakeTimers();
     installFakeStorage();
+    useAppStore.getState().hydrate();
     const stop = startPersistence();
 
     useAppStore.getState().reportSaveResult({ ok: false, reason: 'quota', error: 'full' });
@@ -236,6 +401,31 @@ describe('persistence subscription', () => {
     vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
     expect(useAppStore.getState().status.lastSaveError).toBeNull();
 
+    stop();
+  });
+
+  it('flushes on visibilitychange once the page is hidden', () => {
+    vi.useFakeTimers();
+    installFakeStorage();
+    useAppStore.getState().hydrate();
+    const stop = startPersistence();
+    const setItem = vi.spyOn(Storage.prototype, 'setItem');
+
+    useAppStore.getState().setUi({ lastView: 'train' });
+
+    // A visible page is not a discard; the debounce still owns the write.
+    setVisibility('visible');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(setItem).not.toHaveBeenCalled();
+
+    // Android discards a backgrounded tab without ever firing pagehide.
+    setVisibility('hidden');
+    document.dispatchEvent(new Event('visibilitychange'));
+    expect(setItem).toHaveBeenCalledTimes(1);
+
+    // And the timer must not repeat the same write afterwards.
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+    expect(setItem).toHaveBeenCalledTimes(1);
     stop();
   });
 
@@ -249,6 +439,7 @@ describe('persistence subscription', () => {
   it('stops writing once the subscription is torn down', () => {
     vi.useFakeTimers();
     installFakeStorage();
+    useAppStore.getState().hydrate();
     const stop = startPersistence();
     stop();
 
@@ -286,7 +477,12 @@ describe('selectors', () => {
 
   it('exposes hydration and error status', () => {
     useAppStore.setState({
-      status: { lastSaveError: 'quota', lastLoadError: 'bad document', hydrated: true },
+      status: {
+        lastSaveError: 'quota',
+        lastLoadError: 'bad document',
+        lastLoadRaw: '{"week":999}',
+        hydrated: true,
+      },
     });
     expect(renderHook(() => useHydrated()).result.current).toBe(true);
     expect(renderHook(() => useSaveError()).result.current).toBe('quota');
