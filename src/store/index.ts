@@ -20,6 +20,14 @@ export interface StoreStatus {
   lastSaveError: SaveErrorReason | null;
   /** Set when a stored document failed validation; the in-memory state is the last known good one. */
   lastLoadError: string | null;
+  /**
+   * The raw text of the document that failed to load, snapshotted at hydrate
+   * time. The recovery UI offers it for export, and it is held in memory rather
+   * than re-read on demand so the offer survives storage moving on underneath
+   * it — a wipeAll(), a write from another tab, a store that has since become
+   * unreachable. Null whenever the last load succeeded or found nothing.
+   */
+  lastLoadRaw: string | null;
   /** False until hydrate() has run, so the UI can tell "empty" from "not read yet". */
   hydrated: boolean;
 }
@@ -77,29 +85,89 @@ export function selectState(s: AppStore): AppState {
   };
 }
 
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pending: AppState | null = null;
+
+/**
+ * Set while an action makes a change that must not be written back. Zustand
+ * calls subscribers synchronously inside set(), so a flag around the set() is
+ * enough — no write can interleave.
+ */
+let suppressWrite = false;
+
+/** Drops a queued write. The state stays; only the intent to store it goes. */
+function cancelPendingSave(): void {
+  if (saveTimer !== null) {
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  pending = null;
+}
+
+/** Runs a state change that the persistence subscription must ignore. */
+function withoutPersisting(mutate: () => void): void {
+  suppressWrite = true;
+  try {
+    mutate();
+  } finally {
+    suppressWrite = false;
+  }
+}
+
 export const useAppStore = create<AppStore>()((set, get) => ({
   ...defaultState(),
-  status: { lastSaveError: null, lastLoadError: null, hydrated: false },
+  status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: false },
 
   hydrate(): void {
     const result = load();
-    if (result.ok) {
-      set({ ...result.state, status: { ...get().status, lastLoadError: null, hydrated: true } });
-      return;
-    }
-    if (result.reason === 'absent') {
-      // First run. defaultState() already in place; nothing to report.
-      set({ status: { ...get().status, lastLoadError: null, hydrated: true } });
-      return;
-    }
-    // Constraint 2: keep the last known-good state in memory, show the error,
-    // offer export. Never overwrite the stored document with a guess.
-    set({ status: { ...get().status, lastLoadError: result.error, hydrated: true } });
+    // Hydrating is a read, so none of its three outcomes may schedule a write.
+    // The valid case would re-serialise the bytes it just parsed — a write that
+    // can fail and cannot help; the invalid case must not go near the stored
+    // document at all.
+    withoutPersisting(() => {
+      if (result.ok) {
+        set({
+          ...result.state,
+          status: { ...get().status, lastLoadError: null, lastLoadRaw: null, hydrated: true },
+        });
+        return;
+      }
+      if (result.reason === 'absent') {
+        // First run. defaultState() already in place; nothing to report.
+        set({
+          status: { ...get().status, lastLoadError: null, lastLoadRaw: null, hydrated: true },
+        });
+        return;
+      }
+      // Constraint 2: keep the last known-good state in memory, show the error,
+      // offer export. Never overwrite the stored document with a guess. The raw
+      // text is kept here because it is the user's only copy of data the schema
+      // could not read, and storage is about to stop being a reliable source of
+      // it — result.raw is null when the store was unreachable.
+      //
+      // A write queued before this load is dropped rather than allowed to land:
+      // freezing the document has to cover writes already in flight, not only
+      // the ones the gate below will refuse.
+      cancelPendingSave();
+      set({
+        status: {
+          ...get().status,
+          lastLoadError: result.error,
+          lastLoadRaw: result.raw,
+          hydrated: true,
+        },
+      });
+    });
   },
 
   replaceState(next: AppState): void {
     // A complete AppState, so a shallow merge replaces every persisted field.
-    set(next);
+    //
+    // Clearing lastLoadError is what re-opens persistence after a failed load:
+    // the user chose to replace the unreadable document, so overwriting it is
+    // now their decision rather than silent data loss. lastLoadRaw is kept, so
+    // the recovery export stays available until the next hydrate().
+    set({ ...next, status: { ...get().status, lastLoadError: null } });
   },
 
   exportJson(): string {
@@ -111,8 +179,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     if (!result.ok) return { ok: false, error: result.error };
     // Import goes through the store, never straight to storage: writing behind
     // the store's back is finding A43, where the persistence effect overwrote
-    // the imported snapshot before the reload landed.
-    set({ ...result.state, status: { ...get().status, lastLoadError: null } });
+    // the imported snapshot before the reload landed. It goes through
+    // replaceState specifically, so installing a document has one code path and
+    // one set of rules — including the load-error reset — rather than two that
+    // drift apart.
+    get().replaceState(result.state);
     return { ok: true };
   },
 
@@ -120,9 +191,24 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     // Only this app's key. Any other owner of origin data (the P7 asset store)
     // is cleared by the same caller, not from here.
     clearStorage();
-    set({
-      ...defaultState(),
-      status: { lastSaveError: null, lastLoadError: null, hydrated: true },
+    // Two writes have to be stopped, not one. The debounce may already hold the
+    // pre-wipe document, and the reset below is itself a persisted change; left
+    // alone, either re-creates the key one debounce interval after the user
+    // asked for it to be gone.
+    cancelPendingSave();
+    withoutPersisting(() => {
+      set({
+        ...defaultState(),
+        status: {
+          lastSaveError: null,
+          // The user chose to clear, so writes resume from the next change on.
+          lastLoadError: null,
+          // Kept: after clearing an unreadable document, the in-memory snapshot
+          // is the only remaining copy the recovery UI can export.
+          lastLoadRaw: get().status.lastLoadRaw,
+          hydrated: true,
+        },
+      });
     });
   },
 
@@ -137,17 +223,10 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   },
 }));
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-let pending: AppState | null = null;
-
 /** Writes any coalesced state immediately. Safe to call when nothing is pending. */
 export function flushSave(): void {
-  if (saveTimer !== null) {
-    clearTimeout(saveTimer);
-    saveTimer = null;
-  }
   const toSave = pending;
-  pending = null;
+  cancelPendingSave();
   if (toSave === null) return;
 
   useAppStore.getState().reportSaveResult(save(toSave));
@@ -168,6 +247,29 @@ function persistedChanged(next: AppStore, prev: AppStore): boolean {
 }
 
 /**
+ * Whether the store may write over the stored document at all.
+ *
+ * Both gates protect data the store never successfully read:
+ *
+ *  - Before hydrate(), the in-memory document is defaultState(). Writing that
+ *    would replace a perfectly good stored document with an empty one.
+ *  - After a *failed* hydrate, the stored bytes are the user's only copy of
+ *    data the schema could not parse, and the in-memory document is again the
+ *    default. Any write destroys the original — including the ones the user
+ *    never asked for, such as a UI preference touched while the recovery banner
+ *    is on screen. So the whole document is frozen, not the failing part.
+ *
+ * Writes resume exactly when lastLoadError returns to null, which happens on
+ * two user decisions and nowhere else: wipeAll() (clear it) and replaceState(),
+ * including the importJson() path (replace it). Neither is reachable without
+ * the user acting on the banner, so the corrupt document is never overwritten
+ * by a background write.
+ */
+function canPersist(status: StoreStatus): boolean {
+  return status.hydrated && status.lastLoadError === null;
+}
+
+/**
  * Persists the store on change. The store is the only writer, so there is no
  * race between a direct localStorage write and the subscription (A43).
  *
@@ -178,8 +280,18 @@ function persistedChanged(next: AppStore, prev: AppStore): boolean {
  */
 export function startPersistence(): () => void {
   const unsubscribe = useAppStore.subscribe((next, prev) => {
+    // A change the store made to itself — hydrating, resetting — is not a
+    // change to store.
+    if (suppressWrite) return;
     // Only a persisted change is worth a write; status is not persisted.
     if (!persistedChanged(next, prev)) return;
+    if (!canPersist(next.status)) {
+      // A blocked write must not sit in the queue waiting for the gate to open:
+      // by then it would carry a document assembled while the store was in a
+      // state it refused to persist.
+      cancelPendingSave();
+      return;
+    }
     pending = selectState(next);
     if (saveTimer !== null) clearTimeout(saveTimer);
     saveTimer = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
@@ -190,9 +302,20 @@ export function startPersistence(): () => void {
   };
   window.addEventListener('pagehide', onPageHide);
 
+  /**
+   * Android discards a backgrounded tab without firing pagehide, so the last
+   * event a page is guaranteed to see is visibilitychange to "hidden". A flush
+   * on becoming visible would be pointless, hence the state check.
+   */
+  const onVisibilityChange = (): void => {
+    if (document.visibilityState === 'hidden') flushSave();
+  };
+  document.addEventListener('visibilitychange', onVisibilityChange);
+
   return () => {
     unsubscribe();
     window.removeEventListener('pagehide', onPageHide);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
     flushSave();
   };
 }

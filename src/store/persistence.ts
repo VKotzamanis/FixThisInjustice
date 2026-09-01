@@ -29,7 +29,18 @@ export type LoadResult =
   | { ok: true; state: AppState }
   | { ok: false; reason: LoadFailure; error: string; raw: string | null };
 
-export type SaveFailure = 'quota' | 'unavailable';
+/**
+ * Why a write produced no stored document. Extended, never re-spelled: callers
+ * that already switch on 'quota' and 'unavailable' keep compiling, and the new
+ * member is the one case where retrying or exporting cannot help.
+ */
+export type SaveFailure =
+  /** The origin's storage quota is exhausted. */
+  | 'quota'
+  /** Web Storage itself is unreachable: private browsing, blocked context. */
+  | 'unavailable'
+  /** JSON.stringify threw on the document. Storage was never touched. */
+  | 'serialize';
 
 export type SaveResult = { ok: true } | { ok: false; reason: SaveFailure; error: string };
 
@@ -102,10 +113,26 @@ export function load(): LoadResult {
   return { ok: true, state: parsed.state };
 }
 
-/** Writes the document. The caller surfaces a failed write; it is never silent. */
+/**
+ * Writes the document. The caller surfaces a failed write; it is never silent.
+ *
+ * Serialisation and storage are separate steps because they fail for opposite
+ * reasons and need opposite advice. A store that is full or unreachable leaves
+ * the in-memory document intact, so "export it now" is the recovery; a document
+ * JSON.stringify cannot handle would break that export too, and the fault is in
+ * the state, not the browser. Folding both into 'unavailable' told the user to
+ * do the one thing that could not work.
+ */
 export function save(state: AppState): SaveResult {
+  let text: string;
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    text = JSON.stringify(state);
+  } catch (e) {
+    return { ok: false, reason: 'serialize', error: messageOf(e) };
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY, text);
     return { ok: true };
   } catch (e) {
     return {
@@ -152,8 +179,8 @@ export function exportJson(state: AppState): string {
 /**
  * Import goes through the same validator as every other entry point, and writes
  * nothing: a rejected document must leave both memory and storage untouched
- * (security C1). The caller installs the returned state through the store,
- * which is the only writer.
+ * (security C1). The caller installs the returned state through the store's
+ * replaceState, which is the only writer and the only path.
  */
 export function importJson(text: string): ImportResult {
   let raw: unknown;
