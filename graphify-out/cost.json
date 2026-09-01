@@ -19,8 +19,14 @@
         "content_peer_review": null,
         "security_review": 123372
       }
+    },
+    {
+      "date": "2026-09-01T23:34:14.050596+00:00",
+      "input_tokens": 892693,
+      "output_tokens": 0,
+      "files": 89
     }
   ],
-  "total_input_tokens": 366594,
+  "total_input_tokens": 1259287,
   "total_output_tokens": 0
 }
