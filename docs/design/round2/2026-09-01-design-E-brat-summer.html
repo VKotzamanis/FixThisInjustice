@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design E — brat summer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap">
+<style>
+/* ============================================================================
+   DESIGN E — BRAT SUMMER  (skin id: "brat")
+   One flat lime field, one stretched narrow sans in black, everything lowercase,
+   one mascot. No cards, no radii, no shadows, no second hue.
+   Hierarchy is SIZE and nothing else.
+
+   Contrast, computed (WCAG 2.1 relative luminance), not guessed:
+     #000000 on #8ACE00 ....... 10.91:1   body + display
+     #454545 on #8ACE00 ........ 4.98:1   fine print floor
+     #4F4F4F on #8ACE00 ........ 4.26:1   REJECTED, below 4.5
+     #FFFFFF on #8ACE00 ........ 1.92:1   BANNED — no white on lime, anywhere
+     #FFFFFF on #000000 ....... 21.00:1   inside a black panel only
+     #8ACE00 on #000000 ....... 10.91:1   lime type inside a black panel only
+
+   Blur: applied to the 76px session label ONLY. No quantity is ever blurred —
+   not the rest clock, not a load, not a rep count, not a delta. (agy critique,
+   adopted and tightened: a device that degrades a number is a data bug.)
+   ========================================================================== */
+:root{
+  --brat:#8ACE00;
+  --ink:#000000;
+  --ink-mute:#454545;
+  --panel:#000000;
+  --panel-ink:#FFFFFF;
+  --panel-lime:#8ACE00;
+  --sans:"Archivo","Arial Narrow","Helvetica Neue Condensed",Arial,sans-serif;
+  --tap:48px; --dock:172px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#d7dad4;color:#14160f;font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- page chrome (not part of the skin) ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:-.02em;
+  font-variation-settings:"wdth" 88,"wght" 800}
+.pagehead p{margin:0 0 8px;max-width:74ch;color:#2c2f28;font-size:13.5px}
+.pagehead code{font-size:12.5px;background:#c3c7bf;padding:1px 5px}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 26px}
+figure{margin:0}
+figcaption{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#2c2f28;padding:0 0 8px 2px;font-weight:700}
+figcaption b{color:#0d0f0a}
+@media(max-width:430px){.frames{padding:14px 0 26px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone frame ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--brat);color:var(--ink);border:1px solid #5f7300;box-shadow:0 10px 30px rgba(0,0,0,.28)}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-bottom:calc(var(--dock) + 10px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.phone *{text-transform:lowercase}
+.phone .keep{text-transform:none}
+
+.sys{display:flex;justify-content:space-between;padding:10px 20px 0;font-size:11.5px;
+  color:var(--ink-mute);letter-spacing:.04em;font-weight:600;font-variation-settings:"wdth" 88}
+
+/* ---- the one blurred thing ---- */
+.disp{font-size:76px;line-height:.86;font-weight:800;letter-spacing:-.045em;margin:0;
+  font-variation-settings:"wdth" 62,"wght" 800;filter:blur(.4px)}
+.sub{font-size:15px;font-weight:600;color:var(--ink);margin:10px 0 0;letter-spacing:.01em}
+.mute{color:var(--ink-mute)}
+
+.block{padding:14px 20px 20px}
+.block.tight{padding-bottom:8px}
+.masc{position:absolute;top:34px;right:16px;width:96px;height:96px;image-rendering:pixelated;
+  image-rendering:crisp-edges}
+
+/* big numbers — never blurred */
+.huge{font-size:104px;line-height:.82;font-weight:800;letter-spacing:-.06em;margin:2px 0 0;
+  font-variation-settings:"wdth" 70,"wght" 800;font-variant-numeric:tabular-nums}
+.mid{font-size:37px;line-height:.9;font-weight:800;letter-spacing:-.04em;margin:0;
+  font-variation-settings:"wdth" 74,"wght" 800;font-variant-numeric:tabular-nums}
+
+/* ---- plain unruled list ---- */
+.plain{padding:2px 20px 16px;margin:0;list-style:none}
+.plain li{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+  min-height:34px;padding:5px 0;font-size:17px;font-weight:600}
+.plain li .rx{font-size:14px;font-weight:600;color:var(--ink-mute);white-space:nowrap;
+  font-variant-numeric:tabular-nums}
+
+/* ---- black panel ---- */
+.panel{background:var(--panel);color:var(--panel-ink);padding:20px;margin:0}
+.panel .k{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--panel-lime)}
+.panel .clock{font-size:88px;line-height:.86;font-weight:800;letter-spacing:-.055em;margin:6px 0 0;
+  font-variation-settings:"wdth" 70,"wght" 800;font-variant-numeric:tabular-nums}
+.panel .of{font-size:13.5px;color:var(--panel-ink);margin-top:6px;font-variant-numeric:tabular-nums}
+.dep{height:8px;background:#3a3a3a;margin-top:14px;position:relative}
+.dep i{position:absolute;inset:0 auto 0 0;background:var(--panel-lime);display:block}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.split button{min-height:64px;border:2px solid var(--ink);border-top:0;background:transparent;
+  color:var(--ink);font:inherit;font-size:19px;font-weight:800;letter-spacing:-.01em;cursor:pointer;
+  font-variation-settings:"wdth" 74,"wght" 800}
+.split button:first-child{border-right-width:1px}
+.split button:last-child{border-left-width:1px}
+.split button:active{background:var(--ink);color:var(--brat)}
+
+/* ---- exercise ---- */
+.ex{padding:18px 20px 6px;border-top:2px solid var(--ink)}
+.ex .nm{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.02;margin:0;
+  font-variation-settings:"wdth" 72,"wght" 800}
+.ex .rx{font-size:14px;color:var(--ink-mute);margin-top:5px;font-variant-numeric:tabular-nums}
+.ex .why{font-size:13.5px;margin-top:9px;line-height:1.45}
+.sets{margin:12px 0 0;padding:0;list-style:none}
+.sets li{display:flex;align-items:baseline;gap:12px;min-height:38px;padding:4px 0;
+  border-bottom:1px solid rgba(0,0,0,.22)}
+.sets li:last-child{border-bottom:0}
+.sets .sn{font-size:13px;color:var(--ink-mute);width:40px;font-variant-numeric:tabular-nums;font-weight:600}
+.sets .ld{font-size:30px;font-weight:800;letter-spacing:-.035em;font-variant-numeric:tabular-nums;
+  font-variation-settings:"wdth" 74,"wght" 800}
+.sets .u{font-size:13px;color:var(--ink-mute);font-weight:700}
+.sets .rp{margin-left:auto;font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.sets .rp.open{color:var(--ink-mute)}
+.note{font-size:12.5px;color:var(--ink-mute);padding:8px 0 0;line-height:1.5}
+
+/* ---- week strip ---- */
+.strip{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;padding:6px 20px 0}
+.dc{height:62px;border:2px solid var(--ink);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px}
+.dc .d{font-size:11px;font-weight:800;letter-spacing:.04em}
+.dc .g{font-size:17px;font-weight:800}
+.dc.on{background:var(--ink);color:var(--brat)}
+.dc.sk{background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(0,0,0,.42) 4px 8px)}
+.dc.no{border-style:dashed;color:var(--ink-mute);border-color:var(--ink-mute)}
+
+/* ---- targets ---- */
+.tg{padding:6px 20px 0}
+.tr{padding:12px 0;border-top:2px solid var(--ink)}
+.tr:first-child{border-top:0}
+.tr .k{font-size:13px;font-weight:700;color:var(--ink-mute);letter-spacing:.02em}
+.tr .v{display:flex;align-items:baseline;gap:8px;margin-top:2px}
+.tr .v b{font-size:36px;font-weight:800;letter-spacing:-.04em;font-variant-numeric:tabular-nums;
+  font-variation-settings:"wdth" 74,"wght" 800}
+.tr .v span{font-size:14px;color:var(--ink-mute);font-weight:600;font-variant-numeric:tabular-nums}
+.tb{height:12px;background:rgba(0,0,0,.24);margin-top:9px;position:relative}
+.tb i{position:absolute;inset:0 auto 0 0;background:var(--ink);display:block}
+.tb .band{position:absolute;top:-3px;bottom:-3px;border-left:3px solid var(--ink);border-right:3px solid var(--ink)}
+.tb .tick{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--ink)}
+
+.fine{padding:10px 20px 16px;font-size:12.5px;color:var(--ink-mute);line-height:1.55}
+
+/* ---- dock ---- */
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:40;background:var(--brat);padding:12px 20px 20px;
+  border-top:2px solid var(--ink)}
+.minor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px}
+/* agy critique adopted: outlined, not a bare text link — an invisible affordance
+   plus a sweaty thumb is a miss. Still unfilled and zero-radius, so still the flyer idiom. */
+.minor button{min-height:var(--tap);border:2px solid var(--ink);background:transparent;color:var(--ink);
+  font:inherit;font-size:14px;font-weight:700;letter-spacing:-.01em;cursor:pointer;padding:4px 2px;
+  font-variation-settings:"wdth" 80,"wght" 700}
+.minor button:active{background:var(--ink);color:var(--brat)}
+.go{width:100%;min-height:64px;border:0;background:var(--panel);color:var(--panel-ink);
+  font:inherit;font-size:26px;font-weight:800;letter-spacing:-.02em;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px;
+  font-variation-settings:"wdth" 70,"wght" 800}
+
+/* ---- copy table (page chrome) ---- */
+.copy{max-width:820px;margin:0 auto;padding:8px 20px 64px}
+.copy h2{font-size:16px;font-weight:800;margin:0 0 4px;font-variation-settings:"wdth" 88,"wght" 800}
+.copy p{margin:0 0 12px;font-size:13px;color:#2c2f28;max-width:70ch}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid #b6bab2;vertical-align:top}
+th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#2c2f28;font-weight:800}
+td.k{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#2c2f28;white-space:nowrap}
+td.s{font-weight:700;color:#14160f}
+.lic{max-width:820px;margin:0 auto;padding:0 20px 60px;font-size:12px;color:#2c2f28;line-height:1.6}
+
+/* ---- the one orchestrated moment: the focus pull ---- */
+@keyframes pull{from{filter:blur(6px);letter-spacing:.08em;opacity:.35}
+                to{filter:blur(.4px);letter-spacing:-.045em;opacity:1}}
+.disp{animation:pull .42s cubic-bezier(.2,.7,.3,1) both}
+.disp.d2{animation-delay:.09s}
+.disp.d3{animation-delay:.18s}
+@media(prefers-reduced-motion:reduce){
+  .disp{animation:none;filter:blur(.4px);letter-spacing:-.045em;opacity:1}
+}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design E — brat summer</h1>
+  <p>One flat lime field (<code>#8ACE00</code>), one stretched narrow sans (Archivo at <code>wdth 62</code>), lowercase everything, and one original mascot. No cards, no radii, no shadows, no second hue — hierarchy is size alone. Black on lime is <b>10.91:1</b>; white on lime is <b>1.92:1</b> and appears nowhere. The resample blur is on the 76&nbsp;px session label only: <b>no quantity is ever blurred</b>.</p>
+  <p>The mascot is an original pixel drawing generated for this project — a round pink blob in black sunglasses with a black bob. It is not, and must not become, any existing character.</p>
+</header>
+
+<div class="frames">
+
+<!-- ========================= 1 · TODAY ========================= -->
+<figure>
+  <figcaption><b>1 · today</b> — 390 × 844</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>tue 1 sep</span></div>
+      <img class="masc" alt="mascot: a round pink blob in black sunglasses and a black bob"
+           src="data:image/png;base64,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">
+
+      <div class="block tight">
+        <p class="disp">upper</p>
+        <p class="sub">session 12 of 48</p>
+      </div>
+
+      <div class="block tight">
+        <p class="sub mute">scheduled</p>
+        <p class="huge tabnum">18:00</p>
+        <p class="sub">starts in 8 min. 6 exercises. about 55 min.</p>
+      </div>
+
+      <div class="block tight">
+        <p class="sub mute">the plan</p>
+        <p class="mid tabnum">10 done. 1 skipped. 37 left.</p>
+        <p class="sub mute">this week: 1 of 4. slots mon, tue, thu, sat.</p>
+      </div>
+
+      <div class="block tight"><p class="sub mute">today you do</p></div>
+      <ul class="plain">
+        <li><span>barbell bench press</span><span class="rx">3 &times; 6&ndash;8</span></li>
+        <li><span>barbell row (pendlay)</span><span class="rx">3 &times; 6&ndash;8</span></li>
+        <li><span>overhead press</span><span class="rx">3 &times; 8&ndash;10</span></li>
+        <li><span>lat pulldown</span><span class="rx">3 &times; 10&ndash;14</span></li>
+        <li><span>face pull</span><span class="rx">2 &times; 12&ndash;15</span></li>
+        <li><span>barbell curl</span><span class="rx">2 &times; 10&ndash;12</span></li>
+      </ul>
+
+      <div class="fine">pause keeps you on session 12 and stops the weekly target. skip it moves you to session 13 and asks why. do a different one offers push or pull — the labels still owed this week.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor">
+        <button>pause</button><button>skip it</button><button>do a different one</button>
+      </div>
+      <button class="go">start<span>&rarr;</span></button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 2 · TRAIN ========================= -->
+<figure>
+  <figcaption><b>2 · train</b> — mid-session, rest running</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span>upper · s12/48 · 31 min</span></div>
+
+      <div class="block tight">
+        <p class="disp d2">upper</p>
+      </div>
+
+      <div class="panel">
+        <p class="k">rest.</p>
+        <p class="clock tabnum">1:47</p>
+        <p class="of">of 2:00. ends 18:24:52.</p>
+        <div class="dep"><i style="width:89.2%"></i></div>
+      </div>
+      <div class="split"><button>+30s</button><button>enough</button></div>
+
+      <div class="block tight">
+        <p class="sub">drink water. you know this.</p>
+        <p class="sub mute">31 min in. no fixed volume between sets — replacement is judged by body-mass change across the session.</p>
+      </div>
+
+      <div class="ex">
+        <p class="nm">barbell bench press</p>
+        <p class="rx">3 &times; 6&ndash;8 &middot; rest 2:00 &middot; lb</p>
+        <p class="why">suggested <b>140 lb</b>, up 5 lb. every set hit 8 reps on 25 aug, so +2.5&nbsp;% (3.4&nbsp;lb) rounded to the 5&nbsp;lb barbell step.</p>
+        <ul class="sets">
+          <li><span class="sn">set 1</span><span class="ld tabnum">140</span><span class="u">lb</span><span class="rp tabnum">8 reps</span></li>
+          <li><span class="sn">set 2</span><span class="ld tabnum">140</span><span class="u">lb</span><span class="rp tabnum">7 reps</span></li>
+          <li><span class="sn">set 3</span><span class="ld tabnum">140</span><span class="u">lb</span><span class="rp open tabnum">&ndash;&ndash; reps</span></li>
+        </ul>
+        <p class="note">entered in lb. stored as 63.50 kg.</p>
+      </div>
+
+      <div class="ex">
+        <p class="nm">lat pulldown</p>
+        <p class="rx">3 &times; 10&ndash;14 &middot; rest 1:30 &middot; kg stack</p>
+        <p class="why">holding <b>45 kg</b>. the smallest pin is 5 kg, which is 11&nbsp;% — over the 10&nbsp;% ceiling. so the load stays and the rep target goes 10&ndash;12 &rarr; 10&ndash;14 instead.</p>
+        <ul class="sets">
+          <li><span class="sn">set 1</span><span class="ld tabnum">45</span><span class="u">kg</span><span class="rp tabnum">12 reps</span></li>
+          <li><span class="sn">set 2</span><span class="ld tabnum">45</span><span class="u">kg</span><span class="rp open tabnum">&ndash;&ndash; reps</span></li>
+          <li><span class="sn">set 3</span><span class="ld tabnum">45</span><span class="u">kg</span><span class="rp open tabnum">&ndash;&ndash; reps</span></li>
+        </ul>
+        <p class="note">the stack is marked in kg. it stays kg whatever the app is set to.</p>
+      </div>
+
+      <div class="fine">that's a record. anyway. — 140 lb &times; 8 is your best bench set. it is written down and nothing else happens.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor">
+        <button>pause</button><button>skip it</button><button>do a different one</button>
+      </div>
+      <button class="go">next set<span>&rarr;</span></button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 3 · WEEK ========================= -->
+<figure>
+  <figcaption><b>3 · the week</b> — delta &minus;2</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>24&ndash;30 aug</span></div>
+
+      <div class="block tight">
+        <p class="disp d3">the week</p>
+      </div>
+
+      <div class="block tight">
+        <p class="huge tabnum">&minus;2</p>
+        <p class="sub">2 of 4. it's fine. it's brat.</p>
+        <p class="sub mute">2 completed, 1 skipped, 1 not logged. target was 4.</p>
+      </div>
+
+      <div class="strip">
+        <div class="dc no"><span class="d">mon</span><span class="g">&middot;</span></div>
+        <div class="dc on"><span class="d">tue</span><span class="g">&#10003;</span></div>
+        <div class="dc no"><span class="d">wed</span><span class="g">&middot;</span></div>
+        <div class="dc sk"><span class="d">thu</span><span class="g">&#10005;</span></div>
+        <div class="dc no"><span class="d">fri</span><span class="g">&middot;</span></div>
+        <div class="dc on"><span class="d">sat</span><span class="g">&#10003;</span></div>
+        <div class="dc no"><span class="d">sun</span><span class="g">&middot;</span></div>
+      </div>
+      <div class="fine">filled = done. hatched = skipped, with a reason. dashed = no slot.</div>
+
+      <div class="tg">
+        <div class="tr">
+          <p class="k">energy</p>
+          <p class="v"><b class="tabnum">2110</b><span>kcal of 2340 target</span></p>
+          <div class="tb"><i style="width:72.1%"></i><span class="tick" style="left:80%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="k">protein</p>
+          <p class="v"><b class="tabnum">142</b><span>g, band 130&ndash;160 g</span></p>
+          <div class="tb"><i style="width:71%"></i><span class="band" style="left:65%;right:20%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="k">fluid</p>
+          <p class="v"><b class="tabnum">2400</b><span>ml of 2900 target</span></p>
+          <div class="tb"><i style="width:66.2%"></i><span class="tick" style="left:80%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="k">body mass</p>
+          <p class="v"><b class="tabnum">61.2</b><span>kg, &minus;0.4 kg on 4 weeks</span></p>
+          <div class="tb"><i style="width:58%"></i></div>
+        </div>
+      </div>
+
+      <div class="fine">bars run to 1.25 &times; the target, so the three are the same scale and can be compared by length. the protein band is the whole range, not a point.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor">
+        <button>pause</button><button>skip it</button><button>do a different one</button>
+      </div>
+      <button class="go">we're doing this now<span>&rarr;</span></button>
+    </div>
+  </div>
+</figure>
+
+</div>
+
+<section class="copy">
+  <h2>Copy table — default &rarr; brat</h2>
+  <p>Same components, same data, same numbers. Only the strings move. The clinical column is the default table in <code>UiPrefs.skin === "clinical"</code>; the brat column is the override merged over it.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Key</th><th>Default (clinical)</th><th>E — brat</th></tr></thead>
+    <tbody>
+      <tr><td class="k">start_session</td><td>Start</td><td class="s">start</td></tr>
+      <tr><td class="k">rest</td><td>Rest</td><td class="s">rest.</td></tr>
+      <tr><td class="k">skip_today</td><td>Skip today</td><td class="s">skip it</td></tr>
+      <tr><td class="k">pause_plan</td><td>Pause</td><td class="s">pause</td></tr>
+      <tr><td class="k">train_other</td><td>Train other</td><td class="s">do a different one</td></tr>
+      <tr><td class="k">week_delta_negative</td><td>2 sessions below target</td><td class="s">2 of 4. it's fine. it's brat.</td></tr>
+      <tr><td class="k">week_delta_zero</td><td>Target met</td><td class="s">4 of 4. fine.</td></tr>
+      <tr><td class="k">week_delta_positive</td><td>1 session above target</td><td class="s">5 of 4. ok.</td></tr>
+      <tr><td class="k">hydration_cue</td><td>Drink to thirst.</td><td class="s">drink water. you know this.</td></tr>
+      <tr><td class="k">pr_reached</td><td>Personal record</td><td class="s">that's a record. anyway.</td></tr>
+      <tr><td class="k">motivation_title</td><td>Missed week</td><td class="s">we're doing this now</td></tr>
+      <tr><td class="k">session_cursor</td><td>Session 12 of 48</td><td class="s">session 12 of 48</td></tr>
+      <tr><td class="k">plan_progress</td><td>10 completed · 1 skipped · 37 remaining</td><td class="s">10 done. 1 skipped. 37 left.</td></tr>
+      <tr><td class="k">add_30s</td><td>+30 s</td><td class="s">+30s</td></tr>
+      <tr><td class="k">skip_rest</td><td>Skip rest</td><td class="s">enough</td></tr>
+      <tr><td class="k">week_review_title</td><td>Week review</td><td class="s">the week</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lic">
+  <b>Assets.</b> Type: Archivo (variable, <code>wdth,wght</code>), Google Fonts, SIL Open Font License 1.1. Mascot: original pixel drawing generated for this project with Gemini / Nano Banana via <code>agy</code>, reduced to 128 × 128 and snapped to a six-colour palette with the ground keyed to alpha — <code>agy-artifacts/brat-mascot-128.png</code>, 2.1 kB, inlined as a data URI. No third-party character, no song lyric, no album text and no artist name appears in this file.
+</section>
+
+<script>
+// Rest countdown, so the timer is real rather than a screenshot of one.
+(function () {
+  var el = document.querySelector('.panel .clock');
+  var of = document.querySelector('.panel .of');
+  var dep = document.querySelector('.dep i');
+  if (!el) return;
+  var remainS = 107;           // seconds remaining; 1:47 of a 120 s rest
+  var totalS = 120;            // seconds
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce) return;          // a ticking clock is motion; hold it still
+  setInterval(function () {
+    remainS = remainS > 0 ? remainS - 1 : totalS;
+    var m = Math.floor(remainS / 60), s = remainS % 60;
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+    dep.style.width = (100 * remainS / totalS).toFixed(1) + '%';
+  }, 1000);
+  of.textContent = 'of 2:00. ends 18:24:52.';
+})();
+</script>
+</body>
+</html>

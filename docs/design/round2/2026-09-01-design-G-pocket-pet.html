@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design G — pocket pet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&family=Work+Sans:wght@400..700&display=swap">
+<style>
+/* ============================================================================
+   DESIGN G — POCKET PET  (skin id: "pet")
+
+   NAMING AND TRADE DRESS. This borrows the 1990s virtual-pet *genre*. Bandai's
+   Tamagotchi is that genre's canonical product; its name and the moulded egg /
+   keychain shell are Bandai's trademark and trade dress and are NOT used here.
+   The shell below is a plain rectangular handheld with a row of buttons, the
+   direction is called "pocket pet", and no user-facing string and no SkinId
+   carries a third-party mark. (agy critique, adopted in full.)
+
+   Contrast, computed (WCAG 2.1), not guessed:
+     #0F380F on #9BBC0F ..... 6.02:1   all LCD type
+     #0F380F on #8BAC0F ..... 5.03:1   LCD type on the dim sub-panel
+     #306230 on #9BBC0F ..... 3.29:1   FAILS for text — interior pet shading ONLY
+     #FFFFFF on #241E2B .... 16.21:1   shell body type
+     #B3A8C2 on #241E2B ..... 7.18:1   shell secondary type
+     #FF8FD0 on #241E2B ..... 7.79:1   the one hardware accent
+     #241E2B on #FF8FD0 ..... 7.79:1   inverted
+
+   HONEST LIMITATION, stated rather than hidden: the always-on "ghost" icons are
+   ~2.4:1 against the LCD ground and therefore do NOT meet the 3:1 non-text
+   guideline. A ghost on a segment LCD is low-contrast by definition — that is
+   what makes it a ghost. They are therefore DECORATIVE: every state they stand
+   for is also printed as a word on the LCD and on the shell, nothing depends on
+   them alone, and they are aria-hidden. The LIT icon is at full #0F380F.
+
+   agy critique adopted: primary interaction is NOT on the hardware buttons.
+   Buttons are 56 px and labelled in Work Sans, the primary action is a docked
+   64 px bar outside the device metaphor, Silkscreen is confined to LCD chrome
+   that is read and never tapped with a 12 px floor, and the prescription and
+   set-logging rows live on the shell in 16 px Work Sans, outside the glass.
+   ========================================================================== */
+:root{
+  --shell:#241E2B;
+  --shell-2:#2F2739;
+  --bezel:#161220;
+  --shell-ink:#FFFFFF;
+  --shell-ink-2:#B3A8C2;
+  --lcd:#9BBC0F;
+  --lcd-dim:#8BAC0F;
+  --lcd-ink:#0F380F;
+  --lcd-shade:#306230;   /* graphics only, never text: 3.29:1 */
+  --candy:#FF8FD0;
+  --pixel:"Press Start 2P","Courier New",monospace;
+  --silk:"Silkscreen","Press Start 2P",monospace;
+  --sans:"Work Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --tap:56px; --dock:150px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#191424;color:#EDE7F4;font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- page chrome ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 8px;font-family:var(--pixel);font-size:16px;color:var(--lcd);line-height:1.5}
+.pagehead p{margin:0 0 8px;max-width:74ch;color:#D6CEE2;font-size:13.5px}
+.pagehead code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;
+  background:#332B40;padding:1px 5px;color:#F0EAF6}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 26px}
+figure{margin:0}
+figcaption{font-family:var(--silk);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:#D6CEE2;padding:0 0 8px 2px}
+figcaption b{color:var(--lcd)}
+@media(max-width:430px){.frames{padding:14px 0 26px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone / shell ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--shell);color:var(--shell-ink);border:1px solid #3B3247;box-shadow:0 10px 30px rgba(0,0,0,.42)}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-bottom:calc(var(--dock) + 10px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sys{display:flex;justify-content:space-between;padding:9px 16px 6px;font-family:var(--silk);
+  font-size:12px;color:var(--shell-ink-2)}
+
+/* ---- the device: a plain rectangular handheld, NOT an egg and NOT a keychain ---- */
+.dev{margin:2px 16px 0;background:var(--bezel);padding:10px;border:1px solid #0D0A15}
+.lcd{background:var(--lcd);padding:8px 10px 10px;position:relative}
+
+/* icon strip: printed permanently on the glass, only some energised.
+   Decorative — every state is also a word. */
+.strip{display:flex;gap:14px;align-items:center;border-bottom:2px solid var(--lcd-ink);padding-bottom:6px}
+.ic{width:20px;height:20px;color:var(--lcd-ink);opacity:.28}
+.ic.lit{opacity:1}
+.ic.blink{animation:blink 1s steps(1,end) infinite}
+.striptext{margin-left:auto;font-family:var(--silk);font-size:12px;color:var(--lcd-ink);letter-spacing:.04em}
+
+.stage{display:flex;gap:10px;align-items:stretch;padding:8px 0 6px}
+.pet{width:132px;height:132px;flex:0 0 132px;shape-rendering:crispEdges;animation:bob 1.8s steps(1,end) infinite}
+.side{flex:1;display:flex;flex-direction:column;justify-content:space-between;padding:2px 0}
+.state{font-family:var(--pixel);font-size:15px;color:var(--lcd-ink);line-height:1.5}
+.sublcd{font-family:var(--silk);font-size:12px;color:var(--lcd-ink);letter-spacing:.03em;line-height:1.45}
+.meter{display:flex;gap:4px;margin-top:8px}
+.mseg{width:20px;height:16px;border:2px solid var(--lcd-ink)}
+.mseg.full{background:var(--lcd-ink)}
+.readout{font-family:var(--pixel);font-size:34px;color:var(--lcd-ink);letter-spacing:-.02em;
+  border-top:2px solid var(--lcd-ink);padding-top:9px;margin-top:2px;font-variant-numeric:tabular-nums}
+.readsub{font-family:var(--silk);font-size:12px;color:var(--lcd-ink);margin-top:5px;letter-spacing:.03em}
+
+/* ---- hardware buttons: 56px, Work Sans labels, not the primary action ---- */
+.hw{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;padding:12px 16px 0}
+.hw button{min-height:var(--tap);border:2px solid var(--candy);border-radius:0;background:var(--shell-2);
+  color:var(--shell-ink);font-family:var(--sans);font-size:13.5px;font-weight:700;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 2px}
+.hw button span{font-family:var(--silk);font-size:12px;color:var(--candy)}
+.hw button:active{background:var(--candy);color:var(--shell)}
+
+/* ---- shell content: ordinary type, outside the glass ---- */
+.sec{padding:16px 16px 0}
+.sec h3{font-family:var(--silk);font-size:12px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--shell-ink-2);margin:0 0 8px}
+.rows{margin:0;padding:0;list-style:none}
+.rows li{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:42px;
+  padding:5px 0;border-bottom:1px solid #3A3146;font-size:16px;font-weight:600}
+.rows li:last-child{border-bottom:0}
+.rows .rx{font-size:13px;color:var(--shell-ink-2);white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:600}
+.p{font-size:14px;color:var(--shell-ink);margin:0 0 8px;line-height:1.5}
+.p b{color:var(--candy);font-weight:700}
+.p2{font-size:12.5px;color:var(--shell-ink-2);margin:0 0 8px;line-height:1.55}
+
+.card{background:var(--shell-2);border:1px solid #3A3146;padding:13px 14px 14px;margin:0 16px 12px}
+.card h4{margin:0;font-size:17px;font-weight:700;letter-spacing:-.01em}
+.card .rx{font-size:12.5px;color:var(--shell-ink-2);margin:3px 0 0;font-variant-numeric:tabular-nums}
+.srow{display:grid;grid-template-columns:56px 1fr auto 30px;gap:10px;align-items:center;min-height:44px;
+  padding:4px 0;border-bottom:1px solid #3A3146}
+.srow:last-child{border-bottom:0}
+.srow .sn{font-family:var(--silk);font-size:12px;color:var(--shell-ink-2)}
+.srow .ld{font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.srow .ld small{font-size:11.5px;color:var(--shell-ink-2);margin-left:4px;font-weight:700}
+.srow .rp{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+.srow .rp.open{color:var(--shell-ink-2)}
+.srow .mk{width:26px;height:26px;border:2px solid #4A4058;display:flex;align-items:center;
+  justify-content:center;font-size:13px;color:var(--shell-ink-2)}
+.srow.done .mk{background:var(--candy);border-color:var(--candy);color:var(--shell)}
+
+.split{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 16px 0}
+.split button{min-height:60px;border:2px solid #4A4058;background:var(--shell-2);color:var(--shell-ink);
+  font-family:var(--sans);font-size:15px;font-weight:700;cursor:pointer}
+.split button:active{background:#3A3146}
+
+/* ---- mapping table inside screen 3 ---- */
+.map{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.map th,.map td{text-align:left;padding:6px 6px;border-bottom:1px solid #3A3146;vertical-align:top}
+.map th{font-family:var(--silk);font-size:12px;color:var(--shell-ink-2);text-transform:uppercase;letter-spacing:.04em}
+.map td b{color:var(--candy);font-weight:700}
+.map td{color:var(--shell-ink)}
+
+/* ---- week strip + targets ---- */
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dc{height:56px;border:2px solid #4A4058;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px}
+.dc .d{font-family:var(--silk);font-size:12px;color:var(--shell-ink-2)}
+.dc .g{font-size:15px;font-weight:700;color:var(--shell-ink-2)}
+.dc.on{background:var(--candy);border-color:var(--candy)}
+.dc.on .d,.dc.on .g{color:var(--shell)}
+.dc.sk{border-color:var(--candy)}
+.dc.sk .d,.dc.sk .g{color:var(--candy)}
+.tr{padding:11px 0;border-top:1px solid #3A3146}
+.tr:first-of-type{border-top:0}
+.tr .v{display:flex;align-items:baseline;gap:8px;margin-top:2px}
+.tr .v b{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.tr .v span{font-size:12.5px;color:var(--shell-ink-2);font-weight:600;font-variant-numeric:tabular-nums}
+.tb{height:12px;background:#3A3146;margin-top:8px;position:relative;border:1px solid #4A4058}
+.tb i{position:absolute;inset:0 auto 0 0;background:var(--candy);display:block}
+.tb .band{position:absolute;top:-3px;bottom:-3px;background:rgba(155,188,15,.28);
+  border-left:3px solid var(--lcd);border-right:3px solid var(--lcd)}
+.tb .tick{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--lcd)}
+.fine{padding:8px 16px 18px;font-size:12.5px;color:var(--shell-ink-2);line-height:1.55}
+
+/* ---- dock: the primary action, outside the device metaphor ---- */
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:40;background:var(--shell);padding:12px 16px 18px;
+  border-top:1px solid #3B3247}
+.go{width:100%;min-height:64px;border:0;background:var(--candy);color:var(--shell);
+  font-family:var(--sans);font-size:20px;font-weight:700;letter-spacing:.02em;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.gonote{font-family:var(--silk);font-size:12px;color:var(--shell-ink-2);margin:8px 0 0;text-align:center;letter-spacing:.03em}
+
+/* ---- page tables ---- */
+.copy{max-width:900px;margin:0 auto;padding:8px 20px 36px}
+.copy h2{font-family:var(--pixel);font-size:13px;margin:0 0 10px;color:var(--lcd);line-height:1.6}
+.copy p{margin:0 0 12px;font-size:13px;color:#D6CEE2;max-width:72ch}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.big{border-collapse:collapse;width:100%;font-size:13px}
+table.big th,table.big td{text-align:left;padding:7px 10px;border-bottom:1px solid #362E43;vertical-align:top}
+table.big th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#D6CEE2;font-weight:700}
+td.k2{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:#D6CEE2;white-space:nowrap}
+td.s{font-family:var(--silk);font-size:13px;color:var(--lcd)}
+.lic{max-width:900px;margin:0 auto;padding:0 20px 60px;font-size:12px;color:#D6CEE2;line-height:1.65}
+
+/* ---- the one orchestrated moment: the two-frame idle ---- */
+/* A segment LCD cannot tween; the cut is hard and the frame holds 900 ms. */
+@keyframes bob{0%,49.9%{transform:translateY(0)}50%,100%{transform:translateY(-3px)}}
+@keyframes blink{0%,49.9%{opacity:1}50%,100%{opacity:0}}
+@media(prefers-reduced-motion:reduce){
+  .pet{animation:none;transform:none}
+  .ic.blink{animation:none;opacity:1}
+}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design G — pocket pet</h1>
+  <p>A pixel pet on a segment LCD whose state is a direct function of the plan data — fed by completed sessions, drooping after a skip, asleep during a pause, and showing its <b>needs attention</b> screen exactly when the missed-week trigger fires. The rest timer is the same LCD counting down, because it is the only clock the device has. The mapping from <code>WeeklyReview.delta</code> and <code>SessionAssignment.status</code> to pet state is printed in full below the frames and in short on screen&nbsp;3.</p>
+  <p><b>Trade dress.</b> This borrows the 1990s virtual-pet <i>genre</i>. Bandai's Tamagotchi is that genre's canonical product; its name and its moulded egg-and-keychain shell are Bandai's marks and are not used. The device here is a plain rectangular handheld, the skin id is <code>"pet"</code>, and no user-facing string carries a third-party mark.</p>
+  <p><b>Where the type is allowed to go.</b> Press Start 2P on LCD numerals and four-word headings; Silkscreen on LCD chrome that is read and never tapped, 12&nbsp;px floor; Work Sans for every button label and every line of prose, on the shell, outside the glass. The primary action is a docked 64&nbsp;px bar, not a hardware button.</p>
+</header>
+
+<svg aria-hidden="true" style="position:absolute;width:0;height:0"><defs>
+  <symbol id="i-sleep" viewBox="0 0 16 16"><path fill="currentColor" d="M3 2h8v2l-5 6h5v2H3v-2l5-6H3z"/></symbol>
+  <symbol id="i-skip" viewBox="0 0 16 16"><path fill="currentColor" d="M2 2h2v5l6-5v5l4-3v8l-4-3v5L4 9v5H2z"/></symbol>
+  <symbol id="i-attn" viewBox="0 0 16 16"><path fill="currentColor" d="M7 1h2v9H7zM7 12h2v3H7z"/></symbol>
+  <symbol id="i-timer" viewBox="0 0 16 16"><path fill="currentColor" d="M5 1h6v2H5zM3 4h10v2H3zM2 6h2v7H2zM12 6h2v7h-2zM3 13h10v2H3zM7 6h2v4H7z"/></symbol>
+</defs></svg>
+
+<div class="frames">
+
+<!-- ========================= 1 · TODAY ========================= -->
+<figure>
+  <figcaption><b>1 · today</b> — pet state FED · 390 × 844</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>TUE 1 SEP</span></div>
+
+      <div class="dev"><div class="lcd">
+        <div class="strip">
+          <svg class="ic" aria-hidden="true"><use href="#i-sleep"></use></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-skip"></use></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-attn"></use></svg>
+          <svg class="ic lit" aria-hidden="true"><use href="#i-timer"></use></svg>
+          <span class="striptext">LV 12 / 48</span>
+        </div>
+        <div class="stage">
+          <svg class="pet" data-pet="happy" viewBox="0 0 16 16" role="img" aria-label="Pet state: fed"></svg>
+          <div class="side">
+            <div>
+              <p class="state">HAPPY</p>
+              <p class="sublcd">UPPER<br>FED 10 &middot; SKIP 1<br>LEFT 37</p>
+            </div>
+            <div>
+              <p class="sublcd">THIS WEEK 1/4</p>
+              <div class="meter">
+                <span class="mseg full"></span><span class="mseg"></span><span class="mseg"></span><span class="mseg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="readout tabnum">18:00</div>
+        <p class="readsub">IN 8 MIN &middot; 6 EXERCISES &middot; ABOUT 55 MIN</p>
+      </div></div>
+
+      <div class="hw">
+        <button>Sleep<span>A</span></button>
+        <button>Skip<span>B</span></button>
+        <button>Swap<span>C</span></button>
+      </div>
+
+      <div class="sec">
+        <h3>Prescription</h3>
+        <ul class="rows">
+          <li><span>Barbell bench press</span><span class="rx">3 &times; 6&ndash;8</span></li>
+          <li><span>Barbell row (Pendlay)</span><span class="rx">3 &times; 6&ndash;8</span></li>
+          <li><span>Overhead press</span><span class="rx">3 &times; 8&ndash;10</span></li>
+          <li><span>Lat pulldown</span><span class="rx">3 &times; 10&ndash;14</span></li>
+          <li><span>Face pull</span><span class="rx">2 &times; 12&ndash;15</span></li>
+        </ul>
+      </div>
+
+      <div class="fine">Sleep holds the cursor at session 12 and suspends the weekly target — the pet sleeps, it is not neglected. Skip advances to session 13 and asks for a reason. Swap offers Push or Pull, the labels still owed this week.</div>
+    </div>
+
+    <div class="dock">
+      <button class="go">Feed<span>&rarr;</span></button>
+      <p class="gonote">START SESSION 12 &middot; UPPER</p>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 2 · TRAIN ========================= -->
+<figure>
+  <figcaption><b>2 · train</b> — pet state TRAINING, rest running</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span>UPPER &middot; 31 MIN</span></div>
+
+      <div class="dev"><div class="lcd">
+        <div class="strip">
+          <svg class="ic" aria-hidden="true"><use href="#i-sleep"></use></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-skip"></use></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-attn"></use></svg>
+          <svg class="ic lit" aria-hidden="true"><use href="#i-timer"></use></svg>
+          <span class="striptext">LV 12 / 48</span>
+        </div>
+        <div class="stage">
+          <svg class="pet" data-pet="training" viewBox="0 0 16 16" role="img" aria-label="Pet state: training"></svg>
+          <div class="side">
+            <div>
+              <p class="state">RESTING</p>
+              <p class="sublcd">BENCH PRESS<br>SET 2 OF 3 DONE</p>
+            </div>
+            <div>
+              <p class="sublcd">WATER?</p>
+              <div class="meter">
+                <span class="mseg full"></span><span class="mseg"></span><span class="mseg"></span><span class="mseg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="readout tabnum" id="lcdclock">1:47</div>
+        <p class="readsub">OF 2:00 &middot; ENDS 18:24:52</p>
+      </div></div>
+
+      <div class="split"><button>+30 s</button><button>Wake</button></div>
+
+      <div class="sec">
+        <p class="p"><b>Drink to thirst.</b> 31 minutes in.</p>
+        <p class="p2">No fixed volume between sets — replacement is judged by body-mass change across the session.</p>
+      </div>
+
+      <div class="card">
+        <h4>Barbell bench press</h4>
+        <p class="rx">3 &times; 6&ndash;8 &middot; rest 2:00 &middot; entered in lb</p>
+        <p class="p2" style="margin-top:8px">Suggested <b style="color:var(--candy)">140 lb</b>, up 5 lb. All sets reached 8 reps on 25 Aug, so +2.5&nbsp;% (3.4&nbsp;lb) rounded to the 5&nbsp;lb barbell step. Stored as 63.50&nbsp;kg.</p>
+        <div class="srow done"><span class="sn">SET 1</span><span class="ld tabnum">140<small>lb</small></span><span class="rp tabnum">8 reps</span><span class="mk">&#10003;</span></div>
+        <div class="srow done"><span class="sn">SET 2</span><span class="ld tabnum">140<small>lb</small></span><span class="rp tabnum">7 reps</span><span class="mk">&#10003;</span></div>
+        <div class="srow"><span class="sn">SET 3</span><span class="ld tabnum">140<small>lb</small></span><span class="rp open tabnum">&ndash;&ndash; reps</span><span class="mk">&#9633;</span></div>
+      </div>
+
+      <div class="card">
+        <h4>Lat pulldown</h4>
+        <p class="rx">3 &times; 10&ndash;14 &middot; rest 1:30 &middot; kg stack</p>
+        <p class="p2" style="margin-top:8px">Holding <b style="color:var(--candy)">45 kg</b>. The smallest pin is 5&nbsp;kg — 11&nbsp;% of 45&nbsp;kg, over the 10&nbsp;% ceiling — so the load holds and the rep target extends from 10&ndash;12 to 10&ndash;14. The stack is marked in kg and stays kg.</p>
+        <div class="srow done"><span class="sn">SET 1</span><span class="ld tabnum">45<small>kg</small></span><span class="rp tabnum">12 reps</span><span class="mk">&#10003;</span></div>
+        <div class="srow"><span class="sn">SET 2</span><span class="ld tabnum">45<small>kg</small></span><span class="rp open tabnum">&ndash;&ndash; reps</span><span class="mk">&#9633;</span></div>
+      </div>
+    </div>
+
+    <div class="dock">
+      <button class="go">Next set<span>&rarr;</span></button>
+      <p class="gonote">BENCH PRESS &middot; SET 3 OF 3</p>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 3 · CARE LOG ========================= -->
+<figure>
+  <figcaption><b>3 · care log</b> — pet state NEEDS ATTENTION · delta &minus;2</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>24&ndash;30 AUG</span></div>
+
+      <div class="dev"><div class="lcd">
+        <div class="strip">
+          <svg class="ic" aria-hidden="true"><use href="#i-sleep"></use></svg>
+          <svg class="ic lit" aria-hidden="true"><use href="#i-skip"></use></svg>
+          <svg class="ic lit blink" aria-hidden="true"><use href="#i-attn"></use></svg>
+          <svg class="ic" aria-hidden="true"><use href="#i-timer"></use></svg>
+          <span class="striptext">CARE LOG</span>
+        </div>
+        <div class="stage">
+          <svg class="pet" data-pet="attention" viewBox="0 0 16 16" role="img" aria-label="Pet state: needs attention"></svg>
+          <div class="side">
+            <div>
+              <p class="state">HUNGRY</p>
+              <p class="sublcd">2 OF 4 THIS<br>WEEK. TARGET 4.</p>
+            </div>
+            <div>
+              <p class="sublcd">FED 2 / 4</p>
+              <div class="meter">
+                <span class="mseg full"></span><span class="mseg full"></span><span class="mseg"></span><span class="mseg"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="readout tabnum">&minus;2</div>
+        <p class="readsub">2 DONE &middot; 1 SKIPPED &middot; 1 NOT LOGGED</p>
+      </div></div>
+
+      <div class="sec">
+        <h3>Who showed up</h3>
+        <div class="days">
+          <div class="dc"><span class="d">MON</span><span class="g">&middot;</span></div>
+          <div class="dc on"><span class="d">TUE</span><span class="g">&#10003;</span></div>
+          <div class="dc"><span class="d">WED</span><span class="g">&middot;</span></div>
+          <div class="dc sk"><span class="d">THU</span><span class="g">&#10005;</span></div>
+          <div class="dc"><span class="d">FRI</span><span class="g">&middot;</span></div>
+          <div class="dc on"><span class="d">SAT</span><span class="g">&#10003;</span></div>
+          <div class="dc"><span class="d">SUN</span><span class="g">&middot;</span></div>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h3>What the pet is reading</h3>
+        <table class="map">
+          <tr><th>Data</th><th>State</th></tr>
+          <tr><td><code>PlanPause.to === null</code></td><td><b>ASLEEP</b></td></tr>
+          <tr><td><code>status === "completed"</code></td><td><b>FED</b></td></tr>
+          <tr><td><code>status === "skipped"</code></td><td><b>DROOPING</b></td></tr>
+          <tr><td><code>delta &lt;= &minus;2</code> and <code>!missHandled</code></td><td><b>NEEDS ATTENTION</b></td></tr>
+        </table>
+        <p class="p2" style="margin-top:10px">The pet never says anything the numbers do not, and the numbers stay printed beside it.</p>
+      </div>
+
+      <div class="sec">
+        <h3>Targets</h3>
+        <div class="tr">
+          <p class="p2" style="margin:0">Energy</p>
+          <p class="v"><b class="tabnum">2110</b><span>kcal &middot; target 2340</span></p>
+          <div class="tb"><i style="width:72.1%"></i><span class="tick" style="left:80%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="p2" style="margin:0">Protein</p>
+          <p class="v"><b class="tabnum">142</b><span>g &middot; band 130&ndash;160 g</span></p>
+          <div class="tb"><i style="width:71%"></i><span class="band" style="left:65%;right:20%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="p2" style="margin:0">Fluid</p>
+          <p class="v"><b class="tabnum">2400</b><span>mL &middot; target 2900</span></p>
+          <div class="tb"><i style="width:66.2%"></i><span class="tick" style="left:80%"></span></div>
+        </div>
+        <div class="tr">
+          <p class="p2" style="margin:0">Body mass</p>
+          <p class="v"><b class="tabnum">61.2</b><span>kg &middot; &minus;0.4 kg over 4 weeks</span></p>
+          <div class="tb"><i style="width:58%"></i></div>
+        </div>
+      </div>
+
+      <div class="fine">Bars run to 1.25 &times; target, so the three share a scale. Feeding the pet and dismissing the missed-week video are the same transition: both set <code>WeeklyReview.missHandled = true</code>.</div>
+    </div>
+
+    <div class="dock">
+      <button class="go">Needs attention<span>&rarr;</span></button>
+      <p class="gonote">OPENS THE MISSED-WEEK VIDEO</p>
+    </div>
+  </div>
+</figure>
+
+</div>
+
+<section class="copy">
+  <h2>Pet state is a function, not a mood</h2>
+  <p>Every state below is derived from types already in <code>docs/plans/2026-09-01-00-master-plan.md</code> §5. The skin adds no new state — it renames one. Note the last row in particular: <code>markMotivationShown</code> already sets <code>WeeklyReview.missHandled = true</code>, so "feeding the pet" and "dismissing the missed-week modal" are the same state transition.</p>
+  <div class="tw"><table class="big">
+    <thead><tr><th>Data condition</th><th>Pet state</th><th>LCD shows</th></tr></thead>
+    <tbody>
+      <tr><td class="k2">a PlanPause with to === null exists</td><td class="s">ASLEEP</td><td>Pet lying down, sleep icon lit, feed meter frozen, weekly target suspended</td></tr>
+      <tr><td class="k2">today's SessionAssignment.status === "in-progress"</td><td class="s">TRAINING</td><td>Pet mid-rep, timer icon lit, rest countdown in the readout</td></tr>
+      <tr><td class="k2">today's SessionAssignment.status === "completed"</td><td class="s">FED</td><td>Pet upright, feed meter +1 segment</td></tr>
+      <tr><td class="k2">most recent SessionAssignment.status === "skipped"</td><td class="s">DROOPING</td><td>Pet slumped, skip icon lit, meter unchanged</td></tr>
+      <tr><td class="k2">WeeklyReview.delta === 0</td><td class="s">HAPPY</td><td>Pet upright, all four meter segments filled</td></tr>
+      <tr><td class="k2">WeeklyReview.delta &gt; 0</td><td class="s">THRIVING</td><td>Pet upright with the accent marker</td></tr>
+      <tr><td class="k2">WeeklyReview.delta &lt;= −2 and missHandled === false</td><td class="s">NEEDS ATTENTION</td><td>Attention icon blinking at 1 Hz; the missed-week video is the care action that clears it</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="copy">
+  <h2>Copy table: default to pet</h2>
+  <p>Same components, same data, same numbers. Only the strings move.</p>
+  <div class="tw"><table class="big">
+    <thead><tr><th>Key</th><th>Default (clinical)</th><th>G — pet</th></tr></thead>
+    <tbody>
+      <tr><td class="k2">start_session</td><td>Start</td><td class="s">FEED</td></tr>
+      <tr><td class="k2">rest</td><td>Rest</td><td class="s">RESTING</td></tr>
+      <tr><td class="k2">skip_today</td><td>Skip today</td><td class="s">SKIP</td></tr>
+      <tr><td class="k2">pause_plan</td><td>Pause</td><td class="s">SLEEP</td></tr>
+      <tr><td class="k2">train_other</td><td>Train other</td><td class="s">SWAP</td></tr>
+      <tr><td class="k2">week_delta_negative</td><td>2 sessions below target</td><td class="s">HUNGRY (−2)</td></tr>
+      <tr><td class="k2">week_delta_zero</td><td>Target met</td><td class="s">HAPPY</td></tr>
+      <tr><td class="k2">week_delta_positive</td><td>1 session above target</td><td class="s">THRIVING (+1)</td></tr>
+      <tr><td class="k2">hydration_cue</td><td>Drink to thirst.</td><td class="s">WATER?</td></tr>
+      <tr><td class="k2">pr_reached</td><td>Personal record</td><td class="s">EVOLVED</td></tr>
+      <tr><td class="k2">motivation_title</td><td>Missed week</td><td class="s">NEEDS ATTENTION</td></tr>
+      <tr><td class="k2">session_cursor</td><td>Session 12 of 48</td><td class="s">LV 12 / 48</td></tr>
+      <tr><td class="k2">plan_progress</td><td>10 completed · 1 skipped · 37 remaining</td><td class="s">FED 10 · SKIP 1 · LEFT 37</td></tr>
+      <tr><td class="k2">add_30s</td><td>+30 s</td><td class="s">+30S</td></tr>
+      <tr><td class="k2">skip_rest</td><td>Skip rest</td><td class="s">WAKE</td></tr>
+      <tr><td class="k2">week_review_title</td><td>Week review</td><td class="s">CARE LOG</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="lic">
+  <b>Assets.</b> Type: Press Start 2P, Silkscreen and Work Sans, Google Fonts, SIL Open Font License 1.1. Pet sprites and icon-strip glyphs: hand-authored 16 × 16 pixel grids rendered as inline SVG rects with <code>shape-rendering: crispEdges</code> — own work, no third-party rights. <b>Kenney's 1-Bit Pack (CC0, no attribution required) was considered and not used:</b> the pet needs seven states in one silhouette redrawn to a two-value palette clearing 6:1 on the LCD ground, and sourcing seven matching poses from a general tile pack and recolouring them is more work and less control than authoring the grid. Kenney remains the right source if this direction ships and needs a wider icon set.<br><br>
+  <b>Measured limitation.</b> The always-on ghost icons sit at roughly 2.4:1 against the LCD ground and do <i>not</i> meet the 3:1 non-text contrast guideline. That is inherent — a ghost on a segment LCD is low-contrast by definition. They are therefore decorative and <code>aria-hidden</code>: every state they stand for is also printed as a word on the LCD and on the shell, and nothing depends on them alone. Lit icons render at full <code>#0F380F</code>.
+</section>
+
+<script>
+// Pet sprites: 16 x 16 grids, '#' = a lit LCD pixel. Authored by hand; rendered
+// as one <rect> per lit pixel so the edges stay hard at any scale.
+var PETS = {
+  happy:["................","................",".....######.....","...##########...","...##########...","..##..####..##..","..##..####..##..","..############..","..###.####.###..","...###....###...","...##########...",".....######.....","....###..###....","....###..###....","................","................"],
+  thriving:["................","................","................",".##..######..##.",".##############.","..###.#####.##..","...#..####..#...","..############..","...##########...","...###....###...","....########....",".....######.....","....###..###....","....###..###....","................","................"],
+  training:["................",".##..........##.",".##############.",".####......####.","...##.####.##...","...##########...","...##########...","...#..####..#...","...#..####..#...","...##########...","...###....###...","....########....","......####......","....###..###....","....###..###....","................"],
+  drooping:["................","................","................","................","................","......####......","....########....","...##########...","..##.######.##..","..###.####.###..","..############..","...###....###...","....########....","...##########...","...###....###...","................"],
+  asleep:["................","................","................","................","................","................","................","................","................","...##########...","..##...##...##..","..############..","..####....####..","...##########...","................","................"],
+  attention:["................","................","................",".....######.....","....########....","...#..####..#...","...#..####..#...","...#..####..#...","...##########...","...###....###...","....##....##....",".....######.....","....###..###....","....###..###....","................","................"],
+  hungry:["................","................","................","................","......####......","....########....","...##########...","..##..####..##..","..##..####..##..","..############..","...###...####...","....##...###....","......####......","....###..###....","....###..###....","................"]
+};
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  document.querySelectorAll('.pet').forEach(function (svg) {
+    var grid = PETS[svg.getAttribute('data-pet')];
+    if (!grid) return;
+    for (var y = 0; y < grid.length; y++) {
+      var row = grid[y], x = 0;
+      while (x < row.length) {
+        if (row[x] !== '#') { x++; continue; }
+        var run = 0;
+        while (x + run < row.length && row[x + run] === '#') run++;   // run-length: fewer nodes
+        var r = document.createElementNS(NS, 'rect');
+        r.setAttribute('x', x); r.setAttribute('y', y);
+        r.setAttribute('width', run); r.setAttribute('height', 1);
+        r.setAttribute('fill', 'var(--lcd-ink)');
+        svg.appendChild(r);
+        x += run;
+      }
+    }
+  });
+
+  // Rest countdown on the LCD.
+  var el = document.getElementById('lcdclock');
+  if (!el) return;
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var remainS = 107, totalS = 120;   // seconds; 1:47 of a 2:00 rest
+  setInterval(function () {
+    remainS = remainS > 0 ? remainS - 1 : totalS;
+    var m = Math.floor(remainS / 60), s = remainS % 60;
+    el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  }, 1000);
+})();
+</script>
+</body>
+</html>
