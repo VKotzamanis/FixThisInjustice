@@ -6,6 +6,13 @@ import { cspPlugin } from './build/cspPlugin.ts';
 export default defineConfig({
   // GitHub Pages project site: https://<user>.github.io/FixThisInjustice/
   base: '/FixThisInjustice/',
+  build: {
+    // The CSP is `font-src 'self'` (master plan section 3). Vite's default
+    // 4096-byte inline limit rewrites any smaller asset as a `data:` URI, which
+    // that directive blocks: the subset silently fails to load. 0 disables
+    // inlining entirely, so every font subset ships as a same-origin file.
+    assetsInlineLimit: 0,
+  },
   plugins: [
     react(),
     cspPlugin(),
@@ -19,6 +26,10 @@ export default defineConfig({
       // because the CSP forbids inline script.
       registerType: 'prompt',
       injectRegister: false,
+      // The three icons already match injectManifest.globPatterns' `png`, so
+      // Workbox's default of also folding manifest.icons into the precache
+      // lists each one twice (20 entries, three of them duplicates).
+      includeManifestIcons: false,
       manifest: {
         name: 'FixThisInjustice',
         short_name: 'FTI',
