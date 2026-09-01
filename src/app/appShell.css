@@ -1,0 +1,186 @@
+/* Minimal shell chrome. P2 replaces the placeholder; the bars and banners stay. */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: rgba(10, 11, 12, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--text-2);
+  letter-spacing: 0.04em;
+}
+
+.topbar .brand {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.topbar .brand .acc {
+  color: var(--accent);
+  margin: 0 2px;
+}
+
+main {
+  padding: 24px 28px 80px;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 820px) {
+  main {
+    padding: 18px 14px 40px;
+  }
+}
+
+.banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--danger);
+  background: var(--bg-2);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--text-2);
+}
+
+.banner-tag {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  color: var(--danger);
+  padding: 3px 8px;
+  border: 1px solid var(--danger);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/*
+ * The save-failure banner carries its own export control: a write that failed
+ * leaves the only copy of the change in memory, so the export has to be one
+ * click away rather than several views deep.
+ */
+.banner button {
+  font: inherit;
+  font-family: var(--sans);
+  flex-shrink: 0;
+  align-self: center;
+  padding: 6px 12px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* The service-worker update prompt: informational, so accent rather than danger. */
+.banner.update {
+  border-left-color: var(--accent);
+}
+
+.banner.update .banner-tag {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.placeholder {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  padding: 24px;
+  max-width: 520px;
+}
+
+.placeholder h2 {
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 18px;
+  margin: 0 0 10px;
+  color: var(--accent);
+}
+
+.placeholder p {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.recovery {
+  max-width: 620px;
+  margin: 48px auto;
+  padding: 28px;
+  border: 1px solid var(--line-2);
+  background: var(--bg-2);
+}
+
+.recovery h1 {
+  font-family: var(--sans);
+  font-size: 20px;
+  margin: 0 0 12px;
+  color: var(--danger);
+}
+
+.recovery p,
+.recovery label {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.55;
+  display: block;
+}
+
+.recovery pre {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-3);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  padding: 10px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+
+.recovery button {
+  font: inherit;
+  font-family: var(--sans);
+  padding: 9px 16px;
+  margin-right: 10px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.recovery button.destructive {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.recovery button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  border-color: var(--text-3);
+  color: var(--text-3);
+}
+
+.recovery input {
+  font: inherit;
+  font-family: var(--mono);
+  padding: 8px 10px;
+  margin: 8px 0 14px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  width: 220px;
+}

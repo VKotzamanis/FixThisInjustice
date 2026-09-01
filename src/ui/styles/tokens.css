@@ -1,0 +1,65 @@
+/*
+ * Design tokens ported from the legacy index.html :root block.
+ *
+ * Code review A67: the legacy build carried three accents — #00ff88 in
+ * manifest.json and the theme-color meta, #a3e635 in --accent, and #f472b6 in
+ * TWEAK_DEFAULTS. --accent is the one the CSS actually rendered (every glow and
+ * tint in the sheet is rgba(163, 230, 53, ...)), so #a3e635 is canonical and the
+ * manifest, the theme-color meta and UiPrefs.accent all match it. The tweaks
+ * panel that owned #f472b6 is dropped per the code review port table.
+ *
+ * Font families are the self-hosted @fontsource-variable packages imported in
+ * src/main.tsx, not the Google Fonts stylesheet the legacy shell loaded
+ * (security constraint 19).
+ */
+:root {
+  --bg: #0a0b0c;
+  --bg-2: #13161a;
+  --bg-3: #1c2026;
+  --bg-4: #252a32;
+
+  --line: rgba(220, 230, 240, 0.08);
+  --line-2: rgba(220, 230, 240, 0.16);
+
+  --text: #dde3ea;
+  --text-2: #8e97a3;
+  --text-3: #5a6270;
+
+  --accent: #a3e635;
+  --accent-d: #84cc16;
+  --accent-rgb: 163, 230, 53;
+
+  --warn: #fbbf24;
+  --danger: #f87171;
+  --info: #67e8f9;
+
+  --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --sans: 'Geist Variable', -apple-system, system-ui, sans-serif;
+
+  --chart-line: rgba(220, 230, 240, 0.3);
+  --chart-actual: var(--accent);
+  --chart-grid: rgba(220, 230, 240, 0.08);
+  --chart-text: rgba(220, 230, 240, 0.5);
+  --chart-marker: var(--accent);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100%;
+}
+
+body {
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}

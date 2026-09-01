@@ -1,0 +1,57 @@
+/*
+ * CRT presentation layers ported from the legacy index.html.
+ *
+ * .crt.sc draws the scanline grid and vignette; .crt.fl adds the flicker.
+ * Both are opt-in through UiPrefs.scanlines and UiPrefs.flicker, and both are
+ * suppressed under prefers-reduced-motion: a full-viewport opacity animation is
+ * exactly the kind of effect that setting exists to stop.
+ */
+.crt {
+  position: relative;
+  min-height: 100vh;
+}
+
+.crt.sc::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.022) 50%, transparent 50%);
+  background-size: 100% 3px;
+}
+
+.crt.sc::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 51;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
+
+@keyframes flick {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  3% {
+    opacity: 0.96;
+  }
+  5% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 0.985;
+  }
+}
+
+.crt.fl {
+  animation: flick 7s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crt.fl {
+    animation: none;
+  }
+}
