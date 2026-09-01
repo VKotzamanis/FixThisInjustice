@@ -1,0 +1,26 @@
+{
+  "runs": [
+    {
+      "date": "2026-09-01T19:18:25.495597+00:00",
+      "input_tokens": 366594,
+      "output_tokens": 0,
+      "files": 50
+    },
+    {
+      "date": "2026-09-01T20:19:18.510645+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 5,
+      "note": "incremental --update; graphify-reported LLM cost fields are 0 because extraction used host-agent subagents, not the Gemini backend; actual subagent token usage (from Agent tool usage.subagent_tokens, aggregate not input/output-split) recorded separately below",
+      "subagent_tokens_observed": {
+        "references_md": 209164,
+        "master_plan": 105680,
+        "code_review": 125398,
+        "content_peer_review": null,
+        "security_review": 123372
+      }
+    }
+  ],
+  "total_input_tokens": 366594,
+  "total_output_tokens": 0
+}
