@@ -1,3 +1,4 @@
+import { tzOffset } from '@date-fns/tz';
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
@@ -15,7 +16,7 @@ import {
   weekEnd,
   weekStart,
 } from './dates';
-import type { TimeZone } from './types';
+import type { EpochMs, LocalDate, LocalTime, TimeZone } from './types';
 
 /** The four zones master plan section 3 requires every date fixture to run in. */
 const ZONES: readonly TimeZone[] = [
@@ -96,15 +97,22 @@ describe('instantOf across DST transitions', () => {
     expect(localTimeOf(athens, 'Europe/Athens')).toBe('04:30');
   });
 
-  it('resolves an autumn overlap to the later offset', () => {
-    // 01:30 occurs twice on 2026-11-01 in America/New_York; the EST reading wins.
+  it('resolves an autumn overlap to the first occurrence', () => {
+    // 01:30 occurs twice on 2026-11-01 in America/New_York. The first occurrence
+    // wins: 01:30 EDT (UTC-4), not the EST repeat an hour of real time later.
     const ny = instantOf('2026-11-01', '01:30', 'America/New_York');
-    expect(ny).toBe(Date.UTC(2026, 10, 1, 6, 30));
+    expect(ny).toBe(Date.UTC(2026, 10, 1, 5, 30));
     expect(localTimeOf(ny, 'America/New_York')).toBe('01:30');
 
-    // EU transition on 2026-10-25 in Europe/Athens.
+    // EU transition on 2026-10-25 in Europe/Athens: 03:30 EEST (UTC+3) wins.
     const athens = instantOf('2026-10-25', '03:30', 'Europe/Athens');
-    expect(athens).toBe(Date.UTC(2026, 9, 25, 1, 30));
+    expect(athens).toBe(Date.UTC(2026, 9, 25, 0, 30));
+
+    // Southern hemisphere: DST *ends* on 2026-04-05 in Australia/Sydney, so the
+    // overlap runs 02:00-03:00 and the first occurrence is AEDT (UTC+11).
+    const sydney = instantOf('2026-04-05', '02:30', 'Australia/Sydney');
+    expect(sydney).toBe(Date.UTC(2026, 3, 4, 15, 30));
+    expect(localTimeOf(sydney, 'Australia/Sydney')).toBe('02:30');
   });
 
   it('is the identity in UTC', () => {
@@ -171,5 +179,149 @@ describe('compareLocalDate', () => {
     expect(compareLocalDate('2026-01-01', '2026-01-02')).toBe(-1);
     expect(compareLocalDate('2026-01-02', '2026-01-01')).toBe(1);
     expect(compareLocalDate('2026-01-01', '2026-01-01')).toBe(0);
+  });
+});
+
+/**
+ * The six wall-clock readings the fix is specified against: two spring-forward
+ * gaps, three autumn overlaps (including a southern-hemisphere one, where the
+ * overlap falls in April), and one ordinary instant with no transition nearby.
+ * Each expected instant is the one the documented rule produces — resolve a gap
+ * forward, take the first occurrence of an overlap.
+ */
+const INSTANT_FIXTURES: readonly {
+  date: LocalDate;
+  time: LocalTime;
+  tz: TimeZone;
+  expected: EpochMs;
+  note: string;
+}[] = [
+  {
+    date: '2026-03-08',
+    time: '02:30',
+    tz: 'America/New_York',
+    expected: Date.UTC(2026, 2, 8, 7, 30),
+    note: 'gap, resolved forward to 03:30 EDT',
+  },
+  {
+    date: '2026-11-01',
+    time: '01:30',
+    tz: 'America/New_York',
+    expected: Date.UTC(2026, 10, 1, 5, 30),
+    note: 'overlap, first occurrence, EDT (UTC-4)',
+  },
+  {
+    date: '2026-03-29',
+    time: '03:30',
+    tz: 'Europe/Athens',
+    expected: Date.UTC(2026, 2, 29, 1, 30),
+    note: 'gap, resolved forward to 04:30 EEST',
+  },
+  {
+    date: '2026-10-25',
+    time: '03:30',
+    tz: 'Europe/Athens',
+    expected: Date.UTC(2026, 9, 25, 0, 30),
+    note: 'overlap, first occurrence, EEST (UTC+3)',
+  },
+  {
+    date: '2026-04-05',
+    time: '02:30',
+    tz: 'Australia/Sydney',
+    expected: Date.UTC(2026, 3, 4, 15, 30),
+    note: 'overlap, first occurrence, AEDT (UTC+11)',
+  },
+  {
+    date: '2026-09-01',
+    time: '18:00',
+    tz: 'America/Chicago',
+    expected: Date.UTC(2026, 8, 1, 23, 0),
+    note: 'ordinary instant, CDT (UTC-5), no transition within a day',
+  },
+];
+
+/**
+ * Node's process.env, reached through globalThis: the app tsconfig deliberately
+ * omits the node types, and this is the only place the suite needs them.
+ */
+const processEnv = (globalThis as unknown as { process: { env: Record<string, string | undefined> } })
+  .process.env;
+
+describe('instantOf does not depend on the host time zone', () => {
+  it('produces the documented instant for every fixture', () => {
+    for (const { date, time, tz, expected, note } of INSTANT_FIXTURES) {
+      expect(instantOf(date, time, tz), `${tz} ${date} ${time} (${note})`).toBe(expected);
+    }
+  });
+
+  it('produces the same instants whatever process.env.TZ is set to', () => {
+    // The bug this replaces: TZDate resolved wall-clock components in the system
+    // zone first, so an ambiguous autumn reading took whichever offset the host
+    // happened to sit in. Node retargets the system zone when process.env.TZ is
+    // reassigned, so the regression is reproducible in one process. The npm
+    // script "test:tz" re-runs the whole suite under four zones as well, which
+    // covers module-load-time zone capture that this test cannot see.
+    const original = processEnv.TZ;
+    const expected = INSTANT_FIXTURES.map((f) => f.expected);
+    const probe = Date.UTC(2026, 6, 1, 12); // a July instant, away from any transition
+    try {
+      for (const hostZone of ZONES) {
+        processEnv.TZ = hostZone;
+
+        // Confirm the reassignment actually retargeted the system zone. Without
+        // this the test could pass vacuously by never changing anything.
+        // getTimezoneOffset is west-positive and tzOffset east-positive, so the
+        // system value is negated to compare them. The trailing `+ 0` normalises
+        // the -0 that negating a zero offset produces under UTC, which toBe
+        // compares with Object.is and would otherwise read as unequal to 0. [min]
+        const systemOffset = -new Date(probe).getTimezoneOffset() + 0;
+        expect(systemOffset, `TZ=${hostZone} did not take effect`).toBe(
+          tzOffset(hostZone, new Date(probe)),
+        );
+
+        const readings = INSTANT_FIXTURES.map((f) => instantOf(f.date, f.time, f.tz));
+        expect(readings, `computed under TZ=${hostZone}`).toEqual(expected);
+      }
+    } finally {
+      if (original === undefined) delete processEnv.TZ;
+      else processEnv.TZ = original;
+    }
+  });
+});
+
+describe('invalid input throws RangeError rather than producing NaN text', () => {
+  it('instantOf rejects a bad date, time, or zone', () => {
+    expect(() => instantOf('2026-02-30', '12:00', 'UTC')).toThrow(RangeError);
+    expect(() => instantOf('2026-3-8', '12:00', 'UTC')).toThrow(RangeError);
+    expect(() => instantOf('2026-03-08', '24:00', 'UTC')).toThrow(RangeError);
+    expect(() => instantOf('2026-03-08', '7:30', 'UTC')).toThrow(RangeError);
+    expect(() => instantOf('2026-03-08', '12:00', 'Mars/Olympus_Mons')).toThrow(RangeError);
+    expect(() => instantOf('2026-03-08', '12:00', '')).toThrow(RangeError);
+  });
+
+  it('localDateOf and localTimeOf reject a bad zone instead of returning "0NaN-NaN-NaN"', () => {
+    const t = Date.UTC(2026, 8, 1, 12, 0);
+    expect(() => localDateOf(t, 'Mars/Olympus_Mons')).toThrow(RangeError);
+    expect(() => localDateOf(t, '')).toThrow(RangeError);
+    expect(() => localTimeOf(t, 'Mars/Olympus_Mons')).toThrow(RangeError);
+    expect(() => localTimeOf(t, '')).toThrow(RangeError);
+  });
+
+  it('todayLocal rejects a bad zone', () => {
+    expect(() => todayLocal('Mars/Olympus_Mons', Date.UTC(2026, 8, 1, 12, 0))).toThrow(RangeError);
+    expect(() => todayLocal('')).toThrow(RangeError);
+  });
+
+  it('addDays rejects a bad date or a non-finite day count', () => {
+    expect(() => addDays('2026-02-30', 1)).toThrow(RangeError);
+    expect(() => addDays('not-a-date', 1)).toThrow(RangeError);
+    expect(() => addDays('2026-09-01', Number.NaN)).toThrow(RangeError);
+    expect(() => addDays('2026-09-01', Number.POSITIVE_INFINITY)).toThrow(RangeError);
+    expect(() => addDays('2026-09-01', Number.NEGATIVE_INFINITY)).toThrow(RangeError);
+  });
+
+  it('daysBetween rejects a bad date in either position', () => {
+    expect(() => daysBetween('2026-02-30', '2026-09-01')).toThrow(RangeError);
+    expect(() => daysBetween('2026-09-01', '2026-02-30')).toThrow(RangeError);
   });
 });
