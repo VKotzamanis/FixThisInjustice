@@ -11,6 +11,7 @@
     "lint": "eslint .",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "test:tz": "for z in UTC Europe/Athens America/New_York America/Los_Angeles; do echo \"TZ=$z\"; TZ=$z npx vitest run --reporter=dot || exit 1; done",
     "test:watch": "vitest"
   },
   "dependencies": {

@@ -1,8 +1,12 @@
-import { TZDate } from '@date-fns/tz';
+import { TZDate, tzOffset } from '@date-fns/tz';
 import type { EpochMs, IsoWeekday, LocalDate, LocalTime, TimeZone } from './types';
 
 /** Milliseconds in one calendar day measured on the UTC line, where no DST exists. */
 const MS_PER_UTC_DAY = 86_400_000; // [ms/day]
+/** Milliseconds in one hour. Fixed: hours are not subject to DST, only offsets are. */
+const MS_PER_HOUR = 3_600_000; // [ms/h]
+/** Milliseconds in one minute. tzOffset reports offsets in minutes, so this converts them. */
+const MS_PER_MINUTE = 60_000; // [ms/min]
 
 const LOCAL_DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
 const LOCAL_TIME_SHAPE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -48,6 +52,19 @@ function formatUtcMidnight(instant: EpochMs): LocalDate {
   return `${pad4(d.getUTCFullYear())}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
 }
 
+/** Guard for the arguments every exported helper shares. Throws rather than returning NaN text. */
+function assertValidDate(date: LocalDate, fn: string): void {
+  if (!isValidLocalDate(date)) {
+    throw new RangeError(`${fn}: invalid LocalDate ${JSON.stringify(date)}, expected "YYYY-MM-DD"`);
+  }
+}
+
+function assertValidTimeZone(tz: TimeZone, fn: string): void {
+  if (!isValidTimeZone(tz)) {
+    throw new RangeError(`${fn}: invalid IANA time zone ${JSON.stringify(tz)}`);
+  }
+}
+
 /** True when s is a well-formed and calendar-valid "YYYY-MM-DD". */
 export function isValidLocalDate(s: string): s is LocalDate {
   if (!LOCAL_DATE_SHAPE.test(s)) return false;
@@ -80,50 +97,125 @@ export function deviceTimeZone(): TimeZone {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
 }
 
-/** Civil date of an instant in the given zone. Never uses toISOString (A8, A10). */
+/**
+ * Civil date of an instant in the given zone. Never uses toISOString (A8, A10).
+ *
+ * @throws RangeError on an invalid IANA zone, which otherwise formats as "0NaN-NaN-NaN".
+ */
 export function localDateOf(instant: EpochMs, tz: TimeZone): LocalDate {
+  assertValidTimeZone(tz, 'localDateOf');
   const d = new TZDate(instant, tz);
   return `${pad4(d.getFullYear())}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-/** Wall-clock time of an instant in the given zone, "HH:mm". */
+/**
+ * Wall-clock time of an instant in the given zone, "HH:mm".
+ *
+ * @throws RangeError on an invalid IANA zone.
+ */
 export function localTimeOf(instant: EpochMs, tz: TimeZone): LocalTime {
+  assertValidTimeZone(tz, 'localTimeOf');
   const d = new TZDate(instant, tz);
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
 }
 
-/** Today's civil date in the given zone. */
+/**
+ * Today's civil date in the given zone.
+ *
+ * @throws RangeError on an invalid IANA zone.
+ */
 export function todayLocal(tz: TimeZone, now: EpochMs = Date.now()): LocalDate {
+  assertValidTimeZone(tz, 'todayLocal');
   return localDateOf(now, tz);
 }
 
 /**
  * Wall-clock date and time in a zone -> instant.
  *
- * A time inside a spring-forward gap does not exist; TZDate resolves it forward
- * (02:30 on 2026-03-08 in America/New_York becomes 03:30 EDT). A time inside an
- * autumn overlap is ambiguous; TZDate picks the later offset (01:30 on
- * 2026-11-01 in America/New_York is 01:30 EST, 06:30Z).
+ * The instant comes only from the offsets tzOffset reports for the zone, so the
+ * result does not depend on the process time zone. Constructing a TZDate from
+ * components does depend on it: TZDateMini resolves the components in the system
+ * zone before correcting them, so an ambiguous autumn wall time used to take
+ * whichever offset the host happened to sit in.
+ *
+ * A wall-clock reading is not always one instant:
+ *
+ * - Spring-forward gap: the reading does not exist. It resolves forward, by the
+ *   offset in force before the transition, so 02:30 on 2026-03-08 in
+ *   America/New_York becomes 03:30 EDT (07:30Z).
+ * - Autumn overlap: the reading occurs twice. The first occurrence wins, which
+ *   is the DST-side offset, so 01:30 on 2026-11-01 in America/New_York is
+ *   01:30 EDT (05:30Z), not the EST repeat an hour later.
+ *
+ * Both rules match Temporal's `disambiguation: 'compatible'`.
+ *
+ * @throws RangeError on an invalid date, time, or IANA zone.
  */
 export function instantOf(date: LocalDate, time: LocalTime, tz: TimeZone): EpochMs {
+  assertValidDate(date, 'instantOf');
+  if (!isValidLocalTime(time)) {
+    throw new RangeError(`instantOf: invalid LocalTime ${JSON.stringify(time)}, expected "HH:mm"`);
+  }
+  assertValidTimeZone(tz, 'instantOf');
+
   const { year, month, day } = partsOf(date);
-  const hours = Number(time.slice(0, 2));
-  const minutes = Number(time.slice(3, 5));
-  return new TZDate(year, month - 1, day, hours, minutes, 0, 0, tz).getTime();
+  const hours = Number(time.slice(0, 2)); // [h], 0..23
+  const minutes = Number(time.slice(3, 5)); // [min], 0..59
+
+  // The wall-clock components placed on the UTC line: the civil reading treated
+  // as though the zone's offset were zero. Not an instant on its own. [ms]
+  const wallUtc = utcMidnightOf(year, month, day) + hours * MS_PER_HOUR + minutes * MS_PER_MINUTE;
+
+  // The offsets in force a day either side of the reading, which bracket any
+  // single transition near it. tzOffset is signed east-positive: +480 for UTC+8,
+  // -240 for EDT, the mirror of Date.prototype.getTimezoneOffset. So the instant
+  // for a candidate offset is wallUtc - offset. [min]
+  const offsetBefore = tzOffset(tz, new Date(wallUtc - MS_PER_UTC_DAY));
+  const offsetAfter = tzOffset(tz, new Date(wallUtc + MS_PER_UTC_DAY));
+  const offsets = offsetBefore === offsetAfter ? [offsetBefore] : [offsetBefore, offsetAfter];
+
+  // A candidate is valid when the zone's actual offset at that instant is the
+  // offset that produced it. A normal reading yields exactly one; an overlap
+  // yields two; a gap yields none.
+  const valid: EpochMs[] = [];
+  for (const offset of offsets) {
+    const instant = wallUtc - offset * MS_PER_MINUTE; // [ms]
+    if (tzOffset(tz, new Date(instant)) === offset) valid.push(instant);
+  }
+
+  // Gap: apply the pre-transition offset, which lands one offset step past the
+  // gap and so resolves the reading forward.
+  if (valid.length === 0) return wallUtc - offsetBefore * MS_PER_MINUTE;
+
+  // One candidate on a normal day. On an overlap, the earlier instant is the
+  // first occurrence of the reading.
+  return Math.min(...valid);
 }
 
 /**
  * Calendar arithmetic on the UTC line, so no DST transition can shift it.
  * This is the fix for code review A9 and A10, where the legacy helpers parsed
  * "YYYY-MM-DDT00:00:00" as local midnight and formatted as UTC.
+ *
+ * @throws RangeError on an invalid date or a non-finite day count.
  */
 export function addDays(date: LocalDate, n: number): LocalDate {
-  return formatUtcMidnight(utcMidnightOfDate(date) + n * MS_PER_UTC_DAY);
+  assertValidDate(date, 'addDays');
+  if (!Number.isFinite(n)) {
+    throw new RangeError(`addDays: day count must be finite, received ${String(n)}`);
+  }
+  return formatUtcMidnight(utcMidnightOfDate(date) + n * MS_PER_UTC_DAY); // [d] -> [ms]
 }
 
-/** b − a in whole calendar days. Zone-free, DST-free. */
+/**
+ * b − a in whole calendar days. Zone-free, DST-free.
+ *
+ * @throws RangeError on an invalid date.
+ */
 export function daysBetween(a: LocalDate, b: LocalDate): number {
-  return Math.round((utcMidnightOfDate(b) - utcMidnightOfDate(a)) / MS_PER_UTC_DAY);
+  assertValidDate(a, 'daysBetween');
+  assertValidDate(b, 'daysBetween');
+  return Math.round((utcMidnightOfDate(b) - utcMidnightOfDate(a)) / MS_PER_UTC_DAY); // [ms] -> [d]
 }
 
 /** ISO weekday, 1 = Monday through 7 = Sunday. */
