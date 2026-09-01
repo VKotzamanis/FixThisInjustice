@@ -126,18 +126,15 @@ export class RootErrorBoundary extends Component<Props, State> {
       return (
         <div className="recovery" role="alert" tabIndex={-1} ref={this.recoveryRef}>
           <h1>Stored data cleared</h1>
-          <p>Reload the page to start from an empty document.</p>
+          <p>Reload to start empty.</p>
         </div>
       );
     }
 
     return (
       <div className="recovery" role="alert" tabIndex={-1} ref={this.recoveryRef}>
-        <h1>The application could not start</h1>
-        <p>
-          Your data has not been changed. Export it first, then decide whether to clear the stored
-          document.
-        </p>
+        <h1>The app could not start</h1>
+        <p>Your data is unchanged. Export it before clearing.</p>
         <pre>{error.message}</pre>
 
         <button type="button" onClick={this.handleExport}>
@@ -146,7 +143,7 @@ export class RootErrorBoundary extends Component<Props, State> {
         {exported ? <p>Export downloaded.</p> : null}
 
         <label htmlFor="recovery-confirm">
-          To clear the stored document, export it first and type {CONFIRMATION_WORD} below.
+          Export first, then type {CONFIRMATION_WORD}.
         </label>
         <input
           id="recovery-confirm"

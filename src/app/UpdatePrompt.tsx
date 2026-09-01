@@ -44,7 +44,7 @@ export function UpdatePrompt(): ReactElement | null {
   return (
     <div className="banner update" role="status">
       <span className="banner-tag">UPDATE READY</span>
-      <span>A new version has been downloaded. Reload to apply it.</span>
+      <span>A new version is ready.</span>
       <button type="button" onClick={apply}>
         Reload
       </button>

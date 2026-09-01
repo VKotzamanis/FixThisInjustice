@@ -59,20 +59,19 @@ function saveErrorCopy(reason: SaveErrorReason): SaveErrorCopy {
     case 'quota':
       return {
         tag: 'STORAGE FULL',
-        message: 'Storage is full. Export your data now.',
+        message: 'Storage is full. Export now.',
         recovery: 'export-memory',
       };
     case 'unavailable':
       return {
         tag: 'NO STORAGE',
-        message: 'Storage is unavailable in this browser context. Export your data now.',
+        message: 'Storage is unavailable here. Export now.',
         recovery: 'export-memory',
       };
     case 'serialize':
       return {
-        tag: 'CANNOT SERIALISE',
-        message:
-          'The document could not be serialised, so nothing was written and the stored document is unchanged. Retry the save; if it fails again, export the last stored document before making further changes.',
+        tag: 'SAVE FAILED',
+        message: 'The change could not be saved. The stored copy is unchanged.',
         recovery: 'retry-and-export-stored',
       };
     default: {
@@ -126,7 +125,7 @@ function SaveErrorBanner(): ReactElement | null {
               downloadText('fixthisinjustice-recovery.json', lastLoadRaw ?? '{}');
             }}
           >
-            Export last stored document
+            Export stored copy
           </button>
         </>
       )}
@@ -148,10 +147,7 @@ function LoadErrorBanner(): ReactElement | null {
   return (
     <div className="banner" role="alert">
       <span className="banner-tag">INVALID DATA</span>
-      <span>
-        The stored document did not validate and was not loaded: {loadError}. Nothing has been
-        overwritten. Export the stored document before making changes.
-      </span>
+      <span>Stored data did not validate: {loadError}. Nothing was overwritten.</span>
       <button
         type="button"
         onClick={() => {
@@ -200,10 +196,7 @@ export function App(): ReactElement {
         {profile === null ? (
           <section className="placeholder">
             <h2>No profile yet</h2>
-            <p>
-              Setup collects your body data, goal, units and weekly availability. It is added in the
-              next plan; this build carries the storage, schema and unit layers it needs.
-            </p>
+            <p>Setup is not built yet.</p>
           </section>
         ) : (
           <section className="placeholder">
