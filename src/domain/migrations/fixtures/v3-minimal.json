@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "activeProfileId": null,
+  "profiles": {},
+  "availability": {},
+  "plans": {},
+  "cursors": {},
+  "pauses": {},
+  "assignments": {},
+  "sets": {},
+  "bodyMass": {},
+  "hydration": {},
+  "intake": {},
+  "weeklyReviews": {},
+  "reminderSettings": {},
+  "pushDevice": null,
+  "motivation": {},
+  "specimens": {},
+  "capsules": {},
+  "ui": {
+    "bootSeen": false,
+    "lastView": "today",
+    "accent": "#a3e635",
+    "scanlines": true,
+    "flicker": false,
+    "density": "normal"
+  }
+}
