@@ -35,6 +35,25 @@ registerRoute(
   new CacheFirst({ cacheName: 'fti-media-v1', plugins: [mediaExpiration] }),
 );
 
+/*
+ * The other half of registerType: 'prompt'.
+ *
+ * main.tsx never lets a waiting worker take over on its own; UpdatePrompt's
+ * Reload button calls the plugin's updateServiceWorker(true), which posts
+ * { type: 'SKIP_WAITING' } to this worker. Without this listener that message
+ * is dropped, the worker stays in `waiting` forever, and the button appears to
+ * do nothing — the user reloads and gets the same old build back.
+ *
+ * The payload is read structurally rather than as `e.data?.type`: data is typed
+ * `any`, and one unchecked member access is all it takes for a message from
+ * some other sender to walk into this branch untyped.
+ */
+self.addEventListener('message', (e: ExtendableMessageEvent) => {
+  const data: unknown = e.data;
+  if (typeof data !== 'object' || data === null) return;
+  if (Reflect.get(data, 'type') === 'SKIP_WAITING') void self.skipWaiting();
+});
+
 // P5 fills these in: decrypt the push payload, showNotification, focus or open
 // the client on click. They exist now so the worker's event surface is fixed and
 // P5 changes handler bodies rather than the worker's shape.

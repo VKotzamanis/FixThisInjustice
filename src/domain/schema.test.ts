@@ -522,6 +522,31 @@ describe('bounds the code review added', () => {
     expect(PlannedSessionSchema.safeParse({ ...session, ordinal: 0 }).success).toBe(false);
   });
 
+  it('bounds an epoch instant to the ECMAScript time-value range', () => {
+    /** A push device is the one root-level record carrying an epoch instant. */
+    function documentWithCreatedAt(createdAt: number): AppState {
+      return {
+        ...defaultState(),
+        pushDevice: {
+          deviceId: 'device-1',
+          secret: 'secret',
+          endpoint: 'https://example.test/push/1',
+          keys: { p256dh: 'p', auth: 'a' },
+          createdAt, // [ms]
+          lastSyncAt: null,
+          lastSyncHash: null,
+        },
+      };
+    }
+
+    // ECMA-262 §21.4.1.1: |t| <= 8.64e15 ms. One past it makes new Date(t) an
+    // Invalid Date, so every helper in dates.ts would return NaN text for it.
+    expect(parseState(documentWithCreatedAt(8_640_000_000_000_000)).ok).toBe(true);
+    expect(parseState(documentWithCreatedAt(-8_640_000_000_000_000)).ok).toBe(true);
+    expect(parseState(documentWithCreatedAt(8_640_000_000_000_001)).ok).toBe(false);
+    expect(parseState(documentWithCreatedAt(-8_640_000_000_000_001)).ok).toBe(false);
+  });
+
   it('refuses a schema version 2 document and names the version', () => {
     // There is no v2 -> v3 migration yet (P7 adds it), so the chain must refuse
     // the document loudly rather than hand an unmigrated shape to the validator.

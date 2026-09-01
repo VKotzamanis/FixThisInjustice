@@ -143,9 +143,14 @@ export function todayLocal(tz: TimeZone, now: EpochMs = Date.now()): LocalDate {
  * - Spring-forward gap: the reading does not exist. It resolves forward, by the
  *   offset in force before the transition, so 02:30 on 2026-03-08 in
  *   America/New_York becomes 03:30 EDT (07:30Z).
- * - Autumn overlap: the reading occurs twice. The first occurrence wins, which
- *   is the DST-side offset, so 01:30 on 2026-11-01 in America/New_York is
- *   01:30 EDT (05:30Z), not the EST repeat an hour later.
+ * - Overlap: the reading occurs twice. The earlier instant is chosen. Because
+ *   an instant is `wallUtc - offset`, the earlier one is produced by the
+ *   *larger* (further east) UTC offset. That is the DST offset only when the
+ *   overlap is a daylight-saving fall-back; a zone that shifts its standard
+ *   offset westward permanently produces the same kind of overlap with no DST
+ *   involved, and the same rule picks the earlier instant there too. So 01:30
+ *   on 2026-11-01 in America/New_York is 01:30 EDT (05:30Z), not the EST repeat
+ *   an hour later.
  *
  * Both rules match Temporal's `disambiguation: 'compatible'`.
  *
@@ -197,12 +202,17 @@ export function instantOf(date: LocalDate, time: LocalTime, tz: TimeZone): Epoch
  * This is the fix for code review A9 and A10, where the legacy helpers parsed
  * "YYYY-MM-DDT00:00:00" as local midnight and formatted as UTC.
  *
- * @throws RangeError on an invalid date or a non-finite day count.
+ * n must be a whole number of days. A fractional count lands off UTC midnight
+ * and formatUtcMidnight would report whichever calendar day the resulting
+ * instant fell in — addDays(d, 1.5) silently behaving as addDays(d, 1). The
+ * integer check also covers NaN and both infinities, which are not integers.
+ *
+ * @throws RangeError on an invalid date or a non-integer day count.
  */
 export function addDays(date: LocalDate, n: number): LocalDate {
   assertValidDate(date, 'addDays');
-  if (!Number.isFinite(n)) {
-    throw new RangeError(`addDays: day count must be finite, received ${String(n)}`);
+  if (!Number.isInteger(n)) {
+    throw new RangeError(`addDays: day count must be a whole number, received ${String(n)}`);
   }
   return formatUtcMidnight(utcMidnightOfDate(date) + n * MS_PER_UTC_DAY); // [d] -> [ms]
 }
@@ -218,8 +228,18 @@ export function daysBetween(a: LocalDate, b: LocalDate): number {
   return Math.round((utcMidnightOfDate(b) - utcMidnightOfDate(a)) / MS_PER_UTC_DAY); // [ms] -> [d]
 }
 
-/** ISO weekday, 1 = Monday through 7 = Sunday. */
+/**
+ * ISO weekday, 1 = Monday through 7 = Sunday.
+ *
+ * The guard matters here more than elsewhere: Date rolls an out-of-range triple
+ * forward, so "2026-02-30" would otherwise return a perfectly plausible weekday
+ * (2026-03-02's Monday) for a date that is not on the calendar. weekStart and
+ * weekEnd are built on this, so the bad date would propagate silently.
+ *
+ * @throws RangeError on an invalid date.
+ */
 export function isoWeekday(date: LocalDate): IsoWeekday {
+  assertValidDate(date, 'isoWeekday');
   const utcDay = new Date(utcMidnightOfDate(date)).getUTCDay();
   const weekday = ISO_WEEKDAY_BY_UTC_DAY[utcDay];
   if (weekday === undefined) {

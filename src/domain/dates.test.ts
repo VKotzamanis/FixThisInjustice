@@ -320,8 +320,29 @@ describe('invalid input throws RangeError rather than producing NaN text', () =>
     expect(() => addDays('2026-09-01', Number.NEGATIVE_INFINITY)).toThrow(RangeError);
   });
 
+  it('addDays rejects a fractional day count', () => {
+    // A fractional count lands off UTC midnight, and formatUtcMidnight would
+    // then report whichever calendar day the truncated instant fell in — a
+    // silent half-day shift rather than an error.
+    expect(() => addDays('2026-09-01', 1.5)).toThrow(RangeError);
+    expect(() => addDays('2026-09-01', -0.5)).toThrow(RangeError);
+    expect(() => addDays('2026-09-01', 0.000_1)).toThrow(RangeError);
+    // Whole numbers, including negatives and zero, stay accepted.
+    expect(addDays('2026-09-01', 0)).toBe('2026-09-01');
+    expect(addDays('2026-09-01', -1)).toBe('2026-08-31');
+  });
+
   it('daysBetween rejects a bad date in either position', () => {
     expect(() => daysBetween('2026-02-30', '2026-09-01')).toThrow(RangeError);
     expect(() => daysBetween('2026-09-01', '2026-02-30')).toThrow(RangeError);
+  });
+
+  it('isoWeekday rejects a bad date instead of reporting a weekday for it', () => {
+    // "2026-02-30" rolls forward to 2026-03-02 inside Date, so without the
+    // guard the caller gets a plausible-looking Monday for a date that is not
+    // on the calendar.
+    expect(() => isoWeekday('2026-02-30')).toThrow(RangeError);
+    expect(() => isoWeekday('not-a-date')).toThrow(RangeError);
+    expect(() => isoWeekday('2026-9-1')).toThrow(RangeError);
   });
 });

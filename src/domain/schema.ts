@@ -85,11 +85,23 @@ const MilliLitres = z.int().min(0).max(MAX_ML);
 /** [s] >= 0. */
 const SecondsSchema = z.number().min(0).max(MAX_SECONDS);
 /**
- * [ms] Epoch milliseconds, UTC. Integer; negative means before 1970 and is
- * allowed. z.int() is the bound: it rejects anything outside the safe-integer
- * range, which is three orders of magnitude wider than any date this app shows.
+ * [ms] Maximum magnitude of an epoch instant: the ECMAScript time-value range,
+ * ±8.64e15 ms = ±100,000,000 days either side of 1970-01-01 (ECMA-262
+ * §21.4.1.1, "Time Values and Time Range").
  */
-const EpochMsSchema = z.int();
+export const MAX_EPOCH_MS = 8_640_000_000_000_000; // [ms]
+
+/**
+ * [ms] Epoch milliseconds, UTC. Integer; negative means before 1970 and is
+ * allowed.
+ *
+ * z.int() alone stops only at the safe-integer range (±9.007e15), which is
+ * wider than the range Date can represent. One millisecond past MAX_EPOCH_MS
+ * makes `new Date(t)` an Invalid Date, so every helper in src/domain/dates.ts
+ * would return NaN-shaped text for it and the failure would surface as a
+ * corrupt date string somewhere downstream rather than as a rejected document.
+ */
+const EpochMsSchema = z.int().min(-MAX_EPOCH_MS).max(MAX_EPOCH_MS);
 
 const LocalDateSchema = z
   .string()
