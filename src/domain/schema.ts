@@ -24,7 +24,11 @@ const MAX_MASS_KG = 500;
 /** [reps] Security constraint 3: 1 <= reps <= 100, integer. */
 const MIN_REPS = 1;
 const MAX_REPS = 100;
-/** RPE is the 1-10 resistance-training scale, dimensionless; halves are allowed (RPE 7.5). */
+/**
+ * RPE is the 1-10 resistance-training scale, dimensionless. The scale is defined
+ * on half-point increments (RPE 7.5 is a real reading; RPE 7.3 is not), so the
+ * step is part of the domain, not a display convention.
+ */
 const MIN_RPE = 1;
 const MAX_RPE = 10;
 /** [cm] Sanity ceiling. The tallest recorded human stature is under 280 cm. */
@@ -252,7 +256,9 @@ const SessionKindSchema = z.enum(['lift', 'cardio']);
 
 export const PlannedSessionSchema = z.object({
   id: z.string().min(1),
-  ordinal: z.int().min(0).max(MAX_PLAN_SESSIONS), // 1-based position in the plan
+  // 1-based position in the plan (types.ts: plan.sessions[i].ordinal === i + 1),
+  // so 0 is not a legal ordinal.
+  ordinal: z.int().min(1).max(MAX_PLAN_SESSIONS),
   name: z.string().min(1).max(120),
   kind: SessionKindSchema,
   label: z.string().min(1).max(60),
@@ -324,7 +330,16 @@ export const LoggedSetSchema = z.object({
   enteredUnit: UnitSystemSchema,
   reps: z.int().min(MIN_REPS).max(MAX_REPS).nullable(), // [reps]
   durationS: SecondsSchema.nullable(), // [s]
-  rpe: z.number().min(MIN_RPE).max(MAX_RPE).nullable(), // dimensionless, 1-10
+  // dimensionless, 1-10 on the half-point grid. v * 2 is integral exactly for
+  // every representable half, so the test needs no tolerance.
+  rpe: z
+    .number()
+    .min(MIN_RPE)
+    .max(MAX_RPE)
+    .refine((v) => Number.isInteger(v * 2), {
+      message: 'rpe is recorded in 0.5 steps',
+    })
+    .nullable(),
   loggedAt: EpochMsSchema, // [ms]
 });
 
@@ -445,32 +460,128 @@ export const UiPrefsSchema = z.object({
 // Root
 // ---------------------------------------------------------------------------
 
-export const AppStateSchema = z.object({
-  schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
-  activeProfileId: z.string().min(1).nullable(),
-  profiles: z.record(z.string(), ProfileSchema),
-  availability: z.record(z.string(), AvailabilitySchema),
-  plans: z.record(z.string(), PlanTemplateSchema),
-  cursors: z.record(z.string(), PlanCursorSchema),
-  pauses: z.record(z.string(), z.array(PlanPauseSchema)),
-  assignments: z.record(z.string(), z.array(SessionAssignmentSchema)),
-  sets: z.record(z.string(), LoggedSetSchema),
-  bodyMass: z.record(z.string(), z.array(BodyMassEntrySchema)),
-  hydration: z.record(z.string(), z.array(HydrationEntrySchema)),
-  intake: z.record(z.string(), z.array(IntakeEntrySchema)),
-  weeklyReviews: z.record(z.string(), z.array(WeeklyReviewSchema)),
-  reminderSettings: z.record(z.string(), ReminderSettingsSchema),
-  pushDevice: PushDeviceSchema.nullable(),
-  motivation: z.record(z.string(), MotivationStateSchema),
-  specimens: z.record(z.string(), SpecimenInventorySchema),
-  capsules: z.record(z.string(), TimeCapsuleSchema.nullable()),
-  // Additive: user-added exercises by profile id, with generated ids (A26).
-  customExercises: z.record(z.string(), z.array(ExerciseSchema)).default({}),
-  // Additive: daily notes by profile id then local day. The inner key is
-  // validated as a LocalDate, so a corrupted key is rejected rather than stored.
-  notes: z.record(z.string(), z.record(LocalDateSchema, z.string().max(MAX_NOTE_CHARS))).default({}),
-  ui: UiPrefsSchema,
-});
+/**
+ * The per-profile maps: every record key is a profile id, checked by the root
+ * refinement below. `plans` is deliberately absent from this list because a plan
+ * template is keyed by its own id, not by the profile that owns it.
+ */
+const PROFILE_KEYED_MAPS = [
+  'availability',
+  'cursors',
+  'pauses',
+  'assignments',
+  'bodyMass',
+  'hydration',
+  'intake',
+  'weeklyReviews',
+  'reminderSettings',
+  'motivation',
+  'specimens',
+  'capsules',
+  'customExercises',
+  'notes',
+] as const;
+
+export const AppStateSchema = z
+  .object({
+    // Typed as a bounded integer rather than z.literal so the inferred output is
+    // `number` and matches AppState.schemaVersion exactly; the refinement still
+    // pins the value to this build's version. The type-parity assertion in
+    // schema.test.ts fails if the two ever drift apart.
+    //
+    // The `: boolean` return annotation is load-bearing, not decoration.
+    // TypeScript 5.5 infers a type predicate for `(v) => v === 3`, Zod's .refine
+    // overload forwards that predicate into the output type, and the field would
+    // silently infer the literal 3 again. Annotating the return suppresses the
+    // predicate inference.
+    schemaVersion: z
+      .number()
+      .int()
+      .refine((v: number): boolean => v === CURRENT_SCHEMA_VERSION, {
+        message: `expected schemaVersion ${CURRENT_SCHEMA_VERSION}`,
+      }),
+    activeProfileId: z.string().min(1).nullable(),
+    profiles: z.record(z.string(), ProfileSchema),
+    availability: z.record(z.string(), AvailabilitySchema),
+    plans: z.record(z.string(), PlanTemplateSchema),
+    cursors: z.record(z.string(), PlanCursorSchema),
+    pauses: z.record(z.string(), z.array(PlanPauseSchema)),
+    assignments: z.record(z.string(), z.array(SessionAssignmentSchema)),
+    sets: z.record(z.string(), LoggedSetSchema),
+    bodyMass: z.record(z.string(), z.array(BodyMassEntrySchema)),
+    hydration: z.record(z.string(), z.array(HydrationEntrySchema)),
+    intake: z.record(z.string(), z.array(IntakeEntrySchema)),
+    weeklyReviews: z.record(z.string(), z.array(WeeklyReviewSchema)),
+    reminderSettings: z.record(z.string(), ReminderSettingsSchema),
+    pushDevice: PushDeviceSchema.nullable(),
+    motivation: z.record(z.string(), MotivationStateSchema),
+    specimens: z.record(z.string(), SpecimenInventorySchema),
+    capsules: z.record(z.string(), TimeCapsuleSchema.nullable()),
+    // Additive: user-added exercises by profile id, with generated ids (A26).
+    customExercises: z.record(z.string(), z.array(ExerciseSchema)).default({}),
+    // Additive: daily notes by profile id then local day. The inner key is
+    // validated as a LocalDate, so a corrupted key is rejected rather than stored.
+    notes: z
+      .record(z.string(), z.record(LocalDateSchema, z.string().max(MAX_NOTE_CHARS)))
+      .default({}),
+    ui: UiPrefsSchema,
+  })
+  /**
+   * Referential integrity between a record key and the entity it stores.
+   *
+   * A record is not a set of independent cells: `profiles["a"].id === "a"` and
+   * `sets["s"].id === "s"` are read as facts by every selector, and a per-profile
+   * map keyed by an id no profile owns is an orphan that no code path will ever
+   * delete. Field-level validation cannot see any of this, so the check has to
+   * sit on the root, where the whole document is in scope.
+   *
+   * Zod runs an object-level check only after the object itself parses, so every
+   * issue raised here is a genuine key disagreement rather than a knock-on effect
+   * of a malformed value.
+   */
+  .superRefine((state, ctx) => {
+    for (const [key, profile] of Object.entries(state.profiles)) {
+      if (key !== profile.id) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['profiles', key],
+          message: `profile record key "${key}" does not match its id "${profile.id}"`,
+        });
+      }
+    }
+
+    for (const [key, loggedSet] of Object.entries(state.sets)) {
+      if (key !== loggedSet.id) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sets', key],
+          message: `set record key "${key}" does not match its id "${loggedSet.id}"`,
+        });
+      }
+    }
+
+    const profileIds = new Set(Object.keys(state.profiles));
+
+    for (const map of PROFILE_KEYED_MAPS) {
+      for (const key of Object.keys(state[map])) {
+        if (!profileIds.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: [map, key],
+            message: `${map} is keyed by profile id, and "${key}" is not a known profile`,
+          });
+        }
+      }
+    }
+
+    if (state.activeProfileId !== null && !profileIds.has(state.activeProfileId)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['activeProfileId'],
+        message: `activeProfileId "${state.activeProfileId}" is not a known profile`,
+      });
+    }
+  });
 
 /** The empty document a first run starts from. No profile exists yet; P2 creates one. */
 export function defaultState(): AppState {
