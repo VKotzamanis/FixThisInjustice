@@ -25,8 +25,8 @@ The user (a PhD candidate in the final six months of their thesis) came with a s
 
 | Field | Value |
 |---|---|
-| Baseline | 95.3 kg / 210 lb, 27% body fat |
-| Lean mass | 69.6 kg (to preserve) |
+| Baseline | (subject-specific values removed) |
+| Lean mass | (removed) |
 | Target | 79 kg / 174 lb, 12% body fat |
 | Realistic outcome | 14–15% BF by week 24 |
 | Horizon | 168 days / 24 weeks |
@@ -44,13 +44,13 @@ The user (a PhD candidate in the final six months of their thesis) came with a s
 
 **Deload weeks:** 6, 12, 18, 24 — 2 sets, −40% load, no cardio, +200 kcal.
 
-**Personal context baked into the data:** the user takes Vyvanse 40 mg at 08:30, trains fasted at 09:00 at the YMCA, and works on their thesis through the day. The schedule, hydration targets, and RPE caps all account for stimulant-elevated heart rate and appetite suppression.
+**Personal context baked into the data:** removed from this summary; the generic rewrite collects every personal parameter at setup.
 
 ### The seven views
 
 | # | View | Hotkey | Purpose |
 |---|---|---|---|
-| 1 | **TODAY** | `1` | Auto-derives today's session from `startDate`. Hero shows the day name. Session preview, telemetry stats, meal tracker with running kcal/protein, Vyvanse curve + schedule, hydration cups, daily note, time capsule. |
+| 1 | **TODAY** | `1` | Auto-derives today's session from `startDate`. Hero shows the day name. Session preview, telemetry stats, meal tracker with running kcal/protein, (medication schedule removed)
 | 2 | **TRAIN** | `2` | Gym mode. Per-set weight×reps logging, rest timer with audio chime + vibrate, last-session reference, auto-suggested loads, form-cue and video buttons, bonus sets, custom exercises. |
 | 3 | **PLAN** | `3` | The 24-week protocol. Phase selector, week scrubber, day strip, exercise detail, macros with ASCII bars, meal table with editable swaps, supplements, standing rules. |
 | 4 | **LOG** | `4` | Weight chart (projection vs measured), push-up curve, 24×7 compliance heatmap (clickable), personal records list. |
@@ -73,7 +73,7 @@ console-content.js       ← window.FORM_CUES (24 exercises) + window.SPECIMEN_C
 
 core.jsx                 ← WeightChart, PushupSpark (shared SVG chart components)
 console-store.jsx        ← usePlanStore() — the single source of truth. All state + actions + derived.
-console-shared.jsx       ← CRT, TopBar, Nav, Boot, Setup, Spotlight, AsciiBar, ComplianceGrid, VyvanseCurve, VIEWS
+console-shared.jsx       ← CRT, TopBar, Nav, Boot, Setup, Spotlight, AsciiBar, ComplianceGrid, (removed stimulant-curve component), VIEWS
 console-video.jsx        ← Invidious-only video modal with instance rotation
 console-train.jsx        ← TrainView, ExerciseCard, SetRow, RestTimer, AddCustomExercise
 console-today-extras.jsx ← MealTracker, QuickWeightLog, PushupTodayCard, SkipSession
