@@ -2237,10 +2237,7 @@ export function AtlasView(): ReactElement {
   return (
     <section className="atlas">
       <h2>Atlas</h2>
-      <p className="atlas-sub">
-        A field journal. Every logged set has a small chance of adding a card. Each card states a
-        finding and the work it comes from.
-      </p>
+      <p className="atlas-sub">A field journal. Every logged set may add a card.</p>
 
       <div className="atlas-stats">
         <div className="atlas-stat">
@@ -2851,10 +2848,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
     return (
       <section className="capsule">
         <h3>Time capsule</h3>
-        <p>
-          Write a note to your future self: why you are starting, what you expect, what you are
-          prepared to be wrong about. It is sealed until the date you choose.
-        </p>
+        <p>A note to your future self, sealed until a date you pick.</p>
         <label htmlFor="capsule-note">Note to your future self</label>
         <textarea
           id="capsule-note"

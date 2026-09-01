@@ -48,9 +48,12 @@ Criterion for inlining: *show it inline only if the user must act differently be
 suggested load the user will dial in must be inline; how it was rounded must not.
 Before: `All sets reached 8 reps on 25 Aug, so +2.5 % (3.4 lb) rounded up to the 5 lb barbell step. Entered in lb, stored as 63.50 kg.`
 After: `Suggested 65 lb` plus `<details><summary>why?</summary>` carrying the same sentence verbatim.
-The disclosure is a `<details>` element with the literal summary `why?`. Where a component has no
-disclosure, add one; where a domain function produces the sentence, it returns it as a separate
-`why` string and never concatenates it into the message.
+The disclosure is a `<details>` element. Its summary is the literal `why?` when it carries
+arithmetic or a derivation, and a descriptive noun phrase of at most 5 words when it carries a list
+or reference content ("What transfers", "What could not be imported, and why"). Text inside a
+disclosure is exempt from R1-R4: the disclosure exists to hold what does not fit. Where a component
+has no disclosure, add one; where a domain function produces the sentence, it returns it as a
+separate `why` string and never concatenates it into the message.
 
 **R10 — Exempt content.** Exercise form cues, exercise notes and tips, Atlas card bodies and
 citations, and the reminders runbook (`worker/RUNBOOK.md`) are exempt from R1–R4 and R9. They are
@@ -471,3 +474,95 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 };
 ```
 
+
+---
+
+## Sweep of the P2–P8 plans (2026-09-01)
+
+Every user-visible string literal changed in `docs/plans/2026-09-01-0[2-8]-*.md`, with its matching
+test assertion. Long paragraphs are quoted by their opening clause. Rows marked **+why** also gained
+a `<details>` disclosure carrying the text that was removed from the inline copy. P2 Tasks 1 and 2
+were in execution and were not touched.
+
+| Plan | Task | Before | After |
+| --- | --- | --- | --- |
+| P2 | 3 | `Rear foot elevated. Unloaded when no dumbbells are available — log the load as 0.` | `… available; log the load as 0.` |
+| P2 | 7 | `Sedentary — desk work, little walking` (and the other four activity labels) | `Sedentary: desk work, little walking` |
+| P2 | 7 | `Step 1 of 8 — Units` | `Step 1 of 8: Units` |
+| P2 | 7 | `Chosen once. Every field below is labelled in this unit; values are stored in kilograms and converted exactly.` | `Chosen once. Values are stored in kg and converted exactly.` |
+| P2 | 7 | `Detected from this device. Every date and reminder is computed in this zone.` | `Detected from this device. Dates and reminders use this zone.` |
+| P2 | 7 | `Not a recognised IANA time zone identifier.` | `Not a recognised IANA time zone.` |
+| P2 | 7 | `Sex is collected because the resting-metabolic-rate equation, the body-fat equation and the fluid target each take a sex term. Nothing else in the app does.` | `Used by the RMR, body-fat and fluid equations. Nothing else.` |
+| P2 | 7 | `Body fat is optional. With it the engine uses the Cunningham fat-free-mass equation and sets protein per kilogram of fat-free mass; without it, …` | `Optional. With it, RMR and protein use fat-free mass.` **+why** |
+| P2 | 7 | `US Navy circumference method, metric form. All girths in centimetres, measured horizontally, tape snug but not compressing.` | `US Navy circumference method. All girths in cm, tape snug.` |
+| P2 | 7 | `Enter neck, abdomen I and hip girths to estimate.` / `Enter neck and abdomen II girths to estimate.` | `Enter neck, abdomen I and hip girths.` / `Enter neck and abdomen II girths.` |
+| P2 | 7 | `21.9 % body fat, standard error 3.52 percentage points. Use it to track change over time, not as an absolute number.` | `21.9 % body fat, ± 3.52 percentage points.` **+why** |
+| P2 | 7 | `Novice — under one year of consistent training` (and the other two experience options) | `Novice: under one year of consistent training` |
+| P2 | 7 | `Load steps set the smallest increment a suggested load may use. Defaults are the common smallest plate pair.` | `The smallest increment a suggested load may use.` |
+| P2 | 7 | `The only supplement the app tracks. Maintenance dose is scaled by body mass.` | `The only supplement tracked. Dose scales with body mass.` |
+| P2 | 7 | `Every fourth week is a deload: set counts are halved and the load is unchanged.` | `Every fourth week halves set counts. Load is unchanged.` |
+| P2 | 7 | `<summary>Basis</summary>` | `<summary>why?</summary>` |
+| P2 | 8 | `Intake check-in — 2026-09-01` | `Intake check-in: 2026-09-01` |
+| P2 | 8 | `<summary>How these numbers were derived</summary>` | `<summary>why?</summary>` |
+| P2 | 8 | `Stored values never change with this setting: mass is always held in kilograms and converted for display.` | `Stored values never change. Mass is always held in kg.` |
+| P2 | 8 | `Default for the stated sex is 3000 mL of beverages per day (IOM 2005, DOI …). Water in food is additional …` | `Default for the stated sex: 3000 mL per day.` **+why** |
+| P2 | 8 | `Today is delivered in P3.` | `Today is not built yet.` |
+| P3 | 5 | button `Train something else today` (+2 assertions) | `Train something else` |
+| P3 | 5 | `Next session: Wed 07:00 — Push.` (+1 assertion) | `Next: Wed 07:00 Push.` |
+| P3 | 5 | `No further session is scheduled in the next 14 days.` | `No sessions in the next 14 days.` |
+| P4 | 2 | `2 reps above the prescribed range. Earn the load increment next session.` (+1 assertion) | `2 reps above the prescribed range.` |
+| P4 | 5 | `Log your post-session body mass. A loss above two per cent of your pre-session mass means fluid replacement was inadequate (ACSM 2007).` | `Log your post-session body mass.` **+why** |
+| P4 | 8 | `No specific clip is recorded for this exercise.` | `No clip recorded for this exercise.` |
+| P4 | 8 | link `Open in a new tab` | `Open clip` |
+| P4 | 8 | link `Search this instance` | `Search instance` |
+| P4 | 10 | `<span className="ex-reason">{advice.reason}</span>` shown inline | same span, moved inside `<details><summary>why?</summary>` |
+| P4 | 10 | `Loss of 2.4 per cent of pre-session mass, above the 2 per cent threshold (ACSM 2007). Replace the deficit over the hours after the session.` | `Fluid loss above 2 %. Replace it over the next hours.` **+why** |
+| P4 | 10 | button `Form cues and common mistakes` | `Form cues` |
+| P4 | 10 | button `Add a bonus set` | `Add set` |
+| P4 | 10 | button `Add an exercise to this session` (+1 assertion) | `Add exercise` |
+| P4 | 10 | submit button `Add exercise` (+1 assertion) | `Add` |
+| P4 | 10 | `No profile is active. Complete setup first.` | `No profile. Complete setup first.` |
+| P5 | 5 | push body `Upper A at 18:00 — session 3 of 24` (+8 fixtures and assertions) | `Upper A at 18:00, session 3 of 24` |
+| P5 | 8 | `Add this app to the Home Screen before enabling reminders.` (+1 assertion, +1 runbook reference) | `Add this app to the Home Screen first.` |
+| P5 | 8 | `Notification permission is denied. Re-enable it in the browser or system settings.` (+1 assertion) | `Notifications are blocked. Re-enable them in settings.` |
+| P5 | 8 | `Reminders are on. The schedule has not reached the server yet.` (+1 assertion, +1 runbook reference) | `Reminders are on. Schedule not sent yet.` |
+| P5 | 8 | `On iPhone and iPad, notifications reach a web app only once it is installed to the Home Screen. Safari tabs do not receive them.` | `On iPhone and iPad, only an installed app receives notifications. Safari tabs do not.` |
+| P5 | 10 | runbook: 8 em-dash connectors (title, secret row, key-pair note, health-check note, install note, smoke-test step 9, two troubleshooting rows) | colons, semicolons or two sentences |
+| P6 | 1 | `Week of 2026-08-24: 1 of 4 sessions completed. Target missed by 3.` (+4 assertions) | `Week of 2026-08-24: 1 of 4 sessions completed.` |
+| P6 | 2 | `Not a video file: MIME type "video/x".` | `Not a video file: video/x.` |
+| P6 | 2 | `File is 157286401 bytes; the limit is 157286400 bytes.` | `File is too large. The limit is 157286400 bytes.` |
+| P6 | 4 | heading `Motivation video — preview` (+1 assertion) | `Motivation video: preview` |
+| P6 | 4 | `Preview. No weekly review is being reported.` (+2 assertions) | `Preview. No week is being reported.` |
+| P6 | 4 | button `Don't show again for this week` (+2 assertions, +2 prose references) | `Mute this week` |
+| P6 | 6 | `Bundled clip: absent. Ship one at public/media/motivation.mp4, or choose a file below.` | `Bundled clip: absent. Choose a file below.` |
+| P6 | 6 | `Stored in this browser only and never uploaded. Hard limit 157286400 bytes (150 MiB); a clip of 25 MiB or less is recommended.` | `Stored in this browser only, never uploaded. Limit 150 MiB.` **+why** |
+| P7 | 3 | `The data stored by the old app could not be read as JSON. Nothing has been changed. Download the raw copy below and keep it; then start clean.` | `The old data could not be read as JSON. Nothing has been changed.` |
+| P7 | 3 | `Data from the old app was found on this device. Before it can be imported, this app needs your profile and a training plan — …` | `Old data was found. Set up your profile first.` **+why** |
+| P7 | 3 | `Nothing is deleted from the old app at any point.` | `Nothing is deleted from the old app.` |
+| P7 | 3 | `Data from the old app was found on this device. It can be imported: logged sets, weekly push-up maxima, …` | `Old data was found on this device.` + `<details><summary>What transfers</summary>` |
+| P7 | 3 | `Two things the old app never recorded have to be supplied: … a wrong answer here silently rescales your entire history.` | `The old app stored bare numbers. A wrong unit rescales your history.` |
+| P7 | 3 | `Nothing is deleted from the old app. Its data stays on this device until you remove it yourself in Settings.` | merged into the single `Nothing is deleted from the old app.` line |
+| P7 | 3 | rejection list `<code>{s.key}</code> — {s.reason}` | `<code>{s.key}</code>: {s.reason}` |
+| P7 | 3 | `Download the untouched copy of the old data before keeping this import. It is the only record of anything the import refused.` | `Download the untouched copy first. It is the only record of what was refused.` |
+| P7 | 4 | `Baseline 2026-09-01; projection -0.56 kg per week (15 % cut from TDEE …).` | `Baseline 2026-09-01.` **+why** |
+| P7 | 4 | `Push-up — best reps per week` | `Push-up: best reps per week` |
+| P7 | 4 | figcaption `Push-up — best 15 reps in one set` | `Push-up: best 15 reps in one set` |
+| P7 | 5 | `FIXTHISINJUSTICE — TRAINING SUMMARY` (2 occurrences) | `FIXTHISINJUSTICE TRAINING SUMMARY` |
+| P7 | 5 | `The JSON file is the complete backup: everything this app stores is in it. The calendar file holds … It is a courtesy: …` | two short paragraphs; `Whether an imported alarm fires is not guaranteed` retained for its test |
+| P7 | 5 | `Importing replaces everything currently on this device. The file is validated first; if it does not match the schema, nothing changes and the reason is shown.` | `Importing replaces everything on this device. An invalid file changes nothing.` |
+| P7 | 6 | `Everything this app stores lives on this device. There is no account and no copy anywhere else, so a wipe cannot be undone. …` | `Everything stays on this device. A wipe cannot be undone.` |
+| P7 | 6 | wipe description `Every profile, plan, logged set, body-mass check-in and note on this device is removed, along with any video you added. A JSON backup downloads first.` | `Everything on this device is removed. A JSON backup downloads first.` |
+| P7 | 6 | `Data from the old app is still on this device. It is untouched and read-only; removing it frees the storage it uses and stops the import offer.` | `The old app's data is still here. Removing it stops the import offer.` |
+| P7 | 7 | README: 6 em-dash connectors (static-app line, storage line, the two "what leaves the device" items, the runbook link, the legacy-removal line) | colons, parentheses or two sentences |
+| P8 | 5 | `A field journal. Every logged set has a small chance of adding a card. Each card states a finding and the work it comes from.` | `A field journal. Every logged set may add a card.` |
+| P8 | 7 | `Write a note to your future self: why you are starting, what you expect, what you are prepared to be wrong about. It is sealed until the date you choose.` | `A note to your future self, sealed until a date you pick.` |
+
+**Not changed, and why.** Exercise form cues, exercise notes, tips, Atlas card bodies and citations,
+and the P5 runbook body keep their length (R10); only their em-dash connectors were removed. The
+frozen legacy decoding table in P7 Task 1 keeps `setsSpec: "—"`, which is legacy data, not copy. A
+bare `—` in a value slot (`session — of 24`, an empty prescription, an unfilled target) is a
+placeholder and stays (R5). P2's `split-summary` keeps its muscle-group breakdown: a P2 test
+requires the maintenance-only groups to be named rather than hidden. `{advice.kind}` still renders
+the raw enum (`add-load`), which needs a copy map rather than a string edit. Plan prose addressed to
+the executor, `describe`/`it` titles, code comments and the `check-media-size.sh` CI output were left
+alone: none of them is user-facing copy.

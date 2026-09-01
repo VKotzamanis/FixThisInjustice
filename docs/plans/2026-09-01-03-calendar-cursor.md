@@ -2490,7 +2490,7 @@ describe("TodayView hero — the other states", () => {
     vi.spyOn(Date, "now").mockReturnValue(NOW_MS + 86_400_000); // Tuesday
     render(<TodayView />);
     expect(screen.getByText("No session scheduled today.")).toBeTruthy();
-    expect(screen.getByText("Next session: Wed 07:00 — Push.")).toBeTruthy();
+    expect(screen.getByText("Next: Wed 07:00 Push.")).toBeTruthy();
   });
 
   it("shows the in-progress hero", () => {
@@ -2567,7 +2567,7 @@ describe("TodayView hero — the other states", () => {
 describe("TodayView — pick another session today", () => {
   it("offers exactly the labels remaining this week", () => {
     render(<TodayView />);
-    fireEvent.click(screen.getByRole("button", { name: "Train something else today" }));
+    fireEvent.click(screen.getByRole("button", { name: "Train something else" }));
     const picker = screen.getByTestId("label-picker");
     expect(picker.textContent).toContain("Push");
     expect(picker.textContent).toContain("Legs");
@@ -2576,7 +2576,7 @@ describe("TodayView — pick another session today", () => {
 
   it("choosing Legs calls assignToday and re-projects the week", () => {
     render(<TodayView />);
-    fireEvent.click(screen.getByRole("button", { name: "Train something else today" }));
+    fireEvent.click(screen.getByRole("button", { name: "Train something else" }));
     fireEvent.click(screen.getByRole("button", { name: "Train Legs today" }));
     const state = useAppStore.getState();
     expect(state.assignments[PROFILE_ID]?.[0]?.sessionId).toBe("s-2");
@@ -2758,7 +2758,7 @@ export function TodayView(): ReactElement {
           <button type="button" onClick={onComplete}>Mark completed</button>
           <button type="button" onClick={() => setSkipOpen(true)}>Skip today</button>
           <button type="button" onClick={() => setPickerOpen((v) => !v)}>
-            Train something else today
+            Train something else
           </button>
         </>
       )}
@@ -2848,8 +2848,8 @@ export function TodayView(): ReactElement {
         <h1 className="hero-name">No session scheduled today.</h1>
         <p className="today-sub">
           {next && next.slot && next.projectedSession
-            ? `Next session: ${formatWeekday(next.date)} ${next.slot.startTime} — ${next.projectedSession.label}.`
-            : "No further session is scheduled in the next 14 days."}
+            ? `Next: ${formatWeekday(next.date)} ${next.slot.startTime} ${next.projectedSession.label}.`
+            : "No sessions in the next 14 days."}
         </p>
       </div>
     );

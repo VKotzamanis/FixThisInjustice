@@ -815,7 +815,7 @@ describe("coachLine (metric)", () => {
   it("reports repetitions above the prescribed range", () => {
     const history = [makeSet({ loadKg: 70, reps: 12 })];
     const line = coachLine(makeSet({ loadKg: 60, reps: 10 }), history, HOLD_AT_60, "metric");
-    expect(line.text).toBe("2 reps above the prescribed range. Earn the load increment next session.");
+    expect(line.text).toBe("2 reps above the prescribed range.");
   });
 
   it("reports repetitions below the prescribed range", () => {
@@ -977,7 +977,7 @@ export function coachLine(
     if (set.reps > p.hi) {
       const over = set.reps - p.hi;   // repetitions
       return {
-        text: `${over} rep${over === 1 ? "" : "s"} above the prescribed range. Earn the load increment next session.`,
+        text: `${over} rep${over === 1 ? "" : "s"} above the prescribed range.`,
         tone: "coach",
       };
     }
@@ -1747,7 +1747,7 @@ export function hydrationCue(
       if (!alreadyWeighed) {
         return {
           kind: "post-session-weigh",
-          message: "Log your post-session body mass. A loss above two per cent of your pre-session mass means fluid replacement was inadequate (ACSM 2007).",
+          message: "Log your post-session body mass.",
           shortfallML: null,
         };
       }
@@ -3379,18 +3379,18 @@ function VideoModal({ request, onClose }: { request: VideoRequest; onClose: () =
           <div className="vmod-search">
             <div className="vmod-search-eyebrow">SEARCH</div>
             <div className="vmod-search-q">{query}</div>
-            <div className="vmod-search-note">No specific clip is recorded for this exercise.</div>
+            <div className="vmod-search-note">No clip recorded for this exercise.</div>
           </div>
         )}
 
         <div className="vmod-foot">
           {isId && (
             <a className="vmod-link" href={watchUrl} target="_blank" rel="noopener noreferrer">
-              Open in a new tab
+              Open clip
             </a>
           )}
           <a className="vmod-link" href={searchUrl} target="_blank" rel="noopener noreferrer">
-            Search this instance
+            Search instance
           </a>
         </div>
       </div>
@@ -4098,9 +4098,9 @@ describe("TrainView", () => {
   it("adds a custom exercise with a generated id and shows it as a bonus card", () => {
     useAppStore.getState().replaceState(seed("metric"));
     renderTrain();
-    fireEvent.click(screen.getByText("Add an exercise to this session"));
-    fireEvent.change(screen.getByLabelText("Exercise name"), { target: { value: "Cable crunch" } });
     fireEvent.click(screen.getByText("Add exercise"));
+    fireEvent.change(screen.getByLabelText("Exercise name"), { target: { value: "Cable crunch" } });
+    fireEvent.click(screen.getByText("Add"));
     const custom = useAppStore.getState().state.customExercises["profile-1"] ?? [];
     expect(custom).toHaveLength(1);
     expect(custom[0]?.name).toBe("Cable crunch");
@@ -4335,6 +4335,15 @@ export function HydrationBanner({ profile, date, sessionActive }: {
   return (
     <div className="hydration-banner" role="status">
       <span>{cue.message}</span>
+      {cue.kind === "post-session-weigh" && (
+        <details className="hydration-why">
+          <summary>why?</summary>
+          <p>
+            A loss above 2 % of pre-session mass means fluid replacement was inadequate
+            (ACSM 2007).
+          </p>
+        </details>
+      )}
       {cue.kind !== "post-session-weigh" && (
         <button onClick={() => addHydration(profile.id, date, profile.hydration.cupSizeML, Date.now())}>
           Log {formatVolume(profile.hydration.cupSizeML, profile.units)}
@@ -4367,6 +4376,7 @@ export function BodyMassQuickLog({ profile, date, preSessionMassKg, label }: {
   const logBodyMass = useAppStore((s) => s.logBodyMass);
   const [massKg, setMassKg] = useState<Kg | null>(null);   // kg
   const [flag, setFlag] = useState<string | null>(null);
+  const [flagWhy, setFlagWhy] = useState<string | null>(null);
 
   const submit = () => {
     if (massKg === null) return;
@@ -4377,10 +4387,14 @@ export function BodyMassQuickLog({ profile, date, preSessionMassKg, label }: {
     if (preSessionMassKg !== null && exceedsDehydrationThreshold(preSessionMassKg, massKg)) {
       const pct = (bodyMassLossFraction(preSessionMassKg, massKg) * 100).toFixed(1);   // percent
       setFlag(
-        `Loss of ${pct} per cent of pre-session mass, above the ${DEHYDRATION_LOSS_FRACTION * 100} per cent threshold (ACSM 2007). Replace the deficit over the hours after the session.`,
+        `Fluid loss above ${DEHYDRATION_LOSS_FRACTION * 100} %. Replace it over the next hours.`,
+      );
+      setFlagWhy(
+        `Loss of ${pct} % of pre-session mass, above the ${DEHYDRATION_LOSS_FRACTION * 100} % threshold (ACSM 2007).`,
       );
     } else {
       setFlag(null);
+      setFlagWhy(null);
     }
     setMassKg(null);
   };
@@ -4398,6 +4412,12 @@ export function BodyMassQuickLog({ profile, date, preSessionMassKg, label }: {
       />
       <button onClick={submit}>Log body mass</button>
       {flag !== null && <p className="fcm-caution" role="alert">{flag}</p>}
+      {flagWhy !== null && (
+        <details className="fcm-why">
+          <summary>why?</summary>
+          <p>{flagWhy}</p>
+        </details>
+      )}
     </div>
   );
 }
@@ -4636,7 +4656,10 @@ export function ExerciseCard(props: ExerciseCardProps) {
             <span>
               Suggested: {suggestedKg === null ? "-" : formatLoad(suggestedKg, profile.units)} ({advice.kind})
             </span>
-            <span className="ex-reason">{advice.reason}</span>
+            <details className="ex-why">
+              <summary>why?</summary>
+              <span className="ex-reason">{advice.reason}</span>
+            </details>
           </div>
 
           <div className="ex-links">
@@ -4647,7 +4670,7 @@ export function ExerciseCard(props: ExerciseCardProps) {
             )}
             {FORM_CUES[exercise.id] !== undefined && (
               <button onClick={() => cues.open(exercise.id, exercise.name)}>
-                Form cues and common mistakes
+                Form cues
               </button>
             )}
           </div>
@@ -4672,7 +4695,7 @@ export function ExerciseCard(props: ExerciseCardProps) {
             })}
           </div>
 
-          <button onClick={() => setBonusRows((b) => b + 1)}>Add a bonus set</button>
+          <button onClick={() => setBonusRows((b) => b + 1)}>Add set</button>
         </div>
       )}
     </div>
@@ -4726,7 +4749,7 @@ export function AddCustomExercise({ profile }: { profile: Profile }) {
   };
 
   if (!open) {
-    return <button onClick={() => setOpen(true)}>Add an exercise to this session</button>;
+    return <button onClick={() => setOpen(true)}>Add exercise</button>;
   }
 
   return (
@@ -4757,7 +4780,7 @@ export function AddCustomExercise({ profile }: { profile: Profile }) {
         </select>
       </div>
       <button onClick={() => setOpen(false)}>Cancel</button>
-      <button onClick={submit}>Add exercise</button>
+      <button onClick={submit}>Add</button>
     </div>
   );
 }
@@ -4864,7 +4887,7 @@ export function TrainView() {
   }, [customExercises, profileId]);
 
   if (profile === null || profileId === null) {
-    return <p>No profile is active. Complete setup first.</p>;
+    return <p>No profile. Complete setup first.</p>;
   }
 
   const today = todayLocal(profile.timezone);

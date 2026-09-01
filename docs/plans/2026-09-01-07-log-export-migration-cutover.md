@@ -2504,10 +2504,7 @@ export function MigrationWizard(props: MigrationWizardProps) {
     return (
       <section className="migration">
         <h2>Import from the old app</h2>
-        <p>
-          The data stored by the old app could not be read as JSON. Nothing has been changed.
-          Download the raw copy below and keep it; then start clean.
-        </p>
+        <p>The old data could not be read as JSON. Nothing has been changed.</p>
         <div className="migration-actions">
           {legacyDownloadButton}
           <button type="button" onClick={onDismiss}>
@@ -2522,12 +2519,15 @@ export function MigrationWizard(props: MigrationWizardProps) {
     return (
       <section className="migration">
         <h2>Import from the old app</h2>
-        <p>
-          Data from the old app was found on this device. Before it can be imported, this app
-          needs your profile and a training plan — the old data has no units, no goal and no
-          schedule recorded, so there is nothing to attach it to.
-        </p>
-        <p>Nothing is deleted from the old app at any point.</p>
+        <p>Old data was found. Set up your profile first.</p>
+        <details>
+          <summary>why?</summary>
+          <p>
+            The old data records no units, no goal and no schedule, so there is nothing to
+            attach it to until a profile and a plan exist.
+          </p>
+        </details>
+        <p>Nothing is deleted from the old app.</p>
         <div className="migration-actions">
           <button type="button" onClick={onRequireSetup}>
             Set up your profile
@@ -2542,20 +2542,16 @@ export function MigrationWizard(props: MigrationWizardProps) {
     return (
       <section className="migration">
         <h2>Import from the old app</h2>
-        <p>
-          Data from the old app was found on this device. It can be imported: logged sets,
-          weekly push-up maxima, body-mass check-ins, hydration, daily notes, the specimen
-          cards you collected, and your sealed time capsule.
-        </p>
-        <p>
-          Two things the old app never recorded have to be supplied: which unit you typed
-          loads in, and which unit you typed body mass in. It stored bare numbers, so a wrong
-          answer here silently rescales your entire history.
-        </p>
-        <p>
-          Nothing is deleted from the old app. Its data stays on this device until you remove
-          it yourself in Settings.
-        </p>
+        <p>Old data was found on this device.</p>
+        <details>
+          <summary>What transfers</summary>
+          <p>
+            Logged sets, weekly push-up maxima, body-mass check-ins, hydration, daily notes,
+            the specimen cards you collected, and your sealed time capsule.
+          </p>
+        </details>
+        <p>The old app stored bare numbers. A wrong unit rescales your history.</p>
+        <p>Nothing is deleted from the old app.</p>
         <div className="migration-actions">
           <button type="button" onClick={() => { setPhase("questions"); }}>
             Continue
@@ -2665,15 +2661,14 @@ export function MigrationWizard(props: MigrationWizardProps) {
           <ul>
             {report.setsSkipped.map((s) => (
               <li key={s.key}>
-                <code>{s.key}</code> — {s.reason}
+                <code>{s.key}</code>: {s.reason}
               </li>
             ))}
           </ul>
         </details>
       )}
       <p>
-        Download the untouched copy of the old data before keeping this import. It is the only
-        record of anything the import refused.
+        Download the untouched copy first. It is the only record of what was refused.
       </p>
       {error !== null && <p role="alert">{error}</p>}
       <div className="migration-actions">
@@ -3769,7 +3764,7 @@ export function AmrapSpark(props: AmrapSparkProps) {
           </circle>
         ))}
       </svg>
-      <figcaption>{`${exercise.name} — best ${best} reps in one set`}</figcaption>
+      <figcaption>{`${exercise.name}: best ${best} reps in one set`}</figcaption>
     </figure>
   );
 }
@@ -3862,9 +3857,13 @@ export function LogView() {
 
       <section>
         <h3>Body mass</h3>
-        <p className="card-meta">
-          {`Baseline ${profile.body.baselineAt}; projection ${targets.expectedRateKgPerWeek.toFixed(2)} kg per week (${targets.basis.deficitRule}).`}
-        </p>
+        <p className="card-meta">{`Baseline ${profile.body.baselineAt}.`}</p>
+        <details>
+          <summary>why?</summary>
+          <p className="card-meta">
+            {`Projection ${targets.expectedRateKgPerWeek.toFixed(2)} kg per week (${targets.basis.deficitRule}).`}
+          </p>
+        </details>
         <BodyMassChart
           entries={bodyMass ?? []}
           units={profile.units}
@@ -3886,7 +3885,7 @@ export function LogView() {
 
       {bodyweightExercises.map((ex) => (
         <section key={ex.id}>
-          <h3>{`${ex.name} — best reps per week`}</h3>
+          <h3>{`${ex.name}: best reps per week`}</h3>
           <AmrapSpark sets={sets} exercise={ex} />
         </section>
       ))}
@@ -4268,7 +4267,7 @@ function pad(label: string, width: number): string {
 export function buildSummary(state: AppState, profileId: string, now: EpochMs): string {
   const profile = state.profiles[profileId];
   if (profile === undefined) {
-    return `FIXTHISINJUSTICE — TRAINING SUMMARY\n\nThere is no profile with id "${profileId}" in this state.\n`;
+    return `FIXTHISINJUSTICE TRAINING SUMMARY\n\nThere is no profile with id "${profileId}" in this state.\n`;
   }
 
   const units = profile.units;
@@ -4303,7 +4302,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   );
 
   const lines: string[] = [];
-  lines.push("FIXTHISINJUSTICE — TRAINING SUMMARY");
+  lines.push("FIXTHISINJUSTICE TRAINING SUMMARY");
   lines.push("");
   lines.push(`${pad("Generated:", 18)}${today}`);
   lines.push(`${pad("Profile:", 18)}${profile.displayName}`);
@@ -4581,20 +4580,18 @@ export function ExportView() {
             Download calendar .ics
           </button>
         </div>
+        <p className="note">The JSON file is the complete backup.</p>
         <p className="note">
-          The JSON file is the complete backup: everything this app stores is in it. The
-          calendar file holds the next {CALENDAR_DAYS} days of projected sessions with an
-          alarm two hours before each. It is a courtesy: whether an imported alarm fires is
-          not guaranteed on either phone platform, so it is not a substitute for the
-          reminders in Settings.
+          The calendar holds the next {CALENDAR_DAYS} days, one alarm two hours before each
+          session. Whether an imported alarm fires is not guaranteed, so it does not replace
+          reminders.
         </p>
       </section>
 
       <section>
         <h3>Import</h3>
         <p className="note">
-          Importing replaces everything currently on this device. The file is validated
-          first; if it does not match the schema, nothing changes and the reason is shown.
+          Importing replaces everything on this device. An invalid file changes nothing.
         </p>
         <label htmlFor="import-text">Paste a previous export, or choose a file</label>
         <textarea
@@ -4927,13 +4924,11 @@ Add this section to the component's returned JSX, at the end, after every other 
       <section className="danger">
         <h3>Data on this device</h3>
         <p className="note">
-          Everything this app stores lives on this device. There is no account and no copy
-          anywhere else, so a wipe cannot be undone. The JSON backup is downloaded
-          automatically before the wipe runs.
+          Everything stays on this device. A wipe cannot be undone.
         </p>
         <ConfirmDestructive
           title="Wipe all data"
-          description="Every profile, plan, logged set, body-mass check-in and note on this device is removed, along with any video you added. A JSON backup downloads first."
+          description="Everything on this device is removed. A JSON backup downloads first."
           confirmWord="DELETE"
           actionLabel="Wipe all data"
           onConfirm={wipeEverything}
@@ -4941,8 +4936,7 @@ Add this section to the component's returned JSX, at the end, after every other 
         {legacyPresent && (
           <>
             <p className="note">
-              Data from the old app is still on this device. It is untouched and read-only;
-              removing it frees the storage it uses and stops the import offer.
+              The old app's data is still here. Removing it stops the import offer.
             </p>
             <ConfirmDestructive
               title="Delete legacy data"
@@ -5037,7 +5031,7 @@ their own body data, goal, equipment and weekly availability; logs every set in 
 they chose; times rest; reminds them before each session; and keeps every number on
 their own device.
 
-It is a static web app — no accounts, no analytics, no server-side user data. The one
+It is a static web app: no accounts, no analytics, no server-side user data. The one
 piece of infrastructure is a Cloudflare Worker that does nothing except send the push
 reminders the app asked it to send.
 
@@ -5058,16 +5052,16 @@ app still runs, but reminders and the wake lock will not.
 
 ## Where your data is, and who can read it
 
-Everything the app records — profile, plan, logged sets, body mass, hydration, notes,
-the sealed time capsule — is stored in your browser's storage on the device you are
+Everything the app records (profile, plan, logged sets, body mass, hydration, notes,
+the sealed time capsule) is stored in your browser's storage on the device you are
 using. It never leaves the device, it is not synced, and nobody else can see it. Take a
 backup from **Export → Download JSON** and keep the file somewhere you control.
 
 Two things do leave the device, and only these:
 
-1. **Your push subscription** — an opaque endpoint URL issued by your browser vendor,
+1. **Your push subscription**: an opaque endpoint URL issued by your browser vendor,
    plus two public keys. It identifies a browser install, not a person.
-2. **Reminder instants** — the times of your next three weeks of sessions, with the
+2. **Reminder instants**: the times of your next three weeks of sessions, with the
    session label ("Push", "Legs") in the notification text.
 
 The Worker stores nothing else. No name, no body mass, no logged sets, no notes.
@@ -5107,9 +5101,9 @@ list.
    content gates; `.github/workflows/deploy.yml` then publishes `dist/`.
 3. The site appears at the URL Pages reports.
 
-The reminder Worker is deployed separately and rarely. Its runbook — Wrangler setup, the
-KV namespace, the VAPID key pair, the cron trigger and the end-to-end smoke test on a real
-phone — is [`worker/RUNBOOK.md`](worker/RUNBOOK.md).
+The reminder Worker is deployed separately and rarely. Its runbook covers Wrangler setup,
+the KV namespace, the VAPID key pair, the cron trigger and the end-to-end smoke test on a
+real phone: [`worker/RUNBOOK.md`](worker/RUNBOOK.md).
 
 ## The motivation video
 
@@ -5123,7 +5117,7 @@ it with their own file from Settings, which is stored in IndexedDB on their devi
 If the previous version of this app was installed on the same device, its data is still
 there. The first launch offers a one-way import and asks the two questions the old app
 never recorded: which unit loads were typed in, and which unit body mass was typed in.
-The old data is not deleted by the import — remove it yourself in **Settings → Delete
+The old data is not deleted by the import. Remove it yourself in **Settings → Delete
 legacy data** once you are satisfied the import is right.
 
 ## Layout

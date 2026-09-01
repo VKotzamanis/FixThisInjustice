@@ -203,13 +203,13 @@ describe("pendingMotivation", () => {
 describe("describeMiss", () => {
   it("reports partial completion", () => {
     expect(describeMiss(review({}))).toBe(
-      "Week of 2026-08-24: 1 of 4 sessions completed. Target missed by 3.",
+      "Week of 2026-08-24: 1 of 4 sessions completed.",
     );
   });
 
   it("reports zero completion", () => {
     expect(describeMiss(review({ completed: 0, delta: -4 }))).toBe(
-      "Week of 2026-08-24: no sessions completed. Target missed by 4.",
+      "Week of 2026-08-24: no sessions completed.",
     );
   });
 });
@@ -265,16 +265,14 @@ export function pendingMotivation(
 }
 
 /**
- * One clinical sentence pair naming the week and the size of the shortfall.
- * No hype, no second person, no exclamation (master plan §3, tone).
+ * One clinical sentence naming the week and what was completed against the target.
+ * The shortfall itself is arithmetic the user cannot act on, so it is not stated
+ * (copy contract R9); the modal heading already says the target was missed.
  */
 export function describeMiss(review: WeeklyReview): string {
-  const missed = -review.delta; // sessions short of target; delta is negative here
-  const head =
-    review.completed === 0
-      ? `Week of ${review.weekStart}: no sessions completed.`
-      : `Week of ${review.weekStart}: ${review.completed} of ${review.target} sessions completed.`;
-  return `${head} Target missed by ${missed}.`;
+  return review.completed === 0
+    ? `Week of ${review.weekStart}: no sessions completed.`
+    : `Week of ${review.weekStart}: ${review.completed} of ${review.target} sessions completed.`;
 }
 ```
 
@@ -500,10 +498,10 @@ export function resetAssetDbForTests(): void {
 
 export async function saveCustomVideo(file: File, now: EpochMs): Promise<string> {
   if (!file.type.startsWith("video/")) {
-    throw new Error(`Not a video file: MIME type "${file.type}".`);
+    throw new Error(`Not a video file: ${file.type}.`);
   }
   if (file.size > MAX_VIDEO_BYTES) {
-    throw new Error(`File is ${file.size} bytes; the limit is ${MAX_VIDEO_BYTES} bytes.`);
+    throw new Error(`File is too large. The limit is ${MAX_VIDEO_BYTES} bytes.`);
   }
   const data = await file.arrayBuffer();
   const id = newId();
@@ -868,7 +866,7 @@ describe("MotivationModal", () => {
     renderModal();
     expect(screen.getByRole("heading", { name: "Weekly target missed" })).toBeDefined();
     expect(
-      screen.getByText("Week of 2026-08-24: 1 of 4 sessions completed. Target missed by 3."),
+      screen.getByText("Week of 2026-08-24: 1 of 4 sessions completed."),
     ).toBeDefined();
   });
 
@@ -898,7 +896,7 @@ describe("MotivationModal", () => {
     const { props } = renderModal();
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     expect(props.onDismiss).toHaveBeenCalledTimes(1);
-    await user.click(screen.getByRole("button", { name: "Don't show again for this week" }));
+    await user.click(screen.getByRole("button", { name: "Mute this week" }));
     expect(props.onDismissForWeek).toHaveBeenCalledTimes(1);
     await user.keyboard("{Escape}");
     expect(props.onDismiss).toHaveBeenCalledTimes(2);
@@ -909,7 +907,7 @@ describe("MotivationModal", () => {
     renderModal();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Play" }));
     await user.tab(); // Dismiss
-    await user.tab(); // Don't show again for this week (last focusable)
+    await user.tab(); // Mute this week (last focusable)
     await user.tab(); // wraps to the first focusable: the video
     expect(document.activeElement).toBe(screen.getByTestId("motivation-video"));
   });
@@ -923,8 +921,8 @@ describe("MotivationModal", () => {
 
   it("renders preview copy when there is no review", () => {
     renderModal({ review: null });
-    expect(screen.getByRole("heading", { name: "Motivation video — preview" })).toBeDefined();
-    expect(screen.getByText("Preview. No weekly review is being reported.")).toBeDefined();
+    expect(screen.getByRole("heading", { name: "Motivation video: preview" })).toBeDefined();
+    expect(screen.getByText("Preview. No week is being reported.")).toBeDefined();
   });
 
   it("is an accessible modal dialog", () => {
@@ -1120,10 +1118,10 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
         onKeyDown={onKeyDown}
       >
         <h2 id="motivation-title" className="motivation-title">
-          {review === null ? "Motivation video — preview" : "Weekly target missed"}
+          {review === null ? "Motivation video: preview" : "Weekly target missed"}
         </h2>
         <p className="motivation-detail">
-          {review === null ? "Preview. No weekly review is being reported." : describeMiss(review)}
+          {review === null ? "Preview. No week is being reported." : describeMiss(review)}
         </p>
         <video
           ref={videoRef}
@@ -1144,7 +1142,7 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
             Dismiss
           </button>
           <button type="button" onClick={onDismissForWeek}>
-            Don&apos;t show again for this week
+            Mute this week
           </button>
         </div>
       </div>
@@ -1244,7 +1242,7 @@ describe("MotivationGate", () => {
     render(<MotivationGate />);
     expect(await screen.findByRole("dialog")).toBeDefined();
     expect(
-      screen.getByText("Week of 2026-08-24: 1 of 4 sessions completed. Target missed by 3."),
+      screen.getByText("Week of 2026-08-24: 1 of 4 sessions completed."),
     ).toBeDefined();
   });
 
@@ -1266,7 +1264,7 @@ describe("MotivationGate", () => {
   it("marks the week shown from the explicit suppression button too", async () => {
     const user = userEvent.setup();
     render(<MotivationGate />);
-    await user.click(await screen.findByRole("button", { name: "Don't show again for this week" }));
+    await user.click(await screen.findByRole("button", { name: "Mute this week" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -1504,7 +1502,7 @@ describe("MotivationSettings", () => {
     render(<MotivationSettings />);
     await user.click(screen.getByRole("button", { name: "Preview" }));
     expect(await screen.findByRole("dialog")).toBeDefined();
-    expect(screen.getByText("Preview. No weekly review is being reported.")).toBeDefined();
+    expect(screen.getByText("Preview. No week is being reported.")).toBeDefined();
     await user.click(screen.getByRole("button", { name: "Dismiss" }));
     await waitFor(() => {
       expect(screen.queryByRole("dialog")).toBeNull();
@@ -1604,15 +1602,19 @@ export function MotivationSettings(): ReactElement | null {
           ? "Bundled clip: checking."
           : bundled
             ? "Bundled clip: present."
-            : "Bundled clip: absent. Ship one at public/media/motivation.mp4, or choose a file below."}
+            : "Bundled clip: absent. Choose a file below."}
       </p>
       <p>{customVideoAssetId === null ? "Custom clip: none." : "Custom clip: stored on this device."}</p>
       <label htmlFor="motivation-file">Choose a custom clip</label>
       <input id="motivation-file" type="file" accept="video/*" onChange={onPick} />
-      <p>
-        Stored in this browser only and never uploaded. Hard limit {MAX_VIDEO_BYTES} bytes (150 MiB);
-        a clip of 25 MiB or less is recommended.
-      </p>
+      <p>Stored in this browser only, never uploaded. Limit 150 MiB.</p>
+      <details>
+        <summary>why?</summary>
+        <p>
+          The hard limit is {MAX_VIDEO_BYTES} bytes. A clip of 25 MiB or less keeps the install
+          small and plays back reliably on a phone.
+        </p>
+      </details>
       {error !== null ? <p role="alert">{error}</p> : null}
       <div className="settings-actions">
         <button type="button" onClick={onPreview}>
@@ -1905,7 +1907,7 @@ Each item is a change to `docs/plans/2026-09-01-00-master-plan.md` that this pla
 
 5. **§6.7 — state what `markMotivationShown` writes.** It sets `MotivationState.lastShownForWeek`/`lastShownAt` **and** `missHandled: true` on the `WeeklyReview` whose `weekStart` matches. §6.4 says `closeWeeks` produces `missHandled: false` and no other plan writes the field, so P6 claims ownership of it. The redundancy with `lastShownForWeek` is deliberate: either guard alone stops the §7 gate's "second app open" case.
 
-6. **The two dismissal controls are behaviourally identical, and the contract cannot make them differ.** §7's P6 gate requires that a second app open not show the popup, which forces plain `Dismiss` to record the week; `MotivationState` has no field expressing a shorter suppression. Two options, both cheap — either **(a)** drop "Don't show again for this week" and keep one `Dismiss`, or **(b)** add `dismissedUntil: EpochMs | null` to `MotivationState` in §5 so `Dismiss` can mean "not again today" while the second button means "not again this week". This plan implements the contract as written (both call `markMotivationShown`) and flags the redundancy rather than inventing a field. **Decision needed from the user before P7 freezes the schema.**
+6. **The two dismissal controls are behaviourally identical, and the contract cannot make them differ.** §7's P6 gate requires that a second app open not show the popup, which forces plain `Dismiss` to record the week; `MotivationState` has no field expressing a shorter suppression. Two options, both cheap — either **(a)** drop "Mute this week" and keep one `Dismiss`, or **(b)** add `dismissedUntil: EpochMs | null` to `MotivationState` in §5 so `Dismiss` can mean "not again today" while the second button means "not again this week". This plan implements the contract as written (both call `markMotivationShown`) and flags the redundancy rather than inventing a field. **Decision needed from the user before P7 freezes the schema.**
 
 7. **§1.8 — record the custom clip's storage format and its cost.** §1.8 says IndexedDB holds "binary assets" without a record shape. The adopted shape is `{ id, name, type, size, data: ArrayBuffer, createdAt }` with the `Blob` rebuilt at read time; the rejected alternative (storing the `Blob` directly) is untestable because `fake-indexeddb` + jsdom silently degrades a jsdom `Blob` to `{}`. The cost of the adopted shape is a heap spike of the file's full size while saving, which is why the Settings copy recommends 25 MiB or less against a 150 MiB hard cap.
 

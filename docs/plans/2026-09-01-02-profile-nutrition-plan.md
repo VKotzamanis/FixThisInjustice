@@ -1462,7 +1462,7 @@ export const EXERCISES: readonly Exercise[] = [
     equipment: ["full-gym", "dumbbells-only", "bodyweight"],
     videoQuery: "bulgarian split squat form jeff nippard",
     formCueId: "bulgarian-split-squat",
-    note: "Rear foot elevated. Unloaded when no dumbbells are available — log the load as 0.",
+    note: "Rear foot elevated. Unloaded when no dumbbells are available; log the load as 0.",
   },
   {
     id: "romanian-deadlift",
@@ -3809,11 +3809,11 @@ const WEEKDAYS: { value: IsoWeekday; label: string }[] = [
 ];
 
 const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string }[] = [
-  { value: "sedentary", label: "Sedentary — desk work, little walking" },
-  { value: "light", label: "Light — some walking or standing" },
-  { value: "moderate", label: "Moderate — regular walking, active job or training" },
-  { value: "active", label: "Active — physical work or daily training" },
-  { value: "very-active", label: "Very active — heavy physical work" },
+  { value: "sedentary", label: "Sedentary: desk work, little walking" },
+  { value: "light", label: "Light: some walking or standing" },
+  { value: "moderate", label: "Moderate: regular walking, active job or training" },
+  { value: "active", label: "Active: physical work or daily training" },
+  { value: "very-active", label: "Very active: heavy physical work" },
 ];
 
 interface DaySlot {
@@ -4111,15 +4111,14 @@ export function SetupWizard(): JSX.Element {
     <div className="wiz">
       <h1>Setup</h1>
       <p className="wiz-step">
-        Step {screen + 1} of {SCREEN_TITLES.length} — {SCREEN_TITLES[screen]}
+        Step {screen + 1} of {SCREEN_TITLES.length}: {SCREEN_TITLES[screen]}
       </p>
 
       {screen === 0 && (
         <fieldset>
           <legend>Units</legend>
           <p className="wiz-note">
-            Chosen once. Every field below is labelled in this unit; values are stored in
-            kilograms and converted exactly.
+            Chosen once. Values are stored in kg and converted exactly.
           </p>
           <label className="wiz-inline">
             <input
@@ -4148,7 +4147,7 @@ export function SetupWizard(): JSX.Element {
         <fieldset>
           <legend>Time zone</legend>
           <p className="wiz-note">
-            Detected from this device. Every date and reminder is computed in this zone.
+            Detected from this device. Dates and reminders use this zone.
           </p>
           <label>
             Time zone
@@ -4160,7 +4159,7 @@ export function SetupWizard(): JSX.Element {
             />
           </label>
           {!isValidTimeZone(draft.timezone) && (
-            <p className="wiz-note">Not a recognised IANA time zone identifier.</p>
+            <p className="wiz-note">Not a recognised IANA time zone.</p>
           )}
         </fieldset>
       )}
@@ -4178,8 +4177,7 @@ export function SetupWizard(): JSX.Element {
             />
           </label>
           <p className="wiz-note">
-            Sex is collected because the resting-metabolic-rate equation, the body-fat equation
-            and the fluid target each take a sex term. Nothing else in the app does.
+            Used by the RMR, body-fat and fluid equations. Nothing else.
           </p>
           <label className="wiz-inline">
             <input
@@ -4252,11 +4250,14 @@ export function SetupWizard(): JSX.Element {
             />
           </label>
 
-          <p className="wiz-note">
-            Body fat is optional. With it the engine uses the Cunningham fat-free-mass equation
-            and sets protein per kilogram of fat-free mass; without it, Mifflin-St Jeor and
-            protein per kilogram of body mass.
-          </p>
+          <p className="wiz-note">Optional. With it, RMR and protein use fat-free mass.</p>
+          <details className="wiz-why">
+            <summary>why?</summary>
+            <p className="wiz-note">
+              With a body-fat value the engine uses Cunningham for RMR and g protein per kg
+              fat-free mass; without one, Mifflin-St Jeor and g protein per kg body mass.
+            </p>
+          </details>
           <label className="wiz-inline">
             <input
               type="radio"
@@ -4303,8 +4304,7 @@ export function SetupWizard(): JSX.Element {
           {draft.bodyFatMode === "tape" && (
             <>
               <p className="wiz-note">
-                US Navy circumference method, metric form. All girths in centimetres, measured
-                horizontally, tape snug but not compressing.
+                US Navy circumference method. All girths in cm, tape snug.
               </p>
               <label>
                 Neck (cm)
@@ -4342,12 +4342,21 @@ export function SetupWizard(): JSX.Element {
               <p className="wiz-note" data-testid="bodyfat-estimate">
                 {bodyFatPct === null
                   ? draft.sex === "female"
-                    ? "Enter neck, abdomen I and hip girths to estimate."
-                    : "Enter neck and abdomen II girths to estimate."
-                  : `${bodyFatPct.toFixed(1)} % body fat, standard error ${NAVY_SEE_PCT[
-                      draft.sex
-                    ].toFixed(2)} percentage points. Use it to track change over time, not as an absolute number.`}
+                    ? "Enter neck, abdomen I and hip girths."
+                    : "Enter neck and abdomen II girths."
+                  : `${bodyFatPct.toFixed(1)} % body fat, ± ${NAVY_SEE_PCT[draft.sex].toFixed(
+                      2,
+                    )} percentage points.`}
               </p>
+              {bodyFatPct !== null && (
+                <details className="wiz-why">
+                  <summary>why?</summary>
+                  <p className="wiz-note">
+                    The figure after ± is the standard error of the US Navy estimate. Track the
+                    change over time, not the absolute number.
+                  </p>
+                </details>
+              )}
             </>
           )}
         </fieldset>
@@ -4377,9 +4386,9 @@ export function SetupWizard(): JSX.Element {
               value={draft.experience}
               onChange={(e) => patch({ experience: toExperience(e.target.value) })}
             >
-              <option value="novice">Novice — under one year of consistent training</option>
-              <option value="intermediate">Intermediate — one to three years</option>
-              <option value="advanced">Advanced — over three years</option>
+              <option value="novice">Novice: under one year of consistent training</option>
+              <option value="intermediate">Intermediate: one to three years</option>
+              <option value="advanced">Advanced: over three years</option>
             </select>
           </label>
           <label>
@@ -4395,8 +4404,7 @@ export function SetupWizard(): JSX.Element {
             </select>
           </label>
           <p className="wiz-note">
-            Load steps set the smallest increment a suggested load may use. Defaults are the
-            common smallest plate pair.
+            The smallest increment a suggested load may use.
           </p>
           <label>
             {`Barbell step (${labels.load})`}
@@ -4482,7 +4490,7 @@ export function SetupWizard(): JSX.Element {
             Creatine monohydrate
           </label>
           <p className="wiz-note">
-            The only supplement the app tracks. Maintenance dose is scaled by body mass.
+            The only supplement tracked. Dose scales with body mass.
           </p>
         </fieldset>
       )}
@@ -4593,7 +4601,7 @@ export function SetupWizard(): JSX.Element {
             />
           </label>
           <p className="wiz-note">
-            Every fourth week is a deload: set counts are halved and the load is unchanged.
+            Every fourth week halves set counts. Load is unchanged.
           </p>
           <label className="wiz-inline">
             <input
@@ -4632,7 +4640,7 @@ export function SetupWizard(): JSX.Element {
               )}
             </dl>
             <details>
-              <summary>Basis</summary>
+              <summary>why?</summary>
               <p className="wiz-note">{targets?.basis.proteinRule}</p>
               <p className="wiz-note">{targets?.basis.deficitRule}</p>
               <p className="wiz-note">{targets?.basis.rateRule}</p>
@@ -4936,7 +4944,7 @@ export function TargetsView(): JSX.Element {
         <dd>{`${targets.tdeeKcal} kcal`}</dd>
       </dl>
 
-      <h2>{`Intake check-in — ${today}`}</h2>
+      <h2>{`Intake check-in: ${today}`}</h2>
       <label>
         {`Energy consumed today (kcal)`}
         <input
@@ -4979,7 +4987,7 @@ export function TargetsView(): JSX.Element {
       </p>
 
       <details data-testid="basis">
-        <summary>How these numbers were derived</summary>
+        <summary>why?</summary>
         <p>{`Resting metabolic rate: ${targets.basis.rmr === "cunningham" ? "Cunningham 1991, DOI 10.1093/ajcn/54.6.963" : "Mifflin-St Jeor 1990, DOI 10.1093/ajcn/51.2.241"}.`}</p>
         <p>{`Physical activity level ${targets.basis.activityFactor} (FAO/WHO/UNU 2004, Table 5.3).`}</p>
         <p>{targets.basis.proteinRule}</p>
@@ -5042,10 +5050,7 @@ export function SettingsView(): JSX.Element {
           <option value="imperial">Pounds (lb)</option>
         </select>
       </label>
-      <p>
-        Stored values never change with this setting: mass is always held in kilograms and
-        converted for display.
-      </p>
+      <p>Stored values never change. Mass is always held in kg.</p>
 
       <label>
         Activity level
@@ -5149,9 +5154,14 @@ export function SettingsView(): JSX.Element {
           }
         />
       </label>
-      <p>
-        {`Default for the stated sex is ${dailyBeverageTargetML(profile.body.sex)} mL of beverages per day (IOM 2005, DOI 10.17226/10925). Water in food is additional and is not counted here.`}
-      </p>
+      <p>{`Default for the stated sex: ${dailyBeverageTargetML(profile.body.sex)} mL per day.`}</p>
+      <details>
+        <summary>why?</summary>
+        <p>
+          IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. Water
+          in food is additional and is not counted here.
+        </p>
+      </details>
     </section>
   );
 }
@@ -5179,9 +5189,9 @@ const NAV: { id: ViewId; label: string }[] = [
   { id: "settings", label: "Settings" },
 ];
 
-/** Views P3-P8 deliver. Until then the tab exists and says what will fill it. */
+/** Views P3-P8 deliver. Until then the tab exists and says the view is not built. */
 function Placeholder(props: { name: string; plan: string }): JSX.Element {
-  return <p>{`${props.name} is delivered in ${props.plan}.`}</p>;
+  return <p>{`${props.name} is not built yet.`}</p>;
 }
 
 export function App(): JSX.Element {
