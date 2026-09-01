@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design B — Clinical dashboard</title>
+<style>
+/* ============================================================================
+   DESIGN B — CLINICAL DASHBOARD
+   Light, high-legibility, infographic-led. Built for glanceability under the
+   bright overhead light of a gym floor, where a dark UI reflects the ceiling.
+   Data forms are deliberately varied (epic-infographics step 7): one hero
+   number, a categorical compliance strip, a line sparkline, and bullet bars
+   with a target band. No two adjacent elements use the same encoding.
+   Token set is a full replacement of the CRT tokens, not a re-skin.
+   ========================================================================== */
+:root{
+  --bg:#eef0f3; --page:#f7f8fa; --surface:#ffffff;
+  --ink:#101418; --ink-2:#37414d; --ink-3:#5f6b7a;
+  --line:#dde2e8; --line-2:#c6cdd6;
+  --accent:#1d4ed8;      /* 6.3:1 on white — series 1 and primary action */
+  --ok:#15803d;          /* 5.0:1 — completed                             */
+  --warn:#b45309;        /* 5.0:1 — below target                          */
+  --miss:#9a3412;        /* 7.3:1 — skipped                               */
+  --slate:#475569;       /* 7.5:1 — series 2                              */
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --tap:44px; --dock:128px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- mockup page chrome ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 6px;font-size:19px;letter-spacing:-.01em}
+.pagehead p{margin:0;max-width:70ch;color:var(--ink-2);font-size:13.5px}
+.pagehead code{font-family:var(--mono);font-size:12.5px;background:#dfe3e8;padding:1px 5px}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 60px}
+figure{margin:0}
+figcaption{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-2);padding:0 0 8px 2px}
+figcaption b{color:var(--ink);font-weight:600}
+@media(max-width:430px){.frames{padding:14px 0 40px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone frame ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--page);border:1px solid var(--line-2);box-shadow:0 10px 26px rgba(16,20,24,.14)}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-bottom:calc(var(--dock) + 58px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+.sys{display:flex;justify-content:space-between;padding:8px 18px 0;font-size:11.5px;color:var(--ink-3);
+  font-family:var(--mono)}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 12px;
+  border-bottom:1px solid var(--line);background:var(--surface)}
+.topbar .t{font-size:13px;font-weight:650;letter-spacing:.02em}
+.topbar .r{font-size:11.5px;color:var(--ink-3);font-family:var(--mono)}
+
+.panel{background:var(--surface);border-bottom:1px solid var(--line);padding:18px}
+.panel + .panel{border-top:0}
+.k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+
+/* ---- hero ---- */
+.hero-label{display:flex;align-items:baseline;gap:10px;margin:8px 0 2px}
+.hero-label h1{margin:0;font-size:38px;font-weight:800;letter-spacing:-.025em;line-height:1}
+.hero-label .kindtag{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--surface);
+  background:var(--accent);padding:4px 7px}
+.cursorbar{margin-top:14px}
+.cursorbar .row{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--ink-2)}
+.cursorbar .row b{font-size:15px;font-weight:700;color:var(--ink)}
+.prog{margin-top:6px;height:10px;background:#e6eaee;position:relative;overflow:hidden}
+.prog .f{position:absolute;inset:0 auto 0 0;background:var(--accent)}
+.prog .n{position:absolute;top:0;bottom:0;width:2px;background:var(--ink)}
+.when{margin-top:14px;display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+.when b{color:var(--ink);font-weight:650}
+
+/* ---- weekly slot meter ---- */
+.slots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.slot{border:1px solid var(--line-2);padding:8px 6px;text-align:center;min-height:52px}
+.slot .d{font-size:10px;letter-spacing:.1em;color:var(--ink-3);font-weight:600}
+.slot .s{font-size:16px;font-weight:700;margin-top:3px}
+.slot.done{background:var(--ok);border-color:var(--ok)}
+.slot.done .d,.slot.done .s{color:#fff}
+.slot.now{border:2px solid var(--accent)}
+.slot.now .s{color:var(--accent)}
+
+/* ---- exercise table ---- */
+table.ex{width:100%;border-collapse:collapse;margin-top:8px;font-size:13.5px}
+table.ex th{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);
+  text-align:left;font-weight:600;padding:0 0 6px}
+table.ex th.r,table.ex td.r{text-align:right}
+table.ex td{padding:9px 0;border-top:1px solid var(--line);height:44px}
+table.ex td.n{color:var(--ink-3);font-family:var(--mono);font-size:11.5px;width:26px}
+table.ex td.v{font-family:var(--mono);color:var(--ink-2);white-space:nowrap}
+
+/* ---- controls ---- */
+.minor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 0 8px}
+.btn-min{min-height:var(--tap);border:1px solid var(--line-2);background:var(--surface);color:var(--ink-2);
+  font:inherit;font-size:12px;font-weight:600;cursor:pointer;padding:6px 4px}
+.btn-min:active{background:#eef1f4}
+.fine{padding:8px 18px 18px;font-size:11.5px;color:var(--ink-3);line-height:1.55}
+.dockwrap{position:absolute;left:0;right:0;bottom:58px;z-index:40;padding:10px 18px 12px;
+  background:var(--page);border-top:1px solid var(--line-2)}
+.dockwrap::before{content:"";position:absolute;left:0;right:0;top:-26px;height:26px;pointer-events:none;
+  background:linear-gradient(to top,var(--page),rgba(247,248,250,0))}
+.btn-primary{width:100%;min-height:54px;border:0;background:var(--accent);color:#fff;
+  font-family:var(--sans);font-weight:700;font-size:16px;letter-spacing:.03em;cursor:pointer}
+.nav{position:absolute;left:0;right:0;bottom:0;height:58px;display:flex;z-index:41;
+  border-top:1px solid var(--line-2);background:var(--surface)}
+.nav button{flex:1;min-height:58px;background:transparent;border:0;border-top:3px solid transparent;
+  color:var(--ink-3);font:inherit;font-size:10.5px;font-weight:600;letter-spacing:.04em;cursor:pointer}
+.nav button.on{color:var(--accent);border-top-color:var(--accent)}
+
+/* ---- rest readout (numeric, with a depletion bar — no ring) ---- */
+.rest{background:var(--ink);color:#fff;padding:20px 18px 18px}
+.rest .k{color:#b9c2cd}
+.rest .clock{font-size:84px;font-weight:800;letter-spacing:-.04em;line-height:.92;
+  font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.rest .ends{font-size:12.5px;color:#c3ccd6;font-family:var(--mono)}
+.rest .dep{height:8px;background:rgba(255,255,255,.22);margin:14px 0 14px;position:relative}
+.rest .dep i{position:absolute;inset:0 auto 0 0;background:#fff;display:block}
+.rest .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rest .btns button{min-height:var(--tap);border:1px solid #fff;background:transparent;color:#fff;
+  font:inherit;font-size:13px;font-weight:650;cursor:pointer}
+.hyd{background:#e8f1fb;border-bottom:1px solid var(--line);padding:14px 18px}
+.hyd .h{font-size:14.5px;font-weight:650;color:#12325e}
+.hyd .s{font-size:12px;color:#274a75;margin-top:3px;line-height:1.5}
+
+/* ---- set rows ---- */
+.exhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.exhead .nm{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.exhead .rx{font-size:12px;color:var(--ink-3);font-family:var(--mono);margin-top:3px}
+.unit{font-size:11px;font-weight:700;letter-spacing:.1em;padding:4px 7px;border:1px solid var(--line-2);color:var(--ink-2)}
+.unit.kg{border-color:var(--accent);color:var(--accent)}
+.advice{margin-top:12px;border-left:3px solid var(--accent);padding:8px 12px;background:#f2f6fd;
+  font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.advice b{color:var(--accent);font-weight:700}
+.sets{margin-top:12px}
+.srow{display:grid;grid-template-columns:46px 1fr 1fr 36px;gap:8px;align-items:center;
+  min-height:var(--tap);border-top:1px solid var(--line);padding:5px 0}
+.srow .sn{font-family:var(--mono);font-size:11.5px;color:var(--ink-3)}
+.box{min-height:40px;border:1px solid var(--line-2);background:var(--surface);
+  display:flex;align-items:baseline;justify-content:center;gap:4px}
+.box .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums}
+.box .u{font-size:10.5px;color:var(--ink-3);font-weight:600;letter-spacing:.06em}
+.srow.open .box{border-style:dashed;background:#f4f6f8}
+.srow.open .box .v{color:var(--ink-3)}
+.mark{width:36px;height:36px;border:1px solid var(--line-2);display:flex;align-items:center;justify-content:center;
+  font-size:15px;color:var(--ink-3)}
+.srow.done .mark{background:var(--ok);border-color:var(--ok);color:#fff}
+
+/* ---- week review infographics ---- */
+.deltablock{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center}
+.deltablock .num{font-size:64px;font-weight:800;line-height:.85;letter-spacing:-.045em;
+  font-variant-numeric:tabular-nums;color:var(--warn)}
+.deltablock .txt{font-size:13px;color:var(--ink-2);line-height:1.5}
+.deltablock .txt b{color:var(--ink);font-weight:700}
+.heat{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:10px}
+.hc{height:46px;border:1px solid var(--line-2);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:3px;background:var(--surface)}
+.hc .g{font-size:14px;line-height:1;color:var(--ink-3)}
+.hc .d{font-size:9.5px;letter-spacing:.08em;color:var(--ink-3);font-weight:600}
+.hc.done{background:var(--ok);border-color:var(--ok)}
+.hc.done .g,.hc.done .d{color:#fff}
+.hc.skip{background:repeating-linear-gradient(135deg,#fff 0 5px,#f0d9cf 5px 7px);border-color:var(--miss)}
+.hc.skip .g,.hc.skip .d{color:var(--miss)}
+.hc.miss{border-style:dashed;border-color:var(--ink-3)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--ink-3);margin-top:10px}
+.legend span{display:flex;align-items:center;gap:5px}
+.sw{width:11px;height:11px;border:1px solid var(--line-2);display:inline-block}
+.sw.done{background:var(--ok);border-color:var(--ok)}
+.sw.skip{background:repeating-linear-gradient(135deg,#fff 0 4px,#f0d9cf 4px 6px);border-color:var(--miss)}
+.sw.miss{border-style:dashed;border-color:var(--ink-3)}
+
+.wkhist{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
+.wk{border:1px solid var(--line-2);padding:8px 4px;text-align:center}
+.wk .w{font-size:10px;color:var(--ink-3);letter-spacing:.08em;font-weight:600}
+.wk .r{font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:2px}
+.wk .b{height:5px;background:#e6eaee;margin-top:6px;position:relative}
+.wk .b i{position:absolute;inset:0 auto 0 0;background:var(--slate)}
+
+.sparks{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px}
+.spark .t{font-size:11px;color:var(--ink-3);font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.spark .v{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;margin:2px 0 4px}
+.spark .v small{font-size:11px;color:var(--ink-3);font-weight:500}
+.spark svg{display:block;width:100%;height:44px}
+
+/* bullet bars with target band */
+.bullet{margin-top:16px}
+.bullet:first-of-type{margin-top:10px}
+.bhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.bhead .n{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.bhead .val{font-size:16px;font-weight:700;font-variant-numeric:tabular-nums}
+.bhead .val small{font-size:11.5px;color:var(--ink-3);font-weight:500}
+.btrack{position:relative;height:18px;background:#e6eaee;border:1px solid var(--line-2)}
+.btrack .band{position:absolute;top:0;bottom:0;background:#cfe0f7;border-left:1px solid var(--accent);border-right:1px solid var(--accent)}
+.btrack .bar{position:absolute;top:4px;bottom:4px;left:0;background:var(--slate)}
+.btrack .bar.short{background:var(--warn)}
+.btrack .tgt{position:absolute;top:-3px;bottom:-3px;width:3px;background:var(--ink)}
+.bscale{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-3);margin-top:4px;
+  font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design B — Clinical dashboard</h1>
+  <p>Light ground, black-on-white body text, one encoding per question. Chosen for glanceability under bright overhead gym lighting, where a dark screen becomes a mirror. Four distinct data forms carry the weekly data: a hero signed delta, a categorical seven-day compliance strip, two line sparklines, and bullet bars with a target band for the protein low–high range. No generated imagery is used; every mark is inline SVG or CSS.</p>
+</header>
+
+<div class="frames">
+
+<!-- ============================= 1 · TODAY ============================= -->
+<figure>
+  <figcaption><b>1 · Today</b> — 390 × 844</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>Tue 1 Sep 2026</span></div>
+      <div class="topbar"><span class="t">Today</span><span class="r">12-week plan &middot; active</span></div>
+
+      <div class="panel">
+        <span class="k">Today's session</span>
+        <div class="hero-label"><h1>Upper</h1><span class="kindtag">LIFT</span></div>
+        <div class="cursorbar">
+          <div class="row"><span>Plan position</span><span><b class="tabnum">12</b> of <b class="tabnum">48</b></span></div>
+          <div class="prog"><i class="f" style="width:22.9%"></i><span class="n" style="left:22.9%"></span></div>
+        </div>
+        <div class="when">
+          <span>Scheduled <b class="tabnum">18:00</b></span>
+          <span>6 exercises</span>
+          <span>&asymp; <b class="tabnum">55 min</b></span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <span class="k">This week &middot; target 4 sessions</span>
+        <div class="slots">
+          <div class="slot done"><div class="d">MON</div><div class="s">&#10003;</div></div>
+          <div class="slot now"><div class="d">TUE</div><div class="s">18:00</div></div>
+          <div class="slot"><div class="d">THU</div><div class="s">18:00</div></div>
+          <div class="slot"><div class="d">SAT</div><div class="s">10:00</div></div>
+        </div>
+        <div class="fine" style="padding:10px 0 0">1 of 4 completed. Three slots remain; the plan cursor advances only when a session is completed or skipped.</div>
+      </div>
+
+      <div class="panel">
+        <span class="k">Prescription</span>
+        <table class="ex">
+          <tr><th></th><th>Exercise</th><th class="r">Sets &times; reps</th></tr>
+          <tr><td class="n">01</td><td>Barbell bench press</td><td class="v r">3 &times; 6&ndash;8</td></tr>
+          <tr><td class="n">02</td><td>Barbell row (Pendlay)</td><td class="v r">3 &times; 6&ndash;8</td></tr>
+          <tr><td class="n">03</td><td>Overhead press</td><td class="v r">3 &times; 8&ndash;10</td></tr>
+          <tr><td class="n">04</td><td>Lat pulldown</td><td class="v r">3 &times; 10&ndash;12</td></tr>
+          <tr><td class="n">05</td><td>Face pull</td><td class="v r">2 &times; 12&ndash;15</td></tr>
+          <tr><td class="n">06</td><td>Barbell curl</td><td class="v r">2 &times; 10&ndash;12</td></tr>
+        </table>
+      </div>
+
+      <div class="fine">Pausing holds the cursor at session 12 and suppresses weekly targets until you resume. Skipping advances it to session 13 and records the reason. &ldquo;Train other&rdquo; offers Push or Pull &mdash; the labels still owed this week.</div>
+    </div>
+
+    <div class="dockwrap">
+      <div class="minor">
+        <button class="btn-min">Pause plan</button>
+        <button class="btn-min">Skip today</button>
+        <button class="btn-min">Train other</button>
+      </div>
+      <button class="btn-primary">Start session</button>
+    </div>
+    <nav class="nav">
+      <button class="on">Today</button><button>Train</button><button>Plan</button><button>Log</button><button>More</button>
+    </nav>
+  </div>
+</figure>
+
+<!-- ============================= 2 · TRAIN ============================= -->
+<figure>
+  <figcaption><b>2 · Train</b> — mid-session, rest running</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span>Session 12 &middot; 31 min</span></div>
+      <div class="topbar"><span class="t">Upper &middot; session 12 of 48</span><span class="r">2 / 6 exercises</span></div>
+
+      <div class="rest">
+        <span class="k">Rest &middot; bench press</span>
+        <div class="clock" id="clkB">1:47</div>
+        <div class="ends">of 2:00 &middot; ends 18:24:52</div>
+        <div class="dep"><i id="depB" style="width:89.2%"></i></div>
+        <div class="btns">
+          <button id="addB">+30 s</button>
+          <button id="skipB">Skip rest</button>
+        </div>
+      </div>
+
+      <div class="hyd">
+        <div class="h">Drink to thirst.</div>
+        <div class="s">Session active 31 min. Repeats at most every 20 min. No fixed volume is prescribed between sets; replacement is judged by body-mass change after the session, not by a cup count.</div>
+      </div>
+
+      <div class="panel">
+        <div class="exhead">
+          <div><div class="nm">Barbell bench press</div><div class="rx">3 &times; 6&ndash;8 &middot; rest 2:00</div></div>
+          <span class="unit">LB</span>
+        </div>
+        <div class="advice">Suggested <b>140 lb</b>, up 5 lb from 135. Every set reached 8 reps on 25 Aug; +2.5&nbsp;% is 3.4 lb, rounded up to the 5 lb barbell step.</div>
+        <div class="sets">
+          <div class="srow done"><span class="sn">SET 1</span>
+            <span class="box"><span class="v">140</span><span class="u">LB</span></span>
+            <span class="box"><span class="v">8</span><span class="u">REPS</span></span><span class="mark">&#10003;</span></div>
+          <div class="srow done"><span class="sn">SET 2</span>
+            <span class="box"><span class="v">140</span><span class="u">LB</span></span>
+            <span class="box"><span class="v">7</span><span class="u">REPS</span></span><span class="mark">&#10003;</span></div>
+          <div class="srow open"><span class="sn">SET 3</span>
+            <span class="box"><span class="v">140</span><span class="u">LB</span></span>
+            <span class="box"><span class="v">&mdash;</span><span class="u">REPS</span></span><span class="mark">&#9633;</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="exhead">
+          <div><div class="nm">Lat pulldown</div><div class="rx">3 &times; 10&ndash;12 &middot; rest 1:30</div></div>
+          <span class="unit kg">KG</span>
+        </div>
+        <div class="advice">Hold <b>45 kg</b>. The smallest stack increment on this machine is 5 kg, which is 11&nbsp;% of the current load and above the 10&nbsp;% ceiling. The rep target is extended to <b>10&ndash;14</b> instead. This stack is marked in kg and is logged as entered.</div>
+        <div class="sets">
+          <div class="srow done"><span class="sn">SET 1</span>
+            <span class="box"><span class="v">45</span><span class="u">KG</span></span>
+            <span class="box"><span class="v">12</span><span class="u">REPS</span></span><span class="mark">&#10003;</span></div>
+          <div class="srow open"><span class="sn">SET 2</span>
+            <span class="box"><span class="v">45</span><span class="u">KG</span></span>
+            <span class="box"><span class="v">&mdash;</span><span class="u">REPS</span></span><span class="mark">&#9633;</span></div>
+          <div class="srow open"><span class="sn">SET 3</span>
+            <span class="box"><span class="v">45</span><span class="u">KG</span></span>
+            <span class="box"><span class="v">&mdash;</span><span class="u">REPS</span></span><span class="mark">&#9633;</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dockwrap"><button class="btn-primary">Log set 3</button></div>
+    <nav class="nav">
+      <button>Today</button><button class="on">Train</button><button>Plan</button><button>Log</button><button>More</button>
+    </nav>
+  </div>
+</figure>
+
+<!-- =========================== 3 · WEEK REVIEW ========================== -->
+<figure>
+  <figcaption><b>3 · Week review</b> — closed week</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>08:04</span><span>Mon 31 Aug 2026</span></div>
+      <div class="topbar"><span class="t">Week review</span><span class="r">2026-08-24 &rarr; 08-30</span></div>
+
+      <div class="panel">
+        <span class="k">Sessions vs target</span>
+        <div class="deltablock" style="margin-top:10px">
+          <div class="num tabnum">&minus;2</div>
+          <div class="txt"><b>2 of 4 completed.</b><br>1 skipped, 1 not logged.<br>No pause overlapped this week, so the delta counts.</div>
+        </div>
+
+        <div class="heat">
+          <div class="hc done"><span class="g">&#10003;</span><span class="d">MON</span></div>
+          <div class="hc done"><span class="g">&#10003;</span><span class="d">TUE</span></div>
+          <div class="hc"><span class="g">&middot;</span><span class="d">WED</span></div>
+          <div class="hc skip"><span class="g">&#10005;</span><span class="d">THU</span></div>
+          <div class="hc"><span class="g">&middot;</span><span class="d">FRI</span></div>
+          <div class="hc miss"><span class="g">&#9633;</span><span class="d">SAT</span></div>
+          <div class="hc"><span class="g">&middot;</span><span class="d">SUN</span></div>
+        </div>
+        <div class="legend">
+          <span><i class="sw done"></i>completed</span>
+          <span><i class="sw skip"></i>skipped</span>
+          <span><i class="sw miss"></i>slot not logged</span>
+          <span><i class="sw"></i>no slot</span>
+        </div>
+      </div>
+
+      <div class="panel">
+        <span class="k">Completed per week</span>
+        <div class="wkhist">
+          <div class="wk"><div class="w">WK 1</div><div class="r tabnum">4/4</div><div class="b"><i style="width:100%"></i></div></div>
+          <div class="wk"><div class="w">WK 2</div><div class="r tabnum">3/4</div><div class="b"><i style="width:75%"></i></div></div>
+          <div class="wk"><div class="w">WK 3</div><div class="r tabnum">2/4</div><div class="b"><i style="width:50%"></i></div></div>
+          <div class="wk"><div class="w">WK 4</div><div class="r tabnum">1/4</div><div class="b"><i style="width:25%"></i></div></div>
+        </div>
+        <div class="fine" style="padding:8px 0 0">Week 4 is in progress. Four points are too few to call a trend.</div>
+      </div>
+
+      <div class="panel">
+        <span class="k">Progression</span>
+        <div class="sparks">
+          <div class="spark">
+            <div class="t">Bench top set</div>
+            <div class="v tabnum">140 <small>lb</small></div>
+            <svg viewBox="0 0 160 44" preserveAspectRatio="none" aria-label="Bench press top-set load, 120 to 140 lb over six sessions">
+              <line x1="0" y1="43" x2="160" y2="43" stroke="#dde2e8" stroke-width="1"></line>
+              <polyline points="4,32.7 34.4,27.3 64.8,27.3 95.2,22 125.6,16.7 156,11.3"
+                        fill="none" stroke="#1d4ed8" stroke-width="2"></polyline>
+              <circle cx="156" cy="11.3" r="3" fill="#1d4ed8"></circle>
+            </svg>
+            <div style="font-size:10.5px;color:var(--ink-3);margin-top:2px" class="tabnum">6 sessions &middot; 120 &rarr; 140 lb</div>
+          </div>
+          <div class="spark">
+            <div class="t">Body mass</div>
+            <div class="v tabnum">185.4 <small>lb</small></div>
+            <svg viewBox="0 0 160 44" preserveAspectRatio="none" aria-label="Body mass, 187.2 to 185.4 lb over five weigh-ins">
+              <line x1="0" y1="43" x2="160" y2="43" stroke="#dde2e8" stroke-width="1"></line>
+              <polyline points="4,12.4 42,17.2 80,14.8 118,21.2 156,26.8"
+                        fill="none" stroke="#475569" stroke-width="2"></polyline>
+              <circle cx="156" cy="26.8" r="3" fill="#475569"></circle>
+            </svg>
+            <div style="font-size:10.5px;color:var(--ink-3);margin-top:2px" class="tabnum">5 weigh-ins &middot; &minus;1.8 lb</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <span class="k">Daily targets &middot; week mean</span>
+
+        <div class="bullet">
+          <div class="bhead"><span class="n">Energy</span><span class="val tabnum">2,180 <small>/ 2,350 kcal</small></span></div>
+          <div class="btrack"><div class="bar short" style="width:74.1%"></div><div class="tgt" style="left:79.9%"></div></div>
+          <div class="bscale"><span>0</span><span>target 2,350</span><span>2,940</span></div>
+        </div>
+
+        <div class="bullet">
+          <div class="bhead"><span class="n">Protein</span><span class="val tabnum">164 <small>/ 150&ndash;190 g</small></span></div>
+          <div class="btrack"><div class="band" style="left:60%;width:16%"></div><div class="bar" style="width:65.6%"></div></div>
+          <div class="bscale"><span>0</span><span>band 150&ndash;190 g</span><span>250</span></div>
+        </div>
+
+        <div class="bullet">
+          <div class="bhead"><span class="n">Fluid</span><span class="val tabnum">2,150 <small>/ 3,000 mL</small></span></div>
+          <div class="btrack"><div class="bar short" style="width:57.3%"></div><div class="tgt" style="left:79.9%"></div></div>
+          <div class="bscale"><span>0</span><span>target 3,000 mL</span><span>3,750</span></div>
+        </div>
+
+        <div class="fine" style="padding:12px 0 0">Bars are drawn to a common scale of 1.25 &times; target so their lengths are comparable. The protein band is the target range, not a single value; 164 g falls inside it.</div>
+      </div>
+    </div>
+
+    <div class="dockwrap"><button class="btn-primary">Close week</button></div>
+    <nav class="nav">
+      <button>Today</button><button>Train</button><button>Plan</button><button class="on">Log</button><button>More</button>
+    </nav>
+  </div>
+</figure>
+
+</div>
+
+<script>
+/* Numeric rest readout with a linear depletion bar. Counts down from an
+   absolute end instant; the bar width is remaining / prescribed. */
+(function () {
+  var DUR = 120, rem = 107;
+  var clk = document.getElementById('clkB'), dep = document.getElementById('depB');
+  var endsAt = Date.now() + rem * 1000;
+  function fmt(s) { var m = Math.floor(s / 60), r = s % 60; return m + ':' + (r < 10 ? '0' : '') + r; }
+  function tick() {
+    var s = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
+    clk.textContent = s === 0 ? 'GO' : fmt(s);
+    dep.style.width = (100 * Math.min(1, s / DUR)) + '%';
+    if (s === 0) clearInterval(h);
+  }
+  var h = setInterval(tick, 250); tick();
+  document.getElementById('addB').addEventListener('click', function () { endsAt += 30000; tick(); });
+  document.getElementById('skipB').addEventListener('click', function () { endsAt = Date.now(); tick(); });
+})();
+</script>
+</body>
+</html>
