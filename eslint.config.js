@@ -3,6 +3,32 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 
+// Master plan section 3 and security constraint 12: toISOString on a civil
+// date is finding H4 / A8 / A10. Only src/domain/dates.ts may use it.
+const noToISOString = {
+  selector: "CallExpression[callee.property.name='toISOString']",
+  message:
+    'toISOString() converts to UTC and silently shifts civil dates. Use src/domain/dates.ts.',
+};
+
+// Master plan section 3 and storage constraint: one key, one owner.
+// no-restricted-globals only matches the bare `localStorage` identifier, so
+// `window.localStorage` and `globalThis.localStorage` walk straight past it.
+// These two selectors close that bypass; only src/store/persistence.ts is
+// exempt. Both rules are restated (never switched off wholesale) in the
+// overrides below, so lifting one ban never lifts the other.
+const storageMessage = 'Storage is owned by src/store/persistence.ts. Go through the store.';
+const noQualifiedLocalStorage = [
+  {
+    selector: "MemberExpression[object.name='window'][property.name='localStorage']",
+    message: storageMessage,
+  },
+  {
+    selector: "MemberExpression[object.name='globalThis'][property.name='localStorage']",
+    message: storageMessage,
+  },
+];
+
 export default tseslint.config(
   {
     ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'legacy/**', 'node_modules/**', 'scripts/**'],
@@ -27,25 +53,9 @@ export default tseslint.config(
       // Master plan section 3: a swallowed storage failure is finding H3 / A42.
       'no-empty': ['error', { allowEmptyCatch: false }],
 
-      // Master plan section 3 and security constraint 12: toISOString on a civil
-      // date is finding H4 / A8 / A10. Only src/domain/dates.ts may use it.
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector: "CallExpression[callee.property.name='toISOString']",
-          message:
-            'toISOString() converts to UTC and silently shifts civil dates. Use src/domain/dates.ts.',
-        },
-      ],
+      'no-restricted-syntax': ['error', noToISOString, ...noQualifiedLocalStorage],
 
-      // Master plan section 3 and storage constraint: one key, one owner.
-      'no-restricted-globals': [
-        'error',
-        {
-          name: 'localStorage',
-          message: 'Storage is owned by src/store/persistence.ts. Go through the store.',
-        },
-      ],
+      'no-restricted-globals': ['error', { name: 'localStorage', message: storageMessage }],
 
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
@@ -53,14 +63,19 @@ export default tseslint.config(
     },
   },
   {
-    // The only module allowed to touch Web Storage.
+    // The only module allowed to touch Web Storage. The toISOString ban is
+    // restated so lifting the storage ban does not also lift that one.
     files: ['src/store/persistence.ts'],
-    rules: { 'no-restricted-globals': 'off' },
+    rules: {
+      'no-restricted-globals': 'off',
+      'no-restricted-syntax': ['error', noToISOString],
+    },
   },
   {
-    // The only module allowed to call toISOString.
+    // The only module allowed to call toISOString. The storage selectors are
+    // restated so lifting the date ban does not also lift the storage ban.
     files: ['src/domain/dates.ts'],
-    rules: { 'no-restricted-syntax': 'off' },
+    rules: { 'no-restricted-syntax': ['error', ...noQualifiedLocalStorage] },
   },
   {
     // eslint.config.js itself is JavaScript and is not in a TypeScript project.
