@@ -46,12 +46,19 @@ export interface NavyTapeInput {
   hipCm: number | null; // cm, > 0; women only — required for the female equation
 }
 
-/** Standard error of the estimate, percentage points of body fat (NHRC 84-11 / 84-29). */
+/**
+ * Standard error of the estimate, percentage points of body fat, against hydrostatic
+ * weighing in the source samples: men n=602, R=0.90 (Hodgdon & Beckett 1984, NHRC 84-11,
+ * DOI 10.21236/ada143890); women n=214, R=0.85 (NHRC 84-29, DOI 10.21236/ada146456).
+ * The UI must show this beside the figure: it is larger than most changes a user will chase.
+ */
 export const NAVY_SEE_PCT: Record<Sex, number> = { male: 3.52, female: 3.72 };
 
 /**
- * The abdomen site differs by sex — this is not a naming variation. Measuring a woman at the
- * umbilicus, or a man at minimal width, silently biases the result.
+ * The abdomen site differs by sex — this is not a naming variation. Men are measured at
+ * Abdomen II (NHRC 84-11, DOI 10.21236/ada143890) and women at Abdomen I plus hip
+ * (NHRC 84-29, DOI 10.21236/ada146456). Measuring a woman at the umbilicus, or a man at
+ * minimal width, silently biases the result: the girth term carries the whole prediction.
  */
 export const NAVY_SITE_LABEL: Record<Sex, { waist: string; hip: string | null }> = {
   male: { waist: 'Abdomen II — horizontal, at the umbilicus', hip: null },
@@ -72,9 +79,24 @@ const F_LOG_GIRTH = -0.35004; // g/cm3 per log10(cm), on (abdomen I + hip - neck
 const F_LOG_HEIGHT = 0.221; // g/cm3 per log10(cm), on stature
 const F_INTERCEPT = 1.29579; // g/cm3
 
-// Siri (printed verbatim in both NHRC reports): %BF = 100 * ((4.95 / D) - 4.50).
-const SIRI_NUMERATOR = 4.95; // g/cm3 (density of the two-compartment reference)
-const SIRI_OFFSET = 4.5; // dimensionless
+/*
+ * Siri's TWO-COMPARTMENT model, printed verbatim in both NHRC reports (content review
+ * Deliverable 2 section 5):  %BF = 100 * ((4.95 / D) - 4.50).
+ *
+ * Neither constant is a tissue density. The model splits body mass into fat at a reference
+ * density d_fat = 0.900 g/cm3 and fat-free mass at d_FFM = 1.100 g/cm3, and inverts the
+ * volume-additivity identity  1/D = f/d_fat + (1 - f)/d_FFM  for the fat fraction f:
+ *
+ *   4.95 = d_fat * d_FFM / (d_FFM - d_fat) = (0.900 * 1.100) / 0.200   [g/cm3]
+ *   4.50 = d_fat / (d_FFM - d_fat)         =  0.900 / 0.200            [dimensionless]
+ *
+ * So 4.95 is a COMPOSITE of the two reference densities, not the density of anything: no
+ * tissue in the body has a density of 4.95 g/cm3, and reading it as one is a category error.
+ * Both constants inherit the model's assumption that those two densities are fixed and equal
+ * across people, which is one source of the Potter/Merrill bias documented above.
+ */
+const SIRI_NUMERATOR = 4.95; // g/cm3, composite d_fat*d_FFM/(d_FFM - d_fat) at 0.900 / 1.100
+const SIRI_OFFSET = 4.5; // dimensionless, d_fat/(d_FFM - d_fat) at 0.900 / 1.100
 
 // Physical bounds on a body-fat percentage. Used to withhold an estimate, never to clamp one.
 const PCT_MIN = 0; // %BF, exclusive
@@ -113,7 +135,22 @@ export function navyBodyDensity(input: NavyTapeInput): number | null {
   return Number.isFinite(density) && density > 0 ? density : null;
 }
 
-/** Percent body fat, or null when the input is outside the equation's domain. */
+/**
+ * Percent body fat, or null when the input is outside the equation's domain.
+ *
+ * LEAN-END BEHAVIOUR — where the (0, 100) % rule actually bites. Siri returns %BF <= 0 the
+ * moment the predicted density reaches d_FFM = 1.100 g/cm3, and the male equation reaches
+ * that at a modest girth difference. Solving
+ *   -0.19077*log10(waist - neck) + 0.15456*log10(height) + 1.0324 = 1.100
+ * gives  (waist - neck) = height^0.810190 * 10^((1.0324 - 1.100)/0.19077),  i.e. 29.706 cm
+ * for a 180 cm man (28.36 cm at 170 cm; the threshold scales as height^0.810). So a lean
+ * 180 cm man with a 40 cm neck and a waist below about 69.7 cm gets null, not a small
+ * number — the null is a routine lean-end outcome, not a rare pathological input.
+ *
+ * The estimate is WITHHELD, never clamped to 0: a clamp would report a fabricated figure.
+ * A caller must not render this null as "measurement failed" either. At this end it means
+ * the two-compartment model has left its domain, and the UI should say that.
+ */
 export function estimateBodyFatNavy(input: NavyTapeInput): number | null {
   const density = navyBodyDensity(input); // g/cm3
   if (density === null) return null;

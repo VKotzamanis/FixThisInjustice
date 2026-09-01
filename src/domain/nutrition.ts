@@ -17,15 +17,45 @@ import type { ActivityLevel, GoalKind, Kg, ML, Sex } from './types';
 
 export interface NutritionInput {
   sex: Sex;
-  ageYears: number; // years, > 0
-  heightCm: number; // cm, > 0
-  massKg: Kg; // kg, > 0
-  bodyFatPct: number | null; // percent of body mass in [0, 100); null = not measured
+  ageYears: number; // years, NUTRITION_DOMAIN.ageYears
+  heightCm: number; // cm, NUTRITION_DOMAIN.heightCm
+  massKg: Kg; // kg, NUTRITION_DOMAIN.massKg
+  bodyFatPct: number | null; // percent of body mass, NUTRITION_DOMAIN.bodyFatPct; null = not measured
   activity: ActivityLevel;
   goal: GoalKind;
-  sessionsPerWeek: number; // sessions/week; see NOTE-FREQ below
+  sessionsPerWeek: number; // sessions/week, integer, NUTRITION_DOMAIN.sessionsPerWeek; see NOTE-FREQ
   creatine: boolean;
 }
+
+/**
+ * The validated adult domain. computeTargets throws RangeError outside it rather than
+ * extrapolating an equation past the sample it was fitted on, and the wizard (master plan
+ * section 6.3, P2 Task 7) imports these same bounds so the form blocks the value before the
+ * engine has to. Inclusive bounds; every limit is a design decision recorded here, not a
+ * measured constant, so none of them is a coefficient the content review had to supply.
+ *
+ *   ageYears 18-80. Mifflin-St Jeor was fitted on adults aged 19-78 (content review
+ *     Deliverable 2 section 1: n=498, 251 M / 247 F, indirect calorimetry). 18 y and the
+ *     79-80 y band are therefore EDGE EXTRAPOLATIONS by one to two years either side of that
+ *     sample, admitted deliberately so that a legal adult is never refused, and flagged here
+ *     because the published accuracy does not formally cover them. Below 18 the equation is
+ *     wrong in kind, not degree: paediatric resting metabolic rate is not this model.
+ *   heightCm 120-230. Spans recorded adult stature with margin; outside it the 6.25 kcal/cm
+ *     term dominates the estimate.
+ *   massKg 30-300. Spans recorded adult body mass with margin.
+ *   bodyFatPct 3-60. 3 % is near the essential-fat floor; above 60 % no tape or prediction
+ *     equation in this app has any validation support.
+ *   sessionsPerWeek integer 0-14. Two sessions a day, every day, is the ceiling; the value
+ *     changes no number here (NOTE-FREQ) but it must not be a fraction or a NaN in the
+ *     basis string the UI shows.
+ */
+export const NUTRITION_DOMAIN = {
+  ageYears: { lo: 18, hi: 80 }, // years
+  heightCm: { lo: 120, hi: 230 }, // cm
+  massKg: { lo: 30, hi: 300 }, // kg
+  bodyFatPct: { lo: 3, hi: 60 }, // percent of body mass
+  sessionsPerWeek: { lo: 0, hi: 14 }, // sessions/week, integer
+} as const;
 
 export interface NutritionTargets {
   rmrKcal: number; // kcal/day
@@ -55,8 +85,10 @@ export interface NutritionTargets {
  * Chosen over Harris-Benedict (1918) and the Roza & Shizgal (1984) revision because
  * Frankenfield 2013 (Clin Nutr 32(6):976-982, DOI 10.1016/j.clnu.2013.03.022, n=337) found
  * Mifflin-St Jeor accurate in 82 % overall and unbiased (95 % CI -26 to +8 kcal/day) where
- * the others overestimated; Mifflin's own data showed Harris-Benedict overestimating REE by
- * 5 % (p<0.01) and Roza's precision is only +/- 14 %.
+ * the others overestimated. The content review words the rejection this way: Mifflin's own
+ * data showed the Harris-Benedict equation, in its 1918 original or the Roza & Shizgal (1984)
+ * revision, overestimating REE by 5 % (p<0.01), and Roza's own precision is only +/- 14 %.
+ * The 5 % figure attaches to that equation family, not to any single one of the two forms.
  */
 const MSJ_MASS_COEFF = 10; // kcal/day per kg body mass
 const MSJ_HEIGHT_COEFF = 6.25; // kcal/day per cm stature
@@ -159,14 +191,31 @@ export const ACTIVITY_FACTOR: Record<ActivityLevel, number> = {
  *
  * The intake cut is taken from the content review's own intake-cut recommendation
  * (Deliverable 1 section 2.2, row "Plateau response": "cut 10-15% of current intake"),
- * applied to TDEE at the top of that band. HEURISTIC - a reviewer recommendation, not a
+ * applied to TDEE at the BOTTOM of that band. HEURISTIC - a reviewer recommendation, not a
  * measured value, and it is the one coefficient here sourced from Deliverable 1 rather than
  * the Deliverable 2 engine sections. It is disclosed in basis.deficitRule.
+ *
+ * COMPOUNDING BIAS - why the bottom of the band and not the top. ACTIVITY_FACTOR already
+ * takes the printed FAO band FLOOR, which biases TDEE downward before the cut is applied, so
+ * the two conservative choices MULTIPLY. Arithmetic, as multipliers on RMR for the moderate
+ * band (1.70-1.99):
+ *   floor x 15 % cut  = 1.70 * 0.85  = 1.445
+ *   floor x 10 % cut  = 1.70 * 0.90  = 1.530
+ *   mid-band x mid-cut (1.845 * 0.875) = 1.614375, as a neutral reference point
+ * The 15 % pairing therefore lands 10.5 % below that reference and the 10 % pairing 5.2 %
+ * below it, against a review row that describes a 10-15 % cut and no PAL bias at all.
+ * Taking the band minimum keeps ONE conservative choice per stage instead of two.
+ *
+ * The review's row is also not this situation. It is a PLATEAU RESPONSE for a weight-stable
+ * person whose CURRENT INTAKE therefore approximates their TDEE, which is why cutting a
+ * percentage of current intake is meaningful there. Here the reference is a PREDICTED TDEE
+ * with its own error, and the target is re-derived from scratch at every body-mass
+ * re-measure (P7), so an over-large opening cut is not corrected, it is repeated.
  *
  * targetKcal and expectedRateKgPerWeek are computed INDEPENDENTLY and neither predicts the
  * other; basis.rateRule says so in words.
  */
-const FAT_LOSS_INTAKE_CUT = 0.15; // fraction of TDEE, dimensionless
+const FAT_LOSS_INTAKE_CUT = 0.1; // fraction of TDEE, dimensionless
 
 /**
  * Muscle gain. Garthe 2011 (Appl Physiol Nutr Metab 36(4):547-554, DOI 10.1139/h11-051)
@@ -177,6 +226,15 @@ const FAT_LOSS_INTAKE_CUT = 0.15; // fraction of TDEE, dimensionless
  * validated in a resistance training population" - basis.deficitRule says so.
  */
 const MUSCLE_GAIN_SURPLUS_KCAL = 500; // kcal/day, inside Garthe's 506 +/- 84
+
+/**
+ * Appended to every basis.rateRule. The two numbers the engine reports for a goal, targetKcal
+ * and expectedRateKgPerWeek, come from different sources and neither is derived from the
+ * other: the content review rejects 3500 kcal/lb (Hall 2011, DOI 10.1016/S0140-6736(11)60812-X)
+ * and supplies no verified weekly kcal-to-mass conversion to replace it.
+ */
+const INDEPENDENT_ESTIMATE_NOTE =
+  'The calorie target and the expected weekly rate are separate estimates and are not converted into each other.';
 
 /** Garthe 2011 target rate and the Helms 2014 bound, as fractions of body mass per week. */
 const FAT_LOSS_RATE_FRACTION = 0.007; // 0.7 %BW/week, dimensionless
@@ -278,9 +336,9 @@ function energyPlan(goal: GoalKind, tdeeKcal: number, massKg: Kg): EnergyPlan {
         targetKcal: tdeeKcal * (1 - FAT_LOSS_INTAKE_CUT), // kcal/day
         rateKgPerWeek: Math.min(leastNegative, Math.max(mostNegative, raw)), // kg/week
         deficitRule:
-          '15 % cut from TDEE (content review Deliverable 1 section 2.2 recommends cutting 10-15 % of current intake; HEURISTIC - a recommendation, not a measured value). 3500 kcal/lb is rejected (Hall 2011, DOI 10.1016/S0140-6736(11)60812-X).',
+          '10 % cut from TDEE (content review Deliverable 1 section 2.2, row "Plateau response", recommends cutting 10-15 % of current intake; HEURISTIC, a recommendation and not a measured value). The activity factor is the FAO band floor and this cut is the bottom of that 10-15 % band, so both choices lean conservative instead of compounding into one oversized deficit. That review row is a plateau response for a weight-stable person whose intake already approximates TDEE, and this target is re-derived at every body-mass re-measure. 3500 kcal/lb is rejected (Hall 2011, DOI 10.1016/S0140-6736(11)60812-X).',
         rateRule:
-          'Target 0.7 %BW/week loss (Garthe 2011, DOI 10.1123/ijsnem.21.2.97: 0.7 %/wk preserved lean body mass at +2.1 +/- 0.4 % where 1.4 %/wk lost it), bounded 0.5-1.0 %BW/week (Helms 2014, DOI 10.1186/1550-2783-11-20). This is a prescribed rate, not a prediction from the energy target: the content review supplies no verified kcal-to-mass conversion, so the two numbers are computed independently and neither predicts the other.',
+          'Target 0.7 %BW/week loss (Garthe 2011, DOI 10.1123/ijsnem.21.2.97: 0.7 %/wk preserved lean body mass at +2.1 +/- 0.4 % where 1.4 %/wk lost it), bounded 0.5-1.0 %BW/week (Helms 2014, DOI 10.1186/1550-2783-11-20). This is a prescribed rate, not a prediction from the energy target: the content review supplies no verified kcal-to-mass conversion.',
       };
     }
     case 'muscle-gain':
@@ -354,16 +412,35 @@ function proteinPlan(goal: GoalKind, massKg: Kg, ffmKg: Kg | null): ProteinPlan 
   );
 }
 
+/**
+ * Throws RangeError naming the offending FIELD, so a caller can attach the message to the
+ * control that produced it. Bounds are inclusive.
+ */
+function requireInDomain(field: string, value: number, bound: { lo: number; hi: number }): void {
+  if (!Number.isFinite(value) || value < bound.lo || value > bound.hi) {
+    throw new RangeError(
+      `computeTargets: ${field} must be a finite number in [${bound.lo}, ${bound.hi}]; received ${String(value)}`,
+    );
+  }
+}
+
 export function computeTargets(input: NutritionInput): NutritionTargets {
-  if (!Number.isFinite(input.massKg) || input.massKg <= 0) {
-    throw new RangeError('computeTargets: massKg must be a finite number > 0');
+  // Domain gate first: nothing below may read an unvalidated field, and in particular
+  // sessionsPerWeek must never reach the basis string as NaN or as a fraction.
+  requireInDomain('massKg', input.massKg, NUTRITION_DOMAIN.massKg);
+  requireInDomain('heightCm', input.heightCm, NUTRITION_DOMAIN.heightCm);
+  requireInDomain('ageYears', input.ageYears, NUTRITION_DOMAIN.ageYears);
+  if (input.bodyFatPct !== null) {
+    // Named bodyFatPct, not fatFreeMassKg: the caller must be told which INPUT to change.
+    // This bound (3-60 %) is tighter than fatFreeMassKg's own [0, 100) arithmetic guard.
+    requireInDomain('bodyFatPct', input.bodyFatPct, NUTRITION_DOMAIN.bodyFatPct);
   }
-  if (!Number.isFinite(input.heightCm) || input.heightCm <= 0) {
-    throw new RangeError('computeTargets: heightCm must be a finite number > 0');
+  if (!Number.isInteger(input.sessionsPerWeek)) {
+    throw new RangeError(
+      `computeTargets: sessionsPerWeek must be an integer in [${NUTRITION_DOMAIN.sessionsPerWeek.lo}, ${NUTRITION_DOMAIN.sessionsPerWeek.hi}]; received ${String(input.sessionsPerWeek)}`,
+    );
   }
-  if (!Number.isFinite(input.ageYears) || input.ageYears <= 0) {
-    throw new RangeError('computeTargets: ageYears must be a finite number > 0');
-  }
+  requireInDomain('sessionsPerWeek', input.sessionsPerWeek, NUTRITION_DOMAIN.sessionsPerWeek);
 
   const ffmKg = input.bodyFatPct === null ? null : fatFreeMassKg(input.massKg, input.bodyFatPct); // kg
   const rmrKcal = ffmKg === null ? mifflinStJeorKcal(input) : cunninghamKcal(ffmKg); // kcal/day
@@ -390,7 +467,7 @@ export function computeTargets(input: NutritionInput): NutritionTargets {
       activityFactor,
       proteinRule: protein.rule,
       deficitRule,
-      rateRule: energy.rateRule,
+      rateRule: `${energy.rateRule} ${INDEPENDENT_ESTIMATE_NOTE}`,
     },
   };
 }
