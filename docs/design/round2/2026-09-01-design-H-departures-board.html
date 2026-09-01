@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Design H — departures board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Mono:wght@400;700&display=swap">
+<style>
+/* ============================================================================
+   DESIGN H — DEPARTURES BOARD  (skin id: "board")
+   The plan as a flight schedule. Sessions are services with a time, a label,
+   a gate and a status; the split-flap board resolves left to right on load.
+   This one KEEPS the clinical register from the master plan — no slang, no
+   emoji, no exhortation — and shows the same discipline can be witty.
+
+   Contrast, computed (WCAG 2.1), not guessed:
+     #FFB000 on #0B0B0C .... 10.74:1   scheduled / boarding / primary action
+     #FFB000 on #17181A ..... 9.70:1   amber on a flap face
+     #E8E4DA on #17181A .... 13.99:1   departed services, body type
+     #E8E4DA on #0B0B0C .... 16.30:1
+     #7C8288 on #0B0B0C ..... 5.06:1   held services, column headers, fine print
+     #FF6B4A on #0B0B0C ..... 6.98:1   cancelled services
+     #0B0B0C on #FFB000 .... 10.74:1   inverted, for the docked action
+   #5BD98A (11.00:1) was drafted for DEPARTED and cut: a real board has no
+   green, and --paper already separates a flown service from a scheduled one.
+
+   Status is never carried by colour alone — every row also prints its word.
+
+   The one detail only this world has: the FLAP SEAM. A hairline across the
+   vertical middle of every character cell where the two halves of the flap
+   meet, drawn as ONE continuous line spanning the whole row rather than per
+   character. That continuity is the single cue that says mechanical, not LED.
+
+   agy critique adopted: this direction was too close to E — both flat unruled
+   vertical lists under a docked bar. It is now a real four-column board grid
+   (TIME / SERVICE / GATE / STATUS) with a persistent header rule and a
+   right-aligned status column: a table, not a list.
+   ========================================================================== */
+:root{
+  --board:#0B0B0C;
+  --flap:#17181A;
+  --flap-2:#212326;
+  --amber:#FFB000;
+  --paper:#E8E4DA;
+  --mute:#7C8288;
+  --alert:#FF6B4A;
+  --rule:#2C2F33;
+  --disp:"Space Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --chrome:"DM Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --tap:48px; --dock:158px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:#141517;color:#E8E4DA;font-family:var(--chrome);font-size:14px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden}
+.tabnum{font-variant-numeric:tabular-nums}
+
+/* ---- page chrome ---- */
+.pagehead{max-width:1280px;margin:0 auto;padding:28px 20px 8px}
+.pagehead h1{margin:0 0 8px;font-family:var(--disp);font-weight:700;font-size:21px;color:var(--amber);
+  letter-spacing:-.02em}
+.pagehead p{margin:0 0 8px;max-width:76ch;color:#C9C5BC;font-size:13.5px}
+.pagehead code{font-size:12.5px;background:#26282B;padding:1px 5px;color:var(--paper)}
+.frames{display:flex;flex-wrap:wrap;gap:26px;justify-content:center;align-items:flex-start;padding:22px 20px 26px}
+figure{margin:0}
+figcaption{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:#C9C5BC;padding:0 0 8px 2px}
+figcaption b{color:var(--amber)}
+@media(max-width:430px){.frames{padding:14px 0 26px;gap:18px}.pagehead{padding:20px 14px 6px}}
+
+/* ---- phone ---- */
+.phone{width:390px;max-width:100%;height:844px;position:relative;overflow:hidden;
+  background:var(--board);color:var(--paper);border:1px solid #333639;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-bottom:calc(var(--dock) + 10px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.sys{display:flex;justify-content:space-between;padding:9px 14px 8px;font-size:11.5px;color:var(--mute);
+  letter-spacing:.06em}
+
+/* ---- flap cells ---- */
+.flrow{position:relative;display:flex;gap:2px;padding:0 14px}
+/* ONE continuous seam across the whole row — the detail that says mechanical */
+.flrow::after{content:"";position:absolute;left:14px;right:14px;top:50%;height:1px;
+  background:var(--board);z-index:3;pointer-events:none}
+.fl{flex:0 0 auto;background:var(--flap);color:var(--amber);font-family:var(--disp);font-weight:700;
+  display:flex;align-items:center;justify-content:center;position:relative;
+  box-shadow:inset 0 -1px 0 #000,inset 0 1px 0 var(--flap-2)}
+.fl.big{width:52px;height:66px;font-size:38px;line-height:1}
+.fl.mid{width:30px;height:40px;font-size:23px;line-height:1}
+.fl.blank{background:#101113;color:transparent}
+.fl.paper{color:var(--paper)}
+.flcap{padding:7px 14px 0;font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute)}
+
+/* ---- the board grid: a table, not a list ---- */
+.board{margin:14px 0 0;padding:0 14px}
+.bhead,.brow{display:grid;grid-template-columns:58px 1fr 40px 96px;gap:8px;align-items:center}
+.bhead{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--mute);
+  padding:0 0 7px;border-bottom:2px solid var(--rule)}
+.bhead .st,.brow .st{text-align:right}
+.brow{min-height:52px;border-bottom:1px solid var(--rule);padding:6px 0}
+.brow:last-child{border-bottom:0}
+.brow .tm{font-family:var(--disp);font-weight:700;font-size:17px;color:var(--paper);font-variant-numeric:tabular-nums}
+.brow .sv{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:-.01em;color:var(--paper)}
+.brow .sv small{display:block;font-family:var(--chrome);font-weight:400;font-size:11.5px;color:var(--mute);
+  letter-spacing:.04em;margin-top:2px}
+.brow .gt{font-family:var(--disp);font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums}
+.brow .st{font-family:var(--disp);font-weight:700;font-size:12.5px;letter-spacing:.06em;color:var(--mute)}
+.brow.now{background:#151109}
+.brow.now .tm,.brow.now .sv{color:var(--amber)}
+.brow.now .st{color:var(--amber)}
+.brow.departed .tm,.brow.departed .sv{color:var(--paper)}
+.brow.departed .st{color:var(--paper)}
+.brow.can .st{color:var(--alert)}
+.brow.can .sv{color:var(--alert)}
+.brow.held .st{color:var(--mute)}
+
+/* ---- sections ---- */
+.sec{padding:16px 14px 0}
+.sec h3{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin:0 0 9px;
+  padding-bottom:7px;border-bottom:2px solid var(--rule);font-weight:500}
+.p{font-size:13.5px;color:var(--paper);margin:0 0 8px;line-height:1.55}
+.p b{color:var(--amber);font-weight:500}
+.p2{font-size:12px;color:var(--mute);margin:0 0 8px;line-height:1.6}
+
+/* ---- load sheet ---- */
+.ls{width:100%;border-collapse:collapse;font-size:13px}
+.ls th{text-align:left;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);
+  padding:0 0 7px;border-bottom:2px solid var(--rule);font-weight:500}
+.ls th.r,.ls td.r{text-align:right}
+.ls td{padding:11px 0;border-bottom:1px solid var(--rule);font-family:var(--disp);
+  font-variant-numeric:tabular-nums;color:var(--paper);height:46px}
+.ls td.lbl{font-family:var(--chrome);color:var(--mute);font-size:12px;letter-spacing:.05em}
+.ls td.big{font-size:22px;font-weight:700}
+.ls td.big small{font-size:11px;color:var(--mute);font-weight:400;margin-left:4px}
+.ls td.open{color:var(--mute)}
+.ls tr:last-child td{border-bottom:0}
+
+/* ---- gate countdown ---- */
+.gate{padding:6px 0 0}
+.gatesub{padding:9px 14px 0;font-size:12px;color:var(--mute);letter-spacing:.05em;font-variant-numeric:tabular-nums}
+.dep{height:6px;background:var(--rule);margin:12px 14px 0;position:relative}
+.dep i{position:absolute;inset:0 auto 0 0;background:var(--amber);display:block}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 14px 0}
+.split button{min-height:60px;border:1px solid var(--rule);background:var(--flap);color:var(--paper);
+  font-family:var(--disp);font-weight:700;font-size:13px;letter-spacing:.05em;cursor:pointer}
+.split button:active{background:var(--flap-2)}
+
+/* ---- performance table ---- */
+.perf{width:100%;border-collapse:collapse;font-size:13px}
+.perf th{text-align:left;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);
+  padding:0 0 7px;border-bottom:2px solid var(--rule);font-weight:500}
+.perf th.r,.perf td.r{text-align:right}
+.perf td{padding:10px 0;border-bottom:1px solid var(--rule);color:var(--paper);height:44px}
+.perf td.n{font-family:var(--disp);font-weight:700;font-size:18px;font-variant-numeric:tabular-nums}
+.perf td.t{font-family:var(--disp);font-size:12.5px;color:var(--mute);font-variant-numeric:tabular-nums}
+.perf tr:last-child td{border-bottom:0}
+.bar{height:8px;background:var(--rule);margin-top:7px;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;background:var(--paper);display:block}
+.bar .band{position:absolute;top:-3px;bottom:-3px;background:rgba(255,176,0,.18);
+  border-left:2px solid var(--amber);border-right:2px solid var(--amber)}
+.bar .tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--amber)}
+
+.fine{padding:10px 14px 20px;font-size:12px;color:var(--mute);line-height:1.6}
+
+/* ---- dock ---- */
+.dock{position:absolute;left:0;right:0;bottom:0;z-index:40;background:var(--board);padding:11px 14px 18px;
+  border-top:2px solid var(--rule)}
+.minor{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:9px}
+.minor button{min-height:var(--tap);border:1px solid var(--rule);background:transparent;color:var(--mute);
+  font-family:var(--disp);font-weight:700;font-size:10.5px;letter-spacing:.05em;cursor:pointer;padding:4px 2px;
+  line-height:1.25}
+.minor button:active{background:var(--flap);color:var(--paper)}
+.go{width:100%;min-height:62px;border:0;background:var(--amber);color:var(--board);
+  font-family:var(--disp);font-weight:700;font-size:21px;letter-spacing:.1em;cursor:pointer;
+  display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+
+/* ---- page tables ---- */
+.copy{max-width:880px;margin:0 auto;padding:8px 20px 40px}
+.copy h2{font-family:var(--disp);font-weight:700;font-size:17px;margin:0 0 6px;color:var(--amber)}
+.copy p{margin:0 0 12px;font-size:13px;color:#C9C5BC;max-width:72ch}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.big{border-collapse:collapse;width:100%;font-size:13px}
+table.big th,table.big td{text-align:left;padding:7px 10px;border-bottom:1px solid #2B2E31;vertical-align:top}
+table.big th{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#C9C5BC;font-weight:500}
+td.k2{font-size:12px;color:#C9C5BC;white-space:nowrap}
+td.s{font-family:var(--disp);font-weight:700;color:var(--amber);font-size:12.5px}
+.lic{max-width:880px;margin:0 auto;padding:0 20px 60px;font-size:12px;color:#C9C5BC;line-height:1.65}
+
+/* ---- the one orchestrated moment: the flip ---- */
+@keyframes hinge{
+  0%{transform:perspective(140px) rotateX(0deg)}
+  50%{transform:perspective(140px) rotateX(-86deg)}
+  100%{transform:perspective(140px) rotateX(0deg)}
+}
+.fl.flipping{animation:hinge .09s linear infinite;transform-origin:50% 50%}
+@media(prefers-reduced-motion:reduce){
+  .fl.flipping{animation:none;transform:none}
+}
+</style>
+</head>
+<body>
+
+<header class="pagehead">
+  <h1>Design H — departures board</h1>
+  <p>The plan as a flight schedule. Every session is a service with a time, a label, a gate and a status: scheduled sessions read <code>ON TIME</code>, today's reads <code>BOARDING</code>, a completed one <code>DEPARTED</code>, a skipped one <code>CANCELLED</code>, a paused plan <code>HELD</code>. The week review is the arrivals summary and the rest timer is a gate countdown.</p>
+  <p><b>This one keeps the clinical register.</b> No slang, no emoji, no exhortation — every term below is a real airport term used in its real sense, and none of them softens what the app is doing. <code>CANCEL SERVICE</code> still advances the cursor; <code>HOLD SCHEDULE</code> still freezes it. Status is never carried by colour alone: every row also prints its word.</p>
+</header>
+
+<div class="frames">
+
+<!-- ========================= 1 · DEPARTURES ========================= -->
+<figure>
+  <figcaption><b>1 · departures</b> — today · 390 × 844</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>TUE 01 SEP &middot; SERVICE 12 / 48</span></div>
+
+      <p class="flcap">Next departure</p>
+      <div class="flrow">
+        <span class="fl big" data-f="U" data-c="0"></span><span class="fl big" data-f="P" data-c="1"></span
+        ><span class="fl big" data-f="P" data-c="2"></span><span class="fl big" data-f="E" data-c="3"></span
+        ><span class="fl big" data-f="R" data-c="4"></span>
+      </div>
+      <div class="flrow" style="margin-top:6px">
+        <span class="fl mid" data-f="1" data-c="5"></span><span class="fl mid" data-f="8" data-c="6"></span
+        ><span class="fl mid" data-f=":" data-c="7"></span><span class="fl mid" data-f="0" data-c="8"></span
+        ><span class="fl mid" data-f="0" data-c="9"></span>
+        <span class="fl mid blank"></span>
+        <span class="fl mid paper" data-f="G" data-c="10"></span><span class="fl mid paper" data-f="1" data-c="11"></span
+        ><span class="fl mid paper" data-f="2" data-c="12"></span>
+      </div>
+      <p class="gatesub">DEPARTS IN 8 MIN &middot; 6 EXERCISES &middot; EST 55 MIN</p>
+
+      <div class="board">
+        <div class="bhead"><span>Time</span><span>Service</span><span>Gate</span><span class="st">Status</span></div>
+        <div class="brow now"><span class="tm">18:00</span><span class="sv">UPPER<small>TUE 01 SEP</small></span><span class="gt">12</span><span class="st">BOARDING</span></div>
+        <div class="brow"><span class="tm">18:00</span><span class="sv">PUSH<small>THU 03 SEP</small></span><span class="gt">13</span><span class="st">ON TIME</span></div>
+        <div class="brow"><span class="tm">10:00</span><span class="sv">PULL<small>SAT 05 SEP</small></span><span class="gt">14</span><span class="st">ON TIME</span></div>
+        <div class="brow departed"><span class="tm">18:00</span><span class="sv">LEGS<small>SAT 30 AUG</small></span><span class="gt">11</span><span class="st">DEPARTED</span></div>
+        <div class="brow can"><span class="tm">18:00</span><span class="sv">UPPER<small>THU 28 AUG</small></span><span class="gt">10</span><span class="st">CANCELLED</span></div>
+      </div>
+
+      <div class="sec">
+        <h3>Schedule to date</h3>
+        <p class="p"><b>10 DEPARTED</b> &middot; <b>1 CANCELLED</b> &middot; <b>37 SCHEDULED</b> of 48 services.</p>
+        <p class="p2">Weekly frequency 4. Slots Mon, Tue, Thu, Sat. This week: 1 of 4 flown.</p>
+      </div>
+
+      <div class="fine">HOLD SCHEDULE freezes the roster at service 12 and suspends the weekly frequency. CANCEL SERVICE advances the roster to service 13 and records a reason; cancelled services carry that reason on file. REBOOK substitutes PUSH or PULL &mdash; the labels still owed this week.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor"><button>HOLD SCHEDULE</button><button>CANCEL SERVICE</button><button>REBOOK</button></div>
+      <button class="go">BOARD<span>&rarr;</span></button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 2 · GATE ========================= -->
+<figure>
+  <figcaption><b>2 · gate</b> — rest running · load sheet</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>18:23</span><span>UPPER &middot; GATE 12 &middot; 31 MIN</span></div>
+
+      <p class="flcap">Gate hold</p>
+      <div class="flrow gate">
+        <span class="fl big" id="c0" data-f="1" data-c="0"></span><span class="fl big" data-f=":" data-c="1"></span
+        ><span class="fl big" id="c2" data-f="4" data-c="2"></span><span class="fl big" id="c3" data-f="7" data-c="3"></span>
+      </div>
+      <p class="gatesub">OF 02:00 &middot; RESUMES 18:24:52 &middot; BARBELL BENCH PRESS</p>
+      <div class="dep"><i style="width:89.2%"></i></div>
+      <div class="split"><button>+30 S DELAY</button><button>EARLY DEPARTURE</button></div>
+
+      <div class="sec">
+        <h3>Refreshment</h3>
+        <p class="p"><b>DRINK TO THIRST.</b> Session active 31 min.</p>
+        <p class="p2">No fixed volume between sets. Replacement is judged by body-mass change across the session.</p>
+      </div>
+
+      <div class="sec">
+        <h3>Load sheet &middot; barbell bench press &middot; lb</h3>
+        <table class="ls">
+          <tr><th>Set</th><th class="r">Load</th><th class="r">Reps</th><th class="r">Status</th></tr>
+          <tr><td class="lbl">01</td><td class="r big">140<small>LB</small></td><td class="r">8</td><td class="r lbl">LOGGED</td></tr>
+          <tr><td class="lbl">02</td><td class="r big">140<small>LB</small></td><td class="r">7</td><td class="r lbl">LOGGED</td></tr>
+          <tr><td class="lbl">03</td><td class="r big open">140<small>LB</small></td><td class="r open">&ndash;&ndash;</td><td class="r lbl">OPEN</td></tr>
+        </table>
+        <p class="p2" style="margin-top:10px">Suggested 140 lb, up 5 lb. All sets reached 8 reps on 25 Aug, so +2.5&nbsp;% (3.4&nbsp;lb) rounded to the 5&nbsp;lb barbell step. Entered in lb; stored as 63.50&nbsp;kg.</p>
+      </div>
+
+      <div class="sec">
+        <h3>Load sheet &middot; lat pulldown &middot; kg stack</h3>
+        <table class="ls">
+          <tr><th>Set</th><th class="r">Load</th><th class="r">Reps</th><th class="r">Status</th></tr>
+          <tr><td class="lbl">01</td><td class="r big">45<small>KG</small></td><td class="r">12</td><td class="r lbl">LOGGED</td></tr>
+          <tr><td class="lbl">02</td><td class="r big open">45<small>KG</small></td><td class="r open">&ndash;&ndash;</td><td class="r lbl">OPEN</td></tr>
+          <tr><td class="lbl">03</td><td class="r big open">45<small>KG</small></td><td class="r open">&ndash;&ndash;</td><td class="r lbl">OPEN</td></tr>
+        </table>
+        <p class="p2" style="margin-top:10px">Load held at 45 kg. The smallest pin is 5&nbsp;kg &mdash; 11&nbsp;% of 45&nbsp;kg, above the 10&nbsp;% ceiling &mdash; so the rep target extends from 10&ndash;12 to 10&ndash;14 instead. The stack is marked in kg and is logged as entered.</p>
+      </div>
+
+      <div class="fine">NEW RECORD TIME &mdash; 140 lb &times; 8 reps, barbell bench press. Previous best 135 lb &times; 8 on 25 Aug 2026.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor"><button>HOLD SCHEDULE</button><button>CANCEL SERVICE</button><button>REBOOK</button></div>
+      <button class="go">NEXT SET<span>&rarr;</span></button>
+    </div>
+  </div>
+</figure>
+
+<!-- ========================= 3 · ARRIVALS ========================= -->
+<figure>
+  <figcaption><b>3 · arrivals</b> — 24&ndash;30 aug · delta &minus;2</figcaption>
+  <div class="phone">
+    <div class="scroll">
+      <div class="sys"><span>17:52</span><span>WEEK 24&ndash;30 AUG</span></div>
+
+      <p class="flcap">Irregular operations</p>
+      <div class="flrow">
+        <span class="fl big" data-f="2" data-c="0"></span><span class="fl big blank"></span
+        ><span class="fl big" data-f="O" data-c="1"></span><span class="fl big" data-f="F" data-c="2"></span
+        ><span class="fl big blank"></span><span class="fl big" data-f="4" data-c="3"></span>
+      </div>
+      <p class="gatesub">DELTA &minus;2 &middot; 2 DEPARTED &middot; 1 CANCELLED &middot; 1 NO SERVICE</p>
+
+      <div class="board" style="margin-top:16px">
+        <div class="bhead"><span>Time</span><span>Service</span><span>Gate</span><span class="st">Status</span></div>
+        <div class="brow held"><span class="tm">18:00</span><span class="sv">PUSH<small>MON 24 AUG</small></span><span class="gt">&mdash;</span><span class="st">NO SERVICE</span></div>
+        <div class="brow departed"><span class="tm">18:00</span><span class="sv">PULL<small>TUE 25 AUG</small></span><span class="gt">08</span><span class="st">DEPARTED</span></div>
+        <div class="brow can"><span class="tm">18:00</span><span class="sv">LEGS<small>THU 27 AUG</small></span><span class="gt">09</span><span class="st">CANCELLED</span></div>
+        <div class="brow departed"><span class="tm">10:00</span><span class="sv">UPPER<small>SAT 29 AUG</small></span><span class="gt">10</span><span class="st">DEPARTED</span></div>
+      </div>
+
+      <div class="sec">
+        <h3>Performance against target</h3>
+        <table class="perf">
+          <tr><th>Measure</th><th class="r">Actual</th><th class="r">Target</th></tr>
+          <tr><td>Energy</td><td class="r n">2110</td><td class="r t">2340 kcal</td></tr>
+          <tr><td colspan="3" style="padding-top:0;border-bottom:1px solid var(--rule)">
+            <div class="bar"><i style="width:72.1%"></i><span class="tick" style="left:80%"></span></div></td></tr>
+          <tr><td>Protein</td><td class="r n">142</td><td class="r t">130&ndash;160 g</td></tr>
+          <tr><td colspan="3" style="padding-top:0;border-bottom:1px solid var(--rule)">
+            <div class="bar"><i style="width:71%"></i><span class="band" style="left:65%;right:20%"></span></div></td></tr>
+          <tr><td>Fluid</td><td class="r n">2400</td><td class="r t">2900 mL</td></tr>
+          <tr><td colspan="3" style="padding-top:0;border-bottom:1px solid var(--rule)">
+            <div class="bar"><i style="width:66.2%"></i><span class="tick" style="left:80%"></span></div></td></tr>
+          <tr><td>Body mass</td><td class="r n">61.2</td><td class="r t">&minus;0.4 kg / 4 wk</td></tr>
+        </table>
+        <p class="p2" style="margin-top:10px">Bars run to 1.25 &times; target, so all three share a scale and can be compared by length. The protein band is the whole range, not a point.</p>
+      </div>
+
+      <div class="fine">Next week resumes the same four slots. Nothing is carried forward and nothing is owed. IRREGULAR OPERATIONS opens the missed-week clip and clears the flag.</div>
+    </div>
+
+    <div class="dock">
+      <div class="minor"><button>HOLD SCHEDULE</button><button>CANCEL SERVICE</button><button>REBOOK</button></div>
+      <button class="go">IRREGULAR OPS<span>&rarr;</span></button>
+    </div>
+  </div>
+</figure>
+
+</div>
+
+<section class="copy">
+  <h2>Copy table &mdash; default &rarr; board</h2>
+  <p>Same components, same data, same numbers. Only the strings move, and unlike E and F this column is still clinical: no slang, no emoji, no exhortation. Every term is a real airport term used in its real sense.</p>
+  <div class="tw">
+  <table class="big">
+    <thead><tr><th>Key</th><th>Default (clinical)</th><th>H &mdash; board</th></tr></thead>
+    <tbody>
+      <tr><td class="k2">start_session</td><td>Start</td><td class="s">BOARD</td></tr>
+      <tr><td class="k2">rest</td><td>Rest</td><td class="s">GATE HOLD</td></tr>
+      <tr><td class="k2">skip_today</td><td>Skip today</td><td class="s">CANCEL SERVICE</td></tr>
+      <tr><td class="k2">pause_plan</td><td>Pause</td><td class="s">HOLD SCHEDULE</td></tr>
+      <tr><td class="k2">train_other</td><td>Train other</td><td class="s">REBOOK</td></tr>
+      <tr><td class="k2">week_delta_negative</td><td>2 sessions below target</td><td class="s">2 CANCELLED</td></tr>
+      <tr><td class="k2">week_delta_zero</td><td>Target met</td><td class="s">ALL DEPARTED</td></tr>
+      <tr><td class="k2">week_delta_positive</td><td>1 session above target</td><td class="s">1 EXTRA SERVICE</td></tr>
+      <tr><td class="k2">hydration_cue</td><td>Drink to thirst.</td><td class="s">REFRESHMENT &mdash; DRINK TO THIRST</td></tr>
+      <tr><td class="k2">pr_reached</td><td>Personal record</td><td class="s">NEW RECORD TIME</td></tr>
+      <tr><td class="k2">motivation_title</td><td>Missed week</td><td class="s">IRREGULAR OPERATIONS</td></tr>
+      <tr><td class="k2">session_cursor</td><td>Session 12 of 48</td><td class="s">SERVICE 12 / 48</td></tr>
+      <tr><td class="k2">plan_progress</td><td>10 completed · 1 skipped · 37 remaining</td><td class="s">10 DEPARTED · 1 CANCELLED · 37 SCHEDULED</td></tr>
+      <tr><td class="k2">add_30s</td><td>+30 s</td><td class="s">+30 S DELAY</td></tr>
+      <tr><td class="k2">skip_rest</td><td>Skip rest</td><td class="s">EARLY DEPARTURE</td></tr>
+      <tr><td class="k2">week_review_title</td><td>Week review</td><td class="s">ARRIVALS</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section class="lic">
+  <b>Assets.</b> Type: Space Mono and DM Mono, Google Fonts, SIL Open Font License 1.1. Everything else &mdash; flap cells, the continuous seam, the hinge sweep &mdash; is pure CSS. This is the only direction of the four with no external graphic at all: no image, no SVG, no data URI.<br><br>
+  <b>Two measurement notes.</b> The flap seam is a 1&nbsp;px line of <code>--board</code> drawn <i>over</i> each character at 50&nbsp;% height. The contrast checker measures declared colours, not rendered pixels, so that hairline is not sampled; it is a standard split-flap artefact and covers roughly 2&nbsp;% of a 38&nbsp;px glyph. And the honest one: with <code>prefers-reduced-motion: reduce</code> set, the flip does not run, and what is left is an amber monospace table. Whether the typography and the status vocabulary still carry the direction without motion is the test this file is for.
+</section>
+
+<script>
+// The one orchestrated moment: each character cell cycles six intermediate
+// glyphs at 90 ms, staggered 40 ms per column, so the board resolves left to
+// right in roughly 900 ms. Runs once, on load.
+(function () {
+  var GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:-−';
+  var cells = document.querySelectorAll('.fl[data-f]');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  cells.forEach(function (c) {
+    var final = c.getAttribute('data-f');
+    if (reduce) { c.textContent = final; return; }
+    var col = parseInt(c.getAttribute('data-c'), 10) || 0;
+    c.textContent = GLYPHS[0];
+    setTimeout(function () {
+      var n = 0;
+      c.classList.add('flipping');
+      var iv = setInterval(function () {
+        c.textContent = GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        if (++n >= 6) {
+          clearInterval(iv);
+          c.classList.remove('flipping');
+          c.textContent = final;
+        }
+      }, 90);
+    }, col * 40);
+  });
+
+  // Gate countdown. Flap cells are per-character, so only the digits that
+  // change are rewritten — which is also how a real board behaves.
+  if (reduce) return;
+  var c0 = document.getElementById('c0'), c2 = document.getElementById('c2'), c3 = document.getElementById('c3');
+  if (!c0) return;
+  var remainS = 107, totalS = 120;   // seconds; 1:47 of a 2:00 gate hold
+  var bar = document.querySelector('.dep i');
+  setTimeout(function () {
+    setInterval(function () {
+      remainS = remainS > 0 ? remainS - 1 : totalS;
+      var m = Math.floor(remainS / 60), s = remainS % 60;
+      var ss = (s < 10 ? '0' : '') + s;
+      c0.textContent = String(m); c2.textContent = ss[0]; c3.textContent = ss[1];
+      if (bar) bar.style.width = (100 * remainS / totalS).toFixed(1) + '%';
+    }, 1000);
+  }, 1200);
+})();
+</script>
+</body>
+</html>
