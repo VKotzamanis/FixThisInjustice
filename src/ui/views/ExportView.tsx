@@ -5,6 +5,7 @@ import type { IcsEvent } from '../../domain/export/ics';
 import { buildSummary } from '../../domain/export/summary';
 import { todayLocal } from '../../domain/dates';
 import { projectedCalendar } from '../../domain/schedule/calendar';
+import { isTerminal } from '../../domain/schedule/cursor';
 import { parseState } from '../../domain/schema';
 import { useAppStore, selectState } from '../../store';
 import { downloadText } from '../../app/download';
@@ -102,6 +103,10 @@ export function ExportView(): JSX.Element {
     const events: IcsEvent[] = [];
     for (const day of projectedCalendar(state, profileId, from, CALENDAR_DAYS)) {
       if (day.paused || day.slot === null || day.projectedSession === null) continue;
+      // A completed or skipped day is a record, not an appointment: nothing is left to
+      // remind the user of. isTerminal takes a SessionAssignment, so the null case (no
+      // assignment yet, i.e. still just a projection) is not terminal by construction.
+      if (day.assignment !== null && isTerminal(day.assignment)) continue;
       events.push({
         // Stable across exports of the same session on the same day, so a re-import updates
         // the event a previous export created instead of duplicating it.

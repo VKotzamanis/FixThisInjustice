@@ -232,15 +232,28 @@ function timezoneLines(tz: TimeZone, fromMs: EpochMs, toMs: EpochMs): string[] {
 
   /*
    * The zone's standard offset, taken as the smaller of its mid-January and mid-July offsets
-   * in the exported year. A 28-day window can see one offset and still be inside summer time,
-   * so the DAYLIGHT / STANDARD label cannot be decided from the window alone. Sampling both
-   * solstitial months covers the southern hemisphere, where the daylight offset holds in
-   * January. The label is cosmetic either way: a client takes the offset from TZOFFSETTO.
+   * in every calendar year the window touches. A 28-day window can see one offset and still
+   * be inside summer time, so the DAYLIGHT / STANDARD label cannot be decided from the window
+   * alone. Sampling both solstitial months covers the southern hemisphere, where the daylight
+   * offset holds in January. The label is cosmetic either way: a client takes the offset from
+   * TZOFFSETTO.
+   *
+   * Sampling only fromMs's year is not enough: a window that opens in December and closes in
+   * January (MAX_WINDOW_DAYS allows up to ~13 months) can close in a year whose Jan/Jul
+   * offsets differ from the opening year's, if the zone's DST rule itself changes at the
+   * boundary (a legislated change, not a transition the zone's *current* rule produces every
+   * year). Sampling every year from fromMs's through toMs's covers that case; the loop runs
+   * at most a small handful of times, bounded by MAX_WINDOW_DAYS.
    */
-  const year = Number(localDateOf(fromMs, tz).slice(0, 4));
+  const fromYear = Number(localDateOf(fromMs, tz).slice(0, 4));
+  const toYear = Number(localDateOf(toMs, tz).slice(0, 4));
+  const years: number[] = [];
+  for (let y = fromYear; y <= toYear; y++) years.push(y);
   const observed = [
-    offsetMinutes(Date.UTC(year, 0, 15, 12), tz),
-    offsetMinutes(Date.UTC(year, 6, 15, 12), tz),
+    ...years.flatMap((y) => [
+      offsetMinutes(Date.UTC(y, 0, 15, 12), tz),
+      offsetMinutes(Date.UTC(y, 6, 15, 12), tz),
+    ]),
     baseOffset,
     ...transitions.map((t) => t.toOffset),
   ];

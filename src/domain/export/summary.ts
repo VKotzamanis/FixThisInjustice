@@ -42,6 +42,32 @@ function pad(label: string, width = LABEL_WIDTH): string {
   return label.length >= width ? `${label} ` : label + ' '.repeat(width - label.length);
 }
 
+/**
+ * Ordinal (UTF-16 code-unit) string comparison for list order that must be reproducible
+ * across hosts. `String.localeCompare` is ICU-collation order, which varies with the
+ * runtime's default locale (and, for the overload not used here, an explicit one); the same
+ * document generated on two machines could list PERSONAL RECORDS or weekly reviews in a
+ * different order. Never `a - b`-style subtraction of `codePointAt`, which is unnecessary
+ * for a total order and wrong for surrogate pairs; `<`/`>` on strings already compares
+ * UTF-16 code units left to right, which is all a stable sort needs here.
+ */
+function compareCodePoint(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Collapses CR, LF and TAB to a single space. ExerciseSchema (schema.ts) bounds a name's
+ * length (EXERCISE_NAME_MAX_CHARS) but not its character class, so a user-entered custom
+ * exercise name may legally carry any of these. Undetected, a '\n' or '\r' inserts a hard
+ * line break in the middle of a fixed-width row (pad() only pads with spaces; it does not
+ * strip existing whitespace), and a '\t' desyncs the column widths that follow it. This is a
+ * display concern, not a validation concern, so the raw name is not rejected -- only the
+ * printed copy of it is neutralized.
+ */
+function sanitizeForColumn(text: string): string {
+  return text.replace(/[\r\n\t]/g, ' ');
+}
+
 /** "  Protein:                   152-209 g" */
 function field(label: string, value: string, indent = '  '): string {
   return `${indent}${pad(`${label}:`)}${value}`;
@@ -61,7 +87,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   const availability = state.availability[profileId] ?? null;
   const sets = Object.values(state.sets).filter((s) => s.profileId === profileId);
   const reviews = [...(state.weeklyReviews[profileId] ?? [])].sort((a, b) =>
-    a.weekStart.localeCompare(b.weekStart),
+    compareCodePoint(a.weekStart, b.weekStart),
   );
 
   const lines: string[] = [];
@@ -201,8 +227,8 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   for (const ex of state.customExercises[profileId] ?? []) library[ex.id] = ex;
   const records = [...computeRecords(sets).values()]
     .filter((r) => r.bestSet !== null)
-    .map((r) => ({ ...r, name: library[r.exerciseId]?.name ?? r.exerciseId }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .map((r) => ({ ...r, name: sanitizeForColumn(library[r.exerciseId]?.name ?? r.exerciseId) }))
+    .sort((a, b) => compareCodePoint(a.name, b.name));
 
   lines.push('PERSONAL RECORDS');
   if (records.length === 0) {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { makeExercise } from '../../test/fixtures';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
 import type { AppState, BodyMassEntry, LoggedSet, WeeklyReview } from '../types';
 import { buildSummary } from './summary';
@@ -162,6 +163,77 @@ describe('buildSummary', () => {
     const out = buildSummary(state, 'p1', NOW);
     expect(out).toMatch(/198\.4 lb . 3/);
     expect(out).not.toMatch(/\d kg\b/);
+  });
+
+  it('sorts personal records by code point, not by host ICU locale', () => {
+    // 'Z' is U+005A (decimal 90); 'Ä' is U+00C4 (decimal 196). A code-point (ordinal)
+    // comparison of the raw UTF-16 units therefore places "Zug" before "Ärme" -- the
+    // OPPOSITE of ICU collation, which treats Ä as a diacritic of A and sorts it near
+    // the front of the alphabet, ahead of Z. The fixed order below must not flip under
+    // a host whose default locale collates differently (e.g. de-DE vs C).
+    const set = (id: string, exerciseId: string): LoggedSet => ({
+      id,
+      profileId: 'p1',
+      assignmentDate: '2026-01-05',
+      sessionId: 's-push',
+      exerciseId,
+      setNumber: 1, // [sets]
+      isBonus: false,
+      loadKg: 60, // [kg]
+      enteredUnit: 'metric',
+      reps: 8, // [repetitions]
+      durationS: null,
+      rpe: null,
+      loggedAt: NOW,
+    });
+    const state: AppState = {
+      ...makeBlankState(),
+      customExercises: {
+        p1: [
+          makeExercise({ id: 'ex-zug', name: 'Zug' }),
+          makeExercise({ id: 'ex-arme', name: 'Ärme' }),
+        ],
+      },
+      sets: { a: set('a', 'ex-zug'), b: set('b', 'ex-arme') },
+    };
+    const out = buildSummary(state, 'p1', NOW);
+    const zugIndex = out.indexOf('Zug');
+    const armeIndex = out.indexOf('Ärme');
+    expect(zugIndex).toBeGreaterThan(-1);
+    expect(armeIndex).toBeGreaterThan(-1);
+    expect(zugIndex).toBeLessThan(armeIndex);
+  });
+
+  it('collapses a control character in an exercise name before padding it, so it cannot split the record onto extra lines', () => {
+    // ExerciseSchema (schema.ts) bounds a name's length but not its character class, so a
+    // custom exercise name can legally carry a raw CR, LF or TAB. Unsanitized, a '\n' would
+    // insert a hard line break in the middle of the fixed-width PERSONAL RECORDS row.
+    const set: LoggedSet = {
+      id: 'a',
+      profileId: 'p1',
+      assignmentDate: '2026-01-05',
+      sessionId: 's-push',
+      exerciseId: 'ex-weird',
+      setNumber: 1, // [sets]
+      isBonus: false,
+      loadKg: 60, // [kg]
+      enteredUnit: 'metric',
+      reps: 8, // [repetitions]
+      durationS: null,
+      rpe: null,
+      loggedAt: NOW,
+    };
+    const state: AppState = {
+      ...makeBlankState(),
+      customExercises: { p1: [makeExercise({ id: 'ex-weird', name: 'Push\nPress' })] },
+      sets: { a: set },
+    };
+    const out = buildSummary(state, 'p1', NOW);
+    expect(out).not.toContain('Push\nPress');
+    const line = out.split('\n').find((l) => l.includes('Push Press'));
+    // The sanitized name, the heaviest-set field and the date land on ONE line: had the
+    // raw newline survived, this line would end right after "Push" instead.
+    expect(line).toMatch(/Push Press\s+60 kg . 8.*2026-01-05/);
   });
 
   it('counts what the document holds', () => {
