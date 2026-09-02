@@ -7,7 +7,7 @@ import { flushSave, startPersistence, useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
 import { parseState } from '../../domain/schema';
-import type { SessionAssignment } from '../../domain/types';
+import type { PushDevice, SessionAssignment } from '../../domain/types';
 
 /**
  * The instant every assertion is dated from: 2026-09-01T12:00:00Z, which is 2026-09-01 in
@@ -16,8 +16,11 @@ import type { SessionAssignment } from '../../domain/types';
  */
 const NOW = Date.UTC(2026, 8, 1, 12, 0, 0); // [ms]
 
-/** What each synthetic download carried. jsdom implements neither of the two APIs it needs. */
-let downloads: { name: string; type: string }[] = [];
+/**
+ * What each synthetic download carried, including the Blob itself so a test can read the
+ * bytes the user would have received. jsdom implements neither of the two APIs it needs.
+ */
+let downloads: { name: string; type: string; blob: Blob | null }[] = [];
 
 /**
  * Teardowns for every startPersistence() subscription a test started. Unconditional in
@@ -35,7 +38,11 @@ beforeEach(() => {
   vi.spyOn(Date, 'now').mockReturnValue(NOW);
   downloads = [];
   URL.createObjectURL = vi.fn((blob: Blob | MediaSource) => {
-    downloads.push({ name: '', type: blob instanceof Blob ? blob.type : '' });
+    downloads.push({
+      name: '',
+      type: blob instanceof Blob ? blob.type : '',
+      blob: blob instanceof Blob ? blob : null,
+    });
     return 'blob:fti/1';
   });
   URL.revokeObjectURL = vi.fn();
@@ -98,6 +105,52 @@ function otherDocument(): string {
   seeded.ui.accent = '#ffffff';
   return JSON.stringify(seeded);
 }
+
+/**
+ * A device as the reminders slice stores it. `secret` is the bearer credential the Worker
+ * checks on PUT and DELETE, which is why it must never reach a downloaded file.
+ * Instants are epoch milliseconds, UTC.
+ */
+const DEVICE: PushDevice = {
+  deviceId: '0f9b1a2c-3d4e-4f50-8a1b-2c3d4e5f6071',
+  secret: 'sEcReTsEcReTsEcReTsEcReTsEcReTsEcReTsEcReT1',
+  endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+  keys: { p256dh: `B${'A'.repeat(85)}`, auth: 'tBHItJI5svbpez7KI4CCXg' },
+  createdAt: NOW, // [ms]
+  lastSyncAt: NOW, // [ms]
+  lastSyncHash: 'f00dcafe',
+};
+
+describe('the downloaded document and the push device', () => {
+  it('withholds the device from the file while the running app keeps it', async () => {
+    useAppStore.setState({ pushDevice: DEVICE });
+    render(<ExportView />);
+    click(copy('button.downloadJson'));
+
+    const text = await (downloads.at(-1)?.blob ?? new Blob([''])).text();
+    expect(text).not.toContain(DEVICE.secret);
+    expect(text).toContain('"pushDevice": null');
+    expect((JSON.parse(text) as { pushDevice: unknown }).pushDevice).toBeNull();
+    // The projection is the file's, not the store's: this browser can still reach its
+    // Worker record.
+    expect(useAppStore.getState().pushDevice).toEqual(DEVICE);
+  });
+
+  it('leaves the importing browser with no device, to mint its own', () => {
+    useAppStore.setState({ pushDevice: DEVICE });
+    render(<ExportView />);
+    check(otherDocument());
+    backUpInPanel();
+    typeConfirmation('DELETE');
+    fireEvent.click(replaceButton());
+
+    expect(screen.getByText(copy('status.importOk'))).toBeTruthy();
+    // An imported document never carries a device, so reminders on this browser are dead
+    // until the user switches the toggle off and on in Settings. src/store/persistence.ts
+    // exportJson states that consequence; it is the same recovery the stale-device path uses.
+    expect(useAppStore.getState().pushDevice).toBeNull();
+  });
+});
 
 describe('ExportView', () => {
   it('offers the three downloads', () => {

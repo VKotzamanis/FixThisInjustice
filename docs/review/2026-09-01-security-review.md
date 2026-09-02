@@ -827,3 +827,34 @@ or CI step can fail the build when it is violated.
 - **No threat model for a shared device.** localStorage is unencrypted and readable by anyone with
   the unlocked device or a filesystem copy of the browser profile. Whether that matters is a
   decision about the deployment context, not a code defect, so I did not raise it as a finding.
+
+---
+
+## Addendum, 2026-09-02: I4 is superseded
+
+**I4 (Info, "No secrets, keys, or credentials (verified absent)") no longer holds.** It
+described the legacy console, which had no server. The P5 reminders work gave the app one.
+
+`AppState.pushDevice.secret` is 256 bits from the CSPRNG, base64url, 43 characters
+(`src/domain/reminders/client.ts`). It is the bearer credential for `PUT` and
+`DELETE /v1/devices/{id}` on the Cloudflare Worker: whoever holds it can overwrite or delete
+that device's reminder schedule. It is persisted in the local document under `fti.v3`
+alongside everything else, so this app now stores a credential, not only data.
+
+Scope, and what changed:
+
+- The secret authorises exactly one device's Worker record. It reads no data, reaches no
+  other device, and grants nothing inside the app.
+- **It is excluded from exports as of this commit.** `exportJson` in
+  `src/store/persistence.ts` writes `"pushDevice": null`, so a document the user mails,
+  syncs to cloud storage, or hands to someone helping them cannot be used against their
+  Worker record. The live store and the browser's own `localStorage` copy keep the device;
+  only the file projection drops it. Covered by `src/store/persistence.test.ts`,
+  `src/ui/views/ExportView.test.tsx` and `src/store/reminderActions.test.ts`.
+- It remains in `localStorage`, unencrypted and readable by anyone with the unlocked device
+  or a copy of the browser profile. That is the shared-device threat the "Not assessed"
+  section above already declined to raise as a finding, and nothing here changes it.
+
+Residual, recorded in `docs/plans/2026-09-01-05-reminders.md`: an imported document can carry
+`reminderSettings.enabled = true` with no device, which the panel reports as "Reminders are
+on. Schedule not sent yet." until the user switches the toggle off and on.

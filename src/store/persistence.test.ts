@@ -16,7 +16,7 @@ import {
   save,
 } from './persistence';
 import { defaultState } from '../domain/schema';
-import type { AppState } from '../domain/types';
+import type { AppState, PushDevice } from '../domain/types';
 import {
   domExceptionWithCode,
   installFakeStorage,
@@ -222,6 +222,66 @@ describe('exportJson and importJson', () => {
     expect(importJson('{"week":999}').ok).toBe(false);
     expect(setItem).not.toHaveBeenCalled();
     expect(data.get(STORAGE_KEY)).toBe('untouched');
+  });
+});
+
+/**
+ * The push device is the one field in the document that is a CREDENTIAL rather than data:
+ * `secret` is the bearer token that authorises a PUT or a DELETE against this browser's
+ * Worker record. An export is a file the user mails to themselves, drops in cloud storage, or
+ * hands to a support channel, so it must not carry it.
+ *
+ * Instants are epoch milliseconds, UTC.
+ */
+describe('the push device is excluded from an export', () => {
+  const DEVICE: PushDevice = {
+    deviceId: '0f9b1a2c-3d4e-4f50-8a1b-2c3d4e5f6071',
+    secret: 'sEcReTsEcReTsEcReTsEcReTsEcReTsEcReTsEcReT1',
+    endpoint: 'https://fcm.googleapis.com/fcm/send/abc123',
+    keys: { p256dh: `B${'A'.repeat(85)}`, auth: 'tBHItJI5svbpez7KI4CCXg' },
+    createdAt: 1_793_055_600_000, // [ms]
+    lastSyncAt: 1_793_055_600_000, // [ms]
+    lastSyncHash: 'f00dcafe',
+  };
+
+  function stateWithDevice(): AppState {
+    return { ...defaultState(), pushDevice: DEVICE };
+  }
+
+  it('writes pushDevice as null, and never the secret', () => {
+    const text = exportJson(stateWithDevice());
+    expect(text).not.toContain(DEVICE.secret);
+    expect(text).not.toContain(DEVICE.endpoint);
+    expect((JSON.parse(text) as AppState).pushDevice).toBeNull();
+  });
+
+  it('keeps the key in the document rather than dropping it', () => {
+    // Present-and-null, not absent: a reader of the file can see that the field exists and
+    // was deliberately emptied, and parseState reaches its nullable branch rather than a
+    // default.
+    expect(exportJson(stateWithDevice())).toContain('"pushDevice": null');
+  });
+
+  it('projects the export without touching the state it was given', () => {
+    const state = stateWithDevice();
+    exportJson(state);
+    expect(state.pushDevice).toBe(DEVICE);
+  });
+
+  it('changes nothing else about the document', () => {
+    expect(JSON.parse(exportJson(stateWithDevice()))).toEqual(
+      JSON.parse(exportJson({ ...defaultState(), pushDevice: null })),
+    );
+  });
+
+  it('imports a document whose pushDevice is null', () => {
+    const result = importJson(exportJson(stateWithDevice()));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.pushDevice).toBeNull();
+    // The importing browser mints its own device when the user next switches reminders on.
+    // Nothing else is lost.
+    expect(result.state).toEqual({ ...defaultState(), pushDevice: null });
   });
 });
 
