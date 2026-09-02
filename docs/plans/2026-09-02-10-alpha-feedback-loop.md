@@ -360,12 +360,12 @@ strip under a popup.
 Some keys are named only in a helper module and never in a view file. The helper joins the screen
 that renders its strings, which is why the table above lists `src/content/readinessQuestions.ts`
 under `readiness` and `src/domain/training/coach.ts` under `toast`. Keys named nowhere but inside
-`src/content/copy.ts`, behind a `FORMAT` helper, reach no screen by mention: `--unplaced` lists
-them (40 on 2026-09-02, at `b7b165a` with the icon map removed). `src/skins/limelight/Icon.tsx` is
-a lookup keyed by copy key, not a renderer, and is deliberately in no list: under `shell` it would
-claim `advice.drinkToThirst` away from `train`. `--unplaced` lists
-them, Task 2 Step 3 places each by hand in the part whose section renders it, and a key with no
-surface at all is excused by name in `NOT_RENDERED` with the file and line that proves it.
+`src/content/copy.ts`, behind a `FORMAT` helper, reach no screen by mention. `--unplaced` lists
+them (40 on 2026-09-02, at `350b8e2`), Task 2 Step 3 places each by hand in the part whose section
+renders it, and a key with no surface at all is excused by name in `NOT_RENDERED` with the file
+and line that proves it. `src/skins/limelight/Icon.tsx` is a lookup keyed by copy key, not a
+renderer, and is deliberately in no list: under `shell` it would claim `advice.drinkToThirst` away
+from `train`.
 
 ---
 
