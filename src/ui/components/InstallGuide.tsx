@@ -1,5 +1,5 @@
 import { type JSX } from 'react';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 
 /**
  * How to install this app to the Home Screen, shown when the runtime cannot receive Web Push
@@ -24,25 +24,27 @@ import { copy } from '../../content/copy';
  * cannot be read aloud, so each step names the control in words instead.
  */
 export function InstallGuide(): JSX.Element {
+  const t = useCopy();
+
   return (
     <aside className="fti-reminders-install" aria-labelledby="fti-install-heading">
-      <h3 id="fti-install-heading">{copy('hero.installHomeScreen')}</h3>
-      <p>{copy('advice.installOnlyInstalledApp')}</p>
+      <h3 id="fti-install-heading">{t('hero.installHomeScreen')}</h3>
+      <p>{t('advice.installOnlyInstalledApp')}</p>
 
-      <h4>{copy('label.installIos')}</h4>
+      <h4>{t('label.installIos')}</h4>
       <ol>
-        <li>{copy('status.installIosSafari')}</li>
-        <li>{copy('status.installIosShare')}</li>
-        <li>{copy('status.installIosAdd')}</li>
-        <li>{copy('status.installIosOpen')}</li>
+        <li>{t('status.installIosSafari')}</li>
+        <li>{t('status.installIosShare')}</li>
+        <li>{t('status.installIosAdd')}</li>
+        <li>{t('status.installIosOpen')}</li>
       </ol>
-      <p>{copy('advice.installIosVersion')}</p>
+      <p>{t('advice.installIosVersion')}</p>
 
-      <h4>{copy('label.installAndroid')}</h4>
+      <h4>{t('label.installAndroid')}</h4>
       <ol>
-        <li>{copy('status.installAndroidMenu')}</li>
-        <li>{copy('status.installAndroidInstall')}</li>
-        <li>{copy('status.installAndroidOpen')}</li>
+        <li>{t('status.installAndroidMenu')}</li>
+        <li>{t('status.installAndroidInstall')}</li>
+        <li>{t('status.installAndroidOpen')}</li>
       </ol>
     </aside>
   );

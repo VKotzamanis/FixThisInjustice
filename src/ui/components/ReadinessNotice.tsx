@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react';
 import './readinessNotice.css';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 
 /**
  * Key for the per-session dismissal.
@@ -50,12 +50,15 @@ function writeDismissed(): void {
  */
 export function ReadinessNotice(props: { flagged: boolean }): JSX.Element | null {
   const [dismissed, setDismissed] = useState<boolean>(readDismissed);
+  // Before the early return, so the hook count does not depend on `flagged` or on the
+  // dismissal (rules of hooks).
+  const t = useCopy();
 
   if (!props.flagged || dismissed) return null;
 
   return (
     <div className="readiness-notice" role="status">
-      <p>{copy('advice.readinessConsult')}</p>
+      <p>{t('advice.readinessConsult')}</p>
       <button
         type="button"
         onClick={() => {
@@ -63,7 +66,7 @@ export function ReadinessNotice(props: { flagged: boolean }): JSX.Element | null
           setDismissed(true);
         }}
       >
-        {copy('button.dismiss')}
+        {t('button.dismiss')}
       </button>
     </div>
   );

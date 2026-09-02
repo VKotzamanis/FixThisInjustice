@@ -18,6 +18,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import './boot.css';
 import { FORMAT, copy } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { AppState } from '../../domain/types';
 import { useAppStore } from '../../store';
 
@@ -41,9 +43,12 @@ export const BOOT_LINE_INTERVAL_MS = 90; // [ms] per line
  * two lines: the console line and READY. Setup runs behind the same boot as everything else,
  * so this path is the one a first run takes.
  */
-export function buildBootLines(state: AppState): string[] {
-  const ok = copy('status.bootOk');
-  const lines: string[] = [FORMAT.bootStep(copy('status.bootConsole'), ok)];
+export function buildBootLines(
+  state: AppState,
+  overrides?: Partial<Record<CopyKey, string>>,
+): string[] {
+  const ok = copy('status.bootOk', overrides);
+  const lines: string[] = [FORMAT.bootStep(copy('status.bootConsole', overrides), ok)];
 
   const profileId = state.activeProfileId;
   const cursor = profileId === null ? undefined : state.cursors[profileId];
@@ -69,15 +74,19 @@ export function buildBootLines(state: AppState): string[] {
       plan.weeks, // [weeks]
     );
     lines.push(
-      FORMAT.bootStep(copy('status.bootPlan'), ok),
-      FORMAT.withSlots('status.bootPlanName', { name: plan.name }),
-      FORMAT.withSlots('status.bootWeek', { week, weeks: plan.weeks }),
-      FORMAT.withSlots('status.bootSchedule', { count: plan.sessionsPerWeek }), // [sessions/week]
-      FORMAT.bootStep(copy('status.bootStore'), ok),
+      FORMAT.bootStep(copy('status.bootPlan', overrides), ok),
+      FORMAT.withSlots('status.bootPlanName', { name: plan.name }, overrides),
+      FORMAT.withSlots('status.bootWeek', { week, weeks: plan.weeks }, overrides),
+      FORMAT.withSlots(
+        'status.bootSchedule',
+        { count: plan.sessionsPerWeek }, // [sessions/week]
+        overrides,
+      ),
+      FORMAT.bootStep(copy('status.bootStore', overrides), ok),
     );
   }
 
-  lines.push(copy('status.bootReady'));
+  lines.push(copy('status.bootReady', overrides));
   return lines;
 }
 
@@ -116,7 +125,14 @@ export function Boot({ onDone }: { onDone?: () => void }): ReactElement | null {
    * changed it for the next boot, and re-running the sequence under them would be the motion
    * the setting asks us not to produce.
    */
-  const [lines] = useState<string[]>(() => buildBootLines(useAppStore.getState()));
+  const t = useCopy();
+  /*
+   * The skin as it stands at MOUNT. The sequence is a snapshot for the same reason the
+   * document is (the comment above): a line already printed cannot be rewritten under the
+   * user, and the boot lasts under a second, so no skin change can arrive mid-sequence.
+   */
+  const overrides = useCopyOverrides();
+  const [lines] = useState<string[]>(() => buildBootLines(useAppStore.getState(), overrides));
   const [seenAtMount] = useState<boolean>(() => useAppStore.getState().ui.bootSeen);
   const [reduced] = useState<boolean>(prefersReducedMotion);
   const [shown, setShown] = useState<number>(reduced ? lines.length : 0); // [lines] printed
@@ -206,12 +222,12 @@ export function Boot({ onDone }: { onDone?: () => void }): ReactElement | null {
      * again on each line; the label names the screen once and the Skip control is the part a
      * screen reader user needs to reach.
      */
-    <section className="boot" aria-label={copy('hero.boot')} onClick={finish}>
+    <section className="boot" aria-label={t('hero.boot')} onClick={finish}>
       <pre className="boot-pre" data-testid="boot-text">
         {lines.slice(0, shown).join('\n')}
       </pre>
       <button type="button" className="boot-skip" onClick={finish}>
-        {copy('button.skipBoot')}
+        {t('button.skipBoot')}
       </button>
     </section>
   );

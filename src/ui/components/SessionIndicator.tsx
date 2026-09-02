@@ -8,13 +8,17 @@
 
 import type { ReactElement } from 'react';
 import './sessionIndicator.css';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { useActiveCursor } from '../../store/scheduleSelectors';
 import { useActivePlan } from '../../store/selectors';
 
 export function SessionIndicator(): ReactElement | null {
   const plan = useActivePlan();
   const cursor = useActiveCursor();
+  // Before the null return the two selectors can force, so the hook count is unconditional.
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   // Both hooks run before this return, so the early exit does not change the hook order.
   if (plan === null || cursor === null) return null;
 
@@ -42,9 +46,10 @@ export function SessionIndicator(): ReactElement | null {
       aria-label={FORMAT.planPositionLabel(
         shown,
         total,
-        complete ? copy('hero.programmeComplete') : '',
+        complete ? t('hero.programmeComplete') : '',
+        overrides,
       )}
-      title={copy('label.planPosition')}
+      title={t('label.planPosition')}
       /*
        * Inline, not in the stylesheet: the digits change under the user (S 9/48 to S 10/48)
        * in a fixed slot, so proportional figures would shift the label sideways on every
@@ -53,7 +58,7 @@ export function SessionIndicator(): ReactElement | null {
        */
       style={{ fontVariantNumeric: 'tabular-nums' }}
     >
-      {FORMAT.planPosition(shown, total, complete ? copy('status.planComplete') : '')}
+      {FORMAT.planPosition(shown, total, complete ? t('status.planComplete') : '')}
     </span>
   );
 }

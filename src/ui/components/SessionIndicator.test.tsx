@@ -2,10 +2,11 @@
 import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionIndicator } from './SessionIndicator';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copy } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { DAY_MS, MONDAY, NOW_MS, PLAN_ID, PROFILE_ID, seedState } from '../../test/scheduleFixtures';
 import type { PlanCursor } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
 
@@ -31,6 +32,24 @@ beforeEach(() => {
   // [ms] epoch, UTC. Pinned so no assertion here can depend on the real wall clock.
   vi.spyOn(Date, 'now').mockReturnValue(NOW_MS);
   useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('SessionIndicator', () => {
@@ -119,5 +138,30 @@ describe('SessionIndicator', () => {
     expect(screen.getByTestId('session-indicator')).toHaveStyle({
       fontVariantNumeric: 'tabular-nums',
     });
+  });
+});
+
+/*
+ * P8 Task 16: the spoken form of the indicator is `status.sessionCursor`, read through
+ * `FORMAT.planPositionLabel`, so `ui.skin` decides its words. Asserted through the frame's own
+ * overlay argument rather than as a literal, so the expectation follows the table.
+ *
+ * The two COUNTS are the frame's arguments and belong to the domain, so the skin cannot move
+ * them: they read the same on both sides of this pair.
+ */
+describe('SessionIndicator under a skin', () => {
+  it('speaks the cursor in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<SessionIndicator />);
+    expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
+      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
+    );
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<SessionIndicator />);
+    expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
+      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.clinical),
+    );
   });
 });

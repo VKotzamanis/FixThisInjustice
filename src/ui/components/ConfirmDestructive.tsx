@@ -1,7 +1,8 @@
 import { useId, useState, type JSX } from 'react';
 
 import { downloadText } from '../../app/download';
-import { FORMAT, copy, type CopyKey } from '../../content/copy';
+import { FORMAT, type CopyKey } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import './confirmDestructive.css';
 
 export interface ConfirmDestructiveProps {
@@ -86,11 +87,12 @@ export function ConfirmDestructive(props: ConfirmDestructiveProps): JSX.Element 
   const [exported, setExported] = useState(false);
   const [typed, setTyped] = useState('');
   const fieldId = useId();
+  const t = useCopy();
 
   const armed = exported && typed === word;
 
   return (
-    <div className="confirm-destructive" role="group" aria-label={copy(titleKey)}>
+    <div className="confirm-destructive" role="group" aria-label={t(titleKey)}>
       <button
         type="button"
         onClick={() => {
@@ -99,12 +101,12 @@ export function ConfirmDestructive(props: ConfirmDestructiveProps): JSX.Element 
           setExported(true);
         }}
       >
-        {copy(exportLabelKey)}
+        {t(exportLabelKey)}
       </button>
 
       {/* Polite, not assertive: the backup is a step completed, not a problem to interrupt for. */}
       <p className="confirm-destructive-note" aria-live="polite">
-        {exported ? copy('status.exportTaken') : copy('advice.exportBeforeConfirm')}
+        {exported ? t('status.exportTaken') : t('advice.exportBeforeConfirm')}
       </p>
 
       <div className="confirm-destructive-field">
@@ -122,10 +124,10 @@ export function ConfirmDestructive(props: ConfirmDestructiveProps): JSX.Element 
 
       <div className="confirm-destructive-actions">
         <button type="button" className="destructive" disabled={!armed} onClick={onConfirm}>
-          {copy(confirmLabelKey)}
+          {t(confirmLabelKey)}
         </button>
         <button type="button" onClick={onCancel}>
-          {copy('button.cancel')}
+          {t('button.cancel')}
         </button>
       </div>
     </div>

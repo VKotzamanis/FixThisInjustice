@@ -17,7 +17,7 @@ import { createContext, useContext, useId } from 'react';
 import type { ReactElement } from 'react';
 import { ModalShell } from './ModalShell';
 import { FORM_CUES, WARMUP_NOTICE } from '../../content/formCues';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import '../styles/train.css';
 
 export interface CueRequest {
@@ -62,6 +62,7 @@ export function FormCuesModal(props: {
   onClose: () => void;
 }): ReactElement {
   const headingId = useId();
+  const t = useCopy();
   const cue = FORM_CUES[props.request.exerciseId];
 
   return (
@@ -74,14 +75,14 @@ export function FormCuesModal(props: {
     >
       <div className="fcm-head">
         <div id={headingId}>
-          <div className="fcm-eyebrow">{copy('label.formCues')}</div>
+          <div className="fcm-eyebrow">{t('label.formCues')}</div>
           <h2 className="fcm-name">{props.request.title}</h2>
         </div>
         <button
           type="button"
           className="fcm-close"
           onClick={props.onClose}
-          aria-label={copy('button.closeModal')}
+          aria-label={t('button.closeModal')}
         >
           {/* Copy contract R6: a mark from the token set, not an emoji. */}
           {'✕'}
@@ -91,25 +92,25 @@ export function FormCuesModal(props: {
       <div className="fcm-body">
         <p className="fcm-warmup">{WARMUP_NOTICE}</p>
         {cue === undefined ? (
-          <p className="fcm-none">{copy('advice.noFormCues')}</p>
+          <p className="fcm-none">{t('advice.noFormCues')}</p>
         ) : (
           <>
             {cue.caution !== null && (
               <p className="fcm-caution" role="note">
-                <strong>{copy('label.caution')}</strong>: {cue.caution}
+                <strong>{t('label.caution')}</strong>: {cue.caution}
               </p>
             )}
-            <CueSection heading={copy('label.cueSetup')} lines={cue.setup} ordered />
-            <CueSection heading={copy('label.cueExecution')} lines={cue.execution} ordered />
+            <CueSection heading={t('label.cueSetup')} lines={cue.setup} ordered />
+            <CueSection heading={t('label.cueExecution')} lines={cue.execution} ordered />
             <CueSection
-              heading={copy('label.cueMistakes')}
+              heading={t('label.cueMistakes')}
               lines={cue.mistakes}
               ordered={false}
               className="fcm-danger"
             />
             {cue.tip !== null && (
               <p className="fcm-tip">
-                <strong>{copy('label.cueTip')}</strong>: {cue.tip}
+                <strong>{t('label.cueTip')}</strong>: {cue.tip}
               </p>
             )}
           </>

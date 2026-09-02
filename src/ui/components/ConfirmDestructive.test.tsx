@@ -1,10 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { downloadText } from '../../app/download';
 import { ConfirmDestructive, type ConfirmDestructiveProps } from './ConfirmDestructive';
+import { useAppStore } from '../../store';
+import type { SkinId } from '../../domain/types';
 
 /*
  * downloadText is mocked rather than exercised: jsdom implements neither URL.createObjectURL
@@ -47,6 +49,24 @@ function type(value: string, word: string = WORD): void {
 
 afterEach(() => {
   vi.clearAllMocks();
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('ConfirmDestructive: the export gate', () => {
@@ -174,5 +194,31 @@ describe('ConfirmDestructive: the panel names itself', () => {
     expect(new Set(names).size).toBe(2);
     expect(screen.getByRole('group', { name: copy('label.confirmWipe') })).toBe(groups[0]);
     expect(screen.getByRole('group', { name: copy('label.confirmReplace') })).toBe(groups[1]);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('ConfirmDestructive under a skin', () => {
+  it('renames the abort without turning it into a commit', () => {
+    // The abort stays an abort: copy.test.ts decides that rule over the table, and this is the
+    // rendered half of it.
+    pinSkin('limelight');
+    renderPanel();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }),
+    ).toBeInTheDocument();
+    // `renderPanel` returns the two spies rather than the RenderResult, so the tree is
+    // cleared through Testing Library's own teardown rather than an unmount handle.
+    cleanup();
+
+    pinSkin('clinical');
+    renderPanel();
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.cancel') }),
+    ).toBeInTheDocument();
   });
 });

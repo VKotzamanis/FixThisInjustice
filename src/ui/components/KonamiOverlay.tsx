@@ -25,7 +25,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 
 /**
  * The sequence, in normalised (lowercased `KeyboardEvent.key`) form.
@@ -98,7 +98,8 @@ export function useKonamiCode(onActivate: () => void): void {
  * pointer and one that needs no keyboard.
  */
 export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElement {
-  const line = copy('status.konami');
+  const t = useCopy();
+  const line = t('status.konami');
   const latest = useRef(onClose);
   latest.current = onClose;
 
@@ -133,7 +134,7 @@ export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElemen
             onClose();
           }}
         >
-          {copy('button.dismiss')}
+          {t('button.dismiss')}
         </button>
       </div>
     </div>

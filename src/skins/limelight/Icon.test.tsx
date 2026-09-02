@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { DEFAULT_ICON_SIZE, ICON_FOR_KEY, Icon, SkinLabel } from './Icon';
 import { LIMELIGHT_ICONS } from './icons';
-import { copy } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
 import type { SkinId } from '../../domain/types';
@@ -106,15 +106,17 @@ describe('Icon off the limelight skin', () => {
 
 describe('SkinLabel', () => {
   it('puts an icon beside the copy on limelight and none beside it elsewhere', () => {
+    // The WORDS follow the skin too, since P8 Task 16: asserted through `copyFor` by key
+    // rather than as a literal, so the expectation moves with the table it quotes.
     withSkin('limelight');
     const view = render(<SkinLabel copyKey="button.startSession" />);
-    expect(screen.getByText(copy('button.startSession'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'button.startSession'))).toBeInTheDocument();
     expect(view.container.querySelectorAll('img.ll-icon')).toHaveLength(1);
     view.unmount();
 
     withSkin('clinical');
     const plain = render(<SkinLabel copyKey="button.startSession" />);
-    expect(screen.getByText(copy('button.startSession'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('clinical', 'button.startSession'))).toBeInTheDocument();
     expect(plain.container.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
 
@@ -122,7 +124,9 @@ describe('SkinLabel', () => {
     // 'button.back' is not an emoji position in round three section 4.4, so it has no entry.
     expect(ICON_FOR_KEY['button.back']).toBeUndefined();
     const { container } = render(<SkinLabel copyKey="button.back" />);
-    expect(screen.getByText(copy('button.back'))).toBeInTheDocument();
+    // The default this file seeds is limelight, which carries no row for this key, so the
+    // clinical string is what `copyFor` resolves and what the label renders.
+    expect(screen.getByText(copyFor('limelight', 'button.back'))).toBeInTheDocument();
     expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
 

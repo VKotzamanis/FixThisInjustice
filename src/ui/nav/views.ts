@@ -13,6 +13,7 @@
 // reworded tab is one edit in src/content/copy.ts and not two.
 
 import { copy } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
 
 /**
  * The views the shell can show.
@@ -28,8 +29,17 @@ export type ViewId = 'today' | 'plan' | 'train' | 'targets' | 'log' | 'atlas' | 
 
 export interface ViewDef {
   id: ViewId;
-  /** The tab label, from the copy table. */
+  /**
+   * The tab label, resolved against the DEFAULT table at module load.
+   *
+   * It is the CLINICAL string and stays one: a module constant is baked once, so it cannot
+   * follow `ui.skin`. A renderer that wants the active skin's word reads `copyKey` through
+   * `useCopy()` instead, which is what src/ui/components/Spotlight.tsx does. This field
+   * survives because src/app/App.tsx still reads it and that file belongs to another task.
+   */
   label: string;
+  /** The row's copy key, so a renderer can resolve the label under the active skin. */
+  copyKey: CopyKey;
   /**
    * The keyboard digit that switches to this view: the 1-based position in VIEWS.
    *
@@ -40,16 +50,16 @@ export interface ViewDef {
 }
 
 export const VIEWS: readonly ViewDef[] = [
-  { id: 'today', label: copy('nav.today'), digit: 1 },
-  { id: 'plan', label: copy('nav.plan'), digit: 2 },
-  { id: 'train', label: copy('nav.train'), digit: 3 },
-  { id: 'targets', label: copy('nav.targets'), digit: 4 },
-  { id: 'log', label: copy('nav.log'), digit: 5 },
+  { id: 'today', label: copy('nav.today'), copyKey: 'nav.today', digit: 1 },
+  { id: 'plan', label: copy('nav.plan'), copyKey: 'nav.plan', digit: 2 },
+  { id: 'train', label: copy('nav.train'), copyKey: 'nav.train', digit: 3 },
+  { id: 'targets', label: copy('nav.targets'), copyKey: 'nav.targets', digit: 4 },
+  { id: 'log', label: copy('nav.log'), copyKey: 'nav.log', digit: 5 },
   // The specimen collection (P8 Task 5), added to the strip by P8 Task 9. Placed before
   // Settings because Settings is the last tab on every screen the app has ever had, and moving
   // it would move the one tab the user reaches by muscle memory.
-  { id: 'atlas', label: copy('nav.atlas'), digit: 6 },
-  { id: 'settings', label: copy('nav.settings'), digit: 7 },
+  { id: 'atlas', label: copy('nav.atlas'), copyKey: 'nav.atlas', digit: 6 },
+  { id: 'settings', label: copy('nav.settings'), copyKey: 'nav.settings', digit: 7 },
 ];
 
 /** The ids alone, DERIVED from VIEWS so the two cannot disagree. */

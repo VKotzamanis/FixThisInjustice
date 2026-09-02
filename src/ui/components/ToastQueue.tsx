@@ -21,7 +21,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
 import './toastQueue.css';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { SPECIMEN_BY_ID } from '../../content/specimenCards';
 import { newId } from '../../domain/ids';
 import type { EpochMs } from '../../domain/types';
@@ -310,8 +312,20 @@ function useAutoDismiss(
   }, [id, deadlineAt, durationMs, onDismiss]);
 }
 
+/**
+ * The strings one toast needs, resolved ONCE for the whole queue.
+ *
+ * `useCopy` and `useCopyOverrides` both subscribe to `ui.skin`. Calling either inside a toast
+ * would put one store subscription on every toast the queue ever mounts, for a value that is
+ * the same for all of them; the queue reads it once and hands it down instead.
+ */
+interface ToastCopy {
+  t: (key: CopyKey) => string;
+  overrides: Readonly<Partial<Record<CopyKey, string>>>;
+}
+
 /** The body of one toast. Every string comes from the copy table or the content module. */
-function toastContent(toast: Toast): ReactElement | null {
+function toastContent(toast: Toast, words: ToastCopy): ReactElement | null {
   switch (toast.kind) {
     case 'undo':
       // No tag: the caller's message already reports the deletion, and a "DELETED" eyebrow
@@ -319,14 +333,16 @@ function toastContent(toast: Toast): ReactElement | null {
       return <span className="toast-message">{toast.message}</span>;
     case 'milestone':
       return (
-        <span className="toast-message">{FORMAT.milestoneSets(String(toast.count))}</span>
+        <span className="toast-message">
+          {FORMAT.milestoneSets(String(toast.count), words.overrides)}
+        </span>
       );
     case 'coach':
     case 'telemetry':
       return (
         <>
           <span className="toast-tag">
-            {copy(toast.kind === 'coach' ? 'label.coachNote' : 'label.telemetry')}
+            {words.t(toast.kind === 'coach' ? 'label.coachNote' : 'label.telemetry')}
           </span>
           <span className="toast-message">{toast.message}</span>
         </>
@@ -338,7 +354,9 @@ function toastContent(toast: Toast): ReactElement | null {
       if (card === undefined) return null;
       return (
         <>
-          <span className="toast-tag">{FORMAT.specimenAcquired(card.rarity)}</span>
+          <span className="toast-tag">
+            {FORMAT.specimenAcquired(card.rarity, words.overrides)}
+          </span>
           <span className="toast-category">{card.category}</span>
           <span className="toast-title">{card.title}</span>
           <span className="toast-body">{card.body}</span>
@@ -349,8 +367,12 @@ function toastContent(toast: Toast): ReactElement | null {
   }
 }
 
-function ToastShell(props: { toast: Toast; onDismiss: (id: string) => void }): ReactElement | null {
-  const { toast, onDismiss } = props;
+function ToastShell(props: {
+  toast: Toast;
+  onDismiss: (id: string) => void;
+  words: ToastCopy;
+}): ReactElement | null {
+  const { toast, onDismiss, words } = props;
   // deadlineAt: [ms] epoch, UTC on an undo; null on every other class, which uses durationMs.
   const deadlineAt: EpochMs | null = toast.kind === 'undo' ? toast.deadlineAt : null;
   const durationMs = toast.kind === 'undo' ? 0 : TOAST_DURATION_MS[toast.kind]; // [ms]
@@ -359,7 +381,7 @@ function ToastShell(props: { toast: Toast; onDismiss: (id: string) => void }): R
   const dismiss = (): void => {
     onDismiss(toast.id);
   };
-  const content = toastContent(toast);
+  const content = toastContent(toast, words);
   if (content === null) return null;
 
   const rarity = toast.kind === 'specimen' ? (SPECIMEN_BY_ID[toast.cardId]?.rarity ?? null) : null;
@@ -388,11 +410,11 @@ function ToastShell(props: { toast: Toast; onDismiss: (id: string) => void }): R
               dismiss();
             }}
           >
-            {copy('button.undo')}
+            {words.t('button.undo')}
           </button>
         )}
         <button type="button" className="toast-dismiss" onClick={dismiss}>
-          {copy('button.dismiss')}
+          {words.t('button.dismiss')}
         </button>
       </span>
     </div>
@@ -416,6 +438,9 @@ function ToastShell(props: { toast: Toast; onDismiss: (id: string) => void }): R
  */
 export function ToastQueue(): ReactElement {
   const { visible, dismiss } = useToasts();
+  // One subscription to `ui.skin` for the whole queue, handed to the shell as a prop.
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const front = visible[0] ?? null;
   const frontId = front?.id ?? null;
 
@@ -444,7 +469,9 @@ export function ToastQueue(): ReactElement {
   }, [frontId, dismiss]);
 
   const shell =
-    front === null ? null : <ToastShell key={front.id} toast={front} onDismiss={dismiss} />;
+    front === null ? null : (
+      <ToastShell key={front.id} toast={front} onDismiss={dismiss} words={{ t, overrides }} />
+    );
 
   return (
     <div className="toast-stack">

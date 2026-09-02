@@ -24,7 +24,8 @@
 import { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import './phaseTransition.css';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { blockStats, currentBlockIndex, isBlockBoundary } from '../../domain/fun/blocks';
 import type { BlockStats } from '../../domain/fun/blocks';
 import type { UnitSystem } from '../../domain/types';
@@ -94,6 +95,8 @@ export function PhaseTransition({
   units: UnitSystem;
   onClose: () => void;
 }): ReactElement {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const headingId = useId();
   /*
    * The motion preference is read ONCE, at mount, exactly as Boot reads it: a user who changes
@@ -134,7 +137,11 @@ export function PhaseTransition({
     >
       <h2 className="pt-head" id={headingId}>
         {/* 1-based for display; PlanBlock.index is 0-based, as FORMAT.blockLabel records. */}
-        {FORMAT.withSlots('status.blockTransition', { from: fromIndex + 1, to: toIndex + 1 })}
+        {FORMAT.withSlots(
+          'status.blockTransition',
+          { from: fromIndex + 1, to: toIndex + 1 },
+          overrides,
+        )}
       </h2>
       <pre className="pt-art" aria-hidden="true">
         {ART}
@@ -142,32 +149,32 @@ export function PhaseTransition({
       <dl className="pt-stats">
         {step >= 1 && (
           <div className="pt-row">
-            <dt>{copy('label.blockSessionsCompleted')}</dt>
+            <dt>{t('label.blockSessionsCompleted')}</dt>
             <dd>{stats.sessionsCompleted}</dd>
           </div>
         )}
         {step >= 2 && (
           <div className="pt-row">
-            <dt>{copy('label.blockSetsLogged')}</dt>
+            <dt>{t('label.blockSetsLogged')}</dt>
             <dd>{stats.setsLogged}</dd>
           </div>
         )}
         {step >= 3 && (
           <div className="pt-row">
-            <dt>{copy('label.blockMassMoved')}</dt>
+            <dt>{t('label.blockMassMoved')}</dt>
             <dd>{formatTonnage(stats.tonnageKg, units)}</dd>
           </div>
         )}
         {step >= 4 && (
           <div className="pt-row">
-            <dt>{copy('label.blockSpecimens')}</dt>
+            <dt>{t('label.blockSpecimens')}</dt>
             <dd>{stats.specimensOwned}</dd>
           </div>
         )}
       </dl>
       {step >= STEPS && (
         <button type="button" className="pt-continue" onClick={onClose}>
-          {copy('button.continue')}
+          {t('button.continue')}
         </button>
       )}
     </ModalShell>
