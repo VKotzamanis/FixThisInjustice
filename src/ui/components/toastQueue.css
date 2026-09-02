@@ -1,0 +1,145 @@
+/*
+ * The global toast region (P8 Task 3).
+ *
+ * Every colour, font and rule reads a token from src/ui/styles/tokens.css and carries a
+ * literal fallback, so the region renders whether or not the token sheet is loaded and a skin
+ * restyles it by swapping tokens rather than by editing this file (master plan section 3).
+ *
+ * The stack is always mounted, empty or not, because the live region has to exist before its
+ * content does. It therefore takes no pointer events; the toast inside it takes them back, so
+ * an empty region cannot swallow a tap meant for the page underneath.
+ */
+.toast-stack {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  width: min(32rem, calc(100vw - 2rem));
+  z-index: 60; /* above the CRT scanline and vignette layers, which sit at 50 and 51 */
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border-left: 2px solid var(--accent, #a3e635);
+  background: var(--bg-2, #13161a);
+  color: var(--text, #dde3ea);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  animation: toast-in 160ms ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * The entrance is decoration, and a user who asked for less motion asked for exactly this to
+ * stop. The rule is the whole implementation: no JavaScript reads the query, so the behaviour
+ * and the guarantee cannot drift apart.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
+}
+
+/*
+ * The eyebrow's capitals live here, not in copy.ts: the strings stay in sentence case so a
+ * skin rewriting one does not have to shout (the same split train.css already makes).
+ */
+.toast-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent, #a3e635);
+}
+
+.toast-message {
+  color: var(--text, #dde3ea);
+}
+
+.toast-category {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3, #5a6270);
+}
+
+.toast-title {
+  font-family: var(--sans, system-ui, sans-serif);
+  font-size: 1rem;
+  color: var(--text, #dde3ea);
+}
+
+.toast-body {
+  color: var(--text-2, #8e97a3);
+}
+
+.toast-source {
+  font-size: 0.7rem;
+  color: var(--text-3, #5a6270);
+}
+
+.toast-controls {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* 2.75rem is the 44 px touch target these controls are expected to meet. */
+.toast-action,
+.toast-dismiss {
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  background: var(--bg-3, #1c2026);
+  color: var(--text, #dde3ea);
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.toast-action {
+  border-color: var(--accent, #a3e635);
+  color: var(--accent, #a3e635);
+}
+
+.toast-action:focus-visible,
+.toast-dismiss:focus-visible {
+  outline: 2px solid var(--accent, #a3e635);
+  outline-offset: 2px;
+}
+
+/*
+ * Class and rarity are marked by the left rule, never by colour alone: every toast also
+ * carries its own tag or message text, so a user who cannot separate the hues loses nothing.
+ */
+.toast-undo {
+  border-left-color: var(--warn, #fbbf24);
+}
+
+.toast-specimen.rarity-uncommon {
+  border-left-color: var(--info, #67e8f9);
+}
+
+.toast-specimen.rarity-rare {
+  border-left-color: var(--danger, #f87171);
+}

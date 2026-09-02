@@ -392,7 +392,12 @@ export type CopyKey =
   | 'quantity.postSessionBodyMass'
   | 'advice.noSessionToday'
   | 'coach.setDeleted'
-  | 'notification.restOver';
+  | 'notification.restOver'
+  // --- toast queue (P8 Task 3; appended by that task) ---
+  | 'label.coachNote'
+  | 'label.telemetry'
+  | 'status.milestoneSets'
+  | 'status.specimenAcquired';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -859,6 +864,18 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The title of the local notification posted while the page is hidden (master plan section
   // 6.5). It is copy, not a literal in the panel, because it is user-facing text.
   'notification.restOver': 'Rest over',
+
+  // --- toast queue (P8 Task 3; appended by that task) ---
+  // The two tags naming where a one-line toast came from: a coach line is an instruction, a
+  // telemetry line is a measured readout of the set just logged. Sentence case, because the
+  // eyebrow's capitals are a text-transform in toastQueue.css: a skin does not have to shout.
+  'label.coachNote': 'Coach',
+  'label.telemetry': 'Telemetry',
+  // The milestone line. "recorded", not "logged", and no exclamation mark (R8); P8 Task 10
+  // owns the thresholds that decide when this is shown.
+  'status.milestoneSets': '250 sets recorded.', // formatted; FORMAT.milestoneSets builds it
+  // The eyebrow over a drawn specimen card. The rarity word is the card's own enum.
+  'status.specimenAcquired': 'common specimen acquired', // formatted; FORMAT.specimenAcquired
 };
 
 /**
@@ -1155,4 +1172,21 @@ export const FORMAT = {
    */
   fluidLossWhy: (lossPct: string, thresholdPct: number): string =>
     `Loss of ${lossPct} % of pre-session mass, above the ${thresholdPct} % threshold (ACSM 2007).`,
+
+  // --- toast queue (P8 Task 3) ---
+
+  /**
+   * "250 sets recorded." The count arrives already rendered as a string, so no grouping or
+   * locale decision is taken in this file; P8 Task 10 owns the milestone thresholds and the
+   * grouped form of the count.
+   */
+  milestoneSets: (count: string): string => `${count} sets recorded.`,
+
+  /**
+   * "common specimen acquired": the eyebrow over a drawn specimen card. The rarity is the
+   * card's own `SpecimenRarity`, passed in rather than written here, so the word the user
+   * reads and the draw weight behind it cannot drift apart. The capitals are a
+   * text-transform in toastQueue.css.
+   */
+  specimenAcquired: (rarity: string): string => `${rarity} specimen acquired`,
 } as const;
