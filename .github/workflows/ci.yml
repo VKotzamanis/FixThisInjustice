@@ -71,7 +71,11 @@ jobs:
 
       # npm ci installs the exact package-lock.json tree; a drifted lockfile fails here.
       - name: Install
-        run: npm ci
+        # The root eslint config lints worker/** with type-aware rules, so the
+        # worker's own dependencies must be present for the types to resolve.
+        run: |
+          npm ci
+          npm ci --prefix worker
 
       # The five master plan section 3 lint gates are errors, so eslint failing fails the job.
       - name: Lint
