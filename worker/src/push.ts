@@ -22,15 +22,39 @@ export const APP_URL_PATH = "/FixThisInjustice/";
 const TTL_SECONDS = 3600;
 
 /**
+ * A stable, non-reversible label for one subscription: the first 8 hex characters of
+ * SHA-256(endpoint), i.e. the leading 4 octets of the digest.
+ *
+ * The endpoint is not an identifier, it is the capability — anyone holding it can post to
+ * that device's push channel — so it must never reach a log line. Two failing devices still
+ * need to be told apart, and 32 bits of digest does that for a namespace the Worker caps at
+ * 100 devices (birthday collision probability ~1.2e-6 at n = 100).
+ *
+ * Never throws: it is called from the failure paths, which must not manufacture a new one.
+ */
+async function endpointDigest(endpoint: string): Promise<string> {
+  try {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint));
+    return [...new Uint8Array(digest).slice(0, 4)]
+      .map((octet) => octet.toString(16).padStart(2, "0"))
+      .join("");
+  } catch {
+    return "undigested";
+  }
+}
+
+/**
  * Send one reminder. Never throws.
  *  - "sent"   the push service accepted it (2xx; RFC 8030 specifies 201)
  *  - "gone"   404/410: the subscription is dead, the caller deletes the device
  *  - "failed" anything else, logged; the caller leaves the key unsent so the next
  *             cron tick retries it while the reminder is still inside its window
  *
- * The logged lines carry only the status and the reminder key. The VAPID private
- * key and the subscription's p256dh/auth never reach the log, and pushforge's own
- * error messages interpolate only `kty`, `crv`, the endpoint and byte lengths.
+ * The logged lines carry the reminder key, the HTTP status or the error's constructor name,
+ * and the endpoint digest. Never the thrown error's MESSAGE: pushforge interpolates the
+ * subscription endpoint into its error text, and the endpoint is the capability for pushing
+ * to that device. The VAPID private key and the subscription's p256dh/auth never reach the
+ * log either.
  */
 export async function sendPush(
   env: PushEnv,
@@ -63,10 +87,15 @@ export async function sendPush(
     // 15 min; treating all 2xx as sent is the only mapping consistent with §7's
     // "exactly one send across 30 cron ticks" gate.
     if (response.ok) return "sent";
-    console.warn(`push rejected: status=${response.status} key=${instant.key}`);
+    const digest = await endpointDigest(subscription.endpoint);
+    console.warn(`push rejected: status=${response.status} key=${instant.key} endpoint=${digest}`);
     return "failed";
   } catch (error) {
-    console.warn(`push threw: key=${instant.key} error=${String(error)}`);
+    // `error.name` only. String(error) would carry the message, and pushforge embeds the
+    // endpoint in it; a non-Error throw has no name worth trusting, so it is labelled.
+    const name = error instanceof Error ? error.name : "NonError";
+    const digest = await endpointDigest(subscription.endpoint);
+    console.warn(`push threw: key=${instant.key} error=${name} endpoint=${digest}`);
     return "failed";
   }
 }

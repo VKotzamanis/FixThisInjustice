@@ -43,6 +43,14 @@ export const FUTURE_WINDOW_MS = 21 * 24 * 60 * 60 * 1000;
 export const DUE_WINDOW_MS = 15 * 60 * 1000;
 /** Master plan §6.6: prune `sent` entries older than 24 h. Duration, milliseconds. */
 export const SENT_RETENTION_MS = 24 * 60 * 60 * 1000;
+/**
+ * Hard ceiling on `sent` entries after the 24 h time prune. Count, dimensionless.
+ * Time alone does not bound the map: a client is free to re-upload a fresh 200-reminder
+ * schedule every minute, and every key it manages to get sent stays for 24 h, so the record
+ * grows until a KV value hits the 25 MB limit. Two full schedules' worth is the smallest cap
+ * that can never evict a key the current schedule still needs (MAX_REMINDERS = 200).
+ */
+export const MAX_SENT_ENTRIES = 2 * MAX_REMINDERS;
 
 // Input-size bounds, all in UTF-16 code units (String.length), not bytes.
 const MAX_SECRET_LENGTH = 200;
@@ -51,9 +59,84 @@ const MAX_ENDPOINT_LENGTH = 1024;
 const MAX_KEY_LENGTH = 120;
 const MAX_TITLE_LENGTH = 100;
 const MAX_BODY_LENGTH = 300;
+const MAX_SUBSCRIPTION_KEY_LENGTH = 200;
+
+/**
+ * Reminder-key charset. src/domain/reminders/instants.ts emits exactly two shapes,
+ * `${LocalDate}:day-of:0` and `${LocalDate}:lead:${minutes}` — e.g. "2026-10-26:day-of:0"
+ * and "2026-10-26:lead:120" — so every client key is two or more ':'-separated segments
+ * drawn from [A-Za-z0-9_-].
+ *
+ * The mandatory colon is the point. Every property name on Object.prototype
+ * ("__proto__", "constructor", "toString", "__defineGetter__", …) is colon-free, so none of
+ * them is expressible as a reminder key. That is defence in depth, not the fix: `sent` is a
+ * null-prototype object and membership is tested with Object.hasOwn, which is what actually
+ * makes such a key harmless. This regex makes it unreachable as well, and it turns a key the
+ * client could never have produced into a visible 400 instead of a silent drop.
+ *
+ * Linear-time: the character class and the ':' separator are disjoint, so there is no
+ * ambiguity for the engine to backtrack over.
+ */
+const REMINDER_KEY_PATTERN = /^[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)+$/;
+
+/** base64url alphabet, RFC 4648 §5, unpadded. */
+const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
+/**
+ * Octet counts fixed by the Web Push RFCs, verified against the RFC text:
+ *  - p256dh: RFC 8291 §4 — "the uncompressed point form defined in [X9.62] (that is, a
+ *    65-octet sequence that starts with a 0x04 octet)".
+ *  - auth:   RFC 8291 §3.2 — "a hard-to-guess sequence of 16 octets".
+ * Units: octets (bytes) after base64url decoding, not characters.
+ */
+const P256DH_OCTETS = 65;
+const AUTH_OCTETS = 16;
 
 function isRecordObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+/**
+ * A fresh `sent` map with no prototype. Every map in this module is built this way so that
+ * (a) `map[key] = number` for key "__proto__" creates a real own property instead of hitting
+ * the Object.prototype accessor, which ignores a non-object value and drops the entry, and
+ * (b) no inherited name can ever be mistaken for a stored entry. Membership is still tested
+ * with Object.hasOwn rather than `in`, so neither half depends on the other.
+ */
+function emptySent(): Record<string, EpochMs> {
+  return Object.create(null) as Record<string, EpochMs>;
+}
+
+/**
+ * Number of octets a base64url string (RFC 4648 §5, unpadded) decodes to, or -1 when it
+ * decodes to nothing. `atob` needs standard base64 with padding, so the two alphabet
+ * substitutions and the padding are restored first; a length of 4k+1 characters encodes no
+ * whole number of octets. The returned binary string holds one UTF-16 code unit per octet,
+ * so its `.length` IS the octet count.
+ */
+function base64UrlOctets(value: string): number {
+  const remainder = value.length % 4;
+  if (remainder === 1) return -1;
+  const restored = value.replaceAll("-", "+").replaceAll("_", "/");
+  const padded = remainder === 0 ? restored : restored + "=".repeat(4 - remainder);
+  try {
+    return atob(padded).length;
+  } catch {
+    return -1;
+  }
+}
+
+/** An https URL the WHATWG parser accepts, with a host. Not merely a string that starts "https://". */
+function isHttpsUrl(value: string): boolean {
+  // The literal prefix is kept alongside the parse: WHATWG normalises "https:/host/x" (one
+  // slash) to the same URL, and no push service emits that form.
+  if (!value.startsWith("https://")) return false;
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+  return parsed.protocol === "https:" && parsed.hostname.length > 0;
 }
 
 function readString(source: Record<string, unknown>, key: string): string | null {
@@ -80,33 +163,51 @@ export function secretsMatch(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * Time-prune to the 24 h retention window, then cap at MAX_SENT_ENTRIES, newest first.
+ * Time first: an entry that is already expired must never displace a fresh one. Ties on
+ * `at` break by key so the survivor set is a total function of the input and two Workers
+ * pruning the same map produce byte-identical JSON.
+ */
 function prunedSent(sent: Record<string, EpochMs>, now: EpochMs): Record<string, EpochMs> {
-  const kept: Record<string, EpochMs> = {};
-  for (const [key, at] of Object.entries(sent)) {
-    if (now - at <= SENT_RETENTION_MS) kept[key] = at;
+  const fresh = Object.entries(sent).filter(([, at]) => now - at <= SENT_RETENTION_MS);
+  if (fresh.length > MAX_SENT_ENTRIES) {
+    fresh.sort((a, b) => (a[1] === b[1] ? (a[0] < b[0] ? -1 : 1) : b[1] - a[1]));
+    fresh.length = MAX_SENT_ENTRIES;
   }
+  const kept = emptySent();
+  for (const [key, at] of fresh) kept[key] = at;
   return kept;
 }
 
 function parseSubscription(value: unknown): PushSubscriptionRecord | { error: string } {
   if (!isRecordObject(value)) return { error: "subscription must be an object" };
   const endpoint = boundedString(readString(value, "endpoint"), 1, MAX_ENDPOINT_LENGTH);
-  if (endpoint === null || !endpoint.startsWith("https://")) {
+  if (endpoint === null || !isHttpsUrl(endpoint)) {
     return { error: "subscription.endpoint must be an https URL" };
   }
   const keys = value["keys"];
   if (!isRecordObject(keys)) return { error: "subscription.keys must be an object" };
-  const p256dh = boundedString(readString(keys, "p256dh"), 1, 200);
-  const auth = boundedString(readString(keys, "auth"), 1, 100);
-  if (p256dh === null) return { error: "subscription.keys.p256dh must be a string" };
-  if (auth === null) return { error: "subscription.keys.auth must be a string" };
+  const p256dh = boundedString(readString(keys, "p256dh"), 1, MAX_SUBSCRIPTION_KEY_LENGTH);
+  const auth = boundedString(readString(keys, "auth"), 1, MAX_SUBSCRIPTION_KEY_LENGTH);
+  // Alphabet before length: base64UrlOctets is only meaningful on a base64url string.
+  if (p256dh === null || !BASE64URL_PATTERN.test(p256dh) || base64UrlOctets(p256dh) !== P256DH_OCTETS) {
+    return { error: `subscription.keys.p256dh must be ${P256DH_OCTETS} base64url octets` };
+  }
+  if (auth === null || !BASE64URL_PATTERN.test(auth) || base64UrlOctets(auth) !== AUTH_OCTETS) {
+    return { error: `subscription.keys.auth must be ${AUTH_OCTETS} base64url octets` };
+  }
   return { endpoint, keys: { p256dh, auth } };
 }
 
 function parseInstant(value: unknown, index: number, now: EpochMs): ReminderInstant | { error: string } {
   if (!isRecordObject(value)) return { error: `reminder ${index}: must be an object` };
   const key = boundedString(readString(value, "key"), 1, MAX_KEY_LENGTH);
-  if (key === null) return { error: `reminder ${index}: key must be a 1..120 character string` };
+  if (key === null || !REMINDER_KEY_PATTERN.test(key)) {
+    return {
+      error: `reminder ${index}: key must be 1..${MAX_KEY_LENGTH} characters of [A-Za-z0-9_-] segments joined by ":"`,
+    };
+  }
   const at = value["at"];
   if (typeof at !== "number" || !Number.isInteger(at)) {
     return { error: `reminder ${index}: at must be an integer` };
@@ -171,7 +272,7 @@ export function validatePut(body: unknown, now: EpochMs, existing: DeviceRecord 
       secret,
       subscription,
       reminders,
-      sent: existing === null ? {} : prunedSent(existing.sent, now),
+      sent: existing === null ? emptySent() : prunedSent(existing.sent, now),
     },
   };
 }
@@ -179,15 +280,24 @@ export function validatePut(body: unknown, now: EpochMs, existing: DeviceRecord 
 /** Reminders whose instant has passed within the last 15 minutes and were never sent. */
 export function selectDue(record: DeviceRecord, now: EpochMs): ReminderInstant[] {
   return record.reminders
-    .filter((r) => r.at <= now && r.at > now - DUE_WINDOW_MS && !(r.key in record.sent))
+    // Object.hasOwn, never `in`: `"toString" in {}` is true through the prototype chain, so
+    // `in` would report a reminder keyed after any Object.prototype member as already sent
+    // and it would never be delivered.
+    .filter((r) => r.at <= now && r.at > now - DUE_WINDOW_MS && !Object.hasOwn(record.sent, r.key))
     .sort((a, b) => a.at - b.at);
 }
 
-/** Record `keys` as sent at `now`, pruning `sent` entries older than 24 h. Pure. */
+/**
+ * Record `keys` as sent at `now`, then prune `sent` to the 24 h window and the
+ * MAX_SENT_ENTRIES ceiling. Pure.
+ */
 export function markSent(record: DeviceRecord, keys: string[], now: EpochMs): DeviceRecord {
-  const sent = prunedSent(record.sent, now);
-  for (const key of keys) sent[key] = now;
-  return { ...record, sent };
+  // Merge first, prune second, so the size cap is applied to the map that will be stored.
+  // The new keys carry `now`, the newest instant there is, so the cap can never evict them.
+  const merged = emptySent();
+  for (const [key, at] of Object.entries(record.sent)) merged[key] = at;
+  for (const key of keys) merged[key] = now;
+  return { ...record, sent: prunedSent(merged, now) };
 }
 
 /**
@@ -234,7 +344,10 @@ export function parseDeviceRecord(raw: unknown): DeviceRecord | null {
   }
   const rawSent = raw["sent"];
   if (!isRecordObject(rawSent)) return null;
-  const sent: Record<string, EpochMs> = {};
+  // Null-prototype: JSON.parse('{"__proto__":1}') creates an OWN "__proto__" property, so a
+  // stored map can legitimately carry one, and copying it onto a plain object would hit the
+  // accessor and silently lose the entry.
+  const sent = emptySent();
   for (const [key, value] of Object.entries(rawSent)) {
     if (typeof value !== "number" || !Number.isFinite(value)) return null;
     sent[key] = value;
