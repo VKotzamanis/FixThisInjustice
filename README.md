@@ -31,9 +31,9 @@ wording, icons and optional sounds. It never changes a number, a unit or what a 
 
 **iPhone and iPad: iOS 18.4 or later.** Add the site to the Home Screen and open it from the
 icon. Reminders need that install, because iOS grants Web Push only to an installed web app.
-Web Push reached installed iOS web apps in 16.4. The Screen Wake Lock this app uses during a
-session stayed broken inside one until 18.4. `src/ui/hooks/useWakeLock.ts` records the
-reason, and `docs/RUNBOOK-reminders.md` section 12 has the install steps.
+The floor is 18.4 because the Screen Wake Lock this app holds during a session stayed broken
+inside an installed app until then. `src/ui/hooks/useWakeLock.ts` records that reason, and
+`docs/RUNBOOK-reminders.md` section 12 has the install steps.
 
 **Android: Chrome.** Push is supported in a tab, so reminders work without installing. Install
 from the browser menu anyway if you want the app full screen.
@@ -62,7 +62,7 @@ and `npm test` inside `worker/`.
 
 ## Deploy it
 
-The published artefact is `dist/`, produced by the build. No file list is maintained by hand.
+The build produces `dist/`, and the deploy workflow publishes it.
 
 1. Set **Settings**, then **Pages**, then **Build and deployment**, then **Source: GitHub
    Actions**. This is done once.
@@ -119,8 +119,8 @@ delete it, from **Settings**, then **Delete legacy data**.
 
 | Path | Contents |
 | --- | --- |
-| `docs/plans/` | the master plan and the eight numbered implementation plans |
-| `docs/review/` | the security, code and content peer reviews the rewrite was built from |
+| `docs/plans/` | the master plan and the nine numbered implementation plans |
+| `docs/review/` | the security, code and content peer reviews |
 | `docs/design/` | the three design rounds, the shipped direction, and the copy contract |
 | `docs/RUNBOOK-reminders.md` | deploying and operating the reminder Worker |
 | `docs/DEPLOY-CUTOVER-NOTE.md` | publishing the site for the first time, and rolling back |
@@ -130,9 +130,9 @@ delete it, from **Settings**, then **Delete legacy data**.
 
 ## Licences
 
-The icons and the mascot illustrations are own work, generated for this project and inlined by
-`npm run icons:build`. `src/skins/limelight/icons.ts` and `illustrations.ts` carry the
-provenance, and no third-party licence applies to them. The typefaces are Google Fonts
-families installed as `@fontsource` packages, recorded as SIL Open Font License 1.1 in
-`docs/design/round3/2026-09-01-round3-plan.md`. The motivation clip and any sound effects are
-supplied by you and are not in this repository.
+The icons and the mascot illustrations originate with this project, and `npm run icons:build`
+inlines them. `src/skins/limelight/icons.ts` and `src/skins/limelight/illustrations.ts` carry
+the provenance, and no third-party licence applies to them. The typefaces are Google Fonts
+families installed as `@fontsource` packages. Each package declares `OFL-1.1` and ships its
+licence text, and `REFERENCES.md` records the primary licence files. You supply the motivation
+clip and any sound effects, and neither is in this repository.
