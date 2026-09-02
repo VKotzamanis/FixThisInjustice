@@ -303,3 +303,143 @@
 .view.today .strip-day[data-status='rest'] .sd-glyph {
   color: var(--text-2, #8e97a3);
 }
+
+/*
+ * Plan view (P3 Task 6): the block strip, the week scrubber and the sessions of one week.
+ *
+ * The two numbers at the top of this file still hold. The block chips and the range input are
+ * the only controls here, and both carry the 44 px minimum target: the chips restate it
+ * because they opt out of the full-width `.view button` rule, and the range input restates it
+ * because a browser's default track is about 20 px tall, which is not a tap target.
+ */
+.view.plan .plan-blocks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+/* Not full width: the chips form a strip, so the `.view button` rule is overridden here. */
+.view.plan .plan-chip {
+  width: auto;
+  flex: 1 1 auto;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  border-color: var(--line-2, rgba(220, 230, 240, 0.16));
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+/* The block the CURSOR stands in, which is a fact about the programme. */
+.view.plan .plan-chip[data-current='true'] {
+  border-color: var(--accent, #a3e635);
+  color: var(--accent, #a3e635);
+}
+
+/* The block the scrubber is showing, which is a fact about this screen only. */
+.view.plan .plan-chip[aria-pressed='true'] {
+  background: var(--bg-3, #1a1f25);
+}
+
+.view.plan .plan-chip .pc-id {
+  font-weight: 600;
+}
+
+.view.plan .plan-chip .pc-range,
+.view.plan .plan-chip .pc-note {
+  color: var(--text-2, #8e97a3);
+}
+
+.view.plan .plan-chip .pc-flag {
+  color: var(--warn, #fbbf24);
+  letter-spacing: 0.1em;
+}
+
+.view.plan .plan-scrub {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.view.plan .plan-scrub label {
+  font-size: 0.9rem;
+}
+
+.view.plan .plan-scrub input[type='range'] {
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: var(--accent, #a3e635);
+}
+
+.view.plan .plan-week-label {
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2, #8e97a3);
+}
+
+.view.plan .plan-sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.view.plan .plan-session {
+  padding: 0.6rem 0;
+  border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+}
+
+.view.plan .plan-session.is-next {
+  border-left: 2px solid var(--accent, #a3e635);
+  padding-left: 0.6rem;
+}
+
+.view.plan .ps-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.view.plan .ps-ordinal {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2, #8e97a3);
+}
+
+.view.plan .ps-name {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.view.plan .ps-label,
+.view.plan .ps-cursor {
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+}
+
+.view.plan .ps-cursor {
+  margin-left: auto;
+  color: var(--accent, #a3e635);
+}
+
+.view.plan .ps-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 0.75rem;
+  padding: 0.15rem 0;
+  font-size: 0.9rem;
+}
+
+.view.plan .ps-sets {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The rest interval sits under the sets, in the right-hand column of both rows. */
+.view.plan .ps-rest {
+  grid-column: 2;
+  text-align: right;
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+}

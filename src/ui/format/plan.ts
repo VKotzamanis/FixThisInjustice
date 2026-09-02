@@ -102,3 +102,20 @@ export function formatDayOfMonth(date: LocalDate): string {
 export function exerciseName(exerciseId: string): string {
   return EXERCISE_BY_ID[exerciseId]?.name ?? exerciseId;
 }
+
+/**
+ * The DOM id of one planned-exercise row: `plan-row-<sessionId>--<exerciseId>`.
+ *
+ * P8's spotlight deep-links into the Plan view by calling `document.getElementById` on this
+ * id (P8 Task 8), so the link and the row have to agree on the shape byte for byte. It is
+ * defined here, beside the other plan renderings, rather than in the view, so P8 imports it
+ * instead of restating the template: two copies of an id format is a deep link that breaks
+ * silently the day one of them is edited.
+ *
+ * The separator is a DOUBLE hyphen because both ids may contain single hyphens
+ * ("s-1", "barbell-bench-press"); a single separator would make `a-b` + `c` and `a` + `b-c`
+ * the same id. Callers escape the result with CSS.escape before using it in a selector.
+ */
+export function planRowDomId(sessionId: string, exerciseId: string): string {
+  return `plan-row-${sessionId}--${exerciseId}`;
+}
