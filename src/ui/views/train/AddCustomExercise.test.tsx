@@ -98,3 +98,29 @@ describe('AddCustomExercise: the limelight voice', () => {
     expect(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toBeInTheDocument();
   });
 });
+
+/*
+ * The departures board (P8 close-out D).
+ *
+ * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * and NONE of them is a key this component renders. The smoke case therefore asserts the other
+ * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
+ * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
+ * a board row added for one of these keys later moves this expectation with it.
+ */
+describe('AddCustomExercise under the departures board', () => {
+  it('mounts and falls through to the default words, modality labels included', () => {
+    expect(() => {
+      openForm('board');
+    }).not.toThrow();
+
+    expect(copyFor('board', 'button.saveExercise')).toBe(copy('button.saveExercise'));
+    expect(
+      screen.getByRole('button', { name: copyFor('board', 'button.saveExercise') }),
+    ).toBeInTheDocument();
+    // The five keys P8 close-out D added are in no override table, so the option labels are the
+    // default ones and the value is still the enum under every skin.
+    const option = screen.getByRole('option', { name: copyFor('board', 'label.modality.barbell') });
+    expect(option).toHaveValue('barbell');
+  });
+});

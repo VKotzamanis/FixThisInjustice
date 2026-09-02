@@ -123,3 +123,29 @@ describe('SetRow: the limelight voice', () => {
     expect(control.textContent).not.toBe(copyFor('limelight', 'button.logSet'));
   });
 });
+
+/*
+ * The departures board (P8 close-out D).
+ *
+ * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * and NONE of them is a key this component renders. The smoke case therefore asserts the other
+ * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
+ * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
+ * a board row added for one of these keys later moves this expectation with it.
+ */
+describe('SetRow under the departures board', () => {
+  it('mounts and falls through to the default words for every key it renders', () => {
+    withSkin('board');
+    expect(() => {
+      renderRow({ t: lookup('board'), overrides: SKIN_COPY.board });
+    }).not.toThrow();
+
+    expect(copyFor('board', 'button.logSet')).toBe(copy('button.logSet'));
+    expect(screen.getByRole('button', { name: FORMAT.logSetLabel(1) }).textContent).toBe(
+      copyFor('board', 'button.logSet'),
+    );
+    // The counter reads `status.setCounter`, which the board table does not carry either, so
+    // the overlay resolves to the default readout.
+    expect(screen.getByText(FORMAT.setCounter(1, 3, SKIN_COPY.board))).toBeInTheDocument();
+  });
+});
