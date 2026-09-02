@@ -17,8 +17,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Needs no Node: a clip over GitHub's 100 MiB file limit, or a non-MP4 that Safari
-      # cannot decode, should fail before the install spends a minute.
+      # Needs no Node: a clip over GitHub's 100 MiB file limit, or a file that is not an
+      # .mp4, should fail before the install spends a minute.
       - name: Check the motivation clip's size and format
         run: bash scripts/check-media-size.sh
 

@@ -14,8 +14,10 @@
 # it bounds a clip the user picks in Settings, which lives in that browser's IndexedDB and
 # never reaches this directory. A bundled clip must clear the smaller GitHub limit as well.
 #
-# Format: H.264 video with AAC audio in an .mp4 container. Ogg and WebM are rejected here
-# because Safari does not decode them; see docs/motivation-video.md.
+# Format: H.264 video with AAC audio in an .mp4 container. Only .mp4 is accepted: it is the
+# container this project ships and the one every target browser plays H.264/AAC from. The
+# recorded codec evidence covers Ogg audio, which Safari does not decode. No plan records a
+# measured Safari result for VP9 or AV1 in WebM. See docs/motivation-video.md.
 set -eu
 
 DIR="${1:-public/media}"
@@ -28,10 +30,22 @@ if [ ! -d "$DIR" ]; then
 fi
 
 # Listing to a file, then reading from it, keeps the loop in this shell so that a failure
-# inside it survives. A path containing a newline would break this; media filenames do not.
+# inside it survives. `read` splits on newlines, so a filename holding one arrives as two
+# paths and the gate measures neither. That case fails closed rather than open: the second
+# find prints one line per file whatever the name contains, so its count differs from the
+# listing's line count exactly when some name contains a newline.
 listing="$(mktemp)"
 trap 'rm -f "$listing"' EXIT
 find "$DIR" -type f ! -name '.gitkeep' >"$listing"
+
+# `wc` pads its count with spaces on some platforms; strip them before comparing.
+lines="$(wc -l <"$listing" | tr -d " ")"
+entries="$(find "$DIR" -type f ! -name '.gitkeep' -exec printf 'x\n' \; | wc -l | tr -d " ")"
+
+if [ "$lines" -ne "$entries" ]; then
+  echo "check-media-size: FAIL - a filename under $DIR contains a newline. Rename it." >&2
+  exit 1
+fi
 
 status=0
 count=0
@@ -40,10 +54,14 @@ while IFS= read -r file; do
   [ -n "$file" ] || continue
   count=$((count + 1))
 
-  case "$file" in
+  # Lowercased before the match, so CLIP.MP4 passes the gate. src/domain/motivation/assets.ts
+  # tests the extension case-insensitively too, because iOS names its captures .MOV.
+  lower="$(printf '%s' "$file" | tr '[:upper:]' '[:lower:]')"
+
+  case "$lower" in
   *.mp4) ;;
   *)
-    echo "check-media-size: FAIL - $file is not an .mp4. Safari decodes H.264/AAC in MP4; Ogg and WebM are silent there." >&2
+    echo "check-media-size: FAIL - $file is not an .mp4. Only .mp4 is accepted: it is the container this project ships and the one every target browser plays H.264/AAC from." >&2
     status=1
     continue
     ;;
