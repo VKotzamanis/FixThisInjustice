@@ -3,11 +3,11 @@
 // Single source of truth for the view list: the tab strip, the hotkey digits and the spotlight
 // palette all read it, so a view cannot appear in one place and be missing from another.
 //
-// STATE OF THE CUTOVER. src/app/App.tsx still declares its own `ViewId` union and its own `NAV`
-// array; P8 Task 9 is the task that switches the shell over to this file. Until it does, the
-// two lists are held in step by src/ui/nav/views.test.ts, which reads App.tsx as text and
-// asserts the ids and their order match. That test is the reason the duplication is safe to
-// leave standing for one task: it fails the moment either list moves without the other.
+// STATE OF THE CUTOVER. Done: P8 Task 9 switched src/app/App.tsx over to this file. The shell
+// imports ViewId, VIEWS, VIEW_IDS and isViewId from here and declares no list of its own, so
+// the text-parity assertions that held the two lists in step are retired. What remains in
+// src/ui/nav/views.test.ts is the guard against a list growing back in App.tsx, and the guard
+// that every view named here has a switch arm there.
 //
 // The labels are read from the copy table at module load, exactly as App.tsx reads them, so a
 // reworded tab is one edit in src/content/copy.ts and not two.
@@ -17,11 +17,14 @@ import { copy } from '../../content/copy';
 /**
  * The views the shell can show.
  *
- * Kept identical to the union in src/app/App.tsx, including order. `UiPrefs.lastView` is a
+ * The ONE declaration of the list; src/app/App.tsx imports it. `UiPrefs.lastView` is a
  * persisted STRING and not this type: a document written by a later version can name a view
  * this build does not have, so callers narrow with `isViewId` rather than asserting.
+ *
+ * There is no 'export' member. ExportView is mounted inside Settings rather than routed, so a
+ * member here would put a tab and a digit on a screen that is reached by a control.
  */
-export type ViewId = 'today' | 'plan' | 'train' | 'targets' | 'log' | 'settings';
+export type ViewId = 'today' | 'plan' | 'train' | 'targets' | 'log' | 'atlas' | 'settings';
 
 export interface ViewDef {
   id: ViewId;
@@ -42,7 +45,11 @@ export const VIEWS: readonly ViewDef[] = [
   { id: 'train', label: copy('nav.train'), digit: 3 },
   { id: 'targets', label: copy('nav.targets'), digit: 4 },
   { id: 'log', label: copy('nav.log'), digit: 5 },
-  { id: 'settings', label: copy('nav.settings'), digit: 6 },
+  // The specimen collection (P8 Task 5), added to the strip by P8 Task 9. Placed before
+  // Settings because Settings is the last tab on every screen the app has ever had, and moving
+  // it would move the one tab the user reaches by muscle memory.
+  { id: 'atlas', label: copy('nav.atlas'), digit: 6 },
+  { id: 'settings', label: copy('nav.settings'), digit: 7 },
 ];
 
 /** The ids alone, DERIVED from VIEWS so the two cannot disagree. */
@@ -54,9 +61,9 @@ export const VIEW_IDS: readonly ViewId[] = VIEWS.map((v) => v.id);
  *
  * It is a CONSTANT here rather than a `window` keydown listener inside Spotlight.tsx on
  * purpose. Code review A54 was two listeners binding the same key and both running; Task 9
- * exists to make exactly one listener possible, and a second one added here would be the
- * defect that task is written to remove. The palette is therefore a controlled component
- * (`open` / `onClose`) and this string is what Task 9 binds to open it.
+ * made exactly one listener possible, and a second one added here would be the defect that
+ * task was written to remove. The palette is therefore a controlled component (`open` /
+ * `onClose`) and this string is what the shell binds, through src/ui/hotkeys.tsx, to open it.
  */
 export const SPOTLIGHT_COMBO = 'mod+k';
 

@@ -1,4 +1,4 @@
-import { useEffect, useState, type JSX } from 'react';
+import { useEffect, type JSX } from 'react';
 import { FORMAT, copy } from '../../content/copy';
 import type { PlanBlock, PlannedSession } from '../../domain/types';
 import { useActiveCursor } from '../../store/scheduleSelectors';
@@ -10,6 +10,14 @@ import {
   formatSets,
   planRowDomId,
 } from '../format/plan';
+import {
+  browseWeek,
+  resetPlanBrowse,
+  sessionsPerWeekOf,
+  usePlanBrowseWeek,
+  weekCountOf,
+  weekOfIndex,
+} from '../planBrowse';
 import { requestPlanFocus, usePlanRowFocus } from '../planFocus';
 import './views.css';
 
@@ -36,19 +44,6 @@ import './views.css';
 export function deloadNote(setModifier: number): string {
   const cutPct = Math.round((1 - setModifier) * 100); // [%] of planned sets removed
   return FORMAT.deloadNote(cutPct);
-}
-
-/**
- * Zero-based week index of a session position.
- *
- * @param sessionIndex 0-based position in `PlanTemplate.sessions`
- * @param sessionsPerWeek [sessions/week]
- */
-export function weekOfIndex(sessionIndex: number, sessionsPerWeek: number): number {
-  // A plan with no weekly rate cannot be chunked, and dividing by it would put Infinity into
-  // the scrubber's value. Week 0 is the only answer that is not a lie.
-  if (sessionsPerWeek <= 0) return 0;
-  return Math.floor(sessionIndex / sessionsPerWeek);
 }
 
 /**
@@ -144,8 +139,13 @@ export function PlanView(): JSX.Element {
    * stored plan in place, so a reload would open the Plan view on week 1 of whatever the
    * cursor said at boot. Deriving the shown week and letting a scrub override it keeps the
    * default correct without a synchronising effect.
+   *
+   * The scrub position lives in src/ui/planBrowse.tsx rather than in a useState here (P8 Task
+   * 9): the keys that move it are bound one level up, in the shell that owns the app's single
+   * keydown listener, and a local setter is unreachable from there. It is still a VIEW of the
+   * plan and never a position in it - nothing on this screen writes to the store (A14).
    */
-  const [scrubbedWeek, setScrubbedWeek] = useState<number | null>(null);
+  const browsedWeek = usePlanBrowseWeek();
 
   /*
    * The shown week is derived ABOVE the early return, not after it, because the deep-link
@@ -154,12 +154,19 @@ export function PlanView(): JSX.Element {
    * showing week 0, which is what the "no plan" message occupies.
    */
   // [sessions/week] A plan that claims none would divide the scrubber by zero.
-  const spw = plan !== null && plan.sessionsPerWeek > 0 ? plan.sessionsPerWeek : 1;
+  const spw = sessionsPerWeekOf(plan);
   // [weeks] Derived from the sessions actually held, not from PlanTemplate.weeks: the
   // scrubber must not offer a week the session list cannot fill.
-  const weekCount = plan === null ? 1 : Math.max(1, Math.ceil(plan.sessions.length / spw));
+  const weekCount = weekCountOf(plan);
   const cursorWeek = cursor === null ? 0 : weekOfIndex(cursor.nextSessionIndex, spw);
-  const week = Math.min(Math.max(scrubbedWeek ?? cursorWeek, 0), weekCount - 1); // 0-based
+  const week = Math.min(Math.max(browsedWeek ?? cursorWeek, 0), weekCount - 1); // 0-based
+
+  /*
+   * The browse position is module state, so it outlives this component unless something clears
+   * it. Cleared on unmount, which keeps the behaviour the local useState had: leaving the view
+   * and coming back shows the cursor's week, not the week that was being read ten minutes ago.
+   */
+  useEffect(() => resetPlanBrowse, []);
 
   /*
    * Delivers a deep link from the spotlight palette to one row (P8 Task 8). Called here,
@@ -192,7 +199,7 @@ export function PlanView(): JSX.Element {
       return;
     }
     const targetWeek = weekOfIndex(index, spw);
-    if (targetWeek !== week) setScrubbedWeek(targetWeek);
+    if (targetWeek !== week) browseWeek(targetWeek);
   }, [focusTarget, plan, spw, week]);
 
   // Every hook runs before this return, so the early exit does not change the hook order.
@@ -234,7 +241,7 @@ export function PlanView(): JSX.Element {
               data-current={isCurrent ? 'true' : 'false'}
               aria-pressed={weekOfIndex(block.firstSessionIndex, spw) === week}
               onClick={() => {
-                setScrubbedWeek(weekOfIndex(block.firstSessionIndex, spw));
+                browseWeek(weekOfIndex(block.firstSessionIndex, spw));
               }}
             >
               <span className="pc-id">{FORMAT.blockLabel(block.index + 1)}</span>{' '}
@@ -261,7 +268,7 @@ export function PlanView(): JSX.Element {
           step={1}
           value={week + 1}
           onChange={(e) => {
-            setScrubbedWeek(Number(e.target.value) - 1);
+            browseWeek(Number(e.target.value) - 1);
           }}
         />
         <span className="plan-week-label" data-testid="week-label">

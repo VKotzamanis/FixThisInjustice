@@ -18,6 +18,9 @@ import { addDays, todayLocal } from '../domain/dates';
 import { probeBundledVideo, resolveVideoSrc } from '../domain/motivation/assets';
 import { EMPTY_SESSION } from '../store/sessionMirror';
 import { MONDAY, NOW_MS, PROFILE_ID, TZ_ATHENS, seedState } from '../test/scheduleFixtures';
+import { VIEWS } from '../ui/nav/views';
+import type { ViewId } from '../ui/nav/views';
+import { resetPlanBrowse } from '../ui/planBrowse';
 
 /**
  * The download helper is the seam. It is the one thing in these tests that
@@ -645,5 +648,176 @@ describe('toast queue', () => {
 
     expect(within(stack).getByRole('status')).toBeInTheDocument();
     expect(within(stack).getByRole('alert')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The keyboard (P8 Task 9).
+ *
+ * ONE window listener holds every binding (src/ui/hotkeys.tsx). Code review A54 was two of
+ * them bound to the same keys, so what is asserted here is the wiring the registry cannot
+ * assert for itself: that the shell binds the registry's digits and SPOTLIGHT_COMBO, that the
+ * plan keys are scoped to the Plan view, and that both guards - a text field and an open modal
+ * dialog - hold in the real app rather than only against a stub tree.
+ */
+describe('keyboard', () => {
+  const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
+  /** [weeks] Six sessions at three a week, which is what the scrubber shows. */
+  const WEEKS = 2;
+
+  /** The digit the registry gives a view, so the test presses what the app binds. */
+  function digitFor(id: ViewId): string {
+    const view = VIEWS.find((v) => v.id === id);
+    if (view === undefined) throw new Error(`no view '${id}' in the registry`);
+    return String(view.digit);
+  }
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    useAppStore.setState(
+      seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }),
+    );
+    // Module state: a week left browsed by one test would be the week the next one opens on.
+    resetPlanBrowse();
+  });
+
+  afterEach(() => {
+    resetPlanBrowse();
+  });
+
+  it('switches view on the digit the registry gives it', () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: digitFor('plan') });
+
+    expect(useAppStore.getState().ui.lastView).toBe('plan');
+    expect(screen.getByRole('button', { name: copy('nav.plan') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('opens the spotlight palette on the combo the registry names', () => {
+    render(<App />);
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  it('reaches the Atlas, which is a tab like any other', async () => {
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: copy('nav.atlas') }));
+
+    expect(screen.getByRole('heading', { name: copy('hero.atlas') })).toBeInTheDocument();
+
+    // And by its digit, which is the same routing reached the other way.
+    fireEvent.keyDown(window, { key: digitFor('today') });
+    expect(useAppStore.getState().ui.lastView).toBe('today');
+    fireEvent.keyDown(window, { key: digitFor('atlas') });
+    expect(screen.getByRole('heading', { name: copy('hero.atlas') })).toBeInTheDocument();
+  });
+
+  it('ignores a key typed into a field', () => {
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'plan' });
+    });
+    render(<App />);
+
+    // The week scrubber: an INPUT, which is what the guard is about. In a browser the range
+    // control handles this key itself; what must not happen is the app switching view under
+    // a user who is operating a control.
+    fireEvent.keyDown(screen.getByLabelText(copy('label.week')), { key: digitFor('today') });
+
+    expect(useAppStore.getState().ui.lastView).toBe('plan');
+  });
+
+  it('ignores a key while a modal dialog is open', () => {
+    render(<App />);
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: digitFor('log') });
+
+    // The palette is still the thing on screen, and nothing switched behind it.
+    expect(useAppStore.getState().ui.lastView).toBe('today');
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  it('browses the plan by week, and only while the Plan view is showing', () => {
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'plan' });
+    });
+    render(<App />);
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
+
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(2, WEEKS));
+
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
+
+    // j and k move by BLOCK. This plan has one block, so the shown week does not move, which
+    // is the clamped end of the strip rather than a wrap to the other end.
+    fireEvent.keyDown(window, { key: 'j' });
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
+
+    // The same key on another view reaches nothing: the binding is in the 'plan' scope, and
+    // binding it globally is what made `j` advance the week from inside Train (A54).
+    fireEvent.keyDown(window, { key: digitFor('log') });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    fireEvent.keyDown(window, { key: digitFor('plan') });
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
+  });
+
+  it('opens the Konami overlay on the sequence, and closes it on any key', () => {
+    render(<App />);
+
+    for (const key of [
+      'ArrowUp',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowRight',
+      'b',
+      'a',
+    ]) {
+      fireEvent.keyDown(window, { key });
+    }
+
+    expect(screen.getByText(copy('status.konami'))).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'q' });
+
+    expect(screen.queryByText(copy('status.konami'))).toBeNull();
+  });
+
+  it('lets no key reach the app behind the Konami overlay', () => {
+    render(<App />);
+    for (const key of [
+      'ArrowUp',
+      'ArrowUp',
+      'ArrowDown',
+      'ArrowDown',
+      'ArrowLeft',
+      'ArrowRight',
+      'ArrowLeft',
+      'ArrowRight',
+      'b',
+      'a',
+    ]) {
+      fireEvent.keyDown(window, { key });
+    }
+
+    // The overlay is a modal dialog, so the digit dismisses it and switches nothing: one key
+    // press, one visible effect.
+    fireEvent.keyDown(window, { key: digitFor('settings') });
+
+    expect(screen.queryByText(copy('status.konami'))).toBeNull();
+    expect(useAppStore.getState().ui.lastView).toBe('today');
   });
 });

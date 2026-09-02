@@ -542,7 +542,10 @@ export type CopyKey =
   | 'button.downloadBackup'
   | 'button.wipeConfirm'
   | 'button.legacyReopen'
-  | 'advice.wipeRemoves';
+  | 'advice.wipeRemoves'
+  // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9; appended by that task) ---
+  | 'nav.atlas'
+  | 'status.konami';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1336,6 +1339,16 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
   'advice.wipeRemoves': 'Every profile, plan, session, set and note on this device is removed.',
+
+
+  // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9) ---
+  // The eighth tab. One word, like every other tab label, and the name the view already gives
+  // itself: the specimen collection, not "cards" or "collection".
+  'nav.atlas': 'Atlas',
+  // The whole content of the Konami overlay. Playful, and still the default skin: no emoji
+  // (R6), no exclamation mark (R8), no dash as a connector (R5). It states what the sequence
+  // did and what it did not buy, which is the only thing the screen is for.
+  'status.konami': 'No cheat code found. A squat cannot be skipped.',
 };
 
 /**

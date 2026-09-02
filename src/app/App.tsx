@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { copy } from '../content/copy';
 import { useAppStore } from '../store';
@@ -11,6 +11,11 @@ import {
   useLoadError,
   useSaveError,
 } from '../store/selectors';
+import { HotkeyProvider, useHotkeys } from '../ui/hotkeys';
+import { SPOTLIGHT_COMBO, VIEWS, isViewId } from '../ui/nav/views';
+import type { ViewId } from '../ui/nav/views';
+import { stepBrowseBlock, stepBrowseWeek } from '../ui/planBrowse';
+import { KonamiOverlay, useKonamiCode } from '../ui/components/KonamiOverlay';
 import { SessionIndicator } from '../ui/components/SessionIndicator';
 import { Spotlight } from '../ui/components/Spotlight';
 import { SpotlightButton } from '../ui/components/SpotlightButton';
@@ -20,6 +25,7 @@ import { MigrationGate } from '../ui/migration/MigrationGate';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
 import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
+import { AtlasView } from '../ui/views/AtlasView';
 import { LogView } from '../ui/views/LogView';
 import { PlanView } from '../ui/views/PlanView';
 import { SettingsView } from '../ui/views/SettingsView';
@@ -33,29 +39,12 @@ import { UpdatePrompt } from './UpdatePrompt';
 import './appShell.css';
 
 /**
- * The view switch every plan adds to. P3-P8 replace a placeholder entry with their own view
- * and add nothing else here: the union, NAV and the switch below are the three places a view
- * is named, and they are kept adjacent so a view cannot exist in one and not the others.
+ * The view list is NOT declared here. src/ui/nav/views.ts is the one place a view is named:
+ * the tab strip below, the hotkey digits, the spotlight palette and `isViewId` all read it, so
+ * a view cannot exist in one of them and be missing from another (P8 Task 9). What is left in
+ * this file is the switch that says which component each id renders, and
+ * src/ui/nav/views.test.ts asserts there is an arm here for every view the registry names.
  */
-export type ViewId = 'today' | 'plan' | 'train' | 'targets' | 'log' | 'settings';
-
-const NAV: { id: ViewId; label: string }[] = [
-  { id: 'today', label: copy('nav.today') },
-  { id: 'plan', label: copy('nav.plan') },
-  { id: 'train', label: copy('nav.train') },
-  { id: 'targets', label: copy('nav.targets') },
-  { id: 'log', label: copy('nav.log') },
-  { id: 'settings', label: copy('nav.settings') },
-];
-
-/**
- * `UiPrefs.lastView` is a persisted string, not a ViewId: a document written by a later
- * version can name a view this build does not have. Checking it against NAV rather than
- * asserting the type is what keeps that document loading instead of rendering nothing.
- */
-function isViewId(value: string): value is ViewId {
-  return NAV.some((n) => n.id === value);
-}
 
 /**
  * Navigation and the view switch, mounted only once a profile exists.
@@ -79,11 +68,31 @@ function ViewShell(): ReactElement {
   const view: ViewId = isViewId(stored) ? stored : 'targets';
 
   /*
-   * The spotlight palette is CONTROLLED, and this is the only thing that opens it. It
-   * registers no key listener of its own (code review A54 was two window listeners bound to
-   * the same combo, both firing), so SPOTLIGHT_COMBO is deliberately NOT bound here: the
-   * hotkey registry owns it, and a second binding in this file would be exactly the defect
-   * that split it out.
+   * The hotkey registry's ACTIVE SCOPE is the view on screen, so a key bound to 'plan' is
+   * inert on every other view and cannot be shadowed by a global one (code review A54). The
+   * provider is mounted here, inside the profile and readiness gates, because the digits
+   * switch views and there are no views to switch between until the shell is up.
+   */
+  return (
+    <HotkeyProvider activeScope={view}>
+      <ViewSwitch view={view} />
+    </HotkeyProvider>
+  );
+}
+
+/**
+ * The tab strip, the view switch and everything the keyboard reaches.
+ *
+ * Split from ViewShell only because `useHotkeys` has to be called BELOW the provider that owns
+ * the listener. Every hook here runs unconditionally, including useKonamiCode: calling it
+ * behind a condition is code review A52, and the state it sets is what is conditional.
+ */
+function ViewSwitch({ view }: { view: ViewId }): ReactElement {
+  /*
+   * The spotlight palette is CONTROLLED, and the two things below are the only things that
+   * open it: the tap target, and the one binding on SPOTLIGHT_COMBO. The palette registers no
+   * key listener of its own (code review A54 was two window listeners bound to the same combo,
+   * both firing).
    *
    * `closeSpotlight` is a stable identity so the palette's `onClose` prop does not change on
    * every keystroke in the query box; the open handler is not, because it is passed to a
@@ -94,10 +103,70 @@ function ViewShell(): ReactElement {
     setSpotlightOpen(false);
   }, []);
 
+  const [konami, setKonami] = useState(false);
+  const closeKonami = useCallback(() => {
+    setKonami(false);
+  }, []);
+  // Unconditionally, and with a stable callback: the hook is a sequence detector that binds no
+  // combo, so it cannot shadow anything in the registry.
+  useKonamiCode(
+    useCallback(() => {
+      setKonami(true);
+    }, []),
+  );
+
+  /*
+   * The app's own keys. The digits come from the registry rather than from a list written out
+   * here, so a view added there is reachable from the keyboard without a second edit.
+   *
+   * Escape is NOT bound. ModalShell already closes an open dialog on Escape from its own
+   * listener, and ToastQueue already withdraws the front toast on it; a third handler would
+   * close two things with one press.
+   */
+  const globalKeys = useMemo<Record<string, () => void>>(() => {
+    const map: Record<string, () => void> = {
+      [SPOTLIGHT_COMBO]: () => {
+        setSpotlightOpen(true);
+      },
+    };
+    for (const v of VIEWS) {
+      map[String(v.digit)] = () => {
+        useAppStore.getState().setUi({ lastView: v.id });
+      };
+    }
+    return map;
+  }, []);
+  useHotkeys('global', globalKeys);
+
+  /*
+   * Plan browsing, in the 'plan' SCOPE: these keys mean nothing on any other view, and binding
+   * them globally is what made `j` advance the programme week from inside the Train view
+   * (code review A54). They move the scrubber, which is a view of the plan and never a
+   * position in it (A14), so nothing here writes to the store.
+   */
+  const planKeys = useMemo<Record<string, () => void>>(
+    () => ({
+      j: () => {
+        stepBrowseBlock(1);
+      },
+      k: () => {
+        stepBrowseBlock(-1);
+      },
+      arrowright: () => {
+        stepBrowseWeek(1);
+      },
+      arrowleft: () => {
+        stepBrowseWeek(-1);
+      },
+    }),
+    [],
+  );
+  useHotkeys('plan', planKeys);
+
   return (
     <>
       <nav className="viewnav" aria-label={copy('nav.label')}>
-        {NAV.map((n) => (
+        {VIEWS.map((n) => (
           <button
             key={n.id}
             type="button"
@@ -129,6 +198,8 @@ function ViewShell(): ReactElement {
       {view === 'plan' && <PlanView />}
       {view === 'train' && <TrainView />}
       {view === 'log' && <LogView />}
+      {view === 'atlas' && <AtlasView />}
+      {konami && <KonamiOverlay onClose={closeKonami} />}
     </>
   );
 }
