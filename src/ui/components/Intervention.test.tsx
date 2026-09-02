@@ -89,6 +89,30 @@ describe('Intervention', () => {
     expect(screen.queryByTestId('intervention')).toBeNull();
   });
 
+  /**
+   * P9 Task 17. Round three section 4.4 draws `alert` at the motivation title and `heart` at the
+   * intervention body, and both now render through SkinLabel. The assertion is on the ICON, not
+   * on the words: the words are covered above, and what these two tests pin is that the glyph
+   * arrives on limelight and that nothing but text reaches the other skins, which is copy
+   * contract R6 (clinical is glyph-free) and the board's own no-graphics rule.
+   */
+  it('puts the two round-three icons beside the title and the body on limelight', () => {
+    withSkin('limelight');
+    const { container } = render(<Intervention review={HANDLED} />);
+    const title = container.querySelector('.ll-intervention-title');
+    const body = container.querySelector('.ll-intervention-body');
+    expect(title?.querySelectorAll('img.ll-icon')).toHaveLength(1);
+    expect(body?.querySelectorAll('img.ll-icon')).toHaveLength(1);
+    // Decorative: the heading's accessible name is still the string alone.
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') }));
+  });
+
+  it('renders no image at all on clinical', () => {
+    const { container } = render(<Intervention review={HANDLED} />);
+    expect(container.querySelectorAll('img')).toHaveLength(0);
+    expect(screen.getByRole('heading', { name: copy('hero.weeklyTargetMissed') }));
+  });
+
   it('plays the opening sound once per appearance', () => {
     const { rerender } = render(<Intervention review={PENDING} />);
     expect(playSfx).not.toHaveBeenCalled();

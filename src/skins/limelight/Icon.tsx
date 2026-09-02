@@ -73,32 +73,45 @@ export function Icon({
  * Every position where the stan-twitter parent carried an emoji, mapped to the icon that
  * replaced it (round-three plan section 4.4, the "where it is used" column).
  *
- * ALL THIRTEEN positions the design named are now here. Nine landed when this file was written;
- * the four that could not -- status.weekDeltaNegative (skull), status.prStamp (crown),
- * advice.interventionBody (heart) and hero.weekReview (fan) -- had no CopyKey until P8 Task 11
- * added those four strings to the copy table, and the value type is
- * Partial<Record<CopyKey, ...>>, so each of them was a compile error rather than a silent miss
- * until its string existed.
+ * THIS MAP IS A `SkinLabel` LOOKUP TABLE and nothing else. An entry does work only where some
+ * component renders `<SkinLabel copyKey={...} />`, so P9 Task 17 reconciled the two: ten of the
+ * twelve entries below now have such a call site, provable with `git grep -n SkinLabel -- src`,
+ * and the two that do not are the two positions the design named and the app has not built. The
+ * three entries that were removed could not work at any call site:
  *
- * RECONCILED AGAINST 4.4 AGAIN IN P8 CLOSE-OUT B, which added the two rows below the fold and
- * settled the rest of the sixteen-icon table:
+ *   status.weekMetStamp  WeekStamp.tsx places `<Icon name="crown" />` itself, beside the word.
+ *                        A component that holds its own art needs no entry, and the entry made
+ *                        it look as though the crown arrived through the key.
+ *   status.weekDeltaNegative
+ *                        The string carries {completed} and {target} and is rendered through
+ *                        FORMAT.withSlots (Intervention.tsx, WeekStamp.tsx). SkinLabel renders
+ *                        `t(copyKey)` raw, so it would print the slot names. A slot-bearing key
+ *                        is not addressable here in any future either: a component that wants
+ *                        4.4's `skull` places it the way WeekStamp places the crown. The
+ *                        intervention deliberately does not (section 5's tone decision puts the
+ *                        flop on the review screen, not on the screen shown to the person).
+ *   button.pauseTicker   The key is the STRIP's accessible name, passed to Marquee as the
+ *                        `label` string prop (TodayView.tsx) and rendered as an aria-label.
+ *                        SkinLabel returns an element, so it cannot supply an attribute, and
+ *                        the strip already places `megaphonePanel`, the item icons and
+ *                        `sparklePanel` inside the button itself.
  *
- *   pause      4.4 says "pause control". The app has exactly one, the ticker's strip, and
- *              `button.pauseTicker` did not exist when this map was written (P8 Task 14).
- *   crown      4.4 says "pr_stamp MOTHER, settings skin row". The stamp position moved to
- *              `status.weekMetStamp` in close-out B, so the crown is mapped at both keys: the
- *              week stamp is the position the design drew, and `status.prStamp` keeps it for
- *              the record toast that reads the same word.
- *   lips       NO position in this app, and none is invented. 4.4 gives it the quote-tweet
- *              attribution, which was never built (the plan's own "what this plan does not
- *              do"), and "the reunion", which is `hero.weekReview` -- given to `fan` in the row
- *              above it in the same table.
- *   skip       already mapped at both of its 4.4 positions.
+ * THE TWO WITHOUT A CALL SITE, each naming the component that will place it:
+ *
+ *   hero.weekReview (fan)   4.4's "Week review header". The week-review screen (section 5's
+ *                           third illustration) is not built. The key is a plain string, so the
+ *                           header that gets built reaches the fan by rendering SkinLabel and
+ *                           nothing else has to change here.
+ *   status.prStamp (crown)  4.4's "pr_stamp MOTHER". The stamp position itself moved to
+ *                           `status.weekMetStamp` in P8 close-out B; this key is kept for the
+ *                           record toast, which today queues `coach.loadPr` / `coach.repPr`
+ *                           through ToastQueue.tsx and renders no key of its own.
  *
  * The marquee lead (megaphone), its separators (sparkle) and the setlist bullet (barbell) are
- * absent by design: they are placed by a component, not by a copy key. So is the pause glyph
- * inside the Marquee itself; the row below names the STRIP's copy key, which is what a call
- * site reaching SkinLabel would use.
+ * absent by design, as are `pause` and `skull` for the reasons above: they are placed by a
+ * component, not by a copy key. `lips` has NO position in this app and none is invented -- 4.4
+ * gives it the quote-tweet attribution, which was never built, and "the reunion", which is
+ * `hero.weekReview`, given to `fan` in the row above it in the same table.
  */
 export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>> = {
   'button.startSession': 'nails',
@@ -110,14 +123,10 @@ export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>
   'hero.weeklyTargetMissed': 'alert',
   'status.rest': 'stopwatchPanel',
   'label.settingsSkin': 'crown',
-  // --- added with their strings (P8 Task 11) ---
-  'status.weekDeltaNegative': 'skull',
-  'status.prStamp': 'crown',
   'advice.interventionBody': 'heart',
+  // --- no call site yet; the comment above names the position each waits for ---
   'hero.weekReview': 'fan',
-  // --- reconciled against round three section 4.4 (P8 close-out B) ---
-  'button.pauseTicker': 'pause',
-  'status.weekMetStamp': 'crown',
+  'status.prStamp': 'crown',
 };
 
 /**
