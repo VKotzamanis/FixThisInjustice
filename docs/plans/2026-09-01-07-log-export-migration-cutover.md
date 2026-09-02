@@ -87,10 +87,10 @@ Stated before the work: the migration gate is checked in Task 2 against a constr
 | `src/ui/components/AmrapSpark.test.tsx` | Weekly maxima and empty state. |
 | `src/ui/components/ConfirmDestructive.tsx` | Typed-`DELETE` confirmation shell. |
 | `src/ui/components/ConfirmDestructive.test.tsx` | Confirm button stays disabled until the word matches. |
-| `src/ui/download.ts` | `downloadText(filename, mime, text)` — the only Blob/anchor code. |
+| `src/app/download.ts` | `downloadText(filename, text, mime?)`, the only Blob and anchor code. |
 | `src/domain/export/summary.ts` | `buildSummary(state, profileId, now)` → plain text. |
 | `src/domain/export/summary.test.ts` | Unit system stated; no hard-coded baseline. |
-| `src/domain/export/ics.ts` | `buildIcs(events, nowMs)` → RFC 5545 text. |
+| `src/domain/export/ics.ts` | `buildIcs(events, timeZone, nowMs)` returns RFC 5545 text. |
 | `src/domain/export/ics.test.ts` | CRLF, folding, `VALARM`, escaping. |
 | `README.md` | The only prose deliverable that ships. |
 
@@ -100,7 +100,7 @@ Stated before the work: the migration gate is checked in Task 2 against a constr
 | --- | --- |
 | `src/domain/types.ts` | Add `AppState.notes`, `AppState.customExercises`, `UiPrefs.legacyMigration`. |
 | `src/domain/schema.ts` | Zod mirrors for the three additions. |
-| `src/store/persistence.ts` | Add `readLegacyV2`, `hasLegacyV2`, `deleteLegacyData`. |
+| `src/store/persistence.ts` | Add `readLegacyV2Raw`, `readLegacyBundle`, `hasLegacyV2`, `hasAnyLegacyKey`, `deleteLegacyV2`. |
 | `src/app/App.tsx` | Wrap the view switch in `<MigrationGate>`. |
 | `src/ui/views/LogView.tsx` | Replace the placeholder with the real view. |
 | `src/ui/views/ExportView.tsx` | Replace the placeholder with the real view. |
@@ -681,8 +681,9 @@ git commit -m "feat: freeze the legacy PLAN decoding table for the v2 migration"
 - Consumes: `legacyDateOf`, `legacyExerciseIdAt`, `legacySlot`, `legacyTargetSets`, `legacyIdForName`, `V2_DAY_LABEL`, `LEGACY_SESSION_ID` from Task 1; `newId(): string` from `src/domain/ids.ts` (P1); `toStoredLoad(entered: number, units: UnitSystem): Kg`, `toStoredMass(entered: number, units: UnitSystem): Kg` from `src/domain/units.ts` (P1, §6.1); `instantOf(date, time, tz): EpochMs`, `isValidLocalDate(s): s is LocalDate`, `compareLocalDate(a, b): -1 | 0 | 1` from `src/domain/dates.ts` (P1, §6.2); `CURRENT_SCHEMA_VERSION: number` from `src/domain/schema.ts` (P1).
 - Produces, for Tasks 3, 5 and 6:
   - `migrateV2(raw: unknown, opts: MigrateV2Options): MigrateV2Result`
-  - `applyMigration(base: AppState, migrated: AppState, profileId: string): AppState`
-  - `MigrateV2Options`, `MigrateV2Result`, `MigrationReport`, `MigrationSkip`
+  - `applyMigration(base: AppState, migrated: AppState, profileId: string): ApplyMigrationResult`
+  - `MigrateV2Options`, `MigrateV2Result`, `ApplyMigrationResult`, `MigrationReport`,
+    `MigrationSkip`, `LegacyUnit`
   - `CUP_ML: 500`
 - Produces, for every P7 test file: `makeProfile`, `makePlan`, `makeAvailability`, `makeBlankState` from `src/test/migrationFactories.ts`.
 
@@ -1421,11 +1422,17 @@ import {
   legacyTargetSets,
 } from "./v2plan";
 
+export type LegacyUnit = "kg" | "lb";
+
 export interface MigrateV2Options {
-  /** the unit the user typed into the old set-log weight box */
-  loadsEnteredIn: UnitSystem;
-  /** the unit the user typed into the old body-mass box (its field was named `lb`) */
-  bodyMassEnteredIn: UnitSystem;
+  /** The unit the user says the legacy set-log weight box was typed in. */
+  units: LegacyUnit;
+  /**
+   * The unit the legacy body-mass field held. Defaults to 'lb', which is what the field name,
+   * its placeholder, its 100..300 gate and the legacy export all say it was.
+   */
+  bodyMassUnits?: LegacyUnit;
+  /** IANA zone used to place a legacy date on the time line. */
   timezone: TimeZone;
   profile: Profile;
   plan: PlanTemplate;
@@ -1447,10 +1454,14 @@ export interface MigrationReport {
   notesKept: number;
 }
 
-export interface MigrateV2Result {
-  state: AppState;
-  report: MigrationReport;
-}
+export type MigrateV2Result =
+  | { ok: true; state: AppState; report: MigrationReport }
+  | { ok: false; reason: string };
+
+export type ApplyMigrationResult =
+  /** `skipped` holds the migrated sets the target state already had. */
+  | { ok: true; state: AppState; skipped: MigrationSkip[] }
+  | { ok: false; reason: string };
 
 /** console-store.jsx:95 — "waterTarget: 7, // 500 ml × 7 = 3.5 L". */
 export const CUP_ML = 500; // mL per legacy cup
@@ -2076,7 +2087,14 @@ single entry point for migration code:
 
 ```ts
 export { migrateV2, applyMigration, CUP_ML } from "./v2";
-export type { MigrateV2Options, MigrateV2Result, MigrationReport, MigrationSkip } from "./v2";
+export type {
+  ApplyMigrationResult,
+  LegacyUnit,
+  MigrateV2Options,
+  MigrateV2Result,
+  MigrationReport,
+  MigrationSkip,
+} from "./v2";
 ```
 
 - [ ] **Step 13: Run the whole suite and lint**
@@ -2098,7 +2116,7 @@ git commit -m "feat: migrate the legacy fti.console.v2 store into v3 state with 
 **Files:**
 - Modify: `src/store/persistence.ts` (legacy read/delete)
 - Modify: `src/store/index.ts` (bring `setUi` forward from P8)
-- Create: `src/ui/download.ts`
+- Create: `src/app/download.ts`
 - Create: `src/ui/migration/MigrationWizard.tsx`
 - Create: `src/ui/migration/MigrationWizard.test.tsx`
 - Create: `src/ui/migration/MigrationGate.tsx`
@@ -2108,8 +2126,8 @@ git commit -m "feat: migrate the legacy fti.console.v2 store into v3 state with 
 **Interfaces:**
 - Consumes: `migrateV2`, `applyMigration`, `MigrationReport` from Task 2; `useAppStore` with `replaceState(next: AppState): void`, `exportJson(): string` (P1, §6.7); `AppStateSchema` from `src/domain/schema.ts` (P1); `Profile`, `PlanTemplate`, `AppState`, `UnitSystem`, `LocalDate` from `src/domain/types.ts`; `isValidLocalDate`, `deviceTimeZone` from `src/domain/dates.ts` (P1, §6.2).
 - Produces:
-  - `readLegacyV2(): string | null`, `hasLegacyV2(): boolean`, `deleteLegacyData(): void` from `src/store/persistence.ts` — used again by Task 6
-  - `downloadText(filename: string, mime: string, text: string): void` from `src/ui/download.ts` — used again by Tasks 5 and 6
+  - `readLegacyV2Raw(): string | null`, `readLegacyBundle(): string | null`, `hasLegacyV2(): boolean`, `hasAnyLegacyKey(): boolean`, `deleteLegacyV2(): void` from `src/store/persistence.ts`, used again by Task 6. `readLegacyBundle()` returns a JSON envelope of all three legacy keys, which is what the wipe and the wizard both export.
+  - `downloadText(filename: string, text: string, mime?: string): void` from `src/app/download.ts`, used again by Tasks 5 and 6. `mime` defaults to `application/json`.
   - `setUi(patch: Partial<UiPrefs>): void` on the store (already in master plan §6.7, scheduled for P8; brought forward here)
   - `<MigrationGate>{children}</MigrationGate>` from `src/ui/migration/MigrationGate.tsx`
   - `<MigrationWizard …>` from `src/ui/migration/MigrationWizard.tsx`
@@ -2119,7 +2137,7 @@ git commit -m "feat: migrate the legacy fti.console.v2 store into v3 state with 
 Append to `src/store/persistence.test.ts` (P1 created this file):
 
 ```ts
-import { deleteLegacyData, hasLegacyV2, readLegacyV2 } from "./persistence";
+import { deleteLegacyV2, hasLegacyV2, readLegacyV2Raw } from "./persistence";
 
 describe("legacy console keys", () => {
   beforeEach(() => {
@@ -2128,13 +2146,13 @@ describe("legacy console keys", () => {
 
   it("reports no legacy store when the key is absent", () => {
     expect(hasLegacyV2()).toBe(false);
-    expect(readLegacyV2()).toBeNull();
+    expect(readLegacyV2Raw()).toBeNull();
   });
 
   it("returns the raw legacy payload without parsing it", () => {
     window.localStorage.setItem("fti.console.v2", '{"week":2}');
     expect(hasLegacyV2()).toBe(true);
-    expect(readLegacyV2()).toBe('{"week":2}');
+    expect(readLegacyV2Raw()).toBe('{"week":2}');
   });
 
   it("deletes all three keys the legacy app owned", () => {
@@ -2142,7 +2160,7 @@ describe("legacy console keys", () => {
     window.localStorage.setItem("fti.plan.v1", "{}");
     window.localStorage.setItem("fti.video.instance", "https://yewtu.be");
     window.localStorage.setItem("fti.v3", '{"schemaVersion":3}');
-    deleteLegacyData();
+    deleteLegacyV2();
     expect(window.localStorage.getItem("fti.console.v2")).toBeNull();
     expect(window.localStorage.getItem("fti.plan.v1")).toBeNull();
     expect(window.localStorage.getItem("fti.video.instance")).toBeNull();
@@ -2155,7 +2173,7 @@ describe("legacy console keys", () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run src/store/persistence.test.ts`
-Expected: FAIL — `readLegacyV2 is not exported`.
+Expected: FAIL, `readLegacyV2Raw is not exported`.
 
 - [ ] **Step 3: Add the legacy accessors to `src/store/persistence.ts`**
 
@@ -2172,7 +2190,7 @@ const LEGACY_V2_KEY = "fti.console.v2";
 const LEGACY_KEYS: readonly string[] = [LEGACY_V2_KEY, "fti.plan.v1", "fti.video.instance"];
 
 /** The raw legacy payload, unparsed, or null when there is none or storage is unreadable. */
-export function readLegacyV2(): string | null {
+export function readLegacyV2Raw(): string | null {
   try {
     return window.localStorage.getItem(LEGACY_V2_KEY);
   } catch (err) {
@@ -2184,11 +2202,11 @@ export function readLegacyV2(): string | null {
 }
 
 export function hasLegacyV2(): boolean {
-  return readLegacyV2() !== null;
+  return readLegacyV2Raw() !== null;
 }
 
 /** Removes every key the legacy app owned. Leaves `fti.v3` alone. */
-export function deleteLegacyData(): void {
+export function deleteLegacyV2(): void {
   for (const key of LEGACY_KEYS) {
     try {
       window.localStorage.removeItem(key);
@@ -2235,14 +2253,14 @@ git commit -m "feat: read and delete the legacy console keys; add setUi"
 
 - [ ] **Step 7: Write the download helper**
 
-Create `src/ui/download.ts`:
+Create `src/app/download.ts`:
 
 ```ts
 /**
  * Hand the browser a file. The only Blob/anchor code in the app, so the CSP and the
  * object-URL lifetime are reasoned about once.
  */
-export function downloadText(filename: string, mime: string, text: string): void {
+export function downloadText(filename: string, text: string, mime = "application/json"): void {
   const blob = new Blob([text], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -2403,7 +2421,7 @@ import { AppStateSchema } from "../../domain/schema";
 import { isValidLocalDate } from "../../domain/dates";
 import type { AppState, LocalDate, PlanTemplate, Profile, UnitSystem } from "../../domain/types";
 import { useAppStore } from "../../store";
-import { downloadText } from "../download";
+import { downloadText } from "../../app/download";
 
 export interface MigrationWizardProps {
   /** the raw string held at localStorage["fti.console.v2"] */
@@ -2483,7 +2501,7 @@ export function MigrationWizard(props: MigrationWizardProps) {
   }, [legacyRaw]);
 
   const downloadLegacy = (): void => {
-    downloadText("fti-legacy-console-v2.json", "application/json", legacyRaw);
+    downloadText("fti-legacy-console-v2.json", legacyRaw);
     setDownloaded(true);
   };
 
@@ -2756,7 +2774,7 @@ Expected: FAIL — `Failed to resolve import "./MigrationGate"`.
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { AppState } from "../../domain/types";
-import { readLegacyV2 } from "../../store/persistence";
+import { readLegacyV2Raw } from "../../store/persistence";
 import { useAppStore } from "../../store";
 import { MigrationWizard } from "./MigrationWizard";
 
@@ -2768,7 +2786,7 @@ import { MigrationWizard } from "./MigrationWizard";
  */
 export function MigrationGate({ children }: { children: ReactNode }) {
   // read once per mount: the key does not change under us while the app is open
-  const [legacyRaw] = useState<string | null>(() => readLegacyV2());
+  const [legacyRaw] = useState<string | null>(() => readLegacyV2Raw());
   const status = useAppStore((s) => s.ui.legacyMigration);
   const activeProfileId = useAppStore((s) => s.activeProfileId);
   const profile = useAppStore((s) =>
@@ -2845,7 +2863,7 @@ Expected: all suites pass; eslint prints nothing; the build succeeds.
 - [ ] **Step 18: Commit**
 
 ```bash
-git add src/ui/download.ts src/ui/migration src/app/App.tsx
+git add src/app/download.ts src/ui/migration src/app/App.tsx
 git commit -m "feat: offer a guided one-way import of the legacy console store on boot"
 ```
 
@@ -3928,14 +3946,21 @@ git commit -m "feat: rebuild the Log view on the v3 types with unit-aware record
 - Create: `src/ui/views/ExportView.test.tsx`
 
 **Interfaces:**
-- Consumes: `downloadText` from `src/ui/download.ts` (Task 3); `computeRecords` from `src/domain/training/records.ts` (Task 4); `computeTargets` from `src/domain/nutrition.ts` (P2, §6.3); `projectedCalendar(state, profileId, from, days): CalendarDay[]` from `src/domain/schedule/calendar.ts` (P3, §6.4); `instantOf`, `todayLocal` from `src/domain/dates.ts` (P1); `formatLoad`, `formatMass`, `UNIT_LABEL` from `src/domain/units.ts` (P1); `exportJson(): string`, `importJson(text): { ok: true } | { ok: false; error: string }` from the store (P1, §6.7); `AppStateSchema` from `src/domain/schema.ts` (P1); `EXERCISE_LIBRARY` from `src/domain/plan/library.ts` (P2).
+- Consumes: `downloadText` from `src/app/download.ts` (Task 3); `computeRecords` from `src/domain/training/records.ts` (Task 4); `computeTargets` from `src/domain/nutrition.ts` (P2, §6.3); `projectedCalendar(state, profileId, from, days): CalendarDay[]` from `src/domain/schedule/calendar.ts` (P3, §6.4); `instantOf`, `todayLocal` from `src/domain/dates.ts` (P1); `formatLoad`, `formatMass`, `UNIT_LABEL` from `src/domain/units.ts` (P1); `exportJson(): string`, `importJson(text): { ok: true } | { ok: false; error: string }` from the store (P1, §6.7); `AppStateSchema` from `src/domain/schema.ts` (P1); `EXERCISE_LIBRARY` from `src/domain/plan/library.ts` (P2).
 - Produces:
-  - `buildIcs(events: readonly IcsEvent[], nowMs: EpochMs): string`, `IcsEvent`
+  - `buildIcs(events: readonly IcsEvent[], timeZone: TimeZone, nowMs: EpochMs): string`, `IcsEvent`
   - `buildSummary(state: AppState, profileId: string, now: EpochMs): string`
 
 Per master plan §8, `importJson` is the only path into the store for imported data and it
 commits through `replaceState`; this view never writes state itself. That closes the
 import race the old app had (code review A43) and the unvalidated-write path (security C1).
+
+P9 correction, 2026-09-02. The shipped `buildIcs` takes the profile's IANA zone as its
+second argument and emits a `VTIMEZONE` block built from it, so a calendar client places the
+session at the wall-clock time the user sees. It throws a `RangeError` on a zone this build's
+ICU data cannot resolve rather than falling back to the device zone. `IcsEvent` carries `date`
+and `startTime` in that zone, not the `startMs` instant the draft below uses. The draft in this
+task predates both changes; `src/domain/export/ics.ts` is the contract.
 
 - [ ] **Step 1: Write the failing `.ics` test**
 
@@ -4476,7 +4501,7 @@ import { projectedCalendar } from "../../domain/schedule/calendar";
 import { AppStateSchema } from "../../domain/schema";
 import type { AppState } from "../../domain/types";
 import { useAppStore } from "../../store";
-import { downloadText } from "../download";
+import { downloadText } from "../../app/download";
 
 const CALENDAR_DAYS = 28;
 const ALARM_LEAD_MINUTES = 120;
@@ -4506,7 +4531,7 @@ export function ExportView() {
   const stamp = profile === null ? "export" : todayLocal(profile.timezone);
 
   const downloadState = (): void => {
-    downloadText(`fti-state-${stamp}.json`, "application/json", exportJson());
+    downloadText(`fti-state-${stamp}.json`, exportJson());
   };
 
   const downloadSummary = (): void => {
@@ -4515,7 +4540,7 @@ export function ExportView() {
       setError("The current state could not be read back, so no summary was produced.");
       return;
     }
-    downloadText(`fti-summary-${stamp}.txt`, "text/plain", buildSummary(state, profileId, Date.now()));
+    downloadText(`fti-summary-${stamp}.txt`, buildSummary(state, profileId, Date.now()), "text/plain");
   };
 
   const downloadCalendar = (): void => {
@@ -4537,7 +4562,11 @@ export function ExportView() {
         alarmLeadMinutes: ALARM_LEAD_MINUTES,
       });
     }
-    downloadText(`fti-sessions-${stamp}.ics`, "text/calendar", buildIcs(events, Date.now()));
+    downloadText(
+      `fti-sessions-${stamp}.ics`,
+      buildIcs(events, profile.timezone, Date.now()),
+      "text/calendar;charset=utf-8",
+    );
   };
 
   const runImport = (): void => {
@@ -4655,7 +4684,7 @@ git commit -m "feat: export state, summary and calendar; import through the sche
 - Create: `src/ui/views/SettingsView.destructive.test.tsx`
 
 **Interfaces:**
-- Consumes: `downloadText` from `src/ui/download.ts` (Task 3); `deleteLegacyData`, `hasLegacyV2` from `src/store/persistence.ts` (Task 3); `wipeAll(): void`, `exportJson(): string` from the store (P1, §6.7); `deleteDB` from `idb`.
+- Consumes: `downloadText` from `src/app/download.ts` (Task 3); `deleteLegacyV2`, `hasLegacyV2` from `src/store/persistence.ts` (Task 3); `wipeAll(): void`, `exportJson(): string` from the store (P1, §6.7); `deleteDB` from `idb`.
 - Produces: `<ConfirmDestructive>` from `src/ui/components/ConfirmDestructive.tsx`; `clearAssetStorage(): Promise<void>` and `ASSET_DB_NAME` from `src/domain/motivation/assets.ts`.
 
 Master plan §3: a destructive action takes a typed confirmation **and** an automatic JSON
@@ -4737,6 +4766,35 @@ Run: `npx vitest run src/ui/components/ConfirmDestructive.test.tsx`
 Expected: FAIL — `Failed to resolve import "./ConfirmDestructive"`.
 
 - [ ] **Step 3: Write `src/ui/components/ConfirmDestructive.tsx`**
+
+P9 correction, 2026-09-02. The shipped props are the ones below, not the draft's:
+
+```ts
+export interface ConfirmDestructiveProps {
+  /** The panel's own name, rendered as the accessible name of its `role="group"`. */
+  titleKey: CopyKey;
+  /** The exact word the user must type, compared case-sensitively. */
+  word: string;
+  /** The export control's label. The caller owns the wording; this panel owns the gate. */
+  exportLabelKey: CopyKey;
+  /** The filename the backup is offered under. */
+  exportFilename: string;
+  /** The text to export, read when the user asks for it rather than at render. */
+  exportText: () => string;
+  /** The destructive control's label. */
+  confirmLabelKey: CopyKey;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+```
+
+`titleKey` is required rather than optional, and a `CopyKey` rather than a string, because two
+panels can be on screen at once: the Settings wipe, and the Replace confirmation in the export
+view mounted above it. Both label their field `Type DELETE to confirm` and both carry a
+`Cancel`, so an unnamed group hands a screen reader two indistinguishable sets of controls that
+destroy different things. The panel renders no trigger and no visible heading; the host owns the
+disclosure and the sentence above it. The draft below keeps its own trigger and its four string
+props, and predates the extraction.
 
 ```tsx
 import { useId, useState } from "react";
@@ -4911,12 +4969,18 @@ Add these imports at the top of the file:
 
 ```tsx
 import { useState } from "react";
+import { todayLocal } from "../../domain/dates";
 import { clearAssetStorage } from "../../domain/motivation/assets";
-import { deleteLegacyData, hasLegacyV2 } from "../../store/persistence";
+import { deleteLegacyV2, hasLegacyV2 } from "../../store/persistence";
 import { useAppStore } from "../../store";
+import { useActiveProfile } from "../../store/selectors";
 import { ConfirmDestructive } from "../components/ConfirmDestructive";
-import { downloadText } from "../download";
+import { downloadText } from "../../app/download";
 ```
+
+P9 correction, 2026-09-02. The block shipped in `src/ui/settings/DataSection.tsx` rather than
+in `SettingsView.tsx`, and each `<ConfirmDestructive>` below carries the shipped props named in
+Step 3 instead of the draft's `title`, `description`, `confirmWord` and `actionLabel`.
 
 Add this section to the component's returned JSX, at the end, after every other section:
 
@@ -4955,11 +5019,16 @@ Add this state and these two handlers inside the component, above the `return`:
 ```tsx
   const exportJson = useAppStore((s) => s.exportJson);
   const wipeAll = useAppStore((s) => s.wipeAll);
+  const profile = useActiveProfile();
   const [legacyPresent, setLegacyPresent] = useState(() => hasLegacyV2());
+
+  // Every backup is stamped with the PROFILE's own civil date, never the device's, so the
+  // filename names the day the user was living in (src/ui/settings/DataSection.tsx:82).
+  const stamp = profile === null ? "export" : todayLocal(profile.timezone, Date.now());
 
   const wipeEverything = (): void => {
     // master plan §3: automatic export first, then the wipe
-    downloadText(`fti-state-before-wipe.json`, "application/json", exportJson());
+    downloadText(`fti-state-${stamp}.json`, exportJson());
     // the asset store is a second origin-scoped database; clearing it is part of the
     // same action (security constraint 10) but is asynchronous, so it is sequenced here
     // rather than inside the synchronous wipeAll action
@@ -4974,7 +5043,7 @@ Add this state and these two handlers inside the component, above the `return`:
   };
 
   const removeLegacy = (): void => {
-    deleteLegacyData();
+    deleteLegacyV2();
     setLegacyPresent(false);
   };
 ```
@@ -5340,14 +5409,16 @@ listed for the master plan to absorb; P7 implements them as written above.
    one-character class. The set of matched strings is unchanged. Rewritten in Task 7 Step 6.
 
 5. **§4 file structure additions.** `src/domain/export/summary.ts`, `src/domain/export/ics.ts`,
-   `src/domain/training/records.ts`, `src/ui/download.ts`, `src/ui/migration/MigrationWizard.tsx`,
+   `src/domain/training/records.ts`, `src/app/download.ts`, `src/ui/migration/MigrationWizard.tsx`,
    `src/ui/migration/MigrationGate.tsx`, `src/ui/components/{BodyMassChart,ComplianceGrid,PRList,AmrapSpark,ConfirmDestructive}.tsx`,
    `src/test/migrationFactories.ts`. None of these change an existing contract; they are
    modules §4 did not enumerate.
 
-6. **§4 `src/store/persistence.ts` surface.** Gains `readLegacyV2()`, `hasLegacyV2()` and
-   `deleteLegacyData()`. §4 describes the module as "the only localStorage user", which is
-   precisely why the legacy keys are read and removed here rather than in a view.
+6. **§4 `src/store/persistence.ts` surface.** Gains `readLegacyV2Raw()`, `readLegacyBundle()`,
+   `hasLegacyV2()`, `hasAnyLegacyKey()` and `deleteLegacyV2()`. §4 describes the module as "the
+   only localStorage user", which is precisely why the legacy keys are read and removed here
+   rather than in a view. `readLegacyBundle()` returns a JSON envelope of all three legacy keys,
+   so a backup taken before the wipe carries everything the old app wrote.
 
 7. **§6.7 `setUi` moves from P8 to P7.** The signature is unchanged; only the plan that
    first implements it changes. P8 will find it present.
@@ -5420,8 +5491,49 @@ with a stated expectation rather than by a hedge.
 
 **Type consistency.** `migrateV2`/`applyMigration`/`MigrationReport` are used with the same
 signatures in Tasks 2, 3 and 6. `computeRecords`/`weeklyAmrapMax` are defined in Task 4 and
-consumed unchanged in Task 5. `downloadText(filename, mime, text)` is defined in Task 3 and
-called with that argument order in Tasks 3, 5 and 6. `ConfirmDestructive`'s `confirmWord` is
-required, not optional, so `exactOptionalPropertyTypes` cannot bite. `buildStatusIndex` and
+consumed unchanged in Task 5. `downloadText(filename, text, mime?)` is defined in Task 3 and
+called with that argument order in Tasks 3, 5 and 6. `ConfirmDestructive`'s `word` is required,
+not optional, so `exactOptionalPropertyTypes` cannot bite. `buildStatusIndex` and
 `ComplianceGrid` are exported from the same module and both are imported by the test.
 `LEGACY_SESSION_ID` is defined once, in `v2plan.ts`, and compared against in `v2.test.ts`.
+
+---
+
+## P9 corrections (2026-09-02)
+
+Every fragment below stated a contract another agent would have implemented from this plan, so
+each was replaced with the declaration that shipped rather than annotated.
+
+1. `MigrateV2Result` and `ApplyMigrationResult` are discriminated unions
+   (`src/domain/migrations/v2.ts:111` and `:115`). `migrateV2` must never throw, so an unknown
+   IANA zone and a payload that is not a JSON object both arrive as `{ ok: false, reason }`.
+   `applyMigration` returns `ApplyMigrationResult`, not `AppState`.
+2. `MigrateV2Options` names `units: LegacyUnit` and `bodyMassUnits?: LegacyUnit`, not
+   `loadsEnteredIn` and `bodyMassEnteredIn`. `LegacyUnit` is `'kg' | 'lb'`, exported from the
+   same module and re-exported from `src/domain/migrations/index.ts`.
+3. The legacy persistence exports are `readLegacyV2Raw`, `readLegacyBundle`, `hasLegacyV2`,
+   `hasAnyLegacyKey` and `deleteLegacyV2`. The two names this plan used before, one for the read
+   and one for the delete, were renamed throughout, including in the draft code, so no reader
+   implements a name the tree does not export.
+4. The download helper is `downloadText(filename, text, mime?)` in `src/app/download.ts`. The
+   plan put it under `src/ui/` and named the arguments in the order filename, mime, text.
+   `mime` defaults to
+   `application/json`; the summary and the calendar pass their own type. The four draft call
+   sites were reordered with it.
+5. `ConfirmDestructive` takes `titleKey`, `word`, `exportLabelKey`, `exportFilename`,
+   `exportText`, `confirmLabelKey`, `onConfirm` and `onCancel`. `titleKey` is required because
+   two panels can be on screen at once. The shipped panel renders no trigger; the host owns the
+   disclosure, and the host is `src/ui/settings/DataSection.tsx`, not `SettingsView.tsx`.
+6. `buildIcs(events, timeZone, nowMs)` takes the profile's IANA zone second and emits a
+   `VTIMEZONE` block from it. `IcsEvent` carries `date` and `startTime` rather than `startMs`.
+7. Every backup filename is stamped with the profile's own civil date, so
+   `fti-state-before-wipe.json` became `fti-state-${stamp}.json`. `App.tsx` and
+   `RootErrorBoundary.tsx` still write `fixthisinjustice-export.json` and
+   `fixthisinjustice-recovery.json`; those are the crash-path names and stay distinct on purpose,
+   because the boundary sits above the store and cannot read a profile.
+
+Two drafts were left standing and labelled instead of rewritten: the `.ics` draft in Task 5 and
+the `ConfirmDestructive` draft in Task 6 Step 3. Both diverged from the shipped file in body as
+well as in signature, and reproducing 200 shipped lines inside a plan would put a second copy of
+the contract where the first can drift from it. Each now carries a correction paragraph naming
+the shipped declaration and the file that holds it.
