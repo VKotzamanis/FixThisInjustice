@@ -65,9 +65,35 @@ function generatedPlan(sessionsPerWeek: SessionsPerWeek): PlanTemplate {
 }
 
 describe('migrateV2 - set decoding', () => {
-  it('migrates 20 decodable set keys plus 2 weekly push-up maxima', () => {
+  /**
+   * OBJECT path: `raw` is the fixture as TypeScript's JSON-module import parses it once at
+   * build time, which keeps `sets["1-2-0-3"].weight: 1e999` as the IEEE-754 double it
+   * overflows to, `Infinity`. `finiteNum` (v2.ts) refuses a non-finite weight, so that key is
+   * skipped and the count is 20 decodable set keys plus 2 weekly push-up maxima, 22. No device
+   * can produce this input (see the TEXT-path assertion below); this checks decoding
+   * robustness against a value a hand-edited fixture can hold but JSON.stringify never writes.
+   */
+  it('migrates 22 sets from the fixture as an in-memory object, refusing the non-finite weight', () => {
     const { report } = run();
     expect(report.setsMigrated).toBe(22);
+  });
+
+  /**
+   * TEXT path: the same fixture round-tripped through `JSON.stringify` then `JSON.parse`,
+   * matching both how a real device stores the legacy document (legacy/console-store.jsx:50
+   * wrote with `JSON.stringify`) and how MigrationWizard.test.tsx feeds the wizard suite.
+   * `JSON.stringify` serialises the non-finite `weight: 1e999` as `null`, and v2.ts's load
+   * decoding treats an absent/null weight as "load not recorded" rather than a refusal
+   * (`rawWeight !== undefined && rawWeight !== null` guards the finite-number check), so the
+   * key that the object path above skips is instead accepted here. The two paths therefore
+   * disagree by exactly the one set that can only exist as a hostile in-memory value: 23, one
+   * more than the object path's 22.
+   */
+  it('migrates 23 sets from the fixture round-tripped through JSON text, as a device stores it', () => {
+    const payload: unknown = JSON.parse(JSON.stringify(raw));
+    const result = migrateV2(payload, OPTS);
+    if (!result.ok) throw new Error(`migrateV2 refused the round-tripped fixture: ${result.reason}`);
+    expect(result.report.setsMigrated).toBe(23);
   });
 
   it('gives every migrated set a fresh unique id', () => {

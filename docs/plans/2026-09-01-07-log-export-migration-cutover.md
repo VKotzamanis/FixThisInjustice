@@ -55,7 +55,7 @@ Copied from master plan §3. Every task implicitly includes them.
 | legacy | `legacy/` is deleted from the tree and from git history's HEAD |
 | personal data | the §3 grep gate returns nothing and is enforced in `ci.yml` |
 
-Stated before the work: the migration gate is checked in Task 2 against a constructed fixture whose set count is known exactly (22 `LoggedSet` records from 20 `sets[]` keys plus 2 weekly push-up maxima), and again in Task 7 step "run the wizard on the user's phone" against the real store.
+Stated before the work: the migration gate is checked in Task 2 against a constructed fixture whose set count is known exactly (23 `LoggedSet` records from 20 `sets[]` keys plus 2 weekly push-up maxima plus 1 more), and again in Task 7 step "run the wizard on the user's phone" against the real store. The extra set is the fixture's hostile `weight: 1e999`: refused as non-finite when read as an in-memory object, but a device only ever stores JSON text, and `JSON.stringify` serialises that value as `null`, which the migration accepts as load-not-recorded.
 
 ---
 
