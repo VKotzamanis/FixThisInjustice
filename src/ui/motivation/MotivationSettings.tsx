@@ -16,25 +16,31 @@
 // naming an asset that is gone. A refused save therefore writes nothing: the old id stays where
 // it is and the section reports the refusal, which is why the id move lives in the fulfilled
 // branch alone. Step 3 is a no-op when the id is already gone (assets.ts guarantees that), and
-// saveCustomVideo's own sweep will have removed the old record inside the transaction that
-// wrote the new one; the call is still made because the profile's id, not that sweep, is what
-// this component is responsible for keeping true.
+// it is the step that actually releases the replaced record, because the sweep inside
+// saveCustomVideo is told to spare every id state still names (see `keep` below) and the id
+// being replaced is still one of them at the moment the save runs.
 //
-// WHAT THE SECTION CAN AND CANNOT SAY ABOUT A STORED CLIP. The name and the size come from the
-// File the user picked, held for the life of this panel. The asset module exports no metadata
-// reader (only getCustomVideoUrl, which yields an object URL and no record), so after a reload
-// the section reports that a clip is stored without naming or measuring it. Reading the object
-// store directly from here was rejected: a second openDB would have to restate the schema and
-// its upgrade, and a connection opened at the same version WITHOUT that upgrade creates the
-// database with no object store, which would break every later save. Nothing here creates an
-// object URL, so there is none to revoke on unmount; the preview's URL belongs to
-// MotivationModal, whose effect already releases it.
+// WHY THE SAVE IS TOLD WHAT TO KEEP. One videos object store backs every profile while
+// MotivationState.customVideoAssetId is per profile, so a sweep that keeps only the record it
+// just wrote deletes the other profiles' clips: profile A's section would go on reporting a
+// stored clip that no longer resolves. This section therefore hands saveCustomVideo the set of
+// every asset id state names, minus the one this pick replaces.
+//
+// WHAT THE SECTION SAYS ABOUT A STORED CLIP. Immediately after a pick, the name and the size
+// come from the File itself. After a reload there is no File, so an effect keyed on the stored
+// id reads the record's own name and size through getCustomVideoMeta, which goes through the
+// asset module's single cached connection. Opening a second connection from here was rejected:
+// it would have to restate the schema and its upgrade, and a connection opened at the same
+// version WITHOUT that upgrade creates the database with no object store, which would break
+// every later save. Nothing here creates an object URL, so there is none to revoke on unmount;
+// the preview's URL belongs to MotivationModal, whose effect already releases it.
 
-import { useCallback, useState, type ChangeEvent, type ReactElement } from 'react';
+import { useCallback, useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
 import { MotivationModal } from './MotivationModal';
 import {
   MAX_VIDEO_BYTES,
   deleteCustomVideo,
+  getCustomVideoMeta,
   saveCustomVideo,
 } from '../../domain/motivation/assets';
 import { FORMAT, copy, type CopyKey } from '../../content/copy';
@@ -43,10 +49,20 @@ import { useAppStore } from '../../store';
 /** 1 MiB = 2^20 bytes. The size readout and the limit are both binary megabytes. */
 const BYTES_PER_MIB = 1_048_576; // [bytes/MiB]
 
-/** What the picked File reported about itself, kept so the section can name what it stored. */
-interface PickedClip {
+/** What the section can say about the clip it holds, from a File or from the stored record. */
+interface ClipMeta {
   name: string;
   size: number; // bytes
+}
+
+/**
+ * A File this session picked, tagged with the asset id it was stored as.
+ *
+ * The tag is what keeps the readout honest when the active profile changes under a mounted
+ * section: the picked name is shown only while the profile still names that very asset.
+ */
+interface PickedClip extends ClipMeta {
+  assetId: string;
 }
 
 /** A byte count as one number in MiB, to one decimal. */
@@ -92,10 +108,33 @@ export function MotivationSettings(): ReactElement | null {
   );
 
   const [picked, setPicked] = useState<PickedClip | null>(null);
+  /** What the stored record says about itself, which is all a reload has to go on. */
+  const [stored, setStored] = useState<ClipMeta | null>(null);
   const [error, setError] = useState<CopyKey | null>(null);
   /** True while a save or a delete is in flight, so a second pick cannot race the first. */
   const [busy, setBusy] = useState(false);
   const [previewing, setPreviewing] = useState(false);
+
+  // Keyed on the stored id alone, so it runs on mount, on a replacement and on a profile
+  // change, and never in between. `stored` is cleared first because the id it described is no
+  // longer the id in state; `live` drops a read whose id was replaced while it was in flight.
+  useEffect(() => {
+    let live = true;
+    setStored(null);
+    if (storedAssetId !== null) {
+      void getCustomVideoMeta(storedAssetId)
+        .then((meta) => {
+          if (live && meta !== null) setStored(meta);
+        })
+        .catch(() => {
+          // A database that will not open leaves the section on 'a clip is stored', which is
+          // still true: the id is in the document whatever IndexedDB did with the bytes.
+        });
+    }
+    return () => {
+      live = false;
+    };
+  }, [storedAssetId]);
 
   const onPick = useCallback(
     (event: ChangeEvent<HTMLInputElement>): void => {
@@ -105,14 +144,32 @@ export function MotivationSettings(): ReactElement | null {
       event.target.value = '';
       if (file === undefined || profileId === null || busy) return;
       const replaced = storedAssetId;
+      // Every asset id state still names, minus the one this pick replaces, which step 3 below
+      // releases explicitly. Read from the store rather than subscribed to: this section must
+      // not re-render because another profile's clip changed, and the set that matters is the
+      // one true at the moment the save runs.
+      const keep = new Set<string>();
+      for (const entry of Object.values(useAppStore.getState().motivation)) {
+        if (entry.customVideoAssetId !== null) keep.add(entry.customVideoAssetId);
+      }
+      if (replaced !== null) keep.delete(replaced);
       setBusy(true);
       // Date.now() at the call site, as everywhere else in the UI. [ms] epoch, UTC.
-      void saveCustomVideo(file, Date.now())
-        .then(async (id) => {
+      void saveCustomVideo(file, Date.now(), { keep })
+        .then((id) => {
           useAppStore.getState().setCustomVideo(profileId, id);
-          setPicked({ name: file.name, size: file.size }); // bytes
+          setPicked({ assetId: id, name: file.name, size: file.size }); // bytes
           setError(null);
-          if (replaced !== null && replaced !== id) await deleteCustomVideo(replaced);
+          if (replaced !== null && replaced !== id) {
+            // Its own catch, and outside the guarded chain on purpose. The new clip is stored
+            // and named by the profile, so a refused delete is not a refused save: routing it
+            // to the catch below would paint 'the clip was not stored' over a clip that was,
+            // and the only action that line invites is picking the same file again. What the
+            // failure leaves is one record nothing names, which the next save sweeps.
+            void deleteCustomVideo(replaced).catch(() => {
+              /* nothing to report and nothing to log: the profile has moved on already */
+            });
+          }
         })
         .catch((cause: unknown) => {
           // A refused save leaves the stored id exactly where it was, so the previous clip
@@ -133,7 +190,8 @@ export function MotivationSettings(): ReactElement | null {
     // replacement order above and for the opposite reason: there is no new asset to fall back
     // on, so a delete that fails must not leave the user looking at a section that says the
     // clip is gone. What it can leave is one unreferenced record, and the next saveCustomVideo
-    // sweeps every key but its own inside its transaction, so the orphan is self-clearing.
+    // sweeps every key that is neither its own nor named by state, so the orphan is
+    // self-clearing on this profile's next pick or on any other profile's.
     useAppStore.getState().setCustomVideo(profileId, null);
     setPicked(null);
     setError(null);
@@ -155,20 +213,25 @@ export function MotivationSettings(): ReactElement | null {
     setPreviewing(false);
   }, []);
 
+  // The File this session picked wins over the record, because it is the answer to the action
+  // the user just took; it is dropped the moment the profile stops naming that asset.
+  const shown: ClipMeta | null =
+    picked !== null && picked.assetId === storedAssetId ? picked : stored;
+
   if (profileId === null) return null;
 
   return (
     <section className="fti-motivation-clip" aria-labelledby="fti-motivation-clip-heading">
       <h2 id="fti-motivation-clip-heading">{copy('hero.motivationVideo')}</h2>
       <p className="view-note">
-        {picked !== null
-          ? FORMAT.motivationClipName(picked.name)
+        {shown !== null
+          ? FORMAT.motivationClipName(shown.name)
           : storedAssetId === null
             ? copy('status.motivationClipNone')
             : copy('status.motivationClipStored')}
       </p>
-      {picked !== null && (
-        <p className="view-note">{FORMAT.motivationClipSize(mibOf(picked.size))}</p>
+      {shown !== null && (
+        <p className="view-note">{FORMAT.motivationClipSize(mibOf(shown.size))}</p>
       )}
 
       <div className="view-field">

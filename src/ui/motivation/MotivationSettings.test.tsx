@@ -18,6 +18,7 @@ import {
   BUNDLED_VIDEO_SRC,
   MAX_VIDEO_BYTES,
   deleteCustomVideo,
+  getCustomVideoMeta,
   getCustomVideoUrl,
   probeBundledVideo,
   resetAssetDbForTests,
@@ -28,7 +29,7 @@ import { FORMAT, copy } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { PROFILE_ID, seedState } from '../../test/scheduleFixtures';
-import type { WeeklyReview } from '../../domain/types';
+import type { MotivationState, WeeklyReview } from '../../domain/types';
 
 vi.mock('../../domain/motivation/assets', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../domain/motivation/assets')>();
@@ -36,6 +37,7 @@ vi.mock('../../domain/motivation/assets', async (importOriginal) => {
     ...actual,
     saveCustomVideo: vi.fn(actual.saveCustomVideo),
     deleteCustomVideo: vi.fn(actual.deleteCustomVideo),
+    getCustomVideoMeta: vi.fn(actual.getCustomVideoMeta),
     resolveVideoSrc: vi.fn(),
     probeBundledVideo: vi.fn(),
   };
@@ -75,6 +77,11 @@ const REAL_SET_CUSTOM_VIDEO = (profileId: string, assetId: string | null): void 
 };
 
 let setCustomVideo: ReturnType<typeof vi.fn<typeof REAL_SET_CUSTOM_VIDEO>>;
+
+/** One profile's motivation state, with only the asset id worth varying here. */
+function motivationFor(profileId: string, customVideoAssetId: string | null): MotivationState {
+  return { profileId, lastShownForWeek: null, lastShownAt: null, customVideoAssetId };
+}
 
 /** The asset id the profile currently names, or null. */
 function storedId(): string | null {
@@ -126,6 +133,7 @@ beforeEach(() => {
   // would otherwise accumulate across this file's tests.
   vi.mocked(saveCustomVideo).mockClear();
   vi.mocked(deleteCustomVideo).mockClear();
+  vi.mocked(getCustomVideoMeta).mockClear();
   vi.mocked(resolveVideoSrc).mockResolvedValue({
     src: BUNDLED_VIDEO_SRC,
     revoke: () => {
@@ -252,5 +260,79 @@ describe('MotivationSettings', () => {
     // Nothing was answered: no shown week, and the seeded miss is still unhandled.
     expect(useAppStore.getState().motivation[PROFILE_ID]).toBeUndefined();
     expect(useAppStore.getState().weeklyReviews[PROFILE_ID]?.[0]?.missHandled).toBe(false);
+  });
+
+  it("spares every other profile's clip and sweeps only the id it replaces", async () => {
+    // One videos store backs every profile, so the sweep inside saveCustomVideo is told what
+    // state still names. The id being REPLACED is deliberately not on that list: this section
+    // deletes it itself, and only after the new id is in the store.
+    const other = await saveCustomVideo(videoFile(16, 'video/mp4', 'other.mp4'), 1); // EpochMs
+    useAppStore.setState({ motivation: { 'p-other': motivationFor('p-other', other) } });
+    vi.mocked(saveCustomVideo).mockClear();
+
+    const user = userEvent.setup();
+    render(<MotivationSettings />);
+    await user.upload(chooseLabel(), videoFile(16, 'video/mp4', 'first.mp4'));
+    const picker = await pickerSettled(copy('label.motivationClipReplace'));
+    const first = storedId();
+    expect(first).not.toBeNull();
+
+    await user.upload(picker, videoFile(16, 'video/mp4', 'second.mp4'));
+    await waitFor(() => {
+      expect(storedId()).not.toBe(first);
+    });
+
+    expect(vi.mocked(saveCustomVideo).mock.calls[0]?.[2]?.keep).toEqual(new Set([other]));
+    expect(vi.mocked(saveCustomVideo).mock.calls[1]?.[2]?.keep).toEqual(new Set([other]));
+    const url = await getCustomVideoUrl(other);
+    expect(url).not.toBeNull();
+    if (url !== null) URL.revokeObjectURL(url);
+  });
+
+  it('keeps the new clip on screen when releasing the replaced one fails', async () => {
+    const user = userEvent.setup();
+    render(<MotivationSettings />);
+    await user.upload(chooseLabel(), videoFile(16, 'video/mp4', 'first.mp4'));
+    const picker = await pickerSettled(copy('label.motivationClipReplace'));
+
+    vi.mocked(deleteCustomVideo).mockRejectedValueOnce(new Error('the delete was refused'));
+    await user.upload(picker, videoFile(16, 'video/mp4', 'second.mp4'));
+
+    await waitFor(() => {
+      expect(screen.getByText(FORMAT.motivationClipName('second.mp4'))).toBeInTheDocument();
+    });
+    // The new clip IS stored, so saying it was not is a lie the user would act on by picking
+    // the file again. A record nothing names any more is the next save's problem, not theirs.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(storedId()).not.toBeNull();
+  });
+
+  it('names and measures the stored clip when nothing has been picked this session', async () => {
+    const id = await saveCustomVideo(videoFile(2 * BYTES_PER_MIB, 'video/mp4', 'holiday.mp4'), 1);
+    useAppStore.setState({ motivation: { [PROFILE_ID]: motivationFor(PROFILE_ID, id) } });
+
+    render(<MotivationSettings />);
+    // What a reload shows before the record has been read: that one is stored, and no more.
+    expect(screen.getByText(copy('status.motivationClipStored'))).toBeInTheDocument();
+
+    expect(await screen.findByText(FORMAT.motivationClipName('holiday.mp4'))).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.motivationClipSize('2.0'))).toBeInTheDocument(); // MiB
+  });
+
+  it('reports only that a clip is stored when its record is gone', async () => {
+    useAppStore.setState({
+      motivation: { [PROFILE_ID]: motivationFor(PROFILE_ID, 'never-stored') },
+    });
+
+    render(<MotivationSettings />);
+    await waitFor(() => {
+      expect(vi.mocked(getCustomVideoMeta)).toHaveBeenCalledWith('never-stored');
+    });
+    await expect(vi.mocked(getCustomVideoMeta).mock.results[0]?.value).resolves.toBeNull();
+
+    expect(screen.getByText(copy('status.motivationClipStored'))).toBeInTheDocument();
+    // No name line at all, rather than a name line reading "Clip: undefined".
+    const namePrefix = FORMAT.motivationClipName('');
+    expect(screen.queryByText((text) => text.startsWith(namePrefix))).toBeNull();
   });
 });

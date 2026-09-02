@@ -89,8 +89,20 @@ function videoTypeOf(file: File): string | null {
   return null;
 }
 
-/** Saves the picked clip and returns its asset id. `now` is epoch milliseconds, UTC. */
-export async function saveCustomVideo(file: File, now: EpochMs): Promise<string> {
+/**
+ * Saves the picked clip and returns its asset id. `now` is epoch milliseconds, UTC.
+ *
+ * `opts.keep` names the records the sweep below must not touch. It is not an optimisation: one
+ * videos store backs every profile while `MotivationState.customVideoAssetId` is per profile,
+ * so a sweep that keeps only the record it just wrote deletes the OTHER profiles' clips, whose
+ * Settings sections go on reporting a stored clip that no longer resolves. The caller passes
+ * every id state still names; a caller with one profile passes nothing and loses nothing.
+ */
+export async function saveCustomVideo(
+  file: File,
+  now: EpochMs,
+  opts?: { keep?: ReadonlySet<string> },
+): Promise<string> {
   const type = videoTypeOf(file);
   if (type === null) {
     throw new Error(`Not a video file: ${file.type}.`);
@@ -103,11 +115,11 @@ export async function saveCustomVideo(file: File, now: EpochMs): Promise<string>
   const id = newId();
   const db = await assetDb();
 
-  // One clip per profile, so one record per store. The put and the sweep share a transaction:
-  // if the sweep fails the put is rolled back with it, so the store never ends up empty or
-  // holding two clips. Writing them separately is how an interrupted save strands up to
-  // MAX_VIDEO_BYTES of data that nothing in state names any more, and the quota it consumes is
-  // what makes the NEXT save fail.
+  // One clip per profile, so one record per profile plus nothing else. The put and the sweep
+  // share a transaction: if the sweep fails the put is rolled back with it, so the store never
+  // ends up empty or holding a clip the caller did not ask to keep. Writing them separately is
+  // how an interrupted save strands up to MAX_VIDEO_BYTES of data that nothing in state names
+  // any more, and the quota it consumes is what makes the NEXT save fail.
   const tx = db.transaction(VIDEO_STORE, 'readwrite');
   const written = tx.store.put(
     { id, name: file.name, type, size: file.size, data, createdAt: now },
@@ -117,7 +129,10 @@ export async function saveCustomVideo(file: File, now: EpochMs): Promise<string>
   // passes with the transaction idle: an IndexedDB transaction auto-commits as soon as one
   // does. Requests are served in order, so this already sees the record just written.
   const keys = await tx.store.getAllKeys();
-  const stale = keys.filter((key) => key !== id);
+  // Stale means: neither the record just written nor one the caller still names. Anything else
+  // is unreachable, because customVideoAssetId is the only thing in state that names a record.
+  const keep = opts?.keep;
+  const stale = keys.filter((key) => key !== id && keep?.has(key) !== true);
   await Promise.all([written, ...stale.map((key) => tx.store.delete(key)), tx.done]);
   return id;
 }
@@ -129,6 +144,23 @@ export async function getCustomVideoUrl(id: string): Promise<string | null> {
   return URL.createObjectURL(new Blob([record.data], { type: record.type }));
 }
 
+/**
+ * What the stored record says about itself, or null when there is no such record.
+ *
+ * Read through the module's own cached connection, which is the whole point: Settings needs the
+ * name and the size after a reload, and opening a SECOND connection from the UI would have to
+ * restate this schema and its upgrade, while a connection opened at the same version without
+ * that upgrade creates the database with no object store and breaks every later save.
+ */
+export async function getCustomVideoMeta(
+  id: string,
+): Promise<{ name: string; size: number } | null> {
+  const db = await assetDb();
+  const record = await db.get(VIDEO_STORE, id);
+  if (record === undefined) return null;
+  return { name: record.name, size: record.size }; // size in bytes
+}
+
 export function revokeVideoUrl(url: string): void {
   // The bundled clip is a plain path; only object URLs hold a reference to release.
   if (url.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -137,6 +169,26 @@ export function revokeVideoUrl(url: string): void {
 export async function deleteCustomVideo(id: string): Promise<void> {
   const db = await assetDb();
   await db.delete(VIDEO_STORE, id);
+}
+
+/**
+ * Empties the video store, so the Settings wipe covers the clip too (security constraint 10).
+ *
+ * It clears the records rather than deleting the database. deleteDB fires `blocked` while ANY
+ * connection is open, this module's own cached one included, so that route needs a close and a
+ * reset whose failure leaves the module holding a connection to a database that is going away;
+ * a second tab holding the same database open makes it hang outright. A clear is one atomic
+ * transaction with neither coupling.
+ *
+ * Nothing is swallowed. A database that was never created is not an error to swallow either:
+ * assetDb() creates it empty through the same upgrade every other call uses, so a device that
+ * never stored a clip wipes successfully with nothing removed. Every real failure (a quota
+ * refusal, Safari private mode, an upgrade another tab is blocking) rejects and reaches the
+ * caller, because a wipe that did not finish must not report that it did.
+ */
+export async function clearAssetStorage(): Promise<void> {
+  const db = await assetDb();
+  await db.clear(VIDEO_STORE);
 }
 
 const NO_REVOKE = (): void => {
