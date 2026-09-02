@@ -7,7 +7,7 @@
 // Units: every load is canonical kg here and is formatted for display only at the boundary,
 // by src/domain/units.ts. Rest is seconds. Instants are epoch ms UTC.
 import { useMemo, useState, type ReactElement } from 'react';
-import { FORMAT, copy, type CopyKey } from '../../../content/copy';
+import { FORMAT, type CopyKey } from '../../../content/copy';
 import { FORM_CUES } from '../../../content/formCues';
 import { coachLine, type CoachLine } from '../../../domain/training/coach';
 import { suggestedProgression, type ProgressionAdvice } from '../../../domain/training/progression';
@@ -39,6 +39,14 @@ const ADVICE_KEY: Record<ProgressionAdvice['kind'], CopyKey> = {
 };
 
 export interface ExerciseCardProps {
+  /**
+   * The active skin's copy lookup, read once by TrainView and forwarded to every SetRow below.
+   *
+   * A card is mounted once per planned and bonus exercise, and each card mounts one row per
+   * prescribed set, so the hook is read at the view and threaded rather than called at each of
+   * the ~48 leaves (see SetRowProps.t).
+   */
+  t: (key: CopyKey) => string;
   profile: Profile;
   exercise: Exercise;
   planned: PlannedExercise;
@@ -63,6 +71,7 @@ export interface ExerciseCardProps {
 
 export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   const {
+    t,
     profile,
     exercise,
     planned,
@@ -181,7 +190,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
             <span className="ex-suggested">
               {FORMAT.suggestedLoad(
                 formatLoad(suggestedKg, profile.units),
-                copy(ADVICE_KEY[advice.kind]),
+                t(ADVICE_KEY[advice.kind]),
               )}
             </span>
           </div>
@@ -195,7 +204,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
           {advice.kind !== 'deload' && <p className="ex-reason">{advice.reason}</p>}
           {/* R9: the percentage, the plate rounding and the set tally live behind here. */}
           <details className="ex-why">
-            <summary>{copy('disclosure.why')}</summary>
+            <summary>{t('disclosure.why')}</summary>
             <p>{advice.why}</p>
           </details>
 
@@ -207,7 +216,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   video.open({ query: exercise.videoQuery, title: exercise.name });
                 }}
               >
-                {copy('button.formReference')}
+                {t('button.formReference')}
               </button>
             )}
             {exercise.formCueId !== null && FORM_CUES[exercise.formCueId] !== undefined && (
@@ -217,7 +226,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   cues.open({ exerciseId: exercise.formCueId ?? '', title: exercise.name });
                 }}
               >
-                {copy('button.formCues')}
+                {t('button.formCues')}
               </button>
             )}
           </div>
@@ -228,6 +237,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
               return (
                 <SetRow
                   key={n}
+                  t={t}
                   domIdPrefix={domIdPrefix}
                   n={n}
                   targetSets={targetSets}
@@ -256,7 +266,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
               setBonusRows((b) => b + 1);
             }}
           >
-            {copy('button.addSet')}
+            {t('button.addSet')}
           </button>
         </div>
       )}

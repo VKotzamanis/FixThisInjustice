@@ -13,7 +13,8 @@
 // window the app still cannot tell a mass taken at the gym door from one taken 5 h earlier,
 // and it cannot tell a weigh-in taken clothed from one taken stripped.
 import { useState, type ReactElement } from 'react';
-import { FORMAT, copy } from '../../../content/copy';
+import { FORMAT } from '../../../content/copy';
+import { useCopy } from '../../../content/useCopy';
 import {
   DEHYDRATION_LOSS_FRACTION,
   bodyMassLossFraction,
@@ -37,6 +38,9 @@ export function BodyMassQuickLog(props: {
   quantity: string;
 }): ReactElement {
   const { profile, date, preSessionMassKg, id, quantity } = props;
+  // `quantity` arrives already resolved: TrainView reads it from the same skin table, so the
+  // field name and the words around it cannot come from two different skins.
+  const c = useCopy();
   const [text, setText] = useState(''); // as typed, in the display unit
   const [flag, setFlag] = useState<string | null>(null);
   const [flagWhy, setFlagWhy] = useState<string | null>(null);
@@ -53,7 +57,7 @@ export function BodyMassQuickLog(props: {
     if (preSessionMassKg !== null && exceedsDehydrationThreshold(preSessionMassKg, massKg)) {
       // Sign convention: bodyMassLossFraction is POSITIVE for a loss.
       const lossPct = (bodyMassLossFraction(preSessionMassKg, massKg) * PERCENT).toFixed(1); // [%]
-      setFlag(copy('advice.fluidLoss'));
+      setFlag(c('advice.fluidLoss'));
       setFlagWhy(FORMAT.fluidLossWhy(lossPct, DEHYDRATION_LOSS_FRACTION * PERCENT));
     } else {
       setFlag(null);
@@ -81,7 +85,7 @@ export function BodyMassQuickLog(props: {
         />
       </div>
       <button type="button" onClick={submit}>
-        {copy('button.logBodyMass')}
+        {c('button.logBodyMass')}
       </button>
       {flag !== null && (
         <p className="fcm-caution" role="alert">
@@ -90,7 +94,7 @@ export function BodyMassQuickLog(props: {
       )}
       {flagWhy !== null && (
         <details className="fcm-why">
-          <summary>{copy('disclosure.why')}</summary>
+          <summary>{c('disclosure.why')}</summary>
           <p>{flagWhy}</p>
         </details>
       )}

@@ -7,8 +7,10 @@
 // Units: instants are epoch ms UTC [ms]; every rest quantity is seconds [s]; the ring's
 // geometry is in SVG user units, which the viewBox maps to px at the rendered size.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { copy, FORMAT } from '../../../content/copy';
+import { copy, FORMAT, type CopyKey } from '../../../content/copy';
+import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { extend, remainingS, totalS } from '../../../domain/training/restTimer';
+import { playSfx } from '../../../skins/sfx';
 import { useAppStore } from '../../../store';
 import { useRestTimer } from '../../../store/selectors';
 import { playChime, vibrate } from '../../audio/chime';
@@ -31,13 +33,18 @@ const VIBRATE_PATTERN = [180, 80, 180]; // [ms]
  * Every failure is swallowed and none of them is reported: a push-less registration, a revoked
  * permission, a browser with no service worker at all. The visual timer and the chime already
  * ran, so there is nothing for the user to act on.
+ *
+ * A plain function, so it takes the skin overlay as an ARGUMENT rather than reading a hook: it
+ * is called from an effect, not from a render, and `useCopy` may not be called from either.
+ *
+ * @param overrides the active skin's override table, from `useCopyOverrides()` at the call site.
  */
-async function notifyRestOver(): Promise<void> {
+async function notifyRestOver(overrides: Partial<Record<CopyKey, string>>): Promise<void> {
   if (!('serviceWorker' in navigator)) return;
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
   try {
     const registration = await navigator.serviceWorker.ready;
-    await registration.showNotification(copy('notification.restOver'), { tag: 'rest' });
+    await registration.showNotification(copy('notification.restOver', overrides), { tag: 'rest' });
   } catch {
     // Deliberately not an empty block: no-empty forbids that, and there is genuinely nothing
     // to recover. The chime and the ring are the primary cues; this is the third one.
@@ -47,6 +54,10 @@ async function notifyRestOver(): Promise<void> {
 
 export function RestTimerPanel(): ReactElement | null {
   const timer = useRestTimer();
+  // Above the `timer === null` return below, so the hooks run on every render of this component
+  // whether or not a rest is under way.
+  const c = useCopy();
+  const overrides = useCopyOverrides();
   const [now, setNow] = useState<number>(() => Date.now()); // [ms] epoch UTC
   const firedRef = useRef(false);
 
@@ -99,12 +110,20 @@ export function RestTimerPanel(): ReactElement | null {
     if (remainingS(timer, now) > 0) return;
     firedRef.current = true;
     playChime();
+    /*
+     * The rest-over sound (P8 Task 15), beside the chime rather than instead of it: the chime is
+     * the shipped cue and this is the skin's own sample, and both are gated inside their own
+     * modules by `ui.sounds`. It sits after `firedRef` is set, so the once-per-timer guard
+     * covers it too - an extension mints a NEW timer object, which resets the ref and arms both
+     * cues for the extended interval rather than firing them at the moment Extend was pressed.
+     */
+    playSfx('rest_over');
     // navigator.vibrate is not implemented in Safari on iOS or iPadOS at any version
     // (REFERENCES.md, caniuse.com/mdn-api_navigator_vibrate), so this is an Android-only cue
     // and must never be the only one. chime.ts feature-detects it and returns false otherwise.
     vibrate(VIBRATE_PATTERN);
-    if (document.hidden) void notifyRestOver();
-  }, [timer, now]);
+    if (document.hidden) void notifyRestOver(overrides);
+  }, [timer, now, overrides]);
 
   if (timer === null) return null;
 
@@ -144,7 +163,7 @@ export function RestTimerPanel(): ReactElement | null {
         <span className="rest-time">{FORMAT.restRemaining(minutes, seconds)}</span>
       </div>
       <div className="rest-controls">
-        <div className="rest-label">{copy('status.rest')}</div>
+        <div className="rest-label">{c('status.rest')}</div>
         <button
           type="button"
           onClick={() => {
@@ -153,7 +172,7 @@ export function RestTimerPanel(): ReactElement | null {
             useAppStore.getState().setRestTimer(extend(timer, EXTEND_S));
           }}
         >
-          {copy('button.extendRest')}
+          {c('button.extendRest')}
         </button>
         <button
           type="button"
@@ -161,7 +180,7 @@ export function RestTimerPanel(): ReactElement | null {
             useAppStore.getState().setRestTimer(null);
           }}
         >
-          {copy('button.skipRest')}
+          {c('button.skipRest')}
         </button>
       </div>
     </div>

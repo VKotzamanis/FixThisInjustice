@@ -18,7 +18,7 @@
 //    playChime would return false without telling this suite whether it was reached.
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
 import { SPECIMEN_CARDS } from '../../content/specimenCards';
 import type { SpecimenCard } from '../../content/specimenCards';
@@ -36,6 +36,7 @@ import type {
   PlanTemplate,
   PlannedExercise,
   Profile,
+  SkinId,
   UnitSystem,
 } from '../../domain/types';
 import { useAppStore } from '../../store';
@@ -1303,5 +1304,86 @@ describe('TrainView wake lock', () => {
     expect('wakeLock' in navigator).toBe(false);
     seedStore(seed());
     expect(() => renderTrain()).not.toThrow();
+  });
+});
+
+/*
+ * The skin suite (P8 close-out C).
+ *
+ * Every seed above pins `ui.skin: 'clinical'` so the 59 cases before this point quote the
+ * default table; these five name limelight explicitly and quote copy.limelight.ts BY KEY. A
+ * literal here would pass while the table it is supposed to be about was reworded.
+ *
+ * The point of the file-level cases (rather than the per-component suites in ./train/) is the
+ * THREADING: TrainView reads `useCopy()` once and hands the lookup down through ExerciseCard to
+ * every SetRow, so a set row rendering the skin word is the assertion that the prop chain is
+ * intact end to end on the screen the user actually sees.
+ */
+function withSkin(state: AppState, skin: SkinId): AppState {
+  return { ...state, ui: { ...state.ui, skin } };
+}
+
+describe('TrainView: the limelight voice', () => {
+  it('renders the default hero when no session is assigned, on the clinical skin', () => {
+    const state = seed();
+    seedStore({ ...state, assignments: { 'profile-1': [] } });
+    renderTrain();
+
+    expect(screen.getByRole('heading', { name: copy('hero.train') })).toBeInTheDocument();
+  });
+
+  it('renders the skin hero for the same empty day', () => {
+    const state = seed();
+    seedStore(withSkin({ ...state, assignments: { 'profile-1': [] } }, 'limelight'));
+    renderTrain();
+
+    expect(
+      screen.getByRole('heading', { name: copyFor('limelight', 'hero.train') }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSessionToday'))).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: copy('hero.train') })).toBeNull();
+  });
+
+  it('resolves the coach line against the skin overlay', () => {
+    /*
+     * The whole handoff in one case: ExerciseCard mints `{ key, params }`, this view resolves
+     * it through `FORMAT.withSlots` with `useCopyOverrides()`, and the toast queue renders it.
+     * Quoted through the frame with the overlay rather than as a sentence, so the template and
+     * the assertion cannot drift.
+     */
+    seedStore(withSkin(seed(), 'limelight'));
+    renderTrain();
+
+    logRow(1, '60', '8');
+
+    expect(
+      screen.getByText(
+        FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 }, SKIN_COPY.limelight),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('offers the undo in the skin words after a delete', () => {
+    const set = makeSet({ id: 'set-1', exerciseId: UPPER.id, loadKg: 60, reps: 8 });
+    seedStore(withSkin(seed({ sets: [set] }), 'limelight'));
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+
+    expect(screen.getByText(copyFor('limelight', 'coach.setDeleted'))).toBeInTheDocument();
+  });
+
+  it('carries the skin down to the controls the children own', () => {
+    // The hydration cue is HydrationBanner's, the finish control is this view's, and the log
+    // control is a SetRow two levels down reading the `t` prop. All three on one screen.
+    seedStore(withSkin(seed({ startedAt: NOW - 25 * MINUTE_MS }), 'limelight'));
+    renderTrain();
+
+    expect(screen.getByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(copyFor('limelight', 'button.logSet')).length).toBeGreaterThan(0);
+    expect(screen.queryByText(copy('button.logSet'))).toBeNull();
   });
 });
