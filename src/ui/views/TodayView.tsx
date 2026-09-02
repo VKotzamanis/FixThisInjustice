@@ -8,7 +8,6 @@ import {
   usePlan,
   useRemainingLabels,
   useTodayDate,
-  useTodayPlan,
   useUpcoming,
 } from '../../store/scheduleSelectors';
 import { useActiveProfile } from '../../store/selectors';
@@ -34,19 +33,23 @@ import './views.css';
  * src/ui/format/plan.ts), and has exactly one definition of "done", which is
  * SessionAssignment.status (A63).
  *
- * Hero precedence, highest first:
+ * Hero precedence, highest first, in the order the branches below actually test it:
  *
- *   in progress > paused > completed > skipped > a slot with a projected session >
- *   no slot (rest, naming the next slot day) > programme finished > no plan
+ *   no plan > in progress > paused > completed > skipped > a slot with a projected session >
+ *   programme finished > no slot (rest, naming the next slot day)
+ *
+ * No plan is first, not last: it is the early return above every derivation, because with no
+ * profile, plan, cursor or projected day there is nothing for the other branches to read.
  *
  * In progress outranks paused because master plan section 6.4 lets a session that was already
  * open when the pause began be completed or skipped: hiding it behind the pause hero would
  * strand it. Paused outranks the two terminal states because the pause is the standing fact
  * about the plan, and it is what the user has to lift before anything else can happen.
  *
- * "Rest" and "programme finished" are disjoint rather than ordered: rest is a gap between
- * sessions and names the next slot day, and a finished plan has no next session to name, so
- * the finished hero is reached exactly when the projection serves nothing at all.
+ * "Programme finished" and "rest" are the two heroes for a day the projection serves nothing
+ * on, and cursor.completedOn is what separates them. The finished branch is tested first, so
+ * the rest hero — which names the next slot day — is reached only while the plan still has
+ * sessions left to serve.
  */
 
 /** [d] Whole calendar days in the strip below the hero. */
@@ -82,6 +85,11 @@ const STATUS_KEY: Record<DayStatus, CopyKey> = {
  * is at the mercy of whatever the platform substitutes for it (a check mark renders as an
  * emoji on some phones and as a dingbat on others). These are two-line SVG figures on a 12-unit
  * grid, so they scale with the row and inherit its colour.
+ *
+ * The name is carried by aria-label alone. A <title> child names the graphic too, and the two
+ * were the same string: the accessible-name computation prefers aria-label, so the element was
+ * shipping a second name nothing could ever read, and a reworded status would have had to be
+ * changed in two places to stay consistent.
  */
 function StatusGlyph(props: { status: DayStatus }): JSX.Element {
   const name = copy(STATUS_KEY[props.status]);
@@ -94,7 +102,6 @@ function StatusGlyph(props: { status: DayStatus }): JSX.Element {
       focusable="false"
       data-glyph={props.status}
     >
-      <title>{name}</title>
       {props.status === 'completed' && <polyline points="2,6.4 4.8,9.2 10,3" />}
       {props.status === 'skipped' && <path d="M3 3 L9 9 M9 3 L3 9" />}
       {props.status === 'in-progress' && (
@@ -132,15 +139,20 @@ function nextServedDay(days: readonly CalendarDay[]): CalendarDay | null {
 }
 
 export function TodayView(): JSX.Element {
-  // One clock read per render, passed to every selector that needs a civil date, so the two
-  // projections below cannot straddle a midnight and disagree about which day this is.
+  // One clock read per render, passed to every selector that needs a civil date, so the
+  // projection and the date it is indexed by cannot straddle a midnight and disagree about
+  // which day this is.
   const now = Date.now(); // [ms] epoch, UTC
   const profile = useActiveProfile();
   const today = useTodayDate(now);
   const plan = usePlan();
   const cursor = useCursor();
-  const day = useTodayPlan(now);
   const upcoming = useUpcoming(STRIP_DAYS, now);
+  // Today is the first day of the strip, not a second projection of it. useTodayPlan(now) is
+  // useUpcoming(1, now)[0]: the same civil day from the same document, but a second store
+  // subscription under a second memo key. One subscription, and the hero and the first strip
+  // row are now literally the same CalendarDay.
+  const day = upcoming[0] ?? null;
   const labels = useRemainingLabels(today);
   const openPause = useAppStore(selectOpenPause);
   const actionError = useAppStore(selectActionError);
@@ -176,7 +188,21 @@ export function TodayView(): JSX.Element {
   };
   const onStart = (): void => {
     useAppStore.getState().startSession(profileId, today, Date.now()); // [ms] epoch, UTC
-    goTrain();
+    /*
+     * Navigate only on a start that actually happened. startSession has two outcomes that
+     * leave the day closed: a REFUSAL (another day still open, the plan paused — the document
+     * is untouched and the domain's wording is in status.lastActionError) and a documented
+     * no-op (a finished plan returns its argument and raises nothing). Switching to Train on
+     * either one put the user in front of a session that was never opened and left the refusal
+     * banner on a view they were no longer looking at.
+     *
+     * The post-state is read back rather than inferred: both conditions are required, because
+     * a cleared error alone does not mean this call is what cleared it, and an assignment
+     * alone does not distinguish the day this call opened from one that was already open.
+     */
+    const after = useAppStore.getState();
+    const opened = (after.assignments[profileId] ?? []).find((a) => a.date === today);
+    if (after.status.lastActionError === null && opened?.status === 'in-progress') goTrain();
   };
   const onComplete = (): void => {
     useAppStore.getState().completeSession(profileId, today, Date.now()); // [ms] epoch, UTC
@@ -358,7 +384,16 @@ export function TodayView(): JSX.Element {
             {copy('button.trainSomethingElse')}
           </button>
         )}
-        {status !== 'paused' && !finished && (
+        {/*
+         * Gated on the open pause, not on the day's display status. The two disagree in both
+         * directions: an assignment already in progress when the pause began shows the
+         * in-progress hero (the precedence above) while the plan is paused, which offered Pause
+         * for a plan already paused and withheld the Resume that lifts it; and a CLOSED pause
+         * whose half-open [from, to) still covers today shows the paused hero with nothing for
+         * resumePlan to close. openPause is the fact both controls act on, so it is the fact
+         * they are offered on.
+         */}
+        {openPause === null && !finished && (
           <button
             type="button"
             onClick={() => {
@@ -368,7 +403,7 @@ export function TodayView(): JSX.Element {
             {copy('button.pausePlan')}
           </button>
         )}
-        {status === 'paused' && (
+        {openPause !== null && (
           <button
             type="button"
             onClick={() => {
@@ -392,6 +427,13 @@ export function TodayView(): JSX.Element {
           <input
             id="skip-reason"
             type="text"
+            /*
+             * [characters] The bound on a short free-text reason ("shoulder still sore", "away
+             * for work"). It is a UI bound only: the field is stored verbatim and nothing
+             * downstream parses it, so the limit exists to keep an accidental paste out of the
+             * document, not to make the value mean anything.
+             */
+            maxLength={120}
             value={skipReason}
             onChange={(e) => {
               setSkipReason(e.target.value);
@@ -429,8 +471,13 @@ export function TodayView(): JSX.Element {
         </div>
       )}
 
-      <h2>{copy('hero.nextFourteenDays')}</h2>
-      <ol className="today-strip" aria-label={copy('hero.nextFourteenDays')}>
+      {/*
+       * The list is named by the heading it sits under (aria-labelledby), not by a second copy
+       * of the same string in an aria-label: one string in the DOM, and a reworded heading
+       * cannot leave the list announcing the old wording.
+       */}
+      <h2 id="today-strip-heading">{copy('hero.nextFourteenDays')}</h2>
+      <ol className="today-strip" aria-labelledby="today-strip-heading">
         {upcoming.map((d) => {
           const s = dayStatus(d);
           return (
