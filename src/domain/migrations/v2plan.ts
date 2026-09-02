@@ -1,6 +1,10 @@
 /*
  * Frozen decoding table for the legacy console store (localStorage key "fti.console.v2").
  *
+ * The `legacy/` tree was deleted in commit 1311f84. The citations below are kept because they
+ * document where each value came from; the files themselves are one command away, for
+ * example `git show 1311f84^:legacy/data.js`.
+ *
  * Every value here is copied verbatim from the legacy `legacy/data.js` (`window.PLAN`) as it
  * stood at the cutover commit. It exists ONLY to decode keys that are already on the user's
  * phone. It is not a training plan, it is never used to prescribe anything, and it must never
