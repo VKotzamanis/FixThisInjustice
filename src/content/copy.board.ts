@@ -50,6 +50,10 @@ export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'button.markCompleted': 'MARK DEPARTED',
   'button.finishSession': 'CLOSE SERVICE',
 
+  // The ticker's control (P8 Task 14). A board announces, so it carries the marquee; the strip
+  // is a button whose only effect is to stop the line, and its name says so in the board's case.
+  'button.pauseTicker': 'PAUSE TICKER',
+
   // --- the nav, so the tabs and the board speak one language ---
   'nav.today': 'TODAY',
   'nav.plan': 'SCHEDULE',

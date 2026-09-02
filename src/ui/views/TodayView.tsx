@@ -1,7 +1,9 @@
 import { useState, type JSX } from 'react';
-import { FORMAT, copy, type CopyKey } from '../../content/copy';
+import { FORMAT, type CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
-import type { PlanPause } from '../../domain/types';
+import type { PlanPause, WeeklyReview } from '../../domain/types';
+import { SkinLabel } from '../../skins/limelight/Icon';
 import { useAppStore, type AppStore } from '../../store';
 import {
   useActionError,
@@ -10,10 +12,15 @@ import {
   useRemainingLabels,
   useTodayDate,
   useUpcoming,
+  useWeeklyReviews,
 } from '../../store/scheduleSelectors';
 import { useActiveProfile } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
+import { Intervention } from '../components/Intervention';
+import { Marquee, type MarqueeItem } from '../components/Marquee';
 import { ReadinessNotice } from '../components/ReadinessNotice';
+import { TimeCapsule } from '../components/TimeCapsule';
+import { WeekStamp } from '../components/WeekStamp';
 import {
   NO_VALUE,
   exerciseName,
@@ -95,7 +102,8 @@ const STATUS_KEY: Record<DayStatus, CopyKey> = {
  * changed in two places to stay consistent.
  */
 function StatusGlyph(props: { status: DayStatus }): JSX.Element {
-  const name = copy(STATUS_KEY[props.status]);
+  const c = useCopy();
+  const name = c(STATUS_KEY[props.status]);
   return (
     <svg
       className="sd-glyph"
@@ -115,6 +123,22 @@ function StatusGlyph(props: { status: DayStatus }): JSX.Element {
       {props.status === 'rest' && <path d="M3 6 L9 6" />}
     </svg>
   );
+}
+
+/**
+ * The copy row that describes a closed week, chosen on the SIGN of the stored delta.
+ *
+ * `delta = completed - target` [sessions/week] is written once, by src/domain/schedule/weekly.ts,
+ * and read here. Nothing is recomputed: the three rows differ in words alone, and each carries
+ * the same two counts as slots, so a skin can never change the number a user reads.
+ *
+ * A week the plan was paused in is NOT described by these rows and callers gate on `paused`
+ * first: such a week carries delta = 0 by construction, and "target met" would then report a
+ * week in which nothing was scheduled and nothing was missed.
+ */
+function weekOutcomeKey(review: WeeklyReview): CopyKey {
+  if (review.delta < 0) return 'status.weekDeltaNegative';
+  return review.delta === 0 ? 'status.weekDeltaZero' : 'status.weekDeltaPositive';
 }
 
 /**
@@ -142,6 +166,10 @@ export function TodayView(): JSX.Element {
   // projection and the date it is indexed by cannot straddle a midnight and disagree about
   // which day this is.
   const now = Date.now(); // [ms] epoch, UTC
+  // The skin's words, and the same skin's override table for the frames that carry a value.
+  // Both are hooks, so they are read here with the rest and above every early return.
+  const c = useCopy();
+  const overrides = useCopyOverrides();
   const profile = useActiveProfile();
   const today = useTodayDate(now);
   const plan = usePlan();
@@ -154,6 +182,9 @@ export function TodayView(): JSX.Element {
   const day = upcoming[0] ?? null;
   const labels = useRemainingLabels(today);
   const openPause = useAppStore(selectOpenPause);
+  // Oldest first, as closeWeeks() sorts and merges them, so the last element is the week that
+  // closed most recently. Empty until a week has ended.
+  const reviews = useWeeklyReviews();
   // Through the store's own selector (master plan section 10, P3 close-out), so Today and any
   // later refusal-reading view bind to one definition of "the last attempt was refused".
   const actionError = useActionError();
@@ -166,8 +197,8 @@ export function TodayView(): JSX.Element {
     return (
       <div className="view today">
         <div className="today-hero">
-          <h1 className="hero-name">{copy('hero.noPlan')}</h1>
-          <p className="today-sub">{copy('advice.completeSetup')}</p>
+          <h1 className="hero-name">{c('hero.noPlan')}</h1>
+          <p className="today-sub">{c('advice.completeSetup')}</p>
         </div>
       </div>
     );
@@ -183,6 +214,34 @@ export function TodayView(): JSX.Element {
   const shown = Math.min(cursor.nextSessionIndex + 1, total);
   const position = FORMAT.planPosition(shown, total, '');
   const canRun = status === 'planned' || status === 'in-progress';
+  // The week that closed most recently, or null while the plan is in its first week. The array
+  // is the store's own, sorted oldest first by closeWeeks().
+  const lastReview: WeeklyReview | null =
+    reviews.length === 0 ? null : (reviews[reviews.length - 1] ?? null);
+
+  /*
+   * The ticker's lines (P8 Task 14, round-three plan section 2.4). Every line is a string a
+   * FORMAT frame produced from the domain's own counts: the marquee places text and formats
+   * nothing, so no number can be restated on its way to the strip.
+   *
+   * ORDER IS THE SPECIFICATION. Under prefers-reduced-motion the strip stops and shows the FIRST
+   * line alone, so the first line is the cursor position: where the plan stands is the fact that
+   * has to survive every other line being scrolled away.
+   */
+  const marqueeItems: MarqueeItem[] = [
+    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, total, '', overrides) },
+  ];
+  if (lastReview !== null && !lastReview.paused) {
+    marqueeItems.push({
+      icon: lastReview.delta < 0 ? 'skull' : 'crownPanel',
+      text: FORMAT.withSlots(
+        weekOutcomeKey(lastReview),
+        // [sessions] and [sessions/week], both the review's own.
+        { completed: lastReview.completed, target: lastReview.target },
+        overrides,
+      ),
+    });
+  }
 
   const goTrain = (): void => {
     useAppStore.getState().setUi({ lastView: 'train' });
@@ -241,7 +300,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{copy('hero.sessionInProgress')}</h1>
+        <h1 className="hero-name">{c('hero.sessionInProgress')}</h1>
         {session !== null && <p className="today-sub">{session.name}</p>}
       </div>
     );
@@ -249,8 +308,8 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{FORMAT.pausedSince(openPause === null ? today : openPause.from)}</h1>
-        <p className="today-sub">{copy('advice.pauseHoldsCursor')}</p>
+        <h1 className="hero-name">{FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)}</h1>
+        <p className="today-sub">{c('advice.pauseHoldsCursor')}</p>
       </div>
     );
   } else if (status === 'completed' || status === 'skipped') {
@@ -259,10 +318,10 @@ export function TodayView(): JSX.Element {
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
         <h1 className="hero-name">
-          {copy(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
+          {c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
         </h1>
         {session !== null && <p className="today-sub">{session.name}</p>}
-        {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason)}</p>}
+        {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
       </div>
     );
   } else if (session !== null) {
@@ -297,9 +356,9 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">
-          {FORMAT.planPosition(shown, total, copy('status.planComplete'))}
+          {FORMAT.planPosition(shown, total, c('status.planComplete'))}
         </p>
-        <h1 className="hero-name">{copy('hero.programmeComplete')}</h1>
+        <h1 className="hero-name">{c('hero.programmeComplete')}</h1>
         <p className="today-sub">
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
         </p>
@@ -310,14 +369,15 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{copy('hero.noSessionToday')}</h1>
+        <h1 className="hero-name">{c('hero.noSessionToday')}</h1>
         <p className="today-sub">
           {next === null || next.slot === null || next.projectedSession === null
-            ? copy('advice.noSessionIn14Days')
+            ? c('advice.noSessionIn14Days')
             : FORMAT.nextSession(
                 formatWeekday(next.date),
                 next.slot.startTime,
                 next.projectedSession.label,
+                overrides,
               )}
         </p>
       </div>
@@ -326,6 +386,13 @@ export function TodayView(): JSX.Element {
 
   return (
     <div className="view today">
+      {/*
+       * The one strip that moves, above everything, as the design places it. It renders on
+       * limelight and on the board and nothing at all on clinical, so this call site does not
+       * ask which skin is active.
+       */}
+      <Marquee items={marqueeItems} label={c('button.pauseTicker')} />
+
       {actionError !== null && (
         /*
          * A refusal, not a failure: the document was left exactly as it was (see the
@@ -340,7 +407,7 @@ export function TodayView(): JSX.Element {
          * src/ui/format/refusal.ts maps it onto a copy key with the date as a slot.
          */
         <div className="today-banner" role="alert">
-          <span className="banner-tag">{copy('banner.actionRefused.tag')}</span>
+          <span className="banner-tag">{c('banner.actionRefused.tag')}</span>
           <span>{refusalLine(actionError)}</span>
           <button
             type="button"
@@ -348,7 +415,7 @@ export function TodayView(): JSX.Element {
               useAppStore.getState().clearActionError();
             }}
           >
-            {copy('button.dismiss')}
+            {c('button.dismiss')}
           </button>
         </div>
       )}
@@ -367,18 +434,23 @@ export function TodayView(): JSX.Element {
       <div className="today-controls">
         {status === 'planned' && (
           <button type="button" onClick={onStart}>
-            {copy('button.startSession')}
+            {/*
+             * P8 Task 13 step 7: the labelled form, which puts the `nails` icon in front of the
+             * string on limelight and changes nothing on the other two skins. The icon carries
+             * alt="", so the button's accessible name is still the string alone.
+             */}
+            <SkinLabel copyKey="button.startSession" />
           </button>
         )}
         {status === 'in-progress' && (
           <button type="button" onClick={goTrain}>
-            {copy('button.returnToSession')}
+            {c('button.returnToSession')}
           </button>
         )}
         {canRun && (
           <>
             <button type="button" onClick={onComplete}>
-              {copy('button.markCompleted')}
+              {c('button.markCompleted')}
             </button>
             <button
               type="button"
@@ -386,7 +458,7 @@ export function TodayView(): JSX.Element {
                 setSkipOpen(true);
               }}
             >
-              {copy('button.skipToday')}
+              {c('button.skipToday')}
             </button>
           </>
         )}
@@ -404,7 +476,7 @@ export function TodayView(): JSX.Element {
               setPickerOpen((open) => !open);
             }}
           >
-            {copy('button.trainSomethingElse')}
+            {c('button.trainSomethingElse')}
           </button>
         )}
         {/*
@@ -423,7 +495,7 @@ export function TodayView(): JSX.Element {
               useAppStore.getState().pausePlan(profileId, today, null);
             }}
           >
-            {copy('button.pausePlan')}
+            {c('button.pausePlan')}
           </button>
         )}
         {openPause !== null && (
@@ -433,7 +505,7 @@ export function TodayView(): JSX.Element {
               useAppStore.getState().resumePlan(profileId, today);
             }}
           >
-            {copy('button.resumePlan')}
+            {c('button.resumePlan')}
           </button>
         )}
       </div>
@@ -446,7 +518,7 @@ export function TodayView(): JSX.Element {
            * condition, and nothing downstream reads it (master plan section 3 keeps medical
            * strings out of this app entirely).
            */}
-          <label htmlFor="skip-reason">{copy('label.skipReason')}</label>
+          <label htmlFor="skip-reason">{c('label.skipReason')}</label>
           <input
             id="skip-reason"
             type="text"
@@ -463,7 +535,7 @@ export function TodayView(): JSX.Element {
             }}
           />
           <button type="button" onClick={onConfirmSkip}>
-            {copy('button.confirmSkip')}
+            {c('button.confirmSkip')}
           </button>
           <button
             type="button"
@@ -472,14 +544,14 @@ export function TodayView(): JSX.Element {
               setSkipReason('');
             }}
           >
-            {copy('button.cancel')}
+            {c('button.cancel')}
           </button>
         </div>
       )}
 
       {pickerOpen && labels.length > 0 && (
         <div className="today-picker" data-testid="label-picker">
-          <p className="today-eyebrow">{copy('status.remainingThisWeek')}</p>
+          <p className="today-eyebrow">{c('status.remainingThisWeek')}</p>
           {labels.map((label) => (
             <button
               key={label}
@@ -488,18 +560,35 @@ export function TodayView(): JSX.Element {
                 onPick(label);
               }}
             >
-              {FORMAT.trainLabelToday(label)}
+              {FORMAT.trainLabelToday(label, overrides)}
             </button>
           ))}
         </div>
       )}
 
       {/*
+       * The week that has just closed, in exactly one of its two forms: the stamp when its
+       * target was met, the intervention when it was missed AND the popup has already been
+       * answered. The two predicates are disjoint on the stored delta, so "one of them, never
+       * both" is a property of the components rather than a branch here that could drift from
+       * them. Both render nothing while the week is still owed its popup, which P6's modal owns.
+       */}
+      <WeekStamp review={lastReview} />
+      <Intervention review={lastReview} />
+
+      {/*
+       * P8 Task 7's capsule, on the screen the user opens daily. `now` is this render's single
+       * clock reading, so the capsule's civil date cannot straddle a midnight the strip above it
+       * has already crossed.
+       */}
+      <TimeCapsule now={now} />
+
+      {/*
        * The list is named by the heading it sits under (aria-labelledby), not by a second copy
        * of the same string in an aria-label: one string in the DOM, and a reworded heading
        * cannot leave the list announcing the old wording.
        */}
-      <h2 id="today-strip-heading">{copy('hero.nextFourteenDays')}</h2>
+      <h2 id="today-strip-heading">{c('hero.nextFourteenDays')}</h2>
       <ol className="today-strip" aria-labelledby="today-strip-heading">
         {upcoming.map((d) => {
           const s = dayStatus(d);
@@ -509,7 +598,7 @@ export function TodayView(): JSX.Element {
               <span className="sd-date">{formatDayOfMonth(d.date)}</span>
               <span className="sd-time">{d.slot === null ? NO_VALUE : d.slot.startTime}</span>
               <span className="sd-label">
-                {d.projectedSession === null ? copy('status.dayRest') : d.projectedSession.label}
+                {d.projectedSession === null ? c('status.dayRest') : d.projectedSession.label}
               </span>
               <StatusGlyph status={s} />
             </li>

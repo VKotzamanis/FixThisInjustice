@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '../../app/App';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { formatRest } from '../format/plan';
 import { refusalLine } from '../format/refusal';
 import { TodayView } from './TodayView';
@@ -20,7 +20,7 @@ import {
   makeProfile,
   seedState,
 } from '../../test/scheduleFixtures';
-import type { AppState, SessionAssignment } from '../../domain/types';
+import type { AppState, SessionAssignment, SkinId, WeeklyReview } from '../../domain/types';
 
 /*
  * Deviations from the P3 plan's literal draft, recorded here and in the task report:
@@ -44,12 +44,20 @@ const MWF = [1, 3, 5] as const;
 const TOTAL = LABELS.length; // [sessions]
 
 function seed(): AppState {
-  return seedState({
+  const state = seedState({
     labels: LABELS,
     weekdays: [...MWF],
     weeklySessionTarget: 3, // [sessions/week]
     startedOn: MONDAY,
   });
+  /*
+   * P8 Task 14. The view now reads its strings through useCopy(), so the ACTIVE SKIN decides
+   * what it renders, and the shipped default is limelight (schema.ts, UiPrefsSchema). Every
+   * assertion below quotes the clinical default table, which is the contract's own baseline, so
+   * the skin is pinned here rather than each assertion being rewritten; the limelight suite at
+   * the end of this file flips it and asserts the override table instead.
+   */
+  return { ...state, ui: { ...state.ui, skin: 'clinical' } };
 }
 
 /** Replaces the document. zustand merges shallowly, so the actions and status survive. */
@@ -632,5 +640,151 @@ describe('App wiring', () => {
       within(screen.getByRole('main')).getByText(FORMAT.planPosition(1, TOTAL, '')),
     ).toBeTruthy();
     expect(useAppStore.getState().ui.lastView).toBe('today');
+  });
+});
+
+/*
+ * P8 Task 14: the ticker, the week block and the capsule.
+ *
+ * Every string below is quoted from the copy tables by KEY, never as a literal, which is the
+ * rule the head of this file states: a reworded row fails here rather than shipping a view whose
+ * copy and whose test have drifted apart.
+ */
+
+/** The week that closed before MONDAY 2026-09-07, met exactly: delta = 4 - 4 = 0. */
+const MET_WEEK: WeeklyReview = {
+  profileId: PROFILE_ID,
+  weekStart: PREV_MONDAY,
+  weekEnd: '2026-09-06',
+  target: 4, // [sessions/week]
+  completed: 4, // [sessions]
+  skipped: 0, // [sessions]
+  paused: false,
+  delta: 0, // [sessions/week]
+  evaluatedAt: NOW_MS, // [ms] epoch, UTC
+  missHandled: true,
+};
+
+/** The same week missed, with the popup already answered (missHandled). */
+const MISSED_WEEK: WeeklyReview = { ...MET_WEEK, completed: 1, skipped: 1, delta: -3 };
+
+function withReview(review: WeeklyReview | null): void {
+  setState({
+    ...useAppStore.getState(),
+    weeklyReviews: review === null ? {} : { [PROFILE_ID]: [review] },
+  });
+}
+
+function withSkin(skin: SkinId): void {
+  const state = useAppStore.getState();
+  setState({ ...state, ui: { ...state.ui, skin } });
+}
+
+describe('TodayView: the ticker', () => {
+  it('carries no ticker on the clinical skin', () => {
+    render(<TodayView />);
+    expect(screen.queryByRole('button', { name: copy('button.pauseTicker') })).toBeNull();
+  });
+
+  it('leads with the cursor position on limelight, in the limelight words', () => {
+    withSkin('limelight');
+    render(<TodayView />);
+
+    const strip = screen.getByRole('button', { name: copy('button.pauseTicker') });
+    expect(strip.getAttribute('aria-pressed')).toBe('false');
+
+    const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
+    expect(lines.map((node) => node.textContent)).toEqual([
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+    ]);
+  });
+
+  it('names the strip in the board vocabulary and adds the closed week to it', () => {
+    withSkin('board');
+    withReview(MET_WEEK);
+    render(<TodayView />);
+
+    expect(screen.getByRole('button', { name: copyFor('board', 'button.pauseTicker') })).toBeTruthy();
+    const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
+    expect(lines.map((node) => node.textContent)).toEqual([
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.board),
+      FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 }, SKIN_COPY.board),
+    ]);
+  });
+});
+
+describe('TodayView: the week that has just closed', () => {
+  it('stamps a met week and never the intervention beside it', () => {
+    withReview(MET_WEEK);
+    render(<TodayView />);
+
+    expect(screen.getByTestId('week-stamp')).toBeTruthy();
+    expect(screen.queryByTestId('intervention')).toBeNull();
+    expect(screen.getByText(copy('status.prStamp'))).toBeTruthy();
+  });
+
+  it('shows the intervention for a missed week the popup has already answered', () => {
+    withReview(MISSED_WEEK);
+    render(<TodayView />);
+
+    expect(screen.getByTestId('intervention')).toBeTruthy();
+    expect(screen.queryByTestId('week-stamp')).toBeNull();
+    expect(screen.getByText(copy('advice.interventionBody'))).toBeTruthy();
+  });
+
+  it('shows neither while the missed week is still owed its popup', () => {
+    withReview({ ...MISSED_WEEK, missHandled: false });
+    render(<TodayView />);
+
+    expect(screen.queryByTestId('intervention')).toBeNull();
+    expect(screen.queryByTestId('week-stamp')).toBeNull();
+  });
+
+  it('shows neither before any week has closed', () => {
+    withReview(null);
+    render(<TodayView />);
+
+    expect(screen.queryByTestId('intervention')).toBeNull();
+    expect(screen.queryByTestId('week-stamp')).toBeNull();
+  });
+});
+
+describe('TodayView: the time capsule', () => {
+  it('renders the capsule card, sealed to the profile zone by this render\'s clock', () => {
+    render(<TodayView />);
+    expect(screen.getByRole('heading', { name: copy('hero.timeCapsule') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copy('button.writeCapsule') })).toBeTruthy();
+  });
+});
+
+describe('TodayView: the limelight voice', () => {
+  it('renders the override table on the controls the skin names', () => {
+    withSkin('limelight');
+    render(<TodayView />);
+
+    // Asserted by key against copy.limelight.ts, never as a literal.
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.markCompleted') }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.skipToday') }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.pausePlan') }),
+    ).toBeTruthy();
+  });
+
+  it('states a met week in the limelight words, beside the shouted stamp', () => {
+    withSkin('limelight');
+    withReview(MET_WEEK);
+    render(<TodayView />);
+
+    expect(screen.getByText(copyFor('limelight', 'status.prStamp'))).toBeTruthy();
+    // Twice: once in the ticker's static line, once under the stamp. Same string, one source.
+    expect(
+      screen.getAllByText(
+        FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 }, SKIN_COPY.limelight),
+      ).length,
+    ).toBeGreaterThanOrEqual(2);
   });
 });
