@@ -122,6 +122,25 @@ describe('createScheduleActions', () => {
     expect(h.read().ui.density).toBe('normal');
     expectStorable(h.read());
   });
+
+  /*
+   * P3 Task 5 adds the dismiss control the refusal banner needs. Without it the only way to
+   * clear a refusal is to make another attempt succeed, which on a paused plan is exactly the
+   * thing the domain is refusing.
+   */
+  it('clearActionError clears a refusal without touching the document', () => {
+    const h = harness(seed());
+    h.actions.startSession(PROFILE_ID, MONDAY, NOW_MS);
+    h.actions.startSession(PROFILE_ID, TUESDAY, NOW_MS); // a second open day: refused
+    expect(h.error()).toContain('a session is already in progress');
+    const before = h.read();
+
+    h.actions.clearActionError();
+
+    expect(h.error()).toBeNull();
+    expect(h.read()).toBe(before); // identity: dismissing a message is not a state change
+    expectStorable(h.read());
+  });
 });
 
 /*

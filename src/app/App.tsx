@@ -15,6 +15,7 @@ import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { SettingsView } from '../ui/views/SettingsView';
 import { TargetsView } from '../ui/views/TargetsView';
+import { TodayView } from '../ui/views/TodayView';
 import { downloadText } from './download';
 import { useWeeklyClose } from './useWeeklyClose';
 import { UpdatePrompt } from './UpdatePrompt';
@@ -87,7 +88,7 @@ function ViewShell(): ReactElement {
       </nav>
       {view === 'targets' && <TargetsView />}
       {view === 'settings' && <SettingsView />}
-      {view === 'today' && <Placeholder name={copy('nav.today')} />}
+      {view === 'today' && <TodayView />}
       {view === 'plan' && <Placeholder name={copy('nav.plan')} />}
       {view === 'train' && <Placeholder name={copy('nav.train')} />}
       {view === 'log' && <Placeholder name={copy('nav.log')} />}

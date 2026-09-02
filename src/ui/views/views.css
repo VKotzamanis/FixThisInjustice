@@ -149,3 +149,157 @@
   color: var(--text-2, #8e97a3);
   cursor: pointer;
 }
+
+/*
+ * Today view (P3 Task 5).
+ *
+ * The two numbers above still hold: every control here is a `.view button`, so it inherits the
+ * 44 px minimum target and the 16 px font size, and the skip-reason field is a
+ * `.view input[type='text']` for the same reason. Nothing below overrides either.
+ */
+.view.today .today-eyebrow {
+  margin: 0 0 0.25rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-2, #8e97a3);
+}
+
+.view.today .hero-name {
+  margin: 0 0 0.5rem;
+  font-size: 1.4rem;
+  line-height: 1.2;
+}
+
+.view.today .today-sub {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-2, #8e97a3);
+}
+
+.view.today .session-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+.view.today .sess-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0 0.75rem;
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  font-size: 0.85rem;
+}
+
+.view.today .sess-rep {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.view.today .sess-rest {
+  grid-column: 1 / -1;
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+}
+
+.view.today .today-controls,
+.view.today .today-skip,
+.view.today .today-picker {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+}
+
+/* The refusal banner. Laid out like the shell's, and never the width of a control. */
+.view.today .today-banner {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--bad, #f87171);
+  font-size: 0.85rem;
+}
+
+.view.today .today-banner .banner-tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  color: var(--bad, #f87171);
+}
+
+/*
+ * The 14-day strip. One row per civil day, so a fortnight is scannable on a phone without
+ * horizontal scrolling; the columns are fixed so the weekday, date, time and glyph line up
+ * down the strip and a missed day is visible as a gap in the column, not as a shift.
+ */
+.view.today .today-strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.view.today .strip-day {
+  display: grid;
+  grid-template-columns: 2.5rem 1.75rem 3.5rem 1fr 1rem;
+  align-items: center;
+  gap: 0 0.5rem;
+  padding: 0.3rem 0.25rem;
+  border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  font-size: 0.85rem;
+}
+
+.view.today .sd-date,
+.view.today .sd-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2, #8e97a3);
+}
+
+/* A rest day is legible but recessive: the eye should land on the training days. */
+.view.today .strip-day[data-status='rest'] .sd-label {
+  color: var(--text-2, #8e97a3);
+}
+
+/*
+ * Paused days are hatched rather than coloured. A pause is a span, not an event, and the
+ * hatching reads as one band across however many days it covers. It is drawn from the line
+ * colour, so it survives a token set that changes the accent.
+ */
+.view.today .strip-day[data-status='paused'] {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 4px,
+    var(--line-2, rgba(220, 230, 240, 0.16)) 4px 6px
+  );
+}
+
+/*
+ * The status marks. Stroked, not filled, except the two figures that read as solid (the
+ * in-progress triangle and the planned dot). currentColor throughout, so a row inherits the
+ * strip's colour and the marks cannot drift from it.
+ */
+.view.today .sd-glyph {
+  width: 0.85rem;
+  height: 0.85rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.view.today .sd-glyph .sd-fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.view.today .strip-day[data-status='completed'] .sd-glyph {
+  color: var(--accent, #a3e635);
+}
+
+.view.today .strip-day[data-status='skipped'] .sd-glyph {
+  color: var(--bad, #f87171);
+}
+
+.view.today .strip-day[data-status='rest'] .sd-glyph {
+  color: var(--text-2, #8e97a3);
+}
