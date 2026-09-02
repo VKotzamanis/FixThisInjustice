@@ -45,6 +45,13 @@ export interface UnitInputProps {
    * rendered here, because rendering it once per field would announce it once per field.
    */
   sharedErrorId?: string | null;
+  /**
+   * Inert field. Added by P4 Task 10 for the bodyweight toggle: a set logged as bodyweight
+   * stores loadKg 0, so the load the user typed before ticking it is not the value that will
+   * be stored, and a field that still accepts input would say otherwise. Optional and
+   * defaulting to false, so no existing caller changes.
+   */
+  disabled?: boolean;
 }
 
 export function UnitInput(props: UnitInputProps): JSX.Element {
@@ -67,6 +74,7 @@ export function UnitInput(props: UnitInputProps): JSX.Element {
         type="number"
         inputMode="decimal"
         step={props.step ?? 'any'}
+        disabled={props.disabled ?? false}
         value={props.value}
         aria-invalid={props.error !== null || sharedErrorId !== null}
         aria-describedby={describedIds.length === 0 ? undefined : describedIds.join(' ')}

@@ -4,6 +4,7 @@ import type { CalendarDay } from '../../domain/schedule/calendar';
 import type { PlanPause } from '../../domain/types';
 import { useAppStore, type AppStore } from '../../store';
 import {
+  useActionError,
   useCursor,
   usePlan,
   useRemainingLabels,
@@ -11,6 +12,7 @@ import {
   useUpcoming,
 } from '../../store/scheduleSelectors';
 import { useActiveProfile } from '../../store/selectors';
+import { unlockAudio } from '../audio/chime';
 import { ReadinessNotice } from '../components/ReadinessNotice';
 import {
   NO_VALUE,
@@ -127,10 +129,6 @@ function selectOpenPause(s: AppStore): PlanPause | null {
   return (s.pauses[id] ?? []).find((p) => p.to === null) ?? null;
 }
 
-function selectActionError(s: AppStore): string | null {
-  return s.status.lastActionError;
-}
-
 /** The first later day the projection actually serves: what a rest day names. */
 function nextServedDay(days: readonly CalendarDay[]): CalendarDay | null {
   return (
@@ -155,7 +153,9 @@ export function TodayView(): JSX.Element {
   const day = upcoming[0] ?? null;
   const labels = useRemainingLabels(today);
   const openPause = useAppStore(selectOpenPause);
-  const actionError = useAppStore(selectActionError);
+  // Through the store's own selector (master plan section 10, P3 close-out), so Today and any
+  // later refusal-reading view bind to one definition of "the last attempt was refused".
+  const actionError = useActionError();
 
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
@@ -187,6 +187,14 @@ export function TodayView(): JSX.Element {
     useAppStore.getState().setUi({ lastView: 'train' });
   };
   const onStart = (): void => {
+    /*
+     * First, and unconditionally: every browser refuses AudioContext.resume() outside a user
+     * gesture, and iOS refuses it again after the app has been backgrounded (code review A29).
+     * This handler is the gesture, so the unlock has to be attempted here rather than from the
+     * Train view's mount. It is fire-and-forget: a refusal costs the rest chime and nothing
+     * else, and the start must not wait on an audio permission.
+     */
+    void unlockAudio();
     useAppStore.getState().startSession(profileId, today, Date.now()); // [ms] epoch, UTC
     /*
      * Navigate only on a start that actually happened. startSession has two outcomes that
@@ -202,7 +210,14 @@ export function TodayView(): JSX.Element {
      */
     const after = useAppStore.getState();
     const opened = (after.assignments[profileId] ?? []).find((a) => a.date === today);
-    if (after.status.lastActionError === null && opened?.status === 'in-progress') goTrain();
+    if (after.status.lastActionError === null && opened?.status === 'in-progress') {
+      // The day the session was opened on, recorded in the non-persisted session slice so a
+      // reload mid-session logs the next set against THAT day rather than re-deriving one from
+      // the clock. Set only on a start that actually happened, for the same reason the
+      // navigation is.
+      useAppStore.getState().setActiveAssignmentDate(today);
+      goTrain();
+    }
   };
   const onComplete = (): void => {
     useAppStore.getState().completeSession(profileId, today, Date.now()); // [ms] epoch, UTC

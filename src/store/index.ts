@@ -177,6 +177,21 @@ export interface AppActions {
   addCustomExercise(profileId: string, ex: Exercise): void;
   /** Marks an exercise as added to this session beyond the plan. Idempotent. */
   addBonusExercise(exerciseId: string): void;
+  /**
+   * Records the civil day whose session is open, or clears it. Session slice only; mirrored,
+   * because it is what `useTodaysSets` reads and a reload mid-session must not lose it.
+   *
+   * P3's `startSession` opens the assignment; this is the UI half of the same tap (P4 Task
+   * 10). The two are separate because the store must be able to open a day for a profile
+   * without asserting that THIS TAB is the one training on it.
+   */
+  setActiveAssignmentDate(date: LocalDate | null): void;
+  /**
+   * Resets the whole session slice and removes its sessionStorage mirror. Called when the
+   * session ends (P4 Task 10's `Finish session`), so a reload cannot revive a finished
+   * session's timer, training day or bonus exercises. Touches no persisted field.
+   */
+  clearSessionSlice(): void;
 }
 
 /*
@@ -718,6 +733,26 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       };
       saveSessionMirror(session);
       return { ...s, session };
+    });
+  },
+
+  setActiveAssignmentDate(date: LocalDate | null): void {
+    set((s) => {
+      const session: SessionState = { ...s.session, activeAssignmentDate: date };
+      // Mirrored for the same reason the timer is: a reload mid-session must log the next set
+      // against the day the session was opened on, not against whatever day it is now.
+      saveSessionMirror(session);
+      return { ...s, session };
+    });
+  },
+
+  clearSessionSlice(): void {
+    set((s) => {
+      // The mirror is REMOVED rather than rewritten empty. An empty mirror and no mirror are
+      // the same state to initialSession(), but leaving a key behind for a session that is
+      // over is a record of nothing.
+      clearSessionMirror();
+      return { ...s, session: EMPTY_SESSION };
     });
   },
 

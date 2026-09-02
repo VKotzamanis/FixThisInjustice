@@ -19,6 +19,7 @@ import { PlanView } from '../ui/views/PlanView';
 import { SettingsView } from '../ui/views/SettingsView';
 import { TargetsView } from '../ui/views/TargetsView';
 import { TodayView } from '../ui/views/TodayView';
+import { TrainView } from '../ui/views/TrainView';
 import { downloadText } from './download';
 import { useWeeklyClose } from './useWeeklyClose';
 import { UpdatePrompt } from './UpdatePrompt';
@@ -57,17 +58,23 @@ function Placeholder(props: { name: string }): ReactElement {
 /**
  * Navigation and the view switch, mounted only once a profile exists.
  *
- * The chosen view is mirrored into `UiPrefs.lastView` so a reload reopens where the user left
- * off. Local state stays the source of truth WITHIN a session: routing every tap through the
- * persisted document would put a debounced write between the tap and the repaint.
+ * `UiPrefs.lastView` is the SOURCE OF TRUTH, subscribed to rather than read once. P4 Task 10
+ * needs that: Today's Start handler switches to Train by writing the preference, and the
+ * shell's earlier local-state copy meant the write reached storage and no one else (master
+ * plan section 10, P3 close-out: "the app shell seeds its view from ui.lastView once and does
+ * not subscribe, so Today's Start does not switch to Train until the shell subscribes").
+ *
+ * The earlier comment justified the local copy by the debounced persistence write. That was a
+ * misreading of where the debounce sits: `setUi` updates the store synchronously and only the
+ * WRITE TO STORAGE is coalesced, so a tap repaints on the same commit either way.
+ *
+ * A view this build does not have is not asserted away. A document written by a later version
+ * can name one, and falling back to a known view is what keeps that document loading instead
+ * of rendering nothing.
  */
 function ViewShell(): ReactElement {
-  // Read once, not subscribed: this seeds the session and must not re-render the shell every
-  // time the value it just wrote comes back through the store.
-  const [view, setView] = useState<ViewId>(() => {
-    const stored = useAppStore.getState().ui.lastView;
-    return isViewId(stored) ? stored : 'targets';
-  });
+  const stored = useAppStore((s) => s.ui.lastView);
+  const view: ViewId = isViewId(stored) ? stored : 'targets';
 
   return (
     <>
@@ -78,7 +85,6 @@ function ViewShell(): ReactElement {
             type="button"
             aria-current={view === n.id}
             onClick={() => {
-              setView(n.id);
               // Through getState(), like every other action call in this codebase: the store's
               // actions are created once and never replace themselves, so subscribing to one
               // buys nothing and hands the component an unbound method.
@@ -93,7 +99,7 @@ function ViewShell(): ReactElement {
       {view === 'settings' && <SettingsView />}
       {view === 'today' && <TodayView />}
       {view === 'plan' && <PlanView />}
-      {view === 'train' && <Placeholder name={copy('nav.train')} />}
+      {view === 'train' && <TrainView />}
       {view === 'log' && <Placeholder name={copy('nav.log')} />}
     </>
   );
