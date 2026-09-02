@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
-import { FORMAT, copy } from '../content/copy';
+import { copy } from '../content/copy';
 import { useAppStore } from '../store';
 import type { SaveErrorReason } from '../store';
 import type { Profile } from '../domain/types';
@@ -15,6 +15,7 @@ import { SessionIndicator } from '../ui/components/SessionIndicator';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
 import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
+import { LogView } from '../ui/views/LogView';
 import { PlanView } from '../ui/views/PlanView';
 import { SettingsView } from '../ui/views/SettingsView';
 import { TargetsView } from '../ui/views/TargetsView';
@@ -48,11 +49,6 @@ const NAV: { id: ViewId; label: string }[] = [
  */
 function isViewId(value: string): value is ViewId {
   return NAV.some((n) => n.id === value);
-}
-
-/** A view a later plan delivers. Until then the tab exists and says the view is not built. */
-function Placeholder(props: { name: string }): ReactElement {
-  return <p className="view">{FORMAT.notBuiltYet(props.name)}</p>;
 }
 
 /**
@@ -100,7 +96,7 @@ function ViewShell(): ReactElement {
       {view === 'today' && <TodayView />}
       {view === 'plan' && <PlanView />}
       {view === 'train' && <TrainView />}
-      {view === 'log' && <Placeholder name={copy('nav.log')} />}
+      {view === 'log' && <LogView />}
     </>
   );
 }
