@@ -197,6 +197,24 @@ describe('ExportView', () => {
     ]);
   });
 
+  /*
+   * P7 review: downloadText hard-coded `type: 'application/json'` regardless of filename, so
+   * the .txt summary and the .ics calendar were both handed to the browser as JSON blobs. A
+   * browser that dispatches on Blob.type rather than the filename extension (several mobile
+   * share sheets do) then offers the wrong app for a save-to-Files action.
+   */
+  it('labels each download with the MIME type its own file extension implies', () => {
+    render(<ExportView />);
+    click(copy('button.downloadJson'));
+    click(copy('button.downloadSummary'));
+    click(copy('button.downloadCalendar'));
+    expect(downloads.map((d) => d.type)).toEqual([
+      'application/json',
+      'text/plain;charset=utf-8',
+      'text/calendar;charset=utf-8',
+    ]);
+  });
+
   it('omits a VEVENT for a day already completed or skipped, but keeps a planned future day', async () => {
     // 2026-09-01 (the mocked NOW, Athens) is a Tuesday. The fixture's availability slots
     // (migrationFactories.makeAvailability) fall on ISO weekdays 1/3/5/6 -- Mon/Wed/Fri/Sat --
