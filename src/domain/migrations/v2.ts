@@ -18,10 +18,10 @@
  *
  * Nothing is dropped silently. Every record the migration refuses is appended to
  * `report.setsSkipped` with an origin-prefixed key (`sets.`, `weightLog[`, `water.`,
- * `notes.`, `pushupLog.`, `completed.`, `customEx.`, `mealSwaps.`) and a reason in plain
- * language. Every legacy day whose sets could not be attached to a session of the new plan
- * is appended to `report.sessionFallbacks` with the reason. The wizard shows both lists; the
- * user keeps the untouched legacy JSON either way.
+ * `notes.`, `pushupLog.`, `completed.`, `customEx.`, `specimens.`, `mealSwaps.`) and a
+ * reason in plain language. Every legacy day whose sets could not be attached to a session
+ * of the new plan is appended to `report.sessionFallbacks` with the reason. The wizard
+ * shows both lists; the user keeps the untouched legacy JSON either way.
  */
 
 import { instantOf, isValidLocalDate, isValidTimeZone, daysBetween, localDateOf } from '../dates';
@@ -35,6 +35,7 @@ import type {
   HydrationEntry,
   Kg,
   LocalDate,
+  LoggedSet,
   PlanTemplate,
   Profile,
   TimeCapsule,
@@ -107,7 +108,10 @@ export type MigrateV2Result =
   | { ok: true; state: AppState; report: MigrationReport }
   | { ok: false; reason: string };
 
-export type ApplyMigrationResult = { ok: true; state: AppState } | { ok: false; reason: string };
+export type ApplyMigrationResult =
+  /** `skipped` holds the migrated sets the target state already had. */
+  | { ok: true; state: AppState; skipped: MigrationSkip[] }
+  | { ok: false; reason: string };
 
 /** legacy/console-store.jsx:95, "waterTarget: 7, // 500 ml x 7 = 3.5 L". */
 export const CUP_ML = 500; // [mL] per legacy cup
@@ -128,6 +132,14 @@ const MAX_EXERCISE_NAME_CHARS = 120; // [characters] schema.ts ExerciseSchema.na
 const MAX_SET_NUMBER = 20; // [sets] schema.ts MAX_SETS; a higher ordinal cannot be stored
 const MAX_PUSHUPS = 100; // [reps] a push-up maximum is stored as a set, so it obeys MAX_REPS
 const CUSTOM_EX_BASE = 1000; // legacy/console-train.jsx:391
+/**
+ * A legacy specimen card id: one lower-case letter then three digits. Every id in
+ * legacy/console-content.js:564-711 has this shape (`c001`..`c015`, `u001`..`u015`,
+ * `r001`..`r012`), and the v3 catalogue in src/content/specimenCards.ts keeps it. The gate
+ * is on the SHAPE, not on membership of the v3 catalogue: a card the content review
+ * dropped is still a card the user collected, and refusing it would delete their record.
+ */
+const CARD_ID_RE = /^[a-z]\d{3}$/;
 
 /** Reason text reused by every date-derived record when the legacy start date is missing. */
 const NO_START =
@@ -166,6 +178,36 @@ function unitSystemOf(u: LegacyUnit): UnitSystem {
 /** First whitespace-delimited word, lowercased. '' when there is none. */
 function firstWord(label: string): string {
   return label.trim().split(/\s+/)[0]?.toLowerCase() ?? '';
+}
+
+/** A legacy `customEx` key: `week-day` (legacy/console-train.jsx:391). */
+const CUSTOM_DAY_KEY_RE = /^(\d+)-(\d+)$/;
+
+/**
+ * Order two legacy `customEx` keys by week then day, numerically.
+ *
+ * The keys are `week-day` strings, so the default Array.prototype.sort() compares them as
+ * text and puts '10-1' before '2-1'. That order is load-bearing: the loop that reads these
+ * blocks is first-encountered-wins (it writes customSetsSpec only when the name is absent
+ * and returns as soon as customByName holds it), so a string sort lets week 10 define an
+ * exercise that week 2 introduced, and it fixes the order the exercises are stored in.
+ *
+ * A key that is not `week-day` sorts after every key that is, and ties between two such keys
+ * are broken by code-point order, so the result is a total order and the pass stays
+ * deterministic whatever the legacy blob holds. localeCompare is deliberately not used here:
+ * its result depends on the runtime locale, and this order must not.
+ */
+function compareCustomDayKeys(a: string, b: string): number {
+  const ma = CUSTOM_DAY_KEY_RE.exec(a);
+  const mb = CUSTOM_DAY_KEY_RE.exec(b);
+  if (ma === null || mb === null) {
+    if (ma !== null) return -1;
+    if (mb !== null) return 1;
+    return a < b ? -1 : a > b ? 1 : 0;
+  }
+  const week = Number.parseInt(ma[1] ?? '', 10) - Number.parseInt(mb[1] ?? '', 10); // [weeks]
+  if (week !== 0) return week;
+  return Number.parseInt(ma[2] ?? '', 10) - Number.parseInt(mb[2] ?? '', 10); // [d]
 }
 
 // ---------------------------------------------------------------------------
@@ -318,7 +360,7 @@ export function migrateV2(raw: unknown, opts: MigrateV2Options): MigrateV2Result
   const customSetsSpec = new Map<string, string>();
   const customList: Exercise[] = [];
   const customRaw = isRecord(raw['customEx']) ? raw['customEx'] : {};
-  for (const dayKey of Object.keys(customRaw).sort()) {
+  for (const dayKey of Object.keys(customRaw).sort(compareCustomDayKeys)) {
     const list = customRaw[dayKey];
     if (!isUnknownArray(list)) {
       skipped.push({ key: `customEx.${dayKey}`, reason: 'not an array of exercises' });
@@ -707,7 +749,9 @@ export function migrateV2(raw: unknown, opts: MigrateV2Options): MigrateV2Result
 
   // ---- notes -----------------------------------------------------------------
   const notesRaw = isRecord(raw['notes']) ? raw['notes'] : {};
-  const notes: Record<LocalDate, string> = {};
+  // Null prototype: `notes[date] = ...` is a write by legacy-supplied key. isValidLocalDate
+  // already rejects "__proto__", so this is defence in depth, not a live fix.
+  const notes: Record<LocalDate, string> = Object.create(null) as Record<LocalDate, string>;
   for (const date of Object.keys(notesRaw).sort()) {
     const where = `notes.${date}`;
     if (!isValidLocalDate(date)) {
@@ -739,9 +783,26 @@ export function migrateV2(raw: unknown, opts: MigrateV2Options): MigrateV2Result
   // The legacy specimen record froze a display name, not an id, and two legacy slots mean
   // different exercises in different weeks. The record's own `acquiredAt` fixes which week it
   // was, so the week is recovered from it and the id in force then is the one stored.
+  //
+  // Two guards, because the keys come from the legacy blob. `acquired` has a null
+  // prototype: on a plain object `acquired['__proto__'] = rec` reaches Object.prototype's
+  // __proto__ setter, which stores nothing and leaves no entry in setsSkipped, breaking
+  // this module's one promise. CARD_ID_RE then refuses every key that is not a card id --
+  // "constructor" among them -- with a reason, so nothing is dropped silently either.
   const specRaw = isRecord(raw['specimens']) ? raw['specimens'] : {};
-  const acquired: Record<string, { at: EpochMs; exerciseId: string | null }> = {};
+  const acquired: Record<string, { at: EpochMs; exerciseId: string | null }> = Object.create(
+    null,
+  ) as Record<string, { at: EpochMs; exerciseId: string | null }>;
   for (const cardId of Object.keys(specRaw).sort()) {
+    if (!CARD_ID_RE.test(cardId)) {
+      skipped.push({
+        key: `specimens.${cardId}`,
+        reason:
+          `"${cardId}" is not a legacy card id (one lower-case letter then three digits), ` +
+          'so there is no card for it to unlock',
+      });
+      continue;
+    }
     const rec = specRaw[cardId];
     if (!isRecord(rec)) {
       skipped.push({ key: `specimens.${cardId}`, reason: 'not an object' });
@@ -869,6 +930,23 @@ function legacyWeekOf(at: EpochMs, startDate: LocalDate, tz: TimeZone): number |
  * reminder settings the user just configured are left exactly as they are. Where both sides
  * hold a value for the same day, the value entered in the new app wins.
  *
+ * Sets are merged by identity, not by id. A LoggedSet id is minted fresh by every migrateV2
+ * call and schema.ts carries no (assignmentDate, exerciseId, setNumber) uniqueness
+ * refinement, so an id-keyed merge would store a second set 1 on a second application. The
+ * identity used here is (profileId, assignmentDate, exerciseId, setNumber): profileId is part
+ * of it because two profiles legitimately each hold their own set 1 of the same exercise on
+ * the same day. The record already in `base` is kept and the migrated one is returned in
+ * `skipped` with the reason "already present", so a repeat merge is reported, never silent.
+ *
+ * That rule needs a stable exerciseId, and a migrated CUSTOM exercise does not have one:
+ * migrateV2 mints a fresh newId() for it on every call, so the same legacy exercise arrives
+ * with a different id each time. Its identity is its name, which is already how migrateV2
+ * itself collapses the legacy customEx blocks (customByName, keyed on the lower-cased name),
+ * so the same rule is applied once more across the merge boundary: a name the target state
+ * already holds keeps the exercise it has, and every migrated set pointing at the new id is
+ * repointed at the existing one before its identity is computed. Nothing is dropped -- the
+ * exercise is present and its sets stay attached to it -- so this produces no `skipped` row.
+ *
  * The merged document goes through parseState, so a caller can never commit a state the
  * store would refuse on its next load.
  */
@@ -877,6 +955,52 @@ export function applyMigration(
   migrated: AppState,
   profileId: string,
 ): ApplyMigrationResult {
+  // ---- custom exercises: identity is the name, not the freshly minted id --------------
+  const baseCustom = base.customExercises[profileId] ?? [];
+  const customIdByName = new Map<string, string>(
+    baseCustom.map((e): [string, string] => [e.name.trim().toLowerCase(), e.id]),
+  );
+  /** migrated custom-exercise id -> the id the target state already uses for that name. */
+  const exerciseIdRemap = new Map<string, string>();
+  const addedCustom: Exercise[] = [];
+  for (const ex of migrated.customExercises[profileId] ?? []) {
+    const norm = ex.name.trim().toLowerCase();
+    const existing = customIdByName.get(norm);
+    if (existing === undefined) {
+      customIdByName.set(norm, ex.id);
+      addedCustom.push(ex);
+      continue;
+    }
+    exerciseIdRemap.set(ex.id, existing);
+  }
+
+  // ---- sets: merged by identity, not by minted id ---------------------------------------
+  /** The identity of a logged set, independent of the id minted for it. */
+  const setKey = (s: LoggedSet): string =>
+    `${s.profileId}|${s.assignmentDate}|${s.exerciseId}|${s.setNumber}`;
+  const skipped: MigrationSkip[] = [];
+  const mergedSets = new Map<string, LoggedSet>();
+  const seenSets = new Set<string>();
+  for (const [id, s] of Object.entries(base.sets)) {
+    mergedSets.set(id, s);
+    seenSets.add(setKey(s));
+  }
+  for (const [id, migratedSet] of Object.entries(migrated.sets)) {
+    const reused = exerciseIdRemap.get(migratedSet.exerciseId);
+    const s: LoggedSet =
+      reused === undefined ? migratedSet : { ...migratedSet, exerciseId: reused };
+    const key = setKey(s);
+    if (seenSets.has(key)) {
+      skipped.push({
+        key: `sets.${s.assignmentDate}.${s.exerciseId}.${s.setNumber}`,
+        reason: 'already present',
+      });
+      continue;
+    }
+    seenSets.add(key);
+    mergedSets.set(id, s);
+  }
+
   const mergedHydration = new Map<LocalDate, HydrationEntry>();
   for (const e of migrated.hydration[profileId] ?? []) mergedHydration.set(e.date, e);
   for (const e of base.hydration[profileId] ?? []) mergedHydration.set(e.date, e);
@@ -899,18 +1023,13 @@ export function applyMigration(
 
   const next: AppState = {
     ...base,
-    sets: { ...base.sets, ...migrated.sets },
+    // Object.fromEntries defines each key, so a set id could never reach a prototype setter.
+    sets: Object.fromEntries(mergedSets),
     notes: {
       ...base.notes,
       [profileId]: { ...(migrated.notes[profileId] ?? {}), ...(base.notes[profileId] ?? {}) },
     },
-    customExercises: {
-      ...base.customExercises,
-      [profileId]: [
-        ...(base.customExercises[profileId] ?? []),
-        ...(migrated.customExercises[profileId] ?? []),
-      ],
-    },
+    customExercises: { ...base.customExercises, [profileId]: [...baseCustom, ...addedCustom] },
     bodyMass: { ...base.bodyMass, [profileId]: mergedMass },
     hydration: {
       ...base.hydration,
@@ -930,5 +1049,5 @@ export function applyMigration(
   if (!parsed.ok) {
     return { ok: false, reason: `the merged document does not validate: ${parsed.error}` };
   }
-  return { ok: true, state: parsed.state };
+  return { ok: true, state: parsed.state, skipped };
 }

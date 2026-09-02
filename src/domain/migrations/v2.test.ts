@@ -411,6 +411,36 @@ describe('migrateV2 - hydration, notes, specimens, capsule', () => {
     expect(state.specimens['p1']?.acquired['c027']?.exerciseId).toBe('bulgarian-split-squat');
   });
 
+  it('drops legacy specimen keys that are not card ids and reports every one', () => {
+    // JSON.parse is the only way to build an OWN "__proto__" key: an object literal with
+    // that key sets the prototype instead. A hand-edited legacy blob can carry one, and on
+    // a plain {} the assignment `acquired['__proto__'] = rec` reaches Object.prototype's
+    // __proto__ setter, so the row disappears with no entry in setsSkipped -- the one thing
+    // this module's header promises never happens.
+    const doc = JSON.parse(
+      '{"startDate":"2026-01-05","specimens":{' +
+        '"__proto__":{"acquiredAt":1767611000000,"exercise":"Barbell bench press"},' +
+        '"constructor":{"acquiredAt":1767611000000,"exercise":"Barbell bench press"},' +
+        '"c001":{"acquiredAt":1767611000000,"exercise":"Barbell bench press"}}}',
+    ) as unknown;
+    const result = migrateV2(doc, OPTS);
+    if (!result.ok) throw new Error(result.reason);
+
+    const acquired = result.state.specimens['p1']?.acquired ?? {};
+    expect(Object.keys(acquired)).toEqual(['c001']);
+    expect(acquired['c001']?.exerciseId).toBe('barbell-bench-press');
+
+    const reasons = new Map(result.report.setsSkipped.map((s) => [s.key, s.reason]));
+    expect(reasons.get('specimens.__proto__')).toMatch(/card id/i);
+    expect(reasons.get('specimens.constructor')).toMatch(/card id/i);
+
+    // Object.prototype is untouched: a fresh object inherits none of the record's fields.
+    const fresh: Record<string, unknown> = {};
+    expect(fresh['acquired']).toBeUndefined();
+    expect(fresh['at']).toBeUndefined();
+    expect(fresh['exerciseId']).toBeUndefined();
+  });
+
   it('carries the time capsule and gives it the week-24 opening date', () => {
     const { state } = run();
     const capsule = state.capsules['p1'];
@@ -429,6 +459,52 @@ describe('migrateV2 - custom exercises', () => {
     expect(customs[0]?.id).not.toMatch(/^100\d$/);
     const set = setsOf(state).find((s) => s.exerciseId === customs[0]?.id);
     expect(set?.reps).toBe(15);
+  });
+
+  it('orders the legacy custom-exercise days by week then day, not as strings', () => {
+    // Object.keys(...).sort() is a string sort, so '10-1' < '2-1' and week 10 is visited
+    // before week 2. The order decides which day defines each exercise and the order the
+    // exercises are stored in, so it has to be the numeric one.
+    const doc = {
+      startDate: '2026-01-05',
+      customEx: {
+        '2-1': [{ name: 'Beta', sets: '3' }],
+        '10-1': [{ name: 'Gamma', sets: '3' }],
+        '1-3': [{ name: 'Alpha', sets: '3' }],
+      },
+    };
+    const result = migrateV2(doc, OPTS);
+    if (!result.ok) throw new Error(result.reason);
+    expect((result.state.customExercises['p1'] ?? []).map((e) => e.name)).toEqual([
+      'Alpha',
+      'Beta',
+      'Gamma',
+    ]);
+  });
+
+  it('lets the numerically earliest day define an exercise named on two days', () => {
+    // The rule already in the code is first-encountered-wins: customSetsSpec is written only
+    // when the name is absent, and the loop returns early once customByName holds the name.
+    // So the winner is the numerically FIRST key, which is what the sort has to deliver.
+    // Under a string sort '10-1' is visited first and its "5" would set the target; under
+    // week-then-day order '2-1' is first, the target is 2, and set 3 is a bonus set.
+    const doc = {
+      startDate: '2026-01-05',
+      customEx: {
+        '10-1': [{ name: 'Beta', sets: '5' }],
+        '2-1': [{ name: 'Beta', sets: '2' }],
+      },
+      sets: {
+        '2-1-1000-3': { weight: 20, reps: 10, ts: 1767610800000, exName: 'Beta' },
+      },
+    };
+    const result = migrateV2(doc, OPTS);
+    if (!result.ok) throw new Error(result.reason);
+    const customs = result.state.customExercises['p1'] ?? [];
+    expect(customs).toHaveLength(1);
+    const set = Object.values(result.state.sets).find((x) => x.exerciseId === customs[0]?.id);
+    expect(set?.setNumber).toBe(3); // [sets]
+    expect(set?.isBonus).toBe(true); // 3 > the 2 sets that '2-1' prescribes
   });
 
   it('says in the exercise note that modality and load class were not recorded', () => {
@@ -535,6 +611,27 @@ describe('applyMigration', () => {
     const applied = applyMigration(base, migrated, 'p1');
     if (!applied.ok) throw new Error(applied.reason);
     expect(applied.state.capsules['p1']?.note).toBe('already sealed');
+  });
+
+  it('never writes a duplicate set when applied twice, and reports the repeats', () => {
+    const base = makeBlankState();
+    const { state: migrated } = run();
+
+    const first = applyMigration(base, migrated, 'p1');
+    if (!first.ok) throw new Error(first.reason);
+    const afterFirst = Object.keys(first.state.sets).length; // [sets]
+
+    // migrateV2 mints a fresh id on every run and schema.ts carries no
+    // (assignmentDate, exerciseId, setNumber) uniqueness refinement, so an id-keyed spread
+    // stores a second copy of every set rather than recognising it.
+    const { state: migratedAgain } = run();
+    const second = applyMigration(first.state, migratedAgain, 'p1');
+    if (!second.ok) throw new Error(second.reason);
+
+    expect(Object.keys(second.state.sets)).toHaveLength(afterFirst);
+    expect(first.skipped).toEqual([]);
+    expect(second.skipped).toHaveLength(afterFirst);
+    expect(new Set(second.skipped.map((k) => k.reason))).toEqual(new Set(['already present']));
   });
 
   it('refuses a merge that would not validate, rather than storing it', () => {
