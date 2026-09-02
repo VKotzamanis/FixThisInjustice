@@ -26,7 +26,7 @@ task had shipped:
 The second instruction sets the unit of design: one. The review pages show the app as it renders
 on Limelight and nothing beside it. The comments are about the UI and the app, and the other two
 skins are adapted from the finalized Limelight app in a later pass, not row by row during the
-round. Decision `alpha-one-design-reviewed` records it.
+round. Decision `alpha-review-limelight-only` records it.
 
 Sentence 1 sets the unit of review: a step or a page, not the app. The review pages this plan
 builds are one per screen group, in app order, and the owner walks them beside the live app.
@@ -127,8 +127,8 @@ already makes against cloning a string to change its case.
 the Limelight skin is a complaint about the component, because the component is the same on both
 skins. Fixing it on one skin only is not possible without forking the tree.
 
-<!-- decision: alpha-one-design-reviewed | status: adopted | supersedes: none -->
-### `alpha-one-design-reviewed` (adopted, 2026-09-02)
+<!-- decision: alpha-review-limelight-only | status: adopted | supersedes: none -->
+### `alpha-review-limelight-only` (adopted, 2026-09-02)
 
 **Rule.** The round reviews one design. Every review page shows each string as the Limelight app
 renders it, in one column: the Limelight override where one exists, the default table's string
@@ -2533,7 +2533,7 @@ git commit -m "feat(P10): <part id>, the limelight row the owner asked for"
 
 Use only when the triage says a string the Limelight app shows from the default table is too long
 or states something untrue. Never for register: decision `alpha-focus-limelight` keeps the default
-plain, and decision `alpha-one-design-reviewed` leaves the other skins to a later adaptation pass.
+plain, and decision `alpha-review-limelight-only` leaves the other skins to a later adaptation pass.
 
 **Files:**
 - Modify: `src/content/copy.ts`
@@ -2983,7 +2983,7 @@ Run before the plan is handed to an implementer, and again at Task 16.
 | use an agentic approach to implement | 11 to 15, one template per feedback kind |
 | focus on the gay and brat theme | decision `alpha-focus-limelight`, and Limelight first in every string block |
 | the minimal theme is the same, any interesting language | Task 12, the default table changes for verbosity or accuracy only |
-| you don't have to publish all different designs; the feedback will be on the gay/brat design | decision `alpha-one-design-reviewed`; Task 4 shows one string per key and no skin chip; Task 5 says so on page 0 |
+| you don't have to publish all different designs; the feedback will be on the gay/brat design | decision `alpha-review-limelight-only`; Task 4 shows one string per key and no skin chip; Task 5 says so on page 0 |
 
 **2. Placeholder scan.** The plan carries no "TBD", no "handle edge cases", no "similar to Task N".
 Three things are deliberately left for the executor to measure rather than to invent: the date in
