@@ -261,4 +261,19 @@ describe('usePendingMotivation', () => {
     });
     expect(result.current).toBeNull();
   });
+
+  it('re-reads the clock when the tab becomes visible again', () => {
+    vi.setSystemTime(WEEK_CLOSE + 14 * DAY_MS - 30_000); // [ms] epoch, UTC
+    const { result } = renderHook(() => usePendingMotivation());
+    expect(result.current?.weekStart).toBe(RECENT_WEEK);
+
+    // A locked phone throttles or suspends the interval, so the visibility event is the only
+    // trigger left. The system clock is moved WITHOUT running any timer, so a pass here can
+    // come from nothing else. jsdom reports visibilityState 'visible' by default.
+    vi.setSystemTime(WEEK_CLOSE + 14 * DAY_MS + 30_000); // [ms] epoch, UTC
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(result.current).toBeNull();
+  });
 });
