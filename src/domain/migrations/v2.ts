@@ -2,6 +2,10 @@
  * One-way import of the legacy console store (localStorage key "fti.console.v2",
  * legacy/console-store.jsx:6) into a v3 AppState.
  *
+ * The `legacy/` tree was deleted in commit 1311f84. Every legacy citation in this file is kept
+ * because it documents where the rule came from; the files themselves are one command away,
+ * for example `git show 1311f84^:legacy/console-store.jsx`.
+ *
  * The function is pure: it reads no storage, writes no storage, and touches no React. The
  * caller supplies the one fact the legacy store never recorded, which unit the loads were
  * typed in (master plan section 9: "whether the user's own historical logs were entered in
