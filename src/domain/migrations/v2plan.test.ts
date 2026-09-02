@@ -338,6 +338,11 @@ describe('the personal-data gate (master plan section 3)', () => {
 
   it('carries no medication or location string in the module source', () => {
     const haystack = v2planSource.toLowerCase();
+    // Positive control: an absence assertion over an empty haystack passes for the wrong
+    // reason, so first prove the source actually loaded and is the module under test.
+    expect(haystack.length).toBeGreaterThan(1_000);
+    expect(haystack).toContain('legacy');
+    expect(haystack).toContain('export const v2_days');
     for (const [head, tail] of NEEDLE_HALVES) {
       const needle = head + tail;
       expect({ needle, present: haystack.includes(needle) }).toEqual({ needle, present: false });

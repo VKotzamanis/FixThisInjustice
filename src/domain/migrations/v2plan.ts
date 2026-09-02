@@ -6,7 +6,7 @@
  * phone. It is not a training plan, it is never used to prescribe anything, and it must never
  * be edited to "improve" the programme: editing it silently rewrites the user's history.
  *
- * Legacy key scheme (console-store.jsx:152, console-train.jsx:391):
+ * Legacy key scheme (legacy/console-store.jsx:152, legacy/console-train.jsx:391):
  *   sets[`${week}-${day}-${exIdx}-${setNumber}`]
  *     week      1..24     [dimensionless] programme week ordinal
  *     day       1..7      [dimensionless] position in a fixed 7-day rotation, NOT a calendar
@@ -15,7 +15,7 @@
  *               1000 + i  the i-th user-added exercise of that (week, day)
  *     setNumber 1-based   [dimensionless] set ordinal within the exercise
  *
- * Legacy calendar semantics (console-store.jsx:68-77, `programPosition`):
+ * Legacy calendar semantics (legacy/console-store.jsx:68-77, `programPosition`):
  *   `programPosition` maps a date to `day_idx = daysBetween(startDate, today)` [d], then
  *   `week = floor(day_idx / 7) + 1` and `doW = (day_idx % 7) + 1`. Inverting it gives the rule
  *   `legacyDateOf` implements: day 1 of week 1 IS `startDate`, and the offset from it is
@@ -23,17 +23,17 @@
  *   23 * 7 + 6 = 167 days [d] from first to last session, i.e. 168 calendar days inclusive.
  *
  * Two slots, and only two, change which exercise they mean part-way through the programme.
- * Both are recorded in data.js as a note on a single slot rather than as a second exercise
+ * Both are recorded in legacy/data.js as a note on a single slot rather than as a second exercise
  * list, so the LIST ITSELF never differs between phases: the length, the order and every other
  * slot are constant across all 24 weeks (verified by reading every consumer of
  * `PLAN.days[...].exercises` in the legacy tree; each indexes the one array and none
  * substitutes a phase-specific list).
  *   day 3 slot 2 "Leg press -> Bulgarian split"  note "Bulgarian from wk 5"
- *                (data.js:156; corroborated by the week-5 volume note, data.js:84)
+ *                (legacy/data.js:156; corroborated by the week-5 volume note, legacy/data.js:84)
  *   day 5 slot 0 "Trap bar DL -> conventional"   note "Conventional from wk 9. Always first."
- *                (data.js:179; corroborated by the week-9 volume note, data.js:88, and by the
- *                 phase-2 summary, data.js:45)
- * Everything else in data.js that varies by week -- set counts and deloads -- varies in
+ *                (legacy/data.js:179; corroborated by the week-9 volume note,
+ *                 legacy/data.js:88, and by the phase-2 summary, legacy/data.js:45)
+ * Everything else in legacy/data.js that varies by week -- set counts and deloads -- varies in
  * PLAN.volume, reproduced below as V2_VOLUME, not in the exercise lists.
  *
  * Exercise ids are the canonical slugs of src/domain/plan/library.ts (master plan section 5).
@@ -108,9 +108,9 @@ function freezeDay(d: LegacyDay): LegacyDay {
 }
 
 /**
- * PLAN.volume (data.js:79-104). Index 0 is week 1.
+ * PLAN.volume (legacy/data.js:79-104). Index 0 is week 1.
  * `sets` is the volume-ramp target [dimensionless count of working sets]; `deload` forces the
- * target to 2 (console-store.jsx:374).
+ * target to 2 (legacy/console-store.jsx:374).
  */
 export const V2_VOLUME: readonly { sets: number; deload: boolean }[] = Object.freeze(
   [
@@ -142,7 +142,7 @@ export const V2_VOLUME: readonly { sets: number; deload: boolean }[] = Object.fr
 );
 
 /**
- * PLAN.days (data.js:117-210). Index 0 is day 1.
+ * PLAN.days (legacy/data.js:117-210). Index 0 is day 1.
  *
  * Two legacy names each cover a slot the P2 library splits in two, and in both cases the
  * library records which half kept the legacy search string, which is what fixes the mapping:
@@ -191,7 +191,7 @@ const V2_DAYS_TABLE: LegacyDay[] = [
       {
         legacyName: 'Leg press → Bulgarian split',
         setsSpec: '2→3',
-        // data.js:156 note "Bulgarian from wk 5"
+        // legacy/data.js:156 note "Bulgarian from wk 5"
         ranges: [
           { fromWeek: 1, toWeek: 4, exerciseId: 'leg-press' },
           { fromWeek: 5, toWeek: LEGACY_WEEKS, exerciseId: 'bulgarian-split-squat' },
@@ -209,7 +209,8 @@ const V2_DAYS_TABLE: LegacyDay[] = [
       { legacyName: 'Push-ups (3 × max)', setsSpec: '3', ranges: allWeeks('push-up') },
       // "Light walk" is the legacy row the library's `walk` entry was ported from: formCues.ts
       // names it ("Legacy \"Light walk\"", formCues.ts:767), and the library entry carries the
-      // legacy note "Optional." verbatim with videoQuery null because the legacy row had no
+      // legacy note "Optional" as "Optional." (library.ts:813 adds the full stop; the note is
+      // therefore normalised, not verbatim) with videoQuery null because the legacy row had no
       // video field. sets "—", so no set is ever prescribed for it.
       { legacyName: 'Light walk', setsSpec: '—', ranges: allWeeks('walk') },
     ],
@@ -222,7 +223,7 @@ const V2_DAYS_TABLE: LegacyDay[] = [
       {
         legacyName: 'Trap bar DL → conventional',
         setsSpec: '4',
-        // data.js:179 note "Conventional from wk 9. Always first."
+        // legacy/data.js:179 note "Conventional from wk 9. Always first."
         ranges: [
           { fromWeek: 1, toWeek: 8, exerciseId: 'trap-bar-deadlift' },
           { fromWeek: 9, toWeek: LEGACY_WEEKS, exerciseId: 'conventional-deadlift' },
@@ -268,7 +269,7 @@ export const V2_DAYS: readonly LegacyDay[] = Object.freeze(V2_DAYS_TABLE.map(fre
  */
 export const UNMAPPED: Readonly<Record<string, string>> = Object.freeze({
   'No training':
-    'Day 7 placeholder row (data.js:207), not an exercise: sets "—", reps "—", note "Muscle is built during recovery, not the session". The P2 library has no entry for the absence of training and must not gain one.',
+    'Day 7 placeholder row (legacy/data.js:207), not an exercise: sets "—", reps "—", note "Muscle is built during recovery, not the session". The P2 library has no entry for the absence of training and must not gain one.',
 });
 
 /**
@@ -312,13 +313,13 @@ export function legacyExerciseIdAt(day: number, exIdx: number, week: number): st
 }
 
 /**
- * Reproduces console-store.jsx:372-383 (`setsForWeek`) exactly, including its fallbacks, so
+ * Reproduces legacy/console-store.jsx:372-383 (`setsForWeek`) exactly, including its fallbacks, so
  * that `isBonus` on a migrated set means what it meant in the old app: a set logged beyond the
  * prescribed count for that week. Returns a count of working sets [dimensionless].
  *
  * One deliberate difference: the legacy function indexes PLAN.volume[wk - 1] unguarded and
  * throws on a week outside 1..24, which cannot happen in the legacy UI because the week is
- * clamped on entry (console-store.jsx:140). A corrupt stored key can carry any week, so this
+ * clamped on entry (legacy/console-store.jsx:140). A corrupt stored key can carry any week, so this
  * returns the same 2 the legacy function returns for an unparseable spec rather than throwing
  * mid-migration.
  */
@@ -351,15 +352,23 @@ export function legacyDateOf(startDate: LocalDate, week: number, day: number): L
 
 /**
  * Display name -> library id, for the `exName` field frozen into legacy set payloads and for
- * the `exercise` field on legacy specimen records. For the two slots whose exercise changes
- * mid-programme the name alone is ambiguous, so this returns the id of the FIRST week range;
- * callers that hold a week number use `legacyExerciseIdAt` instead, which is exact.
+ * the `exercise` field on legacy specimen records.
+ *
+ * For the two slots whose exercise changes mid-programme the name alone is ambiguous. Pass
+ * `week` and the id in force that week is returned; omit it and the id of the FIRST week
+ * range is returned, which is a documented approximation and not a fact about the record.
+ * A caller that holds both a day and an exercise index uses `legacyExerciseIdAt` instead.
  */
-export function legacyIdForName(name: string): string | null {
+export function legacyIdForName(name: string, week?: number): string | null {
   const key = name.trim();
   for (const day of V2_DAYS) {
     for (const slot of day.exercises) {
-      if (slot.legacyName === key) return slot.ranges[0]?.exerciseId ?? null;
+      if (slot.legacyName !== key) continue;
+      if (week === undefined) return slot.ranges[0]?.exerciseId ?? null;
+      for (const r of slot.ranges) {
+        if (week >= r.fromWeek && week <= r.toWeek) return r.exerciseId;
+      }
+      return null;
     }
   }
   return null;
