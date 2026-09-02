@@ -16,6 +16,7 @@ import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
 import type { SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import { makeAppState, makeUiPrefs } from '../../../test/funFixtures';
+import { ICON_FOR_KEY } from '../../../skins/limelight/Icon';
 import { RestTimerPanel } from './RestTimerPanel';
 
 const playChime = vi.hoisted(() => vi.fn(() => true));
@@ -39,14 +40,14 @@ function withSkin(skin: SkinId): void {
 }
 
 /** Seeds a rest that ends REST_S after NOW and mounts the panel. */
-function renderPanel(skin: SkinId): void {
+function renderPanel(skin: SkinId): HTMLElement {
   withSkin(skin);
   useAppStore.getState().setRestTimer({
     startedAt: NOW, // [ms] epoch UTC
     endsAt: NOW + REST_S * 1000, // [ms] epoch UTC
     durationS: REST_S, // [s]
   });
-  render(<RestTimerPanel />);
+  return render(<RestTimerPanel />).container;
 }
 
 /** Moves the clock past the end of the rest and forces the recomputation. */
@@ -69,8 +70,10 @@ afterEach(() => {
 });
 
 describe('RestTimerPanel: the clinical words', () => {
-  it('names the interval and its two controls from the default table', () => {
-    renderPanel('clinical');
+  it('names the interval and its two controls from the default table, without glyphs', () => {
+    const container = renderPanel('clinical');
+    // Copy contract R6: the clinical skin carries no glyph, and the icon set is one skin's.
+    expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
     expect(screen.getByText(copy('status.rest'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy('button.extendRest') })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy('button.skipRest') })).toBeInTheDocument();
@@ -89,6 +92,33 @@ describe('RestTimerPanel: the limelight voice', () => {
       screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') }),
     ).toBeInTheDocument();
     expect(screen.queryByText(copy('status.rest'))).toBeNull();
+  });
+
+  it('puts the mapped icon beside the label and the skip control', () => {
+    /*
+     * P8 close-out D. `status.rest` and `button.skipRest` have carried an entry in ICON_FOR_KEY
+     * since the map was written (round three, section 4.4), and neither was reachable: both
+     * were bare `c(key)` calls. Two of the three icons this batch made reachable are here.
+     *
+     * `button.extendRest` is deliberately NOT wrapped: section 4.4 gives it no icon, so a
+     * SkinLabel around it would add a wrapper element and no glyph.
+     */
+    expect(ICON_FOR_KEY['status.rest']).toBe('stopwatchPanel');
+    expect(ICON_FOR_KEY['button.skipRest']).toBe('skip');
+
+    const container = renderPanel('limelight');
+    const icons = container.querySelectorAll('img.ll-icon');
+    expect(icons).toHaveLength(2);
+    for (const icon of icons) {
+      // Decorative: an empty alt plus aria-hidden, so the words beside each one stand alone as
+      // the accessible name. A labelled icon would double the skip control's name.
+      expect(icon.getAttribute('aria-hidden')).toBe('true');
+      expect(icon.getAttribute('alt')).toBe('');
+    }
+    // The control's accessible name is still exactly the skin's word, with nothing added.
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') }),
+    ).toBeInTheDocument();
   });
 
   it('reads the clock through the active overlay, which has no word for it', () => {

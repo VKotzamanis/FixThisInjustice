@@ -19,6 +19,7 @@ import { SESSION_CHECK_INTERVAL_MS } from '../../../domain/training/hydration';
 import type { AppState, Profile, SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../../test/funFixtures';
+import { ICON_FOR_KEY } from '../../../skins/limelight/Icon';
 import { HydrationBanner } from './HydrationBanner';
 
 const TODAY = '2026-03-02';
@@ -54,9 +55,9 @@ function seed(skin: SkinId): AppState {
   });
 }
 
-function renderBanner(skin: SkinId): void {
+function renderBanner(skin: SkinId): HTMLElement {
   useAppStore.setState(seed(skin));
-  render(<HydrationBanner profile={PROFILE} date={TODAY} sessionActive />);
+  return render(<HydrationBanner profile={PROFILE} date={TODAY} sessionActive />).container;
 }
 
 /**
@@ -79,9 +80,12 @@ afterEach(() => {
 });
 
 describe('HydrationBanner: the clinical words', () => {
-  it('renders the default in-session cue', () => {
-    renderBanner('clinical');
+  it('renders the default in-session cue, with no glyph beside it', () => {
+    const container = renderBanner('clinical');
     expect(screen.getByText(copy('advice.drinkToThirst'))).toBeInTheDocument();
+    // Copy contract R6: the clinical skin is emoji-free and glyph-free, and the limelight icon
+    // set belongs to exactly one skin (src/skins/limelight/Icon.tsx).
+    expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
 
   it('states the daily shortfall and names the drink control in the default words', () => {
@@ -92,8 +96,22 @@ describe('HydrationBanner: the clinical words', () => {
 });
 
 describe('HydrationBanner: the limelight voice', () => {
-  it('renders the skin cue for the same domain decision', () => {
-    renderBanner('limelight');
+  it('renders the skin cue for the same domain decision, under its own icon', () => {
+    const container = renderBanner('limelight');
+    /*
+     * P8 close-out D. `advice.drinkToThirst` has been mapped to the `drop` icon since the map
+     * was written (round three, section 4.4), but nothing rendered it: this cue was a bare
+     * `c(key)` call, so the icon was unreachable. The cue goes through SkinLabel now.
+     *
+     * The icon is DECORATIVE: no label, so it carries alt="" and aria-hidden and the sentence
+     * beside it is the whole accessible name. Queried by class, because an empty-alt image has
+     * no role for getByRole to find, which is the point of it.
+     */
+    expect(ICON_FOR_KEY['advice.drinkToThirst']).toBe('drop');
+    const icons = container.querySelectorAll('img.ll-icon');
+    expect(icons).toHaveLength(1);
+    expect(icons[0]?.getAttribute('aria-hidden')).toBe('true');
+    expect(icons[0]?.getAttribute('alt')).toBe('');
     // By key against copy.limelight.ts. The domain returned the same cue kind in both cases;
     // only the words moved.
     expect(screen.getByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeInTheDocument();

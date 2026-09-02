@@ -13,6 +13,7 @@ import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { HYDRATION_COPY_KEY, hydrationCue } from '../../../domain/training/hydration';
 import type { LocalDate, Profile } from '../../../domain/types';
 import { formatVolume } from '../../../domain/units';
+import { SkinLabel } from '../../../skins/limelight/Icon';
 import { useAppStore } from '../../../store';
 import '../../styles/train.css';
 
@@ -65,17 +66,27 @@ export function HydrationBanner(props: {
   if (cue === null) return null;
 
   const targetML = profile.hydration.dailyTargetML; // [mL/day]
+  /*
+   * The shortfall cue is a FRAME with two volumes in it and the other two are a single copy
+   * key, which is why the branch is on the element and not on a string: a key goes through
+   * SkinLabel, so `advice.drinkToThirst` reaches the `drop` icon round three section 4.4 maps
+   * to it (P8 close-out D; the icon existed and nothing rendered it). A frame has no key for
+   * SkinLabel to look up, and inventing one for the shortfall sentence would put a glyph on a
+   * line whose whole content is two measured volumes.
+   */
   const message =
-    cue.kind === 'daily-shortfall'
-      ? FORMAT.beverageShortfall(
-          // Logged = target minus the shortfall the domain measured, so the sentence cannot
-          // state a pair the cue did not compute. Floored at 0: a shortfall can never exceed
-          // the target, and reporting a negative volume would be a defect wearing a number.
-          formatVolume(Math.max(0, targetML - (cue.shortfallML ?? 0)), profile.units),
-          formatVolume(targetML, profile.units),
-          overrides,
-        )
-      : c(HYDRATION_COPY_KEY[cue.kind]);
+    cue.kind === 'daily-shortfall' ? (
+      FORMAT.beverageShortfall(
+        // Logged = target minus the shortfall the domain measured, so the sentence cannot
+        // state a pair the cue did not compute. Floored at 0: a shortfall can never exceed
+        // the target, and reporting a negative volume would be a defect wearing a number.
+        formatVolume(Math.max(0, targetML - (cue.shortfallML ?? 0)), profile.units),
+        formatVolume(targetML, profile.units),
+        overrides,
+      )
+    ) : (
+      <SkinLabel copyKey={HYDRATION_COPY_KEY[cue.kind]} />
+    );
 
   return (
     <div className="hydration-banner" role="status">

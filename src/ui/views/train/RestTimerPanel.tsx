@@ -10,6 +10,7 @@ import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { copy, FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { extend, remainingS, totalS } from '../../../domain/training/restTimer';
+import { SkinLabel } from '../../../skins/limelight/Icon';
 import { playSfx } from '../../../skins/sfx';
 import { useAppStore } from '../../../store';
 import { useRestTimer } from '../../../store/selectors';
@@ -166,7 +167,20 @@ export function RestTimerPanel(): ReactElement | null {
         <span className="rest-time">{FORMAT.restRemaining(minutes, seconds, overrides)}</span>
       </div>
       <div className="rest-controls">
-        <div className="rest-label">{c('status.rest')}</div>
+        {/*
+          * Through SkinLabel, so the two icons round three section 4.4 maps to these keys are
+          * reachable: `stopwatchPanel` here and `skip` on the control below (P8 close-out D;
+          * both were mapped when Icon.tsx was written and neither was ever rendered, because
+          * both call sites were a bare `c(key)`). SkinLabel reads the words through the same
+          * table `c` does, so the string is unchanged on every skin, and `Icon` returns null
+          * off limelight, so no other skin gains a glyph.
+          *
+          * `button.extendRest` stays a plain `c` call: section 4.4 gives it no icon, and a
+          * SkinLabel around it would add a wrapper element and nothing else.
+          */}
+        <div className="rest-label">
+          <SkinLabel copyKey="status.rest" />
+        </div>
         <button
           type="button"
           onClick={() => {
@@ -183,7 +197,7 @@ export function RestTimerPanel(): ReactElement | null {
             useAppStore.getState().setRestTimer(null);
           }}
         >
-          {c('button.skipRest')}
+          <SkinLabel copyKey="button.skipRest" />
         </button>
       </div>
     </div>
