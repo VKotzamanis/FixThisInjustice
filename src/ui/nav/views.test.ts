@@ -62,7 +62,7 @@ describe('the view registry', () => {
 
   it('labels every view from the copy table', () => {
     for (const view of VIEWS) {
-      expect(view.label).toBe(EXPECTED_LABEL[view.id]);
+      expect(copy(view.copyKey)).toBe(EXPECTED_LABEL[view.id]);
     }
   });
 

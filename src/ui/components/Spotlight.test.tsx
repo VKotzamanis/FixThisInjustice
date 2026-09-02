@@ -161,7 +161,9 @@ describe('buildSpotlightItems', () => {
 
   it('labels views from the registry', () => {
     const items = buildSpotlightItems(args());
-    expect(items.slice(0, VIEWS.length).map((i) => i.label)).toEqual(VIEWS.map((v) => v.label));
+    expect(items.slice(0, VIEWS.length).map((i) => i.label)).toEqual(
+      VIEWS.map((v) => copy(v.copyKey)),
+    );
   });
 
   it('names exercises through the library, falling back to the id', () => {
@@ -290,7 +292,7 @@ describe('Spotlight', () => {
     expect((queryBox() as HTMLInputElement).value).toBe('');
     // The unfiltered list is back, and the first row of it is the one Enter would run.
     expect(screen.getAllByRole('option')).toHaveLength(MAX_SPOTLIGHT_RESULTS);
-    expect(optionLabels()[0]).toBe(VIEWS[0]!.label);
+    expect(optionLabels()[0]).toBe(copy(VIEWS[0]!.copyKey));
     expect(queryBox().getAttribute('aria-activedescendant')).toBe(
       screen.getAllByRole('option')[0]!.id,
     );
