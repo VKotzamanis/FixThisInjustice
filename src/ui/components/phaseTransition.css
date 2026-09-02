@@ -1,10 +1,18 @@
 /*
  * The block transition cutscene (P8 Task 10).
  *
- * z-index 54: above the two CRT presentation layers (50 and 51 in src/ui/styles/crt.css) and
- * below the boot sequence (55, boot.css) and the toast stack (60, toastQueue.css). The gate
- * never mounts this while the boot is running, so the ordering is belt and braces rather than
- * the mechanism; a save-failure toast must stay readable over it either way.
+ * z-index 49: below the missed-week popup (50, src/ui/motivation/motivation.css), below the
+ * boot sequence (55, boot.css) and below the toast stack (60, toastQueue.css). The gate never
+ * mounts this while the boot is running, nor while a missed week is pending, so the ordering
+ * is belt and braces rather than the mechanism; a save-failure toast must stay readable over
+ * it either way.
+ *
+ * It was 54, ABOVE the popup, which is the wrong way round for a layer that is not answering
+ * anything: if the two ever coexist again the popup is the dialog holding the user's question,
+ * so it must paint on top. 49 also puts the cutscene under the two CRT presentation layers
+ * (50 and 51 in src/ui/styles/crt.css), which is what those layers are for - they are a
+ * full-screen scanline and vignette wash with `pointer-events: none`, so they tint the
+ * cutscene exactly as they tint every other screen rather than being covered by it.
  *
  * Every custom property carries a literal fallback, as boot.css and readinessNotice.css do, so
  * the cutscene renders whether or not the P1 token sheet has loaded.
@@ -12,7 +20,7 @@
 .phase-bg {
   position: fixed;
   inset: 0;
-  z-index: 54;
+  z-index: 49;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -103,6 +103,29 @@ export interface StoreStatus {
   lastActionError: string | null;
 }
 
+/**
+ * What one call to `logSet` produced.
+ *
+ * Two facts, and the second one is the reason this is an object rather than the bare id it
+ * used to be: only the action that made the write can say whether a specimen was ACQUIRED, and
+ * a caller asking the draw again is told the card for an ordinal that already spent one.
+ */
+export interface LogSetResult {
+  /**
+   * The stored `LoggedSet.id`, so the caller can offer an undo without re-reading the store.
+   */
+  id: string;
+  /**
+   * The `SpecimenCard.id` this call added to the collection, or null when it added none -
+   * a failed roll, an exhausted pool, an ordinal whose card was already recorded (a delete and
+   * relog), or a card the collection already held under an earlier ordinal.
+   *
+   * "Added" is the whole contract. It is what a toast may announce, and it is true at most once
+   * per card for the life of a profile.
+   */
+  specimen: string | null;
+}
+
 /** Master plan §6.7, P1 slice. Later plans extend this interface, never replace it. */
 export interface AppActions {
   hydrate(): void;
@@ -148,14 +171,13 @@ export interface AppActions {
 
   // P4
   /**
-   * Logs one set and returns the id it was stored under, so the caller can offer an undo
-   * without re-reading the store. Throws on a set the schema refuses (master plan section 5:
-   * loadKg 0 is valid, negative and non-finite are not; RPE is on the 0.5 grid) or on a
-   * profile that does not exist.
+   * Logs one set and reports what it produced. Throws on a set the schema refuses (master plan
+   * section 5: loadKg 0 is valid, negative and non-finite are not; RPE is on the 0.5 grid) or
+   * on a profile that does not exist.
    *
    * @param now [ms] epoch UTC, the instant the set was logged.
    */
-  logSet(set: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): string;
+  logSet(set: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): LogSetResult;
   /**
    * Removes one set and holds it in the non-persisted undo buffer for UNDO_WINDOW_MS. An
    * unknown id is a no-op and mints no buffer.
@@ -767,7 +789,7 @@ export const useAppStore = create<AppStore>()((set, get) => {
    * store untouched: zustand applies nothing when the updater does not return.
    */
 
-  logSet(input: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): string {
+  logSet(input: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): LogSetResult {
     // The id is minted before the write so it can be returned: the caller needs it to offer
     // an undo, and re-deriving it from the document afterwards would mean searching by value.
     const id = newId();
@@ -777,15 +799,30 @@ export const useAppStore = create<AppStore>()((set, get) => {
      * React may invoke an updater more than once for a single dispatch, and a roll inside one
      * would yield different state on the second invocation (code review A57).
      *
-     * It runs unconditionally, and it is safe to run twice. The draw is seeded from the
-     * ordinal applyLogSet's increment just produced, and the card is recorded against that
-     * ordinal, so P8 Task 10's Train view calling attemptSpecimenDraw for the same set gets
-     * this same card back rather than a second one (master plan section 10.8, rule 3). The
-     * roll is reached only if the set was actually stored: applyLogSet throws on a refused
+     * The roll is reached only if the set was actually stored: applyLogSet throws on a refused
      * set, and zustand applies nothing when an updater does not return.
      */
-    fun.attemptSpecimenDraw(input.profileId, input.exerciseId, now); // now: [ms] epoch, UTC
-    return id;
+    const before = get().specimens[input.profileId];
+    const card = fun.attemptSpecimenDraw(input.profileId, input.exerciseId, now); // [ms] epoch
+    /*
+     * Whether this call ACQUIRED the card, which is not the same question as whether a card
+     * came back, and is why the answer is reported from here rather than left to the caller.
+     *
+     * `attemptSpecimenDraw` returns the card an ordinal produced, and for an ordinal already in
+     * the ledger `drawSpecimenForLoggedSet` returns the RECORDED one - by design, so that one
+     * ordinal yields at most one card ever (master plan section 10.8, rule 3). A delete and
+     * relog reuses the ordinal, so the Train view asking the draw a second time was told a card
+     * had dropped and raised a second toast for an acquisition that never happened.
+     *
+     * The test is the inventory's IDENTITY, not a membership check on `acquired`. Every path
+     * through recordSpecimen that writes nothing - the ordinal already spent, the card already
+     * held, an id no shipped card owns - returns the state object by reference, and that is the
+     * store's own no-op signal (funActions.ts). A membership check would have to restate each
+     * of those rules here and would go wrong on the one document where they disagree: an
+     * ordinal spent under a card the collection no longer holds.
+     */
+    const acquired = card !== null && get().specimens[input.profileId] !== before;
+    return { id, specimen: acquired ? card.id : null };
   },
 
   deleteSet(id: string): void {

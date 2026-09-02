@@ -100,6 +100,9 @@ describe('fixtures', () => {
     expect(result.state.ui.videoInstanceHost).toBeNull();
     expect(result.state.ui.legacyMigration).toBe('pending');
     expect(result.state.ui.lastBlockSeenByProfile).toEqual({});
+    // Additive with a Zod default, like the three above: a document that predates the field
+    // has announced no milestone, and an empty map is what every reader indexes.
+    expect(result.state.ui.milestoneFloorByProfile).toEqual({});
   });
 });
 
@@ -359,7 +362,8 @@ function legacyDocument(): Record<string, unknown> {
       scanlines: true,
       flicker: false,
       density: 'normal',
-      // videoInstanceHost, legacyMigration and lastBlockSeenByProfile absent.
+      // videoInstanceHost, legacyMigration, lastBlockSeenByProfile and
+      // milestoneFloorByProfile absent.
     },
   };
 }
@@ -387,6 +391,7 @@ describe('a document written before the section 5 amendments', () => {
     expect(state.ui.videoInstanceHost).toBeNull();
     expect(state.ui.legacyMigration).toBe('pending');
     expect(state.ui.lastBlockSeenByProfile).toEqual({});
+    expect(state.ui.milestoneFloorByProfile).toEqual({});
 
     expect(state.notes).toEqual({});
   });
@@ -417,17 +422,22 @@ describe('a document written before the section 5 amendments', () => {
     expect(first.state.ui.lastBlockSeenByProfile).not.toBe(
       second.state.ui.lastBlockSeenByProfile,
     );
+    expect(first.state.ui.milestoneFloorByProfile).not.toBe(
+      second.state.ui.milestoneFloorByProfile,
+    );
     expect(first.state.profiles[P1]?.readiness).not.toBe(second.state.profiles[P1]?.readiness);
 
     first.state.notes[P1] = { '2026-01-05': 'written into the first parse' };
     first.state.customExercises[P1] = [];
     first.state.ui.lastBlockSeenByProfile[P1] = 4;
+    first.state.ui.milestoneFloorByProfile[P1] = 50; // [sets]
     const firstReadiness = first.state.profiles[P1]?.readiness;
     if (firstReadiness !== undefined) firstReadiness.flagged = true;
 
     expect(second.state.notes).toEqual({});
     expect(second.state.customExercises).toEqual({});
     expect(second.state.ui.lastBlockSeenByProfile).toEqual({});
+    expect(second.state.ui.milestoneFloorByProfile).toEqual({});
     expect(second.state.profiles[P1]?.readiness).toEqual({ screenedAt: null, flagged: false });
   });
 });

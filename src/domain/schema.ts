@@ -512,6 +512,18 @@ export const UiPrefsSchema = z.object({
   // Additive. Off is the honest default for a feature whose failure mode is a phone shouting in
   // a public gym (round-three plan section 6.2 rule 6).
   sounds: z.boolean().default(false),
+  /*
+   * Additive. The highest [sets] count a milestone has been announced for, per profile; empty
+   * means nothing announced yet. Bounded by MAX_TOTAL_SETS, the same ceiling
+   * SpecimenInventory.totalSetsLogged carries, because it is a reading of that counter.
+   *
+   * Carries a default rather than being optional, exactly as lastBlockSeenByProfile does: the
+   * two are the same shape of fact and every reader indexes them the same way, so a document
+   * written before this field existed opens with an empty map instead of an absent one.
+   * CURRENT_SCHEMA_VERSION stays 3; the field is additive with a default, which is the rule
+   * types.ts records for all of P1-P8.
+   */
+  milestoneFloorByProfile: z.record(z.string(), z.int().min(0).max(MAX_TOTAL_SETS)).default({}),
 });
 
 // ---------------------------------------------------------------------------
@@ -677,6 +689,7 @@ export function defaultState(): AppState {
       lastBlockSeenByProfile: {},
       skin: 'limelight',
       sounds: false,
+      milestoneFloorByProfile: {},
     },
   };
 }

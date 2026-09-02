@@ -18,10 +18,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PhaseTransition, PhaseTransitionGate } from './PhaseTransition';
 import { FORMAT, copy } from '../../content/copy';
+import { addDays, todayLocal } from '../../domain/dates';
+import { probeBundledVideo, resolveVideoSrc } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
+import { LEGACY_V2_KEY } from '../../store/persistence';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
-import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
-import type { PlanCursor } from '../../domain/types';
+import { installFakeStorage } from '../../store/testStorage';
+import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../test/funFixtures';
+import { MotivationGate } from '../motivation/MotivationGate';
+import type { PlanCursor, WeeklyReview } from '../../domain/types';
+
+/*
+ * The clip is the motivation modal's business, never this file's: MotivationGate.test.tsx owns
+ * what it plays. Both asset lookups are mocked exactly as that suite mocks them, and
+ * `resolveVideoSrc` is left PENDING rather than resolved, so no state update lands outside
+ * `act` for a video no assertion here reads.
+ */
+vi.mock('../../domain/motivation/assets', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../domain/motivation/assets')>();
+  return { ...actual, resolveVideoSrc: vi.fn(), probeBundledVideo: vi.fn() };
+});
 
 /** The fixture plan's second block starts here. [sessions] offset */
 const BLOCK_ONE_START = 20;
@@ -223,5 +239,181 @@ describe('PhaseTransitionGate', () => {
 
     // One completed session, and it belongs to block 0: the block the transition closes.
     expect(screen.getByText('1')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The two full-screen dialogs the app shell mounts together (src/app/App.tsx), exercised as the
+ * shell mounts them.
+ *
+ * Code review: both gates used to satisfy their conditions at the same time, so two ModalShells
+ * opened at once. Each shell listens for Escape on the WINDOW, so one keypress aimed at the
+ * popup reached both, and the cutscene's own handler wrote `lastBlockSeenByProfile` for a block
+ * nobody had seen. That consumes the cutscene permanently: the flag never goes back down.
+ */
+describe('PhaseTransitionGate against the missed-week popup', () => {
+  /** A closed week three sessions short of its target, ending on the given civil day. */
+  function miss(end: string): WeeklyReview {
+    return {
+      profileId: FUN_PROFILE_ID,
+      weekStart: addDays(end, -6),
+      weekEnd: end,
+      target: 4, // [sessions/week]
+      completed: 1, // [sessions]
+      skipped: 0, // [sessions]
+      paused: false,
+      delta: -3, // completed - target, [sessions]; negative = sessions missed
+      evaluatedAt: 1_756_000_000_000, // [ms] epoch, UTC
+      missHandled: false,
+    };
+  }
+
+  /**
+   * A pending miss AND a block boundary, which is the state the two gates used to collide in.
+   *
+   * The week is anchored to the profile's civil today read from the same clock the selector
+   * uses, so a run that straddles midnight moves the anchor rather than falling out of
+   * MOTIVATION_MISS_WINDOW_DAYS = 14.
+   */
+  function seedBoth(): void {
+    installFakeStorage();
+    const today = todayLocal(makeProfile().timezone);
+    useAppStore.setState({
+      ...makeAppState({
+        cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
+        weeklyReviews: { [FUN_PROFILE_ID]: [miss(addDays(today, -1))] },
+        motivation: {},
+      }),
+      session: { ...EMPTY_SESSION },
+    });
+  }
+
+  function renderShell(): ReturnType<typeof render> {
+    return render(
+      <>
+        <MotivationGate />
+        <PhaseTransitionGate />
+      </>,
+    );
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // Left PENDING on purpose: see the module mock at the top of this file.
+    vi.mocked(resolveVideoSrc).mockReturnValue(new Promise(() => undefined));
+    vi.mocked(probeBundledVideo).mockResolvedValue(false);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('renders only the popup while a missed week is still pending', () => {
+    seedBoth();
+    renderShell();
+
+    // One dialog, and it is the popup: two ModalShells at once fight over focus and the
+    // scroll lock, and the topmost is not the one the user is answering.
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+    expect(screen.getByTestId('motivation-backdrop')).toBeInTheDocument();
+    expect(screen.queryByTestId('phase-transition')).toBeNull();
+  });
+
+  it('spends one Escape on the popup alone, leaving the block unseen', () => {
+    seedBoth();
+    renderShell();
+
+    act(() => {
+      fireEvent.keyDown(window, { key: 'Escape' });
+    });
+
+    // The popup's own dismissal was recorded...
+    expect(useAppStore.getState().weeklyReviews[FUN_PROFILE_ID]?.[0]?.missHandled).toBe(true);
+    // ...and the cutscene's was NOT: one keypress must not consume two dialogs.
+    expect(useAppStore.getState().ui.lastBlockSeenByProfile[FUN_PROFILE_ID]).toBeUndefined();
+  });
+
+  it('shows the cutscene on the next render after the popup is dismissed', () => {
+    seedBoth();
+    renderShell();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+
+    expect(screen.queryByTestId('motivation-backdrop')).toBeNull();
+    expect(screen.getByTestId('phase-transition')).toBeInTheDocument();
+    expect(screen.getByText(headingFor(1, 2))).toBeInTheDocument();
+    // Still unseen: only the cutscene's own Continue or Escape writes the flag.
+    expect(useAppStore.getState().ui.lastBlockSeenByProfile[FUN_PROFILE_ID]).toBeUndefined();
+
+    act(() => {
+      vi.advanceTimersByTime(6000); // [ms]
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
+    expect(useAppStore.getState().ui.lastBlockSeenByProfile[FUN_PROFILE_ID]).toBe(1);
+  });
+});
+
+/**
+ * The `suppressedByMigration` branch (code review: it shipped untested).
+ *
+ * The legacy key is what MigrationGate mounts on, so a cutscene painted over the import wizard
+ * would put a second ModalShell on top of a destructive confirmation.
+ */
+describe('PhaseTransitionGate against the legacy migration offer', () => {
+  const LEGACY_RAW = '{"schemaVersion":2}';
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('stays silent while the legacy import is still being offered', () => {
+    installFakeStorage({ [LEGACY_V2_KEY]: LEGACY_RAW });
+    useAppStore.setState({
+      ...makeAppState({
+        cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
+        ui: makeUiPrefs({ legacyMigration: 'pending' }),
+      }),
+      session: { ...EMPTY_SESSION },
+    });
+
+    const { container } = render(<PhaseTransitionGate />);
+    expect(container.firstChild).toBeNull();
+    expect(useAppStore.getState().ui.lastBlockSeenByProfile[FUN_PROFILE_ID]).toBeUndefined();
+  });
+
+  it('stays latched when the migration writes its decision mid-wizard', () => {
+    installFakeStorage({ [LEGACY_V2_KEY]: LEGACY_RAW });
+    useAppStore.setState({
+      ...makeAppState({
+        cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
+        ui: makeUiPrefs({ legacyMigration: 'pending' }),
+      }),
+      session: { ...EMPTY_SESSION },
+    });
+    const { container } = render(<PhaseTransitionGate />);
+
+    // applyMigration writes 'done' as part of the document it installs, while the wizard is
+    // still on screen offering to delete the old data. The latch is what keeps this mount
+    // silent for the rest of its life rather than un-suppressing under the wizard.
+    act(() => {
+      useAppStore.getState().setUi({ legacyMigration: 'done' });
+    });
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('fires normally on a device that holds no legacy document', () => {
+    installFakeStorage();
+    useAppStore.setState({
+      ...makeAppState({
+        cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
+        ui: makeUiPrefs({ legacyMigration: 'pending' }),
+      }),
+      session: { ...EMPTY_SESSION },
+    });
+
+    render(<PhaseTransitionGate />);
+    expect(screen.getByText(headingFor(1, 2))).toBeInTheDocument();
   });
 });

@@ -461,6 +461,11 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   // would fail for a reason that is not a bug.
   skin: fc.constantFrom('clinical' as const, 'limelight' as const, 'board' as const),
   sounds: fc.boolean(),
+  // The milestone high-water mark, [sets] per profile. Generated for the same reason the two
+  // above are: it is additive with a Zod default, so a document that omitted it would
+  // round-trip to `{}` rather than to itself and the parity property would fail for a reason
+  // that is not a bug. The range spans the shipped SET_MILESTONES list either side.
+  milestoneFloorByProfile: fc.dictionary(anyId, fc.integer({ min: 0, max: 1200 }), { maxKeys: 2 }),
 });
 
 /**

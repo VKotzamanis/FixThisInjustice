@@ -96,7 +96,14 @@ export type SkinId = 'clinical' | 'limelight' | 'board';
 // skin default 'limelight'; sounds default false (Zod defaults, no version bump). The default
 // is the round-three merge rather than the clinical set the copy contract is written against:
 // clinical stays reachable from the picker and stays the bare `:root` token block.
-export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; }
+// milestoneFloorByProfile: the highest [sets] count a set-count milestone has been announced
+// for, per profile. A high-water MARK, not the live counter: deleting a set decrements
+// SpecimenInventory.totalSetsLogged, so a check against the live count re-announces the same
+// milestone the moment the set is relogged. It is persisted rather than held in a component ref
+// because the fact belongs to the profile, not to one mount of the Train view: a ref reset on
+// every navigation away and back, and the fiftieth set announced itself again. Empty means
+// nothing announced yet, and the baseline is then the count before the set just logged.
+export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; }
 
 // ---- root ----
 export interface AppState {
