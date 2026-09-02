@@ -317,9 +317,11 @@ describe('skin row in Settings', () => {
 
 /*
  * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
- * them. This screen names no row either override table carries, so what the pair below asserts
- * is the OTHER half of the contract: a key a skin does not name renders the clinical sentence,
- * on every skin. Both sides are read by key through `copyFor`, never as a literal.
+ * them. P9 Task 12 gave the limelight table three of this screen's headings, `hero.profile`
+ * among them, so the pair below now asserts the merge in both directions: the skin's own words
+ * under limelight, and the clinical sentence under clinical. Every heading whose section the
+ * limelight table leaves alone still falls through, which the copy suite decides by key. Both
+ * sides here are read by key through `copyFor`, never as a literal.
  */
 describe('SettingsView under a skin', () => {
   it('reads its heading through the skin, and falls back to the default table', () => {

@@ -213,4 +213,159 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'advice.timeCapsule': 'a note to future you, sealed until a date you pick.',
   'advice.pauseHoldsCursor': 'a hiatus costs you nothing.',
   'advice.deloadBlock': 'deload block: fewer sets, same load.',
+
+  // --- P9 Task 12: the today screen ---
+  // The fourteen-day strip, the two empty states and the skip form. Each strip word is also the
+  // aria-label of a day glyph (TodayView.tsx:84-89), so each one still names the state a screen
+  // reader has to hear: a day that is booked, live, served, a no show, on hiatus or off.
+  'hero.noPlan': 'no plan. tragic.',
+  'advice.completeSetup': 'no setup, no plan. sort it out.',
+  // The heading of the fourteen-day list. The COUNT is the default's own and stays a literal 14,
+  // which is the window `projectDays` builds; only the noun beside it is this table's.
+  'hero.nextFourteenDays': 'the next 14 dates',
+  'status.remainingThisWeek': 'still to come this week',
+  'status.dayPlanned': 'booked',
+  'status.dayInProgress': 'live',
+  // Round three, section 3.4 spells a completed session "served" in `plan_progress`, so the day
+  // cell uses the word the design already set rather than a second one for the same state.
+  'status.dayCompleted': 'served',
+  'status.daySkipped': 'no show',
+  'status.dayPaused': 'on hiatus', // the word `button.pausePlan` already uses for a stopped plan
+  'status.dayRest': 'day off', // the words `hero.noSessionToday` already uses for an empty day
+  // The skip form's free-text field. The parenthesis is the control semantic, not decoration: it
+  // states that the field may be left empty, so it survives the rewrite.
+  'label.skipReason': 'the story (optional)',
+
+  // --- P9 Task 12: the train screen ---
+  'advice.noProfileTrain': 'no profile. setup first, babes.',
+  // A bonus row is a set past the prescription, which is what an encore is. It stands where
+  // `status.setCounter` stands on a planned row (SetRow.tsx:144), and that row is already this
+  // table's "set {n} of {targetSets}", so the two markers now speak one language.
+  'label.bonusSet': 'encore',
+  'label.equipment': 'the gear',
+  // The rest timer's notification, which arrives on a lock screen. `button.returnToSession` is
+  // "back on stage", so the notification that ends the rest uses the same words.
+  'notification.restOver': 'rest over. back on stage.',
+  // A refusal keeps the clinical sentence and takes a camp word in front of it. What the user
+  // has to know is that the exercise was NOT added, so that clause is left standing.
+  'status.customExerciseRefused': 'nope. the exercise was not added.',
+
+  // --- P9 Task 12: the settings screen ---
+  // Three section headings and the empty state. Everything else on this screen stays clinical,
+  // for the reasons the block below records.
+  'hero.profile': 'who you are',
+  'hero.skin': 'the look and the noise', // `label.settingsSkin` and `label.settingsSounds`, joined
+  // The reminders section. A call time is when the performer has to be at the theatre, which is
+  // what a session reminder states. The controls inside the section stay clinical: a misread
+  // reminder state costs the user a session.
+  'hero.reminders': 'call times',
+  // The same sentence as `advice.noProfileTrain`, which the default table also duplicates.
+  'advice.noProfileSetupFirst': 'no profile. setup first, babes.',
+
+  /*
+   * WHAT STAYS CLINICAL ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
+   *
+   * 128 default keys reach Today, Train, Plan or Settings with no row in this table. Twenty took
+   * one above. The other 108 are named below, grouped so each reason is written once rather than
+   * once per key. Recount the list against the tree with the sweep in
+   * docs/plans/2026-09-02-09-prose-and-docs-pass.md, Task 12 step 1.
+   *
+   * RULE 4, a control whose misreading costs data (16). The wipe, the two legacy paths, the
+   * backup download and the clip failure say what they destroy or fail to destroy, and a set
+   * delete is not recoverable:
+   *   advice.clipClearFailed, advice.dataOnDevice, advice.deleteLegacy, advice.legacyOldDataKept,
+   *   advice.storedUnitsUnchanged, advice.wipeRemoves, button.deleteLegacy, button.downloadBackup,
+   *   button.downloadLegacyJson, button.legacyDeleteOld, button.legacyReopen, button.wipeAll,
+   *   button.wipeConfirm, button.deleteSet, hero.dataOnDevice, hero.exportImport
+   *
+   * THE INSTALL GUIDE (12). Every string quotes a label the operating system draws: Share, Add to
+   * Home Screen, Install app, the three dots. A skin that rewrites them makes the instruction
+   * unfollowable, because the user is matching the words against another program's screen:
+   *   advice.installIosVersion, advice.installOnlyInstalledApp, hero.installHomeScreen,
+   *   label.installAndroid, label.installIos, status.installAndroidInstall,
+   *   status.installAndroidMenu, status.installAndroidOpen, status.installIosAdd,
+   *   status.installIosOpen, status.installIosSafari, status.installIosShare
+   *
+   * THE REMINDER STATE AND ITS CONTROLS (12). The panel reports whether this device will receive
+   * a push, and the two failures report that it will not. A user who misreads one believes a
+   * reminder is coming and misses the session. ReminderSettingsPanel.test.tsx renders under the
+   * shipped skin and asserts these by key against the default table, so a row here fails there:
+   *   advice.reminderSubscribeFailed, advice.reminderSyncFailed, label.reminderDayOfTime,
+   *   label.reminderLeadTimes, label.remindersEnable, status.remindersDenied,
+   *   status.remindersNeedInstall, status.remindersNeedReenable, status.remindersOff,
+   *   status.remindersPending, status.remindersUnconfigured, status.remindersUnsupported
+   *
+   * THE READINESS SCREENING (6). It asks about chest pain, dizziness and medication, and it
+   * raises a physician-consult flag. Camp on a health gate is what round three, section 3.3 rules
+   * out, and the flag has to read as a flag:
+   *   button.redoReadiness, button.startReadiness, hero.readiness, status.notScreened,
+   *   status.readinessConsult, status.readinessNoFlags
+   *
+   * BODY MASS AND FLUID LOSS (3). Rule 4 again, and src/ui/views/train/BodyMassQuickLog.test.tsx
+   * already asserts the fall-through by key: the entry feeds the 2 % dehydration comparison, the
+   * advice line is the flag that comparison raises, and the why body is the ACSM 2007 citation:
+   *   advice.fluidLoss, button.logBodyMass, why.postSessionMass
+   *
+   * THE QUANTITIES, THE UNITS AND THE INCREMENTS (17). Rule 1 and contract R11: a skin may put a
+   * word beside a quantity and may not rename one. Every string below is a defined quantity name,
+   * a unit name, or the sentence that defines an increment or a dose:
+   *   advice.creatineOnly, advice.loadSteps, hero.equipmentSteps, hero.hydration, label.creatine,
+   *   label.displayUnit, label.microPlates, label.unitsImperial, label.unitsMetric, label.week,
+   *   quantity.barbellStep, quantity.bodyMass, quantity.dailyBeverageTarget,
+   *   quantity.exerciseName, quantity.postSessionBodyMass, quantity.preSessionBodyMass,
+   *   unit.characters
+   *
+   * THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM (14). The activity, experience and goal
+   * options are the criterion the user matches themselves against, and the same words name the
+   * inputs on the Targets screen, which keeps them under R11. Renaming "Fat loss" to a gym verb
+   * would leave the picker and the target it drives calling one thing two things:
+   *   label.activeProfile, label.activity, label.experience, label.goal, option.activityModerate,
+   *   option.activitySedentary, option.activityVigorous, option.experienceAdvanced,
+   *   option.experienceIntermediate, option.experienceNovice, option.goalFatLoss,
+   *   option.goalMaintenance, option.goalMuscleGain, option.goalRecomposition
+   *
+   * THE THREE SKIN NAMES (3). Proper nouns, and the id an export carries.
+   * src/ui/settings/SkinSettings.test.tsx asserts them as literals under all three skins: a skin
+   * that renamed the other two would be a skin the user could not reliably leave:
+   *   option.skinBoard, option.skinClinical, option.skinLimelight
+   *
+   * THE NUMBER-ENTRY ERRORS (4). Each states the number the field will accept, which is the whole
+   * content of the string:
+   *   advice.durationNeeded, error.outsideAccepted, error.positive, error.valueRequired
+   *
+   * THE PROGRESSION ADVICE KINDS (4). They resolve into the slot of `label.suggestedLoad`, which
+   * has no row here for the reason copy.test.ts records, so a camp kind would render inside a
+   * clinical frame. They also name what to do with the barbell, which is an instruction:
+   *   status.adviceAddLoad, status.adviceDeload, status.adviceExtendReps, status.adviceHold
+   *
+   * THE EQUIPMENT NAMES (5). A dumbbell is a dumbbell. The picker writes the exercise modality,
+   * so a renamed option selects a different thing than it says:
+   *   label.modality.barbell, label.modality.bodyweight, label.modality.cable,
+   *   label.modality.dumbbell, label.modality.machine
+   *
+   * THE CUSTOM-EXERCISE FORM (2). Its noun is the domain's, and the only camp alternative coins a
+   * word for "exercise" that no other row in this table uses:
+   *   button.addExercise, button.saveExercise
+   *
+   * THE TECHNIQUE REFERENCE (2). "Form cues" names the content the modal shows, and the modal
+   * heading is the same phrase. Renaming the button parts the control from what it opens:
+   *   button.formCues, button.formReference
+   *
+   * THE TWO TRAINING TERMS (2). A deload block and a training block are the periodisation terms
+   * the plan documents use, and the strip is a picture of them:
+   *   label.blockStrip, status.deloadTag
+   *
+   * CASE ALONE, OR THE LIMELIGHT WORD ALREADY (4). `disclosure.why` ships as "why?", which is the
+   * string round three, section 3.4 asks for; `status.nextSession` ships as "next";
+   * `button.backToToday` names the tab, and this table already lower-cases that name;
+   * `banner.actionRefused.tag` is "NOT APPLIED", and keeping its emphasis would mean a fourth
+   * shouted key, which round three closed at three:
+   *   banner.actionRefused.tag, button.backToToday, disclosure.why, status.nextSession
+   *
+   * THE TWO SENTENCES ABOUT THE APP'S OWN RULES (2). One names the keys Escape and the modifiers,
+   * which belong to the browser; the other states the promise this table lives under, and a camp
+   * restatement of "a skin changes wording and colour, never numbers or units" would undercut the
+   * guarantee it makes:
+   *   advice.hotkeysOff, advice.skinChanges
+   */
 };

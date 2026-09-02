@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { clearAssetStorage } from '../../domain/motivation/assets';
 import { makeBlankState } from '../../test/migrationFactories';
 import { useAppStore } from '../../store';
@@ -173,7 +173,11 @@ describe('SettingsView data section', () => {
     expect(useAppStore.getState().activeProfileId).toBeNull();
     expect(Object.keys(useAppStore.getState().profiles)).toEqual([]);
     // With no profile the view has nothing to edit; App renders SetupWizard on the same fact.
-    expect(screen.getByText(copy('advice.noProfileSetupFirst'))).toBeTruthy();
+    // Read through the ACTIVE skin: the wipe replaced `ui`, so the shipped skin is back and the
+    // limelight table has carried a row for this key since P9 Task 12.
+    expect(
+      screen.getByText(copyFor(useAppStore.getState().ui.skin, 'advice.noProfileSetupFirst')),
+    ).toBeTruthy();
   });
 
   /*
