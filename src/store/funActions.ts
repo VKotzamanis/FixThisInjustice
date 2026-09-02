@@ -50,10 +50,14 @@ export interface FunActions {
   /**
    * Records one drawn card against both its id and the set ordinal that produced it.
    *
-   * Idempotent on the ordinal, not on the card: a second call for an ordinal that has already
-   * produced a card leaves the document untouched, by reference, so a double-invoked updater,
-   * a replayed action or a delete-and-relog at the reused ordinal cannot take a second
-   * acquisition. The first acquisition's instant and exercise therefore stand.
+   * Idempotent on BOTH the ordinal and the card, and in both cases the document is left
+   * untouched by reference. A second call for an ordinal that has already produced a card
+   * writes nothing, so a double-invoked updater, a replayed action or a delete-and-relog at the
+   * reused ordinal cannot take a second acquisition; a call naming a card the collection
+   * already holds writes nothing either, so a card cannot be re-acquired under a later ordinal
+   * (the plan's step 6, "first acquisition wins"). The first acquisition's instant and exercise
+   * therefore stand, and each ordinal in the ledger names the set that really produced its
+   * card.
    *
    * An id no shipped card owns records nothing. It would put a value in the collection that no
    * view can render, and the ordinal it spent could never be reconciled against a real card.
@@ -132,6 +136,12 @@ export function createFunActions(deps: FunActionDeps): FunActions {
       const card = SPECIMEN_BY_ID[cardId];
       if (card === undefined) return s;
       const inventory = inventoryOf(s.specimens, profileId);
+      // First acquisition wins (the plan's step 6). A card the collection already holds is not
+      // re-acquired under a fresh ordinal: without this the second call rewrote acquired[cardId]
+      // with the later instant and exercise and left two ordinals pointing at one card. The
+      // ordinal is NOT spent either - nothing is written - so the ledger keeps naming the set
+      // that actually produced the card.
+      if (Object.hasOwn(inventory.acquired, cardId)) return s;
       const next = recordSpecimenDraw(inventory, ordinal, card, now, exerciseId);
       // recordSpecimenDraw returns its argument BY REFERENCE when the ordinal is already
       // spent. Identity is the store's no-op signal, so that case costs no state object, no

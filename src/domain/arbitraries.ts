@@ -355,6 +355,17 @@ export const anyMotivationState: fc.Arbitrary<MotivationState> = fc.record({
   customVideoAssetId: fc.option(anyId, { nil: null }),
 });
 
+/**
+ * A logged set's ordinal as a JSON object key: an unsigned, unpadded decimal string, which is
+ * what `String(ordinal)` produces and the only shape schema.ts's SetOrdinalKeySchema accepts
+ * (`/^(?:0|[1-9][0-9]*)$/`). Generated from 1 because ordinal 0 belongs to no logged set: the
+ * ordinal is `totalSetsLogged` read AFTER logSet's increment, so the first set is ordinal 1
+ * (master plan section 10.8, rule 1).
+ */
+const anySetOrdinalKey: fc.Arbitrary<string> = fc
+  .integer({ min: 1, max: 10_000 }) // [sets]
+  .map((ordinal) => String(ordinal));
+
 export const anySpecimenInventory: fc.Arbitrary<SpecimenInventory> = fc.record({
   profileId: anyId,
   acquired: fc.dictionary(
@@ -363,6 +374,19 @@ export const anySpecimenInventory: fc.Arbitrary<SpecimenInventory> = fc.record({
     { maxKeys: 3 },
   ),
   totalSetsLogged: fc.integer({ min: 0, max: 10_000 }),
+  /*
+   * Optional in the schema, so optional here. Omitting it left the parse(serialize(s)) property
+   * asserting nothing about the ordinal ledger: a field the validator drops and a field the
+   * generator never produced are indistinguishable in a deep-equal.
+   *
+   * `nil: undefined`, not null: absence is what an inventory written before the field existed
+   * carries, and JSON.stringify drops an undefined-valued property, which is exactly that
+   * on-disk shape. The keys are ordinals as strings and the values are card ids; `anyId` is a
+   * uuid, 36 characters, inside CardIdSchema's 40-character bound.
+   */
+  acquiredByOrdinal: fc.option(fc.dictionary(anySetOrdinalKey, anyId, { maxKeys: 3 }), {
+    nil: undefined,
+  }),
 });
 
 export const anyTimeCapsule: fc.Arbitrary<TimeCapsule> = fc.record({
