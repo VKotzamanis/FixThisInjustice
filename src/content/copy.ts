@@ -262,9 +262,6 @@ export type CopyKey =
   | 'status.remindersActive'
   // P8 close-out B: enabled on paper, with no subscription behind it.
   | 'status.remindersNeedReenable'
-  | 'hero.installFirst'
-  | 'advice.installIos'
-  | 'advice.iosVersion'
   | 'push.body'
   // --- motivation video (P6) ---
   | 'hero.weeklyTargetMissed'
@@ -272,19 +269,7 @@ export type CopyKey =
   | 'advice.motivationPreview'
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
-  | 'button.play'
   | 'button.dismiss'
-  | 'button.muteThisWeek'
-  | 'button.preview'
-  | 'button.removeCustomClip'
-  | 'status.bundledClipChecking'
-  | 'status.bundledClipPresent'
-  | 'status.bundledClipAbsent'
-  | 'status.customClipNone'
-  | 'status.customClipStored'
-  | 'advice.videoWrongType'
-  | 'advice.videoTooLarge'
-  | 'advice.videoStoreFailed'
   // --- log, export, migration, settings (P7) ---
   | 'hero.importFromOldApp'
   | 'advice.importIntro'
@@ -298,7 +283,6 @@ export type CopyKey =
   | 'button.keepImport'
   | 'button.startClean'
   | 'button.downloadLegacyJson'
-  | 'button.setUpProfile'
   | 'advice.noWeeksYet'
   | 'advice.noSetsLogged'
   | 'hero.exportImport'
@@ -314,7 +298,6 @@ export type CopyKey =
   | 'hero.dataOnDevice'
   | 'advice.dataOnDevice'
   | 'button.wipeAll'
-  | 'advice.wipeAll'
   | 'button.deleteLegacy'
   | 'advice.deleteLegacy'
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
@@ -873,9 +856,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // zone (src/domain/dates.ts localTimeOf), never a UTC instant. P5 Task 8 replaced the
   // formatted example with the slot so a skin override reaches the rendered string.
   'status.remindersActive': 'Reminders are on. Schedule last sent at {time}.',
-  'hero.installFirst': 'Install to the Home Screen first',
-  'advice.installIos': 'On iPhone and iPad, only an installed app receives notifications.',
-  'advice.iosVersion': 'Requires iOS 18.4 or later.',
   'push.body': 'Upper A at 18:00, session 3 of 24', // formatted
 
   // --- motivation video (P6) ---
@@ -884,19 +864,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.motivationPreview': 'Preview. No week is being reported.',
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
-  'button.play': 'Play',
   'button.dismiss': 'Dismiss',
-  'button.muteThisWeek': 'Mute this week',
-  'button.preview': 'Preview',
-  'button.removeCustomClip': 'Remove custom clip',
-  'status.bundledClipChecking': 'Bundled clip: checking.',
-  'status.bundledClipPresent': 'Bundled clip: present.',
-  'status.bundledClipAbsent': 'Bundled clip: absent. Choose a file below.',
-  'status.customClipNone': 'Custom clip: none.',
-  'status.customClipStored': 'Custom clip: stored on this device.',
-  'advice.videoWrongType': 'Not a video file.',
-  'advice.videoTooLarge': 'File is too large. The limit is 150 MiB.',
-  'advice.videoStoreFailed': 'The file could not be stored.',
 
   // --- log, export, migration, settings (P7) ---
   'hero.importFromOldApp': 'Import from the old app',
@@ -911,9 +879,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.keepImport': 'Keep this import',
   'button.startClean': 'Start clean',
   'button.downloadLegacyJson': 'Download legacy JSON',
-  // R1 caps a button at three words and this one was four. The possessive is the word that
-  // carries nothing: the contract's own R1 example drops exactly this kind of word (P8 Task 11).
-  'button.setUpProfile': 'Set up profile',
   'advice.noWeeksYet': 'No weeks to show yet.',
   'advice.noSetsLogged': 'No sets logged yet.',
   'hero.exportImport': 'Export and import',
@@ -929,7 +894,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.dataOnDevice': 'Data on this device',
   'advice.dataOnDevice': 'Everything stays on this device. There is no account.',
   'button.wipeAll': 'Wipe all data',
-  'advice.wipeAll': 'Everything on this device is removed. A JSON backup downloads first.',
   'button.deleteLegacy': 'Delete legacy data',
   'advice.deleteLegacy': "The old app's three keys are removed. Anything not imported is lost.",
 
@@ -1468,7 +1432,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Security review 10 / M5: the wipe now clears the motivation clip's records before it
   // empties the document. A clip store that refuses does NOT hold the wipe back, so this line
   // reports the one thing that may still be on the device, and says the rest is gone. It names
-  // a removal, not a storage failure: advice.videoStoreFailed already says the opposite thing.
+  // a removal, not a storage failure, which src/ui/motivation/MotivationSettings.tsx reports
+  // through 'status.motivationClipNotStored'.
   'advice.clipClearFailed': 'The saved clip could not be removed. Everything else was deleted.',
   // The accessible name of each typed-confirmation panel, read as the group's label. Two panels
   // can be on screen at once (the wipe in Settings and Replace in the export view directly

@@ -379,8 +379,10 @@ describe('the limelight table', () => {
       'status.bootOk',
       'status.bootReady',
       'status.konami',
-      // the missed-week screen
-      'button.play',
+      // the missed-week screen. `button.play` was on this list and is gone: no control ever
+      // rendered it (the clip autoplays muted, which is the only autoplay an engine allows), so
+      // P8 close-out B retired the key rather than keep a required row for a screen that has no
+      // such button.
       'button.dismiss',
       'label.settingsSounds',
     ];
