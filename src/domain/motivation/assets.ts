@@ -105,7 +105,9 @@ export async function saveCustomVideo(
 ): Promise<string> {
   const type = videoTypeOf(file);
   if (type === null) {
-    throw new Error(`Not a video file: ${file.type}.`);
+    // A browser that recognises no type gives an empty string, and `Not a video file: .` names
+    // nothing the user can act on. Fall back to the file's own name. [no units]
+    throw new Error(`Not a video file: ${file.type === '' ? file.name : file.type}.`);
   }
   if (file.size > MAX_VIDEO_BYTES) {
     // both sides in bytes

@@ -126,6 +126,14 @@ describe('custom video asset store', () => {
     );
   });
 
+  it('names the file when the browser gave no type, because the type names nothing', async () => {
+    // `Not a video file: .` is what an empty `file.type` used to produce, and a message with no
+    // subject cannot be acted on. The name is the only evidence left. [no units]
+    await expect(saveCustomVideo(videoFile(4, '', 'notes.txt'), 1)).rejects.toThrow(
+      /Not a video file: notes\.txt\./,
+    );
+  });
+
   it('rejects a file over the size cap', async () => {
     const oversize = videoFile(0);
     Object.defineProperty(oversize, 'size', { value: MAX_VIDEO_BYTES + 1 }); // bytes

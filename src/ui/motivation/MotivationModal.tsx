@@ -39,18 +39,6 @@ import './motivation.css';
 export const POSTER_DATA_URI =
   "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%209'%3E%3Crect%20width='16'%20height='9'%20fill='%230a0b0c'/%3E%3C/svg%3E";
 
-/**
- * The clip's accessible name once sound is on.
- *
- * The muted state is named by `advice.tapForSound`; this is the other half, and the pair is
- * what gives the control a name in BOTH states. It sits here rather than in
- * src/content/copy.ts to keep this change out of a table the Settings task is appending in
- * parallel, which is how a key gets lost in a merge. It obeys
- * the copy contract as written (R3: five words of twelve; R5: no dash connector) and belongs
- * beside `advice.tapForSound` as `advice.tapToMute`, which is a move, not a rewrite.
- */
-export const TAP_TO_MUTE_LABEL = 'Tap the video to mute.';
-
 export interface MotivationModalProps {
   /**
    * The closed week being reported, or null for Settings' preview. In preview nothing is
@@ -209,7 +197,7 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
           // the previous `undefined` arm left an unnamed button behind the moment sound came on.
           role="button"
           tabIndex={0}
-          aria-label={muted ? t('advice.tapForSound') : TAP_TO_MUTE_LABEL}
+          aria-label={muted ? t('advice.tapForSound') : t('advice.tapToMute')}
           data-testid="motivation-video"
           onClick={toggleSound}
           onKeyDown={onVideoKey}
