@@ -11,10 +11,10 @@ import {
 } from './library';
 
 /**
- * The canonical id list, copied verbatim from the master plan section 5 comment in
- * src/domain/types.ts. P4's src/content/formCues.ts is keyed by the same 38 slugs, so a
- * divergence here is a silent cue-lookup miss there. `barbell-row-heavy` is deliberately
- * absent (content review section 6, WRONG-unsafe cue).
+ * The canonical id list, copied verbatim from the master plan section 5 comment. P4's
+ * src/content/formCues.ts is keyed by the same 40 slugs, so a divergence here is a silent
+ * cue-lookup miss there. `barbell-row-heavy` is deliberately absent (content review section 6,
+ * WRONG-unsafe cue).
  */
 const CANONICAL_IDS = [
   'barbell-bench-press',
@@ -57,6 +57,10 @@ const CANONICAL_IDS = [
   'inverted-row',
   'pike-push-up',
   'nordic-hamstring-curl',
+  // The two exercises the master plan section 5 rulings added, each closing a direct-coverage gap
+  // the bodyweight tier could not close before: chin-up (biceps) and bench-dip (triceps).
+  'chin-up',
+  'bench-dip',
 ];
 
 /** The seven ids added by the Task 3 review, asserted as a group for their shared field shape. */
@@ -69,6 +73,19 @@ const NEW_TIER_IDS = [
   'pike-push-up',
   'nordic-hamstring-curl',
 ];
+
+/** The two ids added by the master plan section 5 rulings; same field shape as the seven above. */
+const RULING_IDS = ['chin-up', 'bench-dip'];
+
+/** Every id with no legacy cue object and no legacy video search string behind it. */
+const NO_LEGACY_SOURCE_IDS = [...NEW_TIER_IDS, ...RULING_IDS];
+
+/**
+ * The overhead pressing movements. Master plan section 5: each carries side-delt as a SECONDARY
+ * mover, because pressing overhead abducts the humerus through part of the lateral deltoid's
+ * working range while the front delt remains the prime mover.
+ */
+const OVERHEAD_PRESSES = ['overhead-press-barbell', 'push-press', 'db-overhead-press', 'pike-push-up'];
 
 /**
  * The three lower-body families of the master plan section 5 direct-mover rule. Membership is a
@@ -83,27 +100,39 @@ const TIERS: Equipment[] = ['full-gym', 'dumbbells-only', 'bodyweight'];
 
 /**
  * Muscles with NO direct exercise in a tier. Asserted as an EQUALITY, not a subset, so closing a
- * gap means deleting an entry here rather than editing an assertion. Empty for both loaded
- * tiers. The bodyweight tier lacks isolation for four groups: side delt (no unloaded
- * horizontal-plane abduction exists), and rear delt / triceps / biceps, whose direct bodyweight
- * options -- chin-up, bench dip, bodyweight curl -- are outside the canonical id list.
+ * gap means deleting an entry here rather than editing an assertion. Empty for both loaded tiers.
+ * The bodyweight tier is down to the two groups of the master plan section 5 ruling: rear delt
+ * (worked only as an assisting mover, by inverted-row and chin-up) and side delt (no unloaded
+ * shoulder-abduction exercise exists). Biceps and triceps LEFT this list when the same ruling
+ * added chin-up and bench-dip, which is why the entries are deleted rather than reworded.
  */
 const NO_DIRECT_EXCEPTIONS: Record<string, string[]> = {
   'full-gym': [],
   'dumbbells-only': [],
-  bodyweight: ['biceps', 'rear-delt', 'side-delt', 'triceps'],
+  bodyweight: ['rear-delt', 'side-delt'],
 };
 
 /**
- * Muscles with no stimulus of ANY kind in a tier -- direct or secondary. This is the master plan
- * section 5 claim ("a bodyweight-only tier has no side-delt isolation, which the generator
- * reports as maintenance-only") stated at its strongest: side delt is the ONLY group an unloaded
- * tier cannot touch at all.
+ * Muscles with no stimulus of ANY kind in a tier -- direct or secondary. Now EMPTY for all three
+ * tiers, and that is a correction, not a relaxation.
+ *
+ * The master plan section 5 carries two rulings that cannot both be literally true: "overhead
+ * pressing movements (barbell, dumbbell, push-press, pike push-up) carry side-delt as a secondary
+ * mover" and "a bodyweight-only tier has ... no side-delt stimulus at all". Pike push-up is a
+ * bodyweight-tier exercise, so tagging it side-delt gives the unloaded tier secondary side-delt
+ * work by construction. The exercise-level ruling wins here because it is the specific one and it
+ * is what the library rows encode; the tier sentence is the older summary, written when no
+ * bodyweight press carried the tag.
+ *
+ * What survives of the tier claim is the part that drives the generator: the bodyweight tier has
+ * no DIRECT side-delt exercise (NO_DIRECT_EXCEPTIONS above), so the generator still reports side
+ * delt as maintenance-only there. "Maintenance-only" now means secondary work only, exactly as it
+ * already did for the rear delt.
  */
 const NO_STIMULUS_EXCEPTIONS: Record<string, string[]> = {
   'full-gym': [],
   'dumbbells-only': [],
-  bodyweight: ['side-delt'],
+  bodyweight: [],
 };
 
 /** Exercises available in a tier, given that the tier tags nest (section 5). */
@@ -136,7 +165,7 @@ describe('exercise library integrity', () => {
 
   it('is exactly the canonical id set from master plan section 5', () => {
     expect([...EXERCISES.map((e) => e.id)].sort()).toEqual([...CANONICAL_IDS].sort());
-    expect(EXERCISES.length).toBe(38);
+    expect(EXERCISES.length).toBe(40);
   });
 
   it('indexes every exercise by id, and the map holds the same object as the array', () => {
@@ -250,11 +279,77 @@ describe('direct-mover rule (master plan section 5)', () => {
       });
     }
   });
+
+  it('lists side delt as a secondary mover on every overhead press, whatever the implement', () => {
+    // Master plan section 5. The four presses are tagged alike because the rule keys on the
+    // movement -- the humerus abducts under load while the front delt drives the press -- and not
+    // on the implement. The dumbbell press and the pike push-up were missing the tag, which under-
+    // counted side-delt volume by 0.5 set on every such set in the dumbbells-only and bodyweight
+    // tiers, the two tiers that have the least side-delt work to begin with.
+    for (const id of OVERHEAD_PRESSES) {
+      const e = byId(id);
+      expect({ id, secondary: e.secondaryMuscles.includes('side-delt') }).toEqual({
+        id,
+        secondary: true,
+      });
+      expect({ id, direct: e.muscleGroups.includes('side-delt') }).toEqual({ id, direct: false });
+      // Front delt stays the prime mover in all four; only the lateral raise trains side delt
+      // directly.
+      expect({ id, frontDelt: [...e.muscleGroups] }).toEqual({ id, frontDelt: ['front-delt'] });
+    }
+  });
+});
+
+describe('the two exercises added by the master plan section 5 rulings', () => {
+  it('makes the chin-up a biceps AND lats direct mover, which the pull-up is not', () => {
+    // The supinated grip puts the elbow flexors in line with the pull, so the biceps is a prime
+    // mover through the full range rather than an assisting one. That difference is the whole
+    // reason the id exists: it is the bodyweight tier's only direct biceps work.
+    const chin = byId('chin-up');
+    expect([...chin.muscleGroups].sort()).toEqual(['biceps', 'lats']);
+    expect([...chin.secondaryMuscles]).toEqual(['rear-delt']);
+    expect({ loadClass: chin.loadClass, bw: chin.isBodyweight, modality: chin.modality }).toEqual({
+      loadClass: 'upper-compound',
+      bw: true,
+      modality: 'bodyweight',
+    });
+    expect([...chin.equipment].sort()).toEqual(['bodyweight', 'dumbbells-only', 'full-gym']);
+    expect(chin.videoQuery).toBe('chin-up form');
+    expect(chin.formCueId).toBeNull();
+    // The pronated pull-up keeps the biceps as an assisting mover; a re-tag that merged the two
+    // would silently double-count biceps volume for every pull-up in the plan.
+    expect(byId('pull-up').muscleGroups).toEqual(['lats']);
+    expect(byId('pull-up').secondaryMuscles).toContain('biceps');
+  });
+
+  it('makes the bench dip an upper compound with the triceps direct, not an isolation', () => {
+    // Multi-joint: the elbow extends and the shoulder flexes against the body's weight, so it is
+    // classed with the close-grip bench press rather than with the overhead extension. loadClass
+    // is load-bearing beyond taxonomy -- it sets the progression step and the rest interval.
+    const dip = byId('bench-dip');
+    expect([...dip.muscleGroups]).toEqual(['triceps']);
+    expect([...dip.secondaryMuscles].sort()).toEqual(['chest', 'front-delt']);
+    expect({ loadClass: dip.loadClass, compound: dip.isCompoundPrimary, bw: dip.isBodyweight }).toEqual(
+      { loadClass: 'upper-compound', compound: true, bw: true },
+    );
+    expect([...dip.equipment].sort()).toEqual(['bodyweight', 'dumbbells-only', 'full-gym']);
+    expect(dip.videoQuery).toBe('bench dip form');
+    expect(dip.formCueId).toBeNull();
+    expect(restSFor(dip, MODERATE)).toBe(120); // [s] upper-compound, not the 90 s isolation row
+  });
+
+  it('closes the bodyweight biceps and triceps gaps that used to be exceptions', () => {
+    const bw = inTier('bodyweight');
+    expect(bw.filter((e) => e.muscleGroups.includes('biceps')).map((e) => e.id)).toEqual(['chin-up']);
+    expect(bw.filter((e) => e.muscleGroups.includes('triceps')).map((e) => e.id)).toEqual([
+      'bench-dip',
+    ]);
+  });
 });
 
 describe('the seven equipment-tier exercises added after the Task 3 review', () => {
   it('has no cue id yet and a mechanical "<name> form" search string', () => {
-    for (const id of NEW_TIER_IDS) {
+    for (const id of NO_LEGACY_SOURCE_IDS) {
       const e = byId(id);
       expect({ id, cue: e.formCueId, note: e.note }).toEqual({ id, cue: null, note: null });
       expect(e.videoQuery).toBe(`${e.name.toLowerCase()} form`);
@@ -364,7 +459,7 @@ describe('nested equipment tiers (master plan section 5)', () => {
     }
   });
 
-  it('leaves only the side delt with no stimulus at all in the bodyweight tier', () => {
+  it('leaves no muscle without stimulus of some kind in any tier', () => {
     for (const tier of TIERS) {
       const untouched = MUSCLE_GROUPS.filter(
         (m) =>
