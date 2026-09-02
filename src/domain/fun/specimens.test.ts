@@ -2,17 +2,37 @@ import { describe, expect, it, vi } from 'vitest';
 import type { SpecimenRarity } from '../../content/specimenCards';
 import { RARITY_WEIGHT, SPECIMEN_CARDS } from '../../content/specimenCards';
 import type { SpecimenInventory } from '../types';
-import { mulberry32 } from './rng';
+import { seededRng } from './rng';
 import {
   SPECIMEN_DROP_CHANCE,
   drawSpecimen,
   drawSpecimenForLoggedSet,
   expectedRarityShares,
+  recordSpecimenDraw,
+  specimenRngForLoggedSet,
   specimenSeed,
 } from './specimens';
 
 /** The legacy per-set drop chance (legacy/console-store.jsx:184), kept only as a comparison. */
 const LEGACY_DROP_CHANCE = 0.15;
+
+/**
+ * The pinned draw: profile p1's first ordinal that drops at the shipped 2 percent chance.
+ *
+ * Computed once, outside this module, from the published splitmix32 and xmur3 and the
+ * documented weighted-ticket rule, then hard-coded:
+ *   seed   = xmur3("p1:27")                  = 2015101620
+ *   roll   = first draw                      = 0.00771720870397985, below 0.02, so it drops
+ *   ticket = second draw                     = 0.6181730746757239
+ *   ticket x 123 weight units                = 76.035, which walks past the 12 commons
+ *                                              (72 units) and u001 (3) into u002
+ * Taking the two values in the other order makes 0.618 the roll, which fails at 0.02; forced
+ * to drop at dropChance = 1 it makes 0.00772 the ticket, 0.949 weight units, which lands on
+ * the first card in the pool.
+ */
+const GOLDEN_ORDINAL = 27;
+const GOLDEN_CARD_ID = 'u002';
+const GOLDEN_SWAPPED_CARD_ID = 'c001';
 
 function emptyInventory(): SpecimenInventory {
   return { profileId: 'p1', acquired: {}, totalSetsLogged: 0 };
@@ -20,7 +40,7 @@ function emptyInventory(): SpecimenInventory {
 
 /** Runs one simulated programme and returns how many logged sets it took to collect every card. */
 function setsToComplete(seed: number, dropChance: number): number {
-  const rng = mulberry32(seed);
+  const rng = seededRng(seed);
   const inv = emptyInventory();
   let sets = 0;
   // Hard stop at 100,000 sets so a broken implementation fails the assertion, not the runner.
@@ -34,7 +54,7 @@ function setsToComplete(seed: number, dropChance: number): number {
 
 /** Collects the whole pool over `sets` logged sets at the given chance and returns the count. */
 function cardsCollectedIn(sets: number, dropChance: number, seed: number): number {
-  const rng = mulberry32(seed);
+  const rng = seededRng(seed);
   const inv = emptyInventory();
   for (let i = 0; i < sets; i += 1) {
     const card = drawSpecimen(inv, SPECIMEN_CARDS, rng, dropChance);
@@ -105,7 +125,7 @@ describe('drawSpecimen', () => {
   // reducer rolls twice. The draw takes its randomness as a parameter and touches no global.
   it('never calls Math.random', () => {
     const spy = vi.spyOn(Math, 'random');
-    drawSpecimen(emptyInventory(), SPECIMEN_CARDS, mulberry32(5), 1);
+    drawSpecimen(emptyInventory(), SPECIMEN_CARDS, seededRng(5), 1);
     expect(spy).not.toHaveBeenCalled();
   });
 
@@ -113,18 +133,18 @@ describe('drawSpecimen', () => {
   it('returns null rather than throwing when the pool is empty', () => {
     const inv = emptyInventory();
     for (const c of SPECIMEN_CARDS) inv.acquired[c.id] = { at: 1, exerciseId: null };
-    expect(() => drawSpecimen(inv, SPECIMEN_CARDS, mulberry32(1), 1)).not.toThrow();
-    expect(drawSpecimen(inv, SPECIMEN_CARDS, mulberry32(1), 1)).toBeNull();
+    expect(() => drawSpecimen(inv, SPECIMEN_CARDS, seededRng(1), 1)).not.toThrow();
+    expect(drawSpecimen(inv, SPECIMEN_CARDS, seededRng(1), 1)).toBeNull();
   });
 
   it('tolerates a missing inventory', () => {
-    const card = drawSpecimen(undefined, SPECIMEN_CARDS, mulberry32(3), 1);
+    const card = drawSpecimen(undefined, SPECIMEN_CARDS, seededRng(3), 1);
     expect(card).not.toBeNull();
   });
 
   // G5: the master plan section 7 P8 gate.
   it('keeps rarity proportions within 2 percentage points over 10,000 draws', () => {
-    const rng = mulberry32(20260901);
+    const rng = seededRng(20260901);
     const counts: Record<SpecimenRarity, number> = { common: 0, uncommon: 0, rare: 0 };
     const n = 10_000;
     for (let i = 0; i < n; i += 1) {
@@ -138,7 +158,7 @@ describe('drawSpecimen', () => {
     //   uncommon p = 0.3171 -> SE = 0.00465, so 0.02 is 4.3 SE
     //   rare     p = 0.0976 -> SE = 0.00297, so 0.02 is 6.7 SE
     // The seed is fixed, so the test is deterministic; the SE only justifies the band width.
-    // Observed: common 0.5872, uncommon 0.3150, rare 0.0978, all within 0.43 SE of expectation.
+    // Observed: common 0.5866 (0.25 SE), uncommon 0.3199 (0.61 SE), rare 0.0935 (1.37 SE).
     for (const rarity of ['common', 'uncommon', 'rare'] as const) {
       const observed = counts[rarity] / n;
       expect(Math.abs(observed - expected[rarity]), rarity).toBeLessThan(0.02);
@@ -152,7 +172,7 @@ describe('drawSpecimen', () => {
 
   // G6: excluding owned cards means a drop never repeats, so exactly N drops complete the pool.
   it('never repeats a card and returns null on the drop after the last one', () => {
-    const rng = mulberry32(99);
+    const rng = seededRng(99);
     const inv = emptyInventory();
     const seen: string[] = [];
     for (let i = 0; i < SPECIMEN_CARDS.length; i += 1) {
@@ -177,7 +197,7 @@ describe('rarity exhaustion', () => {
     for (const c of SPECIMEN_CARDS.filter((x) => x.rarity === 'rare')) {
       inv.acquired[c.id] = { at: 1, exerciseId: null };
     }
-    const rng = mulberry32(4242);
+    const rng = seededRng(4242);
     const counts: Record<SpecimenRarity, number> = { common: 0, uncommon: 0, rare: 0 };
     const n = 5000;
     for (let i = 0; i < n; i += 1) {
@@ -188,6 +208,7 @@ describe('rarity exhaustion', () => {
     expect(counts.rare).toBe(0);
     // Weights renormalise over what is left: 72 common and 39 uncommon of 111 units.
     // n = 5000, p = 72/111 = 0.6486 -> SE = sqrt(p(1-p)/n) = 0.00675, so 0.03 is 4.4 SE.
+    // Observed: common 0.6530, 0.64 SE high, and no rare card at all.
     expect(Math.abs(counts.common / n - 72 / 111)).toBeLessThan(0.03);
     expect(Math.abs(counts.uncommon / n - 39 / 111)).toBeLessThan(0.03);
   });
@@ -197,15 +218,16 @@ describe('rarity exhaustion', () => {
     for (const c of SPECIMEN_CARDS) {
       if (c.rarity !== 'common') inv.acquired[c.id] = { at: 1, exerciseId: null };
     }
-    expect(drawSpecimen(inv, SPECIMEN_CARDS, mulberry32(8), 1)).not.toBeNull();
+    expect(drawSpecimen(inv, SPECIMEN_CARDS, seededRng(8), 1)).not.toBeNull();
     for (const c of SPECIMEN_CARDS) inv.acquired[c.id] = { at: 1, exerciseId: null };
-    expect(drawSpecimen(inv, SPECIMEN_CARDS, mulberry32(8), 1)).toBeNull();
+    expect(drawSpecimen(inv, SPECIMEN_CARDS, seededRng(8), 1)).toBeNull();
   });
 });
 
 describe('the seeded per-set draw', () => {
-  // The seed is the profile id and the 1-based ordinal of the logged set, hashed. Replaying the
-  // same logged set therefore replays the same roll and the same card.
+  // The seed is the profile id and the ordinal of the logged set, hashed. The ordinal is
+  // totalSetsLogged read after the increment, so it is the just-logged set's own (master plan
+  // section 10.8). Replaying the same logged set replays the same roll and the same card.
   it('derives the seed from the profile id and the set ordinal', () => {
     expect(specimenSeed('p1', 0)).toBe(specimenSeed('p1', 0));
     expect(specimenSeed('p1', 1)).not.toBe(specimenSeed('p1', 0));
@@ -239,8 +261,133 @@ describe('the seeded per-set draw', () => {
         drops += 1;
     }
     // Binomial: E = n p = 200 drops, SD = sqrt(n p (1 - p)) = sqrt(10000 x 0.02 x 0.98) = 14.0.
-    // The band is 4 SD = 56 drops. Observed: 216, which is 1.1 SD high.
+    // The band is 4 SD = 56 drops. Observed: 190, which is 0.71 SD low.
     expect(Math.abs(drops - 200)).toBeLessThan(56);
+  });
+});
+
+describe('one ordinal, at most one card, ever', () => {
+  // The rule (master plan section 10.8): the ordinal of a logged set is totalSetsLogged read
+  // AFTER the increment, deleteSet decrements the counter, so a delete and relog reuses the
+  // ordinal, and the card an ordinal produced is recorded against that ordinal. A repeat draw
+  // returns the recorded card and takes no new acquisition.
+
+  /** The first ordinal for profile p1 whose roll succeeds at the shipped drop chance. */
+  function firstDroppingOrdinal(profileId: string): number {
+    for (let n = 1; n <= 1000; n += 1) {
+      if (drawSpecimenForLoggedSet(emptyInventory(), SPECIMEN_CARDS, profileId, n, SPECIMEN_DROP_CHANCE)) {
+        return n;
+      }
+    }
+    throw new Error('no drop in the first 1000 ordinals');
+  }
+
+  it('returns the recorded card for an ordinal rather than drawing from the reduced pool', () => {
+    const ordinal = firstDroppingOrdinal('p1');
+    const first = drawSpecimenForLoggedSet(
+      emptyInventory(), SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE,
+    );
+    expect(first).not.toBeNull();
+    const after = recordSpecimenDraw(emptyInventory(), ordinal, first!, 1000, null);
+    // Drawing again now sees the card as owned. Without the ordinal record the re-roll would
+    // exclude it and could hand out a second, different card for the same logged set.
+    const second = drawSpecimenForLoggedSet(
+      after, SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE,
+    );
+    expect(second?.id).toBe(first!.id);
+  });
+
+  it('records nothing the second time the same ordinal is recorded', () => {
+    const ordinal = firstDroppingOrdinal('p1');
+    const card = drawSpecimenForLoggedSet(
+      emptyInventory(), SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE,
+    )!;
+    const after = recordSpecimenDraw(emptyInventory(), ordinal, card, 1000, null);
+    expect(Object.keys(after.acquired)).toEqual([card.id]);
+    // A different card offered for an ordinal that is already spent changes nothing at all.
+    const other = SPECIMEN_CARDS.find((c) => c.id !== card.id)!;
+    const again = recordSpecimenDraw(after, ordinal, other, 2000, 'ex1');
+    expect(again).toBe(after);
+    expect(Object.keys(again.acquired)).toEqual([card.id]);
+    expect(again.acquiredByOrdinal).toEqual({ [ordinal]: card.id });
+  });
+
+  // Code review A47 / plan Task 4: deleteSet decrements totalSetsLogged, so the next logged set
+  // takes the ordinal back. The farm this closes is log, see the card, delete, relog.
+  it('gives the same card back after a delete and relog at the reused ordinal', () => {
+    const ordinal = firstDroppingOrdinal('p1');
+    const card = drawSpecimenForLoggedSet(
+      emptyInventory(), SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE,
+    )!;
+    const owned = recordSpecimenDraw(emptyInventory(), ordinal, card, 1000, null);
+    // The delete puts the counter back to ordinal - 1 and leaves the inventory alone; the relog
+    // increments it again, so the next set is this same ordinal.
+    for (let relog = 0; relog < 5; relog += 1) {
+      const drawn = drawSpecimenForLoggedSet(
+        owned, SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE,
+      );
+      expect(drawn?.id, `relog ${relog}`).toBe(card.id);
+      expect(recordSpecimenDraw(owned, ordinal, drawn!, 3000, null)).toBe(owned);
+    }
+    expect(Object.keys(owned.acquired)).toHaveLength(1);
+  });
+
+  it('treats a recorded id that is no longer in the pool as no card, not as a fresh roll', () => {
+    const ordinal = 7;
+    const inv = recordSpecimenDraw(emptyInventory(), ordinal, SPECIMEN_CARDS[0]!, 1, null);
+    const shrunk = SPECIMEN_CARDS.filter((c) => c.id !== SPECIMEN_CARDS[0]!.id);
+    expect(drawSpecimenForLoggedSet(inv, shrunk, 'p1', ordinal, 1)).toBeNull();
+  });
+
+  it('leaves ordinals that were never recorded free to draw', () => {
+    const ordinal = firstDroppingOrdinal('p1');
+    const inv = recordSpecimenDraw(
+      emptyInventory(),
+      ordinal,
+      drawSpecimenForLoggedSet(emptyInventory(), SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE)!,
+      1,
+      null,
+    );
+    // A later ordinal is unaffected by the record on an earlier one.
+    expect(drawSpecimenForLoggedSet(inv, SPECIMEN_CARDS, 'p1', ordinal + 1, 1)).not.toBeNull();
+  });
+
+  // G5 golden: one whole draw pinned end to end, so a change in the seed string, the generator,
+  // the card order or the ticket rule is caught as a changed id rather than as a shifted
+  // distribution. The expected id was computed once from the reference splitmix32 and the
+  // documented weighted-ticket rule and hard-coded (master plan section 10.7).
+  it('pins the exact card for profile p1 at its first dropping ordinal', () => {
+    const ordinal = firstDroppingOrdinal('p1');
+    expect(ordinal).toBe(GOLDEN_ORDINAL);
+    const card = drawSpecimenForLoggedSet(
+      emptyInventory(), SPECIMEN_CARDS, 'p1', ordinal, SPECIMEN_DROP_CHANCE,
+    );
+    expect(card?.id).toBe(GOLDEN_CARD_ID);
+  });
+
+  it('changes the outcome when the two rng values are taken in the other order', () => {
+    const rng = specimenRngForLoggedSet('p1', GOLDEN_ORDINAL);
+    const roll = rng(); // [dimensionless] value 1: the drop roll
+    const ticket = rng(); // [dimensionless] value 2: the weighted card ticket
+    const streamOf = (values: readonly number[]): (() => number) => {
+      let i = 0;
+      return () => values[i++]!;
+    };
+    // In the true order the two values reproduce the golden card, which is what makes the
+    // swapped case below a statement about the order and not about the values.
+    expect(
+      drawSpecimen(emptyInventory(), SPECIMEN_CARDS, streamOf([roll, ticket]), SPECIMEN_DROP_CHANCE)
+        ?.id,
+    ).toBe(GOLDEN_CARD_ID);
+    // Swapped at the shipped chance: 0.618 is not below 0.02, so the drop does not happen.
+    expect(
+      drawSpecimen(emptyInventory(), SPECIMEN_CARDS, streamOf([ticket, roll]), SPECIMEN_DROP_CHANCE),
+    ).toBeNull();
+    // Swapped and forced to drop: the selection itself changes, not only the roll.
+    expect(
+      drawSpecimen(emptyInventory(), SPECIMEN_CARDS, streamOf([ticket, roll]), 1)?.id,
+    ).toBe(GOLDEN_SWAPPED_CARD_ID);
+    expect(GOLDEN_SWAPPED_CARD_ID).not.toBe(GOLDEN_CARD_ID);
   });
 });
 
@@ -251,15 +398,12 @@ describe('drop-chance economy', () => {
   });
 
   // G7: at 4 sessions/week x ~20 sets = 80 logged sets/week, completion should land near the
-  // 24-week programme length. Sets-to-complete is negative binomial: mean N/p = 37/0.02 = 1850
-  // (23.1 weeks), SD = sqrt(N(1-p))/p = 301 sets, and the right skew puts the median near 1833.
-  // The median of 200 runs has SE = 1.2533 SD / sqrt(200) = 27 sets, so the band is ~7 SE either
-  // side. Observed here: 1771.5 (min 1156, max 2912), 4.6 SE inside the lower edge.
-  //
-  // The seeds are consecutive integers, which is mulberry32's documented weak-seeding pattern,
-  // so it was checked rather than assumed: re-running with seedFromString-hashed seeds gives
-  // median 1776.5 at n = 200 and 1829.0 at n = 2000, against 1771.5 and 1829.5 for the raw
-  // seeds. The two agree and both converge on the theoretical median, so the raw seeds stay.
+  // 24-week maximum programme (PLAN_WEEKS_MAX, src/domain/plan/generator.ts:41), not near the
+  // 12-week default. Sets-to-complete is negative binomial with r = 37 and p = 0.02: mean
+  // r/p = 1850 sets (23.1 weeks), SD = sqrt(r(1-p))/p = 301 sets, and the right skew puts the
+  // exact median at 1834. The median of 200 runs has SE = 1.2533 SD / sqrt(200) = 27 sets, so
+  // the band is ~7 SE either side. Observed: 1840 (min 1091, max 2864, mean 1851.8), 0.2 SE
+  // above the exact median; at n = 2000 the run gives median 1827.5 and mean 1852.6.
   it('completes the pool in a median 1650-2050 logged sets across 200 programmes', () => {
     const runs: number[] = [];
     for (let seed = 1; seed <= 200; seed += 1) runs.push(setsToComplete(seed, SPECIMEN_DROP_CHANCE));
@@ -269,10 +413,11 @@ describe('drop-chance economy', () => {
     expect(median).toBeLessThanOrEqual(2050);
   });
 
-  // G8: the legacy 15 percent rate exhausted the library in about 280 logged sets, roughly 3.2
-  // weeks of the 24-week programme (content review section 2.2). This test states both halves:
-  // the legacy chance still empties the pool, and the tuned chance does not come close. Under
-  // the legacy rule the second assertion fails by construction, which is the defect being fixed.
+  // G8: the legacy 15 percent rate exhausted the library in about 280 logged sets, 3.5 weeks
+  // of the 12-week default programme (content review section 2.2). This test states both
+  // halves: the legacy chance still empties the pool, and the tuned chance does not come close.
+  // Under the legacy rule the second assertion fails by construction, which is the defect being
+  // fixed. Observed: 34 cards at the legacy chance, 6 at the tuned one.
   it('collects fewer than 15 cards over the 280 sets that exhausted the legacy pool', () => {
     expect(cardsCollectedIn(280, LEGACY_DROP_CHANCE, 555)).toBeGreaterThanOrEqual(30);
     expect(cardsCollectedIn(280, SPECIMEN_DROP_CHANCE, 555)).toBeLessThan(15);
