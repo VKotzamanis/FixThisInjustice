@@ -1,6 +1,7 @@
 import type { ChangeEvent, JSX } from 'react';
 
 import { SKIN_IDS, useSkin } from '../../skins/skinContext';
+import { sfxPlayer } from '../../skins/sfx';
 import { copy, type CopyKey } from '../../content/copy';
 import { useAppStore } from '../../store';
 import type { SkinId } from '../../domain/types';
@@ -43,13 +44,16 @@ export function SkinSettings(): JSX.Element {
   };
 
   /*
-   * This writes the preference and nothing else. Web Audio cannot be unlocked from here: a
-   * browser only grants an AudioContext on a user gesture, and the gesture that matters is the
-   * one on the screen that plays the sound. P8 Task 15 owns that unlock and the four moments
-   * (round-three plan section 6.1); this checkbox is the flag it reads.
+   * Turning sounds on unlocks Web Audio inside this handler, because resume() has to run in the
+   * gesture task and not in an effect that follows it. This is the second of the two unlock points
+   * round-three plan section 6.2 rule 1 names, and it is the one that matters for a user who turns
+   * sounds on before touching anything else on the screen; the first is useFirstGestureUnlock().
+   * Turning them off unlocks nothing: there is no gesture to spend and nothing to decode.
    */
   const onSoundsChange = (event: ChangeEvent<HTMLInputElement>): void => {
-    useAppStore.getState().setUi({ sounds: event.target.checked });
+    const next = event.target.checked;
+    useAppStore.getState().setUi({ sounds: next });
+    if (next) void sfxPlayer.unlock();
   };
 
   return (
