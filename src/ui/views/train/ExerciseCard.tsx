@@ -200,12 +200,30 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                 )}
               </span>
             )}
+            {/*
+              * Two lines, not one frame with an empty slot. `suggestedKg` is null wherever the
+              * engine can suggest no load: a bodyweight exercise, a prescription with no rep
+              * range and nothing logged, a deload block with nothing logged, and any exercise
+              * with no history. `formatLoad(null, units)` is the em dash NO_VALUE, and copy
+              * contract R5 retains that dash as a WHOLE CELL ("a placeholder, not a
+              * connector"), which "Suggested —: Hold load" is not. The absence therefore reads
+              * its own key, which carries no slot for a dash to sit in.
+              *
+              * The advice KIND is dropped with the frame rather than moved: `advice.reason`,
+              * rendered immediately below, is the engine's own sentence for the same fact
+              * ("Bodyweight lift: add repetitions, not load."), and the arithmetic behind it is
+              * in the why? disclosure beside it. In the one branch where that line is
+              * suppressed — a deload block, where TrainView's header has already said it once —
+              * the disclosure still carries it.
+              */}
             <span className="ex-suggested">
-              {FORMAT.suggestedLoad(
-                formatLoad(suggestedKg, profile.units),
-                t(ADVICE_KEY[advice.kind]),
-                overrides,
-              )}
+              {suggestedKg === null
+                ? t('label.noSuggestedLoad')
+                : FORMAT.suggestedLoad(
+                    formatLoad(suggestedKg, profile.units),
+                    t(ADVICE_KEY[advice.kind]),
+                    overrides,
+                  )}
             </span>
           </div>
 
