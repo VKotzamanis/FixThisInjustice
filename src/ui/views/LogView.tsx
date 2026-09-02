@@ -18,7 +18,8 @@
 
 import { useMemo } from 'react';
 import type { ReactElement } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { addDays, compareLocalDate, daysBetween, weekStart } from '../../domain/dates';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
 import type {
@@ -73,6 +74,7 @@ export function weeksBetween(from: LocalDate, to: LocalDate): LocalDate[] {
 }
 
 export function LogView(): ReactElement {
+  const t = useCopy();
   const profile = useActiveProfile();
   const profileId = useActiveProfileId();
   const targets = useNutritionTargets();
@@ -143,8 +145,8 @@ export function LogView(): ReactElement {
   if (profile === null) {
     return (
       <section className="view log">
-        <h2>{copy('nav.log')}</h2>
-        <p className="view-note">{copy('advice.noProfileSetupFirst')}</p>
+        <h2>{t('nav.log')}</h2>
+        <p className="view-note">{t('advice.noProfileSetupFirst')}</p>
       </section>
     );
   }
@@ -159,10 +161,10 @@ export function LogView(): ReactElement {
 
   return (
     <section className="view log">
-      <h2>{copy('nav.log')}</h2>
+      <h2>{t('nav.log')}</h2>
 
-      <h3>{copy('hero.bodyMass')}</h3>
-      {entries.length === 0 && <p className="view-note">{copy('advice.noBodyMassLogged')}</p>}
+      <h3>{t('hero.bodyMass')}</h3>
+      {entries.length === 0 && <p className="view-note">{t('advice.noBodyMassLogged')}</p>}
       <BodyMassChart
         entries={entries}
         units={profile.units}
@@ -174,18 +176,18 @@ export function LogView(): ReactElement {
       />
       {/* R9: the rate the dashed line is drawn at, and the rule behind it, are arithmetic. */}
       <details data-testid="body-mass-basis">
-        <summary>{copy('disclosure.why')}</summary>
+        <summary>{t('disclosure.why')}</summary>
         <div className="view-note">
           <p>
             {rateKgPerWeek === null
-              ? copy('status.rateUnknown')
+              ? t('status.rateUnknown')
               : FORMAT.bodyMassProjection(formatMass(rateKgPerWeek, profile.units))}
           </p>
           {targets !== null && <p>{targets.basis.rateRule}</p>}
         </div>
       </details>
 
-      <h3>{copy('hero.compliance')}</h3>
+      <h3>{t('hero.compliance')}</h3>
       <ComplianceGrid
         assignments={assignments ?? NO_ASSIGNMENTS}
         weekStarts={weekStarts}
@@ -196,14 +198,14 @@ export function LogView(): ReactElement {
 
       {bodyweightExercises.length > 0 && (
         <>
-          <h3>{copy('hero.repsPerWeek')}</h3>
+          <h3>{t('hero.repsPerWeek')}</h3>
           {bodyweightExercises.map((ex) => (
             <AmrapSpark key={ex.id} sets={sets} exercise={ex} />
           ))}
         </>
       )}
 
-      <h3>{copy('hero.personalRecords')}</h3>
+      <h3>{t('hero.personalRecords')}</h3>
       <PRList sets={sets} library={library} units={profile.units} />
     </section>
   );

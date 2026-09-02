@@ -13,6 +13,7 @@ import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
 import { PROFILE_ID, TZ_ATHENS, seedState } from '../../test/scheduleFixtures';
 import type { EpochMs, LocalDate, WeeklyReview } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /*
  * The clip is the modal's business, not the gate's, so both asset lookups are mocked exactly as
@@ -100,6 +101,24 @@ beforeEach(() => {
   vi.mocked(probeBundledVideo).mockResolvedValue(true);
   // jsdom has no media pipeline, and the modal autoplays.
   vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('MotivationGate', () => {

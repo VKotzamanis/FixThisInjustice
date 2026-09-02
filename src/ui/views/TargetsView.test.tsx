@@ -1,12 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { dailyBeverageTargetML } from '../../domain/nutrition';
 import { asciiBar } from '../components/AsciiBar';
 import { TargetsView } from './TargetsView';
 import { useAppStore } from '../../store';
 import type { PlanTemplate, Profile } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /**
  * The clock is pinned: the age term of Mifflin-St Jeor is derived from the civil year
@@ -144,6 +145,20 @@ function recordIntake(): void {
 function storedToday(): unknown {
   return (useAppStore.getState().intake['p1'] ?? []).find((e) => e.date === '2026-09-01') ?? null;
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a view that reads the
+ * table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; the skin's own words have their own test at the end of the file.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('asciiBar', () => {
   it('fills proportionally and clamps at both ends', () => {
@@ -414,5 +429,23 @@ describe('App wiring', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
     expect(screen.queryByLabelText('Active profile')).toBeNull();
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('TargetsView under a skin', () => {
+  it('heads the targets in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<TargetsView />);
+    expect(screen.getByText(copyFor('limelight', 'hero.dailyTargets'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<TargetsView />);
+    expect(screen.getByText(copyFor('clinical', 'hero.dailyTargets'))).toBeInTheDocument();
   });
 });

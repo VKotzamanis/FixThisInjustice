@@ -1,5 +1,7 @@
 import { useEffect, type JSX } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { PlanBlock, PlannedSession } from '../../domain/types';
 import { useActiveCursor } from '../../store/scheduleSelectors';
 import { useActivePlan } from '../../store/selectors';
@@ -40,10 +42,15 @@ import './views.css';
  * The note on a deload chip, from the block's own set modifier.
  *
  * @param setModifier dimensionless multiplier on the planned set count, 1 = unchanged
+ * @param overrides   the active skin's table. Pure and optional, so the suite can call this
+ *                    with no React tree and read the clinical note.
  */
-export function deloadNote(setModifier: number): string {
+export function deloadNote(
+  setModifier: number,
+  overrides?: Partial<Record<CopyKey, string>>,
+): string {
   const cutPct = Math.round((1 - setModifier) * 100); // [%] of planned sets removed
-  return FORMAT.deloadNote(cutPct);
+  return FORMAT.deloadNote(cutPct, overrides);
 }
 
 /**
@@ -80,8 +87,14 @@ function SessionCard(props: {
   session: PlannedSession;
   block: PlanBlock | null;
   isNext: boolean;
+  /*
+   * The reader, handed down rather than read here: a plan holds up to 48 sessions and a
+   * `useCopy()` inside this card would put one store subscription on each of them for a
+   * value that is the same for all. Same argument as ToastQueue's.
+   */
+  t: (key: CopyKey) => string;
 }): JSX.Element {
-  const { session, block, isNext } = props;
+  const { session, block, isNext, t } = props;
   const setModifier = block?.setModifier ?? 1; // dimensionless, 1 = as planned
   return (
     <li
@@ -96,7 +109,7 @@ function SessionCard(props: {
         <span className="ps-ordinal">{String(session.ordinal).padStart(2, '0')}</span>
         <h3 className="ps-name">{session.name}</h3>
         <span className="ps-label">{session.label}</span>
-        {isNext && <span className="ps-cursor">{copy('status.nextSession')}</span>}
+        {isNext && <span className="ps-cursor">{t('status.nextSession')}</span>}
       </div>
       <div className="ps-list">
         {session.exercises.map((ex) => (
@@ -131,6 +144,8 @@ function SessionCard(props: {
 }
 
 export function PlanView(): JSX.Element {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const plan = useActivePlan();
   const cursor = useActiveCursor();
   /*
@@ -206,8 +221,8 @@ export function PlanView(): JSX.Element {
   if (plan === null || cursor === null) {
     return (
       <div className="view plan">
-        <h2>{copy('nav.plan')}</h2>
-        <p className="view-note">{copy('hero.noPlan')}</p>
+        <h2>{t('nav.plan')}</h2>
+        <p className="view-note">{t('hero.noPlan')}</p>
       </div>
     );
   }
@@ -224,9 +239,9 @@ export function PlanView(): JSX.Element {
 
   return (
     <div className="view plan">
-      <h2>{copy('nav.plan')}</h2>
+      <h2>{t('nav.plan')}</h2>
 
-      <div className="plan-blocks" role="group" aria-label={copy('label.blockStrip')}>
+      <div className="plan-blocks" role="group" aria-label={t('label.blockStrip')}>
         {plan.blocks.map((block) => {
           const from = block.firstSessionIndex + 1; // 1-based plan position
           const to = block.firstSessionIndex + block.sessionCount; // inclusive
@@ -244,13 +259,13 @@ export function PlanView(): JSX.Element {
                 browseWeek(weekOfIndex(block.firstSessionIndex, spw));
               }}
             >
-              <span className="pc-id">{FORMAT.blockLabel(block.index + 1)}</span>{' '}
-              <span className="pc-range">{FORMAT.blockSessions(from, to)}</span>
+              <span className="pc-id">{FORMAT.blockLabel(block.index + 1, overrides)}</span>{' '}
+              <span className="pc-range">{FORMAT.blockSessions(from, to, overrides)}</span>
               {block.isDeload && (
                 <>
                   {' '}
-                  <span className="pc-flag">{copy('status.deloadTag')}</span>{' '}
-                  <span className="pc-note">{deloadNote(block.setModifier)}</span>
+                  <span className="pc-flag">{t('status.deloadTag')}</span>{' '}
+                  <span className="pc-note">{deloadNote(block.setModifier, overrides)}</span>
                 </>
               )}
             </button>
@@ -259,7 +274,7 @@ export function PlanView(): JSX.Element {
       </div>
 
       <div className="plan-scrub">
-        <label htmlFor="plan-week">{copy('label.week')}</label>
+        <label htmlFor="plan-week">{t('label.week')}</label>
         <input
           id="plan-week"
           type="range"
@@ -272,17 +287,17 @@ export function PlanView(): JSX.Element {
           }}
         />
         <span className="plan-week-label" data-testid="week-label">
-          {FORMAT.weekOfCount(week + 1, weekCount)}
+          {FORMAT.weekOfCount(week + 1, weekCount, overrides)}
         </span>
       </div>
 
       {deloadBlock !== null && (
         <>
-          <p className="view-note">{copy('advice.deloadBlock')}</p>
+          <p className="view-note">{t('advice.deloadBlock')}</p>
           {/* R9: the set counts beside this are what the user acts on; the multiplication
               that produced them is not, so it sits behind the disclosure. */}
           <details data-testid="deload-basis">
-            <summary>{copy('disclosure.why')}</summary>
+            <summary>{t('disclosure.why')}</summary>
             <p className="view-note">{FORMAT.deloadSetsBasis(deloadBlock.setModifier)}</p>
           </details>
         </>
@@ -297,6 +312,7 @@ export function PlanView(): JSX.Element {
               session={session}
               block={blockOfSession(plan.blocks, index)}
               isNext={index === cursor.nextSessionIndex}
+              t={t}
             />
           );
         })}

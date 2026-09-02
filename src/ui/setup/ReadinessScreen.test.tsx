@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { copy } from '../../content/copy';
+import { copy, copyFor } from '../../content/copy';
 import { READINESS_QUESTIONS, READINESS_SOURCE } from '../../content/readinessQuestions';
 import { ReadinessScreen } from './ReadinessScreen';
+import { useAppStore } from '../../store';
+import type { SkinId } from '../../domain/types';
 
 /**
  * The seven General Health Questions of the official PAR-Q+ 2025 form, present here ONLY as an
@@ -46,6 +48,24 @@ function answerAll(choice: string): void {
 function words(text: string): number {
   return text.trim().split(/\s+/).length;
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('READINESS_QUESTIONS', () => {
   it('asks seven questions, numbered one to seven', () => {
@@ -163,5 +183,27 @@ describe('ReadinessScreen', () => {
     answerAll(NO);
     fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
     expect(onComplete).toHaveBeenCalledWith({ screenedAt: '2026-08-31', flagged: false });
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('ReadinessScreen under a skin', () => {
+  it('names the control in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.continue') }),
+    ).toBeInTheDocument();
   });
 });

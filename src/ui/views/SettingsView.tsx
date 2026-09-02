@@ -1,6 +1,8 @@
 import { Fragment, useRef, useState, type JSX } from 'react';
 import { UnitInput, loadUnit, parseDecimal } from '../components/UnitInput';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { dailyBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
 import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
@@ -18,24 +20,28 @@ import './views.css';
  * Option lists, each paired with the copy key that names it. The VALUES are the domain union
  * members and are never translated; only the labels come from the copy table, so a skin can
  * reword an option without changing what it selects.
+ *
+ * The KEY is stored, not the resolved string. A module constant is evaluated once at import,
+ * so a baked label would be whatever skin was active when the module first loaded and would
+ * never move again; the view resolves it per render through `useCopy()`.
  */
-const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string }[] = [
-  { value: 'sedentary', label: copy('option.activitySedentary') },
-  { value: 'moderate', label: copy('option.activityModerate') },
-  { value: 'vigorous', label: copy('option.activityVigorous') },
+const ACTIVITY_OPTIONS: { value: ActivityLevel; labelKey: CopyKey }[] = [
+  { value: 'sedentary', labelKey: 'option.activitySedentary' },
+  { value: 'moderate', labelKey: 'option.activityModerate' },
+  { value: 'vigorous', labelKey: 'option.activityVigorous' },
 ];
 
-const EXPERIENCE_OPTIONS: { value: Experience; label: string }[] = [
-  { value: 'novice', label: copy('option.experienceNovice') },
-  { value: 'intermediate', label: copy('option.experienceIntermediate') },
-  { value: 'advanced', label: copy('option.experienceAdvanced') },
+const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey }[] = [
+  { value: 'novice', labelKey: 'option.experienceNovice' },
+  { value: 'intermediate', labelKey: 'option.experienceIntermediate' },
+  { value: 'advanced', labelKey: 'option.experienceAdvanced' },
 ];
 
-const GOAL_OPTIONS: { value: GoalKind; label: string }[] = [
-  { value: 'fat-loss', label: copy('option.goalFatLoss') },
-  { value: 'muscle-gain', label: copy('option.goalMuscleGain') },
-  { value: 'recomposition', label: copy('option.goalRecomposition') },
-  { value: 'maintenance', label: copy('option.goalMaintenance') },
+const GOAL_OPTIONS: { value: GoalKind; labelKey: CopyKey }[] = [
+  { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
+  { value: 'muscle-gain', labelKey: 'option.goalMuscleGain' },
+  { value: 'recomposition', labelKey: 'option.goalRecomposition' },
+  { value: 'maintenance', labelKey: 'option.goalMaintenance' },
 ];
 
 /**
@@ -77,21 +83,22 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
  * and it cannot use this action because during setup there is no profile id yet.
  */
 function ReadinessRow(props: { profile: Profile }): JSX.Element {
+  const t = useCopy();
   const [screening, setScreening] = useState(false);
   const { profile } = props;
   const screenedAt = profile.readiness.screenedAt;
 
   return (
     <>
-      <h2>{copy('hero.readiness')}</h2>
+      <h2>{t('hero.readiness')}</h2>
       <p className="view-note">
         {screenedAt === null
-          ? copy('status.notScreened')
+          ? t('status.notScreened')
           : FORMAT.screenedOn(
               screenedAt,
               profile.readiness.flagged
-                ? copy('status.readinessConsult')
-                : copy('status.readinessNoFlags'),
+                ? t('status.readinessConsult')
+                : t('status.readinessNoFlags'),
             )}
       </p>
       {screening ? (
@@ -109,7 +116,7 @@ function ReadinessRow(props: { profile: Profile }): JSX.Element {
             setScreening(true);
           }}
         >
-          {screenedAt === null ? copy('button.startReadiness') : copy('button.redoReadiness')}
+          {screenedAt === null ? t('button.startReadiness') : t('button.redoReadiness')}
         </button>
       )}
     </>
@@ -142,6 +149,7 @@ function NumberSetting(props: {
   validate: (value: number | null) => string | null;
   commit: (value: number) => void;
 }): JSX.Element {
+  const t = useCopy();
   const [draft, setDraft] = useState(props.initial);
   const [error, setError] = useState<string | null>(null);
   /*
@@ -160,9 +168,9 @@ function NumberSetting(props: {
     const parsed = parseDecimal(draft);
     const message = props.validate(parsed);
     if (parsed === null || message !== null) {
-      // `?? copy(...)` covers a validator that accepts an absent value: there is still no
+      // `?? t(...)` covers a validator that accepts an absent value: there is still no
       // number to commit, so the field is refused rather than silently left alone.
-      setError(message ?? copy('error.valueRequired'));
+      setError(message ?? t('error.valueRequired'));
       return;
     }
     setError(null);
@@ -229,10 +237,12 @@ function NumberSetting(props: {
  * this screen accepts and the loader later refuses would cost the user the whole document.
  */
 export function SettingsView(): JSX.Element {
+  // Before the no-profile return, so the hook count does not depend on the store.
+  const t = useCopy();
   const profile = useActiveProfile();
   const profiles = useAppStore((s) => s.profiles);
 
-  if (profile === null) return <p>{copy('advice.noProfileSetupFirst')}</p>;
+  if (profile === null) return <p>{t('advice.noProfileSetupFirst')}</p>;
 
   // Actions are read through getState() rather than subscribed to: they are created once and
   // never replaced, so a subscription only adds an unbound method to the render.
@@ -245,32 +255,32 @@ export function SettingsView(): JSX.Element {
 
   /** Reject what the schema would reject, in the same words for every numeric field. */
   const stepError = (value: number | null): string | null => {
-    if (value === null) return copy('error.valueRequired');
-    if (!(value > 0)) return copy('error.positive');
+    if (value === null) return t('error.valueRequired');
+    if (!(value > 0)) return t('error.positive');
     const patched = { ...profile.equipmentSteps, barbellKg: toStoredLoad(value, units) }; // [kg]
     return ProfileSchema.shape.equipmentSteps.safeParse(patched).success
       ? null
-      : copy('error.outsideAccepted');
+      : t('error.outsideAccepted');
   };
 
   const fluidError = (value: number | null): string | null => {
-    if (value === null) return copy('error.valueRequired');
+    if (value === null) return t('error.valueRequired');
     // A zero or negative daily target is a broken DENOMINATOR, not a preference: P4 renders
     // hydration as volume/target. updateProfile throws on it, so it is caught here first.
-    if (!(value > 0)) return copy('error.positive');
+    if (!(value > 0)) return t('error.positive');
     const patched = { ...profile.hydration, dailyTargetML: value }; // [mL/day]
     return ProfileSchema.shape.hydration.safeParse(patched).success
       ? null
-      : copy('error.outsideAccepted');
+      : t('error.outsideAccepted');
   };
 
   return (
     <section className="view">
-      <h2>{copy('hero.profile')}</h2>
+      <h2>{t('hero.profile')}</h2>
 
       {profileIds.length > 1 && (
         <div className="view-field">
-          <label htmlFor="settings-active-profile">{copy('label.activeProfile')}</label>
+          <label htmlFor="settings-active-profile">{t('label.activeProfile')}</label>
           <select
             id="settings-active-profile"
             value={profile.id}
@@ -288,7 +298,7 @@ export function SettingsView(): JSX.Element {
       )}
 
       <div className="view-field">
-        <label htmlFor="settings-units">{copy('label.displayUnit')}</label>
+        <label htmlFor="settings-units">{t('label.displayUnit')}</label>
         <select
           id="settings-units"
           value={units}
@@ -299,14 +309,14 @@ export function SettingsView(): JSX.Element {
             updateProfile({ units: next });
           }}
         >
-          <option value="metric">{copy('label.unitsMetric')}</option>
-          <option value="imperial">{copy('label.unitsImperial')}</option>
+          <option value="metric">{t('label.unitsMetric')}</option>
+          <option value="imperial">{t('label.unitsImperial')}</option>
         </select>
       </div>
-      <p className="view-note">{copy('advice.storedUnitsUnchanged')}</p>
+      <p className="view-note">{t('advice.storedUnitsUnchanged')}</p>
 
       <div className="view-field">
-        <label htmlFor="settings-activity">{copy('label.activity')}</label>
+        <label htmlFor="settings-activity">{t('label.activity')}</label>
         <select
           id="settings-activity"
           value={profile.activity}
@@ -317,14 +327,14 @@ export function SettingsView(): JSX.Element {
         >
           {ACTIVITY_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
       </div>
 
       <div className="view-field">
-        <label htmlFor="settings-experience">{copy('label.experience')}</label>
+        <label htmlFor="settings-experience">{t('label.experience')}</label>
         <select
           id="settings-experience"
           value={profile.experience}
@@ -335,14 +345,14 @@ export function SettingsView(): JSX.Element {
         >
           {EXPERIENCE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
       </div>
 
       <div className="view-field">
-        <label htmlFor="settings-goal">{copy('label.goal')}</label>
+        <label htmlFor="settings-goal">{t('label.goal')}</label>
         <select
           id="settings-goal"
           value={profile.goal.kind}
@@ -356,7 +366,7 @@ export function SettingsView(): JSX.Element {
         >
           {GOAL_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {t(o.labelKey)}
             </option>
           ))}
         </select>
@@ -370,15 +380,15 @@ export function SettingsView(): JSX.Element {
             updateProfile({ supplements: { creatine: e.target.checked } });
           }}
         />
-        {copy('label.creatine')}
+        {t('label.creatine')}
       </label>
-      <p className="view-note">{copy('advice.creatineOnly')}</p>
+      <p className="view-note">{t('advice.creatineOnly')}</p>
 
-      <h2>{copy('hero.equipmentSteps')}</h2>
+      <h2>{t('hero.equipmentSteps')}</h2>
       <NumberSetting
         key={`barbell-${units}`}
         id="settings-barbell-step"
-        quantity={copy('quantity.barbellStep')}
+        quantity={t('quantity.barbellStep')}
         unit={loadUnit(units)}
         initial={String(displayLoad(profile.equipmentSteps.barbellKg, units))}
         validate={stepError}
@@ -401,15 +411,15 @@ export function SettingsView(): JSX.Element {
             });
           }}
         />
-        {copy('label.microPlates')}
+        {t('label.microPlates')}
       </label>
-      <p className="view-note">{copy('advice.loadSteps')}</p>
+      <p className="view-note">{t('advice.loadSteps')}</p>
 
-      <h2>{copy('hero.hydration')}</h2>
+      <h2>{t('hero.hydration')}</h2>
       <NumberSetting
         key="fluid"
         id="settings-fluid-target"
-        quantity={copy('quantity.dailyBeverageTarget')}
+        quantity={t('quantity.dailyBeverageTarget')}
         /* Entered and stored in mL either way: the canonical volume unit has no display form
            in this field, because a fractional fluid ounce would round on every keystroke. */
         unit="mL"
@@ -428,7 +438,7 @@ export function SettingsView(): JSX.Element {
           come from the engine's mL/day constant rather than being restated in the copy
           table, so the sentence cannot describe a share the app does not prescribe. */}
       <details>
-        <summary>{copy('disclosure.why')}</summary>
+        <summary>{t('disclosure.why')}</summary>
         <p className="view-note">
           {FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female'))}
         </p>

@@ -10,7 +10,8 @@ import { KG_PER_LB } from '../../domain/types';
 import { toStoredMass } from '../../domain/units';
 import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
+import type { SkinId } from '../../domain/types';
 
 /**
  * No medication, condition or biometric-identifier field exists anywhere in this wizard by
@@ -121,6 +122,24 @@ function fillImperialWizard(): void {
   answerReadiness();
   next();
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('step order', () => {
   it('exposes an ordered STEPS array with the readiness step before Review', () => {
@@ -877,5 +896,27 @@ describe('readiness screening', () => {
     expect(screen.getByTestId('readiness-screen')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Confirm and start' })).toBeNull();
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('SetupWizard under a skin', () => {
+  it('names the primary control in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<SetupWizard />);
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<SetupWizard />);
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.continue') }),
+    ).toBeInTheDocument();
   });
 });

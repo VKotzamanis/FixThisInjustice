@@ -1,6 +1,6 @@
 import { useState, type JSX } from 'react';
 import './setup.css';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { READINESS_QUESTIONS, READINESS_SOURCE } from '../../content/readinessQuestions';
 import { todayLocal } from '../../domain/dates';
 import type { LocalDate } from '../../domain/types';
@@ -33,6 +33,7 @@ export function ReadinessScreen(props: {
   timezone: string;
   onComplete: (result: ReadinessResult) => void;
 }): JSX.Element {
+  const t = useCopy();
   const [answers, setAnswers] = useState<Partial<Record<number, Answer>>>({});
 
   const answered = READINESS_QUESTIONS.every((q) => answers[q.id] !== undefined);
@@ -40,13 +41,13 @@ export function ReadinessScreen(props: {
 
   return (
     <div className="rq" data-testid="readiness-screen">
-      <p className="rq-lede">{copy('advice.notMedicalAdvice')}</p>
-      <p className="rq-lede">{copy('advice.readinessAnyYes')}</p>
+      <p className="rq-lede">{t('advice.notMedicalAdvice')}</p>
+      <p className="rq-lede">{t('advice.readinessAnyYes')}</p>
 
       {/* R9: what this is modelled on, what it stores, and the citation. Never on the face. */}
       <details>
-        <summary>{copy('disclosure.why')}</summary>
-        <p className="rq-note">{copy('why.readiness')}</p>
+        <summary>{t('disclosure.why')}</summary>
+        <p className="rq-note">{t('why.readiness')}</p>
         <p className="rq-source">{READINESS_SOURCE}</p>
       </details>
 
@@ -61,13 +62,13 @@ export function ReadinessScreen(props: {
                 <input
                   type="radio"
                   name={`readiness-${q.id}`}
-                  aria-label={choice === 'yes' ? copy('label.yes') : copy('label.no')}
+                  aria-label={choice === 'yes' ? t('label.yes') : t('label.no')}
                   checked={answers[q.id] === choice}
                   onChange={() => {
                     setAnswers((a) => ({ ...a, [q.id]: choice }));
                   }}
                 />
-                {choice === 'yes' ? copy('label.yes') : copy('label.no')}
+                {choice === 'yes' ? t('label.yes') : t('label.no')}
               </label>
             ))}
           </div>
@@ -85,7 +86,7 @@ export function ReadinessScreen(props: {
             props.onComplete({ screenedAt: todayLocal(props.timezone), flagged: anyYes });
           }}
         >
-          {copy('button.continue')}
+          {t('button.continue')}
         </button>
       </div>
     </div>

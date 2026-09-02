@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode, type ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { formatRest, planRowDomId } from '../format/plan';
 import { requestPlanFocus, usePendingPlanFocus } from '../planFocus';
 import { PlanView, blockOfSession, deloadNote, modifiedSets } from './PlanView';
@@ -14,6 +14,7 @@ import { resetPlanBrowse } from '../planBrowse';
 import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
 import type { AppState, PlanBlock } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /*
  * Deviations from the P3 plan's literal draft for this task, recorded here and in the task
@@ -103,6 +104,24 @@ afterEach(() => {
   requestPlanFocus(null);
   resetPlanBrowse();
   vi.restoreAllMocks();
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('deloadNote', () => {
@@ -323,5 +342,23 @@ describe('App wiring', () => {
 
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
     expect(useAppStore.getState().ui.lastView).toBe('plan');
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('PlanView under a skin', () => {
+  it('names the view in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<PlanView />);
+    expect(screen.getByText(copyFor('limelight', 'nav.plan'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<PlanView />);
+    expect(screen.getByText(copyFor('clinical', 'nav.plan'))).toBeInTheDocument();
   });
 });

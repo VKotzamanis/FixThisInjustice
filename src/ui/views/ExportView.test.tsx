@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ExportView } from './ExportView';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
 import { flushSave, startPersistence, useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
 import { parseState } from '../../domain/schema';
 import type { PushDevice, SessionAssignment } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /**
  * The instant every assertion is dated from: 2026-09-01T12:00:00Z, which is 2026-09-01 in
@@ -120,6 +121,24 @@ const DEVICE: PushDevice = {
   lastSyncAt: NOW, // [ms]
   lastSyncHash: 'f00dcafe',
 };
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('the downloaded document and the push device', () => {
   it('withholds the device from the file while the running app keeps it', async () => {
@@ -400,5 +419,24 @@ describe('ExportView', () => {
       expect(screen.getByLabelText(copy('label.pasteExport'))).toHaveValue(otherDocument());
     });
     expect(useAppStore.getState().exportJson()).toBe(before);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. This screen names no row either override table carries, so what the pair below asserts
+ * is the OTHER half of the contract: a key a skin does not name renders the clinical sentence,
+ * on every skin. Both sides are read by key through `copyFor`, never as a literal.
+ */
+describe('ExportView under a skin', () => {
+  it('reads its heading through the skin, and falls back to the default table', () => {
+    pinSkin('limelight');
+    const view = render(<ExportView />);
+    expect(screen.getByText(copyFor('limelight', 'hero.exportImport'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<ExportView />);
+    expect(screen.getByText(copyFor('clinical', 'hero.exportImport'))).toBeInTheDocument();
   });
 });

@@ -15,6 +15,7 @@ import {
   makeStorageFull,
 } from '../../store/testStorage';
 import { MigrationWizard } from './MigrationWizard';
+import type { SkinId } from '../../domain/types';
 
 /*
  * jsdom implements neither URL.createObjectURL nor a download, so the real downloadText
@@ -160,6 +161,24 @@ afterEach(() => {
   // next test's storage mock.
   cancelPendingSave();
   vi.restoreAllMocks();
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('MigrationWizard: the explanation', () => {

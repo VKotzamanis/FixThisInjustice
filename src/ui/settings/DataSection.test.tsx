@@ -9,6 +9,7 @@ import { LEGACY_KEYS, LEGACY_V2_KEY, STORAGE_KEY } from '../../store/persistence
 import { installFakeStorage } from '../../store/testStorage';
 import { DataSection } from './DataSection';
 import { SettingsView } from '../views/SettingsView';
+import type { SkinId } from '../../domain/types';
 
 /*
  * The asset store is mocked, and only the one export the wipe calls: the module is a real
@@ -111,6 +112,24 @@ function typeWord(value: string): void {
 function confirmButton(labelKey: 'button.wipeConfirm' | 'button.legacyDeleteOld'): HTMLElement {
   return within(panel()).getByRole('button', { name: copy(labelKey) });
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('SettingsView data section', () => {
   it('mounts the export view as a settings row', () => {

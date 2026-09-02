@@ -1,5 +1,6 @@
 import { useId, useState, type JSX } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { buildIcs } from '../../domain/export/ics';
 import type { IcsEvent } from '../../domain/export/ics';
 import { buildSummary } from '../../domain/export/summary';
@@ -65,6 +66,7 @@ const ALARM_LEAD_MINUTES = ALARM_LEAD_HOURS * 60;
 const CONFIRM_WORD = 'DELETE';
 
 export function ExportView(): JSX.Element {
+  const t = useCopy();
   /*
    * The two store actions are called through getState() rather than selected. A selector that
    * returns a bound method trips @typescript-eslint/unbound-method, and neither action needs a
@@ -135,7 +137,7 @@ export function ExportView(): JSX.Element {
     } catch {
       // buildIcs refuses a zone it cannot resolve rather than falling back to the device's.
       // A stored zone this build's ICU data does not carry is the one way that happens.
-      setError(copy('advice.exportUnavailable'));
+      setError(t('advice.exportUnavailable'));
     }
   };
 
@@ -149,7 +151,7 @@ export function ExportView(): JSX.Element {
     try {
       raw = JSON.parse(text);
     } catch {
-      setError(copy('advice.importParseFailed'));
+      setError(t('advice.importParseFailed'));
       return;
     }
     const parsed = parseState(raw);
@@ -184,39 +186,39 @@ export function ExportView(): JSX.Element {
       setError(null);
     };
     reader.onerror = () => {
-      setError(copy('advice.fileUnreadable'));
+      setError(t('advice.fileUnreadable'));
     };
     reader.readAsText(file);
   };
 
   return (
     <>
-      <h2>{copy('hero.exportImport')}</h2>
+      <h2>{t('hero.exportImport')}</h2>
 
-      <h3>{copy('label.downloads')}</h3>
+      <h3>{t('label.downloads')}</h3>
       <div className="view-field">
         <button type="button" onClick={downloadState}>
-          {copy('button.downloadJson')}
+          {t('button.downloadJson')}
         </button>
         <button type="button" disabled={profileId === null} onClick={downloadSummary}>
-          {copy('button.downloadSummary')}
+          {t('button.downloadSummary')}
         </button>
         <button type="button" disabled={profileId === null} onClick={downloadCalendar}>
-          {copy('button.downloadCalendar')}
+          {t('button.downloadCalendar')}
         </button>
       </div>
-      <p className="view-note">{copy('advice.jsonIsBackup')}</p>
+      <p className="view-note">{t('advice.jsonIsBackup')}</p>
       <p className="view-note">{FORMAT.calendarWindow(CALENDAR_DAYS)}</p>
       <p className="view-note">{FORMAT.calendarAlarmLead(ALARM_LEAD_HOURS)}</p>
-      <p className="view-note">{copy('advice.calendarAlarms')}</p>
-      {profileId === null && <p className="view-note">{copy('advice.noProfileSetupFirst')}</p>}
+      <p className="view-note">{t('advice.calendarAlarms')}</p>
+      {profileId === null && <p className="view-note">{t('advice.noProfileSetupFirst')}</p>}
 
-      <h3>{copy('label.importSection')}</h3>
-      <p className="view-note">{copy('advice.importReplaces')}</p>
-      <p className="view-note">{copy('advice.importInvalidNoChange')}</p>
+      <h3>{t('label.importSection')}</h3>
+      <p className="view-note">{t('advice.importReplaces')}</p>
+      <p className="view-note">{t('advice.importInvalidNoChange')}</p>
 
       <div className="view-field">
-        <label htmlFor={textId}>{copy('label.pasteExport')}</label>
+        <label htmlFor={textId}>{t('label.pasteExport')}</label>
         <textarea
           id={textId}
           rows={6}
@@ -231,7 +233,7 @@ export function ExportView(): JSX.Element {
       </div>
 
       <div className="view-field">
-        <label htmlFor={fileId}>{copy('label.chooseExportFile')}</label>
+        <label htmlFor={fileId}>{t('label.chooseExportFile')}</label>
         <input
           id={fileId}
           type="file"
@@ -244,7 +246,7 @@ export function ExportView(): JSX.Element {
       </div>
 
       <button type="button" disabled={text.trim() === ''} onClick={runCheck}>
-        {copy('button.checkImport')}
+        {t('button.checkImport')}
       </button>
 
       {error !== null && (
@@ -277,7 +279,7 @@ export function ExportView(): JSX.Element {
         />
       )}
 
-      {done && <p className="view-note">{copy('status.importOk')}</p>}
+      {done && <p className="view-note">{t('status.importOk')}</p>}
     </>
   );
 }

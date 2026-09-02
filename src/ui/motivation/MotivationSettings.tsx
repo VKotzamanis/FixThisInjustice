@@ -43,7 +43,8 @@ import {
   getCustomVideoMeta,
   saveCustomVideo,
 } from '../../domain/motivation/assets';
-import { FORMAT, copy, type CopyKey } from '../../content/copy';
+import { FORMAT, type CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { useAppStore } from '../../store';
 
 /** 1 MiB = 2^20 bytes. The size readout and the limit are both binary megabytes. */
@@ -100,6 +101,8 @@ function refusalCopy(cause: unknown): CopyKey {
  * one handled.
  */
 export function MotivationSettings(): ReactElement | null {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const profileId = useAppStore((s) => s.activeProfileId);
   const storedAssetId = useAppStore((s) =>
     s.activeProfileId === null
@@ -222,13 +225,13 @@ export function MotivationSettings(): ReactElement | null {
 
   return (
     <section className="fti-motivation-clip" aria-labelledby="fti-motivation-clip-heading">
-      <h2 id="fti-motivation-clip-heading">{copy('hero.motivationVideo')}</h2>
+      <h2 id="fti-motivation-clip-heading">{t('hero.motivationVideo')}</h2>
       <p className="view-note">
         {shown !== null
           ? FORMAT.motivationClipName(shown.name)
           : storedAssetId === null
-            ? copy('status.motivationClipNone')
-            : copy('status.motivationClipStored')}
+            ? t('status.motivationClipNone')
+            : t('status.motivationClipStored')}
       </p>
       {shown !== null && (
         <p className="view-note">{FORMAT.motivationClipSize(mibOf(shown.size))}</p>
@@ -237,8 +240,8 @@ export function MotivationSettings(): ReactElement | null {
       <div className="view-field">
         <label htmlFor="motivation-clip-file">
           {storedAssetId === null
-            ? copy('label.motivationClipChoose')
-            : copy('label.motivationClipReplace')}
+            ? t('label.motivationClipChoose')
+            : t('label.motivationClipReplace')}
         </label>
         <input
           id="motivation-clip-file"
@@ -248,31 +251,35 @@ export function MotivationSettings(): ReactElement | null {
           onChange={onPick}
         />
       </div>
-      <p className="view-note">{copy('advice.motivationClipStorage')}</p>
+      <p className="view-note">{t('advice.motivationClipStorage')}</p>
       {/* R9: the exact limit and the unit the size line uses, both read from the constants
           that enforce them rather than restated in the copy table. */}
       <details>
-        <summary>{copy('disclosure.why')}</summary>
+        <summary>{t('disclosure.why')}</summary>
         <p className="view-note">
-          {FORMAT.withSlots('advice.motivationClipLimit', {
-            bytes: MAX_VIDEO_BYTES, // bytes
-            mib: BYTES_PER_MIB, // [bytes/MiB]
-          })}
+          {FORMAT.withSlots(
+            'advice.motivationClipLimit',
+            {
+              bytes: MAX_VIDEO_BYTES, // bytes
+              mib: BYTES_PER_MIB, // [bytes/MiB]
+            },
+            overrides,
+          )}
         </p>
       </details>
       {error !== null && (
         <p className="view-error" role="alert">
-          {copy(error)}
+          {t(error)}
         </p>
       )}
 
       <div>
         <button type="button" onClick={openPreview}>
-          {copy('button.motivationClipPreview')}
+          {t('button.motivationClipPreview')}
         </button>
         {storedAssetId !== null && (
           <button type="button" disabled={busy} onClick={onRemove}>
-            {copy('button.motivationClipRemove')}
+            {t('button.motivationClipRemove')}
           </button>
         )}
       </div>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type Ref } from 'react';
 import './setup.css';
 import { FORMAT, copy } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { NAVY_SEE_PCT, NAVY_SITE_LABEL, estimateBodyFatNavy } from '../../domain/bodyfat';
 import { deviceTimeZone, isValidLocalDate, isValidTimeZone, todayLocal } from '../../domain/dates';
 import { newId } from '../../domain/ids';
@@ -97,16 +99,21 @@ export type StepId = (typeof STEPS)[number];
  */
 export const READINESS_INSERT_INDEX = STEPS.indexOf('readiness');
 
-const STEP_TITLE: Record<StepId, string> = {
-  units: copy('step.units'),
-  timezone: copy('step.timezone'),
-  body: copy('step.body'),
-  training: copy('step.training'),
-  goal: copy('step.goal'),
-  availability: copy('step.availability'),
-  programme: copy('step.programme'),
-  readiness: copy('step.readiness'),
-  review: copy('step.review'),
+/*
+ * The step titles as KEYS, not as resolved strings. A module constant is evaluated once at
+ * import, so a baked title would be whatever skin happened to be active then and would never
+ * move again; the wizard resolves each one per render through `useCopy()`.
+ */
+const STEP_TITLE_KEY: Record<StepId, CopyKey> = {
+  units: 'step.units',
+  timezone: 'step.timezone',
+  body: 'step.body',
+  training: 'step.training',
+  goal: 'step.goal',
+  availability: 'step.availability',
+  programme: 'step.programme',
+  readiness: 'step.readiness',
+  review: 'step.review',
 };
 
 /*
@@ -156,14 +163,14 @@ const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
   cunningham: 'Cunningham',
 };
 
-const WEEKDAYS: { value: IsoWeekday; label: string }[] = [
-  { value: 1, label: copy('weekday.monday') },
-  { value: 2, label: copy('weekday.tuesday') },
-  { value: 3, label: copy('weekday.wednesday') },
-  { value: 4, label: copy('weekday.thursday') },
-  { value: 5, label: copy('weekday.friday') },
-  { value: 6, label: copy('weekday.saturday') },
-  { value: 7, label: copy('weekday.sunday') },
+const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
+  { value: 1, labelKey: 'weekday.monday' },
+  { value: 2, labelKey: 'weekday.tuesday' },
+  { value: 3, labelKey: 'weekday.wednesday' },
+  { value: 4, labelKey: 'weekday.thursday' },
+  { value: 5, labelKey: 'weekday.friday' },
+  { value: 6, labelKey: 'weekday.saturday' },
+  { value: 7, labelKey: 'weekday.sunday' },
 ];
 
 /**
@@ -171,29 +178,29 @@ const WEEKDAYS: { value: IsoWeekday; label: string }[] = [
  * Each label names the band FAO/WHO/UNU 2004 Table 5.3 prints; the two midpoint levels the
  * legacy ladder carried had no primary source and do not ship.
  */
-const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string }[] = [
-  { value: 'sedentary', label: copy('option.activitySedentary') },
-  { value: 'moderate', label: copy('option.activityModerate') },
-  { value: 'vigorous', label: copy('option.activityVigorous') },
+const ACTIVITY_OPTIONS: { value: ActivityLevel; labelKey: CopyKey }[] = [
+  { value: 'sedentary', labelKey: 'option.activitySedentary' },
+  { value: 'moderate', labelKey: 'option.activityModerate' },
+  { value: 'vigorous', labelKey: 'option.activityVigorous' },
 ];
 
-const EXPERIENCE_OPTIONS: { value: Experience; label: string }[] = [
-  { value: 'novice', label: copy('option.experienceNovice') },
-  { value: 'intermediate', label: copy('option.experienceIntermediate') },
-  { value: 'advanced', label: copy('option.experienceAdvanced') },
+const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey }[] = [
+  { value: 'novice', labelKey: 'option.experienceNovice' },
+  { value: 'intermediate', labelKey: 'option.experienceIntermediate' },
+  { value: 'advanced', labelKey: 'option.experienceAdvanced' },
 ];
 
-const EQUIPMENT_OPTIONS: { value: Equipment; label: string }[] = [
-  { value: 'full-gym', label: copy('option.equipmentFullGym') },
-  { value: 'dumbbells-only', label: copy('option.equipmentDumbbells') },
-  { value: 'bodyweight', label: copy('option.equipmentBodyweight') },
+const EQUIPMENT_OPTIONS: { value: Equipment; labelKey: CopyKey }[] = [
+  { value: 'full-gym', labelKey: 'option.equipmentFullGym' },
+  { value: 'dumbbells-only', labelKey: 'option.equipmentDumbbells' },
+  { value: 'bodyweight', labelKey: 'option.equipmentBodyweight' },
 ];
 
-const GOAL_OPTIONS: { value: GoalKind; label: string }[] = [
-  { value: 'fat-loss', label: copy('option.goalFatLoss') },
-  { value: 'muscle-gain', label: copy('option.goalMuscleGain') },
-  { value: 'recomposition', label: copy('option.goalRecomposition') },
-  { value: 'maintenance', label: copy('option.goalMaintenance') },
+const GOAL_OPTIONS: { value: GoalKind; labelKey: CopyKey }[] = [
+  { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
+  { value: 'muscle-gain', labelKey: 'option.goalMuscleGain' },
+  { value: 'recomposition', labelKey: 'option.goalRecomposition' },
+  { value: 'maintenance', labelKey: 'option.goalMaintenance' },
 ];
 
 const SESSIONS_PER_WEEK_OPTIONS: readonly SessionsPerWeek[] = [2, 3, 4, 5, 6];
@@ -390,10 +397,11 @@ function requiredInRange(
   quantity: string,
   text: string,
   bound: Bound,
+  overrides: Readonly<Partial<Record<CopyKey, string>>>,
   unit?: string,
 ): string | null {
   const value = parseDecimal(text);
-  if (value === null) return copy('error.valueRequired');
+  if (value === null) return copy('error.valueRequired', overrides);
   if (value < bound.lo || value > bound.hi) {
     return FORMAT.outOfRange(quantity, bound.lo, bound.hi, unit);
   }
@@ -409,11 +417,12 @@ function requiredIntegerInRange(
   quantity: string,
   text: string,
   bound: Bound,
+  overrides: Readonly<Partial<Record<CopyKey, string>>>,
   unit?: string,
 ): string | null {
   const value = parseDecimal(text);
-  if (value === null) return copy('error.valueRequired');
-  if (!Number.isInteger(value)) return copy('error.wholeNumber');
+  if (value === null) return copy('error.valueRequired', overrides);
+  if (!Number.isInteger(value)) return copy('error.wholeNumber', overrides);
   if (value < bound.lo || value > bound.hi) {
     return FORMAT.outOfRange(quantity, bound.lo, bound.hi, unit);
   }
@@ -428,9 +437,14 @@ function requiredIntegerInRange(
  * computeTargets throws RangeError on it while Review renders (master plan section 6.3). The
  * rounded bound appears in the message text and nowhere else.
  */
-function massDomainError(quantity: string, text: string, units: UnitSystem): string | null {
+function massDomainError(
+  quantity: string,
+  text: string,
+  units: UnitSystem,
+  overrides: Readonly<Partial<Record<CopyKey, string>>>,
+): string | null {
   const kg = storedMassKg(text, units); // [kg] exact
-  if (kg === null) return copy('error.valueRequired');
+  if (kg === null) return copy('error.valueRequired', overrides);
   if (kg < NUTRITION_DOMAIN.massKg.lo || kg > NUTRITION_DOMAIN.massKg.hi) {
     const shown = massBoundInDisplayUnit(NUTRITION_DOMAIN.massKg, units); // [lb] or [kg]
     return FORMAT.outOfRange(quantity, shown.lo, shown.hi, massUnit(units));
@@ -439,10 +453,15 @@ function massDomainError(quantity: string, text: string, units: UnitSystem): str
 }
 
 /** A load increment: strictly positive, and no larger than the schema's per-step cap. */
-function stepError(quantity: string, text: string, units: UnitSystem): string | null {
+function stepError(
+  quantity: string,
+  text: string,
+  units: UnitSystem,
+  overrides: Readonly<Partial<Record<CopyKey, string>>>,
+): string | null {
   const entered = parseDecimal(text);
-  if (entered === null) return copy('error.valueRequired');
-  if (entered <= 0) return copy('error.positive');
+  if (entered === null) return copy('error.valueRequired', overrides);
+  if (entered <= 0) return copy('error.positive', overrides);
   const kg = storedLoadKg(text, units); // [kg]
   if (kg !== null && kg > MAX_STEP_KG) {
     return FORMAT.atMost(quantity, round1(displayMass(MAX_STEP_KG, units)), loadUnit(units));
@@ -451,14 +470,19 @@ function stepError(quantity: string, text: string, units: UnitSystem): string | 
 }
 
 /** A tape girth in cm: strictly positive. The equation's own domain is checked by bodyfat.ts. */
-function girthError(text: string): string | null {
+function girthError(
+  text: string,
+  overrides: Readonly<Partial<Record<CopyKey, string>>>,
+): string | null {
   const value = parseDecimal(text);
-  if (value === null) return copy('error.valueRequired');
-  if (value <= 0) return copy('error.positive');
+  if (value === null) return copy('error.valueRequired', overrides);
+  if (value <= 0) return copy('error.positive', overrides);
   return null;
 }
 
 export function SetupWizard(): JSX.Element {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [stepIndex, setStepIndex] = useState(0);
   /** Latched by the first successful confirm; the profile is created exactly once. */
@@ -561,18 +585,18 @@ export function SetupWizard(): JSX.Element {
   // Every message is rendered beside the control that produced it, and every one names the
   // bound it failed rather than saying that something is wrong.
 
-  const timezoneError = isValidTimeZone(draft.timezone) ? null : copy('advice.timezoneInvalid');
+  const timezoneError = isValidTimeZone(draft.timezone) ? null : t('advice.timezoneInvalid');
 
   const birthYearError =
     birthYear === null
-      ? copy('error.valueRequired')
+      ? t('error.valueRequired')
       : !Number.isInteger(birthYear)
-        ? copy('error.wholeNumber')
+        ? t('error.wholeNumber')
         : ageYears === null ||
             ageYears < NUTRITION_DOMAIN.ageYears.lo ||
             ageYears > NUTRITION_DOMAIN.ageYears.hi
           ? FORMAT.outOfRange(
-              copy('quantity.age'),
+              t('quantity.age'),
               NUTRITION_DOMAIN.ageYears.lo,
               NUTRITION_DOMAIN.ageYears.hi,
               UNIT.years,
@@ -581,31 +605,37 @@ export function SetupWizard(): JSX.Element {
 
   const heightError =
     heightCm === null
-      ? copy('error.valueRequired')
+      ? t('error.valueRequired')
       : heightCm < NUTRITION_DOMAIN.heightCm.lo || heightCm > NUTRITION_DOMAIN.heightCm.hi
         ? draft.units === 'metric'
           ? FORMAT.outOfRange(
-              copy('quantity.height'),
+              t('quantity.height'),
               NUTRITION_DOMAIN.heightCm.lo,
               NUTRITION_DOMAIN.heightCm.hi,
               UNIT.cm,
             )
           : FORMAT.outOfRange(
-              copy('quantity.height'),
+              t('quantity.height'),
               HEIGHT_BOUND_IN.lo,
               HEIGHT_BOUND_IN.hi,
               UNIT.inch,
             )
         : null;
 
-  const massError = massDomainError(copy('quantity.bodyMass'), draft.mass, draft.units);
+  const massError = massDomainError(
+    copy('quantity.bodyMass', overrides),
+    draft.mass,
+    draft.units,
+    overrides,
+  );
 
   const knownBodyFatError =
     draft.bodyFatMode === 'known'
       ? requiredInRange(
-          copy('quantity.bodyFat'),
+          copy('quantity.bodyFat', overrides),
           draft.bodyFatPct,
           NUTRITION_DOMAIN.bodyFatPct,
+          overrides,
           UNIT.pct,
         )
       : null;
@@ -619,7 +649,7 @@ export function SetupWizard(): JSX.Element {
     tapeEstimate !== null &&
     (tapeEstimate < NUTRITION_DOMAIN.bodyFatPct.lo || tapeEstimate > NUTRITION_DOMAIN.bodyFatPct.hi)
       ? FORMAT.outOfRange(
-          copy('quantity.bodyFat'),
+          t('quantity.bodyFat'),
           NUTRITION_DOMAIN.bodyFatPct.lo,
           NUTRITION_DOMAIN.bodyFatPct.hi,
           UNIT.pct,
@@ -628,19 +658,39 @@ export function SetupWizard(): JSX.Element {
 
   const tapeIncomplete =
     draft.bodyFatMode === 'tape' &&
-    (girthError(draft.neck) !== null ||
-      girthError(draft.waist) !== null ||
-      (draft.sex === 'female' && girthError(draft.hip) !== null));
+    (girthError(draft.neck, overrides) !== null ||
+      girthError(draft.waist, overrides) !== null ||
+      (draft.sex === 'female' && girthError(draft.hip, overrides) !== null));
 
   /** Girths are complete and positive, yet the equation returned no estimate for them. */
   const tapeWithheld = draft.bodyFatMode === 'tape' && !tapeIncomplete && tapeEstimate === null;
 
   const stepErrors = {
-    barbell: stepError(copy('quantity.barbellStep'), draft.barbellStep, draft.units),
-    dumbbell: stepError(copy('quantity.dumbbellStep'), draft.dumbbellStep, draft.units),
-    stack: stepError(copy('quantity.stackStep'), draft.stackStep, draft.units),
+    barbell: stepError(
+      copy('quantity.barbellStep', overrides),
+      draft.barbellStep,
+      draft.units,
+      overrides,
+    ),
+    dumbbell: stepError(
+      copy('quantity.dumbbellStep', overrides),
+      draft.dumbbellStep,
+      draft.units,
+      overrides,
+    ),
+    stack: stepError(
+      copy('quantity.stackStep', overrides),
+      draft.stackStep,
+      draft.units,
+      overrides,
+    ),
     microPlate: draft.hasMicroPlates
-      ? stepError(copy('quantity.microPlateStep'), draft.microPlateStep, draft.units)
+      ? stepError(
+          copy('quantity.microPlateStep', overrides),
+          draft.microPlateStep,
+          draft.units,
+          overrides,
+        )
       : null,
   };
 
@@ -649,14 +699,19 @@ export function SetupWizard(): JSX.Element {
   const targetMassError =
     draft.targetMass.trim() === ''
       ? null
-      : massDomainError(copy('quantity.targetBodyMass'), draft.targetMass, draft.units);
+      : massDomainError(
+          copy('quantity.targetBodyMass', overrides),
+          draft.targetMass,
+          draft.units,
+          overrides,
+        );
 
   const targetDateError =
     draft.targetDate === '' || isValidLocalDate(draft.targetDate)
       ? null
-      : copy('error.valueRequired');
+      : t('error.valueRequired');
 
-  const weekdayError = enabledDays.length === 0 ? copy('error.pickOneDay') : null;
+  const weekdayError = enabledDays.length === 0 ? t('error.pickOneDay') : null;
 
   /*
    * The generator builds draft.sessionsPerWeek sessions in every week and the cursor can only
@@ -672,9 +727,10 @@ export function SetupWizard(): JSX.Element {
   const durationErrors: Record<number, string | null> = {};
   for (const day of enabledDays) {
     durationErrors[day.value] = requiredInRange(
-      FORMAT.slotField(day.label, copy('label.duration')),
+      FORMAT.slotField(copy(day.labelKey, overrides), copy('label.duration', overrides)),
       draft.days[day.value].durationMin,
       { lo: 1, hi: MAX_SESSION_DURATION_MIN },
+      overrides,
       UNIT.minutes,
     );
   }
@@ -682,15 +738,18 @@ export function SetupWizard(): JSX.Element {
   const weeklyTargetError =
     enabledDays.length === 0
       ? null
-      : requiredIntegerInRange(copy('quantity.weeklySessionTarget'), draft.weeklySessionTarget, {
-          lo: 1,
-          hi: enabledDays.length,
-        });
+      : requiredIntegerInRange(
+          copy('quantity.weeklySessionTarget', overrides),
+          draft.weeklySessionTarget,
+          { lo: 1, hi: enabledDays.length },
+          overrides,
+        );
 
   const weeksError = requiredIntegerInRange(
-    copy('quantity.programmeWeeks'),
+    copy('quantity.programmeWeeks', overrides),
     draft.weeks,
     { lo: PLAN_WEEKS_MIN, hi: PLAN_WEEKS_MAX },
+    overrides,
     UNIT.weeks,
   );
 
@@ -821,7 +880,7 @@ export function SetupWizard(): JSX.Element {
   /** "-0.9 lb/week", or the honest statement that the evidence base gives no rate. */
   function signedRate(): string {
     if (targets === null || targets.expectedRateKgPerWeek === null) {
-      return copy('status.rateUnknown');
+      return t('status.rateUnknown');
     }
     return FORMAT.signedRate(
       displayMass(targets.expectedRateKgPerWeek, draft.units),
@@ -944,20 +1003,20 @@ export function SetupWizard(): JSX.Element {
 
   return (
     <div className="wiz">
-      <h1>{copy('setup.hero')}</h1>
+      <h1>{t('setup.hero')}</h1>
       {/*
        * The step counter is the live region: it is the one line that changes on every step, so
        * a polite announcement of it names both the position and the screen without the heading
        * having to be re-read.
        */}
       <p className="wiz-step" role="status" aria-live="polite" data-testid="wiz-step-status">
-        {FORMAT.stepOf(stepIndex + 1, STEPS.length, STEP_TITLE[step])}
+        {FORMAT.stepOf(stepIndex + 1, STEPS.length, t(STEP_TITLE_KEY[step]))}
       </p>
 
       {step === 'units' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.units} headingRef={headingRef} />
-          <p className="wiz-note">{copy('advice.unitsOnce')}</p>
+          <StepHeading title={t(STEP_TITLE_KEY.units)} headingRef={headingRef} />
+          <p className="wiz-note">{t('advice.unitsOnce')}</p>
           <label className="wiz-inline">
             <input
               type="radio"
@@ -967,7 +1026,7 @@ export function SetupWizard(): JSX.Element {
                 setUnits('metric');
               }}
             />
-            {copy('label.unitsMetric')}
+            {t('label.unitsMetric')}
           </label>
           <label className="wiz-inline">
             <input
@@ -978,17 +1037,17 @@ export function SetupWizard(): JSX.Element {
                 setUnits('imperial');
               }}
             />
-            {copy('label.unitsImperial')}
+            {t('label.unitsImperial')}
           </label>
         </fieldset>
       )}
 
       {step === 'timezone' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.timezone} headingRef={headingRef} />
-          <p className="wiz-note">{copy('advice.timezoneDetected')}</p>
+          <StepHeading title={t(STEP_TITLE_KEY.timezone)} headingRef={headingRef} />
+          <p className="wiz-note">{t('advice.timezoneDetected')}</p>
           <div className="wiz-field">
-            <label htmlFor="f-timezone">{copy('label.timezone')}</label>
+            <label htmlFor="f-timezone">{t('label.timezone')}</label>
             {/*
              * An IANA identifier is case-sensitive and contains no words: autocapitalising,
              * autocorrecting or spell-checking it can only corrupt it.
@@ -1025,10 +1084,10 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'body' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.body} headingRef={headingRef} />
+          <StepHeading title={t(STEP_TITLE_KEY.body)} headingRef={headingRef} />
 
           <div className="wiz-field">
-            <label htmlFor="f-name">{copy('label.name')}</label>
+            <label htmlFor="f-name">{t('label.name')}</label>
             <input
               id="f-name"
               type="text"
@@ -1039,7 +1098,7 @@ export function SetupWizard(): JSX.Element {
             />
           </div>
 
-          <p className="wiz-note">{copy('advice.sexUsedFor')}</p>
+          <p className="wiz-note">{t('advice.sexUsedFor')}</p>
           <label className="wiz-inline">
             <input
               type="radio"
@@ -1049,7 +1108,7 @@ export function SetupWizard(): JSX.Element {
                 patch({ sex: 'male' });
               }}
             />
-            {copy('label.sexMale')}
+            {t('label.sexMale')}
           </label>
           <label className="wiz-inline">
             <input
@@ -1060,12 +1119,12 @@ export function SetupWizard(): JSX.Element {
                 patch({ sex: 'female' });
               }}
             />
-            {copy('label.sexFemale')}
+            {t('label.sexFemale')}
           </label>
 
           <UnitInput
             id="f-birth-year"
-            quantity={copy('label.birthYear')}
+            quantity={t('label.birthYear')}
             unit={null}
             step="1"
             value={draft.birthYear}
@@ -1078,7 +1137,7 @@ export function SetupWizard(): JSX.Element {
           {draft.units === 'metric' ? (
             <UnitInput
               id="f-height-cm"
-              quantity={copy('quantity.height')}
+              quantity={t('quantity.height')}
               unit={UNIT.cm}
               value={draft.heightCm}
               error={heightError}
@@ -1091,7 +1150,7 @@ export function SetupWizard(): JSX.Element {
               <div className="wiz-row">
                 <UnitInput
                   id="f-height-ft"
-                  quantity={copy('label.feet')}
+                  quantity={t('label.feet')}
                   unit={null}
                   value={draft.heightFt}
                   error={null}
@@ -1102,7 +1161,7 @@ export function SetupWizard(): JSX.Element {
                 />
                 <UnitInput
                   id="f-height-in"
-                  quantity={copy('label.inches')}
+                  quantity={t('label.inches')}
                   unit={null}
                   value={draft.heightIn}
                   error={null}
@@ -1123,7 +1182,7 @@ export function SetupWizard(): JSX.Element {
 
           <UnitInput
             id="f-mass"
-            quantity={copy('quantity.bodyMass')}
+            quantity={t('quantity.bodyMass')}
             unit={massLabelUnit}
             value={draft.mass}
             error={massError}
@@ -1132,10 +1191,10 @@ export function SetupWizard(): JSX.Element {
             }}
           />
 
-          <p className="wiz-note">{copy('advice.bodyFatOptional')}</p>
+          <p className="wiz-note">{t('advice.bodyFatOptional')}</p>
           <details>
-            <summary>{copy('disclosure.why')}</summary>
-            <p className="wiz-note">{copy('why.bodyFatOptional')}</p>
+            <summary>{t('disclosure.why')}</summary>
+            <p className="wiz-note">{t('why.bodyFatOptional')}</p>
           </details>
 
           <label className="wiz-inline">
@@ -1147,7 +1206,7 @@ export function SetupWizard(): JSX.Element {
                 patch({ bodyFatMode: 'none' });
               }}
             />
-            {copy('label.bodyFatNone')}
+            {t('label.bodyFatNone')}
           </label>
           <label className="wiz-inline">
             <input
@@ -1158,7 +1217,7 @@ export function SetupWizard(): JSX.Element {
                 patch({ bodyFatMode: 'known' });
               }}
             />
-            {copy('label.bodyFatKnown')}
+            {t('label.bodyFatKnown')}
           </label>
           <label className="wiz-inline">
             <input
@@ -1169,13 +1228,13 @@ export function SetupWizard(): JSX.Element {
                 patch({ bodyFatMode: 'tape' });
               }}
             />
-            {copy('label.bodyFatTape')}
+            {t('label.bodyFatTape')}
           </label>
 
           {draft.bodyFatMode === 'known' && (
             <UnitInput
               id="f-bodyfat"
-              quantity={copy('quantity.bodyFat')}
+              quantity={t('quantity.bodyFat')}
               unit={UNIT.pct}
               value={draft.bodyFatPct}
               error={knownBodyFatError}
@@ -1187,13 +1246,13 @@ export function SetupWizard(): JSX.Element {
 
           {draft.bodyFatMode === 'tape' && (
             <>
-              <p className="wiz-note">{copy('advice.tapeMethod')}</p>
+              <p className="wiz-note">{t('advice.tapeMethod')}</p>
               <UnitInput
                 id="f-neck"
-                quantity={copy('quantity.neck')}
+                quantity={t('quantity.neck')}
                 unit={UNIT.cm}
                 value={draft.neck}
-                error={girthError(draft.neck)}
+                error={girthError(draft.neck, overrides)}
                 sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                 onChange={(v) => {
                   patch({ neck: v });
@@ -1202,11 +1261,11 @@ export function SetupWizard(): JSX.Element {
               <UnitInput
                 id="f-waist"
                 quantity={
-                  draft.sex === 'male' ? copy('quantity.abdomenII') : copy('quantity.abdomenI')
+                  draft.sex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')
                 }
                 unit={UNIT.cm}
                 value={draft.waist}
-                error={girthError(draft.waist)}
+                error={girthError(draft.waist, overrides)}
                 sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                 onChange={(v) => {
                   patch({ waist: v });
@@ -1217,10 +1276,10 @@ export function SetupWizard(): JSX.Element {
                 <>
                   <UnitInput
                     id="f-hip"
-                    quantity={copy('quantity.hip')}
+                    quantity={t('quantity.hip')}
                     unit={UNIT.cm}
                     value={draft.hip}
-                    error={girthError(draft.hip)}
+                    error={girthError(draft.hip, overrides)}
                     sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                     onChange={(v) => {
                       patch({ hip: v });
@@ -1234,10 +1293,10 @@ export function SetupWizard(): JSX.Element {
               <p className="wiz-note" data-testid="bodyfat-estimate">
                 {tapeIncomplete
                   ? draft.sex === 'female'
-                    ? copy('advice.tapeNeedFemale')
-                    : copy('advice.tapeNeedMale')
+                    ? t('advice.tapeNeedFemale')
+                    : t('advice.tapeNeedMale')
                   : tapeEstimate === null
-                    ? copy('advice.tapeOutOfDomain')
+                    ? t('advice.tapeOutOfDomain')
                     : FORMAT.bodyFatEstimate(tapeEstimate, NAVY_SEE_PCT[draft.sex])}
               </p>
               {/* One estimate, three girths: described by each of the fields that produced it. */}
@@ -1248,9 +1307,9 @@ export function SetupWizard(): JSX.Element {
               )}
               {tapeEstimate !== null && (
                 <details>
-                  <summary>{copy('disclosure.why')}</summary>
+                  <summary>{t('disclosure.why')}</summary>
                   <p className="wiz-note" data-testid="bodyfat-why">
-                    {copy('why.bodyFatEstimate')}
+                    {t('why.bodyFatEstimate')}
                   </p>
                 </details>
               )}
@@ -1261,10 +1320,10 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'training' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.training} headingRef={headingRef} />
+          <StepHeading title={t(STEP_TITLE_KEY.training)} headingRef={headingRef} />
 
           <div className="wiz-field">
-            <label htmlFor="f-activity">{copy('label.activity')}</label>
+            <label htmlFor="f-activity">{t('label.activity')}</label>
             <select
               id="f-activity"
               value={draft.activity}
@@ -1274,14 +1333,14 @@ export function SetupWizard(): JSX.Element {
             >
               {ACTIVITY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.labelKey)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="wiz-field">
-            <label htmlFor="f-experience">{copy('label.experience')}</label>
+            <label htmlFor="f-experience">{t('label.experience')}</label>
             <select
               id="f-experience"
               value={draft.experience}
@@ -1291,14 +1350,14 @@ export function SetupWizard(): JSX.Element {
             >
               {EXPERIENCE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.labelKey)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="wiz-field">
-            <label htmlFor="f-equipment">{copy('label.equipment')}</label>
+            <label htmlFor="f-equipment">{t('label.equipment')}</label>
             <select
               id="f-equipment"
               value={draft.equipment}
@@ -1308,16 +1367,16 @@ export function SetupWizard(): JSX.Element {
             >
               {EQUIPMENT_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.labelKey)}
                 </option>
               ))}
             </select>
           </div>
 
-          <p className="wiz-note">{copy('advice.loadSteps')}</p>
+          <p className="wiz-note">{t('advice.loadSteps')}</p>
           <UnitInput
             id="f-barbell-step"
-            quantity={copy('quantity.barbellStep')}
+            quantity={t('quantity.barbellStep')}
             unit={loadLabelUnit}
             value={draft.barbellStep}
             error={stepErrors.barbell}
@@ -1327,7 +1386,7 @@ export function SetupWizard(): JSX.Element {
           />
           <UnitInput
             id="f-dumbbell-step"
-            quantity={copy('quantity.dumbbellStep')}
+            quantity={t('quantity.dumbbellStep')}
             unit={loadLabelUnit}
             value={draft.dumbbellStep}
             error={stepErrors.dumbbell}
@@ -1337,7 +1396,7 @@ export function SetupWizard(): JSX.Element {
           />
           <UnitInput
             id="f-stack-step"
-            quantity={copy('quantity.stackStep')}
+            quantity={t('quantity.stackStep')}
             unit={loadLabelUnit}
             value={draft.stackStep}
             error={stepErrors.stack}
@@ -1353,13 +1412,13 @@ export function SetupWizard(): JSX.Element {
                 patch({ hasMicroPlates: e.target.checked });
               }}
             />
-            {copy('label.microPlates')}
+            {t('label.microPlates')}
           </label>
           {/* Shown only when the toggle is on, because that is exactly when stepFor() uses it. */}
           {draft.hasMicroPlates && (
             <UnitInput
               id="f-microplate-step"
-              quantity={copy('quantity.microPlateStep')}
+              quantity={t('quantity.microPlateStep')}
               unit={loadLabelUnit}
               value={draft.microPlateStep}
               error={stepErrors.microPlate}
@@ -1373,10 +1432,10 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'goal' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.goal} headingRef={headingRef} />
+          <StepHeading title={t(STEP_TITLE_KEY.goal)} headingRef={headingRef} />
 
           <div className="wiz-field">
-            <label htmlFor="f-goal">{copy('label.goal')}</label>
+            <label htmlFor="f-goal">{t('label.goal')}</label>
             <select
               id="f-goal"
               value={draft.goalKind}
@@ -1386,7 +1445,7 @@ export function SetupWizard(): JSX.Element {
             >
               {GOAL_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {t(o.labelKey)}
                 </option>
               ))}
             </select>
@@ -1394,7 +1453,7 @@ export function SetupWizard(): JSX.Element {
 
           <UnitInput
             id="f-target-mass"
-            quantity={copy('quantity.targetBodyMass')}
+            quantity={t('quantity.targetBodyMass')}
             unit={massLabelUnit}
             value={draft.targetMass}
             error={targetMassError}
@@ -1404,7 +1463,7 @@ export function SetupWizard(): JSX.Element {
           />
 
           <div className="wiz-field">
-            <label htmlFor="f-target-date">{copy('label.targetDate')}</label>
+            <label htmlFor="f-target-date">{t('label.targetDate')}</label>
             <input
               id="f-target-date"
               type="date"
@@ -1430,9 +1489,9 @@ export function SetupWizard(): JSX.Element {
                 patch({ creatine: e.target.checked });
               }}
             />
-            {copy('label.creatine')}
+            {t('label.creatine')}
           </label>
-          <p className="wiz-note">{copy('advice.creatineOnly')}</p>
+          <p className="wiz-note">{t('advice.creatineOnly')}</p>
 
           <label className="wiz-inline">
             <input
@@ -1442,18 +1501,18 @@ export function SetupWizard(): JSX.Element {
                 patch({ weighInOptIn: e.target.checked });
               }}
             />
-            {copy('label.weighIn')}
+            {t('label.weighIn')}
           </label>
-          <p className="wiz-note">{copy('advice.weighIn')}</p>
+          <p className="wiz-note">{t('advice.weighIn')}</p>
         </fieldset>
       )}
 
       {step === 'availability' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.availability} headingRef={headingRef} />
+          <StepHeading title={t(STEP_TITLE_KEY.availability)} headingRef={headingRef} />
 
           <div className="wiz-field">
-            <label htmlFor="f-sessions">{copy('label.sessionsPerWeek')}</label>
+            <label htmlFor="f-sessions">{t('label.sessionsPerWeek')}</label>
             <select
               id="f-sessions"
               value={String(draft.sessionsPerWeek)}
@@ -1486,13 +1545,13 @@ export function SetupWizard(): JSX.Element {
                     patchDay(d.value, { enabled: e.target.checked });
                   }}
                 />
-                {d.label}
+                {t(d.labelKey)}
               </label>
               {draft.days[d.value].enabled && (
                 <div className="wiz-row">
                   <div className="wiz-field">
                     <label htmlFor={`f-start-${d.value}`}>
-                      {FORMAT.slotField(d.label, copy('label.startTime'))}
+                      {FORMAT.slotField(t(d.labelKey), t('label.startTime'))}
                     </label>
                     <input
                       id={`f-start-${d.value}`}
@@ -1505,7 +1564,7 @@ export function SetupWizard(): JSX.Element {
                   </div>
                   <UnitInput
                     id={`f-duration-${d.value}`}
-                    quantity={FORMAT.slotField(d.label, copy('label.duration'))}
+                    quantity={FORMAT.slotField(t(d.labelKey), t('label.duration'))}
                     unit={UNIT.minutes}
                     step="1"
                     value={draft.days[d.value].durationMin}
@@ -1535,7 +1594,7 @@ export function SetupWizard(): JSX.Element {
 
           <UnitInput
             id="f-weekly-target"
-            quantity={copy('quantity.weeklySessionTarget')}
+            quantity={t('quantity.weeklySessionTarget')}
             unit={null}
             step="1"
             value={draft.weeklySessionTarget}
@@ -1549,10 +1608,10 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'programme' && (
         <fieldset>
-          <StepHeading title={STEP_TITLE.programme} headingRef={headingRef} />
+          <StepHeading title={t(STEP_TITLE_KEY.programme)} headingRef={headingRef} />
           <UnitInput
             id="f-weeks"
-            quantity={copy('quantity.programmeWeeks')}
+            quantity={t('quantity.programmeWeeks')}
             unit={UNIT.weeks}
             step="1"
             value={draft.weeks}
@@ -1561,7 +1620,7 @@ export function SetupWizard(): JSX.Element {
               patch({ weeks: v });
             }}
           />
-          <p className="wiz-note">{copy('advice.deloadEveryFourth')}</p>
+          <p className="wiz-note">{t('advice.deloadEveryFourth')}</p>
           <label className="wiz-inline">
             <input
               type="checkbox"
@@ -1570,7 +1629,7 @@ export function SetupWizard(): JSX.Element {
                 patch({ includeCardio: e.target.checked });
               }}
             />
-            {copy('label.includeCardio')}
+            {t('label.includeCardio')}
           </label>
         </fieldset>
       )}
@@ -1585,7 +1644,7 @@ export function SetupWizard(): JSX.Element {
             ref={headingRef}
             tabIndex={-1}
           >
-            {STEP_TITLE.readiness}
+            {t(STEP_TITLE_KEY.readiness)}
           </h2>
           <ReadinessScreen
             timezone={zone}
@@ -1606,37 +1665,37 @@ export function SetupWizard(): JSX.Element {
             ref={headingRef}
             tabIndex={-1}
           >
-            {STEP_TITLE.review}
+            {t(STEP_TITLE_KEY.review)}
           </h2>
           <fieldset>
-            <legend>{copy('hero.dailyTargets')}</legend>
+            <legend>{t('hero.dailyTargets')}</legend>
             {targets === null ? (
               <p className="wiz-error" data-testid="targets-unavailable">
-                {copy('status.targetsNotEstimated')}
+                {t('status.targetsNotEstimated')}
               </p>
             ) : (
               <>
                 <dl>
-                  <dt>{copy('label.energy')}</dt>
+                  <dt>{t('label.energy')}</dt>
                   <dd data-testid="target-kcal">{FORMAT.kcal(targets.targetKcal)}</dd>
-                  <dt>{copy('label.protein')}</dt>
+                  <dt>{t('label.protein')}</dt>
                   <dd data-testid="target-protein">
                     {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
                   </dd>
-                  <dt>{copy('label.fluid')}</dt>
+                  <dt>{t('label.fluid')}</dt>
                   <dd data-testid="target-fluid">{formatVolume(targets.fluidML, draft.units)}</dd>
-                  <dt>{copy('label.expectedRate')}</dt>
+                  <dt>{t('label.expectedRate')}</dt>
                   <dd data-testid="target-rate">{signedRate()}</dd>
                   {targets.creatineG !== null && (
                     <>
-                      <dt>{copy('label.creatineDose')}</dt>
+                      <dt>{t('label.creatineDose')}</dt>
                       <dd data-testid="target-creatine">{FORMAT.grams(targets.creatineG)}</dd>
                     </>
                   )}
                 </dl>
                 {/* R9: the derivation is never inline. */}
                 <details>
-                  <summary>{copy('disclosure.why')}</summary>
+                  <summary>{t('disclosure.why')}</summary>
                   <div data-testid="targets-basis">
                     <p className="wiz-note">
                       {FORMAT.rmrBasis(
@@ -1654,18 +1713,18 @@ export function SetupWizard(): JSX.Element {
           </fieldset>
 
           <fieldset>
-            <legend>{copy('hero.programme')}</legend>
+            <legend>{t('hero.programme')}</legend>
             <p data-testid="split-summary">
               {FORMAT.splitSummary(
                 SPLIT_TEMPLATES[draft.sessionsPerWeek].name,
                 weeks,
                 plan.sessions.length,
               )}{' '}
-              {FORMAT.muscleList(copy('label.inTargetRange'), volume.inBand, copy('label.none'))}{' '}
+              {FORMAT.muscleList(t('label.inTargetRange'), volume.inBand, t('label.none'))}{' '}
               {FORMAT.muscleList(
-                copy('label.maintenanceOnly'),
+                t('label.maintenanceOnly'),
                 volume.maintenance,
-                copy('label.none'),
+                t('label.none'),
               )}
             </p>
             <p className="wiz-note">{SPLIT_TEMPLATES[draft.sessionsPerWeek].note}</p>
@@ -1681,7 +1740,7 @@ export function SetupWizard(): JSX.Element {
               setStepIndex((n) => n - 1);
             }}
           >
-            {copy('button.back')}
+            {t('button.back')}
           </button>
         )}
         {/* The readiness step supplies its own Continue, which stays disabled until all seven
@@ -1695,12 +1754,12 @@ export function SetupWizard(): JSX.Element {
               setStepIndex((n) => Math.min(STEPS.length - 1, n + 1));
             }}
           >
-            {copy('button.continue')}
+            {t('button.continue')}
           </button>
         )}
         {stepIndex === STEPS.length - 1 && (
           <button type="button" disabled={confirmBlocked || submitted} onClick={confirm}>
-            {copy('button.confirmStart')}
+            {t('button.confirmStart')}
           </button>
         )}
       </div>

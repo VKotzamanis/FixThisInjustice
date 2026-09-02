@@ -21,13 +21,14 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { DROPPED_CARD_IDS, SPECIMEN_BY_ID, SPECIMEN_CARDS } from '../../content/specimenCards';
 import type { SpecimenCard, SpecimenRarity } from '../../content/specimenCards';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { FUN_PROFILE_ID, makeAppState, makeInventory } from '../../test/funFixtures';
 import { AtlasView } from './AtlasView';
+import type { SkinId } from '../../domain/types';
 
 /** [ms] epoch, UTC. Arbitrary: no assertion below reads an acquisition instant. */
 const ACQUIRED_AT = Date.UTC(2026, 8, 1, 9, 0);
@@ -67,6 +68,24 @@ beforeEach(() => {
   // reach the device, and so no state leaks into the next test through jsdom's shared store.
   installFakeStorage();
   seed(OWNED);
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('AtlasView counts', () => {
@@ -194,5 +213,23 @@ describe('AtlasView and dropped legacy ids', () => {
       expect(screen.queryByTestId(`atlas-card-${id}`)).toBeNull();
     }
     expect(idsOnScreen()).toHaveLength(SPECIMEN_CARDS.length);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('AtlasView under a skin', () => {
+  it('states the collection in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<AtlasView />);
+    expect(screen.getByText(copyFor('limelight', 'advice.atlas'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<AtlasView />);
+    expect(screen.getByText(copyFor('clinical', 'advice.atlas'))).toBeInTheDocument();
   });
 });

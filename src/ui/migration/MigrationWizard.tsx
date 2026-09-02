@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
 
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { applyMigration, migrateV2 } from '../../domain/migrations/v2';
 import type { LegacyUnit, MigrateV2Result, MigrationSkip } from '../../domain/migrations/v2';
 import type { PlanTemplate, Profile } from '../../domain/types';
@@ -133,6 +134,7 @@ function SkipList(props: { summary: string; skips: MigrationSkip[] }): JSX.Eleme
  * have produced is refused rather than stored.
  */
 export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
+  const t = useCopy();
   const { legacyRaw, profile, plan, onFinished } = props;
 
   const [phase, setPhase] = useState<Phase>('explain');
@@ -281,7 +283,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
   const dismissButton = (
     <button type="button" onClick={dismiss}>
-      {copy('button.legacyDismiss')}
+      {t('button.legacyDismiss')}
     </button>
   );
 
@@ -309,11 +311,11 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
   if (refusal !== null) {
     return panel(
-      copy('hero.legacyImport'),
+      t('hero.legacyImport'),
       <>
-        <p role="alert">{copy('advice.legacyRefused')}</p>
+        <p role="alert">{t('advice.legacyRefused')}</p>
         <p className="view-error">{FORMAT.legacyRefusedReason(refusal)}</p>
-        <p>{copy('advice.legacyNothingDeleted')}</p>
+        <p>{t('advice.legacyNothingDeleted')}</p>
         <div className="migration-actions">{dismissButton}</div>
       </>,
     );
@@ -321,28 +323,28 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
   if (phase === 'explain') {
     return panel(
-      copy('hero.legacyImport'),
+      t('hero.legacyImport'),
       <>
-        <p>{copy('advice.legacyFound')}</p>
+        <p>{t('advice.legacyFound')}</p>
         <details>
-          <summary>{copy('disclosure.whatTransfers')}</summary>
-          <p>{copy('disclosure.legacyTransfers')}</p>
+          <summary>{t('disclosure.whatTransfers')}</summary>
+          <p>{t('disclosure.legacyTransfers')}</p>
         </details>
 
         <fieldset className="view-field">
-          <legend>{copy('label.legacyLoadUnit')}</legend>
-          <p className="view-note">{copy('advice.legacyUnitRequired')}</p>
+          <legend>{t('label.legacyLoadUnit')}</legend>
+          <p className="view-note">{t('advice.legacyUnitRequired')}</p>
           <UnitRadio
             name="legacy-load-unit"
             unit="kg"
-            label={copy('label.legacyUnitKg')}
+            label={t('label.legacyUnitKg')}
             selected={loadUnit}
             onSelect={setLoadUnit}
           />
           <UnitRadio
             name="legacy-load-unit"
             unit="lb"
-            label={copy('label.legacyUnitLb')}
+            label={t('label.legacyUnitLb')}
             selected={loadUnit}
             onSelect={setLoadUnit}
           />
@@ -350,31 +352,31 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
         <p>{FORMAT.legacyBodyMassAssumed(bodyMassUnit)}</p>
         <details>
-          <summary>{copy('disclosure.why')}</summary>
-          <p>{copy('disclosure.legacyBodyMassEvidence')}</p>
+          <summary>{t('disclosure.why')}</summary>
+          <p>{t('disclosure.legacyBodyMassEvidence')}</p>
           <fieldset className="view-field">
-            <legend>{copy('label.legacyBodyMassUnit')}</legend>
+            <legend>{t('label.legacyBodyMassUnit')}</legend>
             <UnitRadio
               name="legacy-mass-unit"
               unit="kg"
-              label={copy('label.legacyMassUnitKg')}
+              label={t('label.legacyMassUnitKg')}
               selected={bodyMassUnit}
               onSelect={setBodyMassUnit}
             />
             <UnitRadio
               name="legacy-mass-unit"
               unit="lb"
-              label={copy('label.legacyMassUnitLb')}
+              label={t('label.legacyMassUnitLb')}
               selected={bodyMassUnit}
               onSelect={setBodyMassUnit}
             />
           </fieldset>
         </details>
 
-        <p>{copy('advice.legacyNothingDeleted')}</p>
+        <p>{t('advice.legacyNothingDeleted')}</p>
         <div className="migration-actions">
           <button type="button" disabled={loadUnit === null} onClick={runPreview}>
-            {copy('button.legacyPreview')}
+            {t('button.legacyPreview')}
           </button>
           {dismissButton}
         </div>
@@ -387,9 +389,9 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
     // 'explain' through runPreview, which sets `outcome`. Rendered rather than thrown so a
     // future edit that breaks the invariant does not take the tree down.
     return panel(
-      copy('hero.legacyImport'),
+      t('hero.legacyImport'),
       <>
-        <p role="alert">{copy('advice.legacyApplyFailed')}</p>
+        <p role="alert">{t('advice.legacyApplyFailed')}</p>
         <div className="migration-actions">{dismissButton}</div>
       </>,
     );
@@ -399,7 +401,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
   if (phase === 'preview') {
     return panel(
-      copy('hero.legacyPreview'),
+      t('hero.legacyPreview'),
       <>
         <ul className="migration-report">
           <li>{FORMAT.legacySets(report.setsMigrated)}</li>
@@ -409,13 +411,13 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
         </ul>
         <p>{FORMAT.legacyUnitsAssumed(report.unitsAssumed.loads, report.unitsAssumed.bodyMass)}</p>
 
-        <SkipList summary={copy('disclosure.whatWasRefused')} skips={report.setsSkipped} />
-        <SkipList summary={copy('disclosure.whatWasNotMatched')} skips={report.sessionFallbacks} />
+        <SkipList summary={t('disclosure.whatWasRefused')} skips={report.setsSkipped} />
+        <SkipList summary={t('disclosure.whatWasNotMatched')} skips={report.sessionFallbacks} />
 
-        <p>{copy('advice.legacyNothingDeleted')}</p>
+        <p>{t('advice.legacyNothingDeleted')}</p>
         {applyError !== null && (
           <p className="view-error" role="alert">
-            {copy('advice.legacyApplyFailed')} {FORMAT.legacyRefusedReason(applyError)}
+            {t('advice.legacyApplyFailed')} {FORMAT.legacyRefusedReason(applyError)}
           </p>
         )}
 
@@ -435,7 +437,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
         <div className="migration-actions">
           <button type="button" disabled={confirmation !== CONFIRMATION_WORD} onClick={commit}>
-            {copy('button.legacyApply')}
+            {t('button.legacyApply')}
           </button>
           <button
             type="button"
@@ -443,7 +445,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
               setPhase('explain');
             }}
           >
-            {copy('button.back')}
+            {t('button.back')}
           </button>
           {dismissButton}
         </div>
@@ -454,7 +456,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
   const offerDelete = decision === null && stored;
 
   return panel(
-    copy('hero.legacyDone'),
+    t('hero.legacyDone'),
     <>
       <ul className="migration-report">
         <li>{FORMAT.legacySets(report.setsMigrated)}</li>
@@ -468,9 +470,9 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
         * be in the document before its content changes for the change to be announced at all.
         */}
       <div className="migration-status" aria-live="polite">
-        <p>{stored ? copy('advice.legacyStored') : copy('advice.legacyStoreUnconfirmed')}</p>
-        {decision === 'deleted' && <p>{copy('advice.legacyOldDataDeleted')}</p>}
-        {decision === 'kept' && <p>{copy('advice.legacyOldDataKept')}</p>}
+        <p>{stored ? t('advice.legacyStored') : t('advice.legacyStoreUnconfirmed')}</p>
+        {decision === 'deleted' && <p>{t('advice.legacyOldDataDeleted')}</p>}
+        {decision === 'kept' && <p>{t('advice.legacyOldDataKept')}</p>}
       </div>
 
       {/*
@@ -517,7 +519,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
                 setDeleteOpen(true);
               }}
             >
-              {copy('button.legacyDeleteOld')}
+              {t('button.legacyDeleteOld')}
             </button>
             <button
               type="button"
@@ -525,12 +527,12 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
                 setDecision('kept');
               }}
             >
-              {copy('button.legacyKeepOld')}
+              {t('button.legacyKeepOld')}
             </button>
           </>
         )}
         <button type="button" onClick={onFinished}>
-          {copy('button.legacyClose')}
+          {t('button.legacyClose')}
         </button>
       </div>
     </>,
