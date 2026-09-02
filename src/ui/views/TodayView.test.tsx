@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { App } from '../../app/App';
 import { FORMAT, copy } from '../../content/copy';
 import { formatRest } from '../format/plan';
+import { refusalLine } from '../format/refusal';
 import { TodayView } from './TodayView';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
@@ -455,7 +456,16 @@ describe('TodayView: a refused action', () => {
 
     const banner = screen.getByRole('alert');
     expect(banner.textContent).toContain(copy('banner.actionRefused.tag'));
-    expect(banner.textContent).toContain(`a session is already in progress on ${PREV_FRIDAY}`);
+    // P4 review item 4: the banner renders the copy line for the refusal, not the domain's
+    // thrown message. The store still holds the domain's own words, which is what the schedule
+    // slice documents; this is the mapping from those words to the ones the user reads.
+    expect(useAppStore.getState().status.lastActionError).toBe(
+      `startSession: a session is already in progress on ${PREV_FRIDAY}`,
+    );
+    expect(banner.textContent).toContain(
+      FORMAT.withSlots('status.refusalSessionOpen', { date: PREV_FRIDAY }),
+    );
+    expect(banner.textContent).not.toContain('startSession');
     expect(useAppStore.getState().assignments[PROFILE_ID]).toBe(before);
   });
 
@@ -474,8 +484,37 @@ describe('TodayView: a refused action', () => {
     expect(s.ui.lastView).not.toBe('train');
     expect(s.assignments[PROFILE_ID]?.some((a) => a.date === MONDAY)).toBe(false);
     expect(screen.getByRole('alert').textContent).toContain(
-      `a session is already in progress on ${PREV_FRIDAY}`,
+      FORMAT.withSlots('status.refusalSessionOpen', { date: PREV_FRIDAY }),
     );
+  });
+
+  /*
+   * P4 review item 4. The banner used to render `status.lastActionError` verbatim, so the user
+   * read "startSession: the plan is paused on 2026-09-07" - the domain's own words, function
+   * name and all. The refusal is driven through the real store action here rather than by
+   * writing the message into the status object, so the string this test maps is the one the
+   * domain actually mints.
+   */
+  it('renders a paused refusal as copy, with the date and no function name', () => {
+    setState({
+      ...useAppStore.getState(),
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
+    });
+    useAppStore.getState().startSession(PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
+    const raw = useAppStore.getState().status.lastActionError;
+    expect(raw).toBe(`startSession: the plan is paused on ${MONDAY}`);
+
+    render(<TodayView />);
+
+    const banner = screen.getByRole('alert');
+    expect(banner.textContent).toContain(
+      FORMAT.withSlots('status.refusalPaused', { date: MONDAY }),
+    );
+    expect(banner.textContent).toContain(MONDAY);
+    expect(banner.textContent).not.toContain('startSession');
+    expect(banner.textContent).not.toContain('startSession:');
+    // The mapper is the single definition of that rendering; the view holds no second copy.
+    expect(banner.textContent).toContain(refusalLine(raw ?? ''));
   });
 
   it('dismisses the banner without making another attempt', () => {

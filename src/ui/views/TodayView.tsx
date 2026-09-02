@@ -23,6 +23,7 @@ import {
   formatSets,
   formatWeekday,
 } from '../format/plan';
+import { refusalLine } from '../format/refusal';
 import './views.css';
 
 /**
@@ -328,12 +329,19 @@ export function TodayView(): JSX.Element {
       {actionError !== null && (
         /*
          * A refusal, not a failure: the document was left exactly as it was (see the
-         * refusal/defect split in src/store/scheduleActions.ts), and the text is the domain's
-         * own wording. role="alert" because it answers a control the user just pressed.
+         * refusal/defect split in src/store/scheduleActions.ts). role="alert" because it
+         * answers a control the user just pressed.
+         *
+         * P4 review item 4: the domain's own wording is what the STORE holds, and what the
+         * classifier in scheduleActions.ts sorts on, but it is not what the user reads. It
+         * opens with the name of the function the store called ("startSession: the plan is
+         * paused on 2026-03-02"), which names nothing the user did and nothing they can act
+         * on, and it is assembled outside src/content/copy.ts and so outside the skin system.
+         * src/ui/format/refusal.ts maps it onto a copy key with the date as a slot.
          */
         <div className="today-banner" role="alert">
           <span className="banner-tag">{copy('banner.actionRefused.tag')}</span>
-          <span>{actionError}</span>
+          <span>{refusalLine(actionError)}</span>
           <button
             type="button"
             onClick={() => {

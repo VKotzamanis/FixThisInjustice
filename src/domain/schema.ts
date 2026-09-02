@@ -234,9 +234,18 @@ export const PrescriptionSchema = z.discriminatedUnion('kind', [
 const ModalitySchema = z.enum(['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight']);
 const LoadClassSchema = z.enum(['lower-compound', 'upper-compound', 'isolation']);
 
+/**
+ * [characters] Longest exercise name the document will hold, trimmed.
+ *
+ * Exported so the form that collects the name caps its input against the same number the
+ * schema rejects it by (P4 review item 1): the field had no maxLength, so a longer name
+ * reached the store and threw out of a click handler no boundary catches.
+ */
+export const EXERCISE_NAME_MAX_CHARS = 120; // [characters]
+
 export const ExerciseSchema = z.object({
   id: z.string().min(1),
-  name: z.string().min(1).max(120),
+  name: z.string().min(1).max(EXERCISE_NAME_MAX_CHARS),
   isBodyweight: z.boolean(),
   isCompoundPrimary: z.boolean(),
   modality: ModalitySchema,
