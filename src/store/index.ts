@@ -25,6 +25,7 @@ import {
   requireProfile,
   type ScheduleActions,
 } from './scheduleActions';
+import { createMotivationActions, type MotivationActions } from './motivationActions';
 import {
   UNDO_WINDOW_MS,
   applyAddCustomExercise,
@@ -233,7 +234,8 @@ export interface AppActions {
  * declared once, next to the implementation that satisfies them.
  */
 export type AppStore = AppState &
-  AppActions & { status: StoreStatus; session: SessionState } & ScheduleActions;
+  AppActions & { status: StoreStatus; session: SessionState } & ScheduleActions &
+  MotivationActions;
 
 /**
  * The persisted fields of the store, and only those: no actions, no `status`,
@@ -320,6 +322,16 @@ export const useAppStore = create<AppStore>()((set, get) => {
       // every subscriber. Compared by value because the field is a string.
       if (get().status.lastActionError === message) return;
       set({ status: { ...get().status, lastActionError: message } });
+    },
+  });
+
+  /*
+   * P6's motivation slice. Same adapter as the schedule slice above, minus the error
+   * channel: neither of its two actions can be refused (motivationActions.ts says why).
+   */
+  const motivation = createMotivationActions({
+    set: (updater) => {
+      set((s) => updater(s));
     },
   });
 
@@ -851,6 +863,9 @@ export const useAppStore = create<AppStore>()((set, get) => {
    * what makes the file safe to extend.
    */
   ...schedule,
+
+  /* P6's motivation slice (master plan §6.7). Collides with nothing. */
+  ...motivation,
 
   /*
    * The two transitions that end a session, wrapped so the non-persisted session slice and its
