@@ -114,6 +114,13 @@
   resize: vertical;
 }
 
+.capsule-date-field {
+  /* The textarea above already clears 44 px from rows=6; a single-line date input does not,
+     and the file header above promises 2.75rem = 44 px at a 16 px root on every tap target
+     (code review item 3). */
+  min-height: 2.75rem;
+}
+
 .capsule-count {
   align-self: flex-end;
   color: var(--text-3, #5a6270);

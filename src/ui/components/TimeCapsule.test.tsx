@@ -28,6 +28,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { FORMAT, copy } from '../../content/copy';
 import { addDays, instantOf } from '../../domain/dates';
+import { TimeCapsuleSchema } from '../../domain/schema';
 import type { EpochMs, LocalDate, LocalTime, TimeCapsule as CapsuleRecord } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
@@ -124,6 +125,21 @@ describe('TimeCapsule, writing', () => {
     expect(dateField()).toHaveValue(addDays('2026-11-27', CAPSULE_MIN_DAYS_AHEAD));
   });
 
+  it('says the suggested date was moved when the plan ends inside the minimum window', () => {
+    // Three days before the plan's last day (2026-11-29): CAPSULE_MIN_DAYS_AHEAD pushes the
+    // suggested default out to 2026-12-03, past the plan's own end, so the default shown is
+    // not the plan's last day and the advisory line must say so.
+    render(<TimeCapsule now={at('2026-11-26', '09:00')} />);
+    openWriteDialog();
+    expect(screen.getByText(copy('advice.capsuleDefaultMoved'))).toBeInTheDocument();
+  });
+
+  it("does not say the default moved when the plan's last day is already inside the window", () => {
+    render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
+    openWriteDialog();
+    expect(screen.queryByText(copy('advice.capsuleDefaultMoved'))).toBeNull();
+  });
+
   it('seals the note with the chosen date and shows the sealed card', () => {
     const now = at(STARTED_ON, '09:00');
     render(<TimeCapsule now={now} />);
@@ -199,6 +215,64 @@ describe('TimeCapsule, bounds', () => {
     expect(screen.getByText(FORMAT.capsuleDateRange(from, to))).toBeInTheDocument();
     expect(sealButton()).toBeDisabled();
     expect(capsuleInStore()).toBeNull();
+  });
+});
+
+describe('TimeCapsule, touched gating', () => {
+  // A pristine textarea starts empty, which is shorter than CAPSULE_MIN_CHARS, so the raw
+  // refusal is already 'noteShort' on the very first render. Showing that as an error before
+  // the writer has typed a single character is a false positive, not a validation result.
+  it('withholds the refusal chrome until the note field is touched, then updates as it is typed', () => {
+    render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
+    openWriteDialog();
+
+    // Pristine: nothing typed yet, so nothing refused yet either.
+    expect(noteField()).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText(FORMAT.capsuleNoteShort(CAPSULE_MIN_CHARS))).toBeNull();
+
+    // First input touches the field: the same 'noteShort' refusal is now shown.
+    fireEvent.change(noteField(), { target: { value: 'abc' } });
+    expect(noteField()).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText(FORMAT.capsuleNoteShort(CAPSULE_MIN_CHARS))).toBeInTheDocument();
+
+    // Past the minimum: valid, and the refusal chrome clears.
+    fireEvent.change(noteField(), { target: { value: 'a'.repeat(CAPSULE_MIN_CHARS) } });
+    expect(noteField()).not.toHaveAttribute('aria-invalid', 'true');
+    expect(screen.queryByText(FORMAT.capsuleNoteShort(CAPSULE_MIN_CHARS))).toBeNull();
+  });
+
+  it('touches the note field on blur even without typing', () => {
+    render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
+    openWriteDialog();
+    expect(noteField()).not.toHaveAttribute('aria-invalid', 'true');
+
+    fireEvent.blur(noteField());
+    expect(noteField()).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByText(FORMAT.capsuleNoteShort(CAPSULE_MIN_CHARS))).toBeInTheDocument();
+  });
+});
+
+describe('TimeCapsule, schema mirror', () => {
+  // CAPSULE_MAX_CHARS is a comment-enforced mirror of schema.ts's module-private
+  // MAX_NOTE_CHARS (this file's own header, deviation 3). A hard-coded 5_000 on each side of
+  // that mirror is silent to grep: this pins the constant AND probes the schema at its own
+  // bound (CAPSULE_MAX_CHARS, not the literal 5000) so a drift between the two fails here
+  // instead of surfacing as a save silently rejected by Zod after the control already accepted
+  // it.
+  it('keeps CAPSULE_MAX_CHARS in lockstep with TimeCapsuleSchema.note', () => {
+    expect(CAPSULE_MAX_CHARS).toBe(5_000);
+
+    const base = {
+      writtenAt: at(STARTED_ON, '09:00'),
+      opensOn: PLAN_END,
+      opened: false,
+    };
+    expect(
+      TimeCapsuleSchema.safeParse({ ...base, note: 'a'.repeat(CAPSULE_MAX_CHARS) }).success,
+    ).toBe(true);
+    expect(
+      TimeCapsuleSchema.safeParse({ ...base, note: 'a'.repeat(CAPSULE_MAX_CHARS + 1) }).success,
+    ).toBe(false);
   });
 });
 
