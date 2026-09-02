@@ -503,6 +503,74 @@ describe('record keys must agree with the entity they store', () => {
   });
 });
 
+/** One profile's inventory, ready for a targeted violation of its ordinal ledger. */
+function inventoryWithLedger(acquiredByOrdinal: Record<string, string>): unknown {
+  return { profileId: P1, acquired: {}, totalSetsLogged: 3 /* [sets] */, acquiredByOrdinal };
+}
+
+describe('the ordinal ledger refuses a key the store could not have written', () => {
+  /*
+   * Blast radius, stated deliberately. A single malformed key in `acquiredByOrdinal` fails the
+   * WHOLE document: parseState returns one error and nothing loads, so on import the user loses
+   * every profile in the file, not the one bad entry. That is the choice, not an oversight.
+   *
+   * The alternative - drop the offending key and keep the rest - is worse here. The store is the
+   * only writer and it writes `String(ordinal)`, so a padded, signed or non-numeric key means the
+   * document was edited or corrupted outside the app. Salvaging it would leave an ordinal ledger
+   * that no longer accounts for the acquisitions beside it, and that ledger is the only thing
+   * stopping a delete-and-relog rerolling a drop (master plan section 10.8, rule 3): a silently
+   * shortened ledger hands back the farm the rule closes. `notes` already makes the same call for
+   * its inner local-date keys, and master plan section 8 states the governing constraint -
+   * import validation is the critical fix; nothing enters the store unvalidated.
+   */
+  it('rejects a zero-padded ordinal and names the offending key in the path', () => {
+    const doc = oneProfileDocument();
+    doc.specimens = { [P1]: inventoryWithLedger({ '01': 'c001' }) };
+    const result = parseState(doc);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain(`specimens.${P1}.acquiredByOrdinal.01`);
+  });
+
+  it('rejects a negative ordinal', () => {
+    const doc = oneProfileDocument();
+    doc.specimens = { [P1]: inventoryWithLedger({ '-1': 'c001' }) };
+    const result = parseState(doc);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain(`specimens.${P1}.acquiredByOrdinal.-1`);
+  });
+
+  /*
+   * Characterisation, not endorsement. SetOrdinalKeySchema is `/^(?:0|[1-9][0-9]*)$/`
+   * (schema.ts), so "0" passes - but ordinal 0 belongs to NO logged set: the ordinal is
+   * `totalSetsLogged` read after logSet's increment, so the first set is ordinal 1 (master plan
+   * section 10.8, rule 1), and attemptSpecimenDraw returns null at 0 for exactly that reason.
+   * A ledger key of "0" is therefore a document the store cannot have produced, and the regex
+   * admits it. Tightening the regex to `/^[1-9][0-9]*$/` is out of scope for this fix - it is a
+   * schema change, and this test pins the CURRENT behaviour so the change is visible when it is
+   * made. Carried as a docs-pass item.
+   */
+  it('accepts ordinal 0 today, though ordinal 0 belongs to no logged set', () => {
+    const doc = oneProfileDocument();
+    doc.specimens = { [P1]: inventoryWithLedger({ '0': 'c001' }) };
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.specimens[P1]?.acquiredByOrdinal).toEqual({ '0': 'c001' });
+  });
+
+  it('accepts the unpadded decimal the store writes', () => {
+    const doc = oneProfileDocument();
+    doc.specimens = { [P1]: inventoryWithLedger({ '1': 'c001', '4096': 'c002' }) };
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error(result.error);
+    expect(result.state.specimens[P1]?.acquiredByOrdinal).toEqual({
+      '1': 'c001',
+      '4096': 'c002',
+    });
+  });
+});
+
 describe('bounds the code review added', () => {
   it('accepts an rpe on the half-point grid and rejects one off it', () => {
     const doc = oneProfileDocument();
@@ -566,6 +634,22 @@ describe('bounds the code review added', () => {
 });
 
 describe('round trip', () => {
+  /*
+   * A coverage guard on the property below, not a property itself. `acquiredByOrdinal` is an
+   * OPTIONAL field, so a generator that never emits it makes the round trip silent about the
+   * ordinal ledger: a schema that dropped the field entirely would still pass 500 documents,
+   * which is the exact failure the field was added to prevent (schema.ts, SpecimenInventory).
+   * Sampling the same arbitrary the property runs is what ties the two together.
+   */
+  it('generates documents that carry a populated ordinal ledger', () => {
+    const ledgers = fc
+      .sample(anyAppState, { numRuns: 200, seed: 20260902 })
+      .flatMap((state: AppState) => Object.values(state.specimens))
+      .map((inventory) => inventory.acquiredByOrdinal)
+      .filter((ledger) => ledger !== undefined && Object.keys(ledger).length > 0);
+    expect(ledgers.length).toBeGreaterThan(0);
+  });
+
   it(
     'parse(serialize(state)) deep-equals state over 500 generated documents',
     () => {

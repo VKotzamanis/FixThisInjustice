@@ -78,6 +78,29 @@ describe('recordSpecimen', () => {
     expect(useAppStore.getState().specimens[P]?.acquired['c002']).toBeUndefined();
   });
 
+  /*
+   * The plan's step 6 rule, "first acquisition wins". The ordinal guard alone does not give it:
+   * a SECOND ordinal carrying a card the collection already holds passed straight through, so
+   * `acquired[cardId]` was rewritten with the later instant and exercise and two ordinals were
+   * left pointing at one card. A card is acquired once, by the set that first produced it.
+   */
+  it('is idempotent on an owned card: a later ordinal cannot re-acquire it', () => {
+    useAppStore.getState().recordSpecimen(P, 5, 'c001', 'barbell-bench-press', NOW);
+    const before = useAppStore.getState();
+    const first = before.specimens[P];
+
+    useAppStore.getState().recordSpecimen(P, 6, 'c001', 'pull-up', NOW + 5_000);
+
+    // Identity at both levels: no new state object, so no persistence write and no re-render.
+    expect(useAppStore.getState()).toBe(before);
+    expect(useAppStore.getState().specimens[P]).toBe(first);
+    // The first acquisition's instant [ms] and exercise stand.
+    expect(first?.acquired['c001']).toEqual({ at: NOW, exerciseId: 'barbell-bench-press' });
+    // Ordinal 6 [sets] is not spent either: the call wrote nothing at all.
+    expect(first?.acquiredByOrdinal).toEqual({ '5': 'c001' });
+    expect(Object.hasOwn(first?.acquiredByOrdinal ?? {}, '6')).toBe(false);
+  });
+
   it('creates the inventory for a profile that has none', () => {
     useAppStore.setState(makeAppState({ specimens: {} }));
     useAppStore.getState().recordSpecimen(P, 1, 'r003', null, NOW);
