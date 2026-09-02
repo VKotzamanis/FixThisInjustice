@@ -336,10 +336,10 @@ below was verified with `git ls-files` on 2026-09-02.
 | Screen | Files |
 | --- | --- |
 | `boot` | `src/ui/components/Boot.tsx` |
-| `shell` | `src/app/App.tsx`, `src/app/UpdatePrompt.tsx`, `src/ui/components/SessionIndicator.tsx`, `src/ui/components/SpotlightButton.tsx`, `src/ui/nav/views.ts`, `src/skins/limelight/Icon.tsx` |
+| `shell` | `src/app/App.tsx`, `src/app/UpdatePrompt.tsx`, `src/ui/components/SessionIndicator.tsx`, `src/ui/components/SpotlightButton.tsx`, `src/ui/nav/views.ts` |
 | `setup` | `src/ui/setup/SetupWizard.tsx` |
 | `readiness` | `src/ui/setup/ReadinessScreen.tsx`, `src/ui/components/ReadinessNotice.tsx`, `src/content/readinessQuestions.ts` |
-| `today` | `src/ui/views/TodayView.tsx`, `src/ui/components/Marquee.tsx`, `src/ui/components/WeekStamp.tsx`, `src/ui/components/Intervention.tsx` |
+| `today` | `src/ui/views/TodayView.tsx`, `src/ui/components/Marquee.tsx`, `src/ui/components/WeekStamp.tsx`, `src/ui/components/Intervention.tsx`, `src/ui/format/refusal.ts`, `src/ui/format/weekDelta.ts` |
 | `train` | `src/ui/views/TrainView.tsx`, `src/ui/views/train`, `src/domain/training/hydration.ts` |
 | `plan` | `src/ui/views/PlanView.tsx` |
 | `targets` | `src/ui/views/TargetsView.tsx` |
@@ -361,6 +361,9 @@ Some keys are named only in a helper module and never in a view file. The helper
 that renders its strings, which is why the table above lists `src/content/readinessQuestions.ts`
 under `readiness` and `src/domain/training/coach.ts` under `toast`. Keys named nowhere but inside
 `src/content/copy.ts`, behind a `FORMAT` helper, reach no screen by mention: `--unplaced` lists
+them (40 on 2026-09-02, at `b7b165a` with the icon map removed). `src/skins/limelight/Icon.tsx` is
+a lookup keyed by copy key, not a renderer, and is deliberately in no list: under `shell` it would
+claim `advice.drinkToThirst` away from `train`. `--unplaced` lists
 them, Task 2 Step 3 places each by hand in the part whose section renders it, and a key with no
 surface at all is excused by name in `NOT_RENDERED` with the file and line that proves it.
 
@@ -690,6 +693,7 @@ reminderStates   7
 migrationPhases  3
 atlasRarities    3
 refusals         110 in 16 groups
+unplaced         40
 ```
 
 A different number is a drift in the tree, not a bug in the script. Read the file the reader names
