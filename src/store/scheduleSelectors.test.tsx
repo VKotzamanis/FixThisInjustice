@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import {
   selectCalendar,
   selectRemainingLabels,
+  useActionError,
   useActiveCursor,
   useActiveProfileId,
   usePlan,
@@ -23,6 +24,7 @@ import {
   PREV_MONDAY,
   PREV_SUNDAY,
   PROFILE_ID,
+  TUESDAY,
   TZ_ATHENS,
   TZ_LOS_ANGELES,
   seedState,
@@ -45,6 +47,9 @@ function seed(timezone: TimeZone = TZ_ATHENS): void {
 
 beforeEach(() => {
   seed();
+  // status is not part of AppState, so setState above does not reset it: a refusal raised by
+  // one test would otherwise still be standing in the next one.
+  useAppStore.getState().clearActionError();
 });
 
 describe('today, in the profile timezone', () => {
@@ -184,5 +189,60 @@ describe('the cursor does not move with the clock', () => {
     const firstTrainingDay = days.find((d) => d.projectedSession !== null);
     expect(firstTrainingDay?.projectedSession?.id).toBe('s-1');
     expect(useAppStore.getState().assignments[PROFILE_ID]).toEqual([]);
+  });
+});
+
+/*
+ * The refusal channel, read and dismissed (master plan §6.4 as amended). The message lives on
+ * the non-persisted `status` slice, so it is reached through its own selector rather than by
+ * every banner reaching into `status` for itself.
+ */
+describe('useActionError', () => {
+  it('reports the standing refusal and follows the dismiss control', () => {
+    const hook = renderHook(() => useActionError());
+    expect(hook.result.current).toBeNull();
+
+    act(() => {
+      useAppStore.getState().startSession(PROFILE_ID, MONDAY, NOW_MS);
+    });
+    act(() => {
+      // A second open day: refused, in the domain's own wording.
+      useAppStore.getState().startSession(PROFILE_ID, TUESDAY, NOW_MS + DAY_MS);
+    });
+    expect(hook.result.current).toBe(`startSession: a session is already in progress on ${MONDAY}`);
+
+    act(() => {
+      useAppStore.getState().clearActionError();
+    });
+
+    expect(hook.result.current).toBeNull();
+    expect(useAppStore.getState().status.lastActionError).toBeNull();
+  });
+});
+
+/*
+ * The memo is keyed on the document slices the derivation reads, not on the store object.
+ * A refusal writes only `status.lastActionError`, which replaces the store object and no part
+ * of the document; keyed on the store object, that invalidated every calendar entry and handed
+ * useSyncExternalStore a fresh array for a document nothing had touched.
+ */
+describe('a status-only write does not invalidate the calendar', () => {
+  it('keeps the reference across a refusal, and drops it when the document moves', () => {
+    const hook = renderHook(() => useUpcoming(7, NOW_MS));
+    const first = hook.result.current;
+
+    act(() => {
+      useAppStore.getState().startSession(PROFILE_ID, MONDAY, NOW_MS);
+    });
+    const afterStart = hook.result.current;
+    expect(afterStart).not.toBe(first); // assignments changed: the projection is stale
+
+    act(() => {
+      // Refused: the document is left exactly as it was and only status is written.
+      useAppStore.getState().startSession(PROFILE_ID, TUESDAY, NOW_MS + DAY_MS);
+    });
+
+    expect(useAppStore.getState().status.lastActionError).toContain('already in progress');
+    expect(hook.result.current).toBe(afterStart);
   });
 });
