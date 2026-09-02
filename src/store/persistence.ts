@@ -216,18 +216,65 @@ export const LEGACY_KEYS: readonly string[] = [LEGACY_V2_KEY, 'fti.plan.v1', 'ft
  * the same fact, but they admit the same action: there is nothing to offer.
  */
 export function readLegacyV2Raw(): string | null {
+  return readLegacyKey(LEGACY_V2_KEY);
+}
+
+/**
+ * One stored key, read defensively. Safari private browsing and blocked
+ * third-party contexts throw on any access, and an absent key and an
+ * unreachable store admit the same action: there is nothing to offer.
+ */
+function readLegacyKey(key: string): string | null {
   try {
-    return localStorage.getItem(LEGACY_V2_KEY);
+    return localStorage.getItem(key);
   } catch {
-    // Safari private browsing and blocked third-party contexts throw on any
-    // access. Not an empty block; no-empty forbids that.
+    // Not an empty block; no-empty forbids that.
     return null;
   }
 }
 
-/** True when a legacy document is readable on this device. */
+/**
+ * Every legacy key on this device, as one JSON envelope, or null when none of
+ * them is present.
+ *
+ * WHY AN ENVELOPE AND NOT THE v2 TEXT. `deleteLegacyV2` removes all three keys.
+ * The export that gates it used to carry only `fti.console.v2`, so the dead
+ * prototype store and the video-instance preference were destroyed with no copy
+ * taken (security review 10 / M5). The backup now covers exactly what the
+ * delete removes.
+ *
+ * Every value is the RAW text or null, never a parse of it. The `fti.plan.v1`
+ * payload was never this app's to interpret, and a legacy document that is not
+ * valid JSON still has to survive into the backup. Pretty-printed and
+ * newline-terminated, matching `exportJson`: both are files a user opens.
+ */
+export function readLegacyBundle(): string | null {
+  const entries: Record<string, string | null> = {};
+  let present = false;
+  for (const key of LEGACY_KEYS) {
+    const raw = readLegacyKey(key);
+    entries[key] = raw;
+    if (raw !== null) present = true;
+  }
+  if (!present) return null;
+  return `${JSON.stringify(entries, null, 2)}\n`;
+}
+
+/** True when a legacy document the MIGRATION can read is on this device. */
 export function hasLegacyV2(): boolean {
   return readLegacyV2Raw() !== null;
+}
+
+/**
+ * True when ANY key the legacy app owned is still on this device.
+ *
+ * Deliberately a second question rather than a widening of `hasLegacyV2`: the
+ * migration needs `fti.console.v2` specifically and must not be offered without
+ * it, whereas the delete reaches all three. A device holding only `fti.plan.v1`
+ * has legacy data to clean up and nothing to import (security review 10 / M5).
+ */
+export function hasAnyLegacyKey(): boolean {
+  return LEGACY_KEYS.some((key) => readLegacyKey(key) !== null);
 }
 
 /**

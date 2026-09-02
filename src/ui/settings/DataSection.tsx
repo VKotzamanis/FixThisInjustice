@@ -2,8 +2,15 @@ import { useState, type JSX } from 'react';
 
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import { copy } from '../../content/copy';
+import { todayLocal } from '../../domain/dates';
+import { clearAssetStorage } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
-import { deleteLegacyV2, hasLegacyV2, readLegacyV2Raw } from '../../store/persistence';
+import {
+  deleteLegacyV2,
+  hasAnyLegacyKey,
+  hasLegacyV2,
+  readLegacyBundle,
+} from '../../store/persistence';
 import { ExportView } from '../views/ExportView';
 
 /**
@@ -23,8 +30,15 @@ import { ExportView } from '../views/ExportView';
  *
  * ONE PANEL AT A TIME, which is why `open` is a union rather than two booleans. Both panels
  * confirm on the same word, so both label their field 'Type DELETE to confirm' and both carry
- * a 'Cancel'. Two of each on screen at once is a pair of controls a screen reader cannot tell
- * apart, and the wrong one of them destroys the wrong thing.
+ * a 'Cancel'; opening one at a time keeps the wipe and the legacy delete from being two
+ * identical-looking sets of controls that destroy different things.
+ *
+ * That is no longer the ONLY thing standing between them (P7 Task 6 review, item 2): each
+ * panel is a named `role="group"`, and it has to be, because the Replace confirmation in
+ * ExportView -- mounted by this same section, above these controls -- is now the same
+ * component and can be open at the same time as either of them. The rule here stays because it
+ * is about this section's own two panels, which confirm on one word and cannot be told apart
+ * by what the user types into them.
  *
  * A trigger BUTTON rather than a <details> disclosure, which is what the rest of this view
  * uses for its explanatory asides. Two reasons, and the first is the load-bearing one:
@@ -38,19 +52,33 @@ import { ExportView } from '../views/ExportView';
 /** The word master plan section 3 fixes for every destructive confirmation. */
 const CONFIRM_WORD = 'DELETE';
 
-/**
- * The backup filenames. Neither carries a date: the wipe export is the whole document and the
- * legacy export is a document the app no longer writes, so there is no series to order.
- */
-const WIPE_FILENAME = 'fixthisinjustice-export.json';
-const LEGACY_FILENAME = 'fixthisinjustice-legacy-v2.json';
-
 type OpenPanel = 'none' | 'wipe' | 'legacy';
 
 export function DataSection(): JSX.Element {
   const decision = useAppStore((s) => s.ui.legacyMigration);
+  const profile = useAppStore((s) =>
+    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
+  );
   const [open, setOpen] = useState<OpenPanel>('none');
-  const [legacyPresent, setLegacyPresent] = useState(() => hasLegacyV2());
+  /*
+   * Two questions, not one (P7 Task 6 review, item 3). `hasLegacyV2` asks whether the document
+   * the MIGRATION needs is here, and only the reopen offer turns on it. The delete reaches all
+   * three legacy keys, so the control that offers it asks the wider question: a device holding
+   * only `fti.plan.v1` has legacy data to clean up and nothing to import.
+   */
+  const [legacyDoc, setLegacyDoc] = useState(() => hasLegacyV2());
+  const [anyLegacy, setAnyLegacy] = useState(() => hasAnyLegacyKey());
+  /** True once a wipe has run whose clip-store clear was refused. */
+  const [clipUncleared, setClipUncleared] = useState(false);
+
+  /*
+   * Every backup this section offers is stamped with the PROFILE's own civil date, never the
+   * device's (master plan section 3), through the same `todayLocal` ExportView uses. Findings
+   * A8 and A10 forbid the UTC serialisation shortcut here: it names the day in Greenwich, which
+   * for a user east or west of it is not the day they were living in when they took the backup.
+   * The 'export' fallback is ExportView's: with no profile there is no zone to date the file in.
+   */
+  const stamp = profile === null ? 'export' : todayLocal(profile.timezone, Date.now());
 
   /*
    * The legacy document is re-read whenever the migration decision changes, not once for the
@@ -64,7 +92,8 @@ export function DataSection(): JSX.Element {
   const [seen, setSeen] = useState(decision);
   if (decision !== seen) {
     setSeen(decision);
-    setLegacyPresent(hasLegacyV2());
+    setLegacyDoc(hasLegacyV2());
+    setAnyLegacy(hasAnyLegacyKey());
   }
 
   const wipe = (): void => {
@@ -72,13 +101,42 @@ export function DataSection(): JSX.Element {
     // section (SettingsView has no profile to edit), so the order only matters for what React
     // renders in between -- and closing first means it is never the armed panel.
     setOpen('none');
-    useAppStore.getState().wipeAll();
+    /*
+     * The clip store FIRST, then the document (security recommendation 10 / M5). The wipe used
+     * to call wipeAll() alone, which empties `fti.v3` and this app's session mirror; the
+     * motivation clip the user chose lives in IndexedDB and survived a wipe that told them
+     * everything on the device had been removed. Clearing it before the document is emptied
+     * also keeps the two in the only order that can be recovered from: a clip cleared after
+     * the document is gone would be cleared out of a store nothing is left to describe.
+     *
+     * A refusal does NOT hold the wipe back. `clearAssetStorage` rejects on a quota refusal, on
+     * Safari private mode and on an upgrade another tab is blocking, and a document left intact
+     * because a clip could not be removed is a worse outcome than a clip left behind: the user
+     * asked for their records to be gone. The refusal is reported instead.
+     *
+     * The line reporting it is state on THIS section, so it is only seen where the section is
+     * still mounted after the wipe. Inside SettingsView it is not: a wipe leaves no profile and
+     * that view then renders its 'set up first' paragraph in place of every row. Carrying the
+     * message across that unmount needs a host that outlives the wipe, which is a change to
+     * App.tsx rather than to this file.
+     */
+    void (async () => {
+      try {
+        await clearAssetStorage();
+      } catch {
+        // The reason is not shown: it is an IndexedDB message the user cannot act on, and the
+        // one actionable fact -- the clip may still be on the device -- is in the copy line.
+        setClipUncleared(true);
+      }
+      useAppStore.getState().wipeAll();
+    })();
   };
 
   const removeLegacy = (): void => {
     setOpen('none');
     deleteLegacyV2();
-    setLegacyPresent(false);
+    setLegacyDoc(false);
+    setAnyLegacy(false);
   };
 
   return (
@@ -92,7 +150,7 @@ export function DataSection(): JSX.Element {
       <h2>{copy('hero.dataOnDevice')}</h2>
       <p className="view-note">{copy('advice.dataOnDevice')}</p>
 
-      {legacyPresent && decision !== 'pending' && (
+      {legacyDoc && decision !== 'pending' && (
         <>
           <button
             type="button"
@@ -113,9 +171,10 @@ export function DataSection(): JSX.Element {
         <div className="view-field">
           <p className="view-note">{copy('advice.wipeRemoves')}</p>
           <ConfirmDestructive
+            titleKey="label.confirmWipe"
             word={CONFIRM_WORD}
             exportLabelKey="button.downloadBackup"
-            exportFilename={WIPE_FILENAME}
+            exportFilename={`fti-state-${stamp}.json`}
             /*
              * Read when the user asks for it, not at render: the document the backup has to
              * carry is the one that exists at the moment of the export, and this panel can sit
@@ -141,22 +200,31 @@ export function DataSection(): JSX.Element {
         </button>
       )}
 
-      {legacyPresent &&
+      {clipUncleared && (
+        <p className="view-error" role="alert">
+          {copy('advice.clipClearFailed')}
+        </p>
+      )}
+
+      {anyLegacy &&
         (open === 'legacy' ? (
           <div className="view-field">
             <p className="view-note">{copy('advice.deleteLegacy')}</p>
             <ConfirmDestructive
+              titleKey="label.confirmDeleteLegacy"
               word={CONFIRM_WORD}
               exportLabelKey="button.downloadLegacyJson"
-              exportFilename={LEGACY_FILENAME}
+              exportFilename={`fti-legacy-bundle-${stamp}.json`}
               /*
-               * The RAW legacy text, not a migrated projection of it. This export is the last
-               * copy of whatever the migration refused, so it has to be the bytes as stored.
-               * The empty string covers a document that has gone since this row rendered: the
-               * export gate still has to be passable, and an empty backup of nothing is
-               * honest about what was there.
+               * All THREE legacy keys, as raw text in one envelope, because all three are what
+               * the confirmed action removes (security recommendation 10 / M5). It used to
+               * export `fti.console.v2` alone, so the other two were destroyed with no copy
+               * taken. Never a migrated projection: this is the last copy of whatever the
+               * migration refused, so it has to be the bytes as stored. The empty string
+               * covers keys that have gone since this row rendered -- the gate still has to be
+               * passable, and an empty backup of nothing is honest about what was there.
                */
-              exportText={() => readLegacyV2Raw() ?? ''}
+              exportText={() => readLegacyBundle() ?? ''}
               confirmLabelKey="button.legacyDeleteOld"
               onConfirm={removeLegacy}
               onCancel={() => {

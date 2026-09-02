@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ExportView } from './ExportView';
 import { FORMAT, copy } from '../../content/copy';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
@@ -63,6 +63,33 @@ function click(name: string): void {
 function check(text: string): void {
   fireEvent.change(screen.getByLabelText(copy('label.pasteExport')), { target: { value: text } });
   click(copy('button.checkImport'));
+}
+
+/**
+ * The Replace confirmation, which is now the shared ConfirmDestructive panel rather than a
+ * second typed-confirmation field written into this view (P7 Task 6 review, item 2). It is
+ * addressed by its group name because the panel's export control and the view's own three
+ * downloads sit in one region, and only the panel's press opens the gate.
+ */
+function replacePanel(): HTMLElement {
+  return screen.getByRole('group', { name: copy('label.confirmReplace') });
+}
+
+/** Press the panel's own export control. The gate is a fact about this panel, not the session. */
+function backUpInPanel(): void {
+  fireEvent.click(within(replacePanel()).getByRole('button', { name: copy('button.downloadBackup') }));
+}
+
+/** Type into the panel's confirmation field, whose label is the frame that names the word. */
+function typeConfirmation(value: string): void {
+  fireEvent.change(within(replacePanel()).getByLabelText(FORMAT.typeToConfirm('DELETE')), {
+    target: { value },
+  });
+}
+
+/** The armed destructive control. */
+function replaceButton(): HTMLElement {
+  return within(replacePanel()).getByRole('button', { name: copy('button.replaceData') });
 }
 
 /** A valid document that differs from the fixture, so an import of it is observable. */
@@ -182,42 +209,79 @@ describe('ExportView', () => {
   it('keeps the replace control disabled until the backup has been downloaded', () => {
     render(<ExportView />);
     check(otherDocument());
-    fireEvent.change(screen.getByLabelText(copy('confirm.typeToConfirm')), {
-      target: { value: 'DELETE' },
-    });
-    expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeDisabled();
-    expect(screen.getByText(copy('advice.downloadBackupFirst'))).toBeTruthy();
+    typeConfirmation('DELETE');
+    expect(replaceButton()).toBeDisabled();
+    expect(screen.getByText(copy('advice.exportBeforeConfirm'))).toBeTruthy();
 
-    click(copy('button.downloadJson'));
-    expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeEnabled();
+    backUpInPanel();
+    expect(replaceButton()).toBeEnabled();
     // The instruction goes once it has been followed: standing advice the user has already
     // acted on reads as a second, unmet requirement.
-    expect(screen.queryByText(copy('advice.downloadBackupFirst'))).toBeNull();
+    expect(screen.queryByText(copy('advice.exportBeforeConfirm'))).toBeNull();
+    expect(screen.getByText(copy('status.exportTaken'))).toBeTruthy();
+  });
+
+  it('does not accept the view download as the backup this panel requires', () => {
+    // The export gate is a fact about the open panel, not about the session (the property
+    // ConfirmDestructive holds and its own suite asserts). A copy taken before the document
+    // was pasted is not a copy of what Replace is about to overwrite.
+    render(<ExportView />);
+    click(copy('button.downloadJson'));
+    check(otherDocument());
+    typeConfirmation('DELETE');
+    expect(replaceButton()).toBeDisabled();
+  });
+
+  it('names the panel, so it is not one of two anonymous confirmations', () => {
+    render(<ExportView />);
+    check(otherDocument());
+    expect(replacePanel().getAttribute('aria-label')).toBe(copy('label.confirmReplace'));
+  });
+
+  it('offers the panel backup under the same stamped filename as the view download', () => {
+    render(<ExportView />);
+    check(otherDocument());
+    backUpInPanel();
+    expect(downloads.map((d) => d.name)).toEqual(['fti-state-2026-09-01.json']);
   });
 
   it('keeps the replace control disabled until the confirmation word is typed exactly', () => {
     render(<ExportView />);
     check(otherDocument());
-    click(copy('button.downloadJson'));
-    const field = screen.getByLabelText(copy('confirm.typeToConfirm'));
-    expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeDisabled();
+    backUpInPanel();
+    expect(replaceButton()).toBeDisabled();
 
-    fireEvent.change(field, { target: { value: 'delete' } });
-    expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeDisabled();
+    typeConfirmation('delete');
+    expect(replaceButton()).toBeDisabled();
 
-    fireEvent.change(field, { target: { value: 'DELETE' } });
-    expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeEnabled();
+    typeConfirmation('DELETE');
+    expect(replaceButton()).toBeEnabled();
+  });
+
+  it('changes nothing when the confirmation is cancelled, and asks for the backup again', () => {
+    render(<ExportView />);
+    const before = useAppStore.getState().exportJson();
+    check(otherDocument());
+    backUpInPanel();
+    typeConfirmation('DELETE');
+    fireEvent.click(within(replacePanel()).getByRole('button', { name: copy('button.cancel') }));
+
+    expect(screen.queryByRole('group', { name: copy('label.confirmReplace') })).toBeNull();
+    expect(useAppStore.getState().exportJson()).toBe(before);
+
+    // Checked again, the panel comes back unarmed: unmounting it is what re-arms both gates.
+    click(copy('button.checkImport'));
+    typeConfirmation('DELETE');
+    expect(replaceButton()).toBeDisabled();
   });
 
   it('installs the document once the gate and the confirmation are both satisfied', () => {
     render(<ExportView />);
     const document_ = otherDocument();
     check(document_);
-    click(copy('button.downloadJson'));
-    fireEvent.change(screen.getByLabelText(copy('confirm.typeToConfirm')), {
-      target: { value: 'DELETE' },
-    });
-    click(copy('button.replaceData'));
+    backUpInPanel();
+    typeConfirmation('DELETE');
+    fireEvent.click(replaceButton());
 
     expect(JSON.parse(useAppStore.getState().exportJson())).toEqual(JSON.parse(document_));
     expect(screen.getByText(copy('status.importOk'))).toBeTruthy();
@@ -238,11 +302,9 @@ describe('ExportView', () => {
 
     const imported = JSON.stringify(makeBlankState(makeProfile({ displayName: 'Imported Athlete' })));
     check(imported);
-    click(copy('button.downloadJson'));
-    fireEvent.change(screen.getByLabelText(copy('confirm.typeToConfirm')), {
-      target: { value: 'DELETE' },
-    });
-    click(copy('button.replaceData'));
+    backUpInPanel();
+    typeConfirmation('DELETE');
+    fireEvent.click(replaceButton());
 
     // The write is debounced (SAVE_DEBOUNCE_MS); flushSave() commits it synchronously without
     // switching this file over to fake timers.
@@ -268,11 +330,9 @@ describe('ExportView', () => {
     expect(useAppStore.getState().exportJson()).not.toBe(exported);
 
     check(exported);
-    click(copy('button.downloadJson'));
-    fireEvent.change(screen.getByLabelText(copy('confirm.typeToConfirm')), {
-      target: { value: 'DELETE' },
-    });
-    click(copy('button.replaceData'));
+    backUpInPanel();
+    typeConfirmation('DELETE');
+    fireEvent.click(replaceButton());
     expect(JSON.parse(useAppStore.getState().exportJson())).toEqual(JSON.parse(exported));
   });
 
