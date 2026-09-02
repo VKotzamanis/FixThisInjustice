@@ -1,4 +1,4 @@
-/* Minimal shell chrome. P2 replaces the placeholder; the bars and banners stay. */
+/* Minimal shell chrome: the bars and banners, plus the view navigation P2 Task 8 added. */
 .topbar {
   position: sticky;
   top: 0;
@@ -93,29 +93,6 @@ main {
   border-color: var(--accent);
 }
 
-.placeholder {
-  border: 1px solid var(--line);
-  background: var(--bg-2);
-  padding: 24px;
-  max-width: 520px;
-}
-
-.placeholder h2 {
-  font-family: var(--sans);
-  font-weight: 700;
-  font-size: 18px;
-  margin: 0 0 10px;
-  color: var(--accent);
-}
-
-.placeholder p {
-  font-family: var(--sans);
-  font-size: 14px;
-  color: var(--text-2);
-  line-height: 1.55;
-  margin: 0;
-}
-
 .recovery {
   max-width: 620px;
   margin: 48px auto;
@@ -183,4 +160,35 @@ main {
   border: 1px solid var(--line-2);
   color: var(--text);
   width: 220px;
+}
+
+/*
+ * View navigation (P2 Task 8). Horizontally scrollable rather than wrapped: six tabs at the
+ * 44 px minimum target do not fit a 320 px phone, and a wrapped second row moves the whole
+ * view down by 44 px on the narrowest screens where the space is worth most.
+ */
+.viewnav {
+  display: flex;
+  gap: 0.25rem;
+  overflow-x: auto;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--line-1, rgba(220, 230, 240, 0.08));
+}
+
+.viewnav button {
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  color: var(--text-2, #8e97a3);
+  background: transparent;
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.viewnav button[aria-current='true'] {
+  color: var(--accent, #a3e635);
+  border-color: var(--accent, #a3e635);
 }

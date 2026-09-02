@@ -1,0 +1,309 @@
+import { Fragment, useState, type JSX } from 'react';
+import { UnitInput, loadUnit, parseDecimal } from '../components/UnitInput';
+import { FORMAT, copy } from '../../content/copy';
+import { dailyBeverageTargetML } from '../../domain/nutrition';
+import { ProfileSchema } from '../../domain/schema';
+import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
+import { displayLoad, formatVolume, toStoredLoad } from '../../domain/units';
+import { useAppStore } from '../../store';
+import { useActiveProfile } from '../../store/selectors';
+import './views.css';
+
+/**
+ * Option lists, each paired with the copy key that names it. The VALUES are the domain union
+ * members and are never translated; only the labels come from the copy table, so a skin can
+ * reword an option without changing what it selects.
+ */
+const ACTIVITY_OPTIONS: { value: ActivityLevel; label: string }[] = [
+  { value: 'sedentary', label: copy('option.activitySedentary') },
+  { value: 'moderate', label: copy('option.activityModerate') },
+  { value: 'vigorous', label: copy('option.activityVigorous') },
+];
+
+const EXPERIENCE_OPTIONS: { value: Experience; label: string }[] = [
+  { value: 'novice', label: copy('option.experienceNovice') },
+  { value: 'intermediate', label: copy('option.experienceIntermediate') },
+  { value: 'advanced', label: copy('option.experienceAdvanced') },
+];
+
+const GOAL_OPTIONS: { value: GoalKind; label: string }[] = [
+  { value: 'fat-loss', label: copy('option.goalFatLoss') },
+  { value: 'muscle-gain', label: copy('option.goalMuscleGain') },
+  { value: 'recomposition', label: copy('option.goalRecomposition') },
+  { value: 'maintenance', label: copy('option.goalMaintenance') },
+];
+
+/**
+ * A settings entry that is a whole sub-screen rather than a field of the profile.
+ *
+ * INSERTION POINT. P2 Task 9 (the pre-participation readiness screen) appends its row to
+ * SETTINGS_ROWS below and changes nothing else in this file. Later plans do the same. A row
+ * receives the active profile because every such screen needs it and none of them may reach
+ * into the store for a second copy of it.
+ */
+interface SettingsRow {
+  id: string;
+  render: (profile: Profile) => JSX.Element;
+}
+
+const SETTINGS_ROWS: readonly SettingsRow[] = [
+  // P2 Task 9 appends the readiness row here.
+];
+
+/**
+ * A numeric setting that writes through to the store only while what is typed is valid.
+ *
+ * The text is local for the length of the edit, because a controlled input fed straight from
+ * the store cannot be cleared: deleting the last character produces "", the store refuses it,
+ * and the old value snaps back under the cursor. The commit therefore happens on every
+ * keystroke that parses AND validates, and an invalid entry leaves the stored value alone and
+ * says why.
+ *
+ * The caller remounts this with `key={profile.units}` so a change of display unit re-seeds the
+ * text from the store rather than reinterpreting a kilogram figure as pounds.
+ */
+function NumberSetting(props: {
+  id: string;
+  quantity: string;
+  unit: string;
+  initial: string;
+  /** null when the value is acceptable; otherwise the message to show beside the field. */
+  validate: (value: number | null) => string | null;
+  commit: (value: number) => void;
+}): JSX.Element {
+  const [text, setText] = useState(props.initial);
+  return (
+    <UnitInput
+      id={props.id}
+      quantity={props.quantity}
+      unit={props.unit}
+      value={text}
+      error={props.validate(parseDecimal(text))}
+      onChange={(next) => {
+        setText(next);
+        const parsed = parseDecimal(next);
+        if (parsed !== null && props.validate(parsed) === null) props.commit(parsed);
+      }}
+    />
+  );
+}
+
+/**
+ * Profile editing.
+ *
+ * Targets are derived and never stored (master plan section 6.3), so every change here
+ * recomputes them on the next render of the targets view: there is no recalculate control to
+ * forget to press, and no second copy of a number to go stale.
+ *
+ * Numeric fields are validated against the schema that will have to read them back rather
+ * than against bounds restated here. The one persisted document is the thing at risk: a value
+ * this screen accepts and the loader later refuses would cost the user the whole document.
+ */
+export function SettingsView(): JSX.Element {
+  const profile = useActiveProfile();
+  const profiles = useAppStore((s) => s.profiles);
+
+  if (profile === null) return <p>{copy('advice.noProfileSetupFirst')}</p>;
+
+  // Actions are read through getState() rather than subscribed to: they are created once and
+  // never replaced, so a subscription only adds an unbound method to the render.
+  const updateProfile = (patch: Partial<Profile>): void => {
+    useAppStore.getState().updateProfile(profile.id, patch);
+  };
+
+  const units = profile.units;
+  const profileIds = Object.keys(profiles);
+
+  /** Reject what the schema would reject, in the same words for every numeric field. */
+  const stepError = (value: number | null): string | null => {
+    if (value === null) return copy('error.valueRequired');
+    if (!(value > 0)) return copy('error.positive');
+    const patched = { ...profile.equipmentSteps, barbellKg: toStoredLoad(value, units) }; // [kg]
+    return ProfileSchema.shape.equipmentSteps.safeParse(patched).success
+      ? null
+      : copy('error.outsideAccepted');
+  };
+
+  const fluidError = (value: number | null): string | null => {
+    if (value === null) return copy('error.valueRequired');
+    // A zero or negative daily target is a broken DENOMINATOR, not a preference: P4 renders
+    // hydration as volume/target. updateProfile throws on it, so it is caught here first.
+    if (!(value > 0)) return copy('error.positive');
+    const patched = { ...profile.hydration, dailyTargetML: value }; // [mL/day]
+    return ProfileSchema.shape.hydration.safeParse(patched).success
+      ? null
+      : copy('error.outsideAccepted');
+  };
+
+  return (
+    <section className="view">
+      <h2>{copy('hero.profile')}</h2>
+
+      {profileIds.length > 1 && (
+        <div className="view-field">
+          <label htmlFor="settings-active-profile">{copy('label.activeProfile')}</label>
+          <select
+            id="settings-active-profile"
+            value={profile.id}
+            onChange={(e) => {
+              useAppStore.getState().setActiveProfile(e.target.value);
+            }}
+          >
+            {profileIds.map((id) => (
+              <option key={id} value={id}>
+                {profiles[id]?.displayName ?? id}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      <div className="view-field">
+        <label htmlFor="settings-units">{copy('label.displayUnit')}</label>
+        <select
+          id="settings-units"
+          value={units}
+          onChange={(e) => {
+            // Display only. Storage stays canonical kg and mL (master plan section 3), so this
+            // changes what is shown and never what is held.
+            const next: UnitSystem = e.target.value === 'imperial' ? 'imperial' : 'metric';
+            updateProfile({ units: next });
+          }}
+        >
+          <option value="metric">{copy('label.unitsMetric')}</option>
+          <option value="imperial">{copy('label.unitsImperial')}</option>
+        </select>
+      </div>
+      <p className="view-note">{copy('advice.storedUnitsUnchanged')}</p>
+
+      <div className="view-field">
+        <label htmlFor="settings-activity">{copy('label.activity')}</label>
+        <select
+          id="settings-activity"
+          value={profile.activity}
+          onChange={(e) => {
+            const next = ACTIVITY_OPTIONS.find((o) => o.value === e.target.value);
+            if (next !== undefined) updateProfile({ activity: next.value });
+          }}
+        >
+          {ACTIVITY_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="view-field">
+        <label htmlFor="settings-experience">{copy('label.experience')}</label>
+        <select
+          id="settings-experience"
+          value={profile.experience}
+          onChange={(e) => {
+            const next = EXPERIENCE_OPTIONS.find((o) => o.value === e.target.value);
+            if (next !== undefined) updateProfile({ experience: next.value });
+          }}
+        >
+          {EXPERIENCE_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="view-field">
+        <label htmlFor="settings-goal">{copy('label.goal')}</label>
+        <select
+          id="settings-goal"
+          value={profile.goal.kind}
+          onChange={(e) => {
+            const next = GOAL_OPTIONS.find((o) => o.value === e.target.value);
+            // The whole sub-object: updateProfile merges shallowly by contract.
+            if (next !== undefined) {
+              updateProfile({ goal: { ...profile.goal, kind: next.value } });
+            }
+          }}
+        >
+          {GOAL_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <label className="view-inline">
+        <input
+          type="checkbox"
+          checked={profile.supplements.creatine}
+          onChange={(e) => {
+            updateProfile({ supplements: { creatine: e.target.checked } });
+          }}
+        />
+        {copy('label.creatine')}
+      </label>
+      <p className="view-note">{copy('advice.creatineOnly')}</p>
+
+      <h2>{copy('hero.equipmentSteps')}</h2>
+      <NumberSetting
+        key={`barbell-${units}`}
+        id="settings-barbell-step"
+        quantity={copy('quantity.barbellStep')}
+        unit={loadUnit(units)}
+        initial={String(displayLoad(profile.equipmentSteps.barbellKg, units))}
+        validate={stepError}
+        commit={(value) => {
+          updateProfile({
+            equipmentSteps: {
+              ...profile.equipmentSteps,
+              barbellKg: toStoredLoad(value, units), // [kg] total on the bar, exact conversion
+            },
+          });
+        }}
+      />
+      <label className="view-inline">
+        <input
+          type="checkbox"
+          checked={profile.equipmentSteps.hasMicroPlates}
+          onChange={(e) => {
+            updateProfile({
+              equipmentSteps: { ...profile.equipmentSteps, hasMicroPlates: e.target.checked },
+            });
+          }}
+        />
+        {copy('label.microPlates')}
+      </label>
+      <p className="view-note">{copy('advice.loadSteps')}</p>
+
+      <h2>{copy('hero.hydration')}</h2>
+      <NumberSetting
+        key="fluid"
+        id="settings-fluid-target"
+        quantity={copy('quantity.dailyBeverageTarget')}
+        /* Entered and stored in mL either way: the canonical volume unit has no display form
+           in this field, because a fractional fluid ounce would round on every keystroke. */
+        unit="mL"
+        initial={String(profile.hydration.dailyTargetML)}
+        validate={fluidError}
+        commit={(value) => {
+          updateProfile({
+            hydration: { ...profile.hydration, dailyTargetML: value }, // [mL/day]
+          });
+        }}
+      />
+      <p className="view-note">
+        {FORMAT.beverageDefault(formatVolume(dailyBeverageTargetML(profile.body.sex), units))}
+      </p>
+      {/* R9: the derivation of that default, and what it deliberately excludes. */}
+      <details>
+        <summary>{copy('disclosure.why')}</summary>
+        <p className="view-note">{copy('why.beverageDefault')}</p>
+      </details>
+
+      {SETTINGS_ROWS.map((row) => (
+        <Fragment key={row.id}>{row.render(profile)}</Fragment>
+      ))}
+    </section>
+  );
+}

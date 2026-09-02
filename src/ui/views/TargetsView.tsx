@@ -1,0 +1,226 @@
+import { useMemo, useState, type JSX } from 'react';
+import { AsciiBar } from '../components/AsciiBar';
+import { massUnit, parseDecimal } from '../components/UnitInput';
+import { FORMAT, copy } from '../../content/copy';
+import { todayLocal } from '../../domain/dates';
+import type { NutritionTargets } from '../../domain/nutrition';
+import { volumeReport } from '../../domain/plan/generator';
+import { EXERCISES } from '../../domain/plan/library';
+import { IntakeEntrySchema } from '../../domain/schema';
+import type { IntakeEntry, Profile } from '../../domain/types';
+import { displayMass, formatVolume } from '../../domain/units';
+import { useAppStore } from '../../store';
+import {
+  useActivePlan,
+  useActiveProfile,
+  useIntakeForDate,
+  useNutritionTargets,
+} from '../../store/selectors';
+import './views.css';
+
+/**
+ * Display name of each RMR equation. A proper noun, not skin copy, which is why it is not a
+ * CopyKey. SetupWizard.tsx holds an identical private map for its review screen: neither file
+ * may reach into the other, and these are citations rather than sentences, so they cannot
+ * drift in meaning the way a phrasing could.
+ */
+const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
+  'mifflin-st-jeor': 'Mifflin-St Jeor',
+  cunningham: 'Cunningham',
+};
+
+/** "-0.6 kg/week", or the honest statement that the evidence base gives no rate. */
+function rateText(targets: NutritionTargets, profile: Profile): string {
+  if (targets.expectedRateKgPerWeek === null) return copy('status.rateUnknown');
+  // Sign convention: negative = mass loss. displayMass rounds to 0.1 in the display unit.
+  return FORMAT.signedRate(
+    displayMass(targets.expectedRateKgPerWeek, profile.units),
+    massUnit(profile.units),
+  );
+}
+
+/**
+ * The daily targets, and the one screen that writes against them.
+ *
+ * Every number here is DERIVED, never stored: `useNutritionTargets` recomputes it from the
+ * profile and the latest body-mass entry on every render, so an edit in Settings or a new
+ * weigh-in moves these figures with no recalculate control to forget (master plan section 6.3).
+ *
+ * Copy contract R9: the arithmetic that produced them is not inline. It sits behind the one
+ * `why?` disclosure, and the intermediate quantities (RMR, TDEE) sit there with it, because
+ * the user acts on the target and not on its inputs.
+ */
+export function TargetsView(): JSX.Element {
+  const profile = useActiveProfile();
+  const targets = useNutritionTargets();
+  const plan = useActivePlan();
+
+  // "" only while there is no profile, in which case nothing below is rendered. Reading the
+  // civil date in the profile's own zone is what makes "today" mean the user's today.
+  const today = profile === null ? '' : todayLocal(profile.timezone);
+  const existing = useIntakeForDate(today);
+
+  // Held as typed, not as a number: rounding the string through Number on every keystroke
+  // makes an in-progress "1." unenterable. Seeded from today's stored entry, so a correction
+  // edits what is already recorded instead of starting blank and replacing it with less.
+  const [kcalText, setKcalText] = useState(existing === null ? '' : String(existing.kcal));
+  const [proteinText, setProteinText] = useState(
+    existing === null ? '' : String(existing.proteinG),
+  );
+  const [rejected, setRejected] = useState(false);
+
+  // Memoised on the plan object, which setPlan replaces wholesale, so the weekly set counts
+  // are recomputed when the plan changes and not on every keystroke in the check-in form.
+  const volume = useMemo(() => (plan === null ? null : volumeReport(plan, EXERCISES)), [plan]);
+
+  if (profile === null || targets === null) return <p>{copy('advice.noProfileSetupFirst')}</p>;
+
+  const kcal = parseDecimal(kcalText) ?? 0; // [kcal/day]
+  const proteinG = parseDecimal(proteinText) ?? 0; // [g/day]
+
+  const record = (): void => {
+    const entry: IntakeEntry = {
+      profileId: profile.id,
+      date: today,
+      kcal, // [kcal/day]
+      proteinG, // [g/day]
+    };
+    /*
+     * Validated against the schema that will have to read it back, not against bounds
+     * repeated here. A daily total outside those bounds is not a display problem: it goes
+     * into the single persisted document, and the next hydrate() would refuse that whole
+     * document over it. Refusing the entry costs the user one correction; accepting it costs
+     * them every record they have.
+     */
+    if (!IntakeEntrySchema.safeParse(entry).success) {
+      setRejected(true);
+      return;
+    }
+    setRejected(false);
+    // Actions are read through getState() rather than subscribed to: they are created once
+    // and never replaced, so a subscription only adds an unbound method to the render.
+    useAppStore.getState().logIntake(profile.id, entry);
+  };
+
+  return (
+    <section className="view">
+      <h2>{copy('hero.dailyTargets')}</h2>
+      <dl className="view-dl">
+        <dt>{copy('label.energy')}</dt>
+        <dd data-testid="target-kcal">{FORMAT.kcal(targets.targetKcal)}</dd>
+        <dt>{copy('label.protein')}</dt>
+        <dd data-testid="target-protein">
+          {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
+        </dd>
+        <dt>{copy('label.fluid')}</dt>
+        <dd data-testid="target-fluid">{formatVolume(targets.fluidML, profile.units)}</dd>
+        <dt>{copy('label.expectedRate')}</dt>
+        <dd data-testid="target-rate">{rateText(targets, profile)}</dd>
+        <dt>{copy('label.creatineDose')}</dt>
+        <dd data-testid="target-creatine">
+          {targets.creatineG === null ? copy('label.none') : FORMAT.grams(targets.creatineG)}
+        </dd>
+      </dl>
+
+      {/* R9: the derivation, and the intermediate quantities it passes through. */}
+      <details data-testid="basis">
+        <summary>{copy('disclosure.why')}</summary>
+        <div className="view-note">
+          <dl className="view-dl">
+            <dt>{copy('label.rmr')}</dt>
+            <dd>{FORMAT.kcal(targets.rmrKcal)}</dd>
+            <dt>{copy('label.tdee')}</dt>
+            <dd>{FORMAT.kcal(targets.tdeeKcal)}</dd>
+          </dl>
+          <p>
+            {FORMAT.rmrBasis(RMR_EQUATION_NAME[targets.basis.rmr], targets.basis.activityFactor)}
+          </p>
+          <p>{targets.basis.proteinRule}</p>
+          <p>{targets.basis.deficitRule}</p>
+          <p>{targets.basis.rateRule}</p>
+          <p>{copy('why.beverageDefault')}</p>
+        </div>
+      </details>
+
+      <h2>{FORMAT.headingWithDate(copy('hero.intakeCheckIn'), today)}</h2>
+      <div className="view-field">
+        <label htmlFor="intake-kcal">
+          {FORMAT.quantityWithUnit(copy('quantity.energyIntake'), 'kcal')}
+        </label>
+        <input
+          id="intake-kcal"
+          type="number"
+          /* A daily total is a whole count, so "numeric" (a keypad with no decimal key). */
+          inputMode="numeric"
+          step="1"
+          min="0"
+          value={kcalText}
+          onChange={(e) => {
+            setKcalText(e.target.value);
+          }}
+        />
+      </div>
+      <div className="view-field">
+        <label htmlFor="intake-protein">
+          {FORMAT.quantityWithUnit(copy('quantity.proteinIntake'), 'g')}
+        </label>
+        <input
+          id="intake-protein"
+          type="number"
+          inputMode="numeric"
+          step="1"
+          min="0"
+          value={proteinText}
+          onChange={(e) => {
+            setProteinText(e.target.value);
+          }}
+        />
+      </div>
+      {rejected && (
+        <p className="view-error" data-testid="intake-error">
+          {copy('advice.intakeRejected')}
+        </p>
+      )}
+      <button type="button" onClick={record}>
+        {copy('button.recordIntake')}
+      </button>
+
+      <p className="view-progress">
+        <AsciiBar
+          value={kcal}
+          target={targets.targetKcal}
+          label={copy('label.energyProgress')}
+          testId="kcal-bar"
+        />{' '}
+        <span data-testid="kcal-progress">
+          {FORMAT.valueOfTarget(String(kcal), FORMAT.kcal(targets.targetKcal))}
+        </span>
+      </p>
+      <p className="view-progress">
+        {/*
+         * The denominator is the LOWER bound of the protein range, not its middle or its top.
+         * The range is a floor with headroom above it, so the bar answers "is the requirement
+         * met", and the read-out beside it carries the whole range.
+         */}
+        <AsciiBar
+          value={proteinG}
+          target={targets.proteinG.lo}
+          label={copy('label.proteinProgress')}
+          testId="protein-bar"
+        />{' '}
+        <span data-testid="protein-progress">
+          {FORMAT.valueOfTarget(
+            String(proteinG),
+            FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi),
+          )}
+        </span>
+      </p>
+
+      {volume !== null && (
+        <p className="view-note" data-testid="maintenance-only">
+          {FORMAT.muscleList(copy('label.maintenanceOnly'), volume.maintenance, copy('label.none'))}
+        </p>
+      )}
+    </section>
+  );
+}
