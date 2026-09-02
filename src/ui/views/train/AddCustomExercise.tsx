@@ -8,13 +8,29 @@
 // session-local half - "this exercise is on today's card" - is the session slice's
 // bonusExerciseIds, which is mirrored to sessionStorage and dropped when the session ends.
 import { useState, type ReactElement } from 'react';
-import { FORMAT } from '../../../content/copy';
+import { FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy } from '../../../content/useCopy';
 import { newId } from '../../../domain/ids';
 import { EXERCISE_NAME_MAX_CHARS } from '../../../domain/schema';
 import type { Exercise, Modality, Profile } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import '../../styles/train.css';
+
+/**
+ * One copy key per `Modality` member, in the order the select offers them.
+ *
+ * Exhaustive by type, so a sixth modality added to the union in src/domain/types.ts fails to
+ * compile here rather than rendering its own identifier in the list. `MODALITIES` below is the
+ * DISPLAY ORDER, which a Record cannot express; the two are kept together so the pairing is one
+ * edit and not two.
+ */
+const MODALITY_KEY: Record<Modality, CopyKey> = {
+  barbell: 'label.modality.barbell',
+  dumbbell: 'label.modality.dumbbell',
+  machine: 'label.modality.machine',
+  cable: 'label.modality.cable',
+  bodyweight: 'label.modality.bodyweight',
+};
 
 const MODALITIES: readonly Modality[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight'];
 
@@ -48,7 +64,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
           c('quantity.exerciseName'),
           1, // [characters] ExerciseSchema.name minimum
           EXERCISE_NAME_MAX_CHARS, // [characters]
-          'characters',
+          c('unit.characters'),
         ),
       );
       return;
@@ -145,8 +161,10 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
           }}
         >
           {MODALITIES.map((m) => (
+            // The value is the enum `Exercise.modality` persists; the label is copy. Rendering
+            // the member as its own label made the model's identifiers user-facing text.
             <option key={m} value={m}>
-              {m}
+              {c(MODALITY_KEY[m])}
             </option>
           ))}
         </select>

@@ -10,7 +10,8 @@
 // slipping in unnoticed.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { copy, copyFor } from '../../../content/copy';
+import { FORMAT, copy, copyFor } from '../../../content/copy';
+import { EXERCISE_NAME_MAX_CHARS } from '../../../domain/schema';
 import type { SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import { makeAppState, makeProfile, makeUiPrefs } from '../../../test/funFixtures';
@@ -39,6 +40,41 @@ describe('AddCustomExercise: the clinical words', () => {
     fireEvent.click(screen.getByRole('button', { name: copy('button.addExercise') }));
     expect(screen.getByLabelText(copy('quantity.exerciseName'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy('button.saveExercise') })).toBeInTheDocument();
+  });
+
+  it('names each modality option from the table while the value stays the enum', () => {
+    /*
+     * P8 close-out D. The options used to render the `Modality` union member itself, so the
+     * select read "barbell / dumbbell / machine / cable / bodyweight" in the model's own
+     * lower-case identifiers, in every skin, and no table could reach them.
+     *
+     * The two halves are asserted separately on purpose: the LABEL is copy and moves with the
+     * table, and the VALUE is the enum the store persists on Exercise.modality and must not.
+     */
+    openForm('clinical');
+    const option = screen.getByRole('option', { name: copy('label.modality.barbell') });
+    expect(option).toBeInTheDocument();
+    expect(option).toHaveValue('barbell');
+  });
+
+  it('names the length unit in the refusal rather than baking the word in', () => {
+    // The bound is ExerciseSchema.name's own; the unit word beside it is `unit.characters`,
+    // which was a bare 'characters' passed to the frame from this file (P8 close-out D).
+    openForm('clinical');
+    const field = screen.getByLabelText(copy('quantity.exerciseName'));
+    fireEvent.change(field, { target: { value: '  ' } });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+
+    expect(
+      screen.getByText(
+        FORMAT.outOfRange(
+          copy('quantity.exerciseName'),
+          1, // [characters] ExerciseSchema.name minimum
+          EXERCISE_NAME_MAX_CHARS, // [characters]
+          copy('unit.characters'),
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 });
 
