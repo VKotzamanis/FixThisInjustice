@@ -9,6 +9,7 @@ import {
   useLoadError,
   useSaveError,
 } from '../store/selectors';
+import { SetupWizard } from '../ui/setup/SetupWizard';
 import { downloadText } from './download';
 import { UpdatePrompt } from './UpdatePrompt';
 import './appShell.css';
@@ -194,10 +195,9 @@ export function App(): ReactElement {
         <LoadErrorBanner />
 
         {profile === null ? (
-          <section className="placeholder">
-            <h2>No profile yet</h2>
-            <p>Setup is not built yet.</p>
-          </section>
+          // No profile means setup has not run. The wizard is the whole screen until it has:
+          // every other view needs a profile to read units, time zone and targets from.
+          <SetupWizard />
         ) : (
           <section className="placeholder">
             <h2>{profile.displayName}</h2>
