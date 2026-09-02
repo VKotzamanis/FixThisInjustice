@@ -2,12 +2,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import raw from '../../domain/migrations/fixtures/v2-sample.json';
-import { copy } from '../../content/copy';
+import { FORMAT, copy } from '../../content/copy';
 import { makeBlankState } from '../../test/migrationFactories';
 import { cancelPendingSave, useAppStore } from '../../store';
 import { LEGACY_V2_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
 import { MigrationGate } from './MigrationGate';
+
+// jsdom has no URL.createObjectURL, so the delete step's backup control is exercised through
+// the same seam App.test.tsx uses.
+vi.mock('../../app/download', () => ({ downloadText: vi.fn() }));
 
 const LEGACY_JSON = JSON.stringify(raw);
 
@@ -82,7 +86,7 @@ describe('MigrationGate', () => {
     render(<MigrationGate />);
     fireEvent.click(screen.getByLabelText(copy('label.legacyUnitKg')));
     fireEvent.click(screen.getByRole('button', { name: copy('button.legacyPreview') }));
-    fireEvent.change(screen.getByLabelText(copy('label.legacyConfirm')), {
+    fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm('IMPORT')), {
       target: { value: 'IMPORT' },
     });
     fireEvent.click(screen.getByRole('button', { name: copy('button.legacyApply') }));
@@ -108,5 +112,40 @@ describe('MigrationGate', () => {
       useAppStore.getState().setUi({ legacyMigration: 'pending' });
     });
     expect(heading(copy('hero.legacyImport'))).toBeTruthy();
+  });
+  /*
+   * Code review finding 8. The gate used to read the legacy text once, in a useState
+   * initialiser, and hold it for its own lifetime. The document does change under a long-lived
+   * gate: the wizard's own delete step removes it, and Settings can then put the decision back
+   * to 'pending'. The cached string would hand the wizard a document that is no longer on the
+   * device, and it would offer to import data the user has already destroyed.
+   */
+  it('renders nothing when the offer is re-opened after the legacy data was deleted', () => {
+    const data = seed(LEGACY_JSON);
+    const { container } = render(<MigrationGate />);
+
+    // Import, then take the gated delete: backup, the word, the confirmation.
+    fireEvent.click(screen.getByLabelText(copy('label.legacyUnitKg')));
+    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyPreview') }));
+    fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm('IMPORT')), {
+      target: { value: 'IMPORT' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyApply') }));
+    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyDeleteOld') }));
+    fireEvent.click(screen.getByRole('button', { name: copy('button.downloadLegacyJson') }));
+    fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm('DELETE')), {
+      target: { value: 'DELETE' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyDeleteOld') }));
+    expect(data.get(LEGACY_V2_KEY)).toBeUndefined();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyClose') }));
+    expect(container).toBeEmptyDOMElement();
+
+    // Settings puts the decision back to 'pending'. There is nothing left to import.
+    act(() => {
+      useAppStore.getState().setUi({ legacyMigration: 'pending' });
+    });
+    expect(container).toBeEmptyDOMElement();
   });
 });

@@ -1,0 +1,84 @@
+/*
+ * The typed-confirmation panel (src/ui/components/ConfirmDestructive.tsx).
+ *
+ * Self-contained rather than borrowing the .view-* helpers in views.css: the component is
+ * shared, and its two hosts are a migration panel and a Settings disclosure. A rule that only
+ * applies inside an ancestor .view would leave it unstyled in the third place it is used.
+ *
+ * The two numbers are the ones the master plan (section 3) treats as requirements: font-size
+ * 16px on the text field, because mobile Safari zooms the viewport for anything smaller and
+ * does not zoom back, and min-height 2.75rem = 44 px at a 16 px root on every tap target.
+ * Every custom property carries a literal fallback, so the panel renders whether or not the P1
+ * token sheet is loaded.
+ */
+.confirm-destructive {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0.75rem;
+  border: 1px solid var(--warn, #fbbf24);
+  background: var(--bg-2, #13161a);
+}
+
+.confirm-destructive button {
+  min-height: 2.75rem; /* 44 px at a 16 px root */
+  padding: 0 0.75rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  font: inherit;
+  font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.confirm-destructive button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.confirm-destructive button.destructive {
+  border-color: var(--danger, #f87171);
+  color: var(--danger, #f87171);
+}
+
+/* The gate, stated before it is met, and the acknowledgement once it is. */
+.confirm-destructive .confirm-destructive-note {
+  margin: 0;
+  color: var(--text-2, #8e97a3);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.confirm-destructive .confirm-destructive-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.confirm-destructive .confirm-destructive-field > label {
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: var(--text-2, #8e97a3);
+}
+
+.confirm-destructive .confirm-destructive-field > input {
+  min-height: 2.75rem; /* 44 px */
+  padding: 0 0.5rem;
+  color: var(--text, #dde3ea);
+  background: var(--bg, #0a0b0c);
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 16px; /* absolute, for the same reason as the buttons above */
+}
+
+/*
+ * Stacked, phone first, and the destructive control is first in the DOM so it keeps its
+ * reading order; nothing here reverses it visually.
+ */
+.confirm-destructive .confirm-destructive-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

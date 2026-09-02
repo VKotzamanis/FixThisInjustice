@@ -7,9 +7,31 @@ import { migrateV2 } from '../../domain/migrations/v2';
 import type { MigrationReport } from '../../domain/migrations/v2';
 import { makeBlankState, makePlan, makeProfile } from '../../test/migrationFactories';
 import { cancelPendingSave, useAppStore } from '../../store';
-import { LEGACY_V2_KEY, STORAGE_KEY } from '../../store/persistence';
-import { installFakeStorage } from '../../store/testStorage';
+import { LEGACY_V2_KEY, STORAGE_KEY, deleteLegacyV2 } from '../../store/persistence';
+import { downloadText } from '../../app/download';
+import {
+  domExceptionWithCode,
+  installFakeStorage,
+  makeStorageFull,
+} from '../../store/testStorage';
 import { MigrationWizard } from './MigrationWizard';
+
+/*
+ * jsdom implements neither URL.createObjectURL nor a download, so the real downloadText
+ * throws. The same seam App.test.tsx uses.
+ */
+vi.mock('../../app/download', () => ({ downloadText: vi.fn() }));
+
+/*
+ * persistence is spied on, not replaced: the store reads and writes through the same module,
+ * and a stub would take the document with it. Only deleteLegacyV2 is wrapped, and it still
+ * calls through, so "called once" and "the keys are gone" are both real assertions about the
+ * same call.
+ */
+vi.mock('../../store/persistence', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../store/persistence')>();
+  return { ...actual, deleteLegacyV2: vi.fn(actual.deleteLegacyV2) };
+});
 
 /**
  * The wizard is handed the legacy document as TEXT, exactly as persistence.ts reads it, so the
@@ -28,6 +50,7 @@ const LEGACY_JSON = JSON.stringify(raw);
 const LEGACY_PAYLOAD: unknown = JSON.parse(LEGACY_JSON);
 
 const CONFIRMATION_WORD = 'IMPORT';
+const DELETE_WORD = 'DELETE';
 
 /**
  * The report the migration actually produces for the fixture under the answers these tests
@@ -98,9 +121,26 @@ function preview(unit: 'kg' | 'lb' = 'kg'): void {
   fireEvent.click(button(copy('button.legacyPreview')));
 }
 
+/** Open the delete panel from the applied phase. */
+function openDelete(): void {
+  fireEvent.click(button(copy('button.legacyDeleteOld')));
+}
+
+/** Download the legacy backup, which is the first of the delete step's two gates. */
+function takeBackup(): void {
+  fireEvent.click(button(copy('button.downloadLegacyJson')));
+}
+
+/** Type into the delete panel's confirmation field. */
+function typeDeleteWord(value: string): void {
+  fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm(DELETE_WORD)), {
+    target: { value },
+  });
+}
+
 /** Type the confirmation word and commit. */
 function apply(): void {
-  fireEvent.change(screen.getByLabelText(copy('label.legacyConfirm')), {
+  fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm(CONFIRMATION_WORD)), {
     target: { value: CONFIRMATION_WORD },
   });
   fireEvent.click(button(copy('button.legacyApply')));
@@ -109,6 +149,9 @@ function apply(): void {
 let storage: Map<string, string>;
 
 beforeEach(() => {
+  // The module mocks above are vi.fn()s, not spies: vitest.config.ts's restoreMocks restores
+  // spies after each test and leaves their call history in place, so it is cleared here.
+  vi.clearAllMocks();
   storage = seed();
 });
 
@@ -126,13 +169,13 @@ describe('MigrationWizard: the explanation', () => {
     expect(screen.getByText(copy('advice.legacyFound'))).toBeTruthy();
     expect(screen.getByText(copy('advice.legacyNothingDeleted'))).toBeTruthy();
     expect(screen.getByText(copy('disclosure.whatTransfers'))).toBeTruthy();
-    expect(screen.getByText(copy('advice.legacyTransfers'))).toBeTruthy();
+    expect(screen.getByText(copy('disclosure.legacyTransfers'))).toBeTruthy();
   });
 
   it('shows the body-mass unit as an assumption, with the evidence for it', () => {
     renderWizard();
     expect(screen.getByText(FORMAT.legacyBodyMassAssumed('lb'))).toBeTruthy();
-    expect(screen.getByText(copy('advice.legacyBodyMassEvidence'))).toBeTruthy();
+    expect(screen.getByText(copy('disclosure.legacyBodyMassEvidence'))).toBeTruthy();
   });
 
   it('refuses to preview until the load unit has been answered', () => {
@@ -179,7 +222,7 @@ describe('MigrationWizard: the preview', () => {
   it('holds the apply until the confirmation word is typed exactly', () => {
     renderWizard();
     preview('kg');
-    const field = screen.getByLabelText(copy('label.legacyConfirm'));
+    const field = screen.getByLabelText(FORMAT.typeToConfirm(CONFIRMATION_WORD));
     expect(button(copy('button.legacyApply'))).toBeDisabled();
     fireEvent.change(field, { target: { value: 'import' } });
     expect(button(copy('button.legacyApply'))).toBeDisabled();
@@ -221,6 +264,9 @@ describe('MigrationWizard: applying', () => {
     apply();
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
     expect(screen.getByText(copy('advice.legacyStored'))).toBeTruthy();
+    openDelete();
+    takeBackup();
+    typeDeleteWord(DELETE_WORD);
     fireEvent.click(button(copy('button.legacyDeleteOld')));
     expect(storage.get(LEGACY_V2_KEY)).toBeUndefined();
     expect(screen.getByText(copy('advice.legacyOldDataDeleted'))).toBeTruthy();
@@ -284,5 +330,163 @@ describe('MigrationWizard: refusal and dismissal', () => {
     fireEvent.click(button(copy('button.legacyDismiss')));
     expect(useAppStore.getState().ui.legacyMigration).toBe('dismissed');
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
+  });
+});
+
+describe('MigrationWizard: the panel itself', () => {
+  /*
+   * Code review finding 4. The wizard appears over a screen the user was already reading, so
+   * without this the caret stays on a control the panel now covers and a keyboard or
+   * screen-reader user is told nothing. The recovery screen already moves focus for the same
+   * reason (src/app/RootErrorBoundary.tsx).
+   */
+  it('takes focus when it appears', () => {
+    renderWizard();
+    const region = screen.getByRole('region', { name: copy('hero.legacyImport') });
+    expect(document.activeElement).toBe(region);
+  });
+
+  it('announces the applied phase politely from a region that was already there', () => {
+    renderWizard();
+    preview('kg');
+    apply();
+    const line = screen.getByText(copy('advice.legacyStored'));
+    const live = line.closest('[aria-live]');
+    expect(live).not.toBeNull();
+    expect(live?.getAttribute('aria-live')).toBe('polite');
+    // The outcome of the delete lands in the SAME region, so it is announced too.
+    openDelete();
+    takeBackup();
+    typeDeleteWord(DELETE_WORD);
+    fireEvent.click(button(copy('button.legacyDeleteOld')));
+    expect(screen.getByText(copy('advice.legacyOldDataDeleted')).closest('[aria-live]')).toBe(live);
+  });
+});
+
+describe('MigrationWizard: the delete is gated', () => {
+  /*
+   * Code review finding 1. The delete removed all three legacy keys on one click. It is a
+   * destructive action, so the master plan (section 3) puts two gates on it: the untouched
+   * legacy text downloaded from this panel, then the word typed exactly.
+   */
+  function reachDeletePanel(): void {
+    renderWizard();
+    preview('kg');
+    apply();
+    openDelete();
+  }
+
+  it('holds the delete before the backup has been downloaded', () => {
+    reachDeletePanel();
+    typeDeleteWord(DELETE_WORD);
+    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+    expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
+  });
+
+  it('holds the delete after the backup when the word does not match', () => {
+    reachDeletePanel();
+    takeBackup();
+    typeDeleteWord('delete');
+    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+  });
+
+  it('releases the delete once the backup is taken and the word matches exactly', () => {
+    reachDeletePanel();
+    takeBackup();
+    typeDeleteWord(DELETE_WORD);
+    expect(button(copy('button.legacyDeleteOld'))).toBeEnabled();
+  });
+
+  it('exports the untouched legacy text, not the migrated document', () => {
+    reachDeletePanel();
+    takeBackup();
+    expect(downloadText).toHaveBeenCalledTimes(1);
+    expect(downloadText).toHaveBeenCalledWith('fixthisinjustice-legacy-v2.json', LEGACY_JSON);
+  });
+
+  it('removes the legacy keys once, on the confirmation', () => {
+    reachDeletePanel();
+    takeBackup();
+    typeDeleteWord(DELETE_WORD);
+    fireEvent.click(button(copy('button.legacyDeleteOld')));
+    expect(deleteLegacyV2).toHaveBeenCalledTimes(1);
+    expect(storage.get(LEGACY_V2_KEY)).toBeUndefined();
+  });
+
+  it('keeps every legacy key when the panel is cancelled', () => {
+    reachDeletePanel();
+    takeBackup();
+    typeDeleteWord(DELETE_WORD);
+    fireEvent.click(button(copy('button.cancel')));
+    expect(deleteLegacyV2).not.toHaveBeenCalled();
+    expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
+    // The offer is still there: cancelling backs out of the confirmation, it decides nothing.
+    expect(button(copy('button.legacyDeleteOld'))).toBeTruthy();
+    expect(button(copy('button.legacyKeepOld'))).toBeTruthy();
+  });
+
+  it('asks for the backup again after a cancel', () => {
+    reachDeletePanel();
+    takeBackup();
+    fireEvent.click(button(copy('button.cancel')));
+    openDelete();
+    typeDeleteWord(DELETE_WORD);
+    // The export is a fact about the open panel, not about the session.
+    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+  });
+});
+
+describe('MigrationWizard: the decision follows the write', () => {
+  /*
+   * Code review finding 7. applyMigration stamps ui.legacyMigration = 'done' into the document
+   * it returns, so the decision used to be recorded whether or not anything was written. It
+   * closes the offer permanently, so a failed save would have taken the import and the offer
+   * with it.
+   */
+  it('leaves the decision pending when the save failed', () => {
+    renderWizard();
+    preview('kg');
+    makeStorageFull(domExceptionWithCode('QuotaExceededError', 22));
+    apply();
+    expect(useAppStore.getState().status.lastSaveError).not.toBeNull();
+    expect(useAppStore.getState().ui.legacyMigration).toBe('pending');
+    expect(screen.getByText(copy('advice.legacyStoreUnconfirmed'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copy('button.legacyDeleteOld') })).toBeNull();
+  });
+
+  it('leaves the decision pending when the store refused to write at all', () => {
+    useAppStore.setState({ status: { ...useAppStore.getState().status, hydrated: false } });
+    renderWizard();
+    preview('kg');
+    apply();
+    expect(useAppStore.getState().ui.legacyMigration).toBe('pending');
+  });
+});
+
+describe('FORMAT: the migration counts', () => {
+  /*
+   * Code review finding 6. "1 sets" in a preview a user is reading before an irreversible
+   * import invites doubt about every other number on the screen. The pattern is the one
+   * FORMAT.sessionSummary already uses.
+   */
+  it('singularises each count at one', () => {
+    expect(FORMAT.legacySets(1)).toBe('1 set');
+    expect(FORMAT.legacySessions(1)).toBe('1 session');
+    expect(FORMAT.legacyDropped(1)).toBe('1 record not imported');
+    expect(FORMAT.legacyFallbacks(1)).toBe('1 day not matched to a session');
+  });
+
+  it('pluralises at zero and above one', () => {
+    expect(FORMAT.legacySets(0)).toBe('0 sets');
+    expect(FORMAT.legacySessions(0)).toBe('0 sessions');
+    expect(FORMAT.legacyDropped(0)).toBe('0 records not imported');
+    expect(FORMAT.legacyFallbacks(0)).toBe('0 days not matched to a session');
+    expect(FORMAT.legacySets(2)).toBe('2 sets');
+    expect(FORMAT.legacyFallbacks(3)).toBe('3 days not matched to a session');
+  });
+
+  it('names the typed word in the label that asks for it', () => {
+    expect(FORMAT.typeToConfirm('IMPORT')).toBe('Type IMPORT to confirm');
+    expect(FORMAT.typeToConfirm('DELETE')).toBe('Type DELETE to confirm');
   });
 });

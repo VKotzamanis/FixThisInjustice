@@ -22,3 +22,16 @@
   padding: 0;
   margin: 0 0 0.75rem;
 }
+
+/*
+ * The status line of the applied phase. A region, not a paragraph: it is announced politely
+ * when its content changes, and it has to be in the document before the change for that to
+ * happen, so the sentences move in and out of it rather than the region moving in and out.
+ */
+.view.migration .migration-status {
+  margin: 0 0 0.75rem;
+}
+
+.view.migration .migration-status p {
+  margin: 0 0 0.25rem;
+}

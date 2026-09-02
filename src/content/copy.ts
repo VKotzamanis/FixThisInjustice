@@ -447,15 +447,14 @@ export type CopyKey =
   | 'advice.legacyStoreUnconfirmed'
   | 'advice.legacyOldDataDeleted'
   | 'advice.legacyOldDataKept'
-  | 'advice.legacyTransfers'
-  | 'advice.legacyBodyMassEvidence'
+  | 'disclosure.legacyTransfers'
+  | 'disclosure.legacyBodyMassEvidence'
   | 'label.legacyLoadUnit'
   | 'label.legacyBodyMassUnit'
   | 'label.legacyUnitKg'
   | 'label.legacyUnitLb'
   | 'label.legacyMassUnitKg'
   | 'label.legacyMassUnitLb'
-  | 'label.legacyConfirm'
   | 'disclosure.whatTransfers'
   | 'disclosure.whatWasRefused'
   | 'disclosure.whatWasNotMatched'
@@ -465,6 +464,9 @@ export type CopyKey =
   | 'button.legacyDeleteOld'
   | 'button.legacyKeepOld'
   | 'button.legacyClose'
+  // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
+  | 'advice.exportBeforeConfirm'
+  | 'status.exportTaken'
   // --- reminders and Home Screen install (P5 Task 8; appended by that task) ---
   | 'hero.reminders'
   | 'label.remindersEnable'
@@ -1092,13 +1094,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.legacyOldDataDeleted': 'The old app data has been deleted.',
   'advice.legacyOldDataKept': 'The old app data was left in place.',
   // Disclosure bodies, exempt from R1-R4 (R9): a disclosure exists to hold what does not fit.
-  'advice.legacyTransfers':
+  'disclosure.legacyTransfers':
     'Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, ' +
     'collected specimen cards, and a sealed time capsule. Every record the import cannot read ' +
     'is listed with its reason before anything is written.',
   // The evidence behind the body-mass assumption, stated so the user can overrule it rather
   // than trust it. Three independent legacy facts, not a preference.
-  'advice.legacyBodyMassEvidence':
+  'disclosure.legacyBodyMassEvidence':
     'The old body-mass field was labelled lb, refused values outside the pound range, and its ' +
     'text export reported pounds. The load field carried no such evidence, which is why that ' +
     'unit is asked for instead of assumed.',
@@ -1110,9 +1112,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // are in the document at once, so identical labels would name two controls each.
   'label.legacyMassUnitKg': 'Kilograms (kg), body mass',
   'label.legacyMassUnitLb': 'Pounds (lb), body mass',
-  // The typed confirmation the app already uses before an irreversible write
-  // (src/app/RootErrorBoundary.tsx). Same shape: capitals, one verb.
-  'label.legacyConfirm': 'Type IMPORT to confirm',
   'disclosure.whatTransfers': 'What transfers',
   'disclosure.whatWasRefused': 'What was not imported, and why',
   'disclosure.whatWasNotMatched': 'Days not matched to a session',
@@ -1122,6 +1121,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.legacyDeleteOld': 'Delete old data',
   'button.legacyKeepOld': 'Keep old data',
   'button.legacyClose': 'Close',
+  // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
+  // The gate, stated before it is met. The word itself is not named here: FORMAT.typeToConfirm
+  // owns that sentence, so the label and the compared word cannot say different things.
+  'advice.exportBeforeConfirm': 'Download the backup before this can be confirmed.',
+  'status.exportTaken': 'Backup downloaded.',
   // --- reminders and Home Screen install (P5 Task 8) ---
   'hero.reminders': 'Reminders',
   'label.remindersEnable': 'Enable reminders',
@@ -1632,17 +1636,35 @@ export const FORMAT = {
   // Counts, never differences: the preview reports what each figure is, and the reasons sit
   // beside them in a disclosure rather than being summed into one number (R9).
 
-  /** "22 sets", one line of the migration preview. [sets] */
-  legacySets: (sets: number): string => `${sets} sets`,
+  /**
+   * "22 sets", one line of the migration preview. [sets]
+   *
+   * The four counters below singularise, in the pattern sessionSummary already uses: a preview
+   * that reports "1 sets" reads as a formatting fault, and a user weighing an irreversible
+   * import is entitled to doubt every other number on the screen once one of them is wrong.
+   */
+  legacySets: (sets: number): string => `${sets} ${sets === 1 ? 'set' : 'sets'}`,
 
   /** "7 sessions": the training sessions the import reconstructs. [sessions] */
-  legacySessions: (sessions: number): string => `${sessions} sessions`,
+  legacySessions: (sessions: number): string =>
+    `${sessions} ${sessions === 1 ? 'session' : 'sessions'}`,
 
   /** "17 records not imported". Each reason is listed behind a disclosure. */
-  legacyDropped: (records: number): string => `${records} records not imported`,
+  legacyDropped: (records: number): string =>
+    `${records} ${records === 1 ? 'record' : 'records'} not imported`,
 
   /** "3 days not matched to a session". [d] Those sets are kept under a legacy session id. */
-  legacyFallbacks: (days: number): string => `${days} days not matched to a session`,
+  legacyFallbacks: (days: number): string =>
+    `${days} ${days === 1 ? 'day' : 'days'} not matched to a session`,
+
+  /**
+   * The label above a typed-confirmation field: "Type DELETE to confirm".
+   *
+   * A frame rather than a fixed string (code review finding 3). The word is the same value
+   * ConfirmDestructive compares the typed text against, so a skin that rewrites the sentence
+   * cannot name a word the gate will not accept and leave the control permanently disabled.
+   */
+  typeToConfirm: (word: string): string => `Type ${word} to confirm`,
 
   /** One refused record: its legacy key, and the migration's own wording for the refusal. */
   legacySkip: (key: string, reason: string): string => `${key}: ${reason}`,
