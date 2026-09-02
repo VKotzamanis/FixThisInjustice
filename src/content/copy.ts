@@ -342,7 +342,10 @@ export type CopyKey =
   | 'status.readinessNoFlags'
   | 'status.readinessConsult'
   | 'button.startReadiness'
-  | 'button.redoReadiness';
+  | 'button.redoReadiness'
+  // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
+  | 'label.planPosition'
+  | 'status.planComplete';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -715,6 +718,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.readinessConsult': 'Physician consult advised.',
   'button.startReadiness': 'Start readiness screen',
   'button.redoReadiness': 'Redo readiness screen',
+  // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
+  'label.planPosition': 'Plan position',
+  'status.planComplete': 'complete',
 };
 
 /**
@@ -833,4 +839,27 @@ export const FORMAT = {
     'The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of ' +
     `which beverages supply ${(maleML / 1000).toFixed(1)} L and ${(femaleML / 1000).toFixed(1)} L. ` +
     'Water in food supplies the rest and is not counted here, because an app cannot measure it.',
+
+  // --- session indicator in the top bar (P3 Task 7) ---
+
+  /**
+   * "S 12/48", and "S 6/6 complete" once the cursor is terminal. `S` is the SESSION the
+   * plan cursor stands at, never the calendar day: the two diverge the moment a session is
+   * missed. `shown` and `total` are counts of sessions, 1-based and already clamped by the
+   * caller. `suffix` is a copy key's string (`status.planComplete`) or '', so this frame
+   * states no outcome of its own.
+   */
+  planPosition: (shown: number, total: number, suffix: string): string =>
+    suffix === '' ? `S ${shown}/${total}` : `S ${shown}/${total} ${suffix}`,
+
+  /**
+   * The same position spelled out for a screen reader: "Session 12 of 48", and
+   * "Session 6 of 6. Programme complete." The abbreviated visible form is unreadable
+   * aloud, so the indicator's accessible name comes from here instead. `status` is a copy
+   * key's string (`hero.programmeComplete`) or '', as in `screenedOn` above.
+   */
+  planPositionLabel: (shown: number, total: number, status: string): string =>
+    status === ''
+      ? `Session ${shown} of ${total}`
+      : `Session ${shown} of ${total}. ${status}`,
 } as const;

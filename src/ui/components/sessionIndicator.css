@@ -1,0 +1,19 @@
+/*
+ * The top-bar plan-position indicator (P3 Task 7).
+ *
+ * font-variant-numeric: tabular-nums is NOT here. The indicator sits in a fixed slot and its
+ * digits change under the user (S 9/48 to S 10/48), so proportional figures would shift the
+ * whole label sideways on every session: that declaration is a correctness guarantee, not a
+ * style choice, and it is set inline in SessionIndicator.tsx where a test can hold it (vitest
+ * stubs every stylesheet but crt.css, so a rule asserted here would assert nothing).
+ *
+ * Every custom property carries a literal fallback so the indicator renders whether or not
+ * the P1 token sheet is loaded.
+ */
+.session-indicator {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  color: var(--text-dim, #8b96a3);
+}
