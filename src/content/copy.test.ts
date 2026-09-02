@@ -65,7 +65,7 @@ function hasEmoji(value: string): boolean {
 /** R5: an en-dash is legal only between two digits (`6-8`). Anywhere else it is a connector. */
 function hasConnectorEnDash(value: string): boolean {
   // A `{slot}` stands for a number a domain module computed, so it is scored as one digit here,
-  // for the reason `wordCount` gives for not scoring it as a word: `sessions {from}–{to}` is a
+  // for the reason `wordCount` gives for not scoring it as a word: `status.blockSessions` is a
   // numeric range at runtime, and reading the brace as a letter would fail a legal string.
   const rendered = value.replace(/\{[a-zA-Z]+\}/g, '0');
   for (let i = 0; i < rendered.length; i += 1) {
