@@ -681,11 +681,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.goal': 'Goal',
   'label.targetDate': 'Target date (optional)',
   'label.creatine': 'Creatine monohydrate',
-  'label.weighIn': 'Weigh in before and after sessions',
+  'label.weighIn': 'Weigh in',
   'label.sessionsPerWeek': 'Sessions per week',
   'label.startTime': 'start time',
   'label.duration': 'duration',
-  'label.includeCardio': 'Add one conditioning block per week',
+  'label.includeCardio': 'One conditioning block per week',
   'label.energy': 'Energy',
   'label.protein': 'Protein',
   'label.fluid': 'Fluid (beverages)',
@@ -756,7 +756,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Accessible names for the two bars. The glyphs read out as punctuation, so the name is
   // what says which quantity the bar is about, and against which bound.
   'label.energyProgress': 'Energy against target',
-  'label.proteinProgress': 'Protein against the lower bound of the range',
+  'label.proteinProgress': 'Protein against the lower bound',
   'quantity.energyIntake': 'Energy consumed today',
   'quantity.proteinIntake': 'Protein consumed today',
   'quantity.dailyBeverageTarget': 'Daily beverage target',
@@ -1210,8 +1210,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'The old body-mass field was labelled lb, refused values outside the pound range, and its ' +
     'text export reported pounds. The load field carried no such evidence, which is why that ' +
     'unit is asked for instead of assumed.',
-  'label.legacyLoadUnit': 'In which unit did you type your loads?',
-  'label.legacyBodyMassUnit': 'In which unit did you type your body mass?',
+  'label.legacyLoadUnit': 'Load unit in the old app',
+  'label.legacyBodyMassUnit': 'Body mass unit in the old app',
   'label.legacyUnitKg': 'Kilograms (kg)',
   'label.legacyUnitLb': 'Pounds (lb)',
   // The body-mass radios carry their own labels rather than reusing the two above: both pairs
