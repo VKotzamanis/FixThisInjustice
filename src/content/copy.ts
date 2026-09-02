@@ -402,6 +402,30 @@ export type CopyKey =
   | 'label.telemetry'
   | 'status.milestoneSets'
   | 'status.specimenAcquired'
+  // --- Log view (P7 Task 4; appended by that task) ---
+  | 'hero.bodyMass'
+  | 'hero.compliance'
+  | 'hero.personalRecords'
+  | 'hero.repsPerWeek'
+  | 'label.complianceGrid'
+  | 'advice.noBodyMassLogged'
+  | 'status.markCompleted'
+  | 'status.markSkipped'
+  | 'status.markMissed'
+  | 'status.markPlanned'
+  | 'status.markNotPlanned'
+  | 'status.noEstimated1RM'
+  // --- export view and summary document (P7 Task 5; appended by that task) ---
+  | 'label.downloads'
+  | 'label.importSection'
+  | 'label.pasteExport'
+  | 'label.chooseExportFile'
+  | 'button.checkImport'
+  | 'button.replaceData'
+  | 'advice.importInvalidNoChange'
+  | 'advice.downloadBackupFirst'
+  | 'advice.exportUnavailable'
+  | 'advice.targetsNotEstimatedForProfile'
   // --- spotlight palette (P8 Task 8; appended by that task) ---
   | 'hero.spotlight'
   | 'button.openSpotlight'
@@ -441,8 +465,6 @@ export type CopyKey =
   | 'button.legacyDeleteOld'
   | 'button.legacyKeepOld'
   | 'button.legacyClose'
-  // --- motivation modal (P6 Task 4; appended by that task) ---
-  | 'advice.tapForSound'
   // --- reminders and Home Screen install (P5 Task 8; appended by that task) ---
   | 'hero.reminders'
   | 'label.remindersEnable'
@@ -462,7 +484,19 @@ export type CopyKey =
   | 'label.installAndroid'
   | 'status.installAndroidMenu'
   | 'status.installAndroidInstall'
-  | 'status.installAndroidOpen';
+  | 'status.installAndroidOpen'
+  // --- motivation modal (P6 Task 4; appended by that task) ---
+  | 'advice.tapForSound'
+  // --- P4 final review fixes (appended by that task) ---
+  | 'coach.setReadout'
+  | 'coach.aboveRangeOne'
+  | 'status.customExerciseRefused'
+  | 'status.refusalPaused'
+  | 'status.refusalSessionOpen'
+  | 'status.refusalAlreadyStarted'
+  | 'status.refusalNotNextDay'
+  | 'status.refusalLabelNotOffered'
+  | 'status.refusalUnrecognised';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -691,16 +725,26 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
   'advice.fluidLoss': 'Fluid loss above 2 %. Replace it over the next hours.',
   'why.fluidLoss': 'Loss of 2.4 % of pre-session mass, above the 2 % threshold (ACSM 2007).', // formatted
+  // P4 review item 2: these ten were formatted EXAMPLES that nothing resolved, while
+  // src/domain/training/coach.ts assembled the same sentences in English in the domain. They
+  // are now the TEMPLATES that module's return value is rendered through
+  // (FORMAT.withSlots), so a skin override reaches the string the user actually reads. Every
+  // slot carries a value the domain computed; the words around it are this table's.
+  //
+  // P4 review item 3: "PR" was a colloquial stand-in. Contract R11 names the quantity, and
+  // `hero.personalRecords` below already spells it out. The repetition COUNT keeps the short
+  // form ("8 reps") the Log view and FORMAT.repsCount already use; only the name of the
+  // record is spelled out.
   'coach.setLogged': 'Set logged.',
-  'coach.durationLogged': '45 s logged.', // formatted
-  'coach.loadPr': 'Load PR. Previous best 60 kg × 8.', // formatted
-  'coach.repPr': 'Rep PR at 60 kg. Previous best 8 reps.', // formatted
-  'coach.overSuggested': '2.5 kg over the suggested load.', // formatted
-  'coach.underSuggested': '5 kg under the suggested load.', // formatted
-  'coach.aboveRange': '2 reps above the prescribed range.', // formatted
-  'coach.belowRange': '4 reps, below the prescribed 6-8.', // formatted
-  'coach.topOfRange': 'Top of range at 60 kg × 8.', // formatted
-  'coach.insideRange': '60 kg × 7, inside the prescribed 6-8.', // formatted
+  'coach.durationLogged': '{seconds} s logged.', // template; FORMAT.withSlots
+  'coach.loadPr': 'Load personal record. Previous best {load} × {reps}.', // template
+  'coach.repPr': 'Repetition personal record at {load}. Previous best {reps} reps.', // template
+  'coach.overSuggested': '{delta} over the suggested load.', // template
+  'coach.underSuggested': '{delta} under the suggested load.', // template
+  'coach.aboveRange': '{count} reps above the prescribed range.', // template
+  'coach.belowRange': '{reps} reps, below the prescribed {lo}-{hi}.', // template
+  'coach.topOfRange': 'Top of range at {load} × {reps}.', // template
+  'coach.insideRange': '{load} × {reps}, inside the prescribed {lo}-{hi}.', // template
 
   // --- reminders (P5) ---
   // R7: a statement of fact about this deployment, not a clause about the app's own
@@ -961,6 +1005,54 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // a slot rather than a literal; the sentence around it is this key's to rewrite.
   'status.specimenAcquired': '{rarity} specimen acquired', // template; FORMAT.specimenAcquired
 
+  // --- Log view (P7 Task 4; appended by that task) ---
+  // Section headings. Separate keys from the `quantity.*` field labels that carry the same
+  // words: a skin retitles a section without also relabelling the input the user types into.
+  'hero.bodyMass': 'Body mass',
+  'hero.compliance': 'Compliance',
+  // "Personal records", not "PRs": R11 names the quantity, and the list also carries an
+  // estimated one-repetition maximum, which is not a record at all.
+  'hero.personalRecords': 'Personal records',
+  'hero.repsPerWeek': 'Best reps per week',
+  // The accessible name of the compliance grid itself; each cell names its own day and mark.
+  'label.complianceGrid': 'Session compliance by week',
+  // States what is absent, not what the user should have done (R7): the Log view reports
+  // history and asks for nothing. `advice.noWeeksYet` and `advice.noSetsLogged`, which the
+  // grid and the records list also need, are already in the table above.
+  'advice.noBodyMassLogged': 'No body mass logged yet.',
+  // The five compliance marks. 'Missed' is a planned day that has passed without being
+  // completed or deliberately skipped; 'Not planned' is a day the programme never assigned,
+  // which is a rest day and never a failure (code review A48, where rest days were marked
+  // non-compliant). The two are distinct words because they mean opposite things.
+  'status.markCompleted': 'Completed',
+  'status.markSkipped': 'Skipped',
+  'status.markMissed': 'Missed',
+  'status.markPlanned': 'Planned',
+  'status.markNotPlanned': 'Not planned',
+  // Shown where the Epley equation has no defensible input: no external load, or no set
+  // inside its validity domain of ten repetitions.
+  'status.noEstimated1RM': 'No estimated 1RM',
+
+  // --- export view and summary document (P7 Task 5; appended by that task) ---
+  'label.downloads': 'Downloads',
+  'label.importSection': 'Import',
+  // The textarea's label. The file picker beside it carries `label.chooseExportFile`, so
+  // neither control has to name the other.
+  'label.pasteExport': 'Paste a previous export',
+  'label.chooseExportFile': 'Choose an export file',
+  // Two phases, two words. Checking validates and writes nothing; replacing is the
+  // destructive step and says which of the two it is (master plan section 3).
+  'button.checkImport': 'Check import',
+  'button.replaceData': 'Replace data',
+  'advice.importInvalidNoChange': 'An invalid file changes nothing.',
+  // The export gate master plan section 3 requires: the confirmation stays disabled until the
+  // user has taken a copy of what the import is about to overwrite.
+  'advice.downloadBackupFirst': 'Download the JSON backup first. It enables the control below.',
+  'advice.exportUnavailable': 'The current data could not be read back. Nothing was downloaded.',
+  // The summary document's stand-in for the targets block when the profile falls outside the
+  // domain the nutrition equations were fitted on. Stated, not silently omitted.
+  'advice.targetsNotEstimatedForProfile': 'Targets are not estimated for this profile.',
+
   // --- spotlight palette (P8 Task 8) ---
   // The dialog's own heading, which is also what names it to a screen reader.
   'hero.spotlight': 'Search',
@@ -1030,11 +1122,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.legacyDeleteOld': 'Delete old data',
   'button.legacyKeepOld': 'Keep old data',
   'button.legacyClose': 'Close',
-
-  // --- motivation modal (P6 Task 4; appended by that task) ---
-  // The clip autoplays muted, which is the only autoplay any engine allows; sound needs a
-  // gesture, and this line names it. Rendered only while the clip is still muted.
-  'advice.tapForSound': 'Tap the video for sound.',
   // --- reminders and Home Screen install (P5 Task 8) ---
   'hero.reminders': 'Reminders',
   'label.remindersEnable': 'Enable reminders',
@@ -1059,6 +1146,39 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.installAndroidMenu': 'Open the browser menu, the three dots.',
   'status.installAndroidInstall': 'Tap Install app, then confirm.',
   'status.installAndroidOpen': 'Open the app from the home screen icon.',
+
+  // --- motivation modal (P6 Task 4; appended by that task) ---
+  // The clip autoplays muted, which is the only autoplay any engine allows; sound needs a
+  // gesture, and this line names it. Rendered only while the clip is still muted.
+  'advice.tapForSound': 'Tap the video for sound.',
+
+  // --- P4 final review fixes (appended by that task) ---
+  // Two coach sentences src/domain/training/coach.ts ships that the ten `coach.*` keys above
+  // never covered: the plain readout it falls back to for an AMRAP or timed prescription, and
+  // the singular of the above-range line. The singular is its own key rather than a plural
+  // marker passed in from the domain, because which words a count takes is a fact about the
+  // language and belongs in this table.
+  'coach.setReadout': '{load} × {reps} logged.', // template; FORMAT.withSlots
+  'coach.aboveRangeOne': '{count} rep above the prescribed range.', // template
+  // P4 review item 1. Shown beside the custom-exercise form when the store refuses the record.
+  // It states the outcome and nothing about the cause: the causes the store's own gates raise
+  // (a colliding id, a name the schema rejects) are faults in the caller, not choices the user
+  // made, and the length bound the user CAN act on is reported by FORMAT.outOfRange instead.
+  'status.customExerciseRefused': 'The exercise was not added.',
+  // P4 review item 4. The refusal banner used to render the domain's thrown message verbatim,
+  // function-name prefix and all ("startSession: the plan is paused on 2026-03-02"). These are
+  // the refusals src/domain/schedule/cursor.ts and src/domain/schedule/calendar.ts mint, one
+  // key each, mapped by src/ui/format/refusal.ts. The date is a slot, never a literal, so a
+  // skin reorders the sentence without touching the day it names.
+  'status.refusalPaused': 'The plan is paused on {date}.', // template
+  'status.refusalSessionOpen': 'A session is already in progress on {date}.', // template
+  'status.refusalAlreadyStarted': 'This session already started on {date}.', // template
+  'status.refusalNotNextDay': '{date} is not the next session day.', // template
+  'status.refusalLabelNotOffered':
+    '{label} is not among the sessions remaining on {date}.', // template
+  // Anything the mapper does not recognise. It says what happened and stops: naming a cause
+  // this build cannot identify would be a guess presented as a fact.
+  'status.refusalUnrecognised': 'That change was refused.',
 };
 
 /**
@@ -1396,6 +1516,118 @@ export const FORMAT = {
   specimenAcquired: (rarity: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.specimenAcquired', overrides).replace('{rarity}', () => rarity),
 
+  // --- Log view (P7 Task 4) ---
+
+  /**
+   * "8 reps": a repetition count with its quantity name. Repetitions are dimensionless, so
+   * this composes no unit; it exists so a chart axis and a caption name the count the same
+   * way. It sits here rather than in src/ui/format/plan.ts only because that module is not in
+   * this task's file list; it is a quantity rendering and belongs beside `formatPrescription`.
+   */
+  repsCount: (reps: number): string => `${reps} reps`,
+
+  /**
+   * The accessible name of the body-mass chart. It states the span of BOTH axes and the newest
+   * reading, because a screen reader gets no shape from the path: the range says what the
+   * picture covers and the last value says where the series ended. Both masses arrive already
+   * formatted by src/domain/units.ts, so the sentence cannot state a unit the profile does not
+   * use.
+   */
+  bodyMassChartLabel: (
+    fromDate: string,
+    toDate: string,
+    lowMass: string,
+    highMass: string,
+    lastMass: string,
+    lastDate: string,
+  ): string =>
+    `Body mass ${fromDate} to ${toDate}, ${lowMass} to ${highMass}. Last ${lastMass} on ${lastDate}.`,
+
+  /** The same name for a chart that has a projection but no measurement on it yet. */
+  bodyMassChartEmptyLabel: (
+    fromDate: string,
+    toDate: string,
+    lowMass: string,
+    highMass: string,
+  ): string =>
+    `Body mass ${fromDate} to ${toDate}, ${lowMass} to ${highMass}. No measurement logged.`,
+
+  /**
+   * R9's disclosure body behind the body-mass chart: the rate the dashed projection is drawn
+   * at. Signed, and formatted by src/domain/units.ts, so a negative rate reads as the loss it
+   * is. The rule that produced it is `NutritionTargets.basis.rateRule` and is printed beside
+   * this line by the view, never concatenated into it.
+   */
+  bodyMassProjection: (ratePerWeek: string): string => `Projection ${ratePerWeek} per week.`,
+
+  /**
+   * "2026-01-19: 93.1 kg", the hover title of one measured point. The mass arrives already
+   * formatted by src/domain/units.ts, and the date is the entry's own LocalDate rather than a
+   * wall-clock rendering.
+   */
+  bodyMassPoint: (date: string, mass: string): string => `${date}: ${mass}`,
+
+  /** "2026-01-05: 12 reps", the hover title of one point on a weekly AMRAP sparkline. */
+  amrapPoint: (weekStart: string, reps: string): string => `${weekStart}: ${reps}`,
+
+  /** "2026-01-05: Completed", the accessible name of one compliance cell. */
+  complianceCell: (date: string, mark: string): string => `${date}: ${mark}`,
+
+  /**
+   * "Week of 2026-01-05: 2 of 3 completed". Two counts, not a difference: the signed delta is
+   * arithmetic and belongs behind a disclosure (R9), while the two counts are the facts the
+   * user reads the row for.
+   */
+  complianceWeek: (monday: string, completed: number, target: number): string =>
+    `Week of ${monday}: ${completed} of ${target} completed`,
+
+  /**
+   * "99 kg estimated 1RM". The word "estimated" is not decoration: the Epley figure carries a
+   * standard error of estimate of several kilograms (Reynolds 2006) and must never be read as
+   * a measured maximum. The load arrives already formatted by src/domain/units.ts.
+   */
+  estimated1RM: (load: string): string => `${load} estimated 1RM`,
+
+  /** The empty state of one exercise's sparkline, naming the exercise it is empty for. */
+  noSetsForExercise: (name: string): string => `No ${name} sets logged yet.`,
+
+  /** "Push-up: best 15 reps in one set", the caption under a weekly AMRAP sparkline. */
+  amrapBest: (name: string, reps: number): string =>
+    `${name}: best ${reps} reps in one set`,
+
+  /** The accessible name of an AMRAP sparkline: the week range it covers and its last point. */
+  amrapChartLabel: (name: string, fromWeek: string, toWeek: string, lastReps: number): string =>
+    `${name} best reps per week, ${fromWeek} to ${toWeek}. Last ${lastReps} reps.`,
+
+  // --- export view and summary document (P7 Task 5) ---
+
+  /**
+   * "The calendar holds the next 28 days." The horizon is the view's own constant, passed in
+   * rather than written here, so the sentence and the projection cannot state different
+   * windows.
+   */
+  calendarWindow: (days: number): string => `The calendar holds the next ${days} days.`,
+
+  /** "Each session carries an alarm 2 hours before it." The lead is the view's constant. */
+  calendarAlarmLead: (hours: number): string =>
+    `Each session carries an alarm ${hours} hours before it.`,
+
+  /**
+   * The refusal a schema rejection produces. `reason` is the validator's own path-and-message
+   * string, kept verbatim: it names the field that failed, which is the only thing that tells
+   * the user which file to go back to.
+   */
+  importRejected: (reason: string): string =>
+    `The import was rejected: ${reason}. Nothing has been changed.`,
+
+  /** The summary document's closing line, naming the unit every figure above it is in. */
+  summaryUnitsFooter: (unit: string): string =>
+    `All loads and masses in this document are in ${unit}.`,
+
+  /** The summary document's stated failure when the profile it was asked for is absent. */
+  summaryNoProfile: (profileId: string): string =>
+    `There is no profile with id "${profileId}" in this document.`,
+
   // --- legacy migration wizard (P7 Task 3) ---
   // Counts, never differences: the preview reports what each figure is, and the reasons sit
   // beside them in a disclosure rather than being summed into one number (R9).
@@ -1440,4 +1672,34 @@ export const FORMAT = {
    */
   remindersActive: (time: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.remindersActive', overrides).replace('{time}', () => time),
+
+  // --- P4 final review fixes ---
+
+  /**
+   * One template key, with every `{slot}` in it replaced by the matching member of `params`.
+   *
+   * The named frames above each own one sentence. This one exists for the two families whose
+   * key is chosen by a domain module rather than by the call site: the coach lines
+   * (`src/domain/training/coach.ts` returns a `CopyKey` and its values) and the schedule
+   * refusals (`src/ui/format/refusal.ts` maps a thrown message onto a key). Writing eleven and
+   * six named frames instead would put the same substitution in seventeen places and still
+   * leave the caller choosing between them by key.
+   *
+   * A slot with no matching member is left standing rather than replaced with "undefined", so
+   * a template and a caller that have drifted apart show the slot name and fail a test rather
+   * than shipping a sentence with a hole in it.
+   *
+   * The replacement is a FUNCTION for the reason `milestoneSets` records: `String.replace`
+   * expands `$&` and friends in a string replacement, and a value containing one would be
+   * rewritten by the frame that is supposed to insert it verbatim.
+   */
+  withSlots: (
+    key: CopyKey,
+    params: Readonly<Record<string, string | number>>,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy(key, overrides).replace(/\{(\w+)\}/g, (slot, name: string) => {
+      const value = params[name];
+      return value === undefined ? slot : String(value);
+    }),
 } as const;
