@@ -104,6 +104,16 @@ Source for all of it: `docs/review/2026-09-01-content-peer-review.md`, Deliverab
 | `src/ui/views/SettingsView.tsx` | profile editing entry point | 8 |
 | `src/ui/views/TargetsView.test.tsx` | bar rendering, check-in write-through | 8 |
 | `src/app/App.tsx` | wire `targets` view + wizard gate (modify) | 8 |
+| `src/content/readinessQuestions.ts` | the seven PAR-Q+ general health questions + `READINESS_SOURCE` | 9 |
+| `src/ui/setup/ReadinessScreen.tsx` | pre-participation readiness screen (wizard step 8 and the Settings redo) | 9 |
+| `src/ui/setup/ReadinessScreen.test.tsx` | verbatim wording, no free text, flagged false/true, zone-correct date | 9 |
+| `src/ui/components/ReadinessNotice.tsx` | `ReadinessNotice({ flagged })` physician-consult notice, dismissable per session | 9 |
+| `src/ui/components/readinessNotice.css` | notice layout, 44 px dismiss control | 9 |
+| `src/ui/components/ReadinessNotice.test.tsx` | render gate, dismissal, storage failure | 9 |
+| `src/store/index.ts` | +`recordReadiness` (modify) | 9 |
+| `src/ui/setup/SetupWizard.tsx` | readiness step before Review, `readiness` in the profile (modify) | 9 |
+| `src/ui/views/SettingsView.tsx` | readiness status row and redo control (modify) | 9 |
+| `src/ui/views/SettingsView.test.tsx` | readiness status copy, Start/Redo control, redo writes `flagged` | 9 |
 
 ---
 
@@ -5241,6 +5251,1058 @@ git commit -m "feat: targets view with daily intake check-in, settings entry poi
 
 ---
 
+## Task 9: Pre-participation readiness screen (`src/ui/setup/ReadinessScreen.tsx`)
+
+**Files:**
+- Create: `src/content/readinessQuestions.ts`
+- Create: `src/ui/setup/ReadinessScreen.tsx`
+- Create: `src/ui/setup/ReadinessScreen.test.tsx`
+- Create: `src/ui/components/ReadinessNotice.tsx`
+- Create: `src/ui/components/readinessNotice.css`
+- Create: `src/ui/components/ReadinessNotice.test.tsx`
+- Modify: `src/ui/setup/setup.css` (append the `.rq-*` block from Step 3)
+- Modify: `src/store/index.ts` (add `recordReadiness` to `AppActions` and to the store creator)
+- Create: `src/ui/views/SettingsView.test.tsx`
+- Modify: `src/store/profile.test.ts` (Task 6's file; add `readiness` to the `profile()` factory and the `recordReadiness` describe block)
+- Modify: `src/ui/setup/SetupWizard.tsx` (Task 7's file: `Draft`, `initialDraft`, `SCREEN_TITLES`, the screen-7 branch, the nav footer, and the `Profile` literal in `confirm`)
+- Modify: `src/ui/setup/SetupWizard.test.tsx` (Task 7's file: nine screens, readiness answers in the fixtures, narrowed medication guard)
+- Modify: `src/ui/views/SettingsView.tsx` (Task 8's file: the readiness row)
+- Modify: `src/ui/views/TargetsView.test.tsx` (Task 8's file: add `readiness` to the `profile` fixture)
+
+**Interfaces:**
+- Consumes: `todayLocal(tz)` and `LocalDate` (P1 `src/domain/dates.ts`, `src/domain/types.ts`), `useAppStore` (P1), `updateProfile` (Task 6), the wizard's `Draft`/`confirm` (Task 7), `SettingsView` (Task 8).
+- Produces:
+  - `export const READINESS_QUESTIONS: readonly ReadinessQuestion[]` and `export interface ReadinessQuestion { id: 1|2|3|4|5|6|7; text: string; note: string | null }` — seven items, in PAR-Q+ order.
+  - `export const READINESS_SOURCE: string` — the citation line, rendered in the screen's `why?` disclosure and asserted by the test.
+  - `export interface ReadinessResult { screenedAt: LocalDate; flagged: boolean }`
+  - `export function ReadinessScreen(props: { timezone: string; onComplete: (result: ReadinessResult) => void }): JSX.Element`
+  - **`export function ReadinessNotice(props: { flagged: boolean }): JSX.Element | null`** — this is the exact export and the exact prop P3 and P4 wire at session start: `<ReadinessNotice flagged={profile.readiness.flagged} />`. It returns `null` when `flagged` is `false` and when the viewer has dismissed it in the current browser session. It reads no store state, so a caller that has no profile renders nothing by passing `false`.
+  - `recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void` on the store, matching master plan §6.7 exactly.
+
+**Where `recordReadiness` is called, and where it cannot be.** The action takes a `profileId`, and during setup no profile exists until `confirm()` runs on the Review screen. So the screen reports its result through `onComplete` and the two call sites differ: **in Settings**, where the profile already exists, Continue calls `recordReadiness(profile.id, result.screenedAt, result.flagged)` exactly as master plan §6.7 specifies; **in the wizard**, Continue stores the result in the draft and `confirm()` writes it straight into the `Profile` literal it is already building. Both paths produce the identical `Profile.readiness` value. Calling `recordReadiness` from the wizard would mean creating the profile first and patching it second, which would leave a profile with no readiness on disk if the user abandoned Review.
+
+**Why this task exists.** Master plan §10 assigns "P2 item 20 / P4 item 23" to P2 as a wizard step. P4 already ships `WARMUP_NOTICE` and a Valsalva contraindication that both reference a screen no plan builds; P2's own amendment 20 records the gap as out of scope. This task closes it. `Profile.readiness` is a **required** member of the §5 `Profile` type, so Task 7's `confirm()` does not type-check until this task patches it: that is why the wizard edits below are not optional polish.
+
+**Citation, verified 2026-09-01 (this is the whole verification result; do not "improve" it).**
+
+> Warburton DER, Jamnik VK, Bredin SSD, Gledhill N, on behalf of the PAR-Q+ Collaboration. The Physical Activity Readiness Questionnaire for Everyone (PAR-Q+) and Electronic Physical Activity Readiness Medical Examination (ePARmed-X+). *Health & Fitness Journal of Canada* 4(2):3–23, 2011. **DOI not verified.** Form text quoted from the official PAR-Q+ 2025 form, https://eparmedx.com/wp-content/uploads/2025/01/PARQPlus2025Fillable.pdf (Copyright © 2025 PAR-Q+ Collaboration).
+
+What was checked, and what it returned:
+
+| Check | Command | Result |
+|---|---|---|
+| The DOI usually quoted for this paper | `curl -s https://api.crossref.org/works/10.14288/hfjc.v4i2.103` | `Resource not found.` — it does not resolve |
+| Crossref bibliographic search | `curl -s "https://api.crossref.org/works?query.bibliographic=PAR-Q%2B+Warburton+2011&rows=5"` | five unrelated works (Benezit artist entries, an SSRN paper, two OECD tables); no candidate |
+| Is the journal in Crossref at all | `curl -s "https://api.crossref.org/journals?query=Health+and+Fitness+Journal+of+Canada"` | `total-results: 0` — no article in it can carry a Crossref DOI |
+| Does a PMID exist instead | `curl -s "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&term=%22Physical+Activity+Readiness+Questionnaire%22+AND+Warburton%5BAuthor%5D&retmode=json"` | 4 hits, none the HFJC paper (they are the APNM consensus documents and two later papers) |
+| The publisher's own citation | page 4 of the official 2025 form | prints the reference above **with no DOI** |
+
+**No DOI is invented and none is guessed.** The citation ships by title, journal, volume, pages and the official form URL, with the words "DOI not verified" in the source string itself, so the string cannot be quietly upgraded later without changing a test.
+
+**Two deliberate deviations from the instrument, both stated in the copy and asserted by the tests:**
+
+1. **No free-text fields.** The official form asks respondents to list conditions and medications under questions 4, 5 and 6. Global constraint *Personal data* forbids medication and biometric strings, and `Profile.readiness` stores only `screenedAt` and `flagged`, so those prompts are dropped and the screen renders **no text input at all**. The seven questions are asked; nothing the user could type is collected or stored.
+2. **Any yes routes to a physician, not to pages 2–3.** The official form sends a yes to its follow-up pages and the ePARmed-X+. This app implements neither, so it takes the more conservative branch: any yes sets `flagged = true` and the app advises a physician consult. It is not administering PAR-Q+ as a clearance instrument and says so.
+
+**Copy for this task** follows `docs/design/2026-09-01-copy-contract.md`: R1 buttons ≤ 3 words, R3 advice lines ≤ 12 words, R4 banners ≤ 2 short sentences, R5 no dash connectors, R7 no hedging, R8 no exclamation marks, R9 the citation and the longer explanation live behind a `why?` disclosure. The seven question strings are **R10 reference text** (quoted source material, like the form cues) and are exempt from R1–R4; they are not exempt from R5, so the form's line-break artefacts are normalised without changing a word. Literal strings are used here, as in Tasks 7 and 8; P8's sweep lifts them into `src/content/copy.ts`.
+
+**Tap targets.** Every yes/no control is a label of `min-height: 2.75rem` (44 px at a 16 px root), matching the wizard's existing `min-height: 2.75rem` inputs. jsdom does not apply an imported stylesheet, so the test asserts the class is present on every answer label and the 44 px rule is reviewed in the stylesheet in Step 3; there is no automated pixel assertion and this task does not pretend there is.
+
+- [ ] **Step 1: Write the failing test for the questions and the screen**
+
+Create `src/ui/setup/ReadinessScreen.test.tsx`:
+
+```tsx
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { READINESS_QUESTIONS, READINESS_SOURCE } from "../../content/readinessQuestions";
+import { ReadinessScreen } from "./ReadinessScreen";
+
+/**
+ * The seven PAR-Q+ General Health Questions, transcribed from page 1 of the official
+ * PAR-Q+ 2025 form (https://eparmedx.com/wp-content/uploads/2025/01/PARQPlus2025Fillable.pdf,
+ * Copyright (c) 2025 PAR-Q+ Collaboration), fetched and extracted with pdftotext on 2026-09-01.
+ * The form's "PLEASE LIST CONDITION(S) HERE" prompts are deliberately absent: this app
+ * collects no free text. Any edit to a question below is a change to quoted source material
+ * and must be re-checked against the form.
+ */
+const FETCHED_WORDING: readonly string[] = [
+  "Has your doctor ever said that you have a heart condition OR high blood pressure?",
+  "Do you feel pain in your chest at rest, during your daily activities of living, OR when you do physical activity?",
+  "Do you lose balance because of dizziness OR have you lost consciousness in the last 12 months?",
+  "Have you ever been diagnosed with another chronic medical condition (other than heart disease or high blood pressure)?",
+  "Are you currently taking prescribed medications for a chronic medical condition?",
+  "Do you currently have (or have had within the past 12 months) a bone, joint, or soft tissue (muscle, ligament, or tendon) problem that could be made worse by becoming more physically active?",
+  "Has your doctor ever said that you should only do medically supervised physical activity?",
+];
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-01T12:00:00Z"));
+});
+
+/** Answer every question with the given choice. */
+function answerAll(choice: "Yes" | "No"): void {
+  for (const q of READINESS_QUESTIONS) {
+    const group = screen.getByTestId(`readiness-q${q.id}`);
+    fireEvent.click(within(group).getByLabelText(choice));
+  }
+}
+
+describe("READINESS_QUESTIONS", () => {
+  it("carries the seven questions in the fetched wording", () => {
+    expect(READINESS_QUESTIONS).toHaveLength(7);
+    expect(READINESS_QUESTIONS.map((q) => q.text)).toEqual(FETCHED_WORDING);
+    expect(READINESS_QUESTIONS.map((q) => q.id)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+
+  it("cites the paper without claiming a DOI", () => {
+    expect(READINESS_SOURCE).toContain("Warburton DER");
+    expect(READINESS_SOURCE).toContain("Health & Fitness Journal of Canada 4(2):3-23, 2011");
+    expect(READINESS_SOURCE).toContain("DOI not verified");
+    // No DOI may be invented: Crossref has no record of this journal at all.
+    expect(READINESS_SOURCE).not.toMatch(/10\.\d{4,9}\//);
+  });
+});
+
+describe("ReadinessScreen", () => {
+  it("renders all seven questions with a Yes and a No control each", () => {
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    for (const q of READINESS_QUESTIONS) {
+      const group = screen.getByTestId(`readiness-q${q.id}`);
+      expect(within(group).getByText(q.text)).toBeDefined();
+      expect(within(group).getByLabelText("Yes")).toBeDefined();
+      expect(within(group).getByLabelText("No")).toBeDefined();
+    }
+  });
+
+  it("collects no free text anywhere on the screen", () => {
+    const { container } = render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    expect(container.querySelectorAll("textarea")).toHaveLength(0);
+    expect(container.querySelectorAll('input[type="text"]')).toHaveLength(0);
+    expect(screen.queryAllByRole("textbox")).toHaveLength(0);
+    // Every input on this screen is a radio.
+    const inputs = [...container.querySelectorAll("input")];
+    expect(inputs.every((i) => i.getAttribute("type") === "radio")).toBe(true);
+  });
+
+  it("gives every answer control the 44 px tap-target class", () => {
+    const { container } = render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    const answers = [...container.querySelectorAll("label.rq-answer")];
+    expect(answers).toHaveLength(14); // 7 questions x Yes/No
+  });
+
+  it("states that this is not medical advice and what a yes means", () => {
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    expect(screen.getByText("This is not medical advice.")).toBeDefined();
+    expect(
+      screen.getByText("Answer yes to any question: consult a physician before training."),
+    ).toBeDefined();
+  });
+
+  it("keeps the citation behind a why? disclosure", () => {
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    const summary = screen.getByText("why?");
+    expect(summary.tagName).toBe("SUMMARY");
+    expect(within(summary.closest("details") as HTMLElement).getByText(READINESS_SOURCE)).toBeDefined();
+  });
+
+  it("blocks Continue until all seven are answered", () => {
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Continue" });
+    expect(button).toBeDisabled();
+    for (const q of READINESS_QUESTIONS.slice(0, 6)) {
+      fireEvent.click(within(screen.getByTestId(`readiness-q${q.id}`)).getByLabelText("No"));
+    }
+    expect(button).toBeDisabled();
+    fireEvent.click(within(screen.getByTestId("readiness-q7")).getByLabelText("No"));
+    expect(button).toBeEnabled();
+  });
+
+  it("reports flagged false when every answer is no", () => {
+    const onComplete = vi.fn();
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={onComplete} />);
+    answerAll("No");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onComplete).toHaveBeenCalledTimes(1);
+    expect(onComplete).toHaveBeenCalledWith({ screenedAt: "2026-09-01", flagged: false });
+  });
+
+  it("reports flagged true when a single answer is yes", () => {
+    const onComplete = vi.fn();
+    render(<ReadinessScreen timezone="Europe/Athens" onComplete={onComplete} />);
+    answerAll("No");
+    fireEvent.click(within(screen.getByTestId("readiness-q5")).getByLabelText("Yes"));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onComplete).toHaveBeenCalledWith({ screenedAt: "2026-09-01", flagged: true });
+  });
+
+  it("dates the screening in the profile time zone, not UTC", () => {
+    // 2026-09-01T12:00:00Z is 2026-09-01 in Athens and 2026-09-01 in Los Angeles;
+    // 2026-09-01T02:00:00Z is still 2026-08-31 in Los Angeles.
+    vi.setSystemTime(new Date("2026-09-01T02:00:00Z"));
+    const onComplete = vi.fn();
+    render(<ReadinessScreen timezone="America/Los_Angeles" onComplete={onComplete} />);
+    answerAll("No");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(onComplete).toHaveBeenCalledWith({ screenedAt: "2026-08-31", flagged: false });
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `npx vitest run src/ui/setup/ReadinessScreen.test.tsx`
+Expected: FAIL — `Failed to resolve import "../../content/readinessQuestions"`.
+
+- [ ] **Step 3: Append the readiness styles to `src/ui/setup/setup.css`**
+
+Append to `src/ui/setup/setup.css` (Task 7 created it; this block goes at the end, after the `@media` rule). `2.75rem` is 44 px at a 16 px root, which is the tap-target floor for this screen:
+
+```css
+.rq fieldset { border: 1px solid var(--line, #2c452c); margin: 0 0 1rem; padding: 0.75rem; }
+.rq .rq-text { margin: 0 0 0.5rem; font-size: 0.9rem; }
+.rq .rq-note { margin: 0 0 0.5rem; font-size: 0.8rem; opacity: 0.8; }
+.rq .rq-answers { display: flex; gap: 0.75rem; }
+.rq label.rq-answer {
+  display: flex;
+  flex: 1 1 0;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem; /* 44 px at a 16 px root: the tap-target floor */
+  min-width: 2.75rem;  /* 44 px */
+  margin: 0;
+  padding: 0 0.5rem;
+  background: var(--bg-raised, #121a12);
+  border: 1px solid var(--line, #2c452c);
+  cursor: pointer;
+}
+.rq label.rq-answer:focus-within { border-color: var(--accent, #7dd37d); }
+.rq label.rq-answer input { width: 1.25rem; height: 1.25rem; margin: 0; }
+.rq .rq-lede { margin: 0 0 0.25rem; font-size: 0.9rem; }
+.rq details { margin: 0 0 1rem; font-size: 0.85rem; }
+.rq details summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; }
+.rq .rq-nav { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+.rq .rq-nav button { flex: 1 1 0; min-height: 3rem; color: inherit; background: var(--bg-raised, #121a12); border: 1px solid var(--accent, #7dd37d); font: inherit; letter-spacing: 0.06em; }
+.rq .rq-nav button[disabled] { opacity: 0.45; }
+```
+
+- [ ] **Step 4: Write the questions module**
+
+Create `src/content/readinessQuestions.ts`. It lives beside `src/content/formCues.ts` (P4's `WARMUP_NOTICE`) because both are cited safety text: one place to audit, one place for P8's skin sweep to leave alone.
+
+```ts
+/**
+ * Pre-participation readiness screening, modelled on the PAR-Q+.
+ *
+ * SOURCE OF THE WORDING. The seven General Health Questions below are transcribed
+ * verbatim from page 1 of the official PAR-Q+ 2025 form
+ * (https://eparmedx.com/wp-content/uploads/2025/01/PARQPlus2025Fillable.pdf,
+ * Copyright (c) 2025 PAR-Q+ Collaboration), fetched with curl and extracted with
+ * pdftotext on 2026-09-01 and logged in REFERENCES.md. Only the form's line-break
+ * and fillable-field artefacts were normalised; no word was changed.
+ *
+ * CITATION. The instrument's own citation, printed on page 4 of that form, is
+ * reproduced in READINESS_SOURCE. It carries no DOI, and none could be verified:
+ * the DOI usually quoted for it (10.14288/hfjc.v4i2.103) returns "Resource not
+ * found" from Crossref, and Crossref holds no records at all for the journal
+ * (query.container-title returns total-results 0), so no DOI is asserted here.
+ *
+ * TWO DELIBERATE DEVIATIONS, both surfaced in the UI:
+ *  1. The form asks respondents to list conditions and medications under questions
+ *     4, 5 and 6. Those prompts are omitted. This app collects no free text and
+ *     stores no medication or condition string (global constraint: Personal data).
+ *  2. The form routes a "yes" to its own pages 2-3 and the ePARmed-X+. This app
+ *     implements neither, so it takes the more conservative branch and advises a
+ *     physician consult. It is not administering PAR-Q+ as a clearance instrument.
+ *
+ * PERMISSION IS NOT ESTABLISHED. The PAR-Q+ FAQ states "Copyright PAR-Q+
+ * Collaboration 2007-2026. All rights reserved." and publishes no reproduction or
+ * embedding licence. Written permission (eparmedx@gmail.com) has NOT been obtained
+ * and must be before this app is distributed beyond the author. See the amendments
+ * section of this plan.
+ */
+
+export interface ReadinessQuestion {
+  id: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+  /** Quoted source material. Do not edit without re-checking the official form. */
+  text: string;
+  /** The form's own clarifying sentence, where it has one. */
+  note: string | null;
+}
+
+export const READINESS_SOURCE =
+  "Warburton DER, Jamnik VK, Bredin SSD, Gledhill N, on behalf of the PAR-Q+ Collaboration. " +
+  "The Physical Activity Readiness Questionnaire for Everyone (PAR-Q+) and Electronic Physical " +
+  "Activity Readiness Medical Examination (ePARmed-X+). " +
+  "Health & Fitness Journal of Canada 4(2):3-23, 2011. DOI not verified. " +
+  "Question wording from the official PAR-Q+ 2025 form, eparmedx.com.";
+
+export const READINESS_QUESTIONS: readonly ReadinessQuestion[] = [
+  {
+    id: 1,
+    text: "Has your doctor ever said that you have a heart condition OR high blood pressure?",
+    note: null,
+  },
+  {
+    id: 2,
+    text: "Do you feel pain in your chest at rest, during your daily activities of living, OR when you do physical activity?",
+    note: null,
+  },
+  {
+    id: 3,
+    text: "Do you lose balance because of dizziness OR have you lost consciousness in the last 12 months?",
+    note: "Please answer NO if your dizziness was associated with over-breathing (including during vigorous exercise).",
+  },
+  {
+    id: 4,
+    text: "Have you ever been diagnosed with another chronic medical condition (other than heart disease or high blood pressure)?",
+    note: null,
+  },
+  {
+    id: 5,
+    text: "Are you currently taking prescribed medications for a chronic medical condition?",
+    note: null,
+  },
+  {
+    id: 6,
+    text: "Do you currently have (or have had within the past 12 months) a bone, joint, or soft tissue (muscle, ligament, or tendon) problem that could be made worse by becoming more physically active?",
+    note: "Please answer NO if you had a problem in the past, but it does not limit your current ability to be physically active.",
+  },
+  {
+    id: 7,
+    text: "Has your doctor ever said that you should only do medically supervised physical activity?",
+    note: null,
+  },
+] as const;
+```
+
+- [ ] **Step 5: Write the screen**
+
+Create `src/ui/setup/ReadinessScreen.tsx`:
+
+```tsx
+import { useState, type JSX } from "react";
+import "./setup.css";
+import { READINESS_QUESTIONS, READINESS_SOURCE } from "../../content/readinessQuestions";
+import { todayLocal } from "../../domain/dates";
+import type { LocalDate } from "../../domain/types";
+
+export interface ReadinessResult {
+  /** Local calendar date in the profile's IANA zone, never UTC. */
+  screenedAt: LocalDate;
+  /** True when at least one of the seven answers is yes. */
+  flagged: boolean;
+}
+
+type Answer = "yes" | "no";
+
+/**
+ * The seven PAR-Q+ General Health Questions as yes/no controls.
+ *
+ * Used twice: as the wizard screen before Review (Task 7's SetupWizard) and as the
+ * redo panel in Settings (Task 8's SettingsView). It owns no store state; the caller
+ * decides what to do with the result, because during setup no profile exists yet.
+ */
+export function ReadinessScreen(props: {
+  timezone: string;
+  onComplete: (result: ReadinessResult) => void;
+}): JSX.Element {
+  const [answers, setAnswers] = useState<Partial<Record<number, Answer>>>({});
+
+  const answered = READINESS_QUESTIONS.every((q) => answers[q.id] !== undefined);
+  const anyYes = READINESS_QUESTIONS.some((q) => answers[q.id] === "yes");
+
+  const submit = (): void => {
+    props.onComplete({ screenedAt: todayLocal(props.timezone), flagged: anyYes });
+  };
+
+  return (
+    <div className="rq" data-testid="readiness-screen">
+      <p className="rq-lede">This is not medical advice.</p>
+      <p className="rq-lede">Answer yes to any question: consult a physician before training.</p>
+
+      <details>
+        <summary>why?</summary>
+        <p>
+          These are the seven general health questions of the PAR-Q+. No answer is stored. Only the
+          date and whether any answer was yes are kept.
+        </p>
+        <p>{READINESS_SOURCE}</p>
+      </details>
+
+      {READINESS_QUESTIONS.map((q) => (
+        <fieldset key={q.id} data-testid={`readiness-q${q.id}`}>
+          <legend>{q.id}</legend>
+          <p className="rq-text">{q.text}</p>
+          {q.note !== null && <p className="rq-note">{q.note}</p>}
+          <div className="rq-answers">
+            <label className="rq-answer">
+              <input
+                type="radio"
+                name={`readiness-${q.id}`}
+                aria-label="Yes"
+                checked={answers[q.id] === "yes"}
+                onChange={() => setAnswers((a) => ({ ...a, [q.id]: "yes" }))}
+              />
+              Yes
+            </label>
+            <label className="rq-answer">
+              <input
+                type="radio"
+                name={`readiness-${q.id}`}
+                aria-label="No"
+                checked={answers[q.id] === "no"}
+                onChange={() => setAnswers((a) => ({ ...a, [q.id]: "no" }))}
+              />
+              No
+            </label>
+          </div>
+        </fieldset>
+      ))}
+
+      <div className="rq-nav">
+        <button type="button" disabled={!answered} onClick={submit}>
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 6: Run the test to verify it passes**
+
+Run: `npx vitest run src/ui/setup/ReadinessScreen.test.tsx`
+Expected: PASS — 11 tests passed.
+
+- [ ] **Step 7: Write the failing test for the notice**
+
+Create `src/ui/components/ReadinessNotice.test.tsx`:
+
+```tsx
+import { fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it } from "vitest";
+import { ReadinessNotice, READINESS_NOTICE_KEY } from "./ReadinessNotice";
+
+beforeEach(() => {
+  sessionStorage.clear();
+});
+
+describe("ReadinessNotice", () => {
+  it("renders nothing when the profile is not flagged", () => {
+    const { container } = render(<ReadinessNotice flagged={false} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it("renders the physician notice when the profile is flagged", () => {
+    render(<ReadinessNotice flagged />);
+    expect(
+      screen.getByText(
+        "You answered yes on the readiness screen. Consult a physician before training.",
+      ),
+    ).toBeDefined();
+  });
+
+  it("uses a live region so a screen reader announces it at session start", () => {
+    render(<ReadinessNotice flagged />);
+    expect(screen.getByRole("status")).toBeDefined();
+  });
+
+  it("hides after Dismiss and stays hidden on a remount in the same session", () => {
+    const first = render(<ReadinessNotice flagged />);
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(first.container.firstChild).toBeNull();
+    first.unmount();
+
+    const second = render(<ReadinessNotice flagged />);
+    expect(second.container.firstChild).toBeNull();
+  });
+
+  it("returns in a new browser session", () => {
+    render(<ReadinessNotice flagged />).unmount();
+    sessionStorage.setItem(READINESS_NOTICE_KEY, "1");
+    expect(render(<ReadinessNotice flagged />).container.firstChild).toBeNull();
+    sessionStorage.clear(); // a new browser session starts with empty sessionStorage
+    expect(render(<ReadinessNotice flagged />).container.firstChild).not.toBeNull();
+  });
+
+  it("survives sessionStorage being unavailable", () => {
+    const original = Object.getOwnPropertyDescriptor(window, "sessionStorage");
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get() {
+        throw new Error("blocked");
+      },
+    });
+    try {
+      expect(render(<ReadinessNotice flagged />).container.firstChild).not.toBeNull();
+    } finally {
+      if (original) Object.defineProperty(window, "sessionStorage", original);
+    }
+  });
+});
+```
+
+- [ ] **Step 8: Run the test to verify it fails**
+
+Run: `npx vitest run src/ui/components/ReadinessNotice.test.tsx`
+Expected: FAIL — `Failed to resolve import "./ReadinessNotice"`.
+
+- [ ] **Step 9: Write the notice and its stylesheet**
+
+Create `src/ui/components/readinessNotice.css`:
+
+```css
+.readiness-notice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+  color: var(--fg, #cfe8cf);
+  background: var(--bg-raised, #121a12);
+  border: 1px solid var(--warn, #d3b87d);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+.readiness-notice p { margin: 0; flex: 1 1 auto; }
+.readiness-notice button {
+  min-height: 2.75rem; /* 44 px at a 16 px root */
+  min-width: 2.75rem;  /* 44 px */
+  padding: 0 0.75rem;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--line, #2c452c);
+  font: inherit;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+```
+
+Create `src/ui/components/ReadinessNotice.tsx`:
+
+```tsx
+import { useState, type JSX } from "react";
+import "./readinessNotice.css";
+
+/** Per-session dismissal. sessionStorage, not localStorage: the notice returns next session. */
+export const READINESS_NOTICE_KEY = "fti.readinessNoticeDismissed";
+
+function readDismissed(): boolean {
+  try {
+    return sessionStorage.getItem(READINESS_NOTICE_KEY) === "1";
+  } catch (error) {
+    // Storage can be unavailable (private mode, blocked site data). Fail safe:
+    // treat it as not dismissed so the notice is shown rather than suppressed.
+    void error;
+    return false;
+  }
+}
+
+function writeDismissed(): void {
+  try {
+    sessionStorage.setItem(READINESS_NOTICE_KEY, "1");
+  } catch (error) {
+    // Nothing to do: the notice still hides for this mount via component state.
+    void error;
+  }
+}
+
+/**
+ * Physician-consult notice for a flagged profile. Master plan section 10 requires it at
+ * every session start; P3 and P4 render it at the top of the session surface as
+ * `<ReadinessNotice flagged={profile.readiness.flagged} />`.
+ *
+ * It is persistent within the browser session (navigating away and back does not clear
+ * it) and dismissable once per session. It holds no store state and reads no profile, so
+ * a caller with no active profile simply passes false.
+ */
+export function ReadinessNotice(props: { flagged: boolean }): JSX.Element | null {
+  const [dismissed, setDismissed] = useState<boolean>(readDismissed);
+
+  if (!props.flagged || dismissed) return null;
+
+  const dismiss = (): void => {
+    writeDismissed();
+    setDismissed(true);
+  };
+
+  return (
+    <div className="readiness-notice" role="status">
+      <p>You answered yes on the readiness screen. Consult a physician before training.</p>
+      <button type="button" onClick={dismiss}>
+        Dismiss
+      </button>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 10: Run the test to verify it passes**
+
+Run: `npx vitest run src/ui/components/ReadinessNotice.test.tsx`
+Expected: PASS — 6 tests passed.
+
+- [ ] **Step 11: Write the failing store test for `recordReadiness`**
+
+Task 6 adds five actions and does not add this one. Two edits to `src/store/profile.test.ts`.
+
+**(a)** Task 6's fixture factory is `const profile = (over: Partial<Profile> = {}): Profile => ({ ... })` and it predates `Profile.readiness`, which master plan §5 makes required. Add the member to it, beside `hydration`:
+
+```ts
+  readiness: { screenedAt: null, flagged: false },
+```
+
+**(b)** Append this describe block:
+
+```ts
+describe("recordReadiness", () => {
+  it("stores the date and the flag on the named profile", () => {
+    const p = profile();
+    useAppStore.getState().createProfile(p);
+
+    useAppStore.getState().recordReadiness(p.id, "2026-09-01", true);
+
+    expect(useAppStore.getState().profiles[p.id]?.readiness).toEqual({
+      screenedAt: "2026-09-01",
+      flagged: true,
+    });
+  });
+
+  it("overwrites a previous screening rather than appending", () => {
+    const p = profile();
+    useAppStore.getState().createProfile(p);
+
+    useAppStore.getState().recordReadiness(p.id, "2026-09-01", true);
+    useAppStore.getState().recordReadiness(p.id, "2026-10-01", false);
+
+    expect(useAppStore.getState().profiles[p.id]?.readiness).toEqual({
+      screenedAt: "2026-10-01",
+      flagged: false,
+    });
+  });
+
+  it("is a no-op for an unknown profile id", () => {
+    const p = profile();
+    useAppStore.getState().createProfile(p);
+    const before = useAppStore.getState().profiles;
+    useAppStore.getState().recordReadiness("no-such-id", "2026-09-01", true);
+    expect(useAppStore.getState().profiles).toBe(before);
+  });
+});
+```
+
+- [ ] **Step 12: Run the store test to verify it fails**
+
+Run: `npx vitest run src/store/profile.test.ts -t recordReadiness`
+Expected: FAIL — `useAppStore.getState().recordReadiness is not a function`.
+
+- [ ] **Step 13: Add `recordReadiness` to the store**
+
+In `src/store/index.ts`, add the signature to the P2 group of `AppActions`, beside `setAvailability`:
+
+```ts
+  recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void;
+```
+
+and the implementation beside the other P2 actions in the store creator:
+
+```ts
+  /**
+   * Pre-participation screening result (master plan section 6.7). Stores only the local
+   * date and whether any answer was positive. No answer, condition or medication string
+   * is ever stored: see src/content/readinessQuestions.ts.
+   */
+  recordReadiness: (profileId, screenedAt, flagged) =>
+    set((state) => {
+      const profile = state.profiles[profileId];
+      if (!profile) return state;
+      return {
+        ...state,
+        profiles: {
+          ...state.profiles,
+          [profileId]: { ...profile, readiness: { screenedAt, flagged } },
+        },
+      };
+    }),
+```
+
+- [ ] **Step 14: Run the store test to verify it passes**
+
+Run: `npx vitest run src/store/profile.test.ts -t recordReadiness`
+Expected: PASS — 3 tests passed.
+
+- [ ] **Step 15: Slot the screen into the wizard**
+
+Four edits to `src/ui/setup/SetupWizard.tsx` (Task 7's file).
+
+**(a)** Add the imports beside the existing ones:
+
+```tsx
+import { ReadinessScreen, type ReadinessResult } from "./ReadinessScreen";
+```
+
+**(b)** Add the field to `Draft` (after `includeCardio: boolean;`) and to `initialDraft`'s return (after `includeCardio: false,`):
+
+```tsx
+  readiness: ReadinessResult | null;
+```
+
+```tsx
+    readiness: null,
+```
+
+**(c)** Insert `"Readiness"` before `"Review"` in `SCREEN_TITLES`, making Review index 8:
+
+```tsx
+const SCREEN_TITLES = [
+  "Units",
+  "Time zone",
+  "Body",
+  "Training context",
+  "Goal",
+  "Availability",
+  "Programme length",
+  "Readiness",
+  "Review",
+];
+```
+
+Every later `screen === 7` branch in the render body — the Review block — becomes `screen === 8`. Add the new branch immediately before it:
+
+```tsx
+      {screen === 7 && (
+        <ReadinessScreen
+          timezone={draft.timezone}
+          onComplete={(readiness) => {
+            patch({ readiness });
+            setScreen(8);
+          }}
+        />
+      )}
+```
+
+**(d)** The readiness screen supplies its own `Continue`, so the wizard's generic one must not also render on screen 7. In the `wiz-nav` block, change the Continue condition:
+
+```tsx
+        {screen !== 7 && screen < SCREEN_TITLES.length - 1 && (
+          <button type="button" disabled={!canContinue()} onClick={() => setScreen((n) => n + 1)}>
+            Continue
+          </button>
+        )}
+```
+
+**(e)** In `confirm()`, add `readiness` to the `Profile` literal, immediately after the `supplements` line. `Profile.readiness` is required by master plan section 5, so without this the file does not type-check under `strict`:
+
+```tsx
+      supplements: { creatine: draft.creatine },
+      // Set on screen 7. The fallback exists only to satisfy the type; the wizard
+      // cannot reach Review without completing the screen.
+      readiness: draft.readiness ?? { screenedAt: null, flagged: false },
+```
+
+- [ ] **Step 16: Update Task 7's wizard test for nine screens**
+
+Three edits to `src/ui/setup/SetupWizard.test.tsx`.
+
+**(a)** `fillImperialWizard` gains the readiness step. Append after the `// 7 — programme length` block, before the closing brace:
+
+```tsx
+  // 8 — readiness: seven PAR-Q+ questions, all answered no
+  for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+    fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText("No"));
+  }
+  next();
+```
+
+**(b)** `unblock` gains the readiness screen, and the loop bound becomes 9:
+
+```tsx
+  function unblock(screenIndex: number): void {
+    if (screenIndex === 2) {
+      setValue(/birth year/i, "1996");
+      setValue(/height \(cm\)/i, "180");
+      setValue(/body mass \(kg\)/i, "80");
+    }
+    if (screenIndex === 5) fireEvent.click(screen.getByLabelText("Monday"));
+    if (screenIndex === 7) {
+      for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+        fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText("No"));
+      }
+    }
+  }
+```
+
+```tsx
+    for (let screenIndex = 0; screenIndex < 9; screenIndex += 1) {
+```
+
+**(c)** Narrow the medication guard. `MEDICAL_PATTERN` contains `medicat`, and PAR-Q+ question 5 reads "Are you currently taking prescribed medications for a chronic medical condition?", so the body-text assertion now matches quoted source material and fails. **The constraint being protected is that the app never collects or stores a medication or condition string, not that the word never appears in a yes/no question.** Replace the body-text assertion with a scoped one plus a stronger structural check:
+
+```tsx
+      for (const field of [...screen.queryAllByRole("textbox"), ...screen.queryAllByRole("spinbutton")]) {
+        expect(field.getAttribute("aria-label") ?? "").not.toMatch(MEDICAL_PATTERN);
+      }
+      // The readiness screen quotes the PAR-Q+, which names medications in question 5.
+      // The rule being protected is that nothing medical is *collected*, so that one
+      // screen is checked structurally instead of by a copy sweep. Do NOT remove it from
+      // the DOM to sweep around it: its own Continue button is the control this loop
+      // needs to advance.
+      const readiness = screen.queryByTestId("readiness-screen");
+      if (readiness) {
+        expect(readiness.querySelectorAll("textarea")).toHaveLength(0);
+        expect(readiness.querySelectorAll('input[type="text"]')).toHaveLength(0);
+      } else {
+        expect(document.body.textContent ?? "").not.toMatch(MEDICAL_PATTERN);
+      }
+```
+
+Also update the gate wording in the test's `it` name from eight screens to nine:
+
+```tsx
+  it("shows no medication input or copy on any screen outside the quoted PAR-Q+ block", () => {
+```
+
+**(d)** Add a test for what the wizard now writes:
+
+```tsx
+describe("readiness screening", () => {
+  it("writes flagged false to the profile when every answer is no", () => {
+    fillImperialWizard();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
+    const state = useAppStore.getState();
+    const profile = state.profiles[state.activeProfileId ?? ""];
+    expect(profile?.readiness).toEqual({ screenedAt: "2026-09-01", flagged: false });
+  });
+
+  it("writes flagged true when one answer is yes", () => {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText("Pounds (lb)"));
+    next();
+    setValue(/time zone/i, "America/New_York");
+    next();
+    setValue(/name/i, "Test subject");
+    fireEvent.click(screen.getByLabelText("Male"));
+    setValue(/birth year/i, "1996");
+    setValue(/feet/i, "5");
+    setValue(/inches/i, "11");
+    setValue(/body mass \(lb\)/i, "210");
+    next();
+    setValue(/activity level/i, "moderate");
+    setValue(/experience/i, "intermediate");
+    setValue(/equipment/i, "full-gym");
+    next();
+    setValue(/goal/i, "fat-loss");
+    next();
+    setValue(/sessions per week/i, "4");
+    for (const day of ["Monday", "Tuesday", "Thursday", "Friday"]) {
+      fireEvent.click(screen.getByLabelText(day));
+    }
+    next();
+    setValue(/programme length/i, "12");
+    next();
+    for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+      const answer = id === 1 ? "Yes" : "No";
+      fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText(answer));
+    }
+    next();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm and start" }));
+    const state = useAppStore.getState();
+    const profile = state.profiles[state.activeProfileId ?? ""];
+    expect(profile?.readiness).toEqual({ screenedAt: "2026-09-01", flagged: true });
+  });
+
+  it("renders the notice for a flagged profile and not for a clear one", () => {
+    sessionStorage.clear();
+    const clear = render(<ReadinessNotice flagged={false} />);
+    expect(clear.container.firstChild).toBeNull();
+    clear.unmount();
+    const flagged = render(<ReadinessNotice flagged />);
+    expect(
+      within(flagged.container).getByText(
+        "You answered yes on the readiness screen. Consult a physician before training.",
+      ),
+    ).toBeDefined();
+  });
+});
+```
+
+Add the import this block needs at the top of the file:
+
+```tsx
+import { ReadinessNotice } from "../components/ReadinessNotice";
+```
+
+- [ ] **Step 17: Run the wizard test to verify it passes**
+
+Run: `npx vitest run src/ui/setup/SetupWizard.test.tsx`
+Expected: PASS — 13 tests passed (Task 7's 10, plus the 3 above).
+
+- [ ] **Step 18: Add the Settings row that redoes the screen**
+
+In `src/ui/views/SettingsView.tsx` (Task 8's file), add the imports:
+
+```tsx
+import { useState } from "react";
+import { ReadinessScreen } from "../setup/ReadinessScreen";
+```
+
+add `recordReadiness` beside the existing `updateProfile` selector:
+
+```tsx
+  const recordReadiness = useAppStore((s) => s.recordReadiness);
+  const [redoing, setRedoing] = useState(false);
+```
+
+and add this section immediately before the closing `</section>`:
+
+```tsx
+      <h2>Readiness</h2>
+      <p>
+        {profile.readiness.screenedAt === null
+          ? "Not screened."
+          : profile.readiness.flagged
+            ? `Screened ${profile.readiness.screenedAt}. Physician consult advised.`
+            : `Screened ${profile.readiness.screenedAt}. No flags.`}
+      </p>
+      {redoing ? (
+        <ReadinessScreen
+          timezone={profile.timezone}
+          onComplete={(result) => {
+            recordReadiness(profile.id, result.screenedAt, result.flagged);
+            setRedoing(false);
+          }}
+        />
+      ) : (
+        <button type="button" onClick={() => setRedoing(true)}>
+          {profile.readiness.screenedAt === null ? "Start screen" : "Redo screen"}
+        </button>
+      )}
+```
+
+- [ ] **Step 19: Test the Settings row**
+
+Task 8 creates `SettingsView.tsx` but no test file for it, and its `TargetsView.test.tsx` fixture predates `Profile.readiness`. Two edits.
+
+**(a)** In `src/ui/views/TargetsView.test.tsx`, add the required member to the `const profile: Profile` literal, beside `hydration`, so the file type-checks:
+
+```tsx
+  readiness: { screenedAt: null, flagged: false },
+```
+
+**(b)** Create `src/ui/views/SettingsView.test.tsx`:
+
+```tsx
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SettingsView } from "./SettingsView";
+import { useAppStore } from "../../store/index";
+import type { Profile } from "../../domain/types";
+
+const baseProfile: Profile = {
+  id: "p1",
+  displayName: "Test subject",
+  timezone: "Europe/Athens",
+  units: "metric",
+  createdAt: 1_756_684_800_000, // 2026-09-01T00:00:00Z
+  body: {
+    sex: "male",
+    birthYear: 1996,
+    heightCm: 180, // cm
+    baselineMassKg: 80, // kg
+    baselineAt: "2026-09-01",
+    baselineBodyFatPct: null,
+  },
+  activity: "moderate",
+  experience: "intermediate",
+  equipment: "full-gym",
+  equipmentSteps: { barbellKg: 2.5, dumbbellPairKg: 5, stackKg: 5, hasMicroPlates: false }, // kg
+  goal: { kind: "fat-loss", targetMassKg: null, targetBodyFatPct: null, targetDate: null },
+  supplements: { creatine: true },
+  hydration: { dailyTargetML: 3000, cupSizeML: 250 }, // mL
+  readiness: { screenedAt: null, flagged: false },
+};
+
+function seed(readiness: Profile["readiness"]): void {
+  useAppStore.getState().createProfile({ ...baseProfile, readiness });
+}
+
+beforeEach(() => {
+  useAppStore.getState().wipeAll();
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-01T12:00:00Z"));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("readiness row in Settings", () => {
+  it("offers Start screen when the profile has never been screened", () => {
+    seed({ screenedAt: null, flagged: false });
+    render(<SettingsView />);
+    expect(screen.getByText("Not screened.")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Start screen" })).toBeDefined();
+  });
+
+  it("reports a clear screening and offers Redo screen", () => {
+    seed({ screenedAt: "2026-09-01", flagged: false });
+    render(<SettingsView />);
+    expect(screen.getByText("Screened 2026-09-01. No flags.")).toBeDefined();
+    expect(screen.getByRole("button", { name: "Redo screen" })).toBeDefined();
+  });
+
+  it("reports a flagged screening", () => {
+    seed({ screenedAt: "2026-09-01", flagged: true });
+    render(<SettingsView />);
+    expect(screen.getByText("Screened 2026-09-01. Physician consult advised.")).toBeDefined();
+  });
+
+  it("records a redo that turns a clear profile into a flagged one", () => {
+    seed({ screenedAt: "2026-08-01", flagged: false });
+    render(<SettingsView />);
+    fireEvent.click(screen.getByRole("button", { name: "Redo screen" }));
+    for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+      const answer = id === 3 ? "Yes" : "No";
+      fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText(answer));
+    }
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+    expect(useAppStore.getState().profiles["p1"]?.readiness).toEqual({
+      screenedAt: "2026-09-01", // today in Europe/Athens
+      flagged: true,
+    });
+    expect(screen.getByText("Screened 2026-09-01. Physician consult advised.")).toBeDefined();
+    expect(screen.queryByTestId("readiness-screen")).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 20: Run the Settings test to verify it passes**
+
+Run: `npx vitest run src/ui/views/SettingsView.test.tsx src/ui/views/TargetsView.test.tsx`
+Expected: PASS — 4 new SettingsView tests, plus Task 8's TargetsView tests unchanged.
+
+- [ ] **Step 21: Lint, type-check and run the whole suite**
+
+Run: `npx tsc --noEmit && npx eslint src && npm test`
+Expected: no output from `tsc` and `eslint` (exit 0); the full Vitest run passes.
+
+Run: `git grep -nEi 'vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e]' -- src/`
+Expected: no output. The readiness questions name no drug and no condition.
+
+- [ ] **Step 22: Commit**
+
+```bash
+git add src/content/readinessQuestions.ts src/ui/setup/ReadinessScreen.tsx src/ui/setup/ReadinessScreen.test.tsx src/ui/setup/setup.css src/ui/setup/SetupWizard.tsx src/ui/setup/SetupWizard.test.tsx src/ui/components/ReadinessNotice.tsx src/ui/components/readinessNotice.css src/ui/components/ReadinessNotice.test.tsx src/store/index.ts src/store/profile.test.ts src/ui/views/SettingsView.tsx src/ui/views/SettingsView.test.tsx src/ui/views/TargetsView.test.tsx
+git commit -m "feat: pre-participation readiness screen and physician-consult notice"
+```
+
+---
+
 ## Verification gates for P2 (stated before the work)
 
 | Gate | Where it runs | Pass criterion |
@@ -5253,8 +6315,9 @@ git commit -m "feat: targets view with daily intake check-in, settings entry poi
 | Templates | Task 4, `templates.test.ts` | Every candidate id exists; compound slots precede isolation; exactly one heavy slot per session; the §7 bands are reproduced verbatim; three days is full body, not push/pull/legs; rest is never below 90 s. |
 | **Generator (master plan §7 P2 row)** | Task 5, `generator.test.ts` | For every `sessionsPerWeek ∈ {2..6}`: `weeks × sessionsPerWeek` sessions; each week's label multiset equals the template's; every planned exercise exists in the library; every deload block has `setModifier ∈ [0.4, 0.6]` and `loadModifier === 1`; every declared band muscle lands inside the §7 band at all three experience levels; no muscle exceeds the band top; every muscle group is trained. |
 | Store | Task 6, `profile.test.ts` | `setPlan` creates the cursor at index 0; `logIntake` keeps one entry per date; `useNutritionTargets` returns the identical object across a re-render and a fresh one after a profile change. |
-| Wizard | Task 7, `SetupWizard.test.tsx` | Field labels carry the chosen unit; 210 lb stores 95.2543977 kg and 5 ft 11 in stores 180.34 cm exactly; the review screen shows 2796 kcal, 133–191 g, 101 fl oz and −1.5 lb/week; no medication input or copy exists on any of the eight screens; `supplements` has exactly one key. |
+| Wizard | Task 7, `SetupWizard.test.tsx` | Field labels carry the chosen unit; 210 lb stores 95.2543977 kg and 5 ft 11 in stores 180.34 cm exactly; the review screen shows 2796 kcal, 133–191 g, 101 fl oz and −1.5 lb/week; across all **nine** screens no medication input exists and no medication copy exists outside the quoted PAR-Q+ block, which itself holds no free-text input; `supplements` has exactly one key. |
 | Targets view | Task 8, `TargetsView.test.tsx` | The ASCII bar is proportional and clamped; a check-in writes one `IntakeEntry` for today and a correction replaces it; the basis panel names the equation and the citation for every number. |
+| **Readiness screen (master plan §10, P2 item 20 / P4 item 23)** | Task 9, `ReadinessScreen.test.tsx`, `ReadinessNotice.test.tsx`, `SetupWizard.test.tsx`, `SettingsView.test.tsx`, `profile.test.ts` | The seven question strings equal the wording transcribed from the official PAR-Q+ 2025 form character for character; `READINESS_SOURCE` contains "DOI not verified" and matches no `10.\d{4,9}/` pattern; the screen renders zero text inputs and zero textareas; all-no gives `{ screenedAt, flagged: false }` and a single yes gives `flagged: true`; `screenedAt` is the local date in the profile zone (2026-09-01T02:00Z in `America/Los_Angeles` is `2026-08-31`); `ReadinessNotice` renders nothing at `flagged: false`, renders the physician line at `flagged: true`, stays hidden after Dismiss across a remount in the same session, and renders when `sessionStorage` throws. |
 | Whole-plan hygiene | after every task | `npx tsc --noEmit && npx eslint src && npm test` clean; `git grep -nEi 'vyvanse|lisdexamfetamine|ymca|amphetamine' -- src/` returns nothing. |
 
 ---
@@ -5287,6 +6350,14 @@ Each item below is either a change to `docs/plans/2026-09-01-00-master-plan.md` 
 17. **The §7 band cannot hold every muscle at once.** Thirteen groups at 12–16 sets each is ~180 sets a week. Each template declares the muscles it places in band; the rest are reported as maintenance-only, which is the content review §2.1 sanctioned alternative, and the wizard states it on the review screen.
 18. **Deload cadence has no supporting evidence.** Four weeks is the lower edge of the reviewer's recommended 4–8 week calendar *backstop*; Bell 2023 and Coleman 2024 both argue against fixed pre-planned deloads. Autoregulation is P4's concern; the calendar backstop is what P2 can honestly ship.
 19. **Excluded from the library pending P4:** `barbell-row-heavy`. Its cue is the one item the content review §6 marks **WRONG (unsafe)**. It returns only if P4 rewrites the cue to the strict standard.
-20. **Not in scope, and therefore not done in P2:** the warm-up protocol and pre-participation screen the content review §6 flags as a **WRONG (omission)** — grep found zero hits for `warm.?up|par-?q|physician|contraindic|screen` across the legacy files. P2 collects no injury history and shows no readiness screen. This belongs in P4 (session flow) and should be added to the master plan's requirements map; until it exists, the generated plan prescribes 4–6 rep barbell work with no warm-up guidance.
+20. **Closed by Task 9 (superseded).** This item previously read "Not in scope, and therefore not done in P2" for the warm-up protocol and the pre-participation screen that content review §6 flags as a **WRONG (omission)**. Master plan §10 subsequently assigned the screen to P2, and **Task 9 builds it**: the seven PAR-Q+ general health questions as a wizard step before Review, `Profile.readiness` written on confirm, `ReadinessNotice` for P3/P4 to render at session start, and a Settings redo control. What is still **not** done: no warm-up protocol ships as numbers, because the content review supplies no sourced protocol; P4's non-numeric `WARMUP_NOTICE` remains the whole of the warm-up guidance. P2 still collects no injury history beyond PAR-Q+ question 6.
 21. **Not verified by this plan:** the `videoQuery` strings are ported verbatim and were never audited — the content review says so explicitly. Three exercises (`lat-pulldown`, `leg-press`, `stair-climber`) carry `videoQuery: null` because the legacy file had no string for them; P4's video control must handle `null`.
 22. **Not touched by this plan:** `src/domain/schema.ts` beyond the one added field; the legacy tree; P1's units and dates modules; anything under `worker/`.
+
+23. **`recordReadiness` was missing from this plan and is added by Task 9.** Master plan §6.7 lists it in the P2 group, but Task 6 defines only five actions. Task 9 adds the sixth to `src/store/index.ts` with the §6.7 signature unchanged. The master plan needs no edit; this plan did.
+
+24. **No DOI exists for the PAR-Q+ paper, and none is invented.** The DOI usually quoted (`10.14288/hfjc.v4i2.103`) returns "Resource not found" from Crossref; a Crossref bibliographic search returns only unrelated works; Crossref holds zero journal records for *Health & Fitness Journal of Canada*; PubMed indexes no HFJC record for it; and the publisher's own form prints the citation without a DOI. `READINESS_SOURCE` therefore ships title, journal, volume, pages, year and the official form URL with the words "DOI not verified", and a test asserts no DOI-shaped string is present. All five checks are logged in `REFERENCES.md`.
+
+25. **Reproduction permission for the PAR-Q+ text is NOT established, and Task 9 does not claim it is.** The PAR-Q+ FAQ states only "Copyright PAR-Q+ Collaboration 2007-2026. All rights reserved." and publishes no reproduction, embedding or translation licence. The seven questions ship verbatim because paraphrasing a validated screening instrument would change what it screens for, which is the worse failure. **Before this app is distributed beyond the author, written permission must be obtained from eparmedx@gmail.com, or the screen must be replaced with an instrument whose licence permits redistribution.** This is a licensing gap, not a technical one, and no code change closes it.
+
+26. **An unscreened profile shows no notice.** `ReadinessNotice` renders only when `readiness.flagged` is true, and a profile imported by P7 or created before Task 9 has `{ screenedAt: null, flagged: false }`. Such a profile is therefore treated as clear rather than as unknown. Task 9 surfaces the state in Settings ("Not screened." with a **Start screen** control) but does not block training on it. If that default is unacceptable, the fix is a third state in `Profile.readiness` and a master plan §5 amendment; it is not a change P2 can make alone.
