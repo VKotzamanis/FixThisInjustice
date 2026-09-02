@@ -1921,7 +1921,7 @@ Each item is a change to `docs/plans/2026-09-01-00-master-plan.md` that this pla
 
 7. **§1.8 — record the custom clip's storage format and its cost.** §1.8 says IndexedDB holds "binary assets" without a record shape. The adopted shape is `{ id, name, type, size, data: ArrayBuffer, createdAt }` with the `Blob` rebuilt at read time; the rejected alternative (storing the `Blob` directly) is untestable because `fake-indexeddb` + jsdom silently degrades a jsdom `Blob` to `{}`. The cost of the adopted shape is a heap spike of the file's full size while saving, which is why the Settings copy recommends 25 MiB or less against a 150 MiB hard cap.
 
-8. **§4 file tree — add `public/media/.gitkeep`, `docs/motivation-video.md`, `scripts/check-media-size.sh`, `src/ui/motivation/MotivationGate.tsx`, `src/ui/motivation/MotivationSettings.tsx`, and `src/ui/motivation/motivation.css`.** §4 lists only `MotivationModal.tsx` under `ui/motivation/`.
+8. **§4 file tree: add `public/media/.gitkeep`, `docs/motivation-video.md`, `scripts/check-media-size.sh`, `src/ui/motivation/MotivationGate.tsx`, `src/ui/motivation/MotivationSettings.tsx`, and `src/ui/motivation/motivation.css`.** §4 listed only `MotivationModal.tsx` under `ui/motivation/`. Landed in the P9 pass (`3af168d`); master plan section 4 now lists all six.
 
 9. **No CSP change is required, and this is worth recording.** The modal's poster is an inline `data:` SVG, admitted by the existing `img-src 'self' data: blob:`; a custom clip plays from a `blob:` object URL, admitted by the existing `media-src 'self' blob:`; the bundled clip is same-origin. If the poster ever becomes a shipped image file, `img-src 'self'` still covers it.
 
