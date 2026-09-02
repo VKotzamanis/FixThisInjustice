@@ -740,7 +740,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.',
   'error.valueRequired': 'Enter a number.',
   'error.pickOneDay': 'Select at least one weekday.',
-  'error.positive': 'Enter a number greater than zero.',
+  'error.positive': 'Enter a number above zero.',
   'error.wholeNumber': 'Enter a whole number.',
 
   // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
