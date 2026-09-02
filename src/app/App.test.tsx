@@ -1,17 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../ui/styles/crt.css';
 import { App } from './App';
+import { syncSchedule } from '../domain/reminders/client';
+import legacyV2 from '../domain/migrations/fixtures/v2-sample.json';
 import { defaultState, useAppStore } from '../store';
-import { STORAGE_KEY } from '../store/persistence';
+import { LEGACY_V2_KEY, STORAGE_KEY } from '../store/persistence';
+import { makeBlankState } from '../test/migrationFactories';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
 import { FORMAT, copy } from '../content/copy';
 import { WARMUP_NOTICE } from '../content/formCues';
 import { unlockAudio } from '../ui/audio/chime';
-import type { Profile } from '../domain/types';
-import { MONDAY, NOW_MS, seedState } from '../test/scheduleFixtures';
+import type { LocalDate, Profile, WeeklyReview } from '../domain/types';
+import { addDays, todayLocal } from '../domain/dates';
+import { probeBundledVideo, resolveVideoSrc } from '../domain/motivation/assets';
+import { EMPTY_SESSION } from '../store/sessionMirror';
+import { MONDAY, NOW_MS, PROFILE_ID, TZ_ATHENS, seedState } from '../test/scheduleFixtures';
 
 /**
  * The download helper is the seam. It is the one thing in these tests that
@@ -30,6 +36,48 @@ vi.mock('../ui/audio/chime', () => ({
   releaseAudio: vi.fn(),
   vibrate: vi.fn(() => true),
 }));
+
+/**
+ * The reminder build flag, made switchable.
+ *
+ * `REMINDERS_CONFIGURED` is FALSE in a vitest run: it is `REMINDER_API_BASE !== null &&
+ * VAPID_PUBLIC_KEY !== null`, and neither VITE_REMINDER_API nor VITE_VAPID_PUBLIC_KEY reaches
+ * the test environment. ReminderSync attaches nothing at all when it is false, so the mounted
+ * component would be indistinguishable from an unmounted one. The flag is therefore driven
+ * from here, exactly as src/app/ReminderSync.test.tsx drives it, and it defaults to the real
+ * value so no other test in this file sees a configured build.
+ */
+const reminderConfig = vi.hoisted(() => ({ configured: false }));
+
+vi.mock('../config/reminders', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../config/reminders')>();
+  return {
+    ...actual,
+    get REMINDERS_CONFIGURED(): boolean {
+      return reminderConfig.configured;
+    },
+  };
+});
+
+/**
+ * The Worker client is the seam. What is asserted in this file is that the sync component is
+ * MOUNTED, never what it uploads: the trigger policy and the recovery path are
+ * ReminderSync.test.tsx's.
+ */
+vi.mock('../domain/reminders/client', () => ({
+  subscribe: vi.fn(),
+  syncSchedule: vi.fn(),
+}));
+
+/**
+ * The motivation clip is the modal's business, not the shell's, and jsdom has no media
+ * pipeline. Both lookups are doubled exactly as MotivationModal.test.tsx doubles them;
+ * importOriginal keeps BUNDLED_VIDEO_SRC real, because the modal compares against it.
+ */
+vi.mock('../domain/motivation/assets', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../domain/motivation/assets')>();
+  return { ...actual, resolveVideoSrc: vi.fn(), probeBundledVideo: vi.fn() };
+});
 
 /** A save failure as the store records it: the reason plus the thrown message. */
 const SERIALIZE_FAILURE = { reason: 'serialize' as const, error: 'BigInt' };
@@ -362,5 +410,240 @@ describe('view shell', () => {
     // Code review A29: resume() outside a user gesture is refused by every browser, so the
     // call has to be made from the handler the tap runs, not from the Train view's mount.
     expect(unlockAudio).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The Worker schedule sync (P5 Task 6, wiring deferred here).
+ *
+ * ReminderSync renders nothing, so the only evidence it is mounted is that its mount effect
+ * ran: one `syncSchedule` call, against the active profile, on the first commit. The effect
+ * also returns immediately when `activeProfileId` is null, so a profile is seeded first;
+ * without one the assertion would pass for an unmounted component too.
+ */
+describe('reminder sync', () => {
+  const LABELS = ['Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    /*
+     * Reset, not merely re-stubbed: `restoreMocks` restores spies, and a module mock declared
+     * with vi.fn() keeps its call history across tests in this file. Without the reset the
+     * unconfigured case would inherit the configured case's call and fail on it.
+     */
+    vi.mocked(syncSchedule).mockReset();
+    vi.mocked(syncSchedule).mockResolvedValue({ status: 'unchanged' });
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+  });
+
+  afterEach(() => {
+    // Left false for every other describe in this file, which is the real build's value here.
+    reminderConfig.configured = false;
+  });
+
+  it('syncs the schedule once on mount when the build carries the reminder variables', async () => {
+    reminderConfig.configured = true;
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(syncSchedule).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('syncs nothing when the build carried no Worker origin', async () => {
+    // The unmocked value in a vitest run. Asserted as behaviour rather than as a constant:
+    // an unconfigured build must reach neither the client nor the permission prompt.
+    render(<App />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(syncSchedule).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The legacy-import offer (P7 Task 6, wiring deferred here).
+ *
+ * MigrationGate is self-gating and covered in full by MigrationGate.test.tsx. What is asserted
+ * here is that the shell mounts it where the offer can appear ABOVE the app rather than in
+ * place of it: inside <main>, beside the view switch, so nothing about it blocks. Both halves
+ * are asserted, because a gate mounted at the wrong condition is as broken as one not mounted:
+ * the wizard on a device carrying the old document, and nothing on a device without it.
+ */
+describe('legacy migration offer', () => {
+  const LEGACY_JSON = JSON.stringify(legacyV2);
+
+  /** Storage with or without the legacy key, plus the profile and plan the gate requires. */
+  function seedLegacy(legacy: string | null): void {
+    installFakeStorage(legacy === null ? {} : { [LEGACY_V2_KEY]: legacy });
+    useAppStore.getState().replaceState(makeBlankState());
+  }
+
+  it('offers the import when the old document is on the device', () => {
+    seedLegacy(LEGACY_JSON);
+
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: copy('hero.legacyImport') })).toBeInTheDocument();
+  });
+
+  it('offers nothing when the old document is not on the device', () => {
+    seedLegacy(null);
+
+    render(<App />);
+
+    expect(screen.queryByRole('heading', { name: copy('hero.legacyImport') })).toBeNull();
+  });
+});
+
+/**
+ * The weekly-miss popup (P6 Task 5, wiring deferred here).
+ *
+ * MotivationGate is self-gating and covered in full by MotivationGate.test.tsx. What is
+ * asserted here is that the shell mounts it, and mounts it OUTSIDE <main>, as the last child
+ * of the CRT root: it is a modal over the whole app, not a panel inside the view area.
+ *
+ * The real clock is used, not a fake one. `pendingMotivation` measures its 14 day window
+ * through `useMinuteClock`, and the fixtures are anchored to the profile's civil today and
+ * offset by 1 and 20 days, so a run that straddles midnight moves both anchors together and
+ * neither crosses the threshold. The plan fixture starts on a day still ahead of that clock,
+ * so `useWeeklyClose` has no finished week to close and cannot rewrite what is seeded here.
+ */
+describe('weekly-miss popup', () => {
+  const TODAY: LocalDate = todayLocal(TZ_ATHENS);
+
+  /** A closed week three sessions short of its target, ending on the given civil day. */
+  function miss(end: LocalDate): WeeklyReview {
+    return {
+      profileId: PROFILE_ID,
+      weekStart: addDays(end, -6),
+      weekEnd: end,
+      target: 4, // [sessions/week]
+      completed: 1, // [sessions]
+      skipped: 0, // [sessions]
+      paused: false,
+      delta: -3, // completed - target, [sessions]; negative = sessions missed
+      evaluatedAt: 1_756_000_000_000, // [ms] epoch, UTC
+      missHandled: false,
+    };
+  }
+
+  function seedReviews(reviews: WeeklyReview[]): void {
+    installFakeStorage();
+    useAppStore.setState({
+      ...seedState({ labels: ['Push'], weekdays: [1] }),
+      weeklyReviews: { [PROFILE_ID]: reviews },
+      motivation: {},
+      // The session slice is store-only and survives between tests in a file, so it is pinned.
+      session: { ...EMPTY_SESSION },
+    });
+  }
+
+  beforeEach(() => {
+    vi.mocked(resolveVideoSrc).mockResolvedValue({
+      src: 'blob:motivation-clip',
+      revoke: () => {
+        /* nothing is held: the source is a literal, not a real object URL */
+      },
+    });
+    vi.mocked(probeBundledVideo).mockResolvedValue(true);
+    // jsdom has no media pipeline, and the modal autoplays.
+    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+  });
+
+  it('shows the popup for a miss inside the window and no session in progress', async () => {
+    seedReviews([miss(addDays(TODAY, -1))]);
+
+    render(<App />);
+
+    expect(await screen.findByTestId('motivation-video')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: copy('hero.weeklyTargetMissed') }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows nothing when the week was not missed', () => {
+    seedReviews([{ ...miss(addDays(TODAY, -1)), completed: 4, delta: 0 }]);
+
+    render(<App />);
+
+    expect(screen.queryByTestId('motivation-video')).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+});
+
+/**
+ * The spotlight palette (P8 Tasks 8 and 9, wiring deferred here).
+ *
+ * The palette is a CONTROLLED component and registers no key listener of its own (code review
+ * A54: two window listeners bound the same combo and both ran). This shell therefore owns the
+ * open state and the button that sets it, and binds no combo: SPOTLIGHT_COMBO belongs to the
+ * hotkey registry task, and binding it here would recreate the second listener.
+ *
+ * The button lives in the nav because SPOTLIGHT_COMBO cannot be pressed on a phone, which
+ * would otherwise leave the palette unreachable on a touch device. Escape is ModalShell's, so
+ * what is asserted here is that one press reaches this shell's onClose and the palette stays
+ * shut - a caller that toggled rather than cleared would reopen it.
+ */
+describe('spotlight palette', () => {
+  const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+  });
+
+  it('opens from the nav button, with the query box focused, and closes on Escape', async () => {
+    render(<App />);
+
+    const nav = screen.getByRole('navigation', { name: copy('nav.label') });
+    await userEvent.click(
+      within(nav).getByRole('button', { name: copy('button.openSpotlight') }),
+    );
+
+    const queryBox = screen.getByRole('combobox');
+    // Focus is the palette's whole point: it opens onto a query the user types immediately.
+    expect(document.activeElement).toBe(queryBox);
+
+    fireEvent.keyDown(queryBox, { key: 'Escape' });
+
+    expect(screen.queryByRole('combobox')).toBeNull();
+  });
+});
+
+/**
+ * The global toast queue (P8 Task 3, wiring deferred here).
+ *
+ * Two facts are asserted, and they are the two the queue cannot supply for itself. First, the
+ * PROVIDER is above the app: `useToasts` throws outside one, so a `ToastQueue` that renders at
+ * all proves the context reaches it, and so it will reach the views that push. Second, BOTH
+ * live regions are in the DOM before any toast exists - a region a screen reader first meets
+ * at the moment its content arrives is announced unreliably, and politeness is a property of
+ * the region, not of the moment, which is why there are two rather than one that flips.
+ *
+ * `SessionToast` in TrainView is deliberately left standing; retiring it belongs to the task
+ * that moves its callers onto `push`, and until then the two coexist.
+ */
+describe('toast queue', () => {
+  const LABELS = ['Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+  });
+
+  it('mounts both live regions, empty, on the first render', () => {
+    const { container } = render(<App />);
+
+    const stack = container.querySelector<HTMLElement>('.toast-stack');
+    if (stack === null) throw new Error('the toast stack is not mounted');
+
+    expect(within(stack).getByRole('status')).toBeInTheDocument();
+    expect(within(stack).getByRole('alert')).toBeInTheDocument();
   });
 });

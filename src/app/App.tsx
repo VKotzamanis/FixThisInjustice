@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import { copy } from '../content/copy';
 import { useAppStore } from '../store';
@@ -12,7 +12,12 @@ import {
   useSaveError,
 } from '../store/selectors';
 import { SessionIndicator } from '../ui/components/SessionIndicator';
+import { Spotlight } from '../ui/components/Spotlight';
+import { SpotlightButton } from '../ui/components/SpotlightButton';
+import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
+import { MigrationGate } from '../ui/migration/MigrationGate';
+import { MotivationGate } from '../ui/motivation/MotivationGate';
 import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { LogView } from '../ui/views/LogView';
@@ -23,6 +28,7 @@ import { TodayView } from '../ui/views/TodayView';
 import { TrainView } from '../ui/views/TrainView';
 import { downloadText } from './download';
 import { useWeeklyClose } from './useWeeklyClose';
+import { ReminderSync } from './ReminderSync';
 import { UpdatePrompt } from './UpdatePrompt';
 import './appShell.css';
 
@@ -72,6 +78,22 @@ function ViewShell(): ReactElement {
   const stored = useAppStore((s) => s.ui.lastView);
   const view: ViewId = isViewId(stored) ? stored : 'targets';
 
+  /*
+   * The spotlight palette is CONTROLLED, and this is the only thing that opens it. It
+   * registers no key listener of its own (code review A54 was two window listeners bound to
+   * the same combo, both firing), so SPOTLIGHT_COMBO is deliberately NOT bound here: the
+   * hotkey registry owns it, and a second binding in this file would be exactly the defect
+   * that split it out.
+   *
+   * `closeSpotlight` is a stable identity so the palette's `onClose` prop does not change on
+   * every keystroke in the query box; the open handler is not, because it is passed to a
+   * button that re-renders with the nav anyway.
+   */
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
+  const closeSpotlight = useCallback(() => {
+    setSpotlightOpen(false);
+  }, []);
+
   return (
     <>
       <nav className="viewnav" aria-label={copy('nav.label')}>
@@ -90,7 +112,17 @@ function ViewShell(): ReactElement {
             {n.label}
           </button>
         ))}
+        {/*
+         * The tap target for the palette. It sits in the nav because SPOTLIGHT_COMBO cannot be
+         * pressed on a phone, which would otherwise leave the palette unreachable there.
+         */}
+        <SpotlightButton
+          onOpen={() => {
+            setSpotlightOpen(true);
+          }}
+        />
       </nav>
+      <Spotlight open={spotlightOpen} onClose={closeSpotlight} />
       {view === 'targets' && <TargetsView />}
       {view === 'settings' && <SettingsView />}
       {view === 'today' && <TodayView />}
@@ -302,42 +334,75 @@ export function App(): ReactElement {
    * open request, so this changes no existing behaviour.
    */
   return (
-    <TrainingModalsProvider>
-      <div className={crtClasses}>
-        <header className="topbar">
-          <span className="brand">
-            FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
-          </span>
+    <ToastProvider>
+      <TrainingModalsProvider>
+        <div className={crtClasses}>
           {/*
-           * The plan position the CURSOR stands at, mounted here so it is visible from every
-           * view (P3 Task 7). It renders nothing until a plan exists, so the header keeps its
-           * two-element layout through setup.
+           * The Worker's copy of the reminder schedule, kept in step with the store (P5 Task 6).
+           * It renders nothing, so its position carries no layout: it is first so the mount
+           * sync is issued on the app's first commit rather than behind the view tree, and it
+           * attaches nothing at all in a build that carried no Worker origin.
            */}
-          <SessionIndicator />
-          <span>{hydrated ? 'local data loaded' : 'reading local data'}</span>
-        </header>
+          <ReminderSync />
+          <header className="topbar">
+            <span className="brand">
+              FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+            </span>
+            {/*
+             * The plan position the CURSOR stands at, mounted here so it is visible from every
+             * view (P3 Task 7). It renders nothing until a plan exists, so the header keeps its
+             * two-element layout through setup.
+             */}
+            <SessionIndicator />
+            <span>{hydrated ? 'local data loaded' : 'reading local data'}</span>
+          </header>
 
-        <main>
-          <UpdatePrompt />
-          <SaveErrorBanner />
-          <LoadErrorBanner />
+          <main>
+            <UpdatePrompt />
+            <SaveErrorBanner />
+            <LoadErrorBanner />
+            {/*
+             * The legacy import offer (P7). A PANEL, not a route and not a modal: it is rendered
+             * beside the view switch rather than in place of it, so a user who wants to ignore
+             * the old data can still log a set today. It gates itself on all four of its
+             * conditions and renders null otherwise, so it costs the shell nothing.
+             */}
+            <MigrationGate />
 
-          {profile === null ? (
-            // No profile means setup has not run. The wizard is the whole screen until it has:
-            // every other view needs a profile to read units, time zone and targets from.
-            <SetupWizard />
-          ) : /*
-               * Gated on `hydrated` as well as on the profile: before the stored document has been
-               * read there is nothing to judge, and an empty store would look unscreened and flash
-               * the screen at a user who has already answered it.
-               */
-          hydrated && profile.readiness.screenedAt === null ? (
-            <ReadinessGate profile={profile} />
-          ) : (
-            <ViewShell />
-          )}
-        </main>
-      </div>
-    </TrainingModalsProvider>
+            {profile === null ? (
+              // No profile means setup has not run. The wizard is the whole screen until it has:
+              // every other view needs a profile to read units, time zone and targets from.
+              <SetupWizard />
+            ) : /*
+                 * Gated on `hydrated` as well as on the profile: before the stored document has been
+                 * read there is nothing to judge, and an empty store would look unscreened and flash
+                 * the screen at a user who has already answered it.
+                 */
+            hydrated && profile.readiness.screenedAt === null ? (
+              <ReadinessGate profile={profile} />
+            ) : (
+              <ViewShell />
+            )}
+          </main>
+
+          {/*
+           * The weekly-miss popup (P6). Outside <main>, as the last child of the CRT root,
+           * because it is a modal over the whole app rather than a panel inside the view area.
+           * It gates itself on the pending week, the profile, an idle session and the migration
+           * offer, and renders null otherwise.
+           */}
+          <MotivationGate />
+        </div>
+      </TrainingModalsProvider>
+
+      {/*
+       * The two live regions, outside the CRT root and fixed to the viewport, so a toast is
+       * never clipped by the shell's layout and never covered by the scanline and vignette
+       * layers (.toast-stack sits above both). They are always in the DOM, empty or not: a
+       * live region a screen reader first meets at the moment its content arrives is
+       * announced unreliably.
+       */}
+      <ToastQueue />
+    </ToastProvider>
   );
 }
