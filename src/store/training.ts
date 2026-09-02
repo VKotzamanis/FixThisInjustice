@@ -19,6 +19,7 @@ import {
 } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
+import { inventoryOf } from './funActions';
 import { requireProfile } from './scheduleActions';
 import type {
   AppState,
@@ -78,7 +79,25 @@ export function applyLogSet(
   requireProfile(state, 'logSet', input.profileId);
   const candidate: LoggedSet = { ...input, id, loggedAt: now };
   const loggedSet = parseOrThrow(LoggedSetSchema, candidate, 'logSet');
-  return { ...state, sets: { ...state.sets, [loggedSet.id]: loggedSet } };
+  /*
+   * P8. `totalSetsLogged` is the ordinal the specimen draw is keyed by (master plan section
+   * 10.8, rule 1) and the counter the milestone toasts read, so it moves with the set list and
+   * nothing else.
+   *
+   * The increment happens HERE, inside the transformer, computed from the state this call was
+   * handed. Code review A46: it used to be computed in the view from a render closure, so two
+   * sets logged in one React batch both read the same stale value and one of them vanished
+   * from the count. A bodyweight set stores loadKg 0 and counts like any other (A60).
+   */
+  const inventory = inventoryOf(state.specimens, loggedSet.profileId);
+  return {
+    ...state,
+    sets: { ...state.sets, [loggedSet.id]: loggedSet },
+    specimens: {
+      ...state.specimens,
+      [loggedSet.profileId]: { ...inventory, totalSetsLogged: inventory.totalSetsLogged + 1 }, // [sets]
+    },
+  };
 }
 
 /**
@@ -96,7 +115,24 @@ export function applyDeleteSet(
   if (removed === null) return { next: state, removed: null };
   const sets = { ...state.sets };
   delete sets[id];
-  return { next: { ...state, sets }, removed };
+  /*
+   * P8, code review A47: the counter tracks the REAL set count, so a delete takes it back
+   * down. A counter that only ever rose drifted above the set list on every log-delete-log,
+   * and the drift was permanent.
+   *
+   * Clamped at zero rather than allowed negative: a document migrated from the legacy store
+   * has its counter recomputed from the set list (src/domain/migrations/v2.ts), and a set
+   * logged before that recount could still be deleted afterwards.
+   */
+  const inventory = inventoryOf(state.specimens, removed.profileId);
+  const specimens = {
+    ...state.specimens,
+    [removed.profileId]: {
+      ...inventory,
+      totalSetsLogged: Math.max(0, inventory.totalSetsLogged - 1), // [sets]
+    },
+  };
+  return { next: { ...state, sets, specimens }, removed };
 }
 
 /**
@@ -104,7 +140,24 @@ export function applyDeleteSet(
  * record the user deleted, not a new record that looks like it.
  */
 export function applyRestoreSet(state: AppState, loggedSet: LoggedSet): AppState {
-  return { ...state, sets: { ...state.sets, [loggedSet.id]: loggedSet } };
+  /*
+   * P8. The counter goes back up with the set. applyDeleteSet took it down, and undo restores
+   * the record the user deleted, so leaving it down would put `totalSetsLogged` one BELOW the
+   * real set count - the same drift A47 fixed, in the other direction.
+   *
+   * This cannot hand out a second card. The restored set reoccupies the ordinal it held, and
+   * that ordinal is already recorded in `acquiredByOrdinal` if it ever drew one, so the next
+   * draw for it returns the card it produced the first time (master plan section 10.8, rule 3).
+   */
+  const inventory = inventoryOf(state.specimens, loggedSet.profileId);
+  return {
+    ...state,
+    sets: { ...state.sets, [loggedSet.id]: loggedSet },
+    specimens: {
+      ...state.specimens,
+      [loggedSet.profileId]: { ...inventory, totalSetsLogged: inventory.totalSetsLogged + 1 }, // [sets]
+    },
+  };
 }
 
 /**

@@ -27,6 +27,7 @@ import {
 } from './scheduleActions';
 import { createMotivationActions, type MotivationActions } from './motivationActions';
 import { createReminderActions, type ReminderActions } from './reminderActions';
+import { createFunActions, type FunActions } from './funActions';
 import {
   UNDO_WINDOW_MS,
   applyAddCustomExercise,
@@ -237,7 +238,8 @@ export interface AppActions {
 export type AppStore = AppState &
   AppActions & { status: StoreStatus; session: SessionState } & ScheduleActions &
   MotivationActions &
-  ReminderActions;
+  ReminderActions &
+  FunActions;
 
 /**
  * The persisted fields of the store, and only those: no actions, no `status`,
@@ -345,6 +347,18 @@ export const useAppStore = create<AppStore>()((set, get) => {
     set: (updater) => {
       set((s) => updater(s));
     },
+  });
+
+  /*
+   * P8's fun-mechanics slice. Same adapter, plus a `get`: attemptSpecimenDraw has to read the
+   * document, decide, and only then write, and the read must not happen inside an updater
+   * (code review A57; funActions.ts says why). It carries no error channel either.
+   */
+  const fun = createFunActions({
+    set: (updater) => {
+      set((s) => updater(s));
+    },
+    get: () => get(),
   });
 
   /**
@@ -758,6 +772,19 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // an undo, and re-deriving it from the document afterwards would mean searching by value.
     const id = newId();
     set((s) => applyLogSet(s, input, id, now)); // now: [ms] epoch, UTC
+    /*
+     * P8. The specimen roll runs HERE, after the updater has returned, and never inside it:
+     * React may invoke an updater more than once for a single dispatch, and a roll inside one
+     * would yield different state on the second invocation (code review A57).
+     *
+     * It runs unconditionally, and it is safe to run twice. The draw is seeded from the
+     * ordinal applyLogSet's increment just produced, and the card is recorded against that
+     * ordinal, so P8 Task 10's Train view calling attemptSpecimenDraw for the same set gets
+     * this same card back rather than a second one (master plan section 10.8, rule 3). The
+     * roll is reached only if the set was actually stored: applyLogSet throws on a refused
+     * set, and zustand applies nothing when an updater does not return.
+     */
+    fun.attemptSpecimenDraw(input.profileId, input.exerciseId, now); // now: [ms] epoch, UTC
     return id;
   },
 
@@ -879,6 +906,9 @@ export const useAppStore = create<AppStore>()((set, get) => {
   /* P6's motivation slice (master plan §6.7). Collides with nothing. */
   ...motivation,
   ...reminders,
+
+  /* P8's fun-mechanics slice (master plan section 6.7). Collides with nothing. */
+  ...fun,
 
   /*
    * The two transitions that end a session, wrapped so the non-persisted session slice and its

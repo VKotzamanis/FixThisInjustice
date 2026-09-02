@@ -77,7 +77,15 @@ export interface WeeklyReview { profileId: string; weekStart: LocalDate; weekEnd
 export interface MotivationState { profileId: string; lastShownForWeek: LocalDate | null; lastShownAt: EpochMs | null; customVideoAssetId: string | null; } // markMotivationShown sets lastShownForWeek/lastShownAt AND WeeklyReview.missHandled = true; a single Dismiss control does this (no separate 'not this week' control)
 
 // ---- fun mechanics (P8) ----
-export interface SpecimenInventory { profileId: string; acquired: Record<string, { at: EpochMs; exerciseId: string | null }>; totalSetsLogged: number; }
+// SpecimenInventory.acquiredByOrdinal maps a logged set's ORDINAL to the id of the card that
+// ordinal produced. The ordinal is totalSetsLogged read AFTER logSet's increment, that is the
+// just-logged set's own position with no `+ 1`, rendered as a decimal string because a JSON
+// object key always is. Optional and additive: an inventory written before the field existed
+// reads as "no ordinal recorded yet". It is what makes one ordinal yield at most one card ever,
+// so a delete and relog returns the card already held instead of rerolling a fresh one (master
+// plan section 10.8, rule 3); the counter decrementing on delete is rule 2 and does not close
+// the farm on its own. Written only by the store's recordSpecimen, via recordSpecimenDraw.
+export interface SpecimenInventory { profileId: string; acquired: Record<string, { at: EpochMs; exerciseId: string | null }>; totalSetsLogged: number; acquiredByOrdinal?: Record<string, string> | undefined; }
 export interface TimeCapsule { note: string; writtenAt: EpochMs; opensOn: LocalDate; opened: boolean; }
 
 // ---- ui preferences (persisted) ----
