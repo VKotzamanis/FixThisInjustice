@@ -1,8 +1,8 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
-import { useCopy, useCopyOverrides } from '../../content/useCopy';
+import { useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
-import { Icon } from '../../skins/limelight/Icon';
+import { SkinLabel } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
 import { weekDeltaKey } from '../format/weekDelta';
 import './limelight.css';
@@ -43,7 +43,8 @@ export function handledMiss(review: WeeklyReview | null): review is WeeklyReview
  * never data.
  */
 export function Intervention({ review }: { review: WeeklyReview | null }): ReactElement | null {
-  const c = useCopy();
+  // Only the counts line resolves a key here now; the title and the body read theirs through
+  // SkinLabel, which calls useCopy() itself.
   const overrides = useCopyOverrides();
   const shown = handledMiss(review);
   const sounded = useRef(false);
@@ -64,10 +65,22 @@ export function Intervention({ review }: { review: WeeklyReview | null }): React
 
   return (
     <section className="ll-intervention" data-testid="intervention">
-      <h2 className="ll-intervention-title">{c('hero.weeklyTargetMissed')}</h2>
+      {/*
+        * Both through SkinLabel (P9 Task 17). Round three section 4.4 draws `alert` at
+        * `motivation_title` and `heart` at the intervention body, and ICON_FOR_KEY carries
+        * both: the body used to place its own <Icon name="heart" />, which stated the icon
+        * twice and left the map entry unreachable, and the title had no icon at all. The
+        * glyphs carry alt="", so the heading's accessible name is still the string alone.
+        *
+        * The popup that precedes this block (src/ui/motivation/MotivationModal.tsx) renders
+        * the same title key and is deliberately left bare: 4.4 names one position for `alert`,
+        * and that dialog's own art is P6's clip.
+        */}
+      <h2 className="ll-intervention-title">
+        <SkinLabel copyKey="hero.weeklyTargetMissed" />
+      </h2>
       <p className="ll-intervention-body">
-        <Icon name="heart" />
-        {c('advice.interventionBody')}
+        <SkinLabel copyKey="advice.interventionBody" />
       </p>
       <p className="ll-intervention-line">
         {/*

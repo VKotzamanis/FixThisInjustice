@@ -444,6 +444,10 @@ export function TodayView(): JSX.Element {
              * P8 Task 13 step 7: the labelled form, which puts the `nails` icon in front of the
              * string on limelight and changes nothing on the other two skins. The icon carries
              * alt="", so the button's accessible name is still the string alone.
+             *
+             * The other three controls on this view are labelled the same way (P9 Task 17):
+             * round three section 4.4 gives `skip` to `skip_today`, `heel` to `train_other` and
+             * `martini` to `pause_plan`, and each was a bare `c(key)` that no icon could reach.
              */}
             <SkinLabel copyKey="button.startSession" />
           </button>
@@ -464,7 +468,7 @@ export function TodayView(): JSX.Element {
                 setSkipOpen(true);
               }}
             >
-              {c('button.skipToday')}
+              <SkinLabel copyKey="button.skipToday" />
             </button>
           </>
         )}
@@ -482,7 +486,7 @@ export function TodayView(): JSX.Element {
               setPickerOpen((open) => !open);
             }}
           >
-            {c('button.trainSomethingElse')}
+            <SkinLabel copyKey="button.trainSomethingElse" />
           </button>
         )}
         {/*
@@ -501,7 +505,7 @@ export function TodayView(): JSX.Element {
               useAppStore.getState().pausePlan(profileId, today, null);
             }}
           >
-            {c('button.pausePlan')}
+            <SkinLabel copyKey="button.pausePlan" />
           </button>
         )}
         {openPause !== null && (

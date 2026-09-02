@@ -131,42 +131,61 @@ describe('SkinLabel', () => {
   });
 
   it('maps the emoji positions the design named onto icons that exist', () => {
-    // Round-three section 4.4, the "where it is used" column, restricted to the copy keys the
-    // union carries today. The four keys P8 has not written yet are listed in Icon.tsx.
+    // Round-three section 4.4, the "where it is used" column, restricted to the copy keys that
+    // reach a SkinLabel call site. P9 Task 17 gave the last four of these one.
     expect(ICON_FOR_KEY['button.startSession']).toBe('nails');
     expect(ICON_FOR_KEY['advice.drinkToThirst']).toBe('drop');
-    expect(ICON_FOR_KEY['button.trainSomethingElse']).toBe('heel');
-    expect(ICON_FOR_KEY['button.pausePlan']).toBe('martini');
-    expect(ICON_FOR_KEY['button.skipToday']).toBe('skip');
     expect(ICON_FOR_KEY['button.skipRest']).toBe('skip');
-    expect(ICON_FOR_KEY['hero.weeklyTargetMissed']).toBe('alert');
     expect(ICON_FOR_KEY['status.rest']).toBe('stopwatchPanel');
     expect(ICON_FOR_KEY['label.settingsSkin']).toBe('crown');
+    expect(ICON_FOR_KEY['button.skipToday']).toBe('skip');
+    expect(ICON_FOR_KEY['button.trainSomethingElse']).toBe('heel');
+    expect(ICON_FOR_KEY['button.pausePlan']).toBe('martini');
+    expect(ICON_FOR_KEY['hero.weeklyTargetMissed']).toBe('alert');
+    expect(ICON_FOR_KEY['advice.interventionBody']).toBe('heart');
     for (const name of Object.values(ICON_FOR_KEY)) {
       expect(Object.keys(LIMELIGHT_ICONS)).toContain(name);
     }
   });
 
-  it('maps the two positions whose keys arrived after the map was written', () => {
-    // Round three section 4.4 lists `pause` against "pause control"; the only pause control in
-    // the app is the ticker's strip, and `button.pauseTicker` did not exist when this map was
-    // written (P8 Task 14 added the key, P8 close-out B the mapping).
-    expect(ICON_FOR_KEY['button.pauseTicker']).toBe('pause');
-    // 4.4 lists `crown` against "pr_stamp MOTHER", which is the position the week stamp renders.
-    // That position moved to its own key in P8 close-out B, and the crown moved with it.
-    expect(ICON_FOR_KEY['status.weekMetStamp']).toBe('crown');
+  it('keeps the two positions the design named and the app has not built', () => {
+    // 4.4 gives `fan` the week review header, which no component renders: the key is a plain
+    // string, so the header that gets built reaches the icon through SkinLabel alone.
+    expect(ICON_FOR_KEY['hero.weekReview']).toBe('fan');
+    // 4.4 gives `crown` "pr_stamp MOTHER". The stamp itself moved to `status.weekMetStamp` in
+    // P8 close-out B and WeekStamp.tsx places that crown directly, so this entry is held for
+    // the record toast, which queues the coach lines today and renders no key of its own.
     expect(ICON_FOR_KEY['status.prStamp']).toBe('crown');
   });
 
-  it('leaves the five icons no copy key names out of the map', () => {
+  it('holds no entry a SkinLabel call site could never reach', () => {
     /*
-     * Round three section 4.4 is sixteen icons; eleven of them are reachable from a copy key and
-     * are asserted above. The other five are not absent by oversight:
+     * P9 Task 17 removed three. Each named a position that exists and that no `copyKey` can
+     * address, so the entry could not put a glyph on the screen in any skin:
+     *
+     *  - `status.weekMetStamp`: WeekStamp.tsx renders its own <Icon name="crown" /> beside the
+     *    word, so the map was a second statement of the same fact;
+     *  - `status.weekDeltaNegative`: two slots, rendered through FORMAT.withSlots, and
+     *    SkinLabel renders t(copyKey) raw, so it would print "{completed}";
+     *  - `button.pauseTicker`: the ticker strip's aria-label, a string prop, and SkinLabel
+     *    returns an element.
+     */
+    expect(ICON_FOR_KEY['status.weekMetStamp']).toBeUndefined();
+    expect(ICON_FOR_KEY['status.weekDeltaNegative']).toBeUndefined();
+    expect(ICON_FOR_KEY['button.pauseTicker']).toBeUndefined();
+  });
+
+  it('leaves the six icons no copy key names out of the map', () => {
+    /*
+     * Round three section 4.4 is sixteen icons; ten of them are reachable from a copy key and
+     * are asserted above, and two more are held for positions the design named. The other six
+     * are not absent by oversight:
      *
      *  - `barbell`, `sparkle` and `megaphone` are placed by components (the setlist, the stamp
      *    fan, the marquee lead and its separators), which the map's own header records;
-     *  - `pause` and `skip` are also placed directly by the Marquee and the rest panel, and only
-     *    `pause`'s copy-key position exists, which the test above pins;
+     *  - `pause` is placed by the Marquee, whose strip carries a copy key only as an aria-label;
+     *  - `skull` belongs to a slot-bearing string, which SkinLabel cannot render, so a component
+     *    that wants it places it the way WeekStamp places the crown;
      *  - `lips` has NO position in this app. 4.4 gives it "quote-tweet attribution" and "the
      *    reunion". The quote-tweet inset was never built (the plan's own "what this plan does not
      *    do": "the board skin's ... quote-tweet inset ... not built"), and "the reunion" is
@@ -178,6 +197,8 @@ describe('SkinLabel', () => {
     expect(mapped.has('barbell')).toBe(false);
     expect(mapped.has('sparkle')).toBe(false);
     expect(mapped.has('megaphone')).toBe(false);
+    expect(mapped.has('pause')).toBe(false);
+    expect(mapped.has('skull')).toBe(false);
     // The art itself still ships: what is absent is a copy key pointing at it, not the file.
     expect(LIMELIGHT_ICONS.lips.startsWith('data:image/png;base64,')).toBe(true);
   });

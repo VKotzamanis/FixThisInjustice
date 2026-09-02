@@ -845,6 +845,33 @@ describe('TodayView: the limelight voice', () => {
     ).toBeTruthy();
   });
 
+  /**
+   * P9 Task 17. Round three section 4.4 draws `skip` at `skip_today`, `heel` at `train_other`
+   * and `martini` at `pause_plan`. All three were bare `c(key)` calls, so ICON_FOR_KEY carried
+   * an entry no call site could reach; they render through SkinLabel now. The words are
+   * asserted above, so what these two pin is the GLYPH and its absence.
+   */
+  it('puts the three round-three icons on the controls that carry them, on limelight', () => {
+    withSkin('limelight');
+    render(<TodayView />);
+
+    for (const key of ['button.skipToday', 'button.trainSomethingElse', 'button.pausePlan'] as const) {
+      const control = screen.getByRole('button', { name: copyFor('limelight', key) });
+      expect(control.querySelectorAll('img.ll-icon')).toHaveLength(1);
+    }
+  });
+
+  it('carries no image on those controls under the clinical skin', () => {
+    // R6: the default table is glyph-free, and Icon returns null off limelight, so the same
+    // three call sites render the string alone.
+    render(<TodayView />);
+
+    for (const key of ['button.skipToday', 'button.trainSomethingElse', 'button.pausePlan'] as const) {
+      const control = screen.getByRole('button', { name: copy(key) });
+      expect(control.querySelectorAll('img')).toHaveLength(0);
+    }
+  });
+
   it("keeps the session preview's set counts in the clinical string, under the overlay", () => {
     /*
      * P8 close-out D wired `useCopyOverrides()` into this view's `FORMAT.setsBy` call. The
