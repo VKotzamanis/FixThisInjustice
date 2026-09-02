@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { FORMAT, copy } from '../../content/copy';
 import { downloadText } from '../../app/download';
@@ -22,6 +22,7 @@ function renderPanel(
   const onCancel = vi.fn();
   render(
     <ConfirmDestructive
+      titleKey="label.confirmDeleteLegacy"
       word={WORD}
       exportLabelKey="button.downloadLegacyJson"
       exportFilename="fixthisinjustice-legacy-v2.json"
@@ -120,5 +121,58 @@ describe('ConfirmDestructive: the word and its label', () => {
     expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
     type('IMPORT', 'IMPORT');
     expect(button(copy('button.legacyDeleteOld'))).toBeEnabled();
+  });
+});
+
+describe('ConfirmDestructive: the panel names itself', () => {
+  /*
+   * Accessible grouping (P7 Task 6 review, item 2). Two panels can be on screen at once: the
+   * Settings wipe, and the Replace confirmation in the export view mounted directly above it.
+   * Both label their field 'Type DELETE to confirm' and both carry a 'Cancel', so without a
+   * name on the group a screen reader offers two indistinguishable sets of controls that
+   * destroy different things.
+   */
+  it('exposes the title as the group label', () => {
+    renderPanel({ titleKey: 'label.confirmWipe' });
+    const group = screen.getByRole('group', { name: copy('label.confirmWipe') });
+    // The gate's own controls are INSIDE the named group, which is what makes the name useful.
+    expect(within(group).getByRole('button', { name: copy('button.legacyDeleteOld') })).toBeTruthy();
+    expect(within(group).getByLabelText(FORMAT.typeToConfirm(WORD))).toBeTruthy();
+  });
+
+  it('gives two panels mounted at once distinct accessible names', () => {
+    render(
+      <>
+        <ConfirmDestructive
+          titleKey="label.confirmWipe"
+          word={WORD}
+          exportLabelKey="button.downloadBackup"
+          exportFilename="fti-state-2026-09-01.json"
+          exportText={() => BACKUP}
+          confirmLabelKey="button.wipeConfirm"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+        <ConfirmDestructive
+          titleKey="label.confirmReplace"
+          word={WORD}
+          exportLabelKey="button.downloadBackup"
+          exportFilename="fti-state-2026-09-01.json"
+          exportText={() => BACKUP}
+          confirmLabelKey="button.replaceData"
+          onConfirm={vi.fn()}
+          onCancel={vi.fn()}
+        />
+      </>,
+    );
+
+    const groups = screen.getAllByRole('group');
+    expect(groups).toHaveLength(2);
+    const names = groups.map((g) => g.getAttribute('aria-label'));
+    expect(names).toEqual([copy('label.confirmWipe'), copy('label.confirmReplace')]);
+    // Distinct, not merely present: the whole point is that one query cannot match both.
+    expect(new Set(names).size).toBe(2);
+    expect(screen.getByRole('group', { name: copy('label.confirmWipe') })).toBe(groups[0]);
+    expect(screen.getByRole('group', { name: copy('label.confirmReplace') })).toBe(groups[1]);
   });
 });

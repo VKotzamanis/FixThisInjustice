@@ -6,6 +6,20 @@ import './confirmDestructive.css';
 
 export interface ConfirmDestructiveProps {
   /**
+   * The panel's own name, rendered as the accessible name of its `role="group"`.
+   *
+   * Required rather than optional, and a CopyKey rather than a string: two panels can be on
+   * screen at once (the Settings wipe, and the Replace confirmation in the export view mounted
+   * directly above it). Both label their field 'Type DELETE to confirm' and both carry a
+   * 'Cancel', so an unnamed group leaves a screen reader with two indistinguishable sets of
+   * controls that destroy different things.
+   *
+   * No visible heading. The plan's draft named the panel only through `aria-label` (docs/plans
+   * /2026-09-01-07-log-export-migration-cutover.md, Task 6 Step 3), and every host already
+   * renders its own sentence above the panel saying what is about to be destroyed.
+   */
+  titleKey: CopyKey;
+  /**
    * The exact word the user must type, compared case-sensitively. It is also the word the
    * label names, through one frame, so the two cannot disagree.
    */
@@ -43,7 +57,7 @@ export interface ConfirmDestructiveProps {
  * and is still the one place that cannot use this component: the boundary sits above the store
  * and above the copy table's consumers, and it must render when either has thrown.
  *
- * Three properties hold, and each is a review finding rather than a preference:
+ * Four properties hold, and each is a review finding rather than a preference:
  *
  *  1. The export is a fact about THIS panel, not about the session. `exported` is component
  *     state, so a backup taken somewhere else earlier does not open this gate, and a panel the
@@ -51,7 +65,10 @@ export interface ConfirmDestructiveProps {
  *  2. The export is marked taken only after `downloadText` has returned. A browser that
  *     refuses the download leaves the gate shut, which is the safe direction: the export is
  *     the entire reason the gate exists.
- *  3. The label naming the word is FORMAT.typeToConfirm(word), one frame taking the same value
+ *  3. The panel is a named `role="group"`, so two of them on screen at once are two distinct
+ *     regions rather than two copies of the same anonymous set of controls (P7 Task 6 review,
+ *     item 2). The host names it; nothing here assumes which destructive action it holds.
+ *  4. The label naming the word is FORMAT.typeToConfirm(word), one frame taking the same value
  *     the comparison uses (code review finding 3). The label the user reads and the word the
  *     control accepts are therefore one string, and a skin that rewrites the sentence cannot
  *     leave the control permanently disabled by naming a different word.
@@ -63,7 +80,7 @@ export interface ConfirmDestructiveProps {
  * second click and would put the H2 rule in a component that cannot see its own context.
  */
 export function ConfirmDestructive(props: ConfirmDestructiveProps): JSX.Element {
-  const { word, exportLabelKey, exportFilename, exportText, confirmLabelKey } = props;
+  const { titleKey, word, exportLabelKey, exportFilename, exportText, confirmLabelKey } = props;
   const { onConfirm, onCancel } = props;
 
   const [exported, setExported] = useState(false);
@@ -73,7 +90,7 @@ export function ConfirmDestructive(props: ConfirmDestructiveProps): JSX.Element 
   const armed = exported && typed === word;
 
   return (
-    <div className="confirm-destructive">
+    <div className="confirm-destructive" role="group" aria-label={copy(titleKey)}>
       <button
         type="button"
         onClick={() => {

@@ -302,7 +302,6 @@ export type CopyKey =
   | 'advice.wipeAll'
   | 'button.deleteLegacy'
   | 'advice.deleteLegacy'
-  | 'confirm.typeToConfirm'
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   | 'hero.atlas'
   | 'advice.atlas'
@@ -423,7 +422,6 @@ export type CopyKey =
   | 'button.checkImport'
   | 'button.replaceData'
   | 'advice.importInvalidNoChange'
-  | 'advice.downloadBackupFirst'
   | 'advice.exportUnavailable'
   | 'advice.targetsNotEstimatedForProfile'
   // --- spotlight palette (P8 Task 8; appended by that task) ---
@@ -560,7 +558,12 @@ export type CopyKey =
   | 'label.blockSessionsCompleted'
   | 'label.blockSetsLogged'
   | 'label.blockMassMoved'
-  | 'label.blockSpecimens';
+  | 'label.blockSpecimens'
+  // --- the wipe covers the clip store, and every panel names itself (P7 Task 6 review) ---
+  | 'advice.clipClearFailed'
+  | 'label.confirmWipe'
+  | 'label.confirmDeleteLegacy'
+  | 'label.confirmReplace';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -885,7 +888,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.wipeAll': 'Everything on this device is removed. A JSON backup downloads first.',
   'button.deleteLegacy': 'Delete legacy data',
   'advice.deleteLegacy': "The old app's three keys are removed. Anything not imported is lost.",
-  'confirm.typeToConfirm': 'Type DELETE to confirm',
 
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   'hero.atlas': 'Atlas',
@@ -1110,9 +1112,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.checkImport': 'Check import',
   'button.replaceData': 'Replace data',
   'advice.importInvalidNoChange': 'An invalid file changes nothing.',
-  // The export gate master plan section 3 requires: the confirmation stays disabled until the
-  // user has taken a copy of what the import is about to overwrite.
-  'advice.downloadBackupFirst': 'Download the JSON backup first. It enables the control below.',
   'advice.exportUnavailable': 'The current data could not be read back. Nothing was downloaded.',
   // The summary document's stand-in for the targets block when the profile falls outside the
   // domain the nutrition equations were fitted on. Stated, not silently omitted.
@@ -1400,6 +1399,21 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.blockSetsLogged': 'sets logged',
   'label.blockMassMoved': 'mass moved',
   'label.blockSpecimens': 'specimens collected',
+
+  // --- the wipe covers the clip store, and every panel names itself (P7 Task 6 review) ---
+  // Security review 10 / M5: the wipe now clears the motivation clip's records before it
+  // empties the document. A clip store that refuses does NOT hold the wipe back, so this line
+  // reports the one thing that may still be on the device, and says the rest is gone. It names
+  // a removal, not a storage failure: advice.videoStoreFailed already says the opposite thing.
+  'advice.clipClearFailed': 'The saved clip could not be removed. Everything else was deleted.',
+  // The accessible name of each typed-confirmation panel, read as the group's label. Two panels
+  // can be on screen at once (the wipe in Settings and Replace in the export view directly
+  // above it), and both carry a field labelled 'Type DELETE to confirm' and a 'Cancel': without
+  // these, a screen reader offers two identical-looking controls that destroy different things.
+  // Each names the decision rather than repeating the trigger's own wording.
+  'label.confirmWipe': 'Confirm wipe',
+  'label.confirmDeleteLegacy': 'Confirm legacy delete',
+  'label.confirmReplace': 'Confirm replace',
 };
 
 /**

@@ -4,8 +4,9 @@ import { FORMAT, copy } from '../../content/copy';
 import { applyMigration, migrateV2 } from '../../domain/migrations/v2';
 import type { LegacyUnit, MigrateV2Result, MigrationSkip } from '../../domain/migrations/v2';
 import type { PlanTemplate, Profile } from '../../domain/types';
+import { todayLocal } from '../../domain/dates';
 import { selectState, useAppStore } from '../../store';
-import { deleteLegacyV2 } from '../../store/persistence';
+import { deleteLegacyV2, readLegacyBundle } from '../../store/persistence';
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import '../views/views.css';
 import './migration.css';
@@ -22,13 +23,6 @@ const CONFIRMATION_WORD = 'IMPORT';
  */
 const DELETE_WORD = 'DELETE';
 
-/**
- * The backup the delete step offers: the legacy document as it was read, byte for byte.
- *
- * Not the migrated document. What deleting the legacy keys destroys is precisely the records
- * the migration refused, and those are in the old text and nowhere else.
- */
-const LEGACY_EXPORT_FILENAME = 'fixthisinjustice-legacy-v2.json';
 
 /** The unit the wizard assumes for body mass unless the user overrules it (v2.ts). */
 const DEFAULT_BODY_MASS_UNIT: LegacyUnit = 'lb';
@@ -126,8 +120,8 @@ function SkipList(props: { summary: string; skips: MigrationSkip[] }): JSX.Eleme
  *  3. Nothing is committed before the typed confirmation, and the preview the user confirms is
  *     the report of the migration that will be installed, not a second run of it.
  *  4. The delete is a destructive action and takes both of the gates the master plan puts on
- *     one (section 3): the untouched legacy text downloaded from this panel, then the word
- *     typed exactly. It is ConfirmDestructive that holds them, not this component, so the
+ *     one (section 3): the untouched legacy keys downloaded from this panel as one bundle,
+ *     then the word typed exactly. It is ConfirmDestructive that holds them, not this component, so the
  *     wipe controls in Settings inherit the same two gates rather than a second reading of
  *     them (code review finding 1).
  *  5. ui.legacyMigration = 'done' is written only after the write it describes has been read
@@ -275,6 +269,15 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
     deleteLegacyV2();
     setDecision('deleted');
   };
+
+  /*
+   * The backup's filename carries the PROFILE's own civil date, through the same `todayLocal`
+   * every other export in the app uses. Findings A8 and A10 forbid the UTC serialisation
+   * shortcut: it names the day in Greenwich, not the day the user was living in. The profile is
+   * a required property here, so unlike the Settings section there is always a zone to date
+   * the file in.
+   */
+  const legacyFilename = `fti-legacy-bundle-${todayLocal(profile.timezone, Date.now())}.json`;
 
   const dismissButton = (
     <button type="button" onClick={dismiss}>
@@ -472,16 +475,31 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
 
       {/*
         * The delete, behind both gates the master plan requires of a destructive action
-        * (section 3): the untouched legacy text has to have been downloaded from this panel,
+        * (section 3): the untouched legacy keys have to have been downloaded from this panel,
         * and the word typed exactly. It replaced a single button that removed all three
         * legacy keys on one click (code review finding 1).
         */}
       {offerDelete && deleteOpen && (
         <ConfirmDestructive
+          titleKey="label.confirmDeleteLegacy"
           word={DELETE_WORD}
           exportLabelKey="button.downloadLegacyJson"
-          exportFilename={LEGACY_EXPORT_FILENAME}
-          exportText={() => legacyRaw}
+          exportFilename={legacyFilename}
+          /*
+           * All THREE legacy keys, as raw text in one envelope, because all three are what the
+           * confirmed action removes (security recommendation 10 / M5). It used to export the
+           * v2 text alone, so the dead prototype store and the video-instance preference were
+           * destroyed with no copy taken. Still not the migrated document, and still byte for
+           * byte: what the delete destroys is precisely the records the migration refused, and
+           * those are in the old text and nowhere else.
+           *
+           * Read from storage at the moment the user asks, rather than from `legacyRaw`, so
+           * the backup covers the other two keys as well; the v2 value it carries is the same
+           * text this component was handed. The empty string covers every key having gone
+           * since the wizard read one: the gate still has to be passable, and an empty backup
+           * of nothing is honest about what was there.
+           */
+          exportText={() => readLegacyBundle() ?? ''}
           confirmLabelKey="button.legacyDeleteOld"
           onConfirm={removeLegacy}
           onCancel={() => {

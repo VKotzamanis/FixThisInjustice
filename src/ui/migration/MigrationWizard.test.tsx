@@ -397,11 +397,40 @@ describe('MigrationWizard: the delete is gated', () => {
     expect(button(copy('button.legacyDeleteOld'))).toBeEnabled();
   });
 
-  it('exports the untouched legacy text, not the migrated document', () => {
+  it('exports every legacy key as one bundle, untouched, not the migrated document', () => {
     reachDeletePanel();
     takeBackup();
     expect(downloadText).toHaveBeenCalledTimes(1);
-    expect(downloadText).toHaveBeenCalledWith('fixthisinjustice-legacy-v2.json', LEGACY_JSON);
+    /*
+     * Security recommendation 10 / M5. The gate exported `fti.console.v2` alone while the
+     * confirmed action removes all three legacy keys, so two of them were destroyed with no
+     * copy taken. The v2 payload is carried as the RAW text it was read as, never a parse of
+     * it and never the migrated document: this is the last copy of whatever the migration
+     * refused, and the report the user was just shown lists exactly that.
+     */
+    const [, text] = vi.mocked(downloadText).mock.calls[0] ?? [];
+    expect(JSON.parse(text ?? 'null')).toEqual({
+      'fti.console.v2': LEGACY_JSON,
+      'fti.plan.v1': null,
+      'fti.video.instance': null,
+    });
+  });
+
+  it('stamps the bundle with the civil date in the profile timezone, not the device one', () => {
+    // 2026-09-01T21:30:00Z is already 2026-09-02 in Europe/Athens (UTC+3), which the fixture
+    // profile carries. A filename dated in UTC, or from the CI runner's own zone, would read
+    // 2026-09-01 here, so the stamp cannot pass by coincidence.
+    vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 8, 1, 21, 30, 0)); // [ms]
+    reachDeletePanel();
+    takeBackup();
+    expect(vi.mocked(downloadText).mock.calls[0]?.[0]).toBe('fti-legacy-bundle-2026-09-02.json');
+  });
+
+  it('names the panel, so it is not an anonymous set of destructive controls', () => {
+    reachDeletePanel();
+    expect(
+      screen.getByRole('group', { name: copy('label.confirmDeleteLegacy') }),
+    ).toBeTruthy();
   });
 
   it('removes the legacy keys once, on the confirmation', () => {

@@ -6,9 +6,11 @@ import {
   clearStorage,
   deleteLegacyV2,
   exportJson,
+  hasAnyLegacyKey,
   hasLegacyV2,
   importJson,
   load,
+  readLegacyBundle,
   readLegacyV2Raw,
   readRaw,
   save,
@@ -263,5 +265,79 @@ describe('the legacy console keys', () => {
     expect(() => {
       deleteLegacyV2();
     }).not.toThrow();
+  });
+});
+
+/*
+ * Security review 10 / M5. `deleteLegacyV2` removes THREE keys, and the gate in front of it
+ * used to export only `fti.console.v2`: the other two were destroyed with no copy taken. The
+ * bundle is the export that matches what the delete removes.
+ */
+describe('readLegacyBundle', () => {
+  it('is null when no legacy key is on the device', () => {
+    installFakeStorage({ [STORAGE_KEY]: '{"schemaVersion":3}', 'other.owner': 'keep me' });
+    expect(readLegacyBundle()).toBeNull();
+  });
+
+  it('carries all three keys, unparsed, with null for the ones that are absent', () => {
+    installFakeStorage({
+      [LEGACY_V2_KEY]: '{"week":2,',
+      'fti.video.instance': 'https://yewtu.be',
+      [STORAGE_KEY]: '{"schemaVersion":3}',
+    });
+    const bundle = readLegacyBundle();
+    expect(bundle).not.toBeNull();
+    // The raw text is carried as a STRING, never re-parsed: the v2 payload here is not even
+    // valid JSON, and the backup has to survive that.
+    expect(JSON.parse(bundle ?? 'null')).toEqual({
+      'fti.console.v2': '{"week":2,',
+      'fti.plan.v1': null,
+      'fti.video.instance': 'https://yewtu.be',
+    });
+    // Not the v3 document, and not any other owner's key.
+    expect(bundle).not.toContain('schemaVersion');
+  });
+
+  it('is a bundle even when the only legacy key is one the migration cannot use', () => {
+    installFakeStorage({ 'fti.plan.v1': '{"plan":1}' });
+    expect(JSON.parse(readLegacyBundle() ?? 'null')).toEqual({
+      'fti.console.v2': null,
+      'fti.plan.v1': '{"plan":1}',
+      'fti.video.instance': null,
+    });
+  });
+
+  it('is null rather than a throw when storage is unreachable', () => {
+    makeStorageUnavailable();
+    expect(readLegacyBundle()).toBeNull();
+  });
+});
+
+describe('hasAnyLegacyKey', () => {
+  /*
+   * hasLegacyV2 stays keyed on fti.console.v2 because the MIGRATION needs that document. The
+   * DELETE has a wider reach, so the control that offers it asks a wider question: a device
+   * holding only fti.plan.v1 has legacy data to clean up and no document to import.
+   */
+  it('is true for a device holding only the dead prototype key', () => {
+    installFakeStorage({ 'fti.plan.v1': '{}' });
+    expect(hasAnyLegacyKey()).toBe(true);
+    expect(hasLegacyV2()).toBe(false);
+  });
+
+  it('is true for a device holding only the video-instance preference', () => {
+    installFakeStorage({ 'fti.video.instance': 'https://yewtu.be' });
+    expect(hasAnyLegacyKey()).toBe(true);
+    expect(hasLegacyV2()).toBe(false);
+  });
+
+  it('is false when only this app\'s own document is stored', () => {
+    installFakeStorage({ [STORAGE_KEY]: '{"schemaVersion":3}' });
+    expect(hasAnyLegacyKey()).toBe(false);
+  });
+
+  it('is false rather than a throw when storage is unreachable', () => {
+    makeStorageUnavailable();
+    expect(hasAnyLegacyKey()).toBe(false);
   });
 });

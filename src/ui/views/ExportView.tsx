@@ -9,6 +9,7 @@ import { isTerminal } from '../../domain/schedule/cursor';
 import { parseState } from '../../domain/schema';
 import { useAppStore, selectState } from '../../store';
 import { downloadText } from '../../app/download';
+import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import './views.css';
 
 /**
@@ -38,6 +39,19 @@ import './views.css';
  * than a framing defence is master plan section 1.12: GitHub Pages cannot set response
  * headers and `frame-ancestors` is not supported in a `<meta>` element, so a confirmation the
  * user has to type is what a clickjacked frame cannot produce.
+ *
+ * Both gates are held by `ConfirmDestructive`, not by this view (P7 Task 6 review, item 2).
+ * The field and the disabled rule were written here a second time, which is how the app came
+ * to hold two typed-confirmation implementations and one anonymous panel; the component is now
+ * the only one, and it names itself, so the Settings wipe panel and this one are two distinct
+ * regions when both are on screen.
+ *
+ * The panel asks for its OWN download. `exported` is component state, deliberately: the three
+ * downloads at the top of this view can have been pressed long before a document was pasted,
+ * and a copy of some earlier state is not a copy of what Replace is about to overwrite. The
+ * alternative -- a property that pre-arms the gate from this view's own `backedUp` flag --
+ * would reverse the finding ConfirmDestructive was extracted to hold, so the download is asked
+ * for inside the panel instead.
  */
 
 /** [d] the horizon the .ics covers. The plan's constant: "The calendar holds the next 28 days". */
@@ -66,22 +80,19 @@ export function ExportView(): JSX.Element {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
-  const [confirmWord, setConfirmWord] = useState('');
-  const [backedUp, setBackedUp] = useState(false);
   const [done, setDone] = useState(false);
 
   const textId = useId();
   const fileId = useId();
-  const confirmId = useId();
 
   // Filenames carry the profile's own civil date, never the device's (master plan section 3).
   const stamp = profile === null ? 'export' : todayLocal(profile.timezone, Date.now());
 
+  /** The whole document, under the one stamped name every backup in the app now carries. */
+  const stateFilename = `fti-state-${stamp}.json`;
+
   const downloadState = (): void => {
-    downloadText(`fti-state-${stamp}.json`, useAppStore.getState().exportJson());
-    // The gate master plan section 3 requires: the confirmation below opens only once a copy
-    // of the current document exists on disk.
-    setBackedUp(true);
+    downloadText(stateFilename, useAppStore.getState().exportJson());
   };
 
   const downloadSummary = (): void => {
@@ -131,8 +142,9 @@ export function ExportView(): JSX.Element {
   /** Validates without writing. The store is not consulted and cannot change here. */
   const runCheck = (): void => {
     setDone(false);
+    // Closed before it is reopened, so the panel remounts and both of its gates are re-armed
+    // against the document that was just checked rather than the one before it.
     setChecked(false);
-    setConfirmWord('');
     let raw: unknown;
     try {
       raw = JSON.parse(text);
@@ -160,7 +172,6 @@ export function ExportView(): JSX.Element {
     }
     setError(null);
     setChecked(false);
-    setConfirmWord('');
     setText('');
     setDone(true);
   };
@@ -243,25 +254,27 @@ export function ExportView(): JSX.Element {
       )}
 
       {checked && (
-        <div className="view-field">
-          {!backedUp && <p className="view-note">{copy('advice.downloadBackupFirst')}</p>}
-          <label htmlFor={confirmId}>{copy('confirm.typeToConfirm')}</label>
-          <input
-            id={confirmId}
-            type="text"
-            value={confirmWord}
-            onChange={(e) => {
-              setConfirmWord(e.target.value);
-            }}
-          />
-          <button
-            type="button"
-            disabled={!backedUp || confirmWord !== CONFIRM_WORD}
-            onClick={runImport}
-          >
-            {copy('button.replaceData')}
-          </button>
-        </div>
+        <ConfirmDestructive
+          titleKey="label.confirmReplace"
+          word={CONFIRM_WORD}
+          /*
+           * 'Download backup', not this view's own 'Download JSON'. Two controls sharing one
+           * accessible name in the same region cannot be told apart by a screen reader, and
+           * the gate depends on pressing THIS one.
+           */
+          exportLabelKey="button.downloadBackup"
+          exportFilename={stateFilename}
+          /* Read when the user asks for it: the document to back up is the one Replace is
+             about to overwrite, which is the one in the store at that moment. */
+          exportText={() => useAppStore.getState().exportJson()}
+          confirmLabelKey="button.replaceData"
+          onConfirm={runImport}
+          onCancel={() => {
+            // Backing out of the confirmation, not of the check: the pasted text stays, so a
+            // user who changed their mind about the word has not lost the document.
+            setChecked(false);
+          }}
+        />
       )}
 
       {done && <p className="view-note">{copy('status.importOk')}</p>}
