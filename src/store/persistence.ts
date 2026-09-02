@@ -193,3 +193,58 @@ export function importJson(text: string): ImportResult {
   if (!parsed.ok) return { ok: false, error: parsed.error };
   return { ok: true, state: parsed.state };
 }
+
+/**
+ * The keys the legacy console owned, none of them coordinated with the others
+ * (security review M5): the store itself (legacy/console-store.jsx:6), a dead
+ * prototype store (legacy/core.jsx:6) and the video-instance preference
+ * (legacy/console-video.jsx:30). `fti.v3` is not among them and is never touched
+ * by anything below.
+ */
+export const LEGACY_V2_KEY = 'fti.console.v2';
+export const LEGACY_KEYS: readonly string[] = [LEGACY_V2_KEY, 'fti.plan.v1', 'fti.video.instance'];
+
+/**
+ * The legacy document as text, unparsed.
+ *
+ * Nothing here inspects the payload. The migration owns every judgement about
+ * its shape (src/domain/migrations/v2.ts), so a document this module could not
+ * make sense of still reaches the wizard, which can report why rather than
+ * behaving as though there were nothing to import.
+ *
+ * Null when the key is absent or Web Storage is unreachable. Those two are not
+ * the same fact, but they admit the same action: there is nothing to offer.
+ */
+export function readLegacyV2Raw(): string | null {
+  try {
+    return localStorage.getItem(LEGACY_V2_KEY);
+  } catch {
+    // Safari private browsing and blocked third-party contexts throw on any
+    // access. Not an empty block; no-empty forbids that.
+    return null;
+  }
+}
+
+/** True when a legacy document is readable on this device. */
+export function hasLegacyV2(): boolean {
+  return readLegacyV2Raw() !== null;
+}
+
+/**
+ * Removes every key the legacy app owned, and only those.
+ *
+ * Called after the migrated document has been written and the write confirmed,
+ * never before: the legacy text is the only copy of whatever the migration
+ * refused, so deleting it earlier would destroy the evidence for the report the
+ * user was just shown.
+ */
+export function deleteLegacyV2(): void {
+  for (const key of LEGACY_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Already unreachable, which is the outcome asked for. Nothing to surface.
+      continue;
+    }
+  }
+}

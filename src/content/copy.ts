@@ -409,7 +409,38 @@ export type CopyKey =
   | 'label.spotlightResults'
   | 'label.spotlightView'
   | 'label.spotlightExercise'
-  | 'advice.noSpotlightMatch';
+  | 'advice.noSpotlightMatch'
+  // --- legacy migration wizard (P7 Task 3; appended by that task) ---
+  | 'hero.legacyImport'
+  | 'hero.legacyPreview'
+  | 'hero.legacyDone'
+  | 'advice.legacyFound'
+  | 'advice.legacyNothingDeleted'
+  | 'advice.legacyUnitRequired'
+  | 'advice.legacyRefused'
+  | 'advice.legacyApplyFailed'
+  | 'advice.legacyStored'
+  | 'advice.legacyStoreUnconfirmed'
+  | 'advice.legacyOldDataDeleted'
+  | 'advice.legacyOldDataKept'
+  | 'advice.legacyTransfers'
+  | 'advice.legacyBodyMassEvidence'
+  | 'label.legacyLoadUnit'
+  | 'label.legacyBodyMassUnit'
+  | 'label.legacyUnitKg'
+  | 'label.legacyUnitLb'
+  | 'label.legacyMassUnitKg'
+  | 'label.legacyMassUnitLb'
+  | 'label.legacyConfirm'
+  | 'disclosure.whatTransfers'
+  | 'disclosure.whatWasRefused'
+  | 'disclosure.whatWasNotMatched'
+  | 'button.legacyPreview'
+  | 'button.legacyApply'
+  | 'button.legacyDismiss'
+  | 'button.legacyDeleteOld'
+  | 'button.legacyKeepOld'
+  | 'button.legacyClose';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -917,6 +948,57 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.spotlightExercise': 'Exercise',
   // The empty result set. It reports what is absent and asks for nothing (R7).
   'advice.noSpotlightMatch': 'No matches.',
+
+  // --- legacy migration wizard (P7 Task 3; appended by that task) ---
+  'hero.legacyImport': 'Import from the old app',
+  'hero.legacyPreview': 'What the import will write',
+  'hero.legacyDone': 'Import complete',
+  // The offer. It states the fact and the one guarantee that makes accepting it safe; it asks
+  // for nothing (R7).
+  'advice.legacyFound': 'Data from the old app was found on this device.',
+  'advice.legacyNothingDeleted': 'Nothing in the old app is deleted until you ask.',
+  // The load unit is asked for, never assumed: the legacy store held a bare number, so a wrong
+  // answer rescales the whole load history by the pound-to-kilogram factor.
+  'advice.legacyUnitRequired': 'Choose a unit. A wrong unit rescales every load.',
+  'advice.legacyRefused': 'The old data could not be read. Nothing has changed.',
+  'advice.legacyApplyFailed': 'The import was refused. Nothing has changed.',
+  'advice.legacyStored': 'The imported data is stored. The old data is still here.',
+  // Shown when the write could not be confirmed. The delete is withheld in that case, so this
+  // says which of the two things happened instead of reporting a success.
+  'advice.legacyStoreUnconfirmed': 'The write was not confirmed. The old data is kept.',
+  'advice.legacyOldDataDeleted': 'The old app data has been deleted.',
+  'advice.legacyOldDataKept': 'The old app data was left in place.',
+  // Disclosure bodies, exempt from R1-R4 (R9): a disclosure exists to hold what does not fit.
+  'advice.legacyTransfers':
+    'Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, ' +
+    'collected specimen cards, and a sealed time capsule. Every record the import cannot read ' +
+    'is listed with its reason before anything is written.',
+  // The evidence behind the body-mass assumption, stated so the user can overrule it rather
+  // than trust it. Three independent legacy facts, not a preference.
+  'advice.legacyBodyMassEvidence':
+    'The old body-mass field was labelled lb, refused values outside the pound range, and its ' +
+    'text export reported pounds. The load field carried no such evidence, which is why that ' +
+    'unit is asked for instead of assumed.',
+  'label.legacyLoadUnit': 'In which unit did you type your loads?',
+  'label.legacyBodyMassUnit': 'In which unit did you type your body mass?',
+  'label.legacyUnitKg': 'Kilograms (kg)',
+  'label.legacyUnitLb': 'Pounds (lb)',
+  // The body-mass radios carry their own labels rather than reusing the two above: both pairs
+  // are in the document at once, so identical labels would name two controls each.
+  'label.legacyMassUnitKg': 'Kilograms (kg), body mass',
+  'label.legacyMassUnitLb': 'Pounds (lb), body mass',
+  // The typed confirmation the app already uses before an irreversible write
+  // (src/app/RootErrorBoundary.tsx). Same shape: capitals, one verb.
+  'label.legacyConfirm': 'Type IMPORT to confirm',
+  'disclosure.whatTransfers': 'What transfers',
+  'disclosure.whatWasRefused': 'What was not imported, and why',
+  'disclosure.whatWasNotMatched': 'Days not matched to a session',
+  'button.legacyPreview': 'Preview import',
+  'button.legacyApply': 'Keep this import',
+  'button.legacyDismiss': 'Start clean',
+  'button.legacyDeleteOld': 'Delete old data',
+  'button.legacyKeepOld': 'Keep old data',
+  'button.legacyClose': 'Close',
 };
 
 /**
@@ -1253,4 +1335,33 @@ export const FORMAT = {
    */
   specimenAcquired: (rarity: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.specimenAcquired', overrides).replace('{rarity}', () => rarity),
+
+  // --- legacy migration wizard (P7 Task 3) ---
+  // Counts, never differences: the preview reports what each figure is, and the reasons sit
+  // beside them in a disclosure rather than being summed into one number (R9).
+
+  /** "22 sets", one line of the migration preview. [sets] */
+  legacySets: (sets: number): string => `${sets} sets`,
+
+  /** "7 sessions": the training sessions the import reconstructs. [sessions] */
+  legacySessions: (sessions: number): string => `${sessions} sessions`,
+
+  /** "17 records not imported". Each reason is listed behind a disclosure. */
+  legacyDropped: (records: number): string => `${records} records not imported`,
+
+  /** "3 days not matched to a session". [d] Those sets are kept under a legacy session id. */
+  legacyFallbacks: (days: number): string => `${days} days not matched to a session`,
+
+  /** One refused record: its legacy key, and the migration's own wording for the refusal. */
+  legacySkip: (key: string, reason: string): string => `${key}: ${reason}`,
+
+  /** The body-mass unit the import will assume, shown before it runs. */
+  legacyBodyMassAssumed: (unit: string): string => `Body mass is read as ${unit}.`,
+
+  /** Both unit assumptions, echoed back from the report the import actually produced. */
+  legacyUnitsAssumed: (loads: string, bodyMass: string): string =>
+    `Loads read as ${loads}. Body mass read as ${bodyMass}.`,
+
+  /** Why the import was refused, in the migration's own words. */
+  legacyRefusedReason: (reason: string): string => `Reason: ${reason}`,
 } as const;
