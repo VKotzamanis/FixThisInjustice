@@ -1,38 +1,83 @@
 import type { SpecimenCard, SpecimenRarity } from '../../content/specimenCards';
 import { RARITY_WEIGHT } from '../../content/specimenCards';
-import type { SpecimenInventory } from '../types';
-import { mulberry32, seedFromString } from './rng';
+import type { EpochMs, SpecimenInventory } from '../types';
+import { seedFromString, seededRng } from './rng';
+
+/**
+ * ORDINAL RULE (master plan section 10.8). Every specimen draw is keyed by the ordinal of the
+ * logged set that triggered it, and one ordinal can yield at most one card ever.
+ *
+ *   1. The ordinal of a logged set is `totalSetsLogged` read AFTER the increment, that is, the
+ *      just-logged set's own ordinal. There is no `+ 1`: the counter has already moved.
+ *   2. `deleteSet` decrements the counter (plan Task 4, code review A47), so deleting a set and
+ *      logging another gives that set the same ordinal the deleted one had.
+ *   3. The card an ordinal produced is recorded against that ordinal, in `acquiredByOrdinal`.
+ *      `drawSpecimenForLoggedSet` returns the recorded card and takes no new acquisition.
+ *
+ * Rules 2 and 3 are what close the farm. Rule 2 alone would not: it makes the ordinal repeat,
+ * but the second draw runs against an inventory that now owns the first card, so that card is
+ * out of the pool and the re-roll hands out a different one. Rule 3 is the part that makes the
+ * repeat return the same card instead of a new one. A user who logs a set, sees the card,
+ * deletes the set and logs it again therefore sees the card they already have.
+ */
 
 // ---------------------------------------------------------------------------
 // Drop-chance arithmetic. Show the working; the number is not a taste call.
 //
-//   Cards in the pool                       N = 37
-//   Default availability                    4 sessions/week
-//   Working sets per session                ~20
-//   Logged sets per week                    4 x 20 = 80
-//   Programme length (master plan section 3) 24 weeks = 1920 logged sets
+//   Cards in the pool                     N = 37
+//   Default availability                  4 sessions/week
+//   Working sets per session              ~20
+//   Logged sets per week                  4 x 20 = 80
+//   Default programme length              12 weeks  (DEFAULT_WEEKS,
+//                                         src/ui/setup/SetupWizard.tsx:125) = 960 logged sets
+//   Longest programme the generator       24 weeks  (PLAN_WEEKS_MAX,
+//   will build                            src/domain/plan/generator.ts:41) = 1920 logged sets
 //
 // A drop is only ever taken from the not-yet-owned pool, so no drop is ever a duplicate and
-// completing the collection takes exactly N drops. The number of logged sets that requires is
-// the sum of N geometric(p) variables:
+// completing the collection takes exactly N drops. Sets to completion is therefore negative
+// binomial: the number of Bernoulli(p) trials needed for r = N = 37 successes.
 //
-//   E[sets] = N / p                         SD[sets] = sqrt(N (1 - p)) / p
+//   p = 0.02:
+//     E[sets]  = r / p               = 37 / 0.02              = 1850 sets = 23.1 weeks
+//     SD[sets] = sqrt(r (1 - p)) / p = sqrt(37 x 0.98) / 0.02 = 301.08 -> 301 sets = 3.8 weeks
+//     median   (exact negative binomial CDF)                  = 1834 sets = 22.9 weeks
 //
-//   p = 0.02  ->  E = 37 / 0.02   = 1850 sets = 23.1 weeks   (96 % of the programme)
-//                 SD = sqrt(37 x 0.98) / 0.02 = 301 sets = 3.8 weeks
+// Those three are computed, not quoted: the simulation in specimens.test.ts gives mean 1852.6
+// and median 1827.5 over 2000 programmes, the same distribution measured a second way.
 //
-// So a typical user finishes the Atlas between roughly week 19 and week 27: the mechanic stays
-// alive for the whole programme and completing it is an event rather than a formality.
+// WHAT THIS MEANS AT THE SHIPPED DEFAULT. The expectation lands on the 24-week maximum, not on
+// the 12-week default, and the default is the case most users are in. Over the 960 logged sets
+// of a default programme the collection is a capped binomial,
+// E[cards] = E[min(37, Binomial(960, 0.02))] = 19.2 with median 19, and the probability of
+// finishing inside one such programme is 1.7e-4. So a median user ends the default 12-week
+// programme holding about half the Atlas and completes it across later programmes, which is the
+// intended behaviour: the inventory is per profile and outlives any one plan. Over a 24-week
+// programme the median user holds all 37, and 59 % of simulated programmes complete the pool.
 //
 // Legacy comparison (content review section 2.2): p = 0.15 with 42 cards gives 42 / 0.15 = 280
-// sets. At the legacy 70-89 sets/week that is ~3.2 weeks, after which every set produced
-// nothing for the remaining ~87 % of the programme. That is the defect this constant fixes.
+// sets. At 80 logged sets a week that is 3.5 weeks, after which every set produced nothing for
+// the remaining 71 % of a 12-week programme. That is the defect this constant fixes.
 //
-// The review's own recommendation was "~1.5 %"; 2 % is chosen instead because it lands the
-// expectation on the programme length for the app's default 4-sessions-a-week availability,
-// which the review did not have (it assumed the legacy fixed 7-day split).
+// The review's own recommendation was "~1.5 %"; 2 % is chosen instead because it puts the
+// expected completion at 23.1 weeks, on the longest programme the generator will build. The
+// review assumed the legacy fixed 7-day split and did not have the app's 4-sessions-a-week
+// default. The constant is not retuned here; it is stated against the two lines it depends on.
 // ---------------------------------------------------------------------------
 export const SPECIMEN_DROP_CHANCE = 0.02; // [dimensionless] probability per logged set
+
+/**
+ * `SpecimenInventory` plus the ordinal ledger rule 3 needs: which card each set ordinal
+ * produced. The field is optional and additive, so an inventory persisted before it existed
+ * reads as "no ordinal has been recorded yet" rather than as invalid state.
+ *
+ * It is declared here rather than in src/domain/types.ts because the store action that writes
+ * and persists it is plan Task 4; that task moves the field into `SpecimenInventory` and its
+ * Zod schema. Until then this type is the contract.
+ */
+export type OrdinalKeyedInventory = SpecimenInventory & {
+  /** Set ordinal -> the id of the card that ordinal produced. */
+  readonly acquiredByOrdinal?: Readonly<Record<number, string>>;
+};
 
 /**
  * Share of drops each rarity should win from a full pool, given the rarity weights.
@@ -59,7 +104,10 @@ export function expectedRarityShares(
 /**
  * Attempt one specimen drop for a logged set.
  *
- * Consumes at most two values from `rng`: one for the drop roll, one to select the card.
+ * Consumes at most two values from `rng`: one for the drop roll, one to select the card. The
+ * order is fixed and pinned by a golden test, because swapping the two changes both whether a
+ * card drops and which card it is.
+ *
  * `rng` is a parameter rather than a module-level `Math.random` so the caller can keep the roll
  * out of any React state updater (code review A57) and so the economy is testable.
  *
@@ -99,35 +147,68 @@ export function drawSpecimen(
 /**
  * The seed for one logged set's drop.
  *
- * `setIndex` is the 1-based ordinal of the set within the profile's history, which the caller
- * takes as `inventory.totalSetsLogged + 1` at the moment the set is logged. Both inputs are
- * stable state, so the same logged set always produces the same roll and the same card however
- * often it is replayed: a re-render, a reducer double-invocation (code review A57) or a
- * replayed migration cannot reroll a drop, and a user cannot farm one by undoing a set.
+ * `ordinal` is the ordinal of the set within the profile's history, which the caller takes as
+ * `inventory.totalSetsLogged` after the increment (rule 1 above). Both inputs are stable state,
+ * so the same logged set always produces the same roll and the same card however often it is
+ * replayed: a re-render, a reducer double-invocation (code review A57) or a replayed migration
+ * cannot reroll a drop.
  *
- * The parts are hashed rather than added because mulberry32 correlates on nearby seeds, and
- * consecutive set ordinals are as near as seeds get.
+ * The parts are hashed rather than combined arithmetically because a profile id is a string and
+ * the seed has to be one 32-bit integer.
  */
-export function specimenSeed(profileId: string, setIndex: number): number {
-  return seedFromString(`${profileId}:${setIndex}`);
+export function specimenSeed(profileId: string, ordinal: number): number {
+  return seedFromString(`${profileId}:${ordinal}`);
 }
 
 /** The generator for one logged set. Fresh per set, so drops never depend on call order. */
-export function specimenRngForLoggedSet(profileId: string, setIndex: number): () => number {
-  return mulberry32(specimenSeed(profileId, setIndex));
+export function specimenRngForLoggedSet(profileId: string, ordinal: number): () => number {
+  return seededRng(specimenSeed(profileId, ordinal));
 }
 
 /**
  * drawSpecimen for one logged set, seeded from stable state instead of an ambient generator.
  * This is the production entry point; `drawSpecimen` stays exported for the statistical tests
  * and for any caller that already holds a stream.
+ *
+ * Returns the recorded card when the ordinal has already produced one, and rolls only when it
+ * has not, so one ordinal yields at most one card ever (rule 3). A recorded id that is no
+ * longer in `cards` returns null rather than falling through to a fresh roll: the ordinal is
+ * spent either way, and re-rolling it would be the farm this rule exists to close.
+ *
+ * Pure: recording the result is `recordSpecimenDraw`.
  */
 export function drawSpecimenForLoggedSet(
-  inventory: SpecimenInventory | undefined,
+  inventory: OrdinalKeyedInventory | undefined,
   cards: readonly SpecimenCard[],
   profileId: string,
-  setIndex: number,
+  ordinal: number,
   dropChance: number,
 ): SpecimenCard | null {
-  return drawSpecimen(inventory, cards, specimenRngForLoggedSet(profileId, setIndex), dropChance);
+  const recorded = inventory?.acquiredByOrdinal?.[ordinal];
+  if (recorded !== undefined) return cards.find((c) => c.id === recorded) ?? null;
+  return drawSpecimen(inventory, cards, specimenRngForLoggedSet(profileId, ordinal), dropChance);
+}
+
+/**
+ * Record one drop against both the card id and the set ordinal that produced it.
+ *
+ * Returns the inventory unchanged, by reference, when the ordinal is already spent, so a
+ * repeated call cannot add a second acquisition however it is reached: a double-invoked
+ * reducer, a replayed migration, or a delete and relog at the reused ordinal.
+ *
+ * `at` is [epoch ms, UTC], the instant the set was logged.
+ */
+export function recordSpecimenDraw(
+  inventory: OrdinalKeyedInventory,
+  ordinal: number,
+  card: SpecimenCard,
+  at: EpochMs,
+  exerciseId: string | null,
+): OrdinalKeyedInventory {
+  if (inventory.acquiredByOrdinal?.[ordinal] !== undefined) return inventory;
+  return {
+    ...inventory,
+    acquired: { ...inventory.acquired, [card.id]: { at, exerciseId } },
+    acquiredByOrdinal: { ...inventory.acquiredByOrdinal, [ordinal]: card.id },
+  };
 }
