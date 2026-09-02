@@ -13,8 +13,10 @@
 // by src/domain/dates.ts. Day counts are whole calendar days [d]; instants are epoch
 // milliseconds, UTC [ms]. No Date object and no toISOString appears in this module.
 //
-// Two amendments to the P3 plan's Task 2 code, both driven by master §6.4 as amended
-// ("remainingLabelsThisWeek returns exactly the labels assignToday can honour"):
+// Amendments to the P3 plan's Task 2 code, all driven by master §6.4 as amended
+// ("remainingLabelsThisWeek returns exactly the labels assignToday can honour", plus the
+// cursor invariants: at most one open assignment per profile, and nothing materialises on a
+// paused day):
 //
 //   1. assignToday throws RangeError when the label is not among the labels
 //      remainingLabelsThisWeek reports for that day, where the plan's draft returned the
@@ -23,6 +25,18 @@
 //   2. remainingLabelsThisWeek is empty on a day whose assignment is already terminal, since
 //      assignToday can honour nothing there. The draft listed the week's labels and then
 //      refused all of them.
+//   3. assignToday materialises an assignment, so it carries the cursor's own gates
+//      (cursor.ts assignmentFor): a paused day, a day whose session has already started, and
+//      any day while ANOTHER day is still open are all refused. Without them a pick wrote a
+//      second open assignment claiming the same cursor index, and the week then delivered one
+//      session twice and another never — the multiset the reorder exists to preserve.
+//   4. assignToday accepts only the day the projection serves cursor.nextSessionIndex on. A
+//      pick on any other day wrote a session the calendar does not place there.
+//   5. The reshuffled plan is stored under cursor.planId, the key every read in this module
+//      resolves the plan by, not under plan.id.
+//
+// Every refusal is shared with remainingLabelsThisWeek through one predicate (gateReason), so
+// the two cannot drift: the labels offered are exactly the labels honoured.
 //
 // The window is also computed by projecting the rest of the week rather than by a second,
 // parallel copy of the consumption rule, so the two can never disagree.
@@ -129,8 +143,9 @@ function consumesASession(day: CalendarDay): boolean {
 }
 
 /**
- * How many sessions the rest of this ISO week can absorb, counting `date` itself as one
- * because the user is choosing to train it — even on a day with no availability slot.
+ * How many sessions the rest of this ISO week can absorb, counting `date` itself as one: it is
+ * only ever asked about a day the projection already serves (see gateReason's fourth rule), so
+ * the count is the number of consuming days in [date, Sunday].
  *
  * Every later day is judged by the projection itself, so this can never drift from what
  * projectedCalendar would show.
@@ -148,10 +163,63 @@ function weekSpan(state: AppState, profileId: string, date: LocalDate): number {
 }
 
 /**
+ * The first day, from `date` onward inside its ISO week, that takes a session off the walk —
+ * the day the plan serves `cursor.nextSessionIndex` on. The projection's walk starts at the
+ * cursor, so its first consuming day is by construction the day that index lands on. Null when
+ * the rest of the week serves nothing at all: a weekend tail, or a week entirely paused.
+ */
+function nextServedDate(state: AppState, profileId: string, date: LocalDate): LocalDate | null {
+  const daysLeft = daysBetween(date, weekEnd(date)) + 1; // [d] date .. Sunday inclusive, >= 1
+  const week = projectedCalendar(state, profileId, date, daysLeft);
+  return week.find(consumesASession)?.date ?? null;
+}
+
+/**
+ * Why `date` refuses a pick — the tail of assignToday's message — or null when it accepts one.
+ * remainingLabelsThisWeek is empty for exactly these days, so the two functions stay exact
+ * duals (master §6.4 as amended).
+ *
+ * The first three rules are the cursor's own (cursor.ts assignmentFor). assignToday
+ * materialises an assignment just as startSession does, so it has to obey them or it opens a
+ * session behind the cursor's back. The order is the cursor's too: the pause is the widest
+ * condition and the most actionable message, so it is reported first.
+ *
+ *   1. paused day — a paused day holds no session at all;
+ *   2. already started — a reshuffle would swap the exercises out from under a session the
+ *      user is logging. The UI offers "train other" before Start, never after;
+ *   3. another day open — at most one assignment is non-terminal per profile, so a pick may
+ *      not open a second day that claims the same cursor index;
+ *   4. not the served day — the pick writes the session at cursor.nextSessionIndex, so it may
+ *      only be written on the day the projection places that index on.
+ *
+ * Rule 4 subsumes the pause for `date` itself (a paused day serves nothing), but the pause is
+ * still tested first because "the plan is paused" tells the caller what to do about it.
+ */
+function gateReason(state: AppState, profileId: string, date: LocalDate): string | null {
+  if (isPaused(state.pauses[profileId] ?? [], date)) {
+    return `the plan is paused on ${date}`;
+  }
+  const assignments = state.assignments[profileId] ?? [];
+  const today = assignments.find((a) => a.date === date) ?? null;
+  if (today?.status === 'in-progress') {
+    return `session already started on ${date}`;
+  }
+  const open = assignments.find((a) => a.date !== date && !isTerminal(a));
+  if (open) {
+    return `a session is already open on ${open.date}`;
+  }
+  if (nextServedDate(state, profileId, date) !== date) {
+    return `${date} is not the next session day`;
+  }
+  return null;
+}
+
+/**
  * The current ISO week's remaining sequence: the contiguous index run
  * `[target, min(target + span - 1, last)]`, where `target` is the index today consumes and
  * `span` is the number of sessions the rest of the week can absorb. Null when there is
- * nothing today can be given: no cursor, no plan, the plan finished, or today already closed.
+ * nothing today can be given: no cursor, no plan, the plan finished, today already closed, or
+ * any gateReason refusal.
  */
 interface SwapWindow {
   plan: PlanTemplate;
@@ -161,7 +229,11 @@ interface SwapWindow {
   end: number; // [sessions] offset: last index reachable inside this ISO week
 }
 
-function swapWindow(state: AppState, profileId: string, date: LocalDate): SwapWindow | null {
+/** Everything the window needs that does not depend on the rest of the week. */
+type WindowBase = Omit<SwapWindow, 'end'>;
+
+/** Null when the plan has nothing to give on `date`, before any gate is consulted. */
+function windowBase(state: AppState, profileId: string, date: LocalDate): WindowBase | null {
   const cursor = state.cursors[profileId];
   if (!cursor) return null;
   const plan = state.plans[cursor.planId];
@@ -170,9 +242,38 @@ function swapWindow(state: AppState, profileId: string, date: LocalDate): SwapWi
   if (target >= plan.sessions.length) return null; // plan finished
   const today = (state.assignments[profileId] ?? []).find((a) => a.date === date) ?? null;
   if (today && isTerminal(today)) return null; // a finished day is a record, not a choice
-  const span = weekSpan(state, profileId, date); // [sessions]
-  const end = Math.min(target + span - 1, plan.sessions.length - 1);
-  return { plan, cursor, today, target, end };
+  return { plan, cursor, today, target };
+}
+
+function withSpan(
+  state: AppState,
+  profileId: string,
+  date: LocalDate,
+  base: WindowBase,
+): SwapWindow {
+  const span = weekSpan(state, profileId, date); // [sessions] >= 1
+  return { ...base, end: Math.min(base.target + span - 1, base.plan.sessions.length - 1) };
+}
+
+function swapWindow(state: AppState, profileId: string, date: LocalDate): SwapWindow | null {
+  const base = windowBase(state, profileId, date);
+  if (!base) return null;
+  if (gateReason(state, profileId, date) !== null) return null;
+  return withSpan(state, profileId, date, base);
+}
+
+/** The refusal for a label this day cannot place, naming what it could have placed instead. */
+function notOffered(
+  state: AppState,
+  profileId: string,
+  date: LocalDate,
+  sessionLabel: string,
+): RangeError {
+  const offered = remainingLabelsThisWeek(state, profileId, date);
+  return new RangeError(
+    `assignToday: ${JSON.stringify(sessionLabel)} is not among the sessions remaining on ` +
+      `${date} (${offered.length > 0 ? offered.join(', ') : 'none'})`,
+  );
 }
 
 /** The lowest index in the window whose session carries `label`, or -1. */
@@ -184,8 +285,14 @@ function pickIndex(w: SwapWindow, sessionLabel: string): number {
 }
 
 /**
- * Distinct labels `assignToday` will honour on `date`, in window order. Empty when the plan is
- * finished, the profile has no plan, or the day is already completed or skipped.
+ * The DISTINCT labels `assignToday` will honour on `date`, in window order: a label the week
+ * offers twice is listed once, because one pick can only place one of them today.
+ *
+ * Empty — the day offers no choice at all — when the profile has no cursor or no plan, the
+ * plan is finished, the day is already completed or skipped, the plan is PAUSED on it, its
+ * session is already IN PROGRESS, another day is still open, or the projection does not serve
+ * the cursor's next session on it. These are exactly assignToday's refusals (gateReason), so
+ * a caller that offers this list can never offer a label the domain then refuses.
  */
 export function remainingLabelsThisWeek(
   state: AppState,
@@ -205,6 +312,19 @@ export function remainingLabelsThisWeek(
   return out;
 }
 
+/** Field-by-field equality, so a pick that changes nothing can be detected before writing. */
+function sameAssignment(a: SessionAssignment, b: SessionAssignment): boolean {
+  return (
+    a.date === b.date &&
+    a.sessionId === b.sessionId &&
+    a.sourceIndex === b.sourceIndex &&
+    a.status === b.status &&
+    a.startedAt === b.startedAt &&
+    a.completedAt === b.completedAt &&
+    a.skipReason === b.skipReason
+  );
+}
+
 /**
  * Train `sessionLabel` today. The picked label's first occurrence inside the current ISO
  * week's remaining sequence is transposed with the session at the cursor, and both ordinals
@@ -213,7 +333,13 @@ export function remainingLabelsThisWeek(
  * plan's — is unchanged. Today's assignment is created or replaced, recording `sourceIndex`
  * for auditability. The cursor does not move: only completing or skipping advances it.
  *
- * @throws RangeError when `sessionLabel` is not one of
+ * A pick that changes nothing — the label already at the cursor, already recorded on `date` —
+ * returns the argument state itself, so a caller may use identity to detect a no-op exactly as
+ * it may with cursor.ts's transitions.
+ *
+ * @throws RangeError when `date` refuses a pick (see `remainingLabelsThisWeek`: paused,
+ *         already started, another day open, or not the day the projection serves next), or
+ *         when `sessionLabel` is not one of
  *         `remainingLabelsThisWeek(state, profileId, date)`.
  */
 export function assignToday(
@@ -222,15 +348,14 @@ export function assignToday(
   date: LocalDate,
   sessionLabel: string,
 ): AppState {
-  const w = swapWindow(state, profileId, date);
-  const pick = w ? pickIndex(w, sessionLabel) : -1;
-  if (!w || pick < 0) {
-    const offered = remainingLabelsThisWeek(state, profileId, date);
-    throw new RangeError(
-      `assignToday: ${JSON.stringify(sessionLabel)} is not among the sessions remaining on ` +
-        `${date} (${offered.length > 0 ? offered.join(', ') : 'none'})`,
-    );
-  }
+  const base = windowBase(state, profileId, date);
+  if (!base) throw notOffered(state, profileId, date, sessionLabel);
+  const blocked = gateReason(state, profileId, date);
+  if (blocked !== null) throw new RangeError(`assignToday: ${blocked}`);
+
+  const w = withSpan(state, profileId, date, base);
+  const pick = pickIndex(w, sessionLabel);
+  if (pick < 0) throw notOffered(state, profileId, date, sessionLabel);
 
   let plan = w.plan;
   if (pick !== w.target) {
@@ -254,17 +379,25 @@ export function assignToday(
     date,
     sessionId: chosen.id,
     sourceIndex: w.target, // [sessions] offset the day was drawn from
-    status: w.today?.status === 'in-progress' ? 'in-progress' : 'planned',
-    startedAt: w.today?.startedAt ?? null, // [ms] epoch, UTC; a started day keeps its origin
+    // An in-progress day is refused above and a terminal day opens no window, so the only
+    // assignment that can survive to here is a planned one.
+    status: 'planned',
+    startedAt: w.today?.startedAt ?? null, // [ms] epoch, UTC; carried rather than discarded
     completedAt: null,
     skipReason: null,
   };
+
+  // A true no-op: no reorder, and today already carries exactly this assignment.
+  if (plan === w.plan && w.today !== null && sameAssignment(w.today, next)) return state;
 
   return {
     ...state,
     // Only rewrite the plan map when the reorder actually changed the template, so a pick that
     // is already today's projection leaves plan identity — and any memoised selector — alone.
-    plans: plan === w.plan ? state.plans : { ...state.plans, [plan.id]: plan },
+    // The key is the cursor's planId: that is how every read here resolves the plan, and a
+    // document whose map key and plan.id disagree would otherwise strand the reshuffle under a
+    // key nothing reads.
+    plans: plan === w.plan ? state.plans : { ...state.plans, [w.cursor.planId]: plan },
     assignments: {
       ...state.assignments,
       [profileId]: upsertAssignment(state.assignments[profileId] ?? [], next),
