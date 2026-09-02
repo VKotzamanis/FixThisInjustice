@@ -12,6 +12,7 @@ import { defaultState } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { newId } from '../domain/ids';
 import { dailyBeverageTargetML } from '../domain/nutrition';
+import { createScheduleActions, type ScheduleActions } from './scheduleActions';
 import type { SaveFailure, SaveResult } from './persistence';
 import {
   clearStorage,
@@ -55,6 +56,20 @@ export interface StoreStatus {
   lastLoadRaw: string | null;
   /** False until hydrate() has run, so the UI can tell "empty" from "not read yet". */
   hydrated: boolean;
+  /**
+   * Why the last schedule action the user attempted was refused, in the domain's own wording,
+   * or null when it was honoured.
+   *
+   * P3's schedule transitions throw on an illegal request (master plan §6.4 as amended: a
+   * paused day, a second open assignment, a label the week no longer offers). The store sorts
+   * those throws — see src/store/scheduleActions.ts for the refusal/defect split — and a
+   * refusal lands here instead of taking the tree down.
+   *
+   * NOT persisted, and deliberately so: it is a fact about one attempt, not about the
+   * document (master plan §3), and a refusal restored from storage would accuse the user of
+   * something they did in a previous session. selectState() therefore does not read it.
+   */
+  lastActionError: string | null;
 }
 
 /** Master plan §6.7, P1 slice. Later plans extend this interface, never replace it. */
@@ -125,8 +140,12 @@ function requireProfile(state: AppState, action: string, profileId: string): Pro
  * and the non-persisted `status` slice (master plan §5, "Non-persisted store
  * fields"), so `useAppStore((s) => s.profiles)` and `useAppStore((s) => s.logSet)`
  * both work and later plans can seed a test with `setState(partialAppState)`.
+ *
+ * Master plan §6.7's P3 block reaches the store as the ScheduleActions intersection rather
+ * than as another set of signatures copied into AppActions, so the seven schedule actions are
+ * declared once, next to the implementation that satisfies them.
  */
-export type AppStore = AppState & AppActions & { status: StoreStatus };
+export type AppStore = AppState & AppActions & { status: StoreStatus } & ScheduleActions;
 
 /**
  * The persisted fields of the store, and only those: no actions, no `status`,
@@ -198,7 +217,13 @@ function withoutPersisting(mutate: () => void): void {
 
 export const useAppStore = create<AppStore>()((set, get) => ({
   ...defaultState(),
-  status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: false },
+  status: {
+    lastSaveError: null,
+    lastLoadError: null,
+    lastLoadRaw: null,
+    hydrated: false,
+    lastActionError: null,
+  },
 
   hydrate(): void {
     const result = load();
@@ -285,6 +310,8 @@ export const useAppStore = create<AppStore>()((set, get) => ({
           lastSaveError: null,
           // The user chose to clear, so writes resume from the next change on.
           lastLoadError: null,
+          // A refusal is about an attempt on a document that no longer exists.
+          lastActionError: null,
           // Kept: after clearing an unreadable document, the in-memory snapshot
           // is the only remaining copy the recovery UI can export.
           lastLoadRaw: get().status.lastLoadRaw,
@@ -294,9 +321,12 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     });
   },
 
-  setUi(patch: Partial<UiPrefs>): void {
-    set({ ui: { ...get().ui, ...patch } });
-  },
+  /*
+   * setUi is not written here. It is declared in AppActions above (P1 owns the contract) and
+   * implemented once, in the schedule slice spread in at the bottom of this object, because
+   * two identical shallow patches of `ui` in one initialiser is a duplicate the compiler is
+   * right to reject (TS2783) and a second place for the behaviour to drift.
+   */
 
   reportSaveResult(r: SaveResult): void {
     const next: SaveError | null = r.ok ? null : { reason: r.reason, error: r.error };
@@ -527,6 +557,29 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       profiles: { ...s.profiles, [profileId]: { ...current, readiness: { screenedAt, flagged } } },
     });
   },
+
+  /*
+   * P3's schedule slice, spread LAST so its members win over any earlier placeholder of the
+   * same name. Only setUi collides today, and the two implementations are the same shallow
+   * patch, so the precedence changes no behaviour; it is stated here because the ordering is
+   * what makes the file safe to extend.
+   *
+   * The adapter is the whole of the store's involvement: the slice sees a pure
+   * AppState -> AppState transition and a channel for the refusal message, and knows nothing
+   * about zustand, persistence, or the status slice.
+   */
+  ...createScheduleActions({
+    set: (updater) => {
+      set((s) => updater(s));
+    },
+    setActionError: (message) => {
+      // Idempotent by contract (ScheduleActionDeps): the slice calls this after every
+      // attempt, and an unchanged message must not mint a new status object and re-render
+      // every subscriber. Compared by value because the field is a string.
+      if (get().status.lastActionError === message) return;
+      set({ status: { ...get().status, lastActionError: message } });
+    },
+  }),
 }));
 
 /** Writes any coalesced state immediately. Safe to call when nothing is pending. */

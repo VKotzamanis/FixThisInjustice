@@ -29,7 +29,13 @@ const REAL_HYDRATE = useAppStore.getState().hydrate;
 beforeEach(() => {
   useAppStore.setState({
     ...defaultState(),
-    status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: false },
+    status: {
+      lastSaveError: null,
+      lastLoadError: null,
+      lastLoadRaw: null,
+      hydrated: false,
+      lastActionError: null,
+    },
   });
 });
 
@@ -169,7 +175,13 @@ describe('RootErrorBoundary', () => {
     const data = installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
     // Hydrated and with no load error, so the subscription is allowed to write.
     useAppStore.setState({
-      status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: true },
+      status: {
+        lastSaveError: null,
+        lastLoadError: null,
+        lastLoadRaw: null,
+        hydrated: true,
+        lastActionError: null,
+      },
     });
     stopPersistence = startPersistence();
 
