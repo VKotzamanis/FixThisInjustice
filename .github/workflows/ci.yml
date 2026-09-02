@@ -17,6 +17,11 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Needs no Node: a clip over GitHub's 100 MiB file limit, or a non-MP4 that Safari
+      # cannot decode, should fail before the install spends a minute.
+      - name: Check the motivation clip's size and format
+        run: bash scripts/check-media-size.sh
+
       # Node 22 comes from .nvmrc, the floor package.json `engines` declares.
       - uses: actions/setup-node@v7
         with:
