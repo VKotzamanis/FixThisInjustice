@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
+import { FORMAT, copy } from '../content/copy';
 import { useAppStore } from '../store';
 import type { SaveErrorReason } from '../store';
 import {
@@ -10,9 +11,86 @@ import {
   useSaveError,
 } from '../store/selectors';
 import { SetupWizard } from '../ui/setup/SetupWizard';
+import { SettingsView } from '../ui/views/SettingsView';
+import { TargetsView } from '../ui/views/TargetsView';
 import { downloadText } from './download';
 import { UpdatePrompt } from './UpdatePrompt';
 import './appShell.css';
+
+/**
+ * The view switch every plan adds to. P3-P8 replace a placeholder entry with their own view
+ * and add nothing else here: the union, NAV and the switch below are the three places a view
+ * is named, and they are kept adjacent so a view cannot exist in one and not the others.
+ */
+export type ViewId = 'today' | 'plan' | 'train' | 'targets' | 'log' | 'settings';
+
+const NAV: { id: ViewId; label: string }[] = [
+  { id: 'today', label: copy('nav.today') },
+  { id: 'plan', label: copy('nav.plan') },
+  { id: 'train', label: copy('nav.train') },
+  { id: 'targets', label: copy('nav.targets') },
+  { id: 'log', label: copy('nav.log') },
+  { id: 'settings', label: copy('nav.settings') },
+];
+
+/**
+ * `UiPrefs.lastView` is a persisted string, not a ViewId: a document written by a later
+ * version can name a view this build does not have. Checking it against NAV rather than
+ * asserting the type is what keeps that document loading instead of rendering nothing.
+ */
+function isViewId(value: string): value is ViewId {
+  return NAV.some((n) => n.id === value);
+}
+
+/** A view a later plan delivers. Until then the tab exists and says the view is not built. */
+function Placeholder(props: { name: string }): ReactElement {
+  return <p className="view">{FORMAT.notBuiltYet(props.name)}</p>;
+}
+
+/**
+ * Navigation and the view switch, mounted only once a profile exists.
+ *
+ * The chosen view is mirrored into `UiPrefs.lastView` so a reload reopens where the user left
+ * off. Local state stays the source of truth WITHIN a session: routing every tap through the
+ * persisted document would put a debounced write between the tap and the repaint.
+ */
+function ViewShell(): ReactElement {
+  // Read once, not subscribed: this seeds the session and must not re-render the shell every
+  // time the value it just wrote comes back through the store.
+  const [view, setView] = useState<ViewId>(() => {
+    const stored = useAppStore.getState().ui.lastView;
+    return isViewId(stored) ? stored : 'targets';
+  });
+
+  return (
+    <>
+      <nav className="viewnav">
+        {NAV.map((n) => (
+          <button
+            key={n.id}
+            type="button"
+            aria-current={view === n.id}
+            onClick={() => {
+              setView(n.id);
+              // Through getState(), like every other action call in this codebase: the store's
+              // actions are created once and never replace themselves, so subscribing to one
+              // buys nothing and hands the component an unbound method.
+              useAppStore.getState().setUi({ lastView: n.id });
+            }}
+          >
+            {n.label}
+          </button>
+        ))}
+      </nav>
+      {view === 'targets' && <TargetsView />}
+      {view === 'settings' && <SettingsView />}
+      {view === 'today' && <Placeholder name={copy('nav.today')} />}
+      {view === 'plan' && <Placeholder name={copy('nav.plan')} />}
+      {view === 'train' && <Placeholder name={copy('nav.train')} />}
+      {view === 'log' && <Placeholder name={copy('nav.log')} />}
+    </>
+  );
+}
 
 /**
  * Reads the persisted document exactly once per mount, during render, so a
@@ -199,12 +277,7 @@ export function App(): ReactElement {
           // every other view needs a profile to read units, time zone and targets from.
           <SetupWizard />
         ) : (
-          <section className="placeholder">
-            <h2>{profile.displayName}</h2>
-            <p>
-              Time zone {profile.timezone}, units {profile.units}.
-            </p>
-          </section>
+          <ViewShell />
         )}
       </main>
     </div>

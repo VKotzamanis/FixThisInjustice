@@ -1,0 +1,135 @@
+/*
+ * Views (targets, settings), phone first.
+ *
+ * The same two numbers the setup wizard treats as requirements rather than taste (master plan
+ * section 3) hold here:
+ *
+ *   font-size: 16px on every text-entry control. Mobile Safari zooms the viewport when a
+ *   focused input's computed font-size is below 16 px, and the zoom does not reverse on blur.
+ *   Absolute px rather than rem, because it must hold whatever the root size is.
+ *
+ *   min-height: 2.75rem = 44 px at the 16 px root, the minimum interactive target. Every
+ *   control the user taps carries it: inputs, selects, buttons, and the label wrapping a
+ *   checkbox (the label is the tap area, not the 20 px box inside it).
+ *
+ * Every custom property carries a literal fallback, so a view renders whether or not the P1
+ * token sheet is loaded.
+ */
+.view {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 4rem;
+}
+
+.view h2 {
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent, #a3e635);
+  margin: 1.5rem 0 0.5rem;
+}
+
+.view h2:first-child {
+  margin-top: 0;
+}
+
+.view .view-dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.25rem 1rem;
+  margin: 0 0 0.75rem;
+}
+
+.view .view-dl dt {
+  font-size: 0.9rem;
+  color: var(--text-2, #8e97a3);
+}
+
+.view .view-dl dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.view .view-field {
+  display: block;
+  margin: 0 0 0.75rem;
+}
+
+.view .view-field > label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+/* The whole label is the tap target for a checkbox. */
+.view label.view-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  font-size: 0.9rem;
+}
+
+.view input[type='number'],
+.view input[type='text'],
+.view select {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.5rem;
+  color: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.view input[type='checkbox'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+.view button {
+  width: 100%;
+  min-height: 2.75rem;
+  color: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--accent, #a3e635);
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+
+.view .view-note {
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+  margin: 0.25rem 0 0.75rem;
+}
+
+.view .view-error {
+  font-size: 0.8rem;
+  color: var(--bad, #f87171);
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* The bar is monospace by construction: a proportional font makes # and - different widths. */
+.view .view-progress {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+
+.view details {
+  margin: 0 0 0.75rem;
+}
+
+.view summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  color: var(--text-2, #8e97a3);
+  cursor: pointer;
+}

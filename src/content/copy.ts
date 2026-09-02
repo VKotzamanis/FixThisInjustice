@@ -152,6 +152,31 @@ export type CopyKey =
   | 'error.pickOneDay'
   | 'error.positive'
   | 'error.range'
+  // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
+  | 'hero.intakeCheckIn'
+  | 'hero.profile'
+  | 'hero.equipmentSteps'
+  | 'hero.hydration'
+  | 'label.displayUnit'
+  | 'label.activeProfile'
+  | 'label.rmr'
+  | 'label.tdee'
+  | 'label.energyProgress'
+  | 'label.proteinProgress'
+  | 'quantity.energyIntake'
+  | 'quantity.proteinIntake'
+  | 'quantity.dailyBeverageTarget'
+  | 'advice.beverageDefault'
+  | 'why.beverageDefault'
+  | 'advice.intakeRejected'
+  | 'error.outsideAccepted'
+  | 'advice.viewNotBuilt'
+  | 'nav.today'
+  | 'nav.plan'
+  | 'nav.train'
+  | 'nav.targets'
+  | 'nav.log'
+  | 'nav.settings'
   // --- today and plan (P3) ---
   | 'hero.noPlan'
   | 'advice.completeSetup'
@@ -437,6 +462,36 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'error.positive': 'Enter a number greater than zero.',
   'error.range': 'Body mass must be 30 to 300 kg.', // formatted
 
+  // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
+  'hero.intakeCheckIn': 'Intake check-in',
+  'hero.profile': 'Profile',
+  'hero.equipmentSteps': 'Equipment steps',
+  'hero.hydration': 'Hydration',
+  'label.displayUnit': 'Display unit',
+  'label.activeProfile': 'Active profile',
+  // Intermediate quantities. They live inside the why? disclosure (R9), never on the face.
+  'label.rmr': 'Resting metabolic rate',
+  'label.tdee': 'Total daily energy expenditure',
+  // Accessible names for the two bars. The glyphs read out as punctuation, so the name is
+  // what says which quantity the bar is about, and against which bound.
+  'label.energyProgress': 'Energy against target',
+  'label.proteinProgress': 'Protein against the lower bound of the range',
+  'quantity.energyIntake': 'Energy consumed today',
+  'quantity.proteinIntake': 'Protein consumed today',
+  'quantity.dailyBeverageTarget': 'Daily beverage target',
+  'advice.beverageDefault': 'Default for the stated sex: 3000 mL per day.', // formatted
+  'why.beverageDefault':
+    'IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of which beverages supply 3.0 L and 2.2 L. Water in food supplies the rest and is not counted here, because an app cannot measure it.',
+  'advice.intakeRejected': 'That daily total is outside the accepted range.',
+  'error.outsideAccepted': 'Outside the accepted range.',
+  'advice.viewNotBuilt': 'Today is not built yet.', // formatted
+  'nav.today': 'Today',
+  'nav.plan': 'Plan',
+  'nav.train': 'Train',
+  'nav.targets': 'Targets',
+  'nav.log': 'Log',
+  'nav.settings': 'Settings',
+
   // --- today and plan (P3) ---
   'hero.noPlan': 'No plan configured.',
   'advice.completeSetup': 'Complete setup to generate a plan.',
@@ -648,4 +703,21 @@ export const FORMAT = {
   /** "RMR equation: Mifflin-St Jeor. Activity factor (PAL): 1.7." */
   rmrBasis: (equation: string, activityFactor: number): string =>
     `RMR equation: ${equation}. Activity factor (PAL): ${activityFactor}.`,
+
+  // --- P2 Task 8 ---
+
+  /** "Intake check-in: 2026-09-01". Contract R5: a colon, not a dash. */
+  headingWithDate: (heading: string, date: string): string => `${heading}: ${date}`,
+
+  /**
+   * "2100 / 2723 kcal", "150 / 112-160 g". The unit is carried by the TARGET side only, so a
+   * progress line never prints the same unit twice.
+   */
+  valueOfTarget: (value: string, target: string): string => `${value} / ${target}`,
+
+  /** "Default for the stated sex: 3000 mL per day." The volume is already formatted. */
+  beverageDefault: (volume: string): string => `Default for the stated sex: ${volume} per day.`,
+
+  /** "Today is not built yet." The name comes from the navigation entry. */
+  notBuiltYet: (view: string): string => `${view} is not built yet.`,
 } as const;
