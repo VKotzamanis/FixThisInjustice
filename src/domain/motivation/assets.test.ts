@@ -6,7 +6,9 @@ import {
   ASSET_DB_NAME,
   ASSET_DB_VERSION,
   BUNDLED_VIDEO_SRC,
+  clearAssetStorage,
   deleteCustomVideo,
+  getCustomVideoMeta,
   getCustomVideoUrl,
   MAX_VIDEO_BYTES,
   probeBundledVideo,
@@ -146,6 +148,56 @@ describe('custom video asset store', () => {
     expect(await getCustomVideoUrl(first)).toBeNull();
   });
 
+  it('keeps the records named in `keep`, so one profile does not sweep another', async () => {
+    // One videos store backs every profile while customVideoAssetId is per profile, so an
+    // unqualified sweep makes profile B's save delete profile A's clip while profile A's
+    // Settings still reports that a clip is stored.
+    const a = await saveCustomVideo(videoFile(8, 'video/mp4', 'a.mp4'), 1); // EpochMs, UTC
+    const b = await saveCustomVideo(videoFile(8, 'video/mp4', 'b.mp4'), 2, {
+      keep: new Set([a]),
+    });
+
+    const urlA = await getCustomVideoUrl(a);
+    const urlB = await getCustomVideoUrl(b);
+    expect(urlA).not.toBeNull();
+    expect(urlB).not.toBeNull();
+    if (urlA !== null) revokeVideoUrl(urlA);
+    if (urlB !== null) revokeVideoUrl(urlB);
+  });
+
+  it('sweeps the replaced clip and an unnamed orphan while `keep` survives', async () => {
+    const a = await saveCustomVideo(videoFile(8, 'video/mp4', 'a.mp4'), 1); // EpochMs, UTC
+    const bOld = await saveCustomVideo(videoFile(8, 'video/mp4', 'b-old.mp4'), 2, {
+      keep: new Set([a]),
+    });
+    // Nothing in state names this record once it is written: it stands in for what a failed
+    // removal leaves behind, and the next save is what clears it.
+    const orphan = await saveCustomVideo(videoFile(8, 'video/mp4', 'orphan.mp4'), 3, {
+      keep: new Set([a, bOld]),
+    });
+
+    // Profile B replaces its clip: state names profile A's asset and B's new one, nothing else.
+    const bNew = await saveCustomVideo(videoFile(8, 'video/mp4', 'b-new.mp4'), 4, {
+      keep: new Set([a]),
+    });
+
+    const db = await openDB<AssetDbForTests>(ASSET_DB_NAME, ASSET_DB_VERSION);
+    const keys = await db.getAllKeys('videos');
+    db.close();
+    expect(new Set(keys)).toEqual(new Set([a, bNew]));
+    expect(await getCustomVideoUrl(bOld)).toBeNull();
+    expect(await getCustomVideoUrl(orphan)).toBeNull();
+  });
+
+  it('reports a stored clip name and size, so a reload can name what it holds', async () => {
+    const id = await saveCustomVideo(videoFile(2048, 'video/mp4', 'holiday.mp4'), 1); // EpochMs
+    expect(await getCustomVideoMeta(id)).toEqual({ name: 'holiday.mp4', size: 2048 }); // bytes
+  });
+
+  it('returns null metadata for an id that is not stored', async () => {
+    expect(await getCustomVideoMeta('missing')).toBeNull();
+  });
+
   it('leaves deleteCustomVideo a no-op for an id that is not there', async () => {
     // Task 6 calls this on a possibly stale id; it must not throw.
     await expect(deleteCustomVideo('never-stored')).resolves.toBeUndefined();
@@ -159,6 +211,35 @@ describe('custom video asset store', () => {
     const id = await saveCustomVideo(videoFile(8), 1); // EpochMs, UTC
     await deleteCustomVideo(id);
     expect(await getCustomVideoUrl(id)).toBeNull();
+  });
+
+  it('empties the store for the Settings wipe and leaves it usable', async () => {
+    // Security constraint 10: the wipe covers everything the app owns, and the clip is the
+    // only thing the app puts outside localStorage.
+    const a = await saveCustomVideo(videoFile(8, 'video/mp4', 'a.mp4'), 1); // EpochMs, UTC
+    const b = await saveCustomVideo(videoFile(8, 'video/mp4', 'b.mp4'), 2, {
+      keep: new Set([a]),
+    });
+
+    await clearAssetStorage();
+
+    expect(await getCustomVideoUrl(a)).toBeNull();
+    expect(await getCustomVideoUrl(b)).toBeNull();
+    const db = await openDB<AssetDbForTests>(ASSET_DB_NAME, ASSET_DB_VERSION);
+    const keys = await db.getAllKeys('videos');
+    db.close();
+    expect(keys).toEqual([]);
+
+    // A wipe is not a teardown: the store the next pick writes to has to still be there.
+    const after = await saveCustomVideo(videoFile(8, 'video/mp4', 'after.mp4'), 3);
+    const url = await getCustomVideoUrl(after);
+    expect(url).not.toBeNull();
+    if (url !== null) revokeVideoUrl(url);
+  });
+
+  it('wipes a device that never stored a clip without complaining', async () => {
+    // The one absence the wipe treats as success: nothing was there to remove.
+    await expect(clearAssetStorage()).resolves.toBeUndefined();
   });
 
   it('caps custom clips at 150 MiB', () => {
