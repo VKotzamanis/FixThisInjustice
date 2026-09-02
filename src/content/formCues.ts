@@ -22,7 +22,7 @@
  * nine equipment-tier exercises added after the P2 Task 3 review carry `formCueId: null` and no
  * cue here; adding one means adding the id there in the same change.
  *
- * WHAT WAS CHANGED IN THE PORT, and nothing else:
+ * WHAT WAS CHANGED IN THE PORT:
  *   1. Every correction the content review section 6 demanded (see the per-entry comments).
  *   2. Em-dash and arrow connectors replaced by a colon, a comma or two sentences, and the
  *      "->" mistake arrows expanded into sentences (copy contract R5; cues are exempt from the
@@ -34,6 +34,19 @@
  *   4. Personal, medication and stimulant text: none survived into the cue library (the legacy
  *      instances were in `data.js` and the specimen cards, content review section 7), and
  *      `formCues.test.ts` asserts none is reintroduced.
+ *   5. THREE CUE LINES HAVE NO LEGACY ANTECEDENT. They are listed because items 1 to 4 would
+ *      otherwise read as an exhaustive account of the differences, and a reader checking the
+ *      port against `legacy/console-content.js` would find text that items 1 to 4 do not
+ *      explain. None of the three carries a number, a citation or a claim of effect:
+ *        leg-press setup, "Brace before releasing the safeties." The legacy setup line it sits
+ *        in place of ("Brace core. Stand tall.") was assigned to the Bulgarian half of the same
+ *        split entry, so the safety-catch instruction is new.
+ *        bulgarian-split-squat execution, "Descend until the front thigh is at least parallel."
+ *        The legacy entry prescribed no depth for this exercise.
+ *        stair-climber setup, "Stand centred on the steps with the hands off the rails." The
+ *        legacy entry had ONE setup line and `formCues.test.ts` requires two, so this entry is
+ *        padded; the added line restates the rail advice the same entry already carries in its
+ *        mistakes and tip rather than introducing a new instruction.
  *
  * NO NEW CITATION IS INTRODUCED HERE. The one claim carrying a name (trap bar, Swinton 2011) is
  * the one the content review itself verified while correcting card u006.
@@ -219,7 +232,9 @@ export const FORM_CUES: Record<string, FormCue> = {
       'Brace hard. The back is flat, neither rounded nor extended.',
     ],
     execution: [
-      'Pull the bar to the lower chest or upper abdomen.',
+      // "Explosively" is the legacy adverb, kept: bar speed is the distinguishing feature of a
+      // dead-stop row against a continuous one, and dropping it silently changed the cue.
+      'Pull the bar explosively to the lower chest or upper abdomen.',
       'Pull the elbows back rather than up. Squeeze the shoulder blades together.',
       'Lower under control to the floor, pause, reset, repeat.',
     ],
@@ -531,9 +546,15 @@ export const FORM_CUES: Record<string, FormCue> = {
   /*
    * Legacy "Trap bar DL -> conventional", first half of the split. The legacy tip claimed
    * "lower spine shear"; content review section 6 and card u006 establish that Swinton PA et al.
-   * (2011), J Strength Cond Res 25(7):2000-2009, DOI 10.1519/JSC.0b013e3181e73f87 reported lower
-   * peak MOMENTS, not shear, so the quantity name is corrected. The review verified the joint
-   * moments only, so the claim is not narrowed to a single joint here.
+   * (2011), J Strength Cond Res 25(7):2000-2009, DOI 10.1519/JSC.0b013e3181e73f87, PMID 21659894
+   * reported peak MOMENTS, not shear, so the quantity name is corrected.
+   *
+   * The result is also directional per joint, and the tip names the joints for that reason.
+   * Swinton reported LOWER peak moments at the lumbar spine, the hip and the ankle with the trap
+   * bar, and a HIGHER peak moment at the KNEE, than with the straight bar. An unqualified
+   * "lowers the peak joint moments" therefore misstates the paper at one of the four joints it
+   * measured, and understates the knee loading a user with a knee complaint needs to know about.
+   * `formCues.test.ts` asserts the tip carries all four joints and the knee increase.
    */
   'trap-bar-deadlift': {
     setup: [
@@ -552,7 +573,7 @@ export const FORM_CUES: Record<string, FormCue> = {
       'Letting the handles drift forward.',
       'Hyperextending at lockout.',
     ],
-    tip: 'The trap bar shifts the load line and lowers the peak joint moments relative to a straight bar (Swinton 2011); it is a different loading pattern, not an easier one.',
+    tip: 'The trap bar shifts the load line: against a straight bar it lowers the peak moments at the lumbar spine, hip and ankle, and raises the peak moment at the knee (Swinton 2011). It is a different loading pattern, not an easier one.',
     caution: null,
   },
 
@@ -768,6 +789,12 @@ export const FORM_CUES: Record<string, FormCue> = {
    * does reduce the energy cost of stepping, but the specific 30% figure is unsourced, so the
    * number is deleted and the direction remains. The legacy machine-level numbers described one
    * console and are dropped with it.
+   *
+   * The tip keeps the legacy corrective verbatim in meaning ("If you need to grip rails, slow
+   * down"): pace is the variable the legacy cue told the user to move, and swapping it for the
+   * machine level is a different instruction, not a rewording. The setup line about standing
+   * centred with the hands off the rails has no legacy antecedent; it is disclosed in item 5 of
+   * the header.
    */
   'stair-climber': {
     setup: ['Set the machine to a moderate level.', 'Stand centred on the steps with the hands off the rails.'],
@@ -780,7 +807,7 @@ export const FORM_CUES: Record<string, FormCue> = {
       'Climbing on the toes.',
       'Setting a pace you cannot hold for the prescribed duration.',
     ],
-    tip: 'If the rails are needed for support, lower the level instead.',
+    tip: 'If the rails are needed for support, slow down.',
     caution: null,
   },
 };

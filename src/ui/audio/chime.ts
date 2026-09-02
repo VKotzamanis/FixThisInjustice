@@ -44,8 +44,21 @@ function audioContextConstructor(): (new () => AudioContext) | null {
 }
 
 /**
- * The shared context, constructed on first use. null where Web Audio does not exist (jsdom,
- * and any browser without it), which callers must treat as "no sound", never as an error.
+ * The shared context, constructed on demand: the first call builds it, every later call returns
+ * that same object until releaseAudio() closes it and the next call builds a fresh one.
+ *
+ * A NON-NULL RETURN DOES NOT MEAN SOUND IS POSSIBLE. Constructing a context outside a user
+ * gesture is allowed everywhere, and the context it returns starts in state "suspended" on iOS
+ * Safari and under Chrome's autoplay policy; unlockAudio() is what resumes it, and iOS suspends
+ * it again whenever the app is backgrounded. So this function returns a live, suspended,
+ * silent context before the gesture, and the same object afterwards.
+ *
+ * Returns null only where Web Audio is absent (jsdom, and any browser without it), which
+ * callers must treat as "no sound", never as an error.
+ *
+ * P8 task 15's sound-effects player therefore gates playback on `ctx.state === 'running'`, the
+ * check chime() makes, NOT on a null test: a null test passes on a suspended context, and the
+ * player would then schedule nodes that never sound and report a sound that never played.
  */
 export function getAudioContext(): AudioContext | null {
   if (context !== null) return context;

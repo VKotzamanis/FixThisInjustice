@@ -103,6 +103,20 @@ describe('totalS', () => {
   it('equals the requested duration for an unextended timer', () => {
     expect(totalS(startRest(180, T0))).toBe(180); // [s]
   });
+
+  it('rounds a fractional span the way remainingS does, so remaining never exceeds total', () => {
+    // remainingS rounds a part-second UP so the display never reads 0 with time left. totalS
+    // has to round the same way or the progress ring is fed remaining > total at t = start,
+    // which draws a fill past 100 %. A fractional span is reachable: `extend` takes an
+    // unconstrained number of seconds, and startRest records whatever duration it is given.
+    const t = startRest(90.2, T0); // [s]
+    expect(totalS(t)).toBe(91); // [s] ceil, not round
+    expect(remainingS(t, T0)).toBe(91); // [s]
+    expect(remainingS(t, T0)).toBeLessThanOrEqual(totalS(t));
+
+    const e = extend(startRest(90, T0), 0.2); // [s] fractional delta through the public API
+    expect(remainingS(e, T0)).toBeLessThanOrEqual(totalS(e));
+  });
 });
 
 describe('extend', () => {
@@ -213,9 +227,14 @@ describe('defaultRestS', () => {
     expect(defaultRestS(planned, lib)).toBe(REST_MODERATE_COMPOUND_S); // [s]
   });
 
-  it('falls back to 90 s for an exercise missing from the library', () => {
+  it('falls back to 120 s for an exercise missing from the library', () => {
+    // The same value restSFor returns when it can put the set in neither the heavy nor the
+    // isolation band. The shortest interval is NOT the conservative choice for recovery: it
+    // under-prescribes rest for work that may be a heavy compound, and the cost of the longer
+    // default is clock time only (review section 9, quoted at the head of restTimer.ts).
     const planned = makePlannedExercise({ exerciseId: 'not-in-library' });
-    expect(defaultRestS(planned, lib)).toBe(REST_ISOLATION_S); // [s]
+    expect(defaultRestS(planned, lib)).toBe(REST_MODERATE_COMPOUND_S); // [s]
+    expect(REST_MODERATE_COMPOUND_S).toBe(120); // [s]
   });
 
   it('pins the heavy rep ceiling: hi at the ceiling is heavy, one rep above is moderate', () => {
