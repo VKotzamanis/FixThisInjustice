@@ -1,0 +1,87 @@
+/*
+ * The motivation popup. Tokens come from src/ui/styles/tokens.css; the z-index sits above the
+ * training modals (40 in train.css) because the gate mounts this last and it must not open
+ * behind a dialog that is already up.
+ */
+.mmod-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.88);
+}
+
+.mmod {
+  width: min(48rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1rem;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  font-family: var(--mono);
+}
+
+.mmod:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.mmod-title {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.mmod-detail {
+  margin: 0 0 1rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.mmod-video {
+  display: block;
+  width: 100%;
+  max-height: 60vh;
+  background: #000;
+  border: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.mmod-video:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.mmod-hint {
+  margin: 0.5rem 0 0;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+.mmod-actions {
+  display: flex;
+  margin-top: 1rem;
+}
+
+.mmod-dismiss {
+  flex: 1 1 auto;
+  min-height: 2.75rem; /* touch target */
+  padding: 0.5rem 1rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--line-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.mmod-dismiss:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

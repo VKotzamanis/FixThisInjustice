@@ -440,7 +440,9 @@ export type CopyKey =
   | 'button.legacyDismiss'
   | 'button.legacyDeleteOld'
   | 'button.legacyKeepOld'
-  | 'button.legacyClose';
+  | 'button.legacyClose'
+  // --- motivation modal (P6 Task 4; appended by that task) ---
+  | 'advice.tapForSound';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -999,6 +1001,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.legacyDeleteOld': 'Delete old data',
   'button.legacyKeepOld': 'Keep old data',
   'button.legacyClose': 'Close',
+
+  // --- motivation modal (P6 Task 4; appended by that task) ---
+  // The clip autoplays muted, which is the only autoplay any engine allows; sound needs a
+  // gesture, and this line names it. Rendered only while the clip is still muted.
+  'advice.tapForSound': 'Tap the video for sound.',
 };
 
 /**
