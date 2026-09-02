@@ -243,3 +243,16 @@ describe('reminders row in Settings', () => {
     expect(screen.getByRole('heading', { name: copy('hero.reminders') })).toBeInTheDocument();
   });
 });
+
+/**
+ * The motivation clip row (P6 Task 6). Same shape as the two rows above: this file holds only
+ * that Settings mounts it, and MotivationSettings.test.tsx owns what it then does with a file.
+ */
+describe('motivation clip row in Settings', () => {
+  it('mounts the motivation clip section', () => {
+    render(<SettingsView />);
+    expect(
+      screen.getByRole('heading', { name: copy('hero.motivationVideo') }),
+    ).toBeInTheDocument();
+  });
+});
