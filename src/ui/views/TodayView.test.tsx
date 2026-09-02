@@ -690,7 +690,11 @@ describe('TodayView: the ticker', () => {
     withSkin('limelight');
     render(<TodayView />);
 
-    const strip = screen.getByRole('button', { name: copy('button.pauseTicker') });
+    // By key against copy.limelight.ts: the strip's name follows the skin like every other
+    // control, and the default string is no longer what limelight renders.
+    const strip = screen.getByRole('button', {
+      name: copyFor('limelight', 'button.pauseTicker'),
+    });
     expect(strip.getAttribute('aria-pressed')).toBe('false');
 
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
@@ -711,6 +715,43 @@ describe('TodayView: the ticker', () => {
       FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 }, SKIN_COPY.board),
     ]);
   });
+
+  it('drops the week line while the popup still owns an unacknowledged miss', () => {
+    // `missHandled === false` is exactly "P6's modal has not had its turn on this week"
+    // (src/domain/schedule/weekly.ts sets it from the sign of the delta; the store's
+    // markMotivationShown sets it true). The verdict on that week therefore belongs to the
+    // popup, and a ticker scrolling the same verdict behind it is the duplication A59 recorded.
+    withSkin('board');
+    withReview({ ...MISSED_WEEK, missHandled: false });
+    render(<TodayView />);
+
+    const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
+    expect(lines.map((node) => node.textContent)).toEqual([
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.board),
+    ]);
+  });
+
+  it('carries the week line once that miss has been answered', () => {
+    withSkin('board');
+    withReview({ ...MISSED_WEEK, missHandled: true });
+    render(<TodayView />);
+
+    const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
+    expect(lines.map((node) => node.textContent)).toEqual([
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.board),
+      FORMAT.withSlots('status.weekDeltaNegative', { completed: 1, target: 4 }, SKIN_COPY.board),
+    ]);
+  });
+
+  it('names the strip in the limelight voice, in lower case', () => {
+    // Round three section 3.2 closes the uppercase list; the ticker's control is not on it, and
+    // the board's PAUSE TICKER is the board's register, not this one.
+    withSkin('limelight');
+    render(<TodayView />);
+    const name = copyFor('limelight', 'button.pauseTicker');
+    expect(name).toBe(name.toLowerCase());
+    expect(screen.getByRole('button', { name })).toBeTruthy();
+  });
 });
 
 describe('TodayView: the week that has just closed', () => {
@@ -720,7 +761,7 @@ describe('TodayView: the week that has just closed', () => {
 
     expect(screen.getByTestId('week-stamp')).toBeTruthy();
     expect(screen.queryByTestId('intervention')).toBeNull();
-    expect(screen.getByText(copy('status.prStamp'))).toBeTruthy();
+    expect(screen.getByText(copy('status.weekMetStamp'))).toBeTruthy();
   });
 
   it('shows the intervention for a missed week the popup has already answered', () => {
@@ -779,7 +820,7 @@ describe('TodayView: the limelight voice', () => {
     withReview(MET_WEEK);
     render(<TodayView />);
 
-    expect(screen.getByText(copyFor('limelight', 'status.prStamp'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'status.weekMetStamp'))).toBeTruthy();
     // Twice: once in the ticker's static line, once under the stamp. Same string, one source.
     expect(
       screen.getAllByText(

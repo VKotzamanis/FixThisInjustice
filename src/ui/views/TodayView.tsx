@@ -31,6 +31,7 @@ import {
   formatWeekday,
 } from '../format/plan';
 import { refusalLine } from '../format/refusal';
+import { weekDeltaKey } from '../format/weekDelta';
 import './views.css';
 
 /**
@@ -126,22 +127,6 @@ function StatusGlyph(props: { status: DayStatus }): JSX.Element {
 }
 
 /**
- * The copy row that describes a closed week, chosen on the SIGN of the stored delta.
- *
- * `delta = completed - target` [sessions/week] is written once, by src/domain/schedule/weekly.ts,
- * and read here. Nothing is recomputed: the three rows differ in words alone, and each carries
- * the same two counts as slots, so a skin can never change the number a user reads.
- *
- * A week the plan was paused in is NOT described by these rows and callers gate on `paused`
- * first: such a week carries delta = 0 by construction, and "target met" would then report a
- * week in which nothing was scheduled and nothing was missed.
- */
-function weekOutcomeKey(review: WeeklyReview): CopyKey {
-  if (review.delta < 0) return 'status.weekDeltaNegative';
-  return review.delta === 0 ? 'status.weekDeltaZero' : 'status.weekDeltaPositive';
-}
-
-/**
  * The open pause, read as a stable snapshot.
  *
  * `find` hands back an element of the STORED array, so the result keeps its identity between
@@ -231,11 +216,25 @@ export function TodayView(): JSX.Element {
   const marqueeItems: MarqueeItem[] = [
     { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, total, '', overrides) },
   ];
-  if (lastReview !== null && !lastReview.paused) {
+  /*
+   * THE POPUP OWNS AN UNACKNOWLEDGED MISS, so the ticker stays off it.
+   *
+   * `missHandled` is false on exactly one kind of week: a miss P6's modal has not yet been
+   * answered for. src/domain/schedule/weekly.ts writes it as `delta >= 0` at close, so every met
+   * or beaten week arrives with it already true, and src/store/motivationActions.ts sets it true
+   * on dismissal. Testing it here therefore costs a met week nothing and keeps the verdict on a
+   * pending miss in one place: scrolling "1 of 4. flop era." past the user while the modal is
+   * still asking about that same week is the duplication code review A59 recorded, and it is the
+   * same rule Intervention.tsx already applies to the block further down the screen.
+   *
+   * `paused` stays beside it for the reason weekly.ts gives: a paused week carries delta = 0 by
+   * construction, and "target met" would report a week in which nothing was scheduled.
+   */
+  if (lastReview !== null && !lastReview.paused && lastReview.missHandled) {
     marqueeItems.push({
       icon: lastReview.delta < 0 ? 'skull' : 'crownPanel',
       text: FORMAT.withSlots(
-        weekOutcomeKey(lastReview),
+        weekDeltaKey(lastReview),
         // [sessions] and [sessions/week], both the review's own.
         { completed: lastReview.completed, target: lastReview.target },
         overrides,

@@ -4,6 +4,7 @@ import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
 import { Icon } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
+import { weekDeltaKey } from '../format/weekDelta';
 import './limelight.css';
 
 /**
@@ -69,8 +70,14 @@ export function Intervention({ review }: { review: WeeklyReview | null }): React
         {c('advice.interventionBody')}
       </p>
       <p className="ll-intervention-line">
+        {/*
+          * Through the shared mapper rather than by naming the row: `handledMiss` has already
+          * decided the sign, and reading the key from the same function the ticker and the
+          * stamp read keeps one definition of "what this week's delta is called". Written as a
+          * literal, this line went on saying "below target" whatever the stored delta became.
+          */}
         {FORMAT.withSlots(
-          'status.weekDeltaNegative',
+          weekDeltaKey(review),
           { completed: review.completed, target: review.target }, // [sessions], [sessions/week]
           overrides,
         )}

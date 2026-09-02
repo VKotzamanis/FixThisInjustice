@@ -1,9 +1,11 @@
 import { useEffect, useRef, type ReactElement } from 'react';
-import { FORMAT, type CopyKey } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
 import { Icon } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
+import { usePendingMotivation } from '../../store/selectors';
+import { weekDeltaKey } from '../format/weekDelta';
 import './limelight.css';
 
 /** Twelve, as round-three section 2.5 fixed it. The fan tracks are nth-child rules in the sheet. */
@@ -24,10 +26,15 @@ export function metWeek(review: WeeklyReview | null): review is WeeklyReview {
 /**
  * The stamp that lands on the Today view when the week that has just closed met its target.
  *
- * THE WORD IS `status.prStamp`, which is one of the two shouted rows in the limelight table
- * (round three section 3.2: MOTHER, and the uppercase list is closed at three). The clinical
- * table renders its own plain phrase and the board its own, so the component holds no skin
+ * THE WORD IS `status.weekMetStamp`, which shouts MOTHER on limelight (round three section 3.2)
+ * and renders its own plain phrase on clinical and on the board, so the component holds no skin
  * branch: `useCopy()` resolves the row and `Icon` returns null off limelight.
+ *
+ * IT IS NOT `status.prStamp`, which is what this component read until P8 close-out B. A met week
+ * is an ATTENDANCE fact -- the completed count reached the target -- and a personal record is a
+ * load or a repetition count nothing else in the document beat. Stamping "Personal record" over
+ * a week in which the user merely turned up four times claimed a record the document does not
+ * hold. `status.prStamp` stays in the table, unchanged, for the record toast P4 detects.
  *
  * THE COUNTS ARE NEVER THE STAMP. The line beneath is the week's own two counts through
  * FORMAT.withSlots, which is round two's safety rule kept: the camp word always sits beside the
@@ -43,7 +50,21 @@ export function metWeek(review: WeeklyReview | null): review is WeeklyReview {
 export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactElement | null {
   const c = useCopy();
   const overrides = useCopyOverrides();
-  const shown = metWeek(review);
+  /*
+   * THE POPUP OUTRANKS THE STAMP, and the two are about DIFFERENT weeks.
+   *
+   * `review` is the week that closed most recently; `usePendingMotivation()` is the oldest miss
+   * still inside the 14-day window that has not been answered. A backlog makes both non-null at
+   * once: week n - 1 was missed and never dismissed, week n met its target. Nothing in the
+   * component's own predicate can see that, because it is handed one week and the popup is
+   * about another, so the celebration for the newest week rendered behind P6's modal.
+   *
+   * Read unconditionally and above the early return, as the rules of hooks require. It is the
+   * selector the modal's own gate reads (src/ui/motivation/MotivationGate.tsx), so "a popup is
+   * on screen" has one definition rather than two that can drift.
+   */
+  const pendingMiss = usePendingMotivation();
+  const shown = metWeek(review) && pendingMiss === null;
   const sounded = useRef(false);
 
   useEffect(() => {
@@ -60,16 +81,16 @@ export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactEle
 
   if (!shown) return null;
 
-  // delta === 0 is the target met exactly; delta > 0 is the target beaten. Both are the stored
-  // value's sign, so this reads the domain rather than re-deriving it.
-  const outcome: CopyKey =
-    review.delta === 0 ? 'status.weekDeltaZero' : 'status.weekDeltaPositive';
+  // delta === 0 is the target met exactly; delta > 0 is the target beaten. The mapper reads the
+  // stored value's sign and is shared with the ticker and the intervention, so the three places
+  // that name a week's outcome cannot drift apart (src/ui/format/weekDelta.ts).
+  const outcome = weekDeltaKey(review);
 
   return (
     <section className="ll-stamp" data-testid="week-stamp">
       <p className="ll-stamp-word ll-display">
         <Icon name="crown" />
-        {c('status.prStamp')}
+        {c('status.weekMetStamp')}
       </p>
       <p className="ll-stamp-line">
         {FORMAT.withSlots(

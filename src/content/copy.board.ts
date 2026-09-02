@@ -46,6 +46,11 @@ export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // --- the rows round three added, in the board's own vocabulary ---
   'hero.sessionCompleted': 'DEPARTED',
   'status.prStamp': 'NEW RECORD',
+  // The met-week stamp (P8 close-out B), taken from round two section 5's copy table, whose
+  // `week_delta_zero` column reads ALL DEPARTED. The board's own `status.weekDeltaZero` row
+  // carries the two counts and ends ALL ON TIME, so the design's phrase was free for the stamp
+  // and no board string now says the same thing twice.
+  'status.weekMetStamp': 'ALL DEPARTED',
   'label.settingsSkin': 'DISPLAY',
   'button.markCompleted': 'MARK DEPARTED',
   'button.finishSession': 'CLOSE SERVICE',

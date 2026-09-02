@@ -290,18 +290,25 @@ describe('the limelight table', () => {
     expect(LIMELIGHT_COPY['advice.drinkToThirst']).toBe('hydrate or diedrate');
     expect(LIMELIGHT_COPY['status.prStamp']).toBe('MOTHER');
     expect(LIMELIGHT_COPY['button.startSession']).toBe("LET'S GO BABES");
+    // The week stamp's own key carries the same word: WeekStamp.tsx stopped reading
+    // `status.prStamp` when a met week and a personal record became two different claims.
+    expect(LIMELIGHT_COPY['status.weekMetStamp']).toBe('MOTHER');
   });
 
-  it('shouts exactly two strings and lowercases the rest', () => {
+  it('shouts three keys carrying two words, and lowercases the rest', () => {
     // Round three, section 3.2: the uppercase list is closed at three, and the third is the
-    // marquee, which is a component (Task 14) rather than a copy row.
+    // marquee, which is a component (Task 14) rather than a copy row. Three KEYS shout here and
+    // the list is still closed at two WORDS: `status.weekMetStamp` is the same MOTHER as
+    // `status.prStamp`, at the key the week stamp reads after the two stamps were split
+    // (a met week is not a personal record). A fourth shouted word would fail this.
     const shouted = entriesOf(LIMELIGHT_COPY)
       .filter(([, value]) => withoutSlots(value) === withoutSlots(value).toUpperCase())
       .map(([key]) => key)
       .sort();
-    expect(shouted).toEqual(['button.startSession', 'status.prStamp']);
+    expect(shouted).toEqual(['button.startSession', 'status.prStamp', 'status.weekMetStamp']);
+    expect(new Set(shouted.map((key) => LIMELIGHT_COPY[key])).size).toBe(2);
     for (const [key, value] of entriesOf(LIMELIGHT_COPY)) {
-      if (key === 'button.startSession' || key === 'status.prStamp') continue;
+      if (shouted.includes(key)) continue;
       expect({ key, lower: withoutSlots(value) === withoutSlots(value).toLowerCase() }).toEqual({
         key,
         lower: true,
@@ -333,6 +340,7 @@ describe('the limelight table', () => {
       'hero.weekReview',
       'hero.sessionCompleted',
       'status.prStamp',
+      'status.weekMetStamp',
       'advice.interventionBody',
       'label.settingsSkin',
       // the coach lines
@@ -394,6 +402,15 @@ describe('the board table', () => {
   it('replaces the design table em-dash with the colon R5 prescribes', () => {
     expect(BOARD_COPY['advice.drinkToThirst']).toBe('REFRESHMENT: DRINK TO THIRST');
     expect(BOARD_COPY['button.startSession']).toBe('BOARD');
+  });
+
+  it('stamps a met week with the round-two week_delta_zero phrase', () => {
+    // docs/design/round2/2026-09-01-round2-plan.md section 5, copy table, `week_delta_zero`.
+    // The board's own `status.weekDeltaZero` row carries the two counts and ends ALL ON TIME,
+    // so ALL DEPARTED was free for the stamp and is the design's word for a week that met.
+    expect(BOARD_COPY['status.weekMetStamp']).toBe('ALL DEPARTED');
+    // The record stamp stays what it was: the two claims are different claims.
+    expect(BOARD_COPY['status.prStamp']).toBe('NEW RECORD');
   });
 });
 
