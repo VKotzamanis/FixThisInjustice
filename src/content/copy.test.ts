@@ -13,7 +13,7 @@ import type { CopyKey } from './copy';
 /**
  * The copy contract, executed.
  *
- * docs/design/2026-09-01-copy-contract.md states R1-R11 in prose and says "test assertions quote
+ * docs/design/2026-09-01-copy-contract.md states R1 to R13 in prose and says "test assertions quote
  * the default table". This file is the mechanical half: every rule that can be decided from the
  * string alone is decided here, over all three tables, with the per-skin relaxations the contract
  * and the round-three plan grant. What cannot be decided from the string alone (R7's ban on
