@@ -114,6 +114,17 @@ describe('specimen card library', () => {
     expect(RARITY_WEIGHT).toEqual({ common: 6, uncommon: 3, rare: 1 });
   });
 
+  // Silvers 1991 is r007's only source and it does not state this; the sentence was deleted
+  // on the 2026-09-02 content pass and must not come back through a later edit.
+  it('claims nothing about sympathetic nasal decongestion in any body', () => {
+    for (const c of SPECIMEN_CARDS) expect(c.body.toLowerCase(), c.id).not.toContain('sympathetic nasal');
+  });
+
+  // Leproult 2011 ran a 10-h bedtime, not 10 h of measured sleep: c006 must say time in bed.
+  it("describes c006's long condition as time in bed, not sleep", () => {
+    expect(SPECIMEN_BY_ID['c006']?.body).toContain('in bed');
+  });
+
   it('writes a substantive body for every card', () => {
     for (const c of SPECIMEN_CARDS) {
       expect(c.body.length, c.id).toBeGreaterThan(80);

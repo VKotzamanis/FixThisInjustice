@@ -24,6 +24,35 @@
  * its citation. Text is ASCII only: the tone rule forbids emoji and the test enforces it.
  */
 
+/*
+ * Deviations from the plan's draft text (docs/plans/2026-09-01-08-fun-mechanics.md).
+ * A body may state only what the review's Evidence column or the cited work itself states,
+ * so every line below is a place where the draft said more than the source does.
+ *
+ * Recorded at the rebuild (commit eaa592a):
+ *   c001  dropped the draft's "within about 30 minutes" window: not in the review's Evidence column.
+ *   c008  dropped the draft's "grow significantly without ever being sore" and "fades within 2-3
+ *         weeks" lines for the review's own figures: neither is in the review's Evidence column.
+ *   c014  dropped the draft's "Knee push-ups load about 49 percent": not in the review's Evidence
+ *         column.
+ *   r005  completed the citation with the volume, issue and pages from the Crossref record of the DOI
+ *         the review gives; the draft named the journal only.
+ *   r009  added the design ("in a downhill-running training study") from the Bontemps 2022 title,
+ *         because the draft reported the 2.9 percent figure with no design attached.
+ *
+ * Added on the second content pass (2026-09-02):
+ *   r007  deleted the sentence about exercise and nasal decongestion: the card's only source is
+ *         Silvers 1991 and that source does not state it.
+ *   u004  replaced the derived "160 years" with the two years the review states, 1832 and 1992:
+ *         the source does not state the span.
+ *   c006  "slept 10 hours" became time in bed, matching the review's "10-h bedtime", and "healthy
+ *         young" went: not in the review's Evidence column. Pages are 2173 per the Crossref record.
+ *   c010  added Hartmann's caution that no realistic knee-force estimates exist beyond 50 degrees.
+ *   r004  the journal carries its 1993 name from the Crossref container-title, not the short name
+ *         it took after 1997.
+ *   c003  added the verified DOI of the secondary Reynolds 2006 work the citation already named.
+ */
+
 export type SpecimenRarity = 'common' | 'uncommon' | 'rare';
 
 export type SpecimenCategory =
@@ -114,7 +143,7 @@ export const SPECIMEN_CARDS: readonly SpecimenCard[] = [
       'A one-repetition maximum is normally estimated from a multi-repetition set using the Epley chart: 1RM is approximately load times (1 + reps/30). A set of 100 kg for 5 reps predicts 116.7 kg. The chart is a self-published table, not a peer-reviewed model, and measured estimation error at 5RM ran from 1.85 kg on the chest press to 14.05 kg on the leg press.',
     source: {
       citation:
-        'Epley B (1985). Poundage chart. In: Boyd Epley Workout. Body Enterprises, p. 86 (self-published, not peer-reviewed). Error range: Reynolds JM, Gordon TJ, Robergs RA (2006). J Strength Cond Res 20(3):584-592.',
+        'Epley B (1985). Poundage chart. In: Boyd Epley Workout. Body Enterprises, p. 86 (self-published, not peer-reviewed). Error range: Reynolds JM, Gordon TJ, Robergs RA (2006). J Strength Cond Res 20(3):584-592, DOI 10.1519/R-15304.1.',
       doi: null,
     },
   },
@@ -150,9 +179,9 @@ export const SPECIMEN_CARDS: readonly SpecimenCard[] = [
     title: 'Sleep restriction and testosterone',
     category: 'recovery',
     body:
-      'Ten healthy young men slept 10 hours a night for three nights, then 5 hours a night for eight. Daytime testosterone fell under restriction, 16.5 against 18.4 nmol/L, P = 0.049. The comparison is against a 10-hour condition rather than an ordinary night, and the study measured neither growth hormone nor strength.',
+      'Ten men had 10 hours in bed a night for three nights, then 5 hours in bed a night for eight. Daytime testosterone fell under restriction, 16.5 against 18.4 nmol/L, P = 0.049. The comparison is against a 10-hour bedtime rather than an ordinary night, and the study measured neither growth hormone nor strength.',
     source: {
-      citation: 'Leproult R, Van Cauter E (2011). JAMA 305(21):2173-2174 (research letter).',
+      citation: 'Leproult R, Van Cauter E (2011). JAMA 305(21):2173 (research letter).',
       doi: '10.1001/jama.2011.710',
     },
   },
@@ -186,7 +215,7 @@ export const SPECIMEN_CARDS: readonly SpecimenCard[] = [
     title: 'Squat depth and the knee',
     category: 'training',
     body:
-      'Squatting below parallel does not raise anterior (ACL) shear: that shear peaks around 30 to 60 degrees of knee flexion and falls as depth increases. Retropatellar compressive stress peaks near 90 degrees and falls beyond it. Posterior (PCL) shear behaves differently and is higher at parallel than at quarter depth.',
+      'Squatting below parallel does not raise anterior (ACL) shear: that shear peaks around 30 to 60 degrees of knee flexion and falls as depth increases. Retropatellar compressive stress peaks near 90 degrees and falls beyond it. Posterior (PCL) shear behaves differently and is higher at parallel than at quarter depth. Hartmann cautions that no realistic knee-force estimates exist beyond 50 degrees of flexion.',
     source: {
       citation: 'Hartmann H, Wirth K, Klusemann M (2013). Sports Med 43(10):993-1008.',
       doi: '10.1007/s40279-013-0073-6',
@@ -273,7 +302,7 @@ export const SPECIMEN_CARDS: readonly SpecimenCard[] = [
     title: 'The discovery of creatine',
     category: 'supplements',
     body:
-      'Creatine was isolated in 1832 by Michel Eugene Chevreul from an alkaline water extract of skeletal muscle, and named after the Greek kreas, flesh. It took 160 years for the first study to show that oral supplementation raises muscle stores: 5 g four to six times daily for at least two days raised quadriceps total creatine, by up to 50 percent in subjects with low initial stores.',
+      'Creatine was isolated in 1832 by Michel Eugene Chevreul from an alkaline water extract of skeletal muscle, and named after the Greek kreas, flesh. The first study to show that oral supplementation raises muscle stores came in 1992: 5 g four to six times daily for at least two days raised quadriceps total creatine, by up to 50 percent in subjects with low initial stores.',
     source: {
       citation: 'Harris RC, Soderlund K, Hultman E (1992). Clin Sci 83(3):367-374.',
       doi: '10.1042/cs0830367',
@@ -432,7 +461,11 @@ export const SPECIMEN_CARDS: readonly SpecimenCard[] = [
     category: 'biomechanics',
     body:
       'Women measured about 52 percent as strong as men in the upper body, and men were stronger even after adjusting for lean body mass. Only when strength was expressed per unit of muscle cross-sectional area did the sex difference disappear. The gap is in muscle quantity and distribution, not in contractile quality.',
-    source: { citation: 'Miller AE et al. (1993). Eur J Appl Physiol 66(3):254-262.', doi: '10.1007/BF00235103' },
+    source: {
+      citation:
+        'Miller AE et al. (1993). European Journal of Applied Physiology and Occupational Physiology 66(3):254-262.',
+      doi: '10.1007/BF00235103',
+    },
   },
   {
     id: 'r005',
@@ -465,7 +498,7 @@ export const SPECIMEN_CARDS: readonly SpecimenCard[] = [
     title: 'Why your nose runs in the cold',
     category: 'biology',
     body:
-      'Cold-air rhinorrhoea is cholinergic: 96 percent of 90 patients reported it, and atropine blocked it in 92 percent of the 14 tested. Exercise itself normally produces sympathetic nasal decongestion, so the running nose belongs to the air rather than to the effort.',
+      'Cold-air rhinorrhoea is cholinergic: 96 percent of 90 patients reported it, and atropine blocked it in 92 percent of the 14 tested.',
     source: {
       citation:
         "Silvers WS (1991). The skier's nose: a model of cold-induced rhinorrhea. Annals of Allergy 67(1):32-36. PMID 1859038.",
