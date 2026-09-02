@@ -466,6 +466,10 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   // round-trip to `{}` rather than to itself and the parity property would fail for a reason
   // that is not a bug. The range spans the shipped SET_MILESTONES list either side.
   milestoneFloorByProfile: fc.dictionary(anyId, fc.integer({ min: 0, max: 1200 }), { maxKeys: 2 }),
+  // The shortcut off switch. Generated for the reason the three above are: it is additive with
+  // a Zod default, so a document that omitted it would round-trip to `true` rather than to
+  // itself and the parity property would fail for a reason that is not a bug.
+  hotkeys: fc.boolean(),
 });
 
 /**

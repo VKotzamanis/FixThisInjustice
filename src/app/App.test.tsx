@@ -38,6 +38,10 @@ vi.mock('../ui/audio/chime', () => ({
   unlockAudio: vi.fn(() => Promise.resolve(true)),
   releaseAudio: vi.fn(),
   vibrate: vi.fn(() => true),
+  // The sound-effect player reads P4's one context through this (src/skins/sfx.ts), and the
+  // shell now imports that module for the first-gesture unlock below. null is what jsdom would
+  // yield anyway, and it keeps the player's unlock() a no-op whatever `ui.sounds` says.
+  getAudioContext: vi.fn(() => null),
 }));
 
 /**
@@ -430,6 +434,39 @@ describe('view shell', () => {
     // Code review A29: resume() outside a user gesture is refused by every browser, so the
     // call has to be made from the handler the tap runs, not from the Train view's mount.
     expect(unlockAudio).toHaveBeenCalled();
+  });
+});
+
+/**
+ * The first gesture of the session (P8 Task 15 hand-off).
+ *
+ * The Start tap is not the only way into a session: a PWA resumed from the home screen lands
+ * straight back on Train with a session already under way, and nothing there is tapped before
+ * the rest interval ends. The shell therefore arms ONE unlock on the first gesture of any kind.
+ * It is not autoplay - nothing sounds because of it, and `ui.sounds` still gates every sound.
+ */
+describe('first-gesture audio unlock', () => {
+  it('unlocks the audio context on the first pointer event and disarms both listeners', () => {
+    const remove = vi.spyOn(window, 'removeEventListener');
+    vi.mocked(unlockAudio).mockClear();
+
+    render(<App />);
+    // Armed, not fired: resume() at mount is the call every browser refuses.
+    expect(unlockAudio).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(window);
+
+    expect(unlockAudio).toHaveBeenCalledTimes(1);
+    // BOTH listeners go, not only the one that fired: { once: true } would remove the pointer
+    // listener and leave the keydown one armed for the life of the document.
+    const removed = remove.mock.calls.map(([type]) => String(type));
+    expect(removed).toContain('pointerdown');
+    expect(removed).toContain('keydown');
+
+    // And the disarm is what it claims: neither kind of gesture unlocks a second time.
+    fireEvent.pointerDown(window);
+    fireEvent.keyDown(window, { key: 'a' });
+    expect(unlockAudio).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -848,6 +885,58 @@ describe('keyboard', () => {
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
 
     expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  /*
+   * WCAG 2.1 SC 2.1.4, Character Key Shortcuts: a shortcut a single character key fires on its
+   * own must be switchable off. `ui.hotkeys` is that switch, and what it must NOT take away is
+   * a combo carrying a modifier - the criterion does not reach one, and the palette is the only
+   * way to every view from the keyboard once the digits are gone.
+   */
+  it('answers no digit while ui.hotkeys is off, and still opens the palette', () => {
+    act(() => {
+      useAppStore.getState().setUi({ hotkeys: false });
+    });
+    render(<App />);
+    const before = useAppStore.getState().ui.lastView;
+
+    fireEvent.keyDown(window, { key: digitFor('plan') });
+    expect(useAppStore.getState().ui.lastView).toBe(before);
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+  });
+
+  /*
+   * The digits were undiscoverable: nothing on the tab said which key reached it, and a screen
+   * reader had no way to find out. aria-keyshortcuts is the attribute for exactly that, and it
+   * is read from the registry entry rather than written out here, so a re-ordered VIEWS list
+   * cannot leave the announcement naming the old key.
+   */
+  it('names the digit each tab answers to, for assistive technology', () => {
+    render(<App />);
+
+    expect(screen.getByRole('button', { name: copy('nav.today') })).toHaveAttribute(
+      'aria-keyshortcuts',
+      '1',
+    );
+    expect(screen.getByRole('button', { name: copy('nav.plan') })).toHaveAttribute(
+      'aria-keyshortcuts',
+      digitFor('plan'),
+    );
+  });
+
+  it('announces no shortcut once the switch has taken the digits away', () => {
+    act(() => {
+      useAppStore.getState().setUi({ hotkeys: false });
+    });
+    render(<App />);
+
+    // A shortcut that is switched off is not a shortcut the element has, and announcing one
+    // the key press will not honour misleads the users the criterion is written for.
+    expect(screen.getByRole('button', { name: copy('nav.today') })).not.toHaveAttribute(
+      'aria-keyshortcuts',
+    );
   });
 
   it('reaches the Atlas, which is a tab like any other', async () => {

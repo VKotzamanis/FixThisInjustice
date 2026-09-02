@@ -8,14 +8,24 @@
 // ordering them; it is fixed by there being one. Every binding goes through this registry, the
 // ACTIVE scope is consulted before 'global', and the first match ends the dispatch.
 //
-// WHAT IS STILL ALLOWED TO LISTEN. Three window listeners remain in the app, and none of them
-// is a binding:
-//  - src/ui/components/ModalShell.tsx handles Escape and Tab for an open dialog. It owns the
-//    dialog's own keys, which is why nothing here binds Escape on the app's behalf.
-//  - src/ui/components/ToastQueue.tsx withdraws the front toast on Escape, already guarded
-//    against an open dialog.
-//  - useKonamiCode (src/ui/components/KonamiOverlay.tsx) is a SEQUENCE detector: it binds no
-//    combo, calls no preventDefault, and cannot shadow a hotkey.
+// WHAT IS STILL ALLOWED TO LISTEN. Seven window keydown listeners exist in the app. This file
+// holds the first and it is the only BINDING table; each of the other six owns a press that is
+// not a combo, so none of them can shadow a hotkey:
+//  - this file: one listener, attached for as long as the provider is mounted, dispatching
+//    every binding in the registry.
+//  - src/ui/components/ModalShell.tsx handles Escape and Tab while its dialog is open. It owns
+//    the dialog's own keys, which is why nothing here binds Escape on the app's behalf.
+//  - src/ui/components/ToastQueue.tsx withdraws the front toast on Escape while a toast is
+//    showing, already guarded against an open dialog.
+//  - useKonamiCode (src/ui/components/KonamiOverlay.tsx) is a SEQUENCE detector, mounted for
+//    the life of the view shell: it binds no combo, calls no preventDefault, and cannot shadow
+//    a hotkey.
+//  - KonamiOverlay itself closes on ANY key while the overlay is on screen. "Whatever the user
+//    presses next" is not a combo, which is why it is not a binding here.
+//  - src/ui/components/Boot.tsx skips the boot sequence on ANY key while the sequence runs, for
+//    the same reason.
+//  - useFirstGestureUnlock (src/skins/sfx.ts) resumes the audio context on the first gesture of
+//    any kind and then removes itself, so it is armed once per document and binds nothing.
 //
 // SCOPES. 'global' is the app's own keys (the view digits, the palette). A ViewId scope is a
 // key that means something only while that view is on screen. 'dialog' is the carve-out for a
@@ -24,6 +34,7 @@
 
 import { createContext, useContext, useEffect, useMemo, useRef } from 'react';
 import type { ReactElement, ReactNode } from 'react';
+import { useAppStore } from '../store';
 import type { ViewId } from './nav/views';
 
 export type HotkeyScope = 'global' | 'dialog' | ViewId;
@@ -36,6 +47,31 @@ export type HotkeyScope = 'global' | 'dialog' | ViewId;
  * expects the same key to work. Every other key is text the user is typing.
  */
 const ALWAYS_ACTIVE = new Set(['escape', 'mod+k']);
+
+/**
+ * Combos `ui.hotkeys === false` leaves alone.
+ *
+ * WCAG 2.1 SC 2.1.4 (Character Key Shortcuts) is about a shortcut that a single character key
+ * fires on its own: a letter, a digit, punctuation or a symbol. A user driving the app by
+ * speech emits those characters as a side effect of speaking, and a user with a tremor emits
+ * them by resting a hand on the keyboard, which is why the criterion asks for a way to switch
+ * them off. A combo carrying a modifier is outside it, and so is a key that types no character:
+ * `mod+k` is the only route to every view once the digits are gone, and Escape is how a dialog
+ * is left, so taking either away would make the switch an accessibility defect of its own.
+ *
+ * The app's other non-printing bindings - `arrowleft` and `arrowright` on the Plan view - are
+ * deliberately NOT exempt. They sit outside the letter of the criterion, but they are shortcuts
+ * in the same sense as the `j` and `k` beside them, and a switch that took away half of one
+ * scrubber is a switch the user cannot reason about. Going further than the criterion requires
+ * is allowed; stopping halfway through a feature is not. Switching them off also hands the
+ * arrows back to the browser, which is what a focused control expects them to do.
+ */
+const OFF_SWITCH_EXEMPT = new Set(['escape']);
+
+/** Whether `ui.hotkeys === false` takes this combo away. */
+function switchedOff(combo: string): boolean {
+  return !combo.startsWith('mod+') && !OFF_SWITCH_EXEMPT.has(combo);
+}
 
 /**
  * A modal dialog that is actually OPEN. ModalShell unmounts rather than hides, so today the
@@ -120,6 +156,22 @@ export function HotkeyProvider({
     const onKeyDown = (e: KeyboardEvent): void => {
       const combo = normalizeCombo(e);
       const scopes = scopesRef.current;
+
+      /*
+       * The off switch, WCAG 2.1 SC 2.1.4. Read at DISPATCH time through getState(), for the
+       * reason the active scope above is read through a ref: the listener is attached once, and
+       * the preference has to be able to change without it being re-attached or a single
+       * binding being re-registered.
+       *
+       * BEFORE the dialog branch, so the switch reaches the 'dialog' scope too. No dialog binds
+       * a character key today; one that did would be as unusable by speech as any other, and
+       * Escape - the key that actually leaves a dialog - is exempt above.
+       *
+       * Returning without preventDefault is the whole behaviour: a switched-off key keeps the
+       * browser's own handling, so the digit types a digit and the arrows move a focused
+       * control, which is what the user who switched them off is asking for.
+       */
+      if (switchedOff(combo) && !useAppStore.getState().ui.hotkeys) return;
 
       /*
        * A dialog is modal: the app behind it is not accepting commands. Only the 'dialog'

@@ -9,9 +9,10 @@
 //    are ignored while a modal dialog is open (except in the 'dialog' scope), and the one
 //    listener is REMOVED on unmount rather than merely counted on mount.
 
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
+import { defaultState, useAppStore } from '../store';
 import { HotkeyProvider, normalizeCombo, useHotkeys } from './hotkeys';
 import type { HotkeyScope } from './hotkeys';
 
@@ -212,6 +213,99 @@ describe('an open modal dialog', () => {
     rerender(<Host open={false} />);
     fireEvent.keyDown(window, { key: 't' });
     expect(run).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * The off switch, WCAG 2.1 SC 2.1.4 (Character Key Shortcuts).
+ *
+ * The criterion is about shortcuts a single character key fires on its own: a user driving the
+ * app by speech emits those characters as a side effect of speaking, and a user with a tremor
+ * emits them by resting a hand on the keyboard. A combo carrying a modifier, and a key that
+ * types no character at all, are outside it - hence mod+k and Escape below.
+ */
+describe('the shortcut off switch', () => {
+  function setHotkeys(on: boolean): void {
+    useAppStore.setState((s) => ({ ui: { ...s.ui, hotkeys: on } }));
+  }
+
+  afterEach(() => {
+    // The store is module state shared by every test in this file, so the shipped value goes
+    // back: a suite left with shortcuts off would silence the ones above it.
+    useAppStore.setState({ ui: defaultState().ui });
+  });
+
+  it('ignores the digits, j, k and the arrows while it is off', () => {
+    setHotkeys(false);
+    const digit = vi.fn();
+    const j = vi.fn();
+    const arrow = vi.fn();
+    render(
+      <HotkeyProvider activeScope="plan">
+        <Binder scope="global" bindings={{ '2': digit }} />
+        <Binder scope="plan" bindings={{ j, arrowright: arrow }} />
+      </HotkeyProvider>,
+    );
+
+    fireEvent.keyDown(window, { key: '2' });
+    fireEvent.keyDown(window, { key: 'j' });
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+
+    expect(digit).not.toHaveBeenCalled();
+    expect(j).not.toHaveBeenCalled();
+    expect(arrow).not.toHaveBeenCalled();
+  });
+
+  it('keeps the combos the criterion does not reach', () => {
+    setHotkeys(false);
+    const palette = vi.fn();
+    const esc = vi.fn();
+    render(
+      <HotkeyProvider activeScope="today">
+        <Binder scope="global" bindings={{ 'mod+k': palette, escape: esc }} />
+      </HotkeyProvider>,
+    );
+
+    fireEvent.keyDown(window, { key: 'k', metaKey: true });
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(palette).toHaveBeenCalledTimes(1);
+    expect(esc).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands the keys back the moment it goes on again, with no remount', () => {
+    setHotkeys(false);
+    const run = vi.fn();
+    render(
+      <HotkeyProvider activeScope="today">
+        <Binder scope="global" bindings={{ '2': run }} />
+      </HotkeyProvider>,
+    );
+    fireEvent.keyDown(window, { key: '2' });
+    expect(run).not.toHaveBeenCalled();
+
+    // The preference is read at DISPATCH time, so the one listener is not re-attached and no
+    // binding is re-registered: the same tree answers the same key differently.
+    setHotkeys(true);
+    fireEvent.keyDown(window, { key: '2' });
+
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the browser its own behaviour for a key it has switched off', () => {
+    setHotkeys(false);
+    render(
+      <HotkeyProvider activeScope="today">
+        <Binder scope="global" bindings={{ '2': () => {} }} />
+      </HotkeyProvider>,
+    );
+
+    // preventDefault is called only once a binding has been FOUND, and the switch means none
+    // is. A switched-off digit therefore types a 2 wherever a 2 belongs.
+    const event = new KeyboardEvent('keydown', { key: '2', cancelable: true, bubbles: true });
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
   });
 });
 

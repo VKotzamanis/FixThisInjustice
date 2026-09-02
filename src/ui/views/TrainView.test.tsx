@@ -43,6 +43,7 @@ import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
 import { UNDO_WINDOW_MS } from '../../store/training';
 import { makeBlock, makePlannedExercise, makeProfile, makeSet } from '../../test/fixtures';
+import { playSfx } from '../../skins/sfx';
 import { playChime, vibrate } from '../audio/chime';
 import { ToastProvider, ToastQueue } from '../components/ToastQueue';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
@@ -56,6 +57,13 @@ vi.mock('../audio/chime', () => ({
   releaseAudio: vi.fn(),
   vibrate: vi.fn(() => true),
 }));
+
+/*
+ * The sound set is doubled for the same reason the chime is: jsdom has no Web Audio, so the
+ * real playSfx would be a silent no-op whether or not the finish handler reached it. The
+ * double is the only way to tell the two apart.
+ */
+vi.mock('../../skins/sfx', () => ({ playSfx: vi.fn() }));
 
 const TODAY = '2026-03-02';
 const YESTERDAY = '2026-02-27';
@@ -1174,6 +1182,48 @@ describe('TrainView finish', () => {
     renderTrain();
     fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
     expect(screen.queryByLabelText(`${copy('quantity.postSessionBodyMass')} (kg)`)).toBeNull();
+  });
+
+  /*
+   * The session-done sound (P8 Task 15). It follows the DOCUMENT, not the tap: completeSession
+   * refuses a day that is already terminal, and a sound for a completion that did not happen is
+   * the audible version of a success message for a refused write.
+   */
+  it('sounds the session-done moment once the completion is recorded', () => {
+    vi.mocked(playSfx).mockClear();
+    seedStore(seed());
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
+    expect(playSfx).toHaveBeenCalledTimes(1);
+    expect(playSfx).toHaveBeenCalledWith('session_done');
+  });
+
+  it('sounds nothing when the completion is refused', () => {
+    vi.mocked(playSfx).mockClear();
+    seedStore(seed());
+    /*
+     * The day was SKIPPED - from Today, or in another tab - and this render is stale. It is
+     * terminal, so completeSession is a documented no-op, and the button is still on screen
+     * because the view hides it only for 'completed'.
+     */
+    useAppStore.setState((s) => ({
+      assignments: {
+        ...s.assignments,
+        'profile-1': (s.assignments['profile-1'] ?? []).map((a) => ({
+          ...a,
+          status: 'skipped' as const,
+        })),
+      },
+    }));
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('skipped');
+    expect(playSfx).not.toHaveBeenCalled();
   });
 });
 
