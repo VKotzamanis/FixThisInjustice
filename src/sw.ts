@@ -4,12 +4,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkOnly } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import type { WorkboxPlugin } from 'workbox-core';
-import {
-  APP_SCOPE_PATH,
-  notificationClickTarget,
-  parsePushPayload,
-  resolveClickUrl,
-} from './domain/reminders/payload';
+import { handleNotificationClick, handlePush } from './domain/reminders/swHandlers';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -63,45 +58,19 @@ self.addEventListener('message', (e: ExtendableMessageEvent) => {
 // ---- Web Push (P5) ---------------------------------------------------------
 /*
  * The Worker sends { title, body, tag, url } (master plan section 6.6). Every
- * decision about that payload is made in domain/reminders/payload.ts, which is
- * unit-tested; a service worker cannot be instantiated under jsdom, so what is
- * left here is two registrations, covered by the build gate and the on-device
- * smoke test.
+ * decision about that payload, and about which window a click lands in, is made
+ * in domain/reminders/swHandlers.ts and domain/reminders/payload.ts, both of
+ * which are unit-tested. A service worker cannot be instantiated under jsdom,
+ * so what is left here is two registrations, covered by the build gate and the
+ * on-device smoke test.
+ *
+ * The handlers take structural parameters that the real globals satisfy, so
+ * `event.data`, `self.registration` and `self.clients` are passed through
+ * unchanged.
  */
-
-/**
- * The decrypted payload, or null when there is none or it is not JSON.
- * PushMessageData.json() is typed `any`, so the result lands in an `unknown`
- * and every field is read through parsePushPayload rather than by member
- * access here.
- */
-function readPushJson(data: PushMessageData | null): unknown {
-  if (data === null) return null;
-  try {
-    const parsed: unknown = data.json();
-    return parsed;
-  } catch {
-    // Not JSON. parsePushPayload is total, so a notification is still shown.
-    return null;
-  }
-}
-
 self.addEventListener('push', (event: PushEvent) => {
-  /*
-   * Unconditional: iOS Safari revokes the push subscription when a delivered
-   * push produces no user-visible notification, and Chrome/Edge require
-   * userVisibleOnly on the subscription. A malformed payload therefore still
-   * shows a notification, with the constant fallback title. There is no early
-   * return in this handler, by design.
-   */
-  const payload = parsePushPayload(readPushJson(event.data));
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      // The ReminderInstant key: a re-sent reminder replaces its predecessor
-      // instead of stacking a second copy.
-      tag: payload.tag,
-      data: { url: payload.url },
+    handlePush(event.data, self.registration, {
       icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
       badge: `${import.meta.env.BASE_URL}icons/icon-192.png`,
     }),
@@ -109,27 +78,5 @@ self.addEventListener('push', (event: PushEvent) => {
 });
 
 self.addEventListener('notificationclick', (event: NotificationEvent) => {
-  event.notification.close();
-  // notification.data is typed `any`; read it as unknown so no member access
-  // goes unchecked.
-  const data: unknown = event.notification.data;
-  const target = notificationClickTarget(resolveClickUrl(data), self.location.origin);
-  event.waitUntil(focusOrOpen(target));
+  event.waitUntil(handleNotificationClick(event.notification, self.clients, self.location.origin));
 });
-
-/** Focus an app window if one is open, otherwise open a new one. */
-async function focusOrOpen(target: string): Promise<void> {
-  const scope = new URL(APP_SCOPE_PATH, self.location.origin).href;
-  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-  for (const client of windows) {
-    // Same origin and inside our scope: another project site on the same
-    // github.io host is somebody else's app, not a window to steal.
-    if (!client.url.startsWith(scope)) continue;
-    await client.focus();
-    // navigate() is absent on some engines; focusing without it leaves the user
-    // on whichever view was already open, which is better than no window.
-    if ('navigate' in client) await client.navigate(target);
-    return;
-  }
-  await self.clients.openWindow(target);
-}
