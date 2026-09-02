@@ -5,6 +5,7 @@ import { Intervention } from './Intervention';
 import { FORMAT, copy, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
+import { addDays, todayLocal } from '../../domain/dates';
 import type { SkinId, WeeklyReview } from '../../domain/types';
 
 // The sound is decorative and the player reaches the store and the Web Audio API, neither of
@@ -43,7 +44,9 @@ beforeEach(() => {
 describe('WeekStamp', () => {
   it('states the plain phrase and the week counts on the clinical skin', () => {
     render(<WeekStamp review={MET} />);
-    expect(screen.getByText(copy('status.prStamp'))).toBeTruthy();
+    expect(screen.getByText(copy('status.weekMetStamp'))).toBeTruthy();
+    // A met week is attendance, not a record: the record stamp's own words never appear here.
+    expect(screen.queryByText(copy('status.prStamp'))).toBeNull();
     expect(
       screen.getByText(FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 })),
     ).toBeTruthy();
@@ -52,7 +55,7 @@ describe('WeekStamp', () => {
   it('shouts the limelight word for the same week', () => {
     withSkin('limelight');
     render(<WeekStamp review={MET} />);
-    expect(screen.getByText(copyFor('limelight', 'status.prStamp'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'status.weekMetStamp'))).toBeTruthy();
     expect(
       screen.getByText(
         FORMAT.withSlots(
@@ -67,7 +70,9 @@ describe('WeekStamp', () => {
   it('uses the board word, and lands the sparkle fan only where the art exists', () => {
     withSkin('board');
     render(<WeekStamp review={MET} />);
-    expect(screen.getByText(copyFor('board', 'status.prStamp'))).toBeTruthy();
+    expect(screen.getByText(copyFor('board', 'status.weekMetStamp'))).toBeTruthy();
+    // The board's two stamps are different words, so this assertion is not vacuous.
+    expect(screen.queryByText(copyFor('board', 'status.prStamp'))).toBeNull();
     expect(document.querySelectorAll('.ll-stamp-sparkle')).toHaveLength(SPARKLE_COUNT);
     expect(document.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
@@ -81,14 +86,14 @@ describe('WeekStamp', () => {
 
   it('says nothing about a missed week, an absent week, or a week the plan was paused in', () => {
     const { rerender } = render(<WeekStamp review={MISSED} />);
-    expect(screen.queryByText(copy('status.prStamp'))).toBeNull();
+    expect(screen.queryByText(copy('status.weekMetStamp'))).toBeNull();
 
     rerender(<WeekStamp review={null} />);
-    expect(screen.queryByText(copy('status.prStamp'))).toBeNull();
+    expect(screen.queryByText(copy('status.weekMetStamp'))).toBeNull();
 
     // delta = 0 on a paused week is the pause, not a target met (src/domain/schedule/weekly.ts).
     rerender(<WeekStamp review={PAUSED} />);
-    expect(screen.queryByText(copy('status.prStamp'))).toBeNull();
+    expect(screen.queryByText(copy('status.weekMetStamp'))).toBeNull();
   });
 
   it('plays the stamp sound once per appearance and never while hidden', () => {
@@ -105,6 +110,50 @@ describe('WeekStamp', () => {
     rerender(<WeekStamp review={null} />);
     rerender(<WeekStamp review={MET} />);
     expect(playSfx.mock.calls).toEqual([['pr_stamp'], ['pr_stamp']]);
+  });
+});
+
+describe('WeekStamp while an older week still owes its popup', () => {
+  /*
+   * The screen a stale backlog produces, and the one this gate exists for: week n - 1 was
+   * missed and never answered, week n met its target. `usePendingMotivation` still returns the
+   * older week, so P6's modal is on screen; without the gate the celebration stamp for the
+   * newest week renders behind it.
+   *
+   * The dates are derived from the clock rather than written as literals because
+   * `pendingMotivation` drops a week that closed more than MOTIVATION_MISS_WINDOW_DAYS = 14 days
+   * ago, so a fixed date would stop being pending the day after it was written.
+   */
+  const TZ = 'Europe/Athens';
+
+  function pendingMiss(): WeeklyReview {
+    const end = addDays(todayLocal(TZ), -2); // [d] closed the day before yesterday: inside the window
+    return {
+      ...MET,
+      weekStart: addDays(end, -6),
+      weekEnd: end,
+      completed: 1, // [sessions]
+      delta: -3, // [sessions/week]
+      missHandled: false, // the popup has not had its turn
+    };
+  }
+
+  it('renders nothing while the popup owns an older week', () => {
+    const miss = pendingMiss();
+    useAppStore.setState(
+      makeAppState({ weeklyReviews: { p1: [miss] }, ui: makeUiPrefs({ skin: 'clinical' }) }),
+    );
+    render(<WeekStamp review={MET} />);
+    expect(screen.queryByTestId('week-stamp')).toBeNull();
+  });
+
+  it('renders once that older week has been answered', () => {
+    const miss = { ...pendingMiss(), missHandled: true };
+    useAppStore.setState(
+      makeAppState({ weeklyReviews: { p1: [miss] }, ui: makeUiPrefs({ skin: 'clinical' }) }),
+    );
+    render(<WeekStamp review={MET} />);
+    expect(screen.queryByTestId('week-stamp')).not.toBeNull();
   });
 });
 

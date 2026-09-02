@@ -53,6 +53,11 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'hero.weekReview': 'the reunion',
   'hero.sessionCompleted': 'ate.',
   'status.prStamp': 'MOTHER', // shouted, 2 of 2
+  // The same word at the key the week stamp reads (P8 close-out B). Three KEYS in this table are
+  // now upper case and the shouted list round three closed at three WORDS is unchanged: MOTHER
+  // is one word wherever it is keyed, and copy.test.ts asserts both the key list and that the
+  // three keys resolve to two distinct strings.
+  'status.weekMetStamp': 'MOTHER',
   // Round three, section 3.3: the title may be camp, the body may not. This row carries no
   // verdict, no second person judgement and no joke, and it is the one row in the table whose
   // register is fixed by a rule rather than by taste. The design's own draft ended "monday is the
@@ -79,6 +84,11 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'button.writeCapsule': 'write it',
   'button.readCapsule': 'read it',
   'button.skipBoot': 'skip it',
+  // The ticker's own control (P8 close-out B). The board already names it in the board's
+  // register; without a row here the limelight strip announced itself in sentence case, which is
+  // the wart amendment 9 records for the sounds toggle. Three words, so R1 is met, and the
+  // uppercase list round three closed is untouched.
+  'button.pauseTicker': 'pause the ticker',
   'button.continueTransition': 'go on',
   // The missed-week screen. `dismiss` closes the clip and `play` starts it; neither is a commit,
   // so both may be camp.

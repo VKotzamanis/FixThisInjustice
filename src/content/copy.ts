@@ -590,7 +590,9 @@ export type CopyKey =
   | 'status.planProgress'
   | 'hero.weekReview'
   | 'advice.interventionBody'
-  | 'button.pauseTicker';
+  | 'button.pauseTicker'
+  // --- the week stamp reads its own key, not the record's (P8 close-out B) ---
+  | 'status.weekMetStamp';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1290,8 +1292,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // clip" over a section that already holds one would be asking for a second.
   'label.motivationClipChoose': 'Choose a clip',
   'label.motivationClipReplace': 'Replace the clip',
-  // The two states with no file name to show. The second is what a reload leaves: the id
-  // survives in the document, the name does not (see the note in MotivationSettings.tsx).
+  // The two states with no file name to show. Neither is the ordinary reload any more: an
+  // effect keyed on the stored asset id reads the record's own name and size back through
+  // getCustomVideoMeta (src/domain/motivation/assets.ts), so a reloaded section prints the clip
+  // name and its size in MiB exactly as it did after the pick. What is left for the second row
+  // is the case where that read returns nothing -- a database that will not open, or an id in
+  // the document whose record is gone -- where "a clip is stored" is still the honest sentence,
+  // because the id IS in the document whatever IndexedDB did with the bytes.
   'status.motivationClipNone': 'No clip chosen. The bundled clip plays.',
   'status.motivationClipStored': 'A clip is stored on this device.',
   'advice.motivationClipStorage': 'Stored on this device, never uploaded.',
@@ -1483,6 +1490,16 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // be stopped (round three section 2.4). It names what activating it DOES; whether it is
   // currently stopped is aria-pressed's job, so the name stays the same in both states.
   'button.pauseTicker': 'Pause the ticker',
+
+  // --- the week stamp's own word (P8 close-out B) ---
+  // A MET WEEK IS NOT A PERSONAL RECORD, and until now src/ui/components/WeekStamp.tsx said it
+  // was: it rendered `status.prStamp` over a week whose completed count merely reached its
+  // target, which is an attendance fact, while a personal record is a load or a repetition
+  // count nothing else in the document beat. The two keys carry the same limelight word
+  // (MOTHER) because the design gives that position one word; they carry different clinical
+  // words because the claims are different. `status.prStamp` stays, unrenamed and unmoved, for
+  // the record toast that P4 detects.
+  'status.weekMetStamp': 'Target met',
 };
 
 /**
