@@ -9,13 +9,14 @@
 // src/ui/nav/views.test.ts is the guard against a list growing back in App.tsx, and the guard
 // that every view named here has a switch arm there.
 //
-// The labels are read from the copy table at module load. That is the CLINICAL string and can
-// only ever be one: a module constant is baked before any skin is known. Every RENDERER -- the
-// tab strip in src/app/App.tsx and the palette in src/ui/components/Spotlight.tsx -- therefore
-// reads `copyKey` through `useCopy()` instead, and `label` survives only for the callers that
-// have no React tree to read a skin from (src/ui/components/Spotlight.test.tsx).
+// The registry carries no baked `label` any more. It used to be read from the copy table at
+// module load, which made it the CLINICAL string and only ever that: a module constant is
+// baked before any skin is known. Every RENDERER reads `copyKey` through `useCopy()` instead
+// (the tab strip in src/app/App.tsx, the palette in src/ui/components/Spotlight.tsx), and the
+// last two callers with no React tree to read a skin from
+// (src/ui/components/Spotlight.test.tsx, src/ui/nav/views.test.ts) now resolve
+// `copy(view.copyKey)` themselves. With no reader left, `label` was dropped.
 
-import { copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 
 /**
@@ -32,19 +33,6 @@ export type ViewId = 'today' | 'plan' | 'train' | 'targets' | 'log' | 'atlas' | 
 
 export interface ViewDef {
   id: ViewId;
-  /**
-   * The tab label, resolved against the DEFAULT table at module load.
-   *
-   * It is the CLINICAL string and stays one: a module constant is baked once, so it cannot
-   * follow `ui.skin`. NO RENDERER MAY READ IT. src/app/App.tsx read it until the P8 review, and
-   * that is what left the palette offering "the run" while the tab beside it still said "Plan";
-   * both it and src/ui/components/Spotlight.tsx now resolve `copyKey` through `useCopy()`.
-   *
-   * What is left for this field is the caller with no React tree to read a skin from, which
-   * today is src/ui/components/Spotlight.test.tsx alone. It is kept rather than dropped because
-   * something still reads it; when nothing does, it should go, and `copyKey` is the whole row.
-   */
-  label: string;
   /** The row's copy key: the ONE thing a renderer reads, through `useCopy()`. */
   copyKey: CopyKey;
   /**
@@ -57,16 +45,16 @@ export interface ViewDef {
 }
 
 export const VIEWS: readonly ViewDef[] = [
-  { id: 'today', label: copy('nav.today'), copyKey: 'nav.today', digit: 1 },
-  { id: 'plan', label: copy('nav.plan'), copyKey: 'nav.plan', digit: 2 },
-  { id: 'train', label: copy('nav.train'), copyKey: 'nav.train', digit: 3 },
-  { id: 'targets', label: copy('nav.targets'), copyKey: 'nav.targets', digit: 4 },
-  { id: 'log', label: copy('nav.log'), copyKey: 'nav.log', digit: 5 },
+  { id: 'today', copyKey: 'nav.today', digit: 1 },
+  { id: 'plan', copyKey: 'nav.plan', digit: 2 },
+  { id: 'train', copyKey: 'nav.train', digit: 3 },
+  { id: 'targets', copyKey: 'nav.targets', digit: 4 },
+  { id: 'log', copyKey: 'nav.log', digit: 5 },
   // The specimen collection (P8 Task 5), added to the strip by P8 Task 9. Placed before
   // Settings because Settings is the last tab on every screen the app has ever had, and moving
   // it would move the one tab the user reaches by muscle memory.
-  { id: 'atlas', label: copy('nav.atlas'), copyKey: 'nav.atlas', digit: 6 },
-  { id: 'settings', label: copy('nav.settings'), copyKey: 'nav.settings', digit: 7 },
+  { id: 'atlas', copyKey: 'nav.atlas', digit: 6 },
+  { id: 'settings', copyKey: 'nav.settings', digit: 7 },
 ];
 
 /** The ids alone, DERIVED from VIEWS so the two cannot disagree. */
