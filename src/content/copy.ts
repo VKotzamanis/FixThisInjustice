@@ -613,7 +613,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'coach.repPr': 'Rep PR at 60 kg. Previous best 8 reps.', // formatted
   'coach.overSuggested': '2.5 kg over the suggested load.', // formatted
   'coach.underSuggested': '5 kg under the suggested load.', // formatted
-  'coach.aboveRange': '2 reps above range. Add load next session.', // formatted
+  'coach.aboveRange': '2 reps above the prescribed range.', // formatted
   'coach.belowRange': '4 reps, below the prescribed 6-8.', // formatted
   'coach.topOfRange': 'Top of range at 60 kg × 8.', // formatted
   'coach.insideRange': '60 kg × 7, inside the prescribed 6-8.', // formatted
