@@ -5,6 +5,7 @@ import { SkinSettings } from './SkinSettings';
 import { copy } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
+import type { SkinId } from '../../domain/types';
 
 /*
  * The sound-effect player is mocked so the unlock can be counted. It is held in a hoisted object
@@ -16,8 +17,15 @@ vi.mock('../../skins/sfx', () => ({
   sfxPlayer: { unlock: sfx.unlock, play: vi.fn(), dispose: vi.fn() },
 }));
 
+/*
+ * mockReset, not mockClear: one test below replaces the implementation to record what the store
+ * held when the unlock ran, and vitest's restoreMocks does not restore a vi.fn() created outside a
+ * test (measured for the same pattern in src/skins/sfx.test.ts), so the default is re-established
+ * here rather than assumed.
+ */
 beforeEach(() => {
-  sfx.unlock.mockClear();
+  sfx.unlock.mockReset();
+  sfx.unlock.mockImplementation(() => Promise.resolve());
 });
 
 afterEach(() => {
@@ -93,12 +101,29 @@ describe('SkinSettings', () => {
     expect(sfx.unlock).toHaveBeenCalledTimes(1);
   });
 
-  it('leaves the audio unlock out of a skin change', async () => {
+  it('unlocks audio on a skin change, after the new skin is in the store', async () => {
     const user = userEvent.setup();
     useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
+
+    /*
+     * A radio click is a user gesture, which is the only place an unlock may be spent, and the
+     * skin change is the one moment the held sound set stops matching the skin on screen. Without
+     * this call nothing re-decodes and play() stays silent under the new skin until some unrelated
+     * gesture happens to unlock again.
+     *
+     * The order is as load-bearing as the call. The player reads the skin through getState(), so
+     * an unlock raised before the store write would decode the skin the user has just left. The
+     * implementation is replaced here to record what the store held at the moment it ran.
+     */
+    const seen: SkinId[] = [];
+    sfx.unlock.mockImplementation(() => {
+      seen.push(useAppStore.getState().ui.skin);
+      return Promise.resolve();
+    });
     render(<SkinSettings />);
 
     await user.click(screen.getByRole('radio', { name: 'Board' }));
-    expect(sfx.unlock).not.toHaveBeenCalled();
+    expect(sfx.unlock).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual(['board']);
   });
 });

@@ -104,6 +104,7 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
   let decodedFor: SfxContext | null = null;
   let decodedSkin: SkinId | null = null;
   let inFlight: Promise<void> | null = null;
+  let inFlightFor: { context: SfxContext; skin: SkinId } | null = null;
   let current: SfxSource | null = null;
 
   async function decodeAll(context: SfxContext, skin: SkinId): Promise<void> {
@@ -138,12 +139,38 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
       if (context.state === 'suspended') await context.resume();
       const skin = deps.skin();
       if (decodedFor === context && decodedSkin === skin && buffers !== null) return;
-      // Decoding at fire time costs a variable delay, and a stamp sound arriving 300 ms after the
-      // stamp is worse than no sound. Everything is decoded here, once, and held.
-      inFlight ??= decodeAll(context, skin).finally(() => {
-        inFlight = null;
-      });
-      await inFlight;
+      /*
+       * Decoding at fire time costs a variable delay, and a stamp sound arriving 300 ms after the
+       * stamp is worse than no sound. Everything is decoded here, once, and held.
+       *
+       * A decode already running is joined only when it is the decode this call wants. A decode
+       * for the skin the user has just left is not: joining it would return with the old skin's
+       * buffers held, and play() gates on the skin, so the new skin would stay silent until some
+       * later gesture happened to unlock again. Such a call queues its own decode behind the
+       * running one instead, which also keeps two decodes from writing `buffers` out of order.
+       */
+      if (inFlight !== null && inFlightFor?.context === context && inFlightFor.skin === skin) {
+        await inFlight;
+        return;
+      }
+      const previous = inFlight;
+      // decodeAll cannot reject: every fetch and decode inside it sits in a try/catch, so awaiting
+      // the queue head here cannot turn into an unhandled rejection in `void sfxPlayer.unlock()`.
+      const run = (async (): Promise<void> => {
+        if (previous !== null) await previous;
+        await decodeAll(context, skin);
+      })();
+      inFlight = run;
+      inFlightFor = { context, skin };
+      try {
+        await run;
+      } finally {
+        // Only the newest request clears the slot; an older one finishing must not unlatch it.
+        if (inFlight === run) {
+          inFlight = null;
+          inFlightFor = null;
+        }
+      }
     },
 
     play(name: SfxName): void {
@@ -151,7 +178,14 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
       if (!deps.isVisible()) return;
       const context = deps.context();
       if (context === null || context.state !== 'running') return;
-      if (decodedFor !== context) return; // the context was closed and rebuilt; wait for a re-unlock
+      /*
+       * The held buffers belong to exactly one (context, skin) pair, and this is the gate that
+       * keeps docs/sfx.md's promise that sounds under limelight never play under board: after a
+       * skin change the set is the old skin's, so the moment is silent until the next unlock has
+       * decoded the new one. The context half of the pair is the same rule for a context that P4's
+       * releaseAudio() closed and rebuilt.
+       */
+      if (decodedFor !== context || decodedSkin !== deps.skin()) return;
       const buffer = buffers?.get(name);
       if (buffer === undefined) return;
       // One-shot, never looped, never overlapping: a new fire stops the previous source.
@@ -169,6 +203,7 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
       buffers = null;
       decodedFor = null;
       decodedSkin = null;
+      inFlightFor = null;
     },
   };
 }

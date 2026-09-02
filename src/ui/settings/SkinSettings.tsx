@@ -38,9 +38,18 @@ export function SkinSettings(): JSX.Element {
    * into a local, which is DataSection's pattern in this directory. Selecting it would subscribe
    * this component to a function identity it never renders, and the eslint unbound-method rule
    * refuses the detached reference on a typed store method.
+   *
+   * The store is written first, then the unlock is raised, and both orderings are deliberate. The
+   * player holds one skin's decoded set and refuses to play it under any other skin, so a change
+   * with no unlock behind it leaves the new skin silent until an unrelated gesture happens to
+   * unlock again; and the player reads the skin through getState(), so an unlock raised before the
+   * write would decode the skin the user has just left. A radio click is a real user gesture,
+   * which is what resume() has to run inside, and unlock() returns immediately while sounds are
+   * off, so a skin change with sounds off still fetches nothing.
    */
   const onSkinChange = (next: SkinId) => (): void => {
     useAppStore.getState().setUi({ skin: next });
+    void sfxPlayer.unlock();
   };
 
   /*
