@@ -522,22 +522,11 @@ export type CopyKey =
   | 'advice.capsuleNoteShort'
   | 'advice.capsuleNoteLong'
   | 'advice.capsuleDateRange'
-  // --- Atlas view (P8 Task 5) ---
-  | 'label.rarityCommon'
-  | 'label.rarityUncommon'
-  | 'label.rarityRare'
-  | 'label.atlasCollected'
-  | 'label.atlasSource'
-  // --- generic boot sequence (P8 Task 6; appended by that task) ---
-  | 'hero.boot'
-  | 'status.bootConsole'
-  | 'status.bootPlan'
-  | 'status.bootPlanName'
-  | 'status.bootWeek'
-  | 'status.bootSchedule'
-  | 'status.bootStore'
-  | 'status.bootOk'
-  | 'status.bootReady';
+  // --- the Settings data section (P7 Task 6; appended by that task) ---
+  | 'button.downloadBackup'
+  | 'button.wipeConfirm'
+  | 'button.legacyReopen'
+  | 'advice.wipeRemoves';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1277,47 +1266,19 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
   'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
   'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
-
-  // --- Atlas view (P8 Task 5) ---
-  // The Atlas's own heading, its subtitle and its locked slot are the P8 block above
-  // ('hero.atlas', 'advice.atlas', 'status.undiscovered'), which this task renders rather than
-  // restates. Five keys are new, and they are the ones that block held no word for.
-  //
-  // The three rarity words, as a section heading and as the eyebrow on a card. They live here
-  // rather than being printed from the SpecimenRarity enum so a skin can rename a tier without
-  // renaming the enum the draw weights in src/domain/fun/specimens.ts are keyed by. The case is
-  // the word's own: unlike the toast eyebrow, no stylesheet shouts these.
-  'label.rarityCommon': 'Common',
-  'label.rarityUncommon': 'Uncommon',
-  'label.rarityRare': 'Rare',
-  // The label over the whole-pool count. The count itself is FORMAT.atlasCount.
-  'label.atlasCollected': 'Collected',
-  // The label over a card's citation in the detail dialog.
-  'label.atlasSource': 'Source',
-  // --- generic boot sequence (P8 Task 6) ---
-  // The accessible name of the boot screen. The screen is not a live region: its text changes
-  // every 90 ms and a live region would read the whole block again on every line.
-  'hero.boot': 'Starting up',
-  // The three step labels. Each one names something the app is doing to its own stored
-  // document and nothing about the person using it. The legacy sequence printed a named
-  // individual's body composition and a medication line; content review section 7 removed
-  // both, and no key here can carry either back.
-  'status.bootConsole': 'FTI CONSOLE v3',
-  'status.bootPlan': 'Loading plan',
-  'status.bootStore': 'Restoring local store',
-  // The three plan facts, as templates: the value in each slot is the plan's own and the words
-  // around it are this table's, so a skin rewrites the line without touching Boot.tsx
-  // (FORMAT.withSlots). The week is the CURSOR's week, never the calendar's, for the reason
-  // SessionIndicator records: the two diverge the moment a session is missed.
-  'status.bootPlanName': 'plan {name}', // template; FORMAT.withSlots
-  'status.bootWeek': 'week {week} of {weeks}', // template; FORMAT.withSlots
-  'status.bootSchedule': '{count} sessions per week', // template; FORMAT.withSlots
-  // The word the dotted leader ends on, and the last line of the sequence. Both are console
-  // register rather than prose, which is exactly why they are keys: a skin that is not a
-  // console rewrites them without reaching into the component.
-  'status.bootOk': 'OK',
-  'status.bootReady': 'READY.',
-
+  // --- the Settings data section (P7 Task 6; appended by that task) ---
+  // The wipe panel's own export control. Named apart from `button.downloadJson`, which
+  // ExportView carries in the same section: two controls sharing one accessible name cannot
+  // be told apart by a screen reader, and the gate depends on pressing THIS one.
+  'button.downloadBackup': 'Download backup',
+  // The armed action, worded as what it does rather than repeating the disclosure that opened
+  // it. 'Wipe all data' names the trigger above; the two must not read alike.
+  'button.wipeConfirm': 'Delete everything',
+  // Puts the legacy import offer back in front of a user who dismissed it or finished one.
+  'button.legacyReopen': 'Import old data',
+  // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
+  // export is a control the user presses, and the panel states that gate itself.
+  'advice.wipeRemoves': 'Every profile, plan, session, set and note on this device is removed.',
 };
 
 /**
@@ -1916,44 +1877,4 @@ export const FORMAT = {
     copy('advice.capsuleDateRange', overrides)
       .replace('{from}', () => from)
       .replace('{to}', () => to),
-
-  // --- Atlas view (P8 Task 5) ---
-
-  /**
-   * "5 of 37": cards held against cards that exist. Both operands are counts of CARDS and both
-   * are derived from SPECIMEN_CARDS by the view, so adding a card to the pool moves the
-   * denominator without an edit here. Copy contract R9 is not engaged: the frame states a
-   * count and performs no arithmetic the user has to follow.
-   */
-  atlasCount: (owned: number, total: number): string => `${owned} of ${total}`,
-
-  /**
-   * "Nosaka K, Newton M, Sacco P (2002). Scand J Med Sci Sports 12(6):337-346.
-   * DOI 10.1034/j.1600-0838.2002.10178.x".
-   *
-   * The citation arrives verbatim from the card and is never rewritten here. The DOI is printed
-   * as a bare identifier and not as a resolver URL: the shipped Content-Security-Policy grants
-   * no connect-src for doi.org or Crossref, so a link would be a control the app cannot honour,
-   * and the copy contract keeps URLs out of the default skin. A card whose cited work predates
-   * the DOI system carries null (CARDS_WITHOUT_DOI) and prints its citation alone.
-   */
-  atlasSource: (citation: string, doi: string | null): string =>
-    doi === null ? citation : `${citation} DOI ${doi}`,
-  // --- generic boot sequence (P8 Task 6) ---
-
-  /**
-   * "Loading plan ................. OK". The dotted leader holds `OK` in one column, which is
-   * what makes the step lines read as a list rather than as separate sentences. A leader is
-   * not a connector, so contract R5's ban on the dash does not reach it.
-   *
-   * Both words arrive already resolved from the table above (`status.boot*`), as in
-   * `screenedOn` and `planPosition`, so this frame states nothing of its own and a skin
-   * reaches every word it prints.
-   *
-   * 32 columns, not the legacy sequence's 44: the longest label here is 21 characters, and 44
-   * would push the line past a 320 px phone in the monospace face the boot renders in.
-   */
-  bootStep: (label: string, ok: string): string =>
-    `${label} ${'.'.repeat(Math.max(1, 32 - label.length))} ${ok}`,
-
 } as const;
