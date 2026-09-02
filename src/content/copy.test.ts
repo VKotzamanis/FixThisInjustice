@@ -29,7 +29,9 @@ import type { CopyKey } from './copy';
  */
 const UNIT_TOKENS: ReadonlySet<string> = new Set([
   's',
-  'S',
+  // 'S' WAS HERE, and it was the loophole that let the board write "+30 S DELAY" past the word
+  // count: `S` is the siemens, and this app measures no conductance. A capital S counts as a
+  // word now, so a table that shouts a unit symbol is charged for it (P8 review).
   'kg',
   'lb',
   'mL',
@@ -90,6 +92,42 @@ function numbersOf(value: string): readonly string[] {
 /** Case rules ignore slot names: a slot renders as a number, which has no case. */
 function withoutSlots(value: string): string {
   return value.replace(/\{[a-zA-Z]+\}/g, '');
+}
+
+/**
+ * The unit SYMBOLS a string may carry, as whole tokens.
+ *
+ * A subset of UNIT_TOKENS: the members whose CASE and whose separating space are part of the
+ * symbol rather than typography. `s` is the second and `S` is the siemens (SI brochure, 9th
+ * edition, table 4), and 5.4.3 puts a space between the numerical value and the symbol, so
+ * "+30s" is not an SI quantity at all and "+30 S" is a different one. `%` and `\u00d7` are in
+ * UNIT_TOKENS but not here: they are signs with no case to get wrong.
+ *
+ * The list is the P8 review's, extended the first time a table carries another symbol.
+ */
+const UNIT_SYMBOLS: readonly string[] = ['s', 'kg', 'lb', 'mL', 'min'];
+
+/**
+ * A value with its unit symbols removed, for the CASE rules.
+ *
+ * A register is a property of words. `+30 s DELAY` shouts every word it has and still writes
+ * the second in lower case, because the case of a symbol is the symbol. Slots go first, for the
+ * reason `withoutSlots` gives.
+ */
+function withoutUnits(value: string): string {
+  return withoutSlots(value)
+    .split(/\s+/)
+    .filter((token) => !UNIT_SYMBOLS.includes(token))
+    .join(' ');
+}
+
+/** The unit symbols a string carries, as a sorted list. `+30 s` yields ["s"], `+30s` yields []. */
+function unitSymbolsOf(value: string): readonly string[] {
+  return withoutSlots(value)
+    .split(/\s+/)
+    .map((token) => token.replace(/[.,:;!?()"'\u2019]/g, ''))
+    .filter((token) => UNIT_SYMBOLS.includes(token))
+    .sort();
 }
 
 /**
@@ -270,6 +308,26 @@ describe('skin overrides', () => {
           key,
           numbers: numbersOf(DEFAULT_COPY[key]),
         });
+      }
+    }
+  });
+
+  it('carries the unit symbol the default carries, verbatim', () => {
+    /*
+     * The companion to the numbers rule above, and the same clause of master plan section 3: a
+     * skin may put a word beside a quantity and may not restate the quantity. A UNIT is half of
+     * one. Dropping the space ("+30s") or shouting the symbol with the sentence ("+30 S DELAY")
+     * changes what the control claims to do -- thirty siemens is not thirty seconds -- and the
+     * word-count rule cannot catch it, because a unit token is excluded from the count.
+     *
+     * Gated on the DEFAULT carrying a symbol, not on the override: a skin is free to write a
+     * sentence that names no quantity, and every row that names one must name it the same way.
+     */
+    for (const [name, table] of OVERRIDE_TABLES) {
+      for (const [key, value] of entriesOf(table)) {
+        const units = unitSymbolsOf(DEFAULT_COPY[key]);
+        if (units.length === 0) continue;
+        expect({ name, key, units: unitSymbolsOf(value) }).toEqual({ name, key, units });
       }
     }
   });
@@ -492,8 +550,11 @@ describe('the limelight table', () => {
 
 describe('the board table', () => {
   it('is upper case throughout, because a split-flap board has no lower case', () => {
+    // Through withoutUnits, not withoutSlots alone: the register binds the WORDS.
+    // `button.extendRest` reads "+30 s DELAY", and shouting the `s` into an `S` would rename the
+    // quantity the control changes rather than restyle the sentence (P8 review).
     for (const [key, value] of entriesOf(BOARD_COPY)) {
-      expect({ key, upper: withoutSlots(value) === withoutSlots(value).toUpperCase() }).toEqual({
+      expect({ key, upper: withoutUnits(value) === withoutUnits(value).toUpperCase() }).toEqual({
         key,
         upper: true,
       });

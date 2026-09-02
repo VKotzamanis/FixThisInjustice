@@ -74,7 +74,11 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'hero.weeklyTargetMissed': 'the intervention',
   'status.sessionCursor': 'ep. {shown} of {total}',
   'status.planProgress': '{completed} served. {skipped} skipped. {remaining} to go.',
-  'button.extendRest': '+30s',
+  // `+30 s`, not `+30s`: the SPACE and the LOWER CASE are the unit, not typography. SI 5.4.3
+  // puts a space between the value and the symbol, and `s` is the second while `S` is the
+  // siemens, so the shortened form states no quantity at all. This table lower-cases its words;
+  // it does not get to re-case a symbol (P8 review).
+  'button.extendRest': '+30 s',
   'button.skipRest': "i'm ready",
   'hero.weekReview': 'the reunion',
   'hero.sessionCompleted': 'ate.',
