@@ -12,6 +12,7 @@ import {
   useSaveError,
 } from '../store/selectors';
 import { SessionIndicator } from '../ui/components/SessionIndicator';
+import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
 import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { PlanView } from '../ui/views/PlanView';
@@ -292,41 +293,49 @@ export function App(): ReactElement {
   const flicker = useAppStore((s) => s.ui.flicker);
   const crtClasses = ['crt', scanlines ? 'sc' : '', flicker ? 'fl' : ''].filter(Boolean).join(' ');
 
+  /*
+   * The two P4 modals are mounted once, here, and reached from any view through
+   * useVideoModal() / useFormCuesModal(). Nothing is written to `window` (code review A53).
+   * The provider renders its children unconditionally and each modal only while it holds an
+   * open request, so this changes no existing behaviour.
+   */
   return (
-    <div className={crtClasses}>
-      <header className="topbar">
-        <span className="brand">
-          FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
-        </span>
-        {/*
-         * The plan position the CURSOR stands at, mounted here so it is visible from every
-         * view (P3 Task 7). It renders nothing until a plan exists, so the header keeps its
-         * two-element layout through setup.
-         */}
-        <SessionIndicator />
-        <span>{hydrated ? 'local data loaded' : 'reading local data'}</span>
-      </header>
+    <TrainingModalsProvider>
+      <div className={crtClasses}>
+        <header className="topbar">
+          <span className="brand">
+            FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+          </span>
+          {/*
+           * The plan position the CURSOR stands at, mounted here so it is visible from every
+           * view (P3 Task 7). It renders nothing until a plan exists, so the header keeps its
+           * two-element layout through setup.
+           */}
+          <SessionIndicator />
+          <span>{hydrated ? 'local data loaded' : 'reading local data'}</span>
+        </header>
 
-      <main>
-        <UpdatePrompt />
-        <SaveErrorBanner />
-        <LoadErrorBanner />
+        <main>
+          <UpdatePrompt />
+          <SaveErrorBanner />
+          <LoadErrorBanner />
 
-        {profile === null ? (
-          // No profile means setup has not run. The wizard is the whole screen until it has:
-          // every other view needs a profile to read units, time zone and targets from.
-          <SetupWizard />
-        ) : /*
-             * Gated on `hydrated` as well as on the profile: before the stored document has been
-             * read there is nothing to judge, and an empty store would look unscreened and flash
-             * the screen at a user who has already answered it.
-             */
-        hydrated && profile.readiness.screenedAt === null ? (
-          <ReadinessGate profile={profile} />
-        ) : (
-          <ViewShell />
-        )}
-      </main>
-    </div>
+          {profile === null ? (
+            // No profile means setup has not run. The wizard is the whole screen until it has:
+            // every other view needs a profile to read units, time zone and targets from.
+            <SetupWizard />
+          ) : /*
+               * Gated on `hydrated` as well as on the profile: before the stored document has been
+               * read there is nothing to judge, and an empty store would look unscreened and flash
+               * the screen at a user who has already answered it.
+               */
+          hydrated && profile.readiness.screenedAt === null ? (
+            <ReadinessGate profile={profile} />
+          ) : (
+            <ViewShell />
+          )}
+        </main>
+      </div>
+    </TrainingModalsProvider>
   );
 }
