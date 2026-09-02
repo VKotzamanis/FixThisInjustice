@@ -1,7 +1,7 @@
 # Publishes dist/ to GitHub Pages on every push to main. The build job repeats CI's
-# three asset and copy gates, its build and its two grep gates, so nothing un-gated
-# can reach the live site; lint, types and the four-zone suite run in parallel in
-# ci.yml on the same push. The asset gates are repeated rather than left to ci.yml
+# three asset and copy gates, the P7 legacy gate, its build and its grep gates, so
+# nothing un-gated can reach the live site; lint, types and the four-zone suite run
+# in parallel in ci.yml on the same push. The asset gates are repeated rather than left to ci.yml
 # because the two workflows are independent: a red ci.yml does not stop this one
 # from publishing, so a gate that runs only there does not guard the live site.
 #
@@ -62,6 +62,26 @@ jobs:
       - name: No emoji in the copy tables or the components
         run: node scripts/check-no-emoji.mjs
 
+      # P7 deleted the pre-rewrite console and the documents that described it. This step is the
+      # gate that keeps them deleted: a re-added legacy/ would ship the medication text the
+      # content review ordered removed, and a re-added DEPLOY.md would name a file set the build
+      # stopped producing. Tracked files only. An untracked copy on a developer's disk is not
+      # CI's business, and `git ls-files` prints nothing when a pathspec matches nothing.
+      - name: No legacy tree, no superseded root documents
+        run: |
+          set -euo pipefail
+          removed=(legacy DEPLOY.md PROJECT_SUMMARY.md scripts/scrub-legacy.py \
+                   console.html 'console-*.jsx' 'prototype-*.html' core.jsx data.js \
+                   design-canvas.jsx tweaks-panel.jsx sw.js manifest.json \
+                   .design-canvas.state.json uploads screenshots)
+          found=$(git ls-files -- "${removed[@]}")
+          if [ -n "$found" ]; then
+            echo "FAIL: these were deleted at the P7 cutover and are tracked again:"
+            echo "$found"
+            exit 1
+          fi
+          echo "legacy gate: clean"
+
       # npm ci installs the exact package-lock.json tree; a drifted lockfile fails here.
       - name: Install
         run: npm ci
@@ -117,16 +137,25 @@ jobs:
       - name: CSP content and referrer meta
         run: bash scripts/check-dist-csp.sh dist/index.html
 
-      - name: No personal health data in shipped source
+      - name: No personal health data in the tracked tree
         run: |
           set -euo pipefail
-          # One-character classes keep the pattern from matching its own definition; git grep exits 1 on no match, which is the passing case, and also when a pathspec (worker/, added by P5) matches no tracked file.
-          # \b is load-bearing: unanchored and case-insensitive, 'ymca' matched the letters yMca inside a base64 data URI in src/skins/limelight/icons.ts (commit 8511f21), so the job failed on generated data rather than on prose.
-          # The two generated asset modules are excluded as well. Measured 2026-09-02: \b alone already clears that false positive, so the exclusions are belt and braces, and they can be dropped if their blind spot matters more.
-          if ! git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- 'src/' 'worker/' 'public/' 'index.html' ':!src/skins/limelight/icons.ts' ':!src/skins/limelight/illustrations.ts'; then
-            echo "PASS: no medication or location identifier in src/, worker/, public/ or index.html"
+          # P7 widened this from 'src/ worker/ public/ index.html' to the whole tracked tree. Four
+          # paths are exempt, each for a stated reason: docs/review/ and docs/plans/ are the
+          # documents that decided the terms had to go and quote them to say so, REFERENCES.md logs
+          # the Crossref queries that sourced the content review, and graphify-out/ is a generated
+          # index of all three.
+          # One-character classes keep the pattern from matching its own definition. git grep exits 1
+          # on no match, which is the passing case, and also when a pathspec matches no tracked file.
+          # \b is load-bearing. Unanchored and case-insensitive, the location identifier matched the
+          # same letters inside a base64 data URI in src/skins/limelight/icons.ts (commit 8511f21),
+          # so the job failed on generated data rather than on prose. Measured 2026-09-02 against the
+          # widened pathspec: \b alone clears that false positive, so the two generated asset modules
+          # that used to be excluded are now covered by the gate.
+          if ! git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- . ':!docs/review/' ':!docs/plans/' ':!REFERENCES.md' ':!graphify-out/'; then
+            echo "PASS: no medication or location identifier outside the four exempt paths"
           else
-            echo "FAIL: personal health data found in shipped source"
+            echo "FAIL: personal health data found in the tracked tree"
             exit 1
           fi
 
