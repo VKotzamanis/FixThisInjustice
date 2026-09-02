@@ -814,7 +814,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.logBodyMass': 'Log body mass',
   'button.formReference': 'Form reference',
   'button.formCues': 'Form cues',
-  'button.nextInstance': 'Try next instance',
+  'button.nextInstance': 'Next instance',
   'button.openClip': 'Open clip',
   'button.searchInstance': 'Search instance',
   'advice.noClipRecorded': 'No clip for this exercise.',
@@ -900,8 +900,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.importNoResult': 'The import produced no result. Nothing has been changed.',
   'advice.importDownloadFirst': 'Download the untouched copy before keeping this import.',
   'why.importRejections': 'What could not be imported, and why',
-  'button.runImport': 'Run the import',
-  'button.keepImport': 'Keep this import',
+  'button.runImport': 'Run import',
+  'button.keepImport': 'Keep import',
   'button.startClean': 'Start clean',
   'button.downloadLegacyJson': 'Download legacy JSON',
   'advice.noWeeksYet': 'No weeks to show.',
@@ -1222,7 +1222,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'disclosure.whatWasRefused': 'What was not imported, and why',
   'disclosure.whatWasNotMatched': 'Days not matched to a session',
   'button.legacyPreview': 'Preview import',
-  'button.legacyApply': 'Keep this import',
+  'button.legacyApply': 'Keep import',
   'button.legacyDismiss': 'Start clean',
   'button.legacyDeleteOld': 'Delete old data',
   'button.legacyKeepOld': 'Keep old data',
@@ -1509,7 +1509,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The accessible name of the marquee strip, which is a real button so the moving line can
   // be stopped (round three section 2.4). It names what activating it DOES; whether it is
   // currently stopped is aria-pressed's job, so the name stays the same in both states.
-  'button.pauseTicker': 'Pause the ticker',
+  'button.pauseTicker': 'Pause ticker',
 
   // --- the week stamp's own word (P8 close-out B) ---
   // A MET WEEK IS NOT A PERSONAL RECORD, and until now src/ui/components/WeekStamp.tsx said it
