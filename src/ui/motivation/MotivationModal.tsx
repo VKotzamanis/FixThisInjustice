@@ -26,7 +26,7 @@ import {
   resolveVideoSrc,
   type VideoSource,
 } from '../../domain/motivation/assets';
-import { copy } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { describeMiss } from '../../domain/motivation/trigger';
 import { useAppStore } from '../../store';
 import type { WeeklyReview } from '../../domain/types';
@@ -64,6 +64,8 @@ export interface MotivationModalProps {
 }
 
 export function MotivationModal(props: MotivationModalProps): ReactElement {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const { review, profileId, onDismiss } = props;
   const headingId = useId();
   const dismissRef = useRef<HTMLButtonElement | null>(null);
@@ -183,10 +185,10 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
       onClose={dismiss}
     >
       <h2 id={headingId} className="mmod-title">
-        {review === null ? copy('hero.motivationPreview') : copy('hero.weeklyTargetMissed')}
+        {review === null ? t('hero.motivationPreview') : t('hero.weeklyTargetMissed')}
       </h2>
       <p className="mmod-detail">
-        {review === null ? copy('advice.motivationPreview') : describeMiss(review)}
+        {review === null ? t('advice.motivationPreview') : describeMiss(review, overrides)}
       </p>
       {showVideo && source !== null && (
         <video
@@ -207,7 +209,7 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
           // the previous `undefined` arm left an unnamed button behind the moment sound came on.
           role="button"
           tabIndex={0}
-          aria-label={muted ? copy('advice.tapForSound') : TAP_TO_MUTE_LABEL}
+          aria-label={muted ? t('advice.tapForSound') : TAP_TO_MUTE_LABEL}
           data-testid="motivation-video"
           onClick={toggleSound}
           onKeyDown={onVideoKey}
@@ -217,10 +219,10 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
           }}
         />
       )}
-      {showVideo && muted && <p className="mmod-hint">{copy('advice.tapForSound')}</p>}
+      {showVideo && muted && <p className="mmod-hint">{t('advice.tapForSound')}</p>}
       <div className="mmod-actions">
         <button type="button" className="mmod-dismiss" ref={dismissRef} onClick={dismiss}>
-          {copy('button.dismiss')}
+          {t('button.dismiss')}
         </button>
       </div>
     </ModalShell>

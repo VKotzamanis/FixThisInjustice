@@ -1,7 +1,7 @@
 import { useState, type JSX } from 'react';
 
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { clearAssetStorage } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
@@ -55,6 +55,7 @@ const CONFIRM_WORD = 'DELETE';
 type OpenPanel = 'none' | 'wipe' | 'legacy';
 
 export function DataSection(): JSX.Element {
+  const t = useCopy();
   const decision = useAppStore((s) => s.ui.legacyMigration);
   const profile = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
@@ -147,8 +148,8 @@ export function DataSection(): JSX.Element {
        */}
       <ExportView />
 
-      <h2>{copy('hero.dataOnDevice')}</h2>
-      <p className="view-note">{copy('advice.dataOnDevice')}</p>
+      <h2>{t('hero.dataOnDevice')}</h2>
+      <p className="view-note">{t('advice.dataOnDevice')}</p>
 
       {legacyDoc && decision !== 'pending' && (
         <>
@@ -161,15 +162,15 @@ export function DataSection(): JSX.Element {
               useAppStore.getState().setUi({ legacyMigration: 'pending' });
             }}
           >
-            {copy('button.legacyReopen')}
+            {t('button.legacyReopen')}
           </button>
-          <p className="view-note">{copy('advice.legacyOldDataKept')}</p>
+          <p className="view-note">{t('advice.legacyOldDataKept')}</p>
         </>
       )}
 
       {open === 'wipe' ? (
         <div className="view-field">
-          <p className="view-note">{copy('advice.wipeRemoves')}</p>
+          <p className="view-note">{t('advice.wipeRemoves')}</p>
           <ConfirmDestructive
             titleKey="label.confirmWipe"
             word={CONFIRM_WORD}
@@ -196,20 +197,20 @@ export function DataSection(): JSX.Element {
             setOpen('wipe');
           }}
         >
-          {copy('button.wipeAll')}
+          {t('button.wipeAll')}
         </button>
       )}
 
       {clipUncleared && (
         <p className="view-error" role="alert">
-          {copy('advice.clipClearFailed')}
+          {t('advice.clipClearFailed')}
         </p>
       )}
 
       {anyLegacy &&
         (open === 'legacy' ? (
           <div className="view-field">
-            <p className="view-note">{copy('advice.deleteLegacy')}</p>
+            <p className="view-note">{t('advice.deleteLegacy')}</p>
             <ConfirmDestructive
               titleKey="label.confirmDeleteLegacy"
               word={CONFIRM_WORD}
@@ -240,7 +241,7 @@ export function DataSection(): JSX.Element {
               setOpen('legacy');
             }}
           >
-            {copy('button.deleteLegacy')}
+            {t('button.deleteLegacy')}
           </button>
         ))}
     </>

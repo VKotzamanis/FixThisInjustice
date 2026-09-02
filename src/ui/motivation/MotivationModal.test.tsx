@@ -9,12 +9,13 @@ import {
   probeBundledVideo,
   resolveVideoSrc,
 } from '../../domain/motivation/assets';
-import { copy } from '../../content/copy';
+import { copy, copyFor } from '../../content/copy';
 import { describeMiss } from '../../domain/motivation/trigger';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { PROFILE_ID, seedState } from '../../test/scheduleFixtures';
 import type { WeeklyReview } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /*
  * The clip itself is out of scope here: this suite pins the modal's contract, so the two
@@ -84,6 +85,24 @@ beforeEach(() => {
   // Held rather than reached for through the prototype: jsdom has no media pipeline, and an
   // unbound prototype method is not a value this codebase's lint gate lets a test assert on.
   play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('MotivationModal', () => {
@@ -253,5 +272,33 @@ describe('MotivationModal', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(dialog.getAttribute('aria-labelledby')).toBe(heading.id);
     await screen.findByTestId('motivation-video');
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('MotivationModal under a skin', () => {
+  it('heads the miss in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = renderModal();
+    expect(
+      screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    renderModal();
+    expect(
+      screen.getByRole('heading', { name: copyFor('clinical', 'hero.weeklyTargetMissed') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.dismiss') }),
+    ).toBeInTheDocument();
   });
 });

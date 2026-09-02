@@ -15,7 +15,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { computeTargets } from '../../domain/nutrition';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
 import { defaultState } from '../../domain/schema';
@@ -31,6 +31,7 @@ import { useAppStore } from '../../store';
 import { latestBodyMassEntry, nutritionInputFor } from '../../store/selectors';
 import { makeProfile, makeSet, resetFixtureIds } from '../../test/fixtures';
 import { LogView, weeksBetween } from './LogView';
+import type { SkinId } from '../../domain/types';
 
 const NOW_MS = Date.UTC(2026, 2, 2, 9, 0); // [ms] epoch, UTC; 2026-03-02 11:00 in Athens
 const TODAY = '2026-03-02'; // Monday
@@ -133,6 +134,12 @@ function seed(patch: Partial<AppState> = {}): AppState {
         assignmentDate: '2026-02-18',
       }),
     ]),
+    /*
+     * The skin the assertions in this file quote. `defaultState()` ships limelight, and this
+     * seed replaces `ui` wholesale, so pinning it here is what keeps a reseed inside a test
+     * from putting the shipped table back. Overridable by `patch`, which spreads after it.
+     */
+    ui: { ...defaultState().ui, skin: 'clinical' },
     ...patch,
   };
 }
@@ -164,9 +171,28 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
+
 describe('LogView without a profile', () => {
   it('says setup has to come first', () => {
     useAppStore.setState(defaultState());
+    pinSkin();
     render(<LogView />);
     expect(screen.getByText(copy('advice.noProfileSetupFirst'))).toBeTruthy();
     expect(screen.queryByRole('grid')).toBeNull();
@@ -318,5 +344,25 @@ describe('weeksBetween', () => {
     // The rule the code implements: it walks Mondays from weekStart(from) through weekStart(to)
     // inclusive, so two dates in the same ISO week collapse to that single week, not zero weeks.
     expect(weeksBetween('2026-03-02', '2026-03-02')).toEqual(['2026-03-02']);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('LogView under a skin', () => {
+  it('names the view in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<LogView />);
+    expect(screen.getByText(copyFor('limelight', 'nav.log'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'hero.compliance'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<LogView />);
+    expect(screen.getByText(copyFor('clinical', 'nav.log'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('clinical', 'hero.compliance'))).toBeInTheDocument();
   });
 });

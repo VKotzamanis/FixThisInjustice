@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsView } from './SettingsView';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import type { Profile } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /**
  * The same fixture the targets view is tested against. Nothing here depends on the clock:
@@ -81,6 +82,24 @@ afterEach(() => {
 function fluidField(): HTMLElement {
   return screen.getByLabelText('Daily beverage target (mL)');
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('SettingsView numeric settings', () => {
   /*
@@ -171,6 +190,8 @@ describe('readiness row in Settings', () => {
   function seed(readiness: Profile['readiness']): void {
     PRISTINE_STATE.wipeAll();
     PRISTINE_STATE.createProfile({ ...PROFILE, readiness });
+    // `wipeAll` puts the shipped `ui` back, skin included, so the pin is reapplied here.
+    pinSkin();
   }
 
   beforeEach(() => {
@@ -267,5 +288,24 @@ describe('skin row in Settings', () => {
     expect(
       screen.getByRole('group', { name: copy('label.settingsSkin') }),
     ).toBeInTheDocument();
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. This screen names no row either override table carries, so what the pair below asserts
+ * is the OTHER half of the contract: a key a skin does not name renders the clinical sentence,
+ * on every skin. Both sides are read by key through `copyFor`, never as a literal.
+ */
+describe('SettingsView under a skin', () => {
+  it('reads its heading through the skin, and falls back to the default table', () => {
+    pinSkin('limelight');
+    const view = render(<SettingsView />);
+    expect(screen.getByText(copyFor('limelight', 'hero.profile'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<SettingsView />);
+    expect(screen.getByText(copyFor('clinical', 'hero.profile'))).toBeInTheDocument();
   });
 });

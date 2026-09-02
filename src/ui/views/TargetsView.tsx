@@ -2,6 +2,8 @@ import { useMemo, useState, type JSX } from 'react';
 import { AsciiBar } from '../components/AsciiBar';
 import { massUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT, copy } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { dailyBeverageTargetML, type NutritionTargets } from '../../domain/nutrition';
 import { volumeReport } from '../../domain/plan/generator';
@@ -36,9 +38,18 @@ const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
  */
 const INTAKE_ERROR_ID = 'intake-error';
 
-/** "-0.6 kg/week", or the honest statement that the evidence base gives no rate. */
-function rateText(targets: NutritionTargets, profile: Profile): string {
-  if (targets.expectedRateKgPerWeek === null) return copy('status.rateUnknown');
+/**
+ * "-0.6 kg/week", or the honest statement that the evidence base gives no rate.
+ *
+ * `overrides` is the active skin's table, passed in rather than read here: this is a plain
+ * function and a hook inside it would be a rules-of-hooks violation.
+ */
+function rateText(
+  targets: NutritionTargets,
+  profile: Profile,
+  overrides: Readonly<Partial<Record<CopyKey, string>>>,
+): string {
+  if (targets.expectedRateKgPerWeek === null) return copy('status.rateUnknown', overrides);
   // Sign convention: negative = mass loss. displayMass rounds to 0.1 in the display unit.
   return FORMAT.signedRate(
     displayMass(targets.expectedRateKgPerWeek, profile.units),
@@ -58,6 +69,8 @@ function rateText(targets: NutritionTargets, profile: Profile): string {
  * the user acts on the target and not on its inputs.
  */
 export function TargetsView(): JSX.Element {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const profile = useActiveProfile();
   const targets = useNutritionTargets();
   const plan = useActivePlan();
@@ -80,7 +93,7 @@ export function TargetsView(): JSX.Element {
   // are recomputed when the plan changes and not on every keystroke in the check-in form.
   const volume = useMemo(() => (plan === null ? null : volumeReport(plan, EXERCISES)), [plan]);
 
-  if (profile === null || targets === null) return <p>{copy('advice.noProfileSetupFirst')}</p>;
+  if (profile === null || targets === null) return <p>{t('advice.noProfileSetupFirst')}</p>;
 
   /*
    * What the bars and the read-outs report is the STORED entry for today, never the draft in
@@ -132,32 +145,32 @@ export function TargetsView(): JSX.Element {
 
   return (
     <section className="view">
-      <h2>{copy('hero.dailyTargets')}</h2>
+      <h2>{t('hero.dailyTargets')}</h2>
       <dl className="view-dl">
-        <dt>{copy('label.energy')}</dt>
+        <dt>{t('label.energy')}</dt>
         <dd data-testid="target-kcal">{FORMAT.kcal(targets.targetKcal)}</dd>
-        <dt>{copy('label.protein')}</dt>
+        <dt>{t('label.protein')}</dt>
         <dd data-testid="target-protein">
           {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
         </dd>
-        <dt>{copy('label.fluid')}</dt>
+        <dt>{t('label.fluid')}</dt>
         <dd data-testid="target-fluid">{formatVolume(targets.fluidML, profile.units)}</dd>
-        <dt>{copy('label.expectedRate')}</dt>
-        <dd data-testid="target-rate">{rateText(targets, profile)}</dd>
-        <dt>{copy('label.creatineDose')}</dt>
+        <dt>{t('label.expectedRate')}</dt>
+        <dd data-testid="target-rate">{rateText(targets, profile, overrides)}</dd>
+        <dt>{t('label.creatineDose')}</dt>
         <dd data-testid="target-creatine">
-          {targets.creatineG === null ? copy('label.none') : FORMAT.grams(targets.creatineG)}
+          {targets.creatineG === null ? t('label.none') : FORMAT.grams(targets.creatineG)}
         </dd>
       </dl>
 
       {/* R9: the derivation, and the intermediate quantities it passes through. */}
       <details data-testid="basis">
-        <summary>{copy('disclosure.why')}</summary>
+        <summary>{t('disclosure.why')}</summary>
         <div className="view-note">
           <dl className="view-dl">
-            <dt>{copy('label.rmr')}</dt>
+            <dt>{t('label.rmr')}</dt>
             <dd>{FORMAT.kcal(targets.rmrKcal)}</dd>
-            <dt>{copy('label.tdee')}</dt>
+            <dt>{t('label.tdee')}</dt>
             <dd>{FORMAT.kcal(targets.tdeeKcal)}</dd>
           </dl>
           <p>
@@ -174,10 +187,10 @@ export function TargetsView(): JSX.Element {
         </div>
       </details>
 
-      <h2>{FORMAT.headingWithDate(copy('hero.intakeCheckIn'), today)}</h2>
+      <h2>{FORMAT.headingWithDate(t('hero.intakeCheckIn'), today)}</h2>
       <div className="view-field">
         <label htmlFor="intake-kcal">
-          {FORMAT.quantityWithUnit(copy('quantity.energyIntake'), 'kcal')}
+          {FORMAT.quantityWithUnit(t('quantity.energyIntake'), 'kcal')}
         </label>
         <input
           id="intake-kcal"
@@ -196,7 +209,7 @@ export function TargetsView(): JSX.Element {
       </div>
       <div className="view-field">
         <label htmlFor="intake-protein">
-          {FORMAT.quantityWithUnit(copy('quantity.proteinIntake'), 'g')}
+          {FORMAT.quantityWithUnit(t('quantity.proteinIntake'), 'g')}
         </label>
         <input
           id="intake-protein"
@@ -216,18 +229,18 @@ export function TargetsView(): JSX.Element {
         /* role="alert" so the refusal is announced when it appears; the button that caused
            it does not move focus, so nothing else would say it. */
         <p className="view-error" id={INTAKE_ERROR_ID} role="alert" data-testid="intake-error">
-          {copy('advice.intakeRejected')}
+          {t('advice.intakeRejected')}
         </p>
       )}
       <button type="button" onClick={record}>
-        {copy('button.recordIntake')}
+        {t('button.recordIntake')}
       </button>
 
       <p className="view-progress">
         <AsciiBar
           value={loggedKcal}
           target={targets.targetKcal}
-          label={copy('label.energyProgress')}
+          label={t('label.energyProgress')}
           testId="kcal-bar"
         />{' '}
         <span data-testid="kcal-progress">
@@ -243,7 +256,7 @@ export function TargetsView(): JSX.Element {
         <AsciiBar
           value={loggedProteinG}
           target={targets.proteinG.lo}
-          label={copy('label.proteinProgress')}
+          label={t('label.proteinProgress')}
           testId="protein-bar"
         />{' '}
         <span data-testid="protein-progress">
@@ -256,7 +269,7 @@ export function TargetsView(): JSX.Element {
 
       {volume !== null && (
         <p className="view-note" data-testid="maintenance-only">
-          {FORMAT.muscleList(copy('label.maintenanceOnly'), volume.maintenance, copy('label.none'))}
+          {FORMAT.muscleList(t('label.maintenanceOnly'), volume.maintenance, t('label.none'))}
         </p>
       )}
     </section>

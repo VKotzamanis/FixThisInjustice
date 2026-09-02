@@ -36,8 +36,9 @@
 
 import { useCallback, useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import {
   SPECIMEN_BY_ID,
   SPECIMEN_CARDS,
@@ -70,6 +71,7 @@ function holds(acquired: SpecimenInventory['acquired'] | undefined, id: string):
 
 /** One card's full text. Mounted only for a card the profile actually holds. */
 function AtlasCardDialog(props: { card: SpecimenCard; onClose: () => void }): ReactElement {
+  const t = useCopy();
   const titleId = useId();
   const { card } = props;
   return (
@@ -82,21 +84,21 @@ function AtlasCardDialog(props: { card: SpecimenCard; onClose: () => void }): Re
     >
       <div className="atlas-modal-head">
         <div>
-          <div className="atlas-modal-rarity">{copy(RARITY_LABEL[card.rarity])}</div>
+          <div className="atlas-modal-rarity">{t(RARITY_LABEL[card.rarity])}</div>
           {/* The dialog's accessible name is the card, so the title carries the id. */}
           <h2 className="atlas-modal-title" id={titleId}>
             {card.title}
           </h2>
         </div>
         <button type="button" className="atlas-modal-close" onClick={props.onClose}>
-          {copy('button.closeModal')}
+          {t('button.closeModal')}
         </button>
       </div>
       {/* Copy contract R10: a card body and its citation are reference text, exempt from the
           length rules and from R9, and bound by every other rule. */}
       <p className="atlas-modal-body">{card.body}</p>
       <p className="atlas-modal-source">
-        <strong>{copy('label.atlasSource')}</strong>
+        <strong>{t('label.atlasSource')}</strong>
         {': '}
         {FORMAT.atlasSource(card.source.citation, card.source.doi)}
       </p>
@@ -105,6 +107,9 @@ function AtlasCardDialog(props: { card: SpecimenCard; onClose: () => void }): Re
 }
 
 export function AtlasView(): ReactElement {
+  // One reader for the whole grid: the rarity label is looked up per card, and a hook per
+  // card would be one store subscription for each of the thirty-seven slots.
+  const t = useCopy();
   const profileId = useAppStore((s) => s.activeProfileId);
   /*
    * The acquisition map itself, not a copy of it. The store hands back the stored object by
@@ -150,10 +155,10 @@ export function AtlasView(): ReactElement {
 
   return (
     <section className="view atlas">
-      <h2>{copy('hero.atlas')}</h2>
-      <p className="view-note">{copy('advice.atlas')}</p>
+      <h2>{t('hero.atlas')}</h2>
+      <p className="view-note">{t('advice.atlas')}</p>
       <p className="atlas-total">
-        <span className="atlas-count-label">{copy('label.atlasCollected')}</span>{' '}
+        <span className="atlas-count-label">{t('label.atlasCollected')}</span>{' '}
         <span className="atlas-count" data-testid="atlas-count-total">
           {FORMAT.atlasCount(ownedTotal, SPECIMEN_CARDS.length)}
         </span>
@@ -161,7 +166,7 @@ export function AtlasView(): ReactElement {
 
       {sections.map((section) => (
         <section className="atlas-section" key={section.rarity}>
-          <h3>{copy(RARITY_LABEL[section.rarity])}</h3>
+          <h3>{t(RARITY_LABEL[section.rarity])}</h3>
           <p className="atlas-count" data-testid={`atlas-count-${section.rarity}`}>
             {FORMAT.atlasCount(section.owned, section.cards.length)}
           </p>
@@ -182,7 +187,7 @@ export function AtlasView(): ReactElement {
                       setOpenId(card.id);
                     }}
                   >
-                    <span className="atlas-card-rarity">{copy(RARITY_LABEL[card.rarity])}</span>
+                    <span className="atlas-card-rarity">{t(RARITY_LABEL[card.rarity])}</span>
                     <span className="atlas-card-title">{card.title}</span>
                   </button>
                 ) : (
@@ -190,8 +195,8 @@ export function AtlasView(): ReactElement {
                     className={`atlas-card atlas-locked atlas-${card.rarity}`}
                     data-testid={`atlas-card-${card.id}`}
                   >
-                    <span className="atlas-card-rarity">{copy(RARITY_LABEL[card.rarity])}</span>
-                    <span className="atlas-card-lock">{copy('status.undiscovered')}</span>
+                    <span className="atlas-card-rarity">{t(RARITY_LABEL[card.rarity])}</span>
+                    <span className="atlas-card-lock">{t('status.undiscovered')}</span>
                   </div>
                 )}
               </li>
