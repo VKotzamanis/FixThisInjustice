@@ -399,7 +399,15 @@ export type CopyKey =
   | 'label.coachNote'
   | 'label.telemetry'
   | 'status.milestoneSets'
-  | 'status.specimenAcquired';
+  | 'status.specimenAcquired'
+  // --- spotlight palette (P8 Task 8; appended by that task) ---
+  | 'hero.spotlight'
+  | 'button.openSpotlight'
+  | 'label.spotlightQuery'
+  | 'label.spotlightResults'
+  | 'label.spotlightView'
+  | 'label.spotlightExercise'
+  | 'advice.noSpotlightMatch';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -885,6 +893,25 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.milestoneSets': '250 sets recorded.', // formatted; FORMAT.milestoneSets builds it
   // The eyebrow over a drawn specimen card. The rarity word is the card's own enum.
   'status.specimenAcquired': 'common specimen acquired', // formatted; FORMAT.specimenAcquired
+
+  // --- spotlight palette (P8 Task 8) ---
+  // The dialog's own heading, which is also what names it to a screen reader.
+  'hero.spotlight': 'Search',
+  // The tap target that opens the palette on a phone, where there is no keyboard to press the
+  // combo on. R2: three words or fewer, and it names the action rather than the mechanism.
+  'button.openSpotlight': 'Search',
+  // The combobox's accessible name, and its placeholder. It states what the palette searches,
+  // so the empty field is not a guess: views and the exercises the plan prescribes.
+  'label.spotlightQuery': 'Search views and exercises',
+  // The listbox's accessible name. Separate from the field's, because a screen reader reads
+  // the two in different places and 'Search views and exercises' is not what the list IS.
+  'label.spotlightResults': 'Search results',
+  // The kind of one result, shown on the row and read as part of it. A view and an exercise
+  // can carry the same word (a 'Plan' view beside a planned exercise), so the row says which.
+  'label.spotlightView': 'View',
+  'label.spotlightExercise': 'Exercise',
+  // The empty result set. It reports what is absent and asks for nothing (R7).
+  'advice.noSpotlightMatch': 'No matches.',
 };
 
 /**

@@ -10,6 +10,7 @@ import {
   formatSets,
   planRowDomId,
 } from '../format/plan';
+import { usePlanRowFocus } from '../planFocus';
 import './views.css';
 
 /**
@@ -109,6 +110,10 @@ function SessionCard(props: {
             /* P8 Task 8 deep-links to this row by id; the shape lives in format/plan.ts so the
                link and the row cannot drift apart. */
             id={planRowDomId(session.id, ex.exerciseId)}
+            /* -1, not 0: the deep link focuses the row programmatically so a screen reader is
+               moved to it, but a plan of thirty rows must not add thirty stops to the tab
+               order the user walks to reach the week scrubber. */
+            tabIndex={-1}
             className="ps-row"
             data-testid="plan-row"
           >
@@ -133,6 +138,12 @@ function SessionCard(props: {
 export function PlanView(): JSX.Element {
   const plan = useActivePlan();
   const cursor = useActiveCursor();
+  /*
+   * Delivers a deep link from the spotlight palette to one row (P8 Task 8). Called here,
+   * unconditionally and above the early return below, because it is a hook: putting it after
+   * the `plan === null` exit would change the hook order between renders.
+   */
+  usePlanRowFocus();
   /*
    * null means "follow the cursor". Seeding the state with the cursor's week instead would
    * capture the FIRST render only, and the first render happens before hydrate() has put the
