@@ -8,15 +8,27 @@
 //    threshold or string differs from the plan's literal.
 //  - The rung-3 comment records why a bodyweight set is compared by repetitions alone.
 //
-// The strings are assembled here rather than in a view, which is the pattern Task 1's
-// `ProgressionAdvice.reason` already set: src/content/copy.ts carries the `coach.*` keys as
-// formatted EXAMPLES documenting the shape, exactly as it carries `advice.*` for progression.
-// Code review: `coach.aboveRange` there read "2 reps above range. Add load next session.",
-// which both diverged from the string this module actually ships and issued a load decision.
-// The load decision is not the coach line's to make - `ProgressionAdvice` owns add-load, hold
-// and deload, and states its own reason - so the key now carries this module's wording,
-// "2 reps above the prescribed range.", and no coach string tells the user what to do next
-// session. coach.test.ts asserts that over both the generated lines and the copy table.
+// P4 REVIEW ITEM 2. This module used to assemble English sentences here and return them as
+// `text`, while src/content/copy.ts carried the ten `coach.*` keys as formatted EXAMPLES that
+// nothing resolved. Two copies of every sentence, one of them dead, and no skin could override
+// what the user actually read. It now returns a copy KEY and the values that go in its slots;
+// the words live in the copy table and are rendered at the UI boundary by FORMAT.withSlots
+// (src/ui/views/TrainView.tsx). What stays here is the decision of WHICH sentence to say and
+// the quantities it says it with - the ladder, the deadbands and the unit formatting - which
+// is domain work; choosing the words is not.
+//
+// A param may carry a number, or a load already formatted by src/domain/units.ts ("60 kg",
+// "135 lb", "BW"). Numbers and units are part of the copy contract and not of the skin, so
+// formatting them here is sanctioned; a param may never carry a WORD the skin should own, and
+// coach.test.ts asserts that.
+//
+// Code review (before the refactor): `coach.aboveRange` read "2 reps above range. Add load
+// next session.", which both diverged from the string this module shipped and issued a load
+// decision. The load decision is not the coach line's to make - `ProgressionAdvice` owns
+// add-load, hold and deload, and states its own reason - so the key carries this module's
+// wording and no coach string tells the user what to do next session. coach.test.ts asserts
+// that over both the generated lines and the copy table.
+import type { CopyKey } from '../../content/copy';
 import type { LoggedSet, UnitSystem } from '../types';
 import { displayLoad, formatLoad, toStoredLoad, UNIT_LABEL } from '../units';
 import {
@@ -27,7 +39,13 @@ import {
 } from './progression';
 
 export interface CoachLine {
-  text: string;
+  /** The `coach.*` key in src/content/copy.ts whose template carries this sentence. */
+  key: CopyKey;
+  /**
+   * The values for that template's `{slot}`s. A number, or a quantity already rendered in the
+   * user's display unit by src/domain/units.ts. Never a word.
+   */
+  params: Record<string, string | number>;
   /** "telemetry" = a measured record or a plain readout; "coach" = an instruction. */
   tone: 'coach' | 'telemetry';
 }
@@ -74,8 +92,11 @@ export function coachLine(
   units: UnitSystem,
 ): CoachLine {
   if (!isCompletedSet(set)) {
-    if (set.durationS !== null) return { text: `${set.durationS} s logged.`, tone: 'telemetry' };
-    return { text: 'Set logged.', tone: 'telemetry' };
+    if (set.durationS !== null) {
+      // [s] the logged duration; the unit is in the template, not here.
+      return { key: 'coach.durationLogged', params: { seconds: set.durationS }, tone: 'telemetry' };
+    }
+    return { key: 'coach.setLogged', params: {}, tone: 'telemetry' };
   }
 
   const best = lifetimeBest(history);
@@ -86,7 +107,8 @@ export function coachLine(
   //    this rung can never fire for one.
   if (best !== null && set.loadKg > best.loadKg + LOAD_EQ_TOL_KG) {
     return {
-      text: `Load PR. Previous best ${formatLoad(best.loadKg, units)} × ${best.reps}.`,
+      key: 'coach.loadPr',
+      params: { load: formatLoad(best.loadKg, units), reps: best.reps },
       tone: 'telemetry',
     };
   }
@@ -99,7 +121,8 @@ export function coachLine(
     set.reps > best.reps
   ) {
     return {
-      text: `Rep PR at ${formatLoad(set.loadKg, units)}. Previous best ${best.reps} reps.`,
+      key: 'coach.repPr',
+      params: { load: formatLoad(set.loadKg, units), reps: best.reps },
       tone: 'telemetry',
     };
   }
@@ -128,13 +151,15 @@ export function coachLine(
     const underBandKg = toStoredLoad(UNDER_BAND[units], units); // [kg]
     if (set.loadKg > suggestedKg + overBandKg) {
       return {
-        text: `${formatDelta(set.loadKg - suggestedKg, units)} over the suggested load.`,
+        key: 'coach.overSuggested',
+        params: { delta: formatDelta(set.loadKg - suggestedKg, units) },
         tone: 'coach',
       };
     }
     if (set.loadKg < suggestedKg - underBandKg) {
       return {
-        text: `${formatDelta(suggestedKg - set.loadKg, units)} under the suggested load.`,
+        key: 'coach.underSuggested',
+        params: { delta: formatDelta(suggestedKg - set.loadKg, units) },
         tone: 'coach',
       };
     }
@@ -146,22 +171,38 @@ export function coachLine(
   if (p.kind === 'reps') {
     if (set.reps > p.hi) {
       const over = set.reps - p.hi; // [repetitions]
+      // The singular is its own key, not a plural marker passed out of the domain: which words
+      // a count takes is a fact about the language, and the language lives in the copy table.
       return {
-        text: `${over} rep${over === 1 ? '' : 's'} above the prescribed range.`,
+        key: over === 1 ? 'coach.aboveRangeOne' : 'coach.aboveRange',
+        params: { count: over },
         tone: 'coach',
       };
     }
     if (set.reps < p.lo) {
-      return { text: `${set.reps} reps, below the prescribed ${p.lo}-${p.hi}.`, tone: 'coach' };
+      return {
+        key: 'coach.belowRange',
+        params: { reps: set.reps, lo: p.lo, hi: p.hi },
+        tone: 'coach',
+      };
     }
     if (set.reps === p.hi) {
-      return { text: `Top of range at ${formatLoad(set.loadKg, units)} × ${set.reps}.`, tone: 'coach' };
+      return {
+        key: 'coach.topOfRange',
+        params: { load: formatLoad(set.loadKg, units), reps: set.reps },
+        tone: 'coach',
+      };
     }
     return {
-      text: `${formatLoad(set.loadKg, units)} × ${set.reps}, inside the prescribed ${p.lo}-${p.hi}.`,
+      key: 'coach.insideRange',
+      params: { load: formatLoad(set.loadKg, units), reps: set.reps, lo: p.lo, hi: p.hi },
       tone: 'coach',
     };
   }
 
-  return { text: `${formatLoad(set.loadKg, units)} × ${set.reps} logged.`, tone: 'telemetry' };
+  return {
+    key: 'coach.setReadout',
+    params: { load: formatLoad(set.loadKg, units), reps: set.reps },
+    tone: 'telemetry',
+  };
 }

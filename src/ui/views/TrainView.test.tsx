@@ -21,7 +21,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, copy } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
 import { EXERCISE_BY_ID, EXERCISES } from '../../domain/plan/library';
-import { defaultState } from '../../domain/schema';
+import { EXERCISE_NAME_MAX_CHARS, defaultState } from '../../domain/schema';
 import { suggestedProgression } from '../../domain/training/progression';
 import { toStoredLoad } from '../../domain/units';
 import type {
@@ -371,6 +371,20 @@ describe('TrainView set logging feedback', () => {
     logRow(1, '60', '8');
 
     expect(screen.getByText('Top of range at 60 kg × 8.')).toBeInTheDocument();
+  });
+
+  it('renders the coach line through the copy table, not from the domain', () => {
+    // P4 review item 2: coachLine returns a key and its values; this view resolves it. The
+    // assertion quotes the table rather than the literal above, so a reworded template moves
+    // the rendered toast with it and a skin override would reach the same string.
+    seedStore(seed());
+    renderTrain();
+
+    logRow(1, '60', '8');
+
+    expect(
+      screen.getByText(FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 })),
+    ).toBeInTheDocument();
   });
 
   it('offers an undo after deleting a set and restores it', () => {
@@ -760,6 +774,111 @@ describe('TrainView custom and bonus exercises', () => {
     expect(
       screen.getByText(FORMAT.bonusExerciseName('Cable crunch'), { exact: false }),
     ).toBeInTheDocument();
+  });
+
+  /*
+   * P4 review item 1. The name field had no maxLength and the submit handler called the store
+   * unguarded, so a name over ExerciseSchema's 120-character cap threw out of an onClick that
+   * no boundary catches: the set was never added and nothing on screen said why.
+   */
+  const overCap = 'x'.repeat(EXERCISE_NAME_MAX_CHARS + 1); // [characters] 121
+  const atCap = 'x'.repeat(EXERCISE_NAME_MAX_CHARS); // [characters] 120
+
+  /** Opens the form and returns the name field. */
+  function openNameField(): HTMLElement {
+    fireEvent.click(screen.getByRole('button', { name: copy('button.addExercise') }));
+    return screen.getByLabelText(copy('quantity.exerciseName'));
+  }
+
+  it('caps the name field at the schema bound', () => {
+    seedStore(seed());
+    renderTrain();
+    expect(openNameField()).toHaveAttribute('maxlength', String(EXERCISE_NAME_MAX_CHARS));
+  });
+
+  it('refuses a name past the cap, keeps the form open and leaves the store unchanged', () => {
+    seedStore(seed());
+    renderTrain();
+    const field = openNameField();
+    fireEvent.change(field, { target: { value: overCap } });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+
+    expect(
+      screen.getByText(
+        FORMAT.outOfRange(copy('quantity.exerciseName'), 1, EXERCISE_NAME_MAX_CHARS, 'characters'),
+      ),
+    ).toBeInTheDocument();
+    expect(useAppStore.getState().customExercises['profile-1'] ?? []).toHaveLength(0);
+    expect(useAppStore.getState().session.bonusExerciseIds).toHaveLength(0);
+    // The form is still open, so the typed name is still there to be shortened.
+    expect(screen.getByLabelText(copy('quantity.exerciseName'))).toHaveValue(overCap);
+  });
+
+  it('refuses a name that is only whitespace with the same line', () => {
+    seedStore(seed());
+    renderTrain();
+    fireEvent.change(openNameField(), { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+
+    expect(
+      screen.getByText(
+        FORMAT.outOfRange(copy('quantity.exerciseName'), 1, EXERCISE_NAME_MAX_CHARS, 'characters'),
+      ),
+    ).toBeInTheDocument();
+    expect(useAppStore.getState().customExercises['profile-1'] ?? []).toHaveLength(0);
+  });
+
+  it('accepts a name of exactly the cap', () => {
+    seedStore(seed());
+    renderTrain();
+    fireEvent.change(openNameField(), { target: { value: atCap } });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+
+    const custom = useAppStore.getState().customExercises['profile-1'] ?? [];
+    expect(custom).toHaveLength(1);
+    expect(custom[0]?.name).toBe(atCap);
+    // The form closed, which is how the component reports that the store took the record.
+    expect(screen.queryByLabelText(copy('quantity.exerciseName'))).toBeNull();
+  });
+
+  it('surfaces a store refusal instead of throwing out of the click handler', () => {
+    seedStore(seed());
+    /*
+     * The real action, reached through the state object captured before the double is
+     * installed: zustand's setState merges into a NEW object, so this one still holds the
+     * shipped function. It is CALLED rather than referenced, because a bare method reference
+     * trips @typescript-eslint/unbound-method; the store's actions never read `this`.
+     *
+     * The reachable refusals (a colliding id, a name the schema rejects) cannot be provoked
+     * through this form, which mints its own id and now caps its own field, so the double
+     * stands in for any throw the store's gates raise.
+     */
+    const shipped = useAppStore.getState();
+    const restore = (): void => {
+      useAppStore.setState({
+        addCustomExercise: (profileId: string, ex: Exercise): void => {
+          shipped.addCustomExercise(profileId, ex);
+        },
+      });
+    };
+    useAppStore.setState({
+      addCustomExercise: () => {
+        throw new Error('addCustomExercise: "curl" is already an exercise in the shipped library');
+      },
+    });
+    try {
+      renderTrain();
+      fireEvent.change(openNameField(), { target: { value: 'Cable crunch' } });
+      expect(() => {
+        fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+      }).not.toThrow();
+
+      expect(screen.getByText(copy('status.customExerciseRefused'))).toBeInTheDocument();
+      expect(useAppStore.getState().session.bonusExerciseIds).toHaveLength(0);
+      expect(screen.getByLabelText(copy('quantity.exerciseName'))).toHaveValue('Cable crunch');
+    } finally {
+      restore();
+    }
   });
 });
 

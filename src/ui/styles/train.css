@@ -446,6 +446,14 @@
   margin: 0.75rem 0;
 }
 
+/* The custom-exercise form's own refusal line (P4 review item 1). It takes the whole row so
+   it sits under the controls rather than beside them, and --danger is the existing token. */
+.add-custom-error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--danger);
+}
+
 .mass-quick-log,
 .post-session {
   display: flex;

@@ -8,8 +8,9 @@
 // session-local half - "this exercise is on today's card" - is the session slice's
 // bonusExerciseIds, which is mirrored to sessionStorage and dropped when the session ends.
 import { useState, type ReactElement } from 'react';
-import { copy } from '../../../content/copy';
+import { FORMAT, copy } from '../../../content/copy';
 import { newId } from '../../../domain/ids';
+import { EXERCISE_NAME_MAX_CHARS } from '../../../domain/schema';
 import type { Exercise, Modality, Profile } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import '../../styles/train.css';
@@ -21,10 +22,35 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [modality, setModality] = useState<Modality>('dumbbell');
+  /**
+   * The one line this form shows when it will not submit, or null. It is local state and not
+   * `status.lastActionError`: the store's banner is for a schedule refusal the whole view has
+   * to answer, and this is a field the user is still typing into.
+   */
+  const [error, setError] = useState<string | null>(null);
 
   const submit = (): void => {
     const trimmed = name.trim();
-    if (trimmed === '') return;
+    /*
+     * P4 review item 1, first layer. `ExerciseSchema.name` is 1 to EXERCISE_NAME_MAX_CHARS
+     * characters, and the trimmed name is what is stored, so the trimmed length is what is
+     * checked. The bound is imported from the schema rather than restated, so the message and
+     * the rule that rejects the record cannot drift apart. maxLength on the input below stops
+     * a typed or pasted overrun; this stops one that reached the state by any other route
+     * (an autofill, a composition event, a test) and, on the empty branch, says why nothing
+     * happened where the old code returned in silence.
+     */
+    if (trimmed === '' || trimmed.length > EXERCISE_NAME_MAX_CHARS) {
+      setError(
+        FORMAT.outOfRange(
+          copy('quantity.exerciseName'),
+          1, // [characters] ExerciseSchema.name minimum
+          EXERCISE_NAME_MAX_CHARS, // [characters]
+          'characters',
+        ),
+      );
+      return;
+    }
     const exercise: Exercise = {
       id: newId(),
       name: trimmed,
@@ -45,10 +71,25 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
       formCueId: null,
       note: null,
     };
-    // Through getState(): the store's actions are created once and never replace themselves,
-    // so subscribing to one buys nothing and hands the component an unbound method.
-    useAppStore.getState().addCustomExercise(profile.id, exercise);
-    useAppStore.getState().addBonusExercise(exercise.id);
+    /*
+     * P4 review item 1, second layer. `addCustomExercise` throws on a colliding id and on a
+     * record the schema rejects, and this is a click handler: React does not catch a throw
+     * from an event handler, so it escaped to the window and left the form sitting there with
+     * no explanation. The catch turns it into the one line this form can show. The bonus-card
+     * call is INSIDE the try and after it, so a refused record is never added to today's card.
+     */
+    try {
+      // Through getState(): the store's actions are created once and never replace themselves,
+      // so subscribing to one buys nothing and hands the component an unbound method.
+      useAppStore.getState().addCustomExercise(profile.id, exercise);
+      useAppStore.getState().addBonusExercise(exercise.id);
+    } catch {
+      // The thrown text names the store function and the id it minted, neither of which the
+      // user chose or can act on, so the copy line is shown instead of the message.
+      setError(copy('status.customExerciseRefused'));
+      return;
+    }
+    setError(null);
     setName('');
     setOpen(false);
   };
@@ -58,6 +99,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
       <button
         type="button"
         onClick={() => {
+          setError(null);
           setOpen(true);
         }}
       >
@@ -74,9 +116,12 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
           id="custom-exercise-name"
           type="text"
           autoComplete="off"
+          // [characters] ExerciseSchema.name's own bound, imported rather than restated.
+          maxLength={EXERCISE_NAME_MAX_CHARS}
           value={name}
           onChange={(e) => {
             setName(e.target.value);
+            setError(null);
           }}
           onKeyDown={(e) => {
             if (e.key !== 'Enter') return;
@@ -107,6 +152,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
       <button
         type="button"
         onClick={() => {
+          setError(null);
           setOpen(false);
         }}
       >
@@ -115,6 +161,15 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
       <button type="button" onClick={submit}>
         {copy('button.saveExercise')}
       </button>
+      {/*
+       * role="alert" because it answers a control the user just pressed, and it is rendered
+       * after the controls so a screen reader reaches it in the order the user caused it.
+       */}
+      {error !== null && (
+        <p className="add-custom-error" role="alert">
+          {error}
+        </p>
+      )}
     </div>
   );
 }

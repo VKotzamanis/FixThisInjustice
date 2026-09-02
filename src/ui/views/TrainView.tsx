@@ -129,7 +129,16 @@ export function TrainView(): ReactElement {
   const onCoach = useCallback(
     (line: CoachLine) => {
       pushToast({
-        text: line.text,
+        /*
+         * P4 review item 2: the coach line arrives as a copy KEY and its values, and is
+         * resolved here, at the boundary. The domain names which sentence to say; this file
+         * says it in the words src/content/copy.ts holds, so P8's skin overlay reaches it.
+         * Resolution happens at push time rather than inside SessionToast because that is
+         * already where `coach.setDeleted` and `button.undo` below are resolved: a ToastItem
+         * carries a rendered string, and one kind of toast that carried a key instead would
+         * make the component answer two shapes.
+         */
+        text: FORMAT.withSlots(line.key, line.params),
         tone: line.tone,
         expiresAt: Date.now() + COACH_TOAST_MS, // [ms] epoch UTC
         actionLabel: null,
