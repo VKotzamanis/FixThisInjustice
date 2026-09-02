@@ -64,10 +64,14 @@ function hasEmoji(value: string): boolean {
 
 /** R5: an en-dash is legal only between two digits (`6-8`). Anywhere else it is a connector. */
 function hasConnectorEnDash(value: string): boolean {
-  for (let i = 0; i < value.length; i += 1) {
-    if (value[i] !== '–') continue;
-    const before = value[i - 1] ?? '';
-    const after = value[i + 1] ?? '';
+  // A `{slot}` stands for a number a domain module computed, so it is scored as one digit here,
+  // for the reason `wordCount` gives for not scoring it as a word: `sessions {from}–{to}` is a
+  // numeric range at runtime, and reading the brace as a letter would fail a legal string.
+  const rendered = value.replace(/\{[a-zA-Z]+\}/g, '0');
+  for (let i = 0; i < rendered.length; i += 1) {
+    if (rendered[i] !== '–') continue;
+    const before = rendered[i - 1] ?? '';
+    const after = rendered[i + 1] ?? '';
     if (!/\d/.test(before) || !/\d/.test(after)) return true;
   }
   return false;
@@ -444,6 +448,80 @@ describe('the FORMAT frames reach a skin', () => {
   it('reads the session cursor from the table, so a skin reaches the indicator', () => {
     expect(FORMAT.planPositionLabel(12, 48, '')).toBe('Session 12 of 48');
     expect(FORMAT.planPositionLabel(12, 48, '', SKIN_COPY.limelight)).toBe('ep. 12 of 48');
+  });
+});
+
+/**
+ * The thirteen frames P8 Task 16 moved off a template literal and onto a copy key.
+ *
+ * The check is parity, not plausibility: each expectation quotes the exact literal the frame
+ * held before the conversion, so a table edit that changes what the clinical skin renders fails
+ * here rather than in a screenshot. The en dash in `blockSessions` and the U+2212 MINUS SIGN in
+ * `deloadNote` are part of that literal and are compared as written.
+ */
+describe('the converted frames render the clinical string they replaced', () => {
+  it('renders each default byte for byte', () => {
+    expect(FORMAT.nextSession('Wed', '07:00', 'Push')).toBe('Next: Wed 07:00 Push.');
+    expect(FORMAT.pausedSince('2026-09-07')).toBe('Plan paused since 2026-09-07.');
+    expect(FORMAT.skipReason('illness')).toBe('Reason: illness');
+    expect(FORMAT.trainLabelToday('Legs')).toBe('Train Legs today');
+    expect(FORMAT.blockLabel(2)).toBe('Block 2');
+    expect(FORMAT.blockSessions(4, 6)).toBe('sessions 4\u20136');
+    expect(FORMAT.deloadNote(50)).toBe('volume \u2212' + '50 %, load unchanged');
+    expect(FORMAT.weekOfCount(1, 2)).toBe('Week 1 of 2');
+    expect(FORMAT.videoInstanceOf(2, 6)).toBe('instance 2 of 6');
+    expect(FORMAT.complianceWeek('2026-01-05', 2, 3)).toBe('Week of 2026-01-05: 2 of 3 completed');
+    expect(FORMAT.estimated1RM('99 kg')).toBe('99 kg estimated 1RM');
+    expect(FORMAT.amrapBest('Push-up', 15)).toBe('Push-up: best 15 reps in one set');
+    expect(FORMAT.weekMissed('2026-08-24', 1, 4)).toBe(
+      'Week of 2026-08-24: 1 of 4 sessions completed.',
+    );
+    expect(FORMAT.weekMissed('2026-08-24', 0, 4)).toBe('Week of 2026-08-24: no sessions completed.');
+  });
+
+  it('leaves no slot standing in any of them', () => {
+    const rendered = [
+      FORMAT.nextSession('Wed', '07:00', 'Push'),
+      FORMAT.pausedSince('2026-09-07'),
+      FORMAT.skipReason('illness'),
+      FORMAT.trainLabelToday('Legs'),
+      FORMAT.blockLabel(2),
+      FORMAT.blockSessions(4, 6),
+      FORMAT.deloadNote(50),
+      FORMAT.weekOfCount(1, 2),
+      FORMAT.videoInstanceOf(2, 6),
+      FORMAT.complianceWeek('2026-01-05', 2, 3),
+      FORMAT.estimated1RM('99 kg'),
+      FORMAT.amrapBest('Push-up', 15),
+      FORMAT.weekMissed('2026-08-24', 1, 4),
+      FORMAT.weekMissed('2026-08-24', 0, 4),
+    ];
+    for (const value of rendered) {
+      expect({ value, slot: /\{[a-zA-Z]+\}/.test(value) }).toEqual({ value, slot: false });
+    }
+  });
+
+  it('takes an overlay table, so a skin reaches the words beside the numbers', () => {
+    // A literal overlay, not a shipped skin: the point is that the frame reads the key, and a
+    // row the limelight table does not carry today would make this assertion vacuous.
+    const overlay: Partial<Record<CopyKey, string>> = {
+      'label.block': 'act {number}',
+      'status.blockSessions': 'shows {from}\u2013{to}',
+      'status.amrapBest': '{name}: {reps} reps, top of the run',
+      'advice.weekMissed': 'week of {monday}: {completed} of {target}. flop era.',
+    };
+    expect(FORMAT.blockLabel(2, overlay)).toBe('act 2');
+    expect(FORMAT.blockSessions(4, 6, overlay)).toBe('shows 4\u20136');
+    expect(FORMAT.amrapBest('Push-up', 15, overlay)).toBe('Push-up: 15 reps, top of the run');
+    expect(FORMAT.weekMissed('2026-08-24', 1, 4, overlay)).toBe(
+      'week of 2026-08-24: 1 of 4. flop era.',
+    );
+  });
+
+  it('never expands a replacement pattern found in a value', () => {
+    // The `$&` guard the frames record: a plan label the user typed is inserted verbatim.
+    expect(FORMAT.trainLabelToday('$& Legs')).toBe('Train $& Legs today');
+    expect(FORMAT.skipReason('$`illness')).toBe('Reason: $`illness');
   });
 });
 

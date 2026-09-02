@@ -427,6 +427,9 @@ export type CopyKey =
   | 'status.markPlanned'
   | 'status.markNotPlanned'
   | 'status.noEstimated1RM'
+  | 'status.estimated1RM'
+  | 'status.complianceWeek'
+  | 'status.amrapBest'
   // --- export view and summary document (P7 Task 5; appended by that task) ---
   | 'label.downloads'
   | 'label.importSection'
@@ -772,11 +775,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.sessionSkipped': 'Session skipped.',
   'hero.sessionInProgress': 'Session in progress.',
   'hero.noSessionToday': 'No session scheduled today.',
-  'advice.nextSession': 'Next: Wed 07:00 Push.', // formatted; weekday, start time, label
+  'advice.nextSession': 'Next: {weekday} {startTime} {label}.', // template; FORMAT.nextSession
   'advice.noSessionIn14Days': 'No sessions in the next 14 days.',
   'advice.noSessionsLeftThisWeek': 'No sessions remain this week.',
-  'status.planPaused': 'Plan paused since 2026-09-07.', // formatted; pause start date
-  'status.skipReason': 'Reason: illness', // formatted; the reason the user typed
+  'status.planPaused': 'Plan paused since {date}.', // template; FORMAT.pausedSince
+  'status.skipReason': 'Reason: {reason}', // template; FORMAT.skipReason
   'button.startSession': 'Start session',
   'button.returnToSession': 'Return to session',
   'button.markCompleted': 'Mark completed',
@@ -784,10 +787,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.confirmSkip': 'Confirm skip',
   'button.cancel': 'Cancel',
   'button.trainSomethingElse': 'Train something else',
-  'button.trainLabelToday': 'Train Legs today', // formatted; the chosen label
+  'button.trainLabelToday': 'Train {label} today', // template; FORMAT.trainLabelToday
   'button.pausePlan': 'Pause plan',
   'button.resumePlan': 'Resume plan',
-  'status.deloadNote': 'volume −50 %, load unchanged', // formatted; the actual set modifier
+  'status.deloadNote': 'volume −{cutPct} %, load unchanged', // template; FORMAT.deloadNote
 
   // --- training session (P4) ---
   'hero.train': 'TRAIN',
@@ -863,8 +866,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.weeklyTargetMissed': 'Weekly target missed',
   'hero.motivationPreview': 'Motivation video: preview',
   'advice.motivationPreview': 'Preview. No week is being reported.',
-  'advice.weekMissed': 'Week of 2026-08-24: 1 of 4 sessions completed.', // formatted
-  'advice.weekMissedNone': 'Week of 2026-08-24: no sessions completed.', // formatted
+  'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
+  'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.play': 'Play',
   'button.dismiss': 'Dismiss',
   'button.muteThisWeek': 'Mute this week',
@@ -1006,14 +1009,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The accessible name of the block strip. The chips are buttons that move the week
   // scrubber, so the group needs a name of its own for the list they form.
   'label.blockStrip': 'Training blocks',
-  'label.block': 'Block 1', // formatted; the 1-based block number
-  'status.blockSessions': 'sessions 1–3', // formatted; the block's session range
+  'label.block': 'Block {number}', // template; FORMAT.blockLabel
+  'status.blockSessions': 'sessions {from}–{to}', // template; FORMAT.blockSessions
   // The flag on a deload chip. Set beside `status.deloadNote`, which states the size of the
   // cut: this word says only that the block is one, so a skin can reword it without touching
   // the quantity beside it.
   'status.deloadTag': 'DELOAD',
   'label.week': 'Week',
-  'label.weekOfCount': 'Week 1 of 2', // formatted; the shown week and the plan's week count
+  'label.weekOfCount': 'Week {shown} of {total}', // template; FORMAT.weekOfCount
   // The cursor marker on the session the plan will serve next. Lower case: it is a mark on a
   // row, not a heading.
   'status.nextSession': 'next',
@@ -1029,7 +1032,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.formReference': 'Form reference',
   // The heading over the search panel shown when no clip id is recorded for the exercise.
   'label.videoSearch': 'Search',
-  'status.videoInstance': 'instance 1 of 6', // formatted; the 1-based position in the allowlist
+  'status.videoInstance': 'instance {shown} of {total}', // template; FORMAT.videoInstanceOf
   // The accessible name of the close control on both dialogs. The glyph itself is the token
   // set's mark, which copy contract R6 admits; this is what a screen reader says instead.
   'button.closeModal': 'Close',
@@ -1124,6 +1127,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Shown where the Epley equation has no defensible input: no external load, or no set
   // inside its validity domain of ten repetitions.
   'status.noEstimated1RM': 'No estimated 1RM',
+  // The three rows the Log view's frames read rather than restate, so a skin reaches the
+  // words beside the numbers. Every slot is a value a domain module computed; the words
+  // around them are the only thing a skin may change.
+  'status.estimated1RM': '{load} estimated 1RM', // template; FORMAT.estimated1RM
+  'status.complianceWeek': 'Week of {monday}: {completed} of {target} completed', // template; FORMAT.complianceWeek
+  'status.amrapBest': '{name}: best {reps} reps in one set', // template; FORMAT.amrapBest
 
   // --- export view and summary document (P7 Task 5; appended by that task) ---
   'label.downloads': 'Downloads',
@@ -1629,17 +1638,28 @@ export const FORMAT = {
   setsBy: (sets: string, prescription: string): string => `${sets} × ${prescription}`,
 
   /** "Next: Wed 07:00 Push." The weekday abbreviation comes from a LocalDate, never a Date. */
-  nextSession: (weekday: string, startTime: string, label: string): string =>
-    `Next: ${weekday} ${startTime} ${label}.`,
+  nextSession: (
+    weekday: string,
+    startTime: string,
+    label: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('advice.nextSession', overrides)
+      .replace('{weekday}', () => weekday)
+      .replace('{startTime}', () => startTime)
+      .replace('{label}', () => label),
 
   /** "Plan paused since 2026-09-07." The date is the open pause's own `from`. */
-  pausedSince: (date: string): string => `Plan paused since ${date}.`,
+  pausedSince: (date: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.planPaused', overrides).replace('{date}', () => date),
 
   /** "Reason: illness". The reason is the user's text, reproduced and never classified. */
-  skipReason: (reason: string): string => `Reason: ${reason}`,
+  skipReason: (reason: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.skipReason', overrides).replace('{reason}', () => reason),
 
   /** "Train Legs today". The label is one of remainingLabelsThisWeek. */
-  trainLabelToday: (label: string): string => `Train ${label} today`,
+  trainLabelToday: (label: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('button.trainLabelToday', overrides).replace('{label}', () => label),
 
   /** "6 of 6 sessions closed on 2026-09-07." The date is PlanCursor.completedOn. */
   programmeClosed: (total: number, date: string): string =>
@@ -1681,13 +1701,21 @@ export const FORMAT = {
   // --- Plan view (P3 Task 6) ---
 
   /** "Block 2". `blockNumber` is 1-based; `PlanBlock.index` is 0-based, so the view adds one. */
-  blockLabel: (blockNumber: number): string => `Block ${blockNumber}`,
+  blockLabel: (blockNumber: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('label.block', overrides).replace('{number}', () => String(blockNumber)),
 
   /**
    * "sessions 4–6": the plan positions a block covers, 1-based and inclusive. The en dash is a
    * numeric range, which copy contract R5 retains.
    */
-  blockSessions: (from: number, to: number): string => `sessions ${from}–${to}`,
+  blockSessions: (
+    from: number,
+    to: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.blockSessions', overrides)
+      .replace('{from}', () => String(from))
+      .replace('{to}', () => String(to)),
 
   /**
    * "volume −50 %, load unchanged". `cutPct` is the percentage of PLANNED SETS the block
@@ -1697,10 +1725,18 @@ export const FORMAT = {
    * deload, so a deload that changed the load would be a defect, not a different sentence.
    * The leading mark is U+2212 MINUS SIGN, not a dash: it is arithmetic, not a connector.
    */
-  deloadNote: (cutPct: number): string => `volume −${cutPct} %, load unchanged`,
+  deloadNote: (cutPct: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.deloadNote', overrides).replace('{cutPct}', () => String(cutPct)),
 
   /** "Week 1 of 2". Both are 1-based counts of weeks over the whole plan. */
-  weekOfCount: (shown: number, total: number): string => `Week ${shown} of ${total}`,
+  weekOfCount: (
+    shown: number,
+    total: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('label.weekOfCount', overrides)
+      .replace('{shown}', () => String(shown))
+      .replace('{total}', () => String(total)),
 
   /**
    * R9's disclosure body for a deload week: the multiplication behind the set counts printed
@@ -1717,7 +1753,14 @@ export const FORMAT = {
    * `total` is that list's length, which is also what generates the CSP frame-src allowlist,
    * so the count the user reads and the count the browser enforces cannot differ.
    */
-  videoInstanceOf: (shown: number, total: number): string => `instance ${shown} of ${total}`,
+  videoInstanceOf: (
+    shown: number,
+    total: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.videoInstance', overrides)
+      .replace('{shown}', () => String(shown))
+      .replace('{total}', () => String(total)),
 
   // --- Train view (P4 Task 10) ---
 
@@ -1901,22 +1944,37 @@ export const FORMAT = {
    * arithmetic and belongs behind a disclosure (R9), while the two counts are the facts the
    * user reads the row for.
    */
-  complianceWeek: (monday: string, completed: number, target: number): string =>
-    `Week of ${monday}: ${completed} of ${target} completed`,
+  complianceWeek: (
+    monday: string,
+    completed: number,
+    target: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.complianceWeek', overrides)
+      .replace('{monday}', () => monday)
+      .replace('{completed}', () => String(completed))
+      .replace('{target}', () => String(target)),
 
   /**
    * "99 kg estimated 1RM". The word "estimated" is not decoration: the Epley figure carries a
    * standard error of estimate of several kilograms (Reynolds 2006) and must never be read as
    * a measured maximum. The load arrives already formatted by src/domain/units.ts.
    */
-  estimated1RM: (load: string): string => `${load} estimated 1RM`,
+  estimated1RM: (load: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.estimated1RM', overrides).replace('{load}', () => load),
 
   /** The empty state of one exercise's sparkline, naming the exercise it is empty for. */
   noSetsForExercise: (name: string): string => `No ${name} sets logged yet.`,
 
   /** "Push-up: best 15 reps in one set", the caption under a weekly AMRAP sparkline. */
-  amrapBest: (name: string, reps: number): string =>
-    `${name}: best ${reps} reps in one set`,
+  amrapBest: (
+    name: string,
+    reps: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.amrapBest', overrides)
+      .replace('{name}', () => name)
+      .replace('{reps}', () => String(reps)),
 
   /** The accessible name of an AMRAP sparkline: the week range it covers and its last point. */
   amrapChartLabel: (name: string, fromWeek: string, toWeek: string, lastReps: number): string =>
@@ -2055,6 +2113,28 @@ export const FORMAT = {
 
   /** "12.4 MiB": the stored clip's size, one number with its unit. [MiB] */
   motivationClipSize: (mib: string): string => `${mib} MiB`,
+
+  /**
+   * "Week of 2026-08-24: 1 of 4 sessions completed.", the body of the missed-week modal.
+   *
+   * The words were written out in `describeMiss` (src/domain/motivation/trigger.ts) and are
+   * now read from `advice.weekMissed` / `advice.weekMissedNone`, which existed for this
+   * sentence and had no reader. Two counts, never their difference: the shortfall is
+   * arithmetic the user cannot act on (R9), and the zero branch states no counts at all
+   * because "0 of 4" reads as a score.
+   */
+  weekMissed: (
+    monday: string,
+    completed: number,
+    target: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    completed === 0
+      ? copy('advice.weekMissedNone', overrides).replace('{monday}', () => monday)
+      : copy('advice.weekMissed', overrides)
+          .replace('{monday}', () => monday)
+          .replace('{completed}', () => String(completed))
+          .replace('{target}', () => String(target)),
 
   // --- time capsule (P8 Task 7) ---
 

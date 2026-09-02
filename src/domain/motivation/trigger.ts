@@ -1,4 +1,6 @@
 import { addDays, compareLocalDate, instantOf } from '../dates';
+import { FORMAT } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
 import type { AppState, EpochMs, LocalDate, TimeZone, WeeklyReview } from '../types';
 
 /**
@@ -85,13 +87,19 @@ export function pendingMotivation(
 }
 
 /**
- * One clinical sentence naming the week and what was completed against the target.
+ * One sentence naming the week and what was completed against the target.
  * Counts are sessions. The shortfall itself is arithmetic the user cannot act on,
  * so it is not stated (copy contract R9); the modal heading already says the target
  * was missed.
+ *
+ * The words are `advice.weekMissed` and `advice.weekMissedNone`, read through
+ * `FORMAT.weekMissed` rather than written out here, so the skin the caller is rendering under
+ * reaches them. `overrides` is the active skin's table (`useCopyOverrides()` at the call site);
+ * omitting it renders the clinical sentence this function held before, byte for byte.
  */
-export function describeMiss(review: WeeklyReview): string {
-  return review.completed === 0
-    ? `Week of ${review.weekStart}: no sessions completed.`
-    : `Week of ${review.weekStart}: ${review.completed} of ${review.target} sessions completed.`;
+export function describeMiss(
+  review: WeeklyReview,
+  overrides?: Partial<Record<CopyKey, string>>,
+): string {
+  return FORMAT.weekMissed(review.weekStart, review.completed, review.target, overrides);
 }
