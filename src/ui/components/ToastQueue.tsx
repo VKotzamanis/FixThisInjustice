@@ -13,6 +13,10 @@
 // A31 drove the timing. Every deadline is an absolute instant, not a countdown: a backgrounded
 // tab throttles timeouts, so a toast holding a remaining duration comes back with time still on
 // it. The deadline is re-armed on visibilitychange, which clears anything already expired.
+//
+// `SessionToast` (src/ui/views/TrainView.tsx:371) is a fifth such slot and is retired by P8
+// Task 10, the task that mounts `ToastProvider` and moves its callers onto `push`; until then
+// the two coexist and this module is mounted nowhere.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';
@@ -25,7 +29,14 @@ import type { EpochMs } from '../../domain/types';
 export type ToastKind = 'undo' | 'milestone' | 'coach' | 'telemetry' | 'specimen';
 
 export type ToastInput =
-  | { kind: 'undo'; message: string; onUndo: () => void }
+  /*
+   * `deadlineAt` is the instant the OFFER dies, not the instant the toast was made: the store
+   * holds the deleted set for UNDO_WINDOW_MS from the deletion (src/store/training.ts), and
+   * `undoDelete()` restores nothing after it. The caller passes `deletedAt + UNDO_WINDOW_MS`
+   * so a toast that waited behind another cannot outlive the buffer it acts on. It is required
+   * on this class and absent from every other, whose deadline is a duration this module owns.
+   */
+  | { kind: 'undo'; message: string; onUndo: () => void; deadlineAt: EpochMs } // [ms] epoch, UTC
   | { kind: 'milestone'; count: number }
   | { kind: 'coach'; message: string }
   | { kind: 'telemetry'; message: string }
@@ -46,9 +57,15 @@ export const TOAST_PRIORITY: readonly ToastKind[] = [
   'specimen',
 ];
 
-/** Auto-dismiss durations [ms], carried over from the legacy components unchanged. */
-export const TOAST_DURATION_MS: Readonly<Record<ToastKind, number>> = {
-  undo: 6000, // [ms] legacy/console-fun.jsx:517 UndoToast
+/**
+ * Auto-dismiss durations [ms], carried over from the legacy components unchanged.
+ *
+ * `undo` is absent BY TYPE, not by omission: its deadline is the store's undo window, which
+ * starts at the deletion rather than at the moment the toast reaches the screen, and arrives
+ * as `deadlineAt` on the push. A duration entry here would be a second, drifting copy of
+ * UNDO_WINDOW_MS and would silently re-open an offer the store has already spent.
+ */
+export const TOAST_DURATION_MS: Readonly<Record<Exclude<ToastKind, 'undo'>, number>> = {
   milestone: 7000, // [ms] legacy/console-fun.jsx:449 MilestoneToast
   coach: 4500, // [ms] legacy/console-fun.jsx:105 TelemetryToast (coach tone)
   telemetry: 4500, // [ms] legacy/console-fun.jsx:105 TelemetryToast
@@ -86,14 +103,18 @@ export function selectVisible(queue: readonly Toast[]): Toast[] {
 /**
  * What makes two pushes the same toast.
  *
- * `undo` returns null and is never merged: two deleted sets carry the same message and
- * different callbacks, so merging them would silently discard the second route back. Every
- * other class is identified by its payload, because a repeat of it says nothing new.
+ * Every class but `undo` is identified by its PAYLOAD, because a repeat of it says nothing
+ * new. `undo` is identified by its KIND alone, ignoring message and callback, because the
+ * store keeps a single undo buffer and `undoDelete()` spends it: two live undo toasts would
+ * both act on the newest deletion, and a second offer queued behind the first would first be
+ * shown at the instant its own window closed. One buffer, one toast. The collision is
+ * resolved differently for this class - the newer push replaces the older, see `push` - since
+ * the newer one is the deletion the buffer actually holds.
  */
-function payloadKey(input: ToastInput): string | null {
+function payloadKey(input: ToastInput): string {
   switch (input.kind) {
     case 'undo':
-      return null;
+      return 'undo';
     case 'milestone':
       return `milestone:${String(input.count)}`;
     case 'coach':
@@ -112,8 +133,13 @@ function payloadKey(input: ToastInput): string | null {
  * That keeps the toasts nearest to being shown, including the one on screen, and drops the
  * ones furthest from it - which, when the incoming toast is itself the least urgent and
  * newest, is the incoming one. `undo` is never a candidate: dropping it removes the user's
- * only route back from a deletion. Returns -1 when every toast is an `undo`, and the cap then
- * yields rather than take that route away.
+ * only route back from a deletion.
+ *
+ * A candidate always exists at the cap: an `undo` push replaces the standing one, so the queue
+ * holds at most ONE undo, and TOAST_MAX_QUEUE is 6. The exhausted scan therefore states an
+ * invariant rather than a case - a queue of nothing but undo toasts would mean the
+ * replacement rule had been lost, and yielding on the cap would hide that instead of
+ * reporting it.
  */
 function evictionIndex(queue: readonly Toast[]): number {
   for (let p = TOAST_PRIORITY.length - 1; p >= 0; p -= 1) {
@@ -123,15 +149,16 @@ function evictionIndex(queue: readonly Toast[]): number {
       if (queue[i]?.kind === kind) return i;
     }
   }
-  return -1;
+  throw new Error(
+    `toast queue holds ${String(queue.length)} toasts and none is evictable: more than one undo`,
+  );
 }
 
 /** Append, then enforce the cap. Pure, so the ordering rules are testable without a render. */
 function enqueue(queue: readonly Toast[], toast: Toast): Toast[] {
   const next = [...queue, toast];
   if (next.length <= TOAST_MAX_QUEUE) return next;
-  const drop = evictionIndex(next);
-  return drop === -1 ? next : next.filter((_, i) => i !== drop);
+  return next.filter((_, i) => i !== evictionIndex(next));
 }
 
 interface ToastApi {
@@ -143,6 +170,12 @@ interface ToastApi {
    * destructure them off the context value, and a method signature loses its `this` binding
    * when separated from its object (@typescript-eslint/unbound-method). The shape is
    * otherwise the one the plan prints.
+   */
+  /**
+   * Queues a toast and returns the id of the toast that now REPRESENTS this push: the new one,
+   * or - when the push merged into a standing toast of the same payload - the standing one.
+   * Either way `dismiss(id)` withdraws what the user can see, so a caller never has to know
+   * which of the two happened.
    */
   push: (input: ToastInput) => string;
   dismiss: (id: string) => void;
@@ -177,15 +210,21 @@ export function ToastProvider({ children }: { children: ReactNode }): ReactEleme
       if (input.kind === 'specimen' && SPECIMEN_BY_ID[input.cardId] === undefined) return newId();
 
       const key = payloadKey(input);
-      if (key !== null) {
-        const standing = queueRef.current.find((t) => payloadKey(t) === key);
-        // Merged, not queued twice. The caller gets the standing toast's id, so dismissing it
-        // dismisses the one the user can actually see.
-        if (standing !== undefined) return standing.id;
-      }
+      const standing = queueRef.current.find((t) => payloadKey(t) === key);
+      // Merged, not queued twice. The caller gets the standing toast's id, so dismissing it
+      // dismisses the one the user can actually see.
+      if (standing !== undefined && input.kind !== 'undo') return standing.id;
 
       const toast: Toast = { ...input, id: newId() };
-      commit(enqueue(queueRef.current, toast));
+      /*
+       * An `undo` push REPLACES the standing offer instead of merging into it: the store's
+       * single buffer now holds the newer deletion, so the older toast's callback would
+       * restore the wrong set, and its deadline has been superseded. It is dropped silently -
+       * `onUndo` is never called, because withdrawing an offer is not accepting it.
+       */
+      const base =
+        standing === undefined ? queueRef.current : queueRef.current.filter((t) => t !== standing);
+      commit(enqueue(base, toast));
       return toast.id;
     },
     [commit],
@@ -230,10 +269,31 @@ export function useToasts(): ToastApi {
  * for a fresh interval (code review A31). The effect runs when the toast becomes VISIBLE,
  * which is when this component mounts, so a queued toast spends no part of its duration
  * waiting.
+ *
+ * The same rule sets the cost of preemption: a toast the queue takes off screen for a more
+ * urgent one is UNMOUNTED, so when it returns it restarts its full duration rather than
+ * resuming a remainder. That is deliberate - the user's reading of it was interrupted - and it
+ * is why the class durations bound the drain only in the absence of preemption. An `undo` is
+ * exempt because its deadline is absolute and belongs to the store, not to the screen.
+ *
+ * `deadlineAt` and `durationMs` are resolved by the caller so the dependency list stays
+ * primitive: the effect must re-arm when THIS toast's identity or deadline changes, never
+ * merely because a re-render handed it a new object.
  */
-function useAutoDismiss(id: string, kind: ToastKind, onDismiss: (id: string) => void): void {
+function useAutoDismiss(
+  id: string,
+  deadlineAt: EpochMs | null,
+  durationMs: number,
+  onDismiss: (id: string) => void,
+): void {
   useEffect(() => {
-    const expiresAt: EpochMs = Date.now() + TOAST_DURATION_MS[kind]; // [ms] epoch UTC
+    /*
+     * [ms] epoch, UTC. An `undo` carries the store's own deadline and is used as given; every
+     * other class has deadlineAt === null and starts its duration HERE, at mount, which is the
+     * moment it becomes visible. Exactly one of the two is set, so the sum below is never a
+     * fallback duration for an undo.
+     */
+    const expiresAt: EpochMs = deadlineAt ?? Date.now() + durationMs;
     let handle = 0;
     const arm = (): void => {
       window.clearTimeout(handle);
@@ -247,7 +307,7 @@ function useAutoDismiss(id: string, kind: ToastKind, onDismiss: (id: string) => 
       window.clearTimeout(handle);
       document.removeEventListener('visibilitychange', arm);
     };
-  }, [id, kind, onDismiss]);
+  }, [id, deadlineAt, durationMs, onDismiss]);
 }
 
 /** The body of one toast. Every string comes from the copy table or the content module. */
@@ -291,7 +351,10 @@ function toastContent(toast: Toast): ReactElement | null {
 
 function ToastShell(props: { toast: Toast; onDismiss: (id: string) => void }): ReactElement | null {
   const { toast, onDismiss } = props;
-  useAutoDismiss(toast.id, toast.kind, onDismiss);
+  // deadlineAt: [ms] epoch, UTC on an undo; null on every other class, which uses durationMs.
+  const deadlineAt: EpochMs | null = toast.kind === 'undo' ? toast.deadlineAt : null;
+  const durationMs = toast.kind === 'undo' ? 0 : TOAST_DURATION_MS[toast.kind]; // [ms]
+  useAutoDismiss(toast.id, deadlineAt, durationMs, onDismiss);
 
   const dismiss = (): void => {
     onDismiss(toast.id);
@@ -337,13 +400,19 @@ function ToastShell(props: { toast: Toast; onDismiss: (id: string) => void }): R
 }
 
 /**
- * The one live region, mounted once beside the app's views.
+ * The two live regions, mounted once beside the app's views.
  *
- * It is always in the DOM, empty or not: a live region a screen reader first meets at the
- * moment its content arrives is announced unreliably. `role="status"` carries an implicit
- * polite announcement and the attribute is written anyway, because the undo class overrides it
- * to `assertive` - that class is the only one with a deadline the user can miss irreversibly,
- * and it is the only one allowed to interrupt.
+ * Both are always in the DOM, empty or not: a live region a screen reader first meets at the
+ * moment its content arrives is announced unreliably. There are TWO because politeness is a
+ * property of the region, not of the moment - a screen reader reads `aria-live` when the
+ * region is registered, and several will not pick up a change to it on an already-registered
+ * node. Flipping one region between polite and assertive therefore announces the undo offer
+ * at whichever politeness the region happened to be created with. The toast is rendered into
+ * the region that matches its class and the other is left empty.
+ *
+ * `undo` is the assertive one, and the only one: it is the sole class carrying a deadline the
+ * user can miss irreversibly. `role="alert"` is assertive by definition, so no `aria-live` is
+ * written on it and nothing can flip it.
  */
 export function ToastQueue(): ReactElement {
   const { visible, dismiss } = useToasts();
@@ -358,8 +427,14 @@ export function ToastQueue(): ReactElement {
        * An open dialog owns Escape. ModalShell listens on this same window, so without this
        * guard one keypress would close the dialog AND withdraw the toast behind it - including
        * an undo offer the user never aimed at.
+       *
+       * `:not([hidden])` qualifies the match to a dialog that is actually OPEN. ModalShell
+       * unmounts rather than hides, so today the two are the same set; a dialog kept mounted
+       * and hidden would otherwise swallow Escape for the rest of the session, which is a
+       * failure the user cannot diagnose.
        */
-      if (document.querySelector('[role="dialog"][aria-modal="true"]') !== null) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]:not([hidden])') !== null)
+        return;
       dismiss(frontId);
     };
     window.addEventListener('keydown', onKey);
@@ -368,14 +443,17 @@ export function ToastQueue(): ReactElement {
     };
   }, [frontId, dismiss]);
 
+  const shell =
+    front === null ? null : <ToastShell key={front.id} toast={front} onDismiss={dismiss} />;
+
   return (
-    <div
-      className="toast-stack"
-      role="status"
-      aria-live={front?.kind === 'undo' ? 'assertive' : 'polite'}
-      aria-atomic="true"
-    >
-      {front !== null && <ToastShell key={front.id} toast={front} onDismiss={dismiss} />}
+    <div className="toast-stack">
+      <div className="toast-region" role="status" aria-live="polite" aria-atomic="true">
+        {front?.kind === 'undo' ? null : shell}
+      </div>
+      <div className="toast-region" role="alert" aria-atomic="true">
+        {front?.kind === 'undo' ? shell : null}
+      </div>
     </div>
   );
 }

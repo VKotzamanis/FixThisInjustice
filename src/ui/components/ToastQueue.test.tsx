@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { DEFAULT_COPY, FORMAT } from '../../content/copy';
 import { SPECIMEN_BY_ID } from '../../content/specimenCards';
+import { UNDO_WINDOW_MS } from '../../store/training';
 import {
   TOAST_DURATION_MS,
   TOAST_MAX_QUEUE,
@@ -12,13 +13,35 @@ import {
   selectVisible,
   useToasts,
 } from './ToastQueue';
-import type { Toast } from './ToastQueue';
+import type { Toast, ToastInput } from './ToastQueue';
 
 function t(id: string, kind: Toast['kind']): Toast {
-  if (kind === 'undo') return { id, kind, message: 'Set deleted.', onUndo: () => undefined };
+  if (kind === 'undo') {
+    // deadlineAt: [ms] epoch, UTC. The store's window, not a duration this module owns.
+    return {
+      id,
+      kind,
+      message: 'Set deleted.',
+      onUndo: () => undefined,
+      deadlineAt: Date.now() + UNDO_WINDOW_MS,
+    };
+  }
   if (kind === 'milestone') return { id, kind, count: 50 };
   if (kind === 'specimen') return { id, kind, cardId: 'c001' };
   return { id, kind, message: 'msg' };
+}
+
+/**
+ * An undo push as the store's caller makes it: the deadline is `deletedAt + UNDO_WINDOW_MS`,
+ * the instant `undoDelete()` stops restoring, and it is supplied rather than derived here.
+ */
+function undoInput(onUndo: () => void, deletedAt: number = Date.now()): ToastInput {
+  return {
+    kind: 'undo',
+    message: DEFAULT_COPY['coach.setDeleted'],
+    onUndo,
+    deadlineAt: deletedAt + UNDO_WINDOW_MS, // [ms] epoch, UTC
+  };
 }
 
 let api: ReturnType<typeof useToasts> | null = null;
@@ -28,9 +51,12 @@ function Probe(): ReactElement {
   return <ToastQueue />;
 }
 
-/** `extra` mounts a sibling inside the provider; the Escape guard test needs an open dialog. */
-function renderQueue(extra?: ReactElement): void {
-  render(
+/**
+ * `extra` mounts a sibling inside the provider; the Escape guard test needs an open dialog.
+ * The RenderResult is returned so the teardown test can unmount the region deliberately.
+ */
+function renderQueue(extra?: ReactElement): ReturnType<typeof render> {
+  return render(
     <ToastProvider>
       <Probe />
       {extra}
@@ -101,7 +127,7 @@ describe('useToasts', () => {
       api!.push({ kind: 'telemetry', message: 'set banked' });
       api!.push({ kind: 'coach', message: 'hold this load' });
       api!.push({ kind: 'milestone', count: 50 });
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo: () => undefined });
+      api!.push(undoInput(() => undefined));
     });
     expect(api!.queue).toHaveLength(5);
     expect(onScreen()).toHaveLength(1);
@@ -254,16 +280,103 @@ describe('useToasts', () => {
     expect(api!.queue).toHaveLength(2);
   });
 
-  it('never merges two undo offers', () => {
+  it('replaces a standing undo offer, newest deletion wins', () => {
     renderQueue();
     const first = vi.fn();
     const second = vi.fn();
+    let firstId = '';
+    let secondId = '';
     act(() => {
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo: first });
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo: second });
+      firstId = api!.push(undoInput(first));
     });
-    // Same message, different callbacks: merging them would discard the second route back.
-    expect(api!.queue).toHaveLength(2);
+    act(() => {
+      vi.advanceTimersByTime(1_000);
+      secondId = api!.push(undoInput(second));
+    });
+    /*
+     * The store holds ONE undo buffer and `undoDelete()` acts on the newest deletion, so a
+     * second offer queued behind the first would either be shown after its own window had
+     * closed, or restore the wrong set. One offer, matching the one buffer.
+     */
+    expect(api!.queue).toHaveLength(1);
+    expect(api!.visible.map((x) => x.id)).toEqual([secondId]);
+    expect(secondId).not.toBe(firstId);
+    act(() => {
+      fireEvent.click(screen.getByRole('button', { name: DEFAULT_COPY['button.undo'] }));
+    });
+    expect(second).toHaveBeenCalledTimes(1);
+    // The displaced offer is removed, never fired: it would restore against the newer buffer.
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  it('withdraws an undo at the deadline the caller supplied, not after a class duration', () => {
+    renderQueue();
+    const deletedAt = Date.now(); // [ms] epoch, UTC
+    act(() => {
+      // Two seconds of the store's six-second window are already spent when the toast is
+      // pushed. A duration table would hand it a fresh window and keep offering an undo that
+      // `undoDelete()` has stopped honouring.
+      vi.advanceTimersByTime(2_000);
+      api!.push(undoInput(() => undefined, deletedAt));
+    });
+    act(() => {
+      vi.advanceTimersByTime(UNDO_WINDOW_MS - 2_000 - 1);
+    });
+    expect(api!.queue).toHaveLength(1);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(api!.queue).toHaveLength(0);
+    expect(onScreen()).toHaveLength(0);
+  });
+
+  it('lets an undo preempt a visible specimen, which resumes afterwards', () => {
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'specimen', cardId: 'c001' });
+    });
+    expect(screen.getByText(SPECIMEN_BY_ID['c001']!.title)).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(2_000);
+      api!.push(undoInput(() => undefined));
+    });
+    // The undo takes the one visible slot at once: it is the only class with a deadline the
+    // user can miss irreversibly.
+    expect(screen.getByText(DEFAULT_COPY['coach.setDeleted'])).toBeInTheDocument();
+    expect(screen.queryByText(SPECIMEN_BY_ID['c001']!.title)).toBeNull();
+
+    act(() => {
+      vi.advanceTimersByTime(UNDO_WINDOW_MS);
+    });
+    expect(screen.queryByText(DEFAULT_COPY['coach.setDeleted'])).toBeNull();
+    // Back on screen with a FULL 12 s: a preempted toast's timer starts when it is visible.
+    expect(screen.getByText(SPECIMEN_BY_ID['c001']!.title)).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(TOAST_DURATION_MS.specimen - 1);
+    });
+    expect(api!.queue).toHaveLength(1);
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(api!.queue).toHaveLength(0);
+  });
+
+  it('dismisses a merged push by the id it returned', () => {
+    renderQueue();
+    let first = '';
+    let merged = '';
+    act(() => {
+      first = api!.push({ kind: 'telemetry', message: 'set banked' });
+      merged = api!.push({ kind: 'telemetry', message: 'set banked' });
+    });
+    expect(merged).toBe(first);
+    act(() => {
+      api!.dismiss(merged);
+    });
+    // The returned id names whichever toast now represents the push, so a caller can withdraw
+    // its own toast without having to know that the push was merged into a standing one.
+    expect(api!.queue).toHaveLength(0);
+    expect(screen.queryByText('set banked')).toBeNull();
   });
 
   it('caps the queue and drops the newest, least urgent toast', () => {
@@ -287,7 +400,7 @@ describe('useToasts', () => {
       for (let i = 0; i < TOAST_MAX_QUEUE; i += 1) {
         api!.push({ kind: 'telemetry', message: `line ${i}` });
       }
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo: () => undefined });
+      api!.push(undoInput(() => undefined));
     });
     expect(api!.queue).toHaveLength(TOAST_MAX_QUEUE);
     expect(api!.queue.filter((x) => x.kind === 'undo')).toHaveLength(1);
@@ -296,6 +409,27 @@ describe('useToasts', () => {
     expect(messages).toContain('line 0');
     expect(messages).not.toContain(`line ${TOAST_MAX_QUEUE - 1}`);
     expect(screen.getByText(DEFAULT_COPY['coach.setDeleted'])).toBeInTheDocument();
+  });
+
+  it('holds the cap across seven pushes of mixed kinds', () => {
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'specimen', cardId: 'c001' });
+      api!.push({ kind: 'telemetry', message: 'line a' });
+      api!.push({ kind: 'telemetry', message: 'line b' });
+      api!.push({ kind: 'coach', message: 'hold this load' });
+      api!.push({ kind: 'milestone', count: 50 });
+      api!.push({ kind: 'specimen', cardId: 'c002' });
+      api!.push(undoInput(() => undefined));
+    });
+    /*
+     * Seven pushes over five classes. The cap evicts rather than throwing: evictionIndex's
+     * invariant is that a full queue always holds an evictable toast, which the one-undo rule
+     * guarantees for TOAST_MAX_QUEUE > 1.
+     */
+    expect(api!.queue.length).toBeLessThanOrEqual(TOAST_MAX_QUEUE);
+    expect(api!.queue).toHaveLength(TOAST_MAX_QUEUE);
+    expect(api!.queue.filter((x) => x.kind === 'undo')).toHaveLength(1);
   });
 
   it('dismisses the visible toast on Escape', () => {
@@ -324,6 +458,19 @@ describe('useToasts', () => {
     expect(screen.getByText('set banked')).toBeInTheDocument();
   });
 
+  it('dismisses on Escape when the only dialog on the page is hidden', () => {
+    renderQueue(<div role="dialog" aria-modal="true" aria-label="Form reference" hidden />);
+    act(() => {
+      api!.push({ kind: 'telemetry', message: 'set banked' });
+    });
+    act(() => {
+      fireEvent.keyDown(window, { key: 'Escape' });
+    });
+    // A hidden dialog is not open, so it owns nothing: `:not([hidden])` keeps a dialog left
+    // mounted and hidden from swallowing Escape for the rest of the session.
+    expect(api!.queue).toHaveLength(0);
+  });
+
   it('dismisses on a tap anywhere on an ordinary toast', () => {
     renderQueue();
     act(() => {
@@ -339,7 +486,7 @@ describe('useToasts', () => {
     renderQueue();
     const onUndo = vi.fn();
     act(() => {
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo });
+      api!.push(undoInput(onUndo));
     });
     act(() => {
       fireEvent.click(screen.getByRole('button', { name: DEFAULT_COPY['button.undo'] }));
@@ -352,7 +499,7 @@ describe('useToasts', () => {
     renderQueue();
     const onUndo = vi.fn();
     act(() => {
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo });
+      api!.push(undoInput(onUndo));
     });
     act(() => {
       fireEvent.click(screen.getByTestId('toast'));
@@ -412,17 +559,44 @@ describe('useToasts', () => {
     expect(screen.queryByText(/specimen acquired/i)).toBeNull();
   });
 
-  it('announces politely, and assertively only for the undo class', () => {
+  it('renders into a polite region, and the undo class into an assertive one', () => {
     renderQueue();
-    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    const polite = screen.getByRole('status');
+    const assertive = screen.getByRole('alert');
+    expect(polite).toHaveAttribute('aria-live', 'polite');
+    // role="alert" is assertive by definition; no attribute is written that could flip it.
+    expect(assertive).not.toHaveAttribute('aria-live');
+    // Both are mounted before any content arrives: a region a screen reader first meets at
+    // the moment its content appears is announced unreliably.
+    expect(polite).toBeEmptyDOMElement();
+    expect(assertive).toBeEmptyDOMElement();
+
     act(() => {
       api!.push({ kind: 'telemetry', message: 'set banked' });
     });
-    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+    expect(polite).toContainElement(screen.getByTestId('toast'));
+    expect(assertive).toBeEmptyDOMElement();
+
     act(() => {
-      api!.push({ kind: 'undo', message: DEFAULT_COPY['coach.setDeleted'], onUndo: () => undefined });
+      api!.push(undoInput(() => undefined));
     });
-    expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'assertive');
+    expect(assertive).toContainElement(screen.getByTestId('toast'));
+    expect(polite).toBeEmptyDOMElement();
+  });
+
+  it('leaves no timer armed once the region unmounts', () => {
+    const view = renderQueue();
+    act(() => {
+      api!.push({ kind: 'specimen', cardId: 'c001' });
+    });
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    view.unmount();
+    /*
+     * The auto-dismiss effect clears its timeout and drops its visibilitychange listener on
+     * teardown, so a region that is gone cannot fire a dismissal into a provider that is also
+     * gone. A leaked timeout here would be a React state update after unmount.
+     */
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it('clears everything', () => {
@@ -436,12 +610,30 @@ describe('useToasts', () => {
     expect(onScreen()).toHaveLength(0);
   });
 
+  it('takes the milestone and specimen wording from the copy table', () => {
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'milestone', count: 250 });
+    });
+    // The literal, asserted against the table rather than against the frame: the frame reads
+    // the key, so a test that compared frame to frame would agree with itself.
+    expect(screen.getByText('250 sets recorded.')).toBeInTheDocument();
+    // A skin overriding the key reaches the rendered string, and may move the slot within it.
+    expect(FORMAT.milestoneSets('250', { 'status.milestoneSets': 'Sets banked: {count}' })).toBe(
+      'Sets banked: 250',
+    );
+    expect(FORMAT.specimenAcquired('rare')).toBe('rare specimen acquired');
+    expect(
+      FORMAT.specimenAcquired('rare', { 'status.specimenAcquired': '{rarity} card drawn' }),
+    ).toBe('rare card drawn');
+  });
+
   it('carries no dash connector and no emoji in what it renders', () => {
     renderQueue();
     act(() => {
       api!.push({ kind: 'milestone', count: 250 });
     });
-    expect(document.body.textContent ?? '').not.toMatch(/[—–]/);
+    expect(document.body.textContent ?? '').not.toMatch(/[\u2014\u2013]/);
     expect(document.body.textContent ?? '').not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
   });
 });

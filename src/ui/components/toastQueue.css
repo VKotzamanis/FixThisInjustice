@@ -5,9 +5,15 @@
  * literal fallback, so the region renders whether or not the token sheet is loaded and a skin
  * restyles it by swapping tokens rather than by editing this file (master plan section 3).
  *
- * The stack is always mounted, empty or not, because the live region has to exist before its
+ * The stack is always mounted, empty or not, because a live region has to exist before its
  * content does. It therefore takes no pointer events; the toast inside it takes them back, so
  * an empty region cannot swallow a tap meant for the page underneath.
+ *
+ * It holds TWO regions - a polite `role="status"` and an assertive `role="alert"` - and at
+ * most one of them is non-empty at a time. Neither is given a box of its own here: an empty
+ * region is zero-height, so the toast sits where it did when one region held it, and a
+ * `display: contents` region would risk being dropped from the accessibility tree along with
+ * its box.
  */
 .toast-stack {
   position: fixed;
