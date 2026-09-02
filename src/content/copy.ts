@@ -735,9 +735,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.tapeOutOfDomain': "Girths outside the equation's domain. No estimate is shown.",
   'advice.bodyFatEstimate': '21.9 % body fat, ± 3.52 percentage points.', // formatted
   'why.bodyFatEstimate':
-    'The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes a user will chase, so use the estimate to track change over time, not as an absolute number.',
+    'The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number.',
   'why.bodyFatOptional':
-    'With a body-fat value the engine uses Cunningham for RMR and prescribes protein per kg of fat-free mass. Without one it uses Mifflin-St Jeor and prescribes protein per kg of body mass.',
+    'With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.',
   'error.valueRequired': 'Enter a number.',
   'error.pickOneDay': 'Select at least one weekday.',
   'error.positive': 'Enter a number greater than zero.',
@@ -982,7 +982,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // R9: what the screen is modelled on, what it stores, and what it does not do. The citation
   // itself is READINESS_SOURCE and is rendered beside this line, never inside it.
   'why.readiness':
-    'These seven questions are this app\'s own wording of the seven screening domains of the PAR-Q+. No answer is stored. Only the screening date and whether any answer was yes are kept. A yes is not a diagnosis and this app is not a clearance instrument.',
+    'These seven questions are this app\'s wording of the seven PAR-Q+ screening domains. No answer is stored, only the screening date and whether any was yes. A yes is not a diagnosis and this app is not a clearance instrument.',
   'status.notScreened': 'Not screened.',
   'status.readinessNoFlags': 'No flags.',
   'status.readinessConsult': 'Physician consult advised.',
@@ -1202,14 +1202,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Disclosure bodies, exempt from R1-R4 (R9): a disclosure exists to hold what does not fit.
   'disclosure.legacyTransfers':
     'Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, ' +
-    'collected specimen cards, and a sealed time capsule. Every record the import cannot read ' +
-    'is listed with its reason before anything is written.',
+    'collected specimen cards, and a sealed time capsule. Anything the import cannot read is ' +
+    'listed with its reason first.',
   // The evidence behind the body-mass assumption, stated so the user can overrule it rather
   // than trust it. Three independent legacy facts, not a preference.
   'disclosure.legacyBodyMassEvidence':
     'The old body-mass field was labelled lb, refused values outside the pound range, and its ' +
-    'text export reported pounds. The load field carried no such evidence, which is why that ' +
-    'unit is asked for instead of assumed.',
+    'text export reported pounds. The load field carried no such evidence, so that unit is ' +
+    'asked for.',
   'label.legacyLoadUnit': 'Load unit in the old app',
   'label.legacyBodyMassUnit': 'Body mass unit in the old app',
   'label.legacyUnitKg': 'Kilograms (kg)',
@@ -1219,8 +1219,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.legacyMassUnitKg': 'Kilograms (kg), body mass',
   'label.legacyMassUnitLb': 'Pounds (lb), body mass',
   'disclosure.whatTransfers': 'What transfers',
-  'disclosure.whatWasRefused': 'What was not imported, and why',
-  'disclosure.whatWasNotMatched': 'Days not matched to a session',
+  'disclosure.whatWasRefused': 'What was refused, and why',
+  'disclosure.whatWasNotMatched': 'Days with no session match',
   'button.legacyPreview': 'Preview import',
   'button.legacyApply': 'Keep import',
   'button.legacyDismiss': 'Start clean',
