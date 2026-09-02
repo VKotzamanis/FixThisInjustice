@@ -113,3 +113,30 @@ describe('BodyMassQuickLog: the limelight voice', () => {
     expect(entries[0]?.massKg).toBe(POST_KG); // [kg]
   });
 });
+
+/*
+ * The departures board (P8 close-out D).
+ *
+ * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * and NONE of them is a key this component renders. The smoke case therefore asserts the other
+ * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
+ * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
+ * a board row added for one of these keys later moves this expectation with it.
+ */
+describe('BodyMassQuickLog under the departures board', () => {
+  it('mounts and falls through to the default words, the flag included', () => {
+    expect(() => {
+      renderLog('board');
+    }).not.toThrow();
+
+    submitMass('board', POST_KG);
+
+    expect(copyFor('board', 'advice.fluidLoss')).toBe(copy('advice.fluidLoss'));
+    expect(screen.getByText(copyFor('board', 'advice.fluidLoss'))).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        FORMAT.fluidLossWhy('3.0', DEHYDRATION_LOSS_FRACTION * PERCENT, SKIN_COPY.board),
+      ),
+    ).toBeInTheDocument();
+  });
+});

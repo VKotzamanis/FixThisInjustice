@@ -146,3 +146,29 @@ describe('ExerciseCard: the limelight voice', () => {
     expect(limelight).not.toBe(FORMAT.withSlots(line.key, line.params));
   });
 });
+
+/*
+ * The departures board (P8 close-out D).
+ *
+ * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * and NONE of them is a key this component renders. The smoke case therefore asserts the other
+ * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
+ * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
+ * a board row added for one of these keys later moves this expectation with it.
+ */
+describe('ExerciseCard under the departures board', () => {
+  it('mounts and falls through to the default words for every key it renders', () => {
+    expect(() => {
+      renderCard('board', vi.fn());
+    }).not.toThrow();
+
+    expect(copyFor('board', 'button.addSet')).toBe(copy('button.addSet'));
+    expect(
+      screen.getByRole('button', { name: copyFor('board', 'button.addSet') }),
+    ).toBeInTheDocument();
+    // `status.setsBy` has no board row either, so the prescription line is the default frame.
+    expect(
+      screen.getByText(FORMAT.setsBy('3', '6\u20138 reps', SKIN_COPY.board)),
+    ).toBeInTheDocument();
+  });
+});

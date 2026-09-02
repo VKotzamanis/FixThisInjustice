@@ -179,3 +179,32 @@ describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
     expect(playSfx).toHaveBeenCalledWith('rest_over');
   });
 });
+
+/*
+ * The departures board (P8 close-out D).
+ *
+ * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * so most of this screen falls through to the clinical string under it. One smoke case per
+ * Train component asserts BOTH halves of that: the component mounts under `ui.skin = 'board'`
+ * without throwing, and the key it renders resolves to whatever `copyFor('board', ...)` says -
+ * the board's own word where the table has one, the default where it does not. Asserting by
+ * key rather than by literal is what makes the case survive a row being added later.
+ */
+describe('RestTimerPanel under the departures board', () => {
+  it('mounts and names the interval and both controls in the board words', () => {
+    // Three of the sixteen rows round two's design table names are this panel's: `status.rest`
+    // is GATE HOLD, and the two controls are the board's own.
+    expect(() => {
+      renderPanel('board');
+    }).not.toThrow();
+
+    expect(screen.getByText(copyFor('board', 'status.rest'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('board', 'button.extendRest') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('board', 'button.skipRest') }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(copy('status.rest'))).toBeNull();
+  });
+});
