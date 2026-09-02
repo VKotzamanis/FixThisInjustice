@@ -129,9 +129,10 @@ Nothing forces you to delete. A user who never presses it keeps the old keys ind
 ## Rollback
 
 **The site.** Open Actions, then `Deploy to GitHub Pages`, then the last successful run from
-before the cutover, then **Re-run all jobs**. A re-run checks out that run's commit, so it
-rebuilds and republishes that version. Reverting the commit and pushing does the same thing
-with a longer history.
+before the cutover, then **Re-run all jobs**. A re-run keeps the original run's `GITHUB_SHA`
+and `GITHUB_REF`, so it rebuilds and republishes that commit. GitHub allows this for 30 days
+after the run and for at most 50 re-runs. Past that, revert the commit and push, which gets
+the same result with a longer history.
 
 That restores an earlier *Actions* deployment. It does not restore the hand-uploaded,
 branch-based site that served the old console, because step 1 changed the Pages source. To get
