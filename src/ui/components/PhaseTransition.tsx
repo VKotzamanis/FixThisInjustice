@@ -31,6 +31,7 @@ import type { UnitSystem } from '../../domain/types';
 import { UNIT_LABEL, displayMass } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { hasLegacyV2 } from '../../store/persistence';
+import { usePendingMotivation } from '../../store/selectors';
 import { ModalShell } from './ModalShell';
 
 /** [ms] from mount to the first statistic. */
@@ -190,6 +191,19 @@ export function PhaseTransition({
  *  - the boot sequence has finished. It is a fixed overlay covering the whole screen, and a
  *    dialog opened underneath it would trap focus in something nobody can see.
  *  - the legacy migration is not being offered. See the latch below.
+ *  - no missed week is waiting to be answered. Both gates are mounted by the app shell and
+ *    both used to satisfy their conditions on the same render, so two ModalShells opened at
+ *    once. Each shell listens for Escape on the WINDOW, so one keypress aimed at the popup
+ *    reached both handlers, and this gate's onClose wrote `lastBlockSeenByProfile` for a block
+ *    the user never saw - which consumes the cutscene permanently, because the flag never
+ *    goes back down. The popup wins because it is answering a question; the cutscene is due
+ *    again on the next render after the Dismiss, and `usePendingMotivation` goes null on that
+ *    render because the dismissal is a store write (MotivationGate.tsx).
+ *
+ *    This is NOT latched, unlike the migration below. The migration is a one-way data decision
+ *    made in a wizard that stays on screen after writing its flag; the popup unmounts the
+ *    instant its own write lands, so there is no window in which un-suppressing would paint
+ *    over anything.
  *
  * Deferring costs nothing: the block stays unseen, so the cutscene is due again on the next
  * render for which every condition holds.
@@ -206,6 +220,9 @@ export function PhaseTransitionGate(): ReactElement | null {
   const bootSeen = useAppStore((s) => s.ui.bootSeen);
   const activeAssignmentDate = useAppStore((s) => s.session.activeAssignmentDate);
   const legacyDecision = useAppStore((s) => s.ui.legacyMigration);
+  // The missed-week popup's own question, read through the selector that owns it so the two
+  // gates cannot disagree about whether one is pending (src/store/selectors.ts).
+  const pendingMiss = usePendingMotivation();
 
   /*
    * Read once per mount, as MigrationGate and MotivationGate read it: the legacy key does not
@@ -266,7 +283,8 @@ export function PhaseTransitionGate(): ReactElement | null {
   }, [profileId, currentIndex, seenMap]);
 
   // Every hook above is called unconditionally; the decisions come after them.
-  if (suppressedByMigration || !bootSeen || activeAssignmentDate !== null) return null;
+  if (suppressedByMigration || pendingMiss !== null) return null;
+  if (!bootSeen || activeAssignmentDate !== null) return null;
   if (profileId === null || currentIndex === null || stats === null) return null;
   const profile = profiles[profileId];
   if (profile === undefined) return null;

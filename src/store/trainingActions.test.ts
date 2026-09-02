@@ -103,16 +103,19 @@ afterEach(() => {
 
 describe('logSet', () => {
   it('returns the generated id and stores a document that still parses', () => {
-    const id = useAppStore.getState().logSet(setInput, NOW);
+    const { id, specimen } = useAppStore.getState().logSet(setInput, NOW);
     expect(id).toMatch(/\S/);
     expect(useAppStore.getState().sets[id]).toEqual({ ...setInput, id, loggedAt: NOW });
+    // The first ordinal of this fixture profile rolls no card; funActions.test.ts owns the
+    // specimen contract in full.
+    expect(specimen).toBeNull();
     expectStorable();
   });
 
   it('mints a fresh id per set rather than overwriting', () => {
     const first = useAppStore.getState().logSet(setInput, NOW);
     const second = useAppStore.getState().logSet({ ...setInput, setNumber: 2 }, NOW + 60_000);
-    expect(second).not.toBe(first);
+    expect(second.id).not.toBe(first.id);
     expect(Object.keys(useAppStore.getState().sets)).toHaveLength(2);
     expectStorable();
   });
@@ -128,7 +131,7 @@ describe('deleteSet / undoDelete', () => {
   it('restores the identical record inside the undo window', () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
-    const id = useAppStore.getState().logSet(setInput, NOW);
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
     const original = useAppStore.getState().sets[id];
     useAppStore.getState().deleteSet(id);
     expect(useAppStore.getState().sets[id]).toBeUndefined();
@@ -144,7 +147,7 @@ describe('deleteSet / undoDelete', () => {
   it('drops the buffer without restoring once the window has closed', () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
-    const id = useAppStore.getState().logSet(setInput, NOW);
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
     useAppStore.getState().deleteSet(id);
 
     vi.advanceTimersByTime(UNDO_WINDOW_MS + 1); // [ms] past the window
@@ -159,7 +162,7 @@ describe('deleteSet / undoDelete', () => {
     // be the same comparison undoDelete makes, or the control and the action disagree.
     vi.useFakeTimers();
     vi.setSystemTime(NOW);
-    const id = useAppStore.getState().logSet(setInput, NOW);
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
     useAppStore.getState().deleteSet(id);
 
     expect(useAppStore.getState().undoAvailable(NOW)).toBe(true);
@@ -183,7 +186,7 @@ describe('deleteSet / undoDelete', () => {
   });
 
   it('never mirrors the buffered set', () => {
-    const id = useAppStore.getState().logSet(setInput, NOW);
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
     useAppStore.getState().deleteSet(id);
     expect(storage.get(SESSION_KEY)).toBeUndefined();
   });

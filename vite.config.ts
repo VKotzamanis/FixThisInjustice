@@ -55,10 +55,35 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
-        // The user-provided motivation video (P6) is served by a runtime
-        // CacheFirst route, never precached: it would dominate the precache and
-        // make every install all-or-nothing against a multi-megabyte file.
-        globIgnores: ['**/media/*.mp4'],
+        globIgnores: [
+          // The user-provided motivation video (P6) is served by a runtime
+          // CacheFirst route, never precached: it would dominate the precache and
+          // make every install all-or-nothing against a multi-megabyte file.
+          '**/media/*.mp4',
+          /*
+           * Font subsets the app can never render (code review).
+           *
+           * The two DM Mono / Space Mono faces are trimmed at the import instead,
+           * through @fontsource's latin-only entry points (src/main.tsx).
+           * @fontsource-variable/archivo publishes none, so its latin-ext and
+           * vietnamese subsets are dropped here: every string the app renders comes
+           * from the copy tables, which are ASCII and are checked for it, and user
+           * text (a profile name, a capsule note) is not what a precache is sized
+           * for - a subset absent from the precache still LOADS over the network
+           * when a page asks for it, because the file is still in dist.
+           */
+          '**/archivo-latin-ext-*',
+          '**/archivo-vietnamese-*',
+          /*
+           * The legacy woff of every face. @fontsource lists woff2 first and woff
+           * second in each `src`, so woff is reached only by an engine with no woff2
+           * support - Chrome < 36, Firefox < 39, Safari < 10, Edge < 14. None of
+           * those implements a service worker either, so nothing that could read
+           * this precache can need the file. It still ships in dist and is still
+           * served, so such a browser renders online exactly as before.
+           */
+          '**/*.woff',
+        ],
       },
     }),
   ],

@@ -11,10 +11,20 @@ import '@fontsource-variable/geist';
 // for a Google-hosted face would be blocked at runtime rather than at build time. Only the
 // weights the tokens actually use are imported, so a skin nobody selects still costs its faces
 // and nothing more.
+//
+// LATIN-ONLY entry points, not the bare weight (code review). `@fontsource/<face>/400.css`
+// declares one @font-face per SUBSET - latin, latin-ext, vietnamese - and each one is a separate
+// file Workbox precaches, whether or not the app ever renders a character in it. The app's copy
+// tables are ASCII and the repository enforces that, so the extra subsets were 394 KiB of
+// precache serving nothing. `latin-400.css` declares the latin face alone.
+//
+// `@fontsource-variable/archivo` publishes no latin-only entry, so its extra subsets are
+// dropped from the precache by globIgnores in vite.config.ts instead. That is the same decision
+// reached by the only other means available.
 import '@fontsource-variable/archivo/standard.css';
-import '@fontsource/dm-mono/400.css';
-import '@fontsource/space-mono/400.css';
-import '@fontsource/space-mono/700.css';
+import '@fontsource/dm-mono/latin-400.css';
+import '@fontsource/space-mono/latin-400.css';
+import '@fontsource/space-mono/latin-700.css';
 
 import './ui/styles/tokens.css';
 import './ui/styles/crt.css';

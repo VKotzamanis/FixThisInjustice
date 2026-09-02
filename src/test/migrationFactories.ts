@@ -199,6 +199,8 @@ export function makeBlankState(profile = makeProfile(), plan = makePlan()): AppS
       // UiPrefs rather than a patch; the values are defaultState()'s own.
       skin: 'limelight',
       sounds: false,
+      // Additive, same rule: a migrated document has announced no milestone.
+      milestoneFloorByProfile: {},
     },
   };
 }

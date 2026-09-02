@@ -18,7 +18,7 @@
 // unlocked on the first pointer event that reaches this view, because a user who navigated
 // straight to Train never passed through Today's Start tap (code review A29); and the session
 // slice is cleared when the session ends, so a reload cannot revive a finished session.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { FORMAT, copy } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
 import { todayLocal } from '../../domain/dates';
@@ -73,18 +73,6 @@ export function TrainView(): ReactElement {
 
   const [openId, setOpenId] = useState<string | null>(null);
 
-  /*
-   * The highest set count this view has already announced a milestone for. [sets]
-   *
-   * A high-water MARK, not the store's live count, and tied to the profile it was taken for.
-   * Deleting a set decrements `totalSetsLogged` (src/store/training.ts applyDeleteSet), so a
-   * check against the live count would announce the same milestone again the moment the set was
-   * relogged. The floor never goes down, so a delete and relog crosses nothing.
-   *
-   * null means "nothing announced yet in this mount", and the baseline is then `after - 1`:
-   * applyLogSet increments by exactly one and this handler runs once for that increment.
-   */
-  const milestoneFloor = useRef<{ profileId: string; count: number } | null>(null);
 
   // Held for as long as this view is mounted; released on unmount by the hook. Absence and
   // refusal are ordinary states (jsdom, Safari < 16.4, a battery saver) and are not surfaced:
@@ -102,7 +90,7 @@ export function TrainView(): ReactElement {
   }, []);
 
   const onSetLogged = useCallback(
-    (line: CoachLine) => {
+    (line: CoachLine, specimen: string | null) => {
       /*
        * P4 review item 2: the coach line arrives as a copy KEY and its values, and is resolved
        * here, at the boundary. The domain names which sentence to say; this file says it in the
@@ -113,37 +101,52 @@ export function TrainView(): ReactElement {
 
       /*
        * ExerciseCard calls this handler synchronously, in the same click handler and on the
-       * line after `logSet` returns, which is what makes both reads below belong to the set
-       * that was just stored (master plan section 10.8).
+       * line after `logSet` returns, which is what makes the read below belong to the set that
+       * was just stored (master plan section 10.8).
        */
       const after = useAppStore.getState().specimens[profileId]?.totalSetsLogged ?? 0; // [sets]
-      const floor = milestoneFloor.current;
-      const before =
-        floor !== null && floor.profileId === profileId ? floor.count : after - 1; // [sets]
-      milestoneFloor.current = { profileId, count: Math.max(before, after) };
+      /*
+       * The highest set count a milestone has already been announced for. [sets]
+       *
+       * A high-water MARK, not the store's live count. Deleting a set decrements
+       * `totalSetsLogged` (src/store/training.ts applyDeleteSet), so a check against the live
+       * count would announce the same milestone again the moment the set was relogged. The
+       * floor never goes down, so a delete and relog crosses nothing.
+       *
+       * Read from and written to `UiPrefs.milestoneFloorByProfile`, NOT a `useRef`. A ref is
+       * per mount: leaving Train and coming back - or reloading - reset it to null, the
+       * baseline fell back to `after - 1`, and the fiftieth set announced itself a second time
+       * (code review). The fact belongs to the profile, so it belongs in the document.
+       *
+       * An absent key means "nothing announced yet", and the baseline is then `after - 1`:
+       * applyLogSet increments by exactly one and this handler runs once for that increment.
+       */
+      const floors = useAppStore.getState().ui.milestoneFloorByProfile;
+      const before = floors[profileId] ?? after - 1; // [sets]
+      const reached = Math.max(before, after); // [sets]
+      // Written only when it actually moves: setUi patches a persisted slice, so an unchanged
+      // write costs a save and a re-render of every subscriber for nothing.
+      if (reached !== floors[profileId]) {
+        useAppStore.getState().setUi({ milestoneFloorByProfile: { ...floors, [profileId]: reached } });
+      }
       // The half-open interval, never `MILESTONES.includes(count)`: a counter that advanced by
       // more than one between two reads must not step over a milestone (code review A46).
       for (const m of crossedMilestones(before, after)) push({ kind: 'milestone', count: m });
 
       /*
-       * The specimen roll, in this handler rather than after a later render.
+       * The specimen card, reported BY the store rather than asked of it again.
        *
-       * The draw is keyed to `totalSetsLogged`, so it has to be asked for while that count is
-       * still the just-logged set's own ordinal: a call deferred past a second logged set would
-       * report the SECOND set's roll and the first card would never be shown. Asking twice for
-       * one ordinal is safe by construction - the store returns the card that ordinal already
-       * produced and writes nothing (src/store/funActions.ts) - which is exactly why logSet's
-       * own call can record the card and this one can be the thing that shows it.
+       * This handler used to call attemptSpecimenDraw for the set logSet had already rolled
+       * for, on the argument that a second call is idempotent. It is - nothing is written - but
+       * it is not silent: for an ordinal already in the ledger the draw returns the RECORDED
+       * card, which is the mechanism that stops a delete and relog rerolling a drop (master
+       * plan section 10.8, rule 3). So a delete and relog handed this handler the same card
+       * again and it raised a second toast for an acquisition that never happened.
        *
-       * `exerciseId` is null, and that is not a shortcut. logSet has already called this action
-       * with the set's real exercise id and recorded the acquisition against it; recordSpecimen
-       * is idempotent on the ordinal AND on the card, so this second call writes nothing at all
-       * and the argument is never stored. Passing an id derived here - by searching the store
-       * for the newest set, say - would be a guess dressed as a fact, for a value the store
-       * provably ignores on this path.
+       * `logSet` compares the inventory across its own write and reports only what it acquired,
+       * so the toast and the collection cannot disagree (src/store/index.ts, LogSetResult).
        */
-      const card = useAppStore.getState().attemptSpecimenDraw(profileId, null, Date.now());
-      if (card !== null) push({ kind: 'specimen', cardId: card.id });
+      if (specimen !== null) push({ kind: 'specimen', cardId: specimen });
     },
     [push, profileId],
   );

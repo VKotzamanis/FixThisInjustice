@@ -191,7 +191,7 @@ describe('logSet, deleteSet and the set counter', () => {
 
   // A47: the counter must track the real set count, not a monotonic tally.
   it('decrements the counter when a set is deleted, clamped at zero', () => {
-    const id = useAppStore.getState().logSet(BASE_SET, NOW);
+    const { id } = useAppStore.getState().logSet(BASE_SET, NOW);
     expect(useAppStore.getState().specimens[P]?.totalSetsLogged).toBe(1); // [sets]
     useAppStore.getState().deleteSet(id);
     expect(useAppStore.getState().specimens[P]?.totalSetsLogged).toBe(0); // [sets]
@@ -200,11 +200,107 @@ describe('logSet, deleteSet and the set counter', () => {
   });
 
   it('puts the counter back when a delete is undone', () => {
-    const id = useAppStore.getState().logSet(BASE_SET, NOW);
+    const { id } = useAppStore.getState().logSet(BASE_SET, NOW);
     useAppStore.getState().deleteSet(id);
     useAppStore.getState().undoDelete();
     expect(Object.keys(useAppStore.getState().sets)).toHaveLength(1);
     expect(useAppStore.getState().specimens[P]?.totalSetsLogged).toBe(1); // [sets]
+  });
+});
+
+/*
+ * logSet's return value (code review).
+ *
+ * The view used to call attemptSpecimenDraw a second time to learn whether a card had dropped,
+ * and that question cannot be answered by the draw: `drawSpecimenForLoggedSet` returns the
+ * RECORDED card for an ordinal that has already been spent, so a delete and relog handed the
+ * view the same card again and it raised a second toast for an acquisition that never happened.
+ * The answer belongs to the action that owns the write, so logSet reports it.
+ */
+describe('logSet, on the acquisition it reports', () => {
+  beforeEach(seed);
+
+  it('returns the stored set id alongside the specimen', () => {
+    const result = useAppStore.getState().logSet(BASE_SET, NOW);
+    expect(useAppStore.getState().sets[result.id]).toBeDefined();
+    expect(useAppStore.getState().sets[result.id]?.setNumber).toBe(1); // [sets]
+  });
+
+  it('names the card on the log that acquires it', () => {
+    const ordinal = firstHittingOrdinal(1);
+    seedAtOrdinal(ordinal);
+    const result = useAppStore.getState().logSet(BASE_SET, NOW);
+
+    expect(typeof result.specimen).toBe('string');
+    expect(useAppStore.getState().specimens[P]?.acquired[result.specimen ?? '']).toBeDefined();
+    expect(useAppStore.getState().specimens[P]?.acquiredByOrdinal?.[String(ordinal)]).toBe(
+      result.specimen,
+    );
+  });
+
+  it('names no card on a delete and relog at the same ordinal', () => {
+    const ordinal = firstHittingOrdinal(1);
+    seedAtOrdinal(ordinal);
+    const first = useAppStore.getState().logSet(BASE_SET, NOW);
+    expect(typeof first.specimen).toBe('string');
+    const ledger = useAppStore.getState().specimens[P];
+
+    useAppStore.getState().deleteSet(first.id);
+    const second = useAppStore.getState().logSet(BASE_SET, NOW + 60_000);
+
+    // No second acquisition happened, so none is reported: this is the toast the view raised
+    // twice for one card.
+    expect(second.specimen).toBeNull();
+    // The ordinal is back where it was and the ledger reads exactly as it did.
+    expect(useAppStore.getState().specimens[P]?.totalSetsLogged).toBe(ordinal); // [sets]
+    expect(useAppStore.getState().specimens[P]?.acquired).toEqual(ledger?.acquired);
+    expect(useAppStore.getState().specimens[P]?.acquiredByOrdinal).toEqual(
+      ledger?.acquiredByOrdinal,
+    );
+  });
+
+  it('names no card on an ordinal whose roll fails', () => {
+    const hit = firstHittingOrdinal(1);
+    // The ordinal before the first hit is by construction a miss.
+    seedAtOrdinal(hit - 1 > 0 ? hit - 1 : hit + 1);
+    const result = useAppStore.getState().logSet(BASE_SET, NOW);
+
+    expect(result.specimen).toBeNull();
+    expect(useAppStore.getState().specimens[P]?.acquired).toEqual({});
+  });
+
+  it('names no card for an ordinal spent under a card the collection does not hold', () => {
+    /*
+     * The document a membership check on `acquired` would get wrong, which is why the action
+     * compares the inventory by IDENTITY instead.
+     *
+     * `acquiredByOrdinal` and `acquired` are independent maps in the schema, so a document can
+     * carry a spent ordinal whose card is absent from the collection - a hand-edited or
+     * partially written import. `drawSpecimenForLoggedSet` returns the RECORDED card for that
+     * ordinal, and `recordSpecimen` then refuses the write because the ordinal is spent
+     * (recordSpecimenDraw returns its argument by reference). Nothing was acquired, so nothing
+     * may be announced.
+     */
+    const ordinal = firstHittingOrdinal(1);
+    seedAtOrdinal(ordinal);
+    const cardId = useAppStore.getState().logSet(BASE_SET, NOW).specimen ?? '';
+    expect(cardId).not.toBe('');
+
+    useAppStore.setState(
+      makeAppState({
+        specimens: {
+          [P]: makeInventory({
+            acquired: {}, // the ledger names the card; the collection does not hold it
+            acquiredByOrdinal: { [String(ordinal)]: cardId },
+            totalSetsLogged: ordinal - 1, // [sets]
+          }),
+        },
+      }),
+    );
+    const result = useAppStore.getState().logSet(BASE_SET, NOW);
+
+    expect(result.specimen).toBeNull();
+    expect(useAppStore.getState().specimens[P]?.acquired).toEqual({});
   });
 });
 
@@ -264,7 +360,7 @@ describe('attemptSpecimenDraw', () => {
   it('returns the recorded card on a delete-and-relog, taking no second acquisition', () => {
     const ordinal = firstHittingOrdinal(1);
     seedAtOrdinal(ordinal);
-    const id = useAppStore.getState().logSet(BASE_SET, NOW);
+    const { id } = useAppStore.getState().logSet(BASE_SET, NOW);
     const first = useAppStore.getState().attemptSpecimenDraw(P, 'barbell-bench-press', NOW);
     expect(first).not.toBeNull();
 

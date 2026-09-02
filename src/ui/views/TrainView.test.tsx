@@ -586,6 +586,99 @@ describe('TrainView set logging feedback', () => {
     expect(useAppStore.getState().specimens['profile-1']?.acquired[card.id]).toBeDefined();
   });
 
+  it('keeps a crossed milestone crossed across a remount', () => {
+    /*
+     * Code review. The high-water mark lived in a `useRef`, which is per MOUNT: navigating away
+     * from Train and back, or a reload, reset it to null, the baseline fell back to
+     * `after - 1`, and the fiftieth set announced itself again. The floor is a fact about the
+     * profile, so it belongs in the persisted document.
+     */
+    seedStore(seed({ totalSetsLogged: 49 }));
+    const view = renderTrain();
+
+    logRow(1, '60', '8');
+    expect(screen.getByText(FORMAT.milestoneSets('50'))).toBeInTheDocument();
+    expect(useAppStore.getState().ui.milestoneFloorByProfile['profile-1']).toBe(50); // [sets]
+    dismissAllToasts();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(49); // [sets]
+    dismissAllToasts();
+
+    // The whole point: the view is torn down and mounted again, as leaving Train and coming
+    // back does. The floor must survive it.
+    view.unmount();
+    renderTrain();
+
+    logRow(1, '60', '8');
+    expect(screen.queryByText(FORMAT.milestoneSets('50'))).toBeNull();
+    expect(
+      screen.getByText(FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 })),
+    ).toBeInTheDocument();
+  });
+
+  it('announces the milestone once for a profile that has never crossed it', () => {
+    // The floor must not suppress a first crossing: an empty map means nothing announced yet,
+    // and the baseline is then the count before this set.
+    seedStore(seed({ totalSetsLogged: 49 }));
+    expect(useAppStore.getState().ui.milestoneFloorByProfile['profile-1']).toBeUndefined();
+    renderTrain();
+
+    logRow(1, '60', '8');
+    expect(screen.getByText(FORMAT.milestoneSets('50'))).toBeInTheDocument();
+  });
+
+  it('shows the specimen card once, and not again after a delete and relog', () => {
+    /*
+     * Code review. The view used to ask attemptSpecimenDraw for the card AFTER logSet had
+     * already recorded it, and that call cannot tell an acquisition from a lookup: for an
+     * ordinal already in the ledger `drawSpecimenForLoggedSet` returns the RECORDED card, so a
+     * delete and relog at the reused ordinal handed the view the same card a second time and it
+     * announced a drop that never happened. logSet now reports the acquisition it actually
+     * made, and the view shows only that.
+     */
+    let ordinal = 0; // [sets]
+    let card: SpecimenCard | null = null;
+    for (let n = 1; n <= 1000 && card === null; n += 1) {
+      if (crossedMilestones(n - 1, n).length > 0) continue;
+      card = drawSpecimenForLoggedSet(
+        { profileId: 'profile-1', acquired: {}, totalSetsLogged: 0 },
+        SPECIMEN_CARDS,
+        'profile-1',
+        n,
+        SPECIMEN_DROP_CHANCE,
+      );
+      ordinal = n;
+    }
+    if (card === null) throw new Error('no specimen drops in the first 1000 ordinals');
+
+    seedStore(seed({ totalSetsLogged: ordinal - 1 }));
+    renderTrain();
+
+    logRow(1, '60', '8');
+    const ledger = useAppStore.getState().specimens['profile-1'];
+    dismissAllToasts();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(ordinal - 1);
+    dismissAllToasts();
+
+    logRow(1, '60', '8');
+
+    // The coach line is the only toast the relog may raise. The card is already owned, so a
+    // second card toast would be an acquisition the store never made.
+    expect(screen.queryByText(card.title)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    expect(screen.queryByText(card.title)).toBeNull();
+
+    // ...and neither the collection nor the ordinal ledger moved.
+    expect(useAppStore.getState().specimens['profile-1']?.acquired).toEqual(ledger?.acquired);
+    expect(useAppStore.getState().specimens['profile-1']?.acquiredByOrdinal).toEqual(
+      ledger?.acquiredByOrdinal,
+    );
+    expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(ordinal);
+  });
+
   it('adds a bonus row beyond the prescribed set count', () => {
     seedStore(seed());
     renderTrain();

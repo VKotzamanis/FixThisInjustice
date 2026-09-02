@@ -49,7 +49,15 @@ export interface ExerciseCardProps {
   isBonusExercise: boolean;
   isOpen: boolean;
   onToggle: () => void;
-  onCoach: (line: CoachLine) => void;
+  /**
+   * Reports one logged set to the view that owns the toast queue.
+   *
+   * `specimen` is the `SpecimenCard.id` the store ACQUIRED on this log, or null. It is carried
+   * here rather than looked up by the view because only `logSet` can answer it: asking the draw
+   * again returns the card an already-spent ordinal recorded, so a delete and relog announced a
+   * drop that never happened (code review).
+   */
+  onCoach: (line: CoachLine, specimen: string | null) => void;
   onDeleted: () => void;
 }
 
@@ -138,10 +146,10 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     const now = Date.now(); // [ms] epoch UTC
     // Through getState(): the store's actions are created once and never replace themselves,
     // so subscribing to one buys nothing and hands the component an unbound method.
-    const id = useAppStore.getState().logSet(set, now);
+    const { id, specimen } = useAppStore.getState().logSet(set, now);
     // The coach line is computed against the history BEFORE this set, which is what makes a
     // personal best a comparison rather than a tautology.
-    onCoach(coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units));
+    onCoach(coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units), specimen);
     useAppStore.getState().setRestTimer(startRest(restS, now));
   };
 
