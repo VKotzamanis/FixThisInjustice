@@ -2,6 +2,7 @@ import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { UpdatePrompt, notifyUpdateReady } from './UpdatePrompt';
+import { copy } from '../content/copy';
 
 describe('UpdatePrompt', () => {
   /**
@@ -14,17 +15,17 @@ describe('UpdatePrompt', () => {
     render(<UpdatePrompt />);
 
     // registerType is 'prompt': nothing is shown until the plugin says so.
-    expect(screen.queryByText('UPDATE READY')).toBeNull();
+    expect(screen.queryByText(copy('banner.update.tag'))).toBeNull();
 
     act(() => {
       notifyUpdateReady(apply);
     });
-    expect(screen.getByText('UPDATE READY')).toBeInTheDocument();
+    expect(screen.getByText(copy('banner.update.tag'))).toBeInTheDocument();
     expect(apply).not.toHaveBeenCalled();
 
     // The apply callback is the only thing that swaps the running worker, and
     // only a click reaches it.
-    await userEvent.click(screen.getByRole('button', { name: 'Reload' }));
+    await userEvent.click(screen.getByRole('button', { name: copy('button.reload') }));
     expect(apply).toHaveBeenCalledTimes(1);
   });
 });

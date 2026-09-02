@@ -142,10 +142,10 @@ describe('SaveErrorBanner', () => {
 
     // Not "storage is full" and not "storage is unavailable": the store was
     // never touched, so advice about the store would send the user nowhere.
-    expect(screen.getByText(/could not be saved/i)).toBeInTheDocument();
-    expect(screen.getByText(/stored copy is unchanged/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Storage is full/i)).toBeNull();
-    expect(screen.queryByText(/Storage is unavailable/i)).toBeNull();
+    expect(screen.getByText(copy('banner.saveFailed.body'))).toBeInTheDocument();
+    expect(screen.getByText(copy('banner.saveFailed.tag'))).toBeInTheDocument();
+    expect(screen.queryByText(copy('banner.saveQuota.body'))).toBeNull();
+    expect(screen.queryByText(copy('banner.saveUnavailable.body'))).toBeNull();
   });
 
   it('offers the last stored document, not the in-memory one, and does not throw', async () => {
@@ -154,7 +154,9 @@ describe('SaveErrorBanner', () => {
 
     render(<App />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Export stored copy' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: copy('button.exportStoredCopy') }),
+    );
 
     // exportJson() would have produced a pretty-printed AppState. The raw
     // stored text proves this branch never went near it: a document that
@@ -170,7 +172,7 @@ describe('SaveErrorBanner', () => {
     seedSaveError();
 
     render(<App />);
-    await userEvent.click(screen.getByRole('button', { name: 'Retry save' }));
+    await userEvent.click(screen.getByRole('button', { name: copy('button.retrySave') }));
 
     expect(data.get(STORAGE_KEY)).toContain('"schemaVersion":3');
     // A write that now succeeds clears the banner, through the same
@@ -191,8 +193,8 @@ describe('SaveErrorBanner', () => {
     });
 
     render(<App />);
-    expect(screen.getByText(/Storage is full/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Export data' }));
+    expect(screen.getByText(copy('banner.saveQuota.body'))).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: copy('button.exportData') }));
 
     // The in-memory document, pretty-printed by exportJson().
     expect(downloadText).toHaveBeenCalledWith(
@@ -207,12 +209,18 @@ describe('LoadErrorBanner', () => {
     const data = installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
 
     render(<App />);
-    expect(screen.getByText(/did not validate/i)).toBeInTheDocument();
+    // The reason is the validator's own, read back from the store rather than restated here:
+    // the assertion is that the banner frames THAT reason, not that this test can predict it.
+    const reason = useAppStore.getState().status.lastLoadError;
+    expect(reason).not.toBeNull();
+    expect(screen.getByText(FORMAT.loadInvalid(reason ?? ''))).toBeInTheDocument();
 
     // Another tab, or this app's own wipeAll(), removes the key. The snapshot
     // taken at hydrate time is now the user's only copy.
     data.delete(STORAGE_KEY);
-    await userEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: copy('button.exportStoredData') }),
+    );
 
     expect(downloadText).toHaveBeenCalledWith('fixthisinjustice-recovery.json', '{"week":999}');
   });
