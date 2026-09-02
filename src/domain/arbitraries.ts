@@ -456,6 +456,11 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   ),
   legacyMigration: fc.constantFrom('pending' as const, 'done' as const, 'dismissed' as const),
   lastBlockSeenByProfile: fc.dictionary(anyId, fc.integer({ min: 0, max: 20 }), { maxKeys: 2 }),
+  // P8 Task 12. Both are additive with a Zod default, so a generated document that omitted
+  // them would round-trip to the default rather than to itself and the parity property
+  // would fail for a reason that is not a bug.
+  skin: fc.constantFrom('clinical' as const, 'limelight' as const, 'board' as const),
+  sounds: fc.boolean(),
 });
 
 /**

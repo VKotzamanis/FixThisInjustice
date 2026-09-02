@@ -672,3 +672,44 @@ describe('round trip', () => {
     30_000,
   );
 });
+
+/**
+ * The two UI preferences P8 Task 12 adds. Both are additive and both carry a Zod default, so
+ * CURRENT_SCHEMA_VERSION stays 3 and a document written before this task parses unchanged.
+ *
+ * The default skin is 'limelight', not 'clinical': the user chose it as the shipped look. The
+ * clinical token set stays on the bare `:root` block so a document that somehow reaches the DOM
+ * without the attribute still renders, but the value a fresh document carries is 'limelight'.
+ */
+describe('the skin and sounds preferences', () => {
+  it('defaults a fresh document to the limelight skin with sounds off', () => {
+    const s = defaultState();
+    expect(s.ui.skin).toBe('limelight');
+    expect(s.ui.sounds).toBe(false);
+    expect(AppStateSchema.safeParse(s).success).toBe(true);
+    // Additive fields never bump the version.
+    expect(s.schemaVersion).toBe(3);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  });
+
+  it('backfills both onto a document that predates them', () => {
+    const result = parseState(legacyDocument());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.ui.skin).toBe('limelight');
+    expect(result.state.ui.sounds).toBe(false);
+  });
+
+  it('accepts each of the three skin ids and refuses a fourth', () => {
+    for (const skin of ['clinical', 'limelight', 'board']) {
+      const doc = legacyDocument();
+      doc.ui = { ...(doc.ui as Record<string, unknown>), skin };
+      const result = parseState(doc);
+      expect({ skin, ok: result.ok }).toEqual({ skin, ok: true });
+      if (result.ok) expect(result.state.ui.skin).toBe(skin);
+    }
+    const bad = legacyDocument();
+    bad.ui = { ...(bad.ui as Record<string, unknown>), skin: 'crt' };
+    expect(parseState(bad).ok).toBe(false);
+  });
+});

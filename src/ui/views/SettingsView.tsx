@@ -10,6 +10,7 @@ import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
+import { SkinSettings } from '../settings/SkinSettings';
 import { ReadinessScreen } from '../setup/ReadinessScreen';
 import './views.css';
 
@@ -61,6 +62,7 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
    * no mount point until now, so the backup is reachable from the same place.
    */
   { id: 'data', render: () => <DataSection /> },
+  { id: 'skin', render: () => <SkinSettings /> },
 ];
 
 /**

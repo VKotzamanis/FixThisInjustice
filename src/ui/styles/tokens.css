@@ -63,3 +63,195 @@ body {
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
 }
+
+/* ==========================================================================
+ * Skin token blocks (P8 Task 12).
+ *
+ * The bare :root block above is the CLINICAL set and stays that way: a document that reaches
+ * the DOM before useApplySkin() has run, or a page rendered with no data-skin attribute at all,
+ * gets a complete token set rather than a half-painted one. Each block below re-points the same
+ * twenty-two tokens through one attribute, so a skin change is one write to <html> and not a
+ * cascade of per-component rules.
+ *
+ * Why an attribute and not a class: `:root[data-skin='limelight']` has the same specificity a
+ * class would, but an attribute holds exactly one value. A class list can carry two skins at
+ * once, and the winner would then depend on stylesheet order rather than on state.
+ * ========================================================================== */
+
+/*
+ * limelight. Design: docs/design/round3/2026-09-01-round3-plan.md sections 2.1 to 2.5, and the
+ * :root block of docs/design/round3/2026-09-01-design-I-limelight.html.
+ *
+ * Every ratio below is QUOTED from round-three section 2.3 (WCAG 2.1 relative luminance, sRGB),
+ * not estimated here. They are what makes the palette rules non-negotiable:
+ *   #000000 on #8ACE00 = 10.91:1  all display and body type
+ *   #454545 on #8ACE00 =  4.98:1  the fine-print floor
+ *   #FFFFFF on #8ACE00 =  1.92:1  banned: no white type on lime, anywhere
+ *   #FF5FCB on #8ACE00 =  1.41:1  banned at every size: pink is never type on lime
+ *   #000000 on #FF5FCB =  7.75:1  pink works as a fill with black type on it
+ *   #FFFFFF on #000000 = 21.00:1  type inside an inverted panel
+ *   #8ACE00 on #000000 = 10.91:1  lime type inside an inverted panel
+ *   #FF5FCB on #000000 =  7.75:1  the only place pink is ever type
+ *
+ * The rule has no size exception, deliberately: #C4006B at 3.06:1 would have been legal as
+ * large text and was rejected anyway, because "pink is type only above 24 px" is the shape of
+ * rule the next person to resize a heading breaks. --accent is therefore a fill, outline and
+ * offset-shadow colour in this skin, which is a different job from the CRT --accent it replaces.
+ */
+:root[data-skin='limelight'] {
+  --lime: #8ace00;
+  --ink: #000000;
+  --pink: #ff5fcb;
+  --fine: #454545;
+  --panel: #000000;
+  --panel-text: #ffffff;
+
+  --bg: var(--lime);
+  --bg-2: var(--lime);
+  --bg-3: var(--panel);
+  --bg-4: var(--panel);
+
+  --line: rgba(0, 0, 0, 0.22);
+  --line-2: var(--ink);
+
+  --text: var(--ink);
+  --text-2: var(--fine);
+  --text-3: var(--fine);
+
+  --accent: var(--pink);
+  --accent-d: var(--pink);
+  --accent-rgb: 255, 95, 203;
+
+  /*
+   * State colours are ink, not hues. Section 2.3 computed a ratio for five colours on this
+   * ground and for no others; an amber or a red invented here would ship an unmeasured
+   * contrast. This skin carries state with the inverted panel, the pink fill and the word.
+   */
+  --warn: var(--ink);
+  --danger: var(--ink);
+  --info: var(--ink);
+
+  /* One family at two widths, as a one-Pantone flyer would have had (section 2.1). */
+  --mono: 'Archivo Variable', Archivo, ui-monospace, monospace;
+  --sans: 'Archivo Variable', Archivo, Helvetica, Arial, sans-serif;
+
+  --chart-line: rgba(0, 0, 0, 0.35);
+  --chart-actual: var(--ink);
+  --chart-grid: rgba(0, 0, 0, 0.14);
+  --chart-text: var(--fine);
+  --chart-marker: var(--ink);
+
+  /* Display, marquee and stamp geometry. The offset is the shadow snap's resting value. */
+  --display-stretch: 62%;
+  --display-weight: 800;
+  --display-tracking: -0.045em;
+  --shadow-offset: 4px;
+}
+
+:root[data-skin='limelight'] body {
+  font-family: var(--sans);
+}
+
+/* A display line: the narrow cut with a hard pink offset shadow. Never a blur, never on a
+ * numeral (section 2.5: no quantity is animated, blurred or faded). */
+:root[data-skin='limelight'] .ll-display {
+  font-family: var(--sans);
+  font-weight: var(--display-weight);
+  font-stretch: var(--display-stretch);
+  letter-spacing: var(--display-tracking);
+  color: var(--ink);
+  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--pink);
+}
+
+/* The inverted panel: the marquee strip, the rest panel and the stamp. The one black surface
+ * on a light page, which is what makes the marquee read as a lit sign (section 2.4). */
+:root[data-skin='limelight'] .ll-panel {
+  background: var(--panel);
+  color: var(--panel-text);
+}
+
+:root[data-skin='limelight'] .ll-panel .ll-panel-accent {
+  color: var(--lime);
+}
+
+/* The one declaration in this file allowed to set a colour from --pink: inside a black panel,
+ * where it measures 7.75:1. */
+:root[data-skin='limelight'] .ll-panel .ll-panel-state {
+  color: var(--pink);
+}
+
+/*
+ * board, ported from the :root block of
+ * docs/design/round2/2026-09-01-design-H-departures-board.html. Contrast quoted from round-two
+ * section 5 (Direction H, Palette), not recomputed here:
+ *   #FFB000 on #0B0B0C = 10.74:1  scheduled, on time, primary action
+ *   #FFB000 on #17181A =  9.70:1  the same amber on a flap face
+ *   #000000 on #FFB000 = 10.74:1  black type on an amber fill
+ *   #E8E4DA on #17181A = 13.99:1  departed services, body type
+ *   #7C8288 on #0B0B0C =  5.06:1  held services, column headers, fine print
+ *   #FF6B4A on #0B0B0C =  6.98:1  cancelled services
+ * --rule (#2C2F33) and the page ground (#141517) carry no published ratio because neither is
+ * ever a type colour: they are a hairline and a backdrop.
+ *
+ * The base sheet's --mono is the BODY face and --sans is unused by `body`, so the two map onto
+ * H's pair the other way round from their names: --mono takes DM Mono, H's chrome face, and
+ * --sans takes Space Mono, H's display face. --disp and --chrome keep H's names so the mapping
+ * stays legible.
+ *
+ * Type licences: Space Mono and DM Mono, SIL Open Font License 1.1, self-hosted through
+ * @fontsource (font-src 'self'; no fonts.googleapis.com, security constraint 19).
+ */
+:root[data-skin='board'] {
+  --board: #0b0b0c;
+  --flap: #17181a;
+  --amber: #ffb000;
+  --paper: #e8e4da;
+  --mute: #7c8288;
+  --alert: #ff6b4a;
+  --rule: #2c2f33;
+
+  --disp: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --chrome: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #141517;
+  --bg-2: var(--board);
+  --bg-3: var(--flap);
+  --bg-4: var(--rule);
+
+  --line: var(--rule);
+  --line-2: var(--mute);
+
+  --text: var(--paper);
+  --text-2: var(--mute);
+  --text-3: var(--mute);
+
+  --accent: var(--amber);
+  /* No darker amber was computed for this ground, so the accent does not vary by state depth. */
+  --accent-d: var(--amber);
+  --accent-rgb: 255, 176, 0;
+
+  --warn: var(--amber);
+  --danger: var(--alert);
+  --info: var(--paper);
+
+  --mono: var(--chrome);
+  --sans: var(--disp);
+
+  --chart-line: var(--rule);
+  --chart-actual: var(--amber);
+  --chart-grid: var(--rule);
+  --chart-text: var(--mute);
+  --chart-marker: var(--amber);
+}
+
+:root[data-skin='board'] body {
+  font-family: var(--chrome);
+}
+
+/* A board row: the display face, tabular figures, amber on near-black. */
+:root[data-skin='board'] .bd-row {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber);
+}

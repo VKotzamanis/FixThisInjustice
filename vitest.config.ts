@@ -19,6 +19,13 @@ export default defineConfig({
      * stylesheet text instead. Scoped to that one file so nothing else pays
      * the transform cost.
      */
-    css: { include: [/crt\.css$/] },
+    /*
+     * tokens.css joins it for a different reason: src/skins/tokens.test.ts reads the sheet as
+     * TEXT through ?raw to assert that the two data-skin blocks exist, and vitest empties a
+     * CSS module that its `include` does not match -- query and all, which is why this entry
+     * is not anchored with `$` the way crt.css is. The id it has to match is
+     * `.../tokens.css?raw` (measured 2026-09-02: an anchored regex yielded a 0-length string).
+     */
+    css: { include: [/crt\.css$/, /tokens\.css(\?|$)/] },
   },
 });
