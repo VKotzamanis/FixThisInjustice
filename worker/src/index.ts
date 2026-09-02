@@ -11,8 +11,15 @@ import {
   type EpochMs,
 } from "./schedule";
 
+/** One page of a KV key listing. Structurally the shape KVNamespace.list() returns. */
+export interface KvListResult {
+  keys: { name: string }[];
+  list_complete: boolean;
+  cursor?: string;
+}
+
 /**
- * The three KV methods this Worker uses. Declaring them here rather than importing
+ * The four KV methods this Worker uses. Declaring them here rather than importing
  * KVNamespace lets the tests supply an in-memory stub with no cast, which is what
  * keeps the test suite Miniflare-free (master plan §4).
  */
@@ -20,6 +27,7 @@ export interface KvStore {
   get(key: string, type: "text"): Promise<string | null>;
   put(key: string, value: string): Promise<void>;
   delete(key: string): Promise<void>;
+  list(options: { prefix: string; cursor?: string | undefined }): Promise<KvListResult>;
 }
 
 export interface Env extends PushEnv {
@@ -43,16 +51,18 @@ const INDEX_KEY = "idx";
  * ceiling binds long before this. */
 const MAX_DEVICES = 100;
 /**
- * Request-body ceiling. Compared against String.length, i.e. UTF-16 CODE UNITS,
- * not bytes: a body of all-ASCII JSON (which this one is) makes the two equal, and
- * for non-ASCII the check is the looser of the two. 200 reminders of ~200 bytes
- * plus the subscription is well under it either way.
+ * Request-body ceiling, in UTF-8 OCTETS — the unit the master plan's "body > 64 KB -> 413"
+ * is stated in, and the unit the wire actually carries. String.length would measure UTF-16
+ * code units instead, which for astral or CJK text understates the payload by up to 3x:
+ * 59,296 U+4E00 characters are 59,296 code units but 177,888 octets.
+ * 200 reminders of ~200 octets plus the subscription sit well under it.
  */
 const MAX_BODY_BYTES = 64 * 1024;
 const DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const DEVICE_PREFIX = "dev:";
 
 function deviceKey(id: string): string {
-  return `dev:${id}`;
+  return `${DEVICE_PREFIX}${id}`;
 }
 
 function corsHeaders(env: Env): Record<string, string> {
@@ -77,18 +87,30 @@ function jsonResponse(env: Env, status: number, payload: unknown): Response {
   });
 }
 
-/** Refused before any CORS header is attached, so the browser sees a hard failure. */
+/**
+ * Refused before any Access-Control-Allow-Origin is attached, so the browser sees a hard
+ * failure. `Vary: Origin` is still sent: the response body depends on the Origin header, and
+ * without it a shared cache could serve this refusal for a request from the allowed origin.
+ */
 function forbidden(): Response {
   return new Response(JSON.stringify({ error: "origin not allowed" }), {
     status: 403,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Vary: "Origin" },
+  });
+}
+
+/** 405 carries `Allow`; RFC 9110 §15.5.6 makes the header mandatory on this status. */
+function methodNotAllowed(env: Env, allow: string): Response {
+  return new Response(JSON.stringify({ error: "method not allowed" }), {
+    status: 405,
+    headers: { ...corsHeaders(env), "Content-Type": "application/json", Allow: allow },
   });
 }
 
 async function readIndex(kv: KvStore): Promise<string[]> {
   const raw = await kv.get(INDEX_KEY, "text");
   if (raw === null) return [];
-  let parsed: unknown = null;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
@@ -99,27 +121,88 @@ async function readIndex(kv: KvStore): Promise<string[]> {
   return parsed.filter((value): value is string => typeof value === "string");
 }
 
-async function readDevice(kv: KvStore, id: string): Promise<DeviceRecord | null> {
+/**
+ * Why the three states are distinguished: "absent" means there is nothing under the key, so
+ * deleting it would spend one of the free plan's 1,000 daily deletes on a no-op. "corrupt"
+ * means a value exists that can never parse, so the tick deletes it rather than paying a KV
+ * read for it on every reconcile and leaving a dead subscription on disk.
+ */
+type DeviceLoad =
+  | { state: "ok"; record: DeviceRecord }
+  | { state: "absent" }
+  | { state: "corrupt" };
+
+async function loadDevice(kv: KvStore, id: string): Promise<DeviceLoad> {
   const raw = await kv.get(deviceKey(id), "text");
-  if (raw === null) return null;
-  let parsed: unknown = null;
+  if (raw === null) return { state: "absent" };
+  let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
     console.warn(`device record ${id} is not valid JSON`);
-    return null;
+    return { state: "corrupt" };
   }
   const record = parseDeviceRecord(parsed);
-  if (record === null) console.warn(`device record ${id} failed validation; treating as absent`);
-  return record;
+  if (record === null) {
+    console.warn(`device record ${id} failed validation; treating as absent`);
+    return { state: "corrupt" };
+  }
+  return { state: "ok", record };
+}
+
+/** The request handlers treat a corrupt record exactly as they treat a missing one. */
+async function readDevice(kv: KvStore, id: string): Promise<DeviceRecord | null> {
+  const loaded = await loadDevice(kv, id);
+  return loaded.state === "ok" ? loaded.record : null;
+}
+
+/**
+ * Every `dev:` id in KV, the authoritative answer that `idx` only approximates. Paginated:
+ * one KV list request returns at most 1,000 keys, and MAX_DEVICES caps the namespace well
+ * inside that, so the steady state is a single request.
+ */
+async function listDeviceIds(kv: KvStore): Promise<string[]> {
+  const ids: string[] = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const page = await kv.list(
+      cursor === undefined ? { prefix: DEVICE_PREFIX } : { prefix: DEVICE_PREFIX, cursor },
+    );
+    for (const entry of page.keys) ids.push(entry.name.slice(DEVICE_PREFIX.length));
+    if (page.list_complete || page.cursor === undefined) return ids;
+    cursor = page.cursor;
+  }
+}
+
+/**
+ * True on the tick at minute 0 of the hour. `now` is epoch milliseconds, UTC.
+ *
+ * The reconcile below costs one KV list request per call, and Cloudflare's Workers Free plan
+ * allows 1,000 list requests per day (Workers KV pricing table; logged in REFERENCES.md).
+ * The cron fires every minute, so reconciling on every tick would need 1,440 list requests a
+ * day and exceed that quota by 44 %, at which point the reconcile — and nothing else — starts
+ * failing. Once an hour needs 24, i.e. 2.4 % of the quota, and bounds an orphaned device's
+ * invisibility at 60 minutes. The PUT-side re-assert repairs it sooner whenever the orphaned
+ * device syncs at all, so this is the backstop for a device that has gone quiet.
+ */
+function isReconcileTick(now: EpochMs): boolean {
+  return new Date(now).getUTCMinutes() === 0;
 }
 
 async function handlePut(request: Request, env: Env, id: string, now: EpochMs): Promise<Response> {
-  const text = await request.text();
-  if (text.length > MAX_BODY_BYTES) {
+  // Declared size first, so an oversize body is refused before a byte of it is read. A
+  // missing or non-numeric Content-Length falls through to the measured check (NaN > n is
+  // false), which is the only check a chunked upload gets.
+  const declared = request.headers.get("Content-Length");
+  if (declared !== null && Number(declared) > MAX_BODY_BYTES) {
     return jsonResponse(env, 413, { error: "body too large" });
   }
-  let parsed: unknown = null;
+  const text = await request.text();
+  // Octets, not UTF-16 code units: see MAX_BODY_BYTES.
+  if (new TextEncoder().encode(text).byteLength > MAX_BODY_BYTES) {
+    return jsonResponse(env, 413, { error: "body too large" });
+  }
+  let parsed: unknown;
   try {
     parsed = JSON.parse(text);
   } catch {
@@ -130,18 +213,21 @@ async function handlePut(request: Request, env: Env, id: string, now: EpochMs): 
   const result = validatePut(parsed, now, existing);
   if (!result.ok) return jsonResponse(env, result.status, { error: result.error });
 
-  if (existing === null) {
-    const ids = await readIndex(env.REMINDERS);
-    if (!ids.includes(id)) {
-      if (ids.length >= MAX_DEVICES) {
-        return jsonResponse(env, 503, { error: "device capacity reached" });
-      }
-      await env.REMINDERS.put(deviceKey(id), JSON.stringify(result.record));
-      await env.REMINDERS.put(INDEX_KEY, JSON.stringify([...ids, id]));
-      return noContent(env);
-    }
+  // Re-assert the index on EVERY put, update as well as create. `idx` is read-modify-write
+  // over a single key with no compare-and-swap, so two concurrent creates both read it before
+  // either writes, and the second write drops the first device: its record is in KV but its
+  // id is not in `idx`, so it is never ticked, never counted against MAX_DEVICES and never
+  // deleted. Checking on an update costs one KV read and repairs the orphan the moment that
+  // device next syncs.
+  const ids = await readIndex(env.REMINDERS);
+  const indexed = ids.includes(id);
+  if (!indexed && ids.length >= MAX_DEVICES) {
+    return jsonResponse(env, 503, { error: "device capacity reached" });
   }
   await env.REMINDERS.put(deviceKey(id), JSON.stringify(result.record));
+  // Written only when it actually changed: `idx` is one hot key and the free plan allows
+  // 1,000 KV writes a day.
+  if (!indexed) await env.REMINDERS.put(INDEX_KEY, JSON.stringify([...ids, id]));
   return noContent(env);
 }
 
@@ -170,11 +256,15 @@ export async function handleFetch(request: Request, env: Env, now: EpochMs): Pro
   // per-device secret is. A request with no Origin (curl, uptime check) is allowed.
   if (origin !== null && origin !== env.ALLOWED_ORIGIN) return forbidden();
 
-  if (request.method === "OPTIONS") return noContent(env);
-
+  // OPTIONS is answered per route, not before routing: a preflight for a path this Worker
+  // does not serve must 404, or the browser is told a route exists that does not.
   const url = new URL(request.url);
-  if (url.pathname === "/v1/health" && request.method === "GET") {
-    return jsonResponse(env, 200, { ok: true, vapidPublicKey: env.VAPID_PUBLIC_KEY });
+  if (url.pathname === "/v1/health") {
+    if (request.method === "GET") {
+      return jsonResponse(env, 200, { ok: true, vapidPublicKey: env.VAPID_PUBLIC_KEY });
+    }
+    if (request.method === "OPTIONS") return noContent(env);
+    return methodNotAllowed(env, "GET, OPTIONS");
   }
 
   const match = /^\/v1\/devices\/([^/]+)$/.exec(url.pathname);
@@ -183,7 +273,8 @@ export async function handleFetch(request: Request, env: Env, now: EpochMs): Pro
     if (!DEVICE_ID_PATTERN.test(id)) return jsonResponse(env, 404, { error: "unknown device" });
     if (request.method === "PUT") return handlePut(request, env, id, now);
     if (request.method === "DELETE") return handleDelete(request, env, id);
-    return jsonResponse(env, 405, { error: "method not allowed" });
+    if (request.method === "OPTIONS") return noContent(env);
+    return methodNotAllowed(env, "PUT, DELETE, OPTIONS");
   }
 
   return jsonResponse(env, 404, { error: "not found" });
@@ -195,16 +286,31 @@ export async function handleFetch(request: Request, env: Env, now: EpochMs): Pro
  * burst of parallel pushes is a liability, not a win.
  */
 export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
-  const ids = await readIndex(env.REMINDERS);
+  const stored = await readIndex(env.REMINDERS);
+  let ids = stored;
+  let reconciled = false;
+  if (isReconcileTick(now)) {
+    const known = new Set(stored);
+    const orphans = (await listDeviceIds(env.REMINDERS)).filter((id) => !known.has(id));
+    if (orphans.length > 0) {
+      ids = [...stored, ...orphans];
+      reconciled = true;
+    }
+  }
+
   const summary: TickSummary = { devices: ids.length, sent: 0, failed: 0, removed: 0, writes: 0 };
   const removed: string[] = [];
 
   for (const id of ids) {
-    const record = await readDevice(env.REMINDERS, id);
-    if (record === null) {
+    const loaded = await loadDevice(env.REMINDERS, id);
+    if (loaded.state !== "ok") {
+      // A corrupt value can never become valid, so delete it rather than pay a KV read for it
+      // on every tick and leave a dead subscription on disk. An absent one costs no delete.
+      if (loaded.state === "corrupt") await env.REMINDERS.delete(deviceKey(id));
       removed.push(id);
       continue;
     }
+    const record = loaded.record;
 
     const due = selectDue(record, now);
     const sentKeys: string[] = [];
@@ -233,8 +339,8 @@ export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
     }
   }
 
-  if (removed.length > 0) {
-    summary.removed = removed.length;
+  summary.removed = removed.length;
+  if (removed.length > 0 || reconciled) {
     await env.REMINDERS.put(INDEX_KEY, JSON.stringify(ids.filter((id) => !removed.includes(id))));
     summary.writes += 1;
   }

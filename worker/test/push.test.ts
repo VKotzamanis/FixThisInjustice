@@ -30,7 +30,7 @@ const INSTANT: ReminderInstant = {
 function respondWith(status: number): void {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(null, { status })),
+    vi.fn(() => Promise.resolve(new Response(null, { status }))),
   );
 }
 
@@ -76,12 +76,7 @@ describe("sendPush", () => {
   });
 
   it("returns failed instead of throwing when the network rejects", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("connection reset");
-      }),
-    );
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("connection reset"))));
     await expect(sendPush(ENV, SUBSCRIPTION, INSTANT)).resolves.toBe("failed");
   });
 
@@ -130,5 +125,104 @@ describe("sendPush", () => {
     expect(logged).not.toContain(SUBSCRIPTION.keys.p256dh);
     expect(logged).not.toContain(SUBSCRIPTION.keys.auth);
     warn.mockRestore();
+  });
+});
+
+describe("failure logging", () => {
+  const ENDPOINT = "https://push.example/abc";
+  const LEAKY = new Error(`POST ${ENDPOINT} failed: p256dh must be 65 bytes`);
+
+  function spyConsole(): { text: () => string; restore: () => void } {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    return {
+      text: () =>
+        [...warn.mock.calls, ...error.mock.calls, ...log.mock.calls].flat().map(String).join("\n"),
+      restore: () => {
+        warn.mockRestore();
+        error.mockRestore();
+        log.mockRestore();
+      },
+    };
+  }
+
+  /** First 8 hex characters of SHA-256(endpoint) — the label sendPush is expected to log. */
+  async function digest8(endpoint: string): Promise<string> {
+    const bytes = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(endpoint)),
+    );
+    return [...bytes.slice(0, 4)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  }
+
+  it("never logs an error message that embeds the endpoint", async () => {
+    const spy = spyConsole();
+    respondWith(201);
+    buildMock.mockRejectedValueOnce(LEAKY);
+    const outcome = await sendPush(ENV, { ...SUBSCRIPTION, endpoint: ENDPOINT }, INSTANT);
+    const logged = spy.text();
+    spy.restore();
+    expect(outcome).toBe("failed");
+    expect(logged).not.toContain(ENDPOINT);
+    expect(logged).not.toContain("push.example");
+    expect(logged).not.toContain(LEAKY.message);
+  });
+
+  it("never logs the endpoint when fetch itself throws", async () => {
+    const spy = spyConsole();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => {
+        throw new TypeError(`fetch to ${ENDPOINT} failed`);
+      }),
+    );
+    const outcome = await sendPush(ENV, { ...SUBSCRIPTION, endpoint: ENDPOINT }, INSTANT);
+    const logged = spy.text();
+    spy.restore();
+    expect(outcome).toBe("failed");
+    expect(logged).not.toContain("push.example");
+    // The error's constructor name is the whole diagnosis that survives.
+    expect(logged).toContain("error=TypeError");
+  });
+
+  it("logs the reminder key, the error name and the endpoint digest, and nothing else", async () => {
+    const spy = spyConsole();
+    respondWith(201);
+    buildMock.mockRejectedValueOnce(LEAKY);
+    await sendPush(ENV, { ...SUBSCRIPTION, endpoint: ENDPOINT }, INSTANT);
+    const logged = spy.text();
+    spy.restore();
+    expect(logged).toBe(
+      `push threw: key=${INSTANT.key} error=Error endpoint=${await digest8(ENDPOINT)}`,
+    );
+  });
+
+  it("gives two endpoints two different digests, so failures stay attributable", async () => {
+    const a = await digest8(ENDPOINT);
+    const b = await digest8("https://push.example/def");
+    expect(a).not.toBe(b);
+    expect(a).toMatch(/^[0-9a-f]{8}$/);
+  });
+
+  it("labels a rejected status with the digest too, never the endpoint", async () => {
+    const spy = spyConsole();
+    respondWith(500);
+    await sendPush(ENV, { ...SUBSCRIPTION, endpoint: ENDPOINT }, INSTANT);
+    const logged = spy.text();
+    spy.restore();
+    expect(logged).toBe(
+      `push rejected: status=500 key=${INSTANT.key} endpoint=${await digest8(ENDPOINT)}`,
+    );
+  });
+
+  it("returns failed rather than throwing when a non-Error value is thrown", async () => {
+    const spy = spyConsole();
+    respondWith(201);
+    buildMock.mockRejectedValueOnce("a bare string mentioning https://push.example/abc");
+    const outcome = await sendPush(ENV, { ...SUBSCRIPTION, endpoint: ENDPOINT }, INSTANT);
+    const logged = spy.text();
+    spy.restore();
+    expect(outcome).toBe("failed");
+    expect(logged).not.toContain("push.example");
   });
 });

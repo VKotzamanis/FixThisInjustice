@@ -1,10 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import worker, { handleFetch, runTick, type Env, type KvStore } from "../src/index";
+import worker, {
+  handleFetch,
+  runTick,
+  type Env,
+  type KvListResult,
+  type KvStore,
+} from "../src/index";
 import { sendPush } from "../src/push";
 import type { DeviceRecord, ReminderInstant } from "../src/schedule";
 
 vi.mock("../src/push", () => ({
-  sendPush: vi.fn(async () => "sent"),
+  sendPush: vi.fn(() => Promise.resolve("sent")),
   APP_URL_PATH: "/FixThisInjustice/",
 }));
 
@@ -25,28 +31,55 @@ const DAY = 24 * HOUR;
 const ORIGIN = "https://example.github.io";
 const DEVICE_ID = "0f9b1a2c-3d4e-4f50-8a1b-2c3d4e5f6071";
 const SECRET = "s".repeat(43);
-const P256DH = "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA";
+/** A real uncompressed P-256 point: 65 octets, leading 0x04, base64url (RFC 8291 §4). */
+const P256DH = "BG9gwOFFUymmbn0PojtRGJa4cA_NWQJFC6EE7paZ9HSFqE355S0qgFrO7Fe3gjrBNglZH7IIU2zksWJKVX7ZR1I";
+/** A 16-octet authentication secret, base64url (RFC 8291 §3.2). */
 const AUTH = "tBHItJI5svbpez7KI4CCXg";
+/** Reminder keys in the shape src/domain/reminders/instants.ts emits. */
+const KEY = "2026-10-26:lead:120";
+const KEY2 = "2026-10-27:day-of:0";
 
 class MemoryKv implements KvStore {
   readonly data = new Map<string, string>();
   reads = 0;
   writes = 0;
   deletes = 0;
+  lists = 0;
+  /** Keys returned per list() call, so pagination can be exercised. Count, dimensionless. */
+  pageSize = 1000;
 
-  async get(key: string, _type: "text"): Promise<string | null> {
+  // KvStore.get takes a second "text" argument; the stub stores strings and has no other
+  // form to select, so it declares one parameter and stays assignable to the interface.
+  get(key: string): Promise<string | null> {
     this.reads += 1;
-    return this.data.get(key) ?? null;
+    return Promise.resolve(this.data.get(key) ?? null);
   }
 
-  async put(key: string, value: string): Promise<void> {
+  put(key: string, value: string): Promise<void> {
     this.writes += 1;
     this.data.set(key, value);
+    return Promise.resolve();
   }
 
-  async delete(key: string): Promise<void> {
+  delete(key: string): Promise<void> {
     this.deletes += 1;
     this.data.delete(key);
+    return Promise.resolve();
+  }
+
+  // Lists are counted apart from reads: Cloudflare caps and bills them as their own
+  // operation class (1,000/day on the free plan against 100,000 reads).
+  list(options: { prefix: string; cursor?: string | undefined }): Promise<KvListResult> {
+    this.lists += 1;
+    const matching = [...this.data.keys()].filter((key) => key.startsWith(options.prefix)).sort();
+    const start = options.cursor === undefined ? 0 : Number(options.cursor);
+    const page = matching.slice(start, start + this.pageSize).map((name) => ({ name }));
+    const next = start + page.length;
+    return Promise.resolve(
+      next >= matching.length
+        ? { keys: page, list_complete: true }
+        : { keys: page, list_complete: false, cursor: String(next) },
+    );
   }
 }
 
@@ -174,7 +207,7 @@ describe("CORS", () => {
     const request = new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json", Origin: "https://attacker.example" },
-      body: putBody([instant("k", NOW + HOUR)]),
+      body: putBody([instant(KEY, NOW + HOUR)]),
     });
     expect((await handleFetch(request, env, NOW)).status).toBe(403);
   });
@@ -182,7 +215,7 @@ describe("CORS", () => {
 
 describe("PUT /v1/devices/:id", () => {
   it("creates the record and indexes the device", async () => {
-    const response = await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
+    const response = await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
     expect(response.status).toBe(204);
     expect(kv.data.get("idx")).toBe(JSON.stringify([DEVICE_ID]));
     const stored: unknown = JSON.parse(kv.data.get(`dev:${DEVICE_ID}`) ?? "null");
@@ -190,32 +223,32 @@ describe("PUT /v1/devices/:id", () => {
   });
 
   it("does not duplicate the id in idx on a second PUT", async () => {
-    await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
-    await handleFetch(putRequest([instant("k2", NOW + 2 * HOUR)]), env, NOW);
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
+    await handleFetch(putRequest([instant(KEY2, NOW + 2 * HOUR)]), env, NOW);
     expect(kv.data.get("idx")).toBe(JSON.stringify([DEVICE_ID]));
   });
 
   it("updates the reminders in place when the secret matches", async () => {
-    await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
-    const response = await handleFetch(putRequest([instant("k2", NOW + 2 * HOUR)]), env, NOW);
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
+    const response = await handleFetch(putRequest([instant(KEY2, NOW + 2 * HOUR)]), env, NOW);
     expect(response.status).toBe(204);
     const stored: unknown = JSON.parse(kv.data.get(`dev:${DEVICE_ID}`) ?? "null");
-    expect(stored).toMatchObject({ reminders: [instant("k2", NOW + 2 * HOUR)] });
+    expect(stored).toMatchObject({ reminders: [instant(KEY2, NOW + 2 * HOUR)] });
   });
 
   it("carries the sent map across a re-sync so a re-upload cannot cause a second send", async () => {
-    seed(kv, seededRecord([instant("k", NOW)], { k: NOW }));
-    await handleFetch(putRequest([instant("k", NOW)]), env, NOW);
+    seed(kv, seededRecord([instant(KEY, NOW)], { [KEY]: NOW }));
+    await handleFetch(putRequest([instant(KEY, NOW)]), env, NOW);
     const stored: unknown = JSON.parse(kv.data.get(`dev:${DEVICE_ID}`) ?? "null");
-    expect(stored).toMatchObject({ sent: { k: NOW } });
+    expect(stored).toMatchObject({ sent: { [KEY]: NOW } });
     expect(await runTick(env, NOW)).toMatchObject({ sent: 0 });
     expect(sendMock).not.toHaveBeenCalled();
   });
 
   it("rejects a wrong secret with 403", async () => {
-    await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
     const response = await handleFetch(
-      putRequest([instant("k", NOW + HOUR)], "w".repeat(43)),
+      putRequest([instant(KEY, NOW + HOUR)], "w".repeat(43)),
       env,
       NOW,
     );
@@ -225,7 +258,7 @@ describe("PUT /v1/devices/:id", () => {
 
   it("rejects an instant more than 21 days ahead with 400", async () => {
     const response = await handleFetch(
-      putRequest([instant("far", NOW + 21 * DAY + MINUTE)]),
+      putRequest([instant("2026-11-20:lead:90", NOW + 21 * DAY + MINUTE)]),
       env,
       NOW,
     );
@@ -233,13 +266,13 @@ describe("PUT /v1/devices/:id", () => {
   });
 
   it("rejects an instant more than an hour in the past with 400", async () => {
-    const response = await handleFetch(putRequest([instant("stale", NOW - HOUR - MINUTE)]), env, NOW);
+    const response = await handleFetch(putRequest([instant("2026-10-26:lead:30", NOW - HOUR - MINUTE)]), env, NOW);
     expect(response.status).toBe(400);
   });
 
   it("rejects a malformed device id with 404", async () => {
     const response = await handleFetch(
-      putRequest([instant("k", NOW + HOUR)], SECRET, "not-a-uuid"),
+      putRequest([instant(KEY, NOW + HOUR)], SECRET, "not-a-uuid"),
       env,
       NOW,
     );
@@ -272,7 +305,7 @@ describe("PUT /v1/devices/:id", () => {
   it("refuses a new device with 503 once the index holds 100 devices", async () => {
     const full = Array.from({ length: 100 }, (_, i) => filledId(i));
     kv.data.set("idx", JSON.stringify(full));
-    const response = await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
+    const response = await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
     expect(response.status).toBe(503);
     expect(await response.json()).toEqual({ error: "device capacity reached" });
     expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(false);
@@ -281,7 +314,7 @@ describe("PUT /v1/devices/:id", () => {
   it("still admits the 100th device, pinning the cap at 100 and not 99", async () => {
     const nearlyFull = Array.from({ length: 99 }, (_, i) => filledId(i));
     kv.data.set("idx", JSON.stringify(nearlyFull));
-    const response = await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
+    const response = await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
     expect(response.status).toBe(204);
     expect(JSON.parse(kv.data.get("idx") ?? "[]")).toHaveLength(100);
   });
@@ -290,7 +323,7 @@ describe("PUT /v1/devices/:id", () => {
     const full = Array.from({ length: 99 }, (_, i) => filledId(i));
     kv.data.set("idx", JSON.stringify([...full, DEVICE_ID]));
     kv.data.set(`dev:${DEVICE_ID}`, JSON.stringify(seededRecord([])));
-    const response = await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
+    const response = await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
     expect(response.status).toBe(204);
   });
 });
@@ -303,7 +336,7 @@ function filledId(i: number): string {
 
 describe("DELETE /v1/devices/:id", () => {
   it("removes the record and the index entry when the bearer secret matches", async () => {
-    seed(kv, seededRecord([instant("k", NOW + HOUR)]));
+    seed(kv, seededRecord([instant(KEY, NOW + HOUR)]));
     const response = await handleFetch(
       new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
         method: "DELETE",
@@ -318,7 +351,7 @@ describe("DELETE /v1/devices/:id", () => {
   });
 
   it("refuses a wrong bearer secret with 403 and keeps the record", async () => {
-    seed(kv, seededRecord([instant("k", NOW + HOUR)]));
+    seed(kv, seededRecord([instant(KEY, NOW + HOUR)]));
     const response = await handleFetch(
       new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
         method: "DELETE",
@@ -376,7 +409,7 @@ describe("unknown routes", () => {
 
 describe("runTick", () => {
   it("sends a due reminder exactly once across 30 cron ticks", async () => {
-    seed(kv, seededRecord([instant("2026-10-26:lead:120", NOW + 5 * MINUTE)]));
+    seed(kv, seededRecord([instant(KEY, NOW + 5 * MINUTE)]));
     for (let tick = 0; tick < 30; tick += 1) {
       await runTick(env, NOW + tick * MINUTE);
     }
@@ -410,7 +443,7 @@ describe("runTick", () => {
   });
 
   it("retries a failed push on the next tick and stops once it succeeds", async () => {
-    seed(kv, seededRecord([instant("k", NOW)]));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     sendMock.mockResolvedValueOnce("failed");
     await runTick(env, NOW);
     expect(sendMock).toHaveBeenCalledTimes(1);
@@ -421,7 +454,7 @@ describe("runTick", () => {
   });
 
   it("keeps the record and counts a failure when the push fails", async () => {
-    seed(kv, seededRecord([instant("k", NOW)]));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     sendMock.mockResolvedValue("failed");
     const summary = await runTick(env, NOW);
     expect(summary.failed).toBe(1);
@@ -430,7 +463,7 @@ describe("runTick", () => {
   });
 
   it("deletes the device and its index entry when the push service reports gone", async () => {
-    seed(kv, seededRecord([instant("k", NOW)]));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     sendMock.mockResolvedValue("gone");
     const summary = await runTick(env, NOW);
     expect(summary.removed).toBe(1);
@@ -475,7 +508,7 @@ describe("default export", () => {
   });
 
   it("runs a tick at the controller's scheduledTime", async () => {
-    seed(kv, seededRecord([instant("k", NOW)]));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     const controller: ScheduledController = {
       // scheduledTime is an instant in epoch milliseconds, UTC.
       scheduledTime: NOW,
@@ -484,11 +517,11 @@ describe("default export", () => {
     };
     await worker.scheduled(controller, env);
     expect(sendMock).toHaveBeenCalledTimes(1);
-    expect(sendMock.mock.calls[0]?.[2]?.key).toBe("k");
+    expect(sendMock.mock.calls[0]?.[2]?.key).toBe(KEY);
   });
 
   it("does not send a reminder that is not yet due at the controller's time", async () => {
-    seed(kv, seededRecord([instant("k", NOW + HOUR)]));
+    seed(kv, seededRecord([instant(KEY, NOW + HOUR)]));
     const controller: ScheduledController = {
       scheduledTime: NOW,
       cron: "* * * * *",
@@ -507,8 +540,8 @@ describe("logging hygiene", () => {
 
     // A wrong secret, a corrupt index, a record that is not JSON, and a record that
     // parses but fails validation - every branch that reaches a console call.
-    await handleFetch(putRequest([instant("k", NOW + HOUR)]), env, NOW);
-    await handleFetch(putRequest([instant("k", NOW + HOUR)], "w".repeat(43)), env, NOW);
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)], "w".repeat(43)), env, NOW);
     await handleFetch(
       new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
         method: "DELETE",
@@ -524,7 +557,7 @@ describe("logging hygiene", () => {
     kv.data.set("idx", `[not json ${SECRET}`);
     await runTick(env, NOW);
 
-    seed(kv, seededRecord([instant("k", NOW)]));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     const controller: ScheduledController = { scheduledTime: NOW, cron: "* * * * *", noRetry: () => {} };
     await worker.scheduled(controller, env);
 
@@ -561,7 +594,7 @@ describe("end to end through the real push transport", () => {
 
   afterEach(() => {
     vi.doMock("../src/push", () => ({
-      sendPush: vi.fn(async () => "sent"),
+      sendPush: vi.fn(() => Promise.resolve("sent")),
       APP_URL_PATH: "/FixThisInjustice/",
     }));
     vi.resetModules();
@@ -569,8 +602,8 @@ describe("end to end through the real push transport", () => {
 
   it("deletes the device and its idx entry when the push service answers 410", async () => {
     const real = await loadReal();
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 410 })));
-    seed(kv, seededRecord([instant("k", NOW)]));
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(new Response(null, { status: 410 }))));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     const summary = await real.runTick(env, NOW);
     expect(summary.removed).toBe(1);
     expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(false);
@@ -579,14 +612,9 @@ describe("end to end through the real push transport", () => {
 
   it("marks a thrown fetch as failed and keeps the device record", async () => {
     const real = await loadReal();
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => {
-        throw new Error("connection reset");
-      }),
-    );
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new Error("connection reset"))));
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    seed(kv, seededRecord([instant("k", NOW)]));
+    seed(kv, seededRecord([instant(KEY, NOW)]));
     const summary = await real.runTick(env, NOW);
     expect(summary.failed).toBe(1);
     expect(summary.sent).toBe(0);
@@ -595,5 +623,295 @@ describe("end to end through the real push transport", () => {
     // The record is untouched, so the next tick retries inside the 15 min window.
     expect(kv.writes).toBe(0);
     warn.mockRestore();
+  });
+});
+
+/**
+ * Forces the exact lost-update interleaving on `idx`: the first two reads of `idx` both
+ * complete before either write lands. Deterministic — a barrier promise, no timers.
+ */
+class InterleavedKv extends MemoryKv {
+  private indexReads = 0;
+  private releaseBarrier: (() => void) | null = null;
+  private barrier: Promise<void> | null = null;
+
+  override async get(key: string): Promise<string | null> {
+    const value = await super.get(key);
+    if (key !== "idx") return value;
+    this.barrier ??= new Promise<void>((resolve) => {
+      this.releaseBarrier = resolve;
+    });
+    this.indexReads += 1;
+    if (this.indexReads >= 2) this.releaseBarrier?.();
+    else await this.barrier;
+    return value;
+  }
+}
+
+describe("idx lost update", () => {
+  const OTHER_ID = "1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9";
+
+  it("loses one id when two creates interleave, and re-indexes it on that device's next PUT", async () => {
+    const raced = new InterleavedKv();
+    const racedEnv = makeEnv(raced);
+    const [first, second] = await Promise.all([
+      handleFetch(putRequest([instant(KEY, NOW + HOUR)], SECRET, DEVICE_ID), racedEnv, NOW),
+      handleFetch(putRequest([instant(KEY, NOW + HOUR)], SECRET, OTHER_ID), racedEnv, NOW),
+    ]);
+    expect(first.status).toBe(204);
+    expect(second.status).toBe(204);
+    // Both records exist; only the last writer's id survives in idx. That device is orphaned:
+    // never ticked, never counted against the cap, never deleted.
+    expect(raced.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+    expect(raced.data.has(`dev:${OTHER_ID}`)).toBe(true);
+    const afterRace = JSON.parse(raced.data.get("idx") ?? "[]") as string[];
+    expect(afterRace).toHaveLength(1);
+    const orphan = afterRace.includes(DEVICE_ID) ? OTHER_ID : DEVICE_ID;
+
+    // The orphan's next PUT is an UPDATE, not a create, and it must still repair idx.
+    const repair = await handleFetch(
+      putRequest([instant("2026-10-27:day-of:0", NOW + HOUR)], SECRET, orphan),
+      racedEnv,
+      NOW,
+    );
+    expect(repair.status).toBe(204);
+    expect((JSON.parse(raced.data.get("idx") ?? "[]") as string[]).sort()).toEqual(
+      [DEVICE_ID, OTHER_ID].sort(),
+    );
+  });
+
+  it("does not rewrite idx when the id is already indexed", async () => {
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
+    kv.writes = 0;
+    await handleFetch(putRequest([instant("2026-10-27:day-of:0", NOW + HOUR)]), env, NOW);
+    // The device record, and nothing else.
+    expect(kv.writes).toBe(1);
+    expect(kv.data.get("idx")).toBe(JSON.stringify([DEVICE_ID]));
+  });
+});
+
+describe("hourly idx reconcile", () => {
+  const ORPHAN_ID = "1a2b3c4d-5e6f-4071-8293-a4b5c6d7e8f9";
+
+  function seedOrphan(): void {
+    kv.data.set(`dev:${DEVICE_ID}`, JSON.stringify(seededRecord([instant(KEY, NOW + 6 * HOUR)])));
+    kv.data.set(`dev:${ORPHAN_ID}`, JSON.stringify(seededRecord([instant(KEY, NOW + 6 * HOUR)])));
+    kv.data.set("idx", JSON.stringify([DEVICE_ID]));
+  }
+
+  it("picks the orphan up on a tick at minute 0", async () => {
+    seedOrphan();
+    // NOW is 2026-10-26T23:00:00Z — minute 0.
+    const summary = await runTick(env, NOW);
+    expect(kv.lists).toBe(1);
+    expect(summary.devices).toBe(2);
+    expect((JSON.parse(kv.data.get("idx") ?? "[]") as string[]).sort()).toEqual(
+      [DEVICE_ID, ORPHAN_ID].sort(),
+    );
+  });
+
+  it("does not list, and does not pick the orphan up, on a tick at any other minute", async () => {
+    seedOrphan();
+    for (const minute of [1, 17, 59]) {
+      kv.lists = 0;
+      const summary = await runTick(env, NOW + minute * MINUTE);
+      expect(kv.lists, `minute ${minute}`).toBe(0);
+      expect(summary.devices, `minute ${minute}`).toBe(1);
+      expect(kv.data.get("idx")).toBe(JSON.stringify([DEVICE_ID]));
+    }
+  });
+
+  it("costs 24 lists a day, not 1440", async () => {
+    seed(kv, seededRecord([instant(KEY, NOW + 6 * HOUR)]));
+    kv.lists = 0;
+    // One simulated day of one-minute cron ticks.
+    for (let minute = 0; minute < 24 * 60; minute += 1) await runTick(env, NOW + minute * MINUTE);
+    expect(kv.lists).toBe(24);
+  });
+
+  it("writes nothing on an idle reconcile tick", async () => {
+    seed(kv, seededRecord([instant(KEY, NOW + 6 * HOUR)]));
+    kv.writes = 0;
+    kv.lists = 0;
+    const summary = await runTick(env, NOW);
+    expect(kv.lists).toBe(1);
+    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0 });
+    expect(kv.writes).toBe(0);
+  });
+
+  it("pages through a listing that does not complete in one call", async () => {
+    kv.data.set(`dev:${DEVICE_ID}`, JSON.stringify(seededRecord([])));
+    kv.data.set(`dev:${ORPHAN_ID}`, JSON.stringify(seededRecord([])));
+    kv.data.set("idx", "[]");
+    kv.pageSize = 1;
+    const summary = await runTick(env, NOW);
+    expect(kv.lists).toBe(2);
+    expect(summary.devices).toBe(2);
+  });
+});
+
+describe("corrupt device values", () => {
+  it("deletes the value as well as the index entry", async () => {
+    kv.data.set(`dev:${DEVICE_ID}`, JSON.stringify({ secret: SECRET, subscription: "not an object" }));
+    kv.data.set("idx", JSON.stringify([DEVICE_ID]));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    kv.deletes = 0;
+    const summary = await runTick(env, NOW);
+    warn.mockRestore();
+    expect(summary.removed).toBe(1);
+    expect(kv.deletes).toBe(1);
+    expect(kv.data.get("idx")).toBe("[]");
+    expect(await kv.get(`dev:${DEVICE_ID}`)).toBeNull();
+  });
+
+  it("deletes a value that is not JSON at all", async () => {
+    kv.data.set(`dev:${DEVICE_ID}`, "{not json");
+    kv.data.set("idx", JSON.stringify([DEVICE_ID]));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await runTick(env, NOW);
+    warn.mockRestore();
+    expect(await kv.get(`dev:${DEVICE_ID}`)).toBeNull();
+    expect(kv.data.get("idx")).toBe("[]");
+  });
+
+  it("spends no delete on an index entry whose value was already gone", async () => {
+    kv.data.set("idx", JSON.stringify([DEVICE_ID]));
+    kv.deletes = 0;
+    const summary = await runTick(env, NOW);
+    expect(summary.removed).toBe(1);
+    expect(kv.deletes).toBe(0);
+  });
+});
+
+describe("request body size", () => {
+  /** A body whose UTF-16 length passes the old check but whose UTF-8 size does not. */
+  function wideBody(): string {
+    // 59 296 x U+4E00. One UTF-16 code unit each, THREE UTF-8 octets each.
+    return JSON.stringify({ secret: SECRET, filler: "一".repeat(59_296) });
+  }
+
+  it("counts UTF-8 octets, not UTF-16 code units", async () => {
+    const text = wideBody();
+    expect(text.length).toBeLessThan(65_536);
+    expect(new TextEncoder().encode(text).byteLength).toBeGreaterThan(177_000);
+    const response = await handleFetch(
+      new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Origin: ORIGIN },
+        body: text,
+      }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(413);
+    expect(kv.writes).toBe(0);
+  });
+
+  it("admits a body of exactly 65 536 ASCII octets to the validator", async () => {
+    // 65 536 octets: at the ceiling, not over it. It fails validation, not the size check.
+    const filler = "x".repeat(65_536 - JSON.stringify({ secret: SECRET, filler: "" }).length);
+    const text = JSON.stringify({ secret: SECRET, filler });
+    expect(new TextEncoder().encode(text).byteLength).toBe(65_536);
+    const response = await handleFetch(
+      new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Origin: ORIGIN },
+        body: text,
+      }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(400);
+  });
+
+  it("refuses on a Content-Length over the ceiling before reading the body", async () => {
+    // The body itself is valid and would answer 204; only the declared length refuses it.
+    const request = new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Origin: ORIGIN,
+        "Content-Length": "70000",
+      },
+      body: putBody([instant(KEY, NOW + HOUR)]),
+    });
+    expect(request.headers.get("Content-Length")).toBe("70000");
+    const response = await handleFetch(request, env, NOW);
+    expect(response.status).toBe(413);
+    expect(request.bodyUsed).toBe(false);
+    expect(kv.writes).toBe(0);
+  });
+
+  it("ignores a Content-Length that is not a number", async () => {
+    const request = new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Origin: ORIGIN, "Content-Length": "many" },
+      body: putBody([instant(KEY, NOW + HOUR)]),
+    });
+    expect((await handleFetch(request, env, NOW)).status).toBe(204);
+  });
+});
+
+describe("method and route refusals", () => {
+  it("answers PUT /v1/health with 405 and an Allow header, not 404", async () => {
+    const response = await handleFetch(
+      new Request("https://worker.example/v1/health", { method: "PUT", headers: { Origin: ORIGIN } }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("GET, OPTIONS");
+    expect(await response.json()).toEqual({ error: "method not allowed" });
+  });
+
+  it("still answers a health preflight with 204", async () => {
+    const response = await handleFetch(
+      new Request("https://worker.example/v1/health", {
+        method: "OPTIONS",
+        headers: { Origin: ORIGIN },
+      }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(204);
+  });
+
+  it("answers OPTIONS on an unknown path with 404, not 204", async () => {
+    const response = await handleFetch(
+      new Request("https://worker.example/v1/nothing", {
+        method: "OPTIONS",
+        headers: { Origin: ORIGIN, "Access-Control-Request-Method": "PUT" },
+      }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(404);
+    expect(await response.json()).toEqual({ error: "not found" });
+  });
+
+  it("names the device route's methods in Allow", async () => {
+    const response = await handleFetch(
+      new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
+        method: "GET",
+        headers: { Origin: ORIGIN },
+      }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(405);
+    expect(response.headers.get("Allow")).toBe("PUT, DELETE, OPTIONS");
+  });
+
+  it("varies the forbidden response on Origin so a shared cache cannot serve it to the allowed origin", async () => {
+    const response = await handleFetch(
+      new Request("https://worker.example/v1/health", {
+        headers: { Origin: "https://attacker.example" },
+      }),
+      env,
+      NOW,
+    );
+    expect(response.status).toBe(403);
+    expect(response.headers.get("Vary")).toBe("Origin");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
   });
 });
