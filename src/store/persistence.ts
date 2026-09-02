@@ -171,9 +171,33 @@ export function clearStorage(): void {
   }
 }
 
-/** Pretty-printed export. Covers the whole persisted surface (constraint 10). */
+/**
+ * Pretty-printed export. Covers the whole persisted surface (constraint 10) with one
+ * deliberate hole: `pushDevice`.
+ *
+ * WHY THE DEVICE IS WITHHELD. `pushDevice.secret` is not data, it is a CREDENTIAL: it is the
+ * bearer token that authorises `PUT` and `DELETE /v1/devices/{id}` against this browser's
+ * Worker record (worker/src/schedule.ts validatePut, worker/src/index.ts handleDelete). An
+ * export is a file the user mails to themselves, syncs to cloud storage, or hands to someone
+ * helping them, and anyone holding that file could silence this device's reminders or
+ * overwrite its schedule. Nothing else in the document confers an ability on a reader.
+ *
+ * The field is set to null HERE, in the export projection, and never in state: the running
+ * app keeps its device and its subscription, and `save()` (which does its own
+ * JSON.stringify) still persists it to this browser's own storage, where it belongs.
+ *
+ * Present and null rather than absent, so the file shows the reader that the field exists and
+ * was emptied on purpose, and so `parseState` takes its nullable branch.
+ *
+ * WHAT THE IMPORTING BROWSER SEES. It has no device, so the first sync returns "no-device"
+ * and uploads nothing. If the imported document also carried `reminderSettings.enabled =
+ * true`, the panel reads "Reminders are on. Schedule not sent yet." until the user switches
+ * the toggle off and on, which mints a device for that browser. That is the same two-step
+ * recovery the stale-device path already uses (src/app/ReminderSync.tsx), and it is stated in
+ * "what this plan does not do" in docs/plans/2026-09-01-05-reminders.md.
+ */
 export function exportJson(state: AppState): string {
-  return `${JSON.stringify(state, null, 2)}\n`;
+  return `${JSON.stringify({ ...state, pushDevice: null }, null, 2)}\n`;
 }
 
 /**

@@ -345,6 +345,21 @@ describe('the status line', () => {
     render(<ReminderSettingsPanel />);
     expect(screen.getByText(copy('status.remindersOff'))).toBeInTheDocument();
   });
+
+  it('reports the state an imported document leaves behind: enabled, but no device', () => {
+    // An exported document never carries the push device (src/store/persistence.ts
+    // exportJson withholds the bearer secret), so importing one onto a second browser leaves
+    // enabled = true with pushDevice = null. The panel says the literal truth - nothing has
+    // reached the server - and leaves the switch on; it does not claim reminders are off.
+    //
+    // Nothing recovers on its own: syncSchedule answers "no-device" and
+    // src/app/ReminderSync.tsx recovers only from "stale-device". The user switches the
+    // toggle off and then on, which mints a device for this browser.
+    seed({ enabled: true, device: null });
+    render(<ReminderSettingsPanel />);
+    expect(screen.getByText(copy('status.remindersPending'))).toBeInTheDocument();
+    expect(toggle().checked).toBe(true);
+  });
 });
 
 describe('the three availability states', () => {

@@ -10,7 +10,7 @@
 // Units: every timestamp is epoch milliseconds, UTC. leadMinutes are minutes before the slot.
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { defaultState, useAppStore } from './index';
+import { defaultState, selectState, useAppStore } from './index';
 import { installFakeStorage } from './testStorage';
 import { makeProfile } from '../test/fixtures';
 import { parseState } from '../domain/schema';
@@ -113,13 +113,33 @@ describe('setPushDevice', () => {
 });
 
 describe('persistence', () => {
-  it('both fields survive a schema round trip', () => {
+  it('both fields survive the round trip the browser stores', () => {
+    // selectState + JSON.stringify is what save() writes, and parseState is what load()
+    // reads. Not exportJson(): that is the FILE projection, and it withholds the device on
+    // purpose (the assertion below).
     useAppStore.getState().setReminderSettings(PROFILE_ID, SETTINGS);
     useAppStore.getState().setPushDevice(DEVICE);
-    const parsed = parseState(JSON.parse(useAppStore.getState().exportJson()));
+    const stored: unknown = JSON.parse(JSON.stringify(selectState(useAppStore.getState())));
+    const parsed = parseState(stored);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
     expect(parsed.state.reminderSettings[PROFILE_ID]).toEqual(SETTINGS);
     expect(parsed.state.pushDevice).toEqual(DEVICE);
+  });
+
+  it('leaves the device out of an export while keeping it in the store', () => {
+    // `secret` is the bearer credential for this browser's Worker record, so it must not
+    // travel in a file the user shares. src/store/persistence.ts exportJson says why.
+    useAppStore.getState().setReminderSettings(PROFILE_ID, SETTINGS);
+    useAppStore.getState().setPushDevice(DEVICE);
+    const text = useAppStore.getState().exportJson();
+    expect(text).not.toContain(DEVICE.secret);
+    const parsed = parseState(JSON.parse(text));
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.state.pushDevice).toBeNull();
+    // The preference travels; only the credential is withheld.
+    expect(parsed.state.reminderSettings[PROFILE_ID]).toEqual(SETTINGS);
+    expect(useAppStore.getState().pushDevice).toEqual(DEVICE);
   });
 });
