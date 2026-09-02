@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { buildCsp, resolveCsp, workerConnectSrc } from './cspPlugin.ts';
 
