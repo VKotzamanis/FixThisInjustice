@@ -336,24 +336,33 @@ below was verified with `git ls-files` on 2026-09-02.
 | Screen | Files |
 | --- | --- |
 | `boot` | `src/ui/components/Boot.tsx` |
-| `shell` | `src/app/App.tsx`, `src/app/UpdatePrompt.tsx`, `src/ui/components/SessionIndicator.tsx`, `src/ui/components/SpotlightButton.tsx` |
+| `shell` | `src/app/App.tsx`, `src/app/UpdatePrompt.tsx`, `src/ui/components/SessionIndicator.tsx`, `src/ui/components/SpotlightButton.tsx`, `src/ui/nav/views.ts`, `src/skins/limelight/Icon.tsx` |
 | `setup` | `src/ui/setup/SetupWizard.tsx` |
-| `readiness` | `src/ui/setup/ReadinessScreen.tsx`, `src/ui/components/ReadinessNotice.tsx` |
-| `today` | `src/ui/views/TodayView.tsx`, `src/ui/components/Marquee.tsx`, `src/ui/components/WeekStamp.tsx`, `src/ui/components/Intervention.tsx`, `src/ui/components/TimeCapsule.tsx` |
-| `train` | `src/ui/views/TrainView.tsx`, `src/ui/views/train` |
+| `readiness` | `src/ui/setup/ReadinessScreen.tsx`, `src/ui/components/ReadinessNotice.tsx`, `src/content/readinessQuestions.ts` |
+| `today` | `src/ui/views/TodayView.tsx`, `src/ui/components/Marquee.tsx`, `src/ui/components/WeekStamp.tsx`, `src/ui/components/Intervention.tsx` |
+| `train` | `src/ui/views/TrainView.tsx`, `src/ui/views/train`, `src/domain/training/hydration.ts` |
 | `plan` | `src/ui/views/PlanView.tsx` |
 | `targets` | `src/ui/views/TargetsView.tsx` |
 | `log` | `src/ui/views/LogView.tsx`, `src/ui/components/BodyMassChart.tsx`, `src/ui/components/ComplianceGrid.tsx`, `src/ui/components/AmrapSpark.tsx`, `src/ui/components/PRList.tsx` |
 | `atlas` | `src/ui/views/AtlasView.tsx` |
-| `settings` | `src/ui/views/SettingsView.tsx`, `src/ui/settings`, `src/ui/components/ReminderSettingsPanel.tsx`, `src/ui/motivation/MotivationSettings.tsx`, `src/ui/views/ExportView.tsx` |
+| `settings` | `src/ui/views/SettingsView.tsx`, `src/ui/settings`, `src/ui/components/ReminderSettingsPanel.tsx`, `src/ui/motivation/MotivationSettings.tsx`, `src/ui/views/ExportView.tsx`, `src/domain/export/summary.ts` |
 | `install` | `src/ui/components/InstallGuide.tsx` |
-| `popup` | `src/ui/components/Spotlight.tsx`, `src/ui/components/KonamiOverlay.tsx`, `src/ui/components/PhaseTransition.tsx`, `src/ui/components/ConfirmDestructive.tsx`, `src/ui/components/ModalShell.tsx`, `src/ui/components/VideoModal.tsx`, `src/ui/components/FormCuesModal.tsx`, `src/ui/migration`, `src/ui/motivation/MotivationModal.tsx`, `src/ui/motivation/MotivationGate.tsx` |
-| `toast` | `src/ui/components/ToastQueue.tsx` |
+| `popup` | `src/ui/components/Spotlight.tsx`, `src/ui/components/KonamiOverlay.tsx`, `src/ui/components/PhaseTransition.tsx`, `src/ui/components/TimeCapsule.tsx`, `src/ui/components/ConfirmDestructive.tsx`, `src/ui/components/ModalShell.tsx`, `src/ui/components/VideoModal.tsx`, `src/ui/components/FormCuesModal.tsx`, `src/ui/migration`, `src/ui/motivation/MotivationModal.tsx`, `src/ui/motivation/MotivationGate.tsx` |
+| `toast` | `src/ui/components/ToastQueue.tsx`, `src/domain/training/coach.ts` |
 
 A key lands under the first screen in this order whose files mention it, exactly as
-`scripts/limelight-side-by-side.mjs` already assigns a key to a screen. That is why `shell` sits
-second: `src/app/App.tsx` mentions the nav keys, and putting it last would file the tab strip under
-a popup.
+`scripts/limelight-side-by-side.mjs` already assigns a key to a screen, and it is filed once: one
+claim map spans the whole tree, never one per screen. That is why `shell` sits second:
+`src/ui/nav/views.ts` names the seven `nav.*` keys (`src/app/App.tsx` does not, verified on
+2026-09-02 by the Task 1 reviewer with `git grep`), and putting the shell last would file the tab
+strip under a popup.
+
+Some keys are named only in a helper module and never in a view file. The helper joins the screen
+that renders its strings, which is why the table above lists `src/content/readinessQuestions.ts`
+under `readiness` and `src/domain/training/coach.ts` under `toast`. Keys named nowhere but inside
+`src/content/copy.ts`, behind a `FORMAT` helper, reach no screen by mention: `--unplaced` lists
+them, Task 2 Step 3 places each by hand in the part whose section renders it, and a key with no
+surface at all is excused by name in `NOT_RENDERED` with the file and line that proves it.
 
 ---
 
@@ -774,8 +783,8 @@ comment about them.
 
 Every record below carries `id`, `title`, `what`, `screen`, `components` and `states`. `keys` is
 filled in Step 3, one screen at a time. A part with no `keys` field takes every key its
-`components` mention that an earlier part of the same screen has not already claimed, which is how
-the parts that own a whole file are filled with no typing at all.
+`components` mention that no earlier part, on this screen or an earlier one, has claimed, which is
+how the parts that own a whole file are filled with no typing at all.
 
 ```javascript
 // scripts/alpha-parts.mjs
@@ -788,9 +797,9 @@ the parts that own a whole file are filled with no typing at all.
 // status: 'retired'. See docs/plans/2026-09-02-10-alpha-feedback-loop.md, decision
 // alpha-feedback-part-ids.
 //
-// `keys` is optional. Omit it and the part takes every copy key its `components` mention that an
-// earlier part of the same screen has not claimed. State it where several parts share one file,
-// which is every view that draws more than one section.
+// `keys` is optional. Omit it and the part takes every copy key its `components` mention that no
+// earlier part, on this screen or an earlier one, has claimed. State it where several parts share
+// one file, which is every view that draws more than one section.
 
 /** @typedef {{id:string,title:string,what:string,screen:string,components:string[],states:string[],keys?:string[],status?:string}} Part */
 
@@ -917,6 +926,16 @@ export const PARTS = [
   { id: 'toast.telemetry', title: 'Telemetry toast', what: 'The line reporting a background action.', screen: 'toast', components: ['src/ui/components/ToastQueue.tsx'], states: ['shown'] },
   { id: 'toast.specimen', title: 'Specimen toast', what: 'The card-drawn line that points at Atlas.', screen: 'toast', components: ['src/ui/components/ToastQueue.tsx'], states: ['shown'] },
 ];
+
+/**
+ * Keys the table holds and no screen renders, each with the file and line that proves it, so the
+ * coverage gate can tell "excused" from "forgotten". A key here can never be claimed by a part and
+ * a key claimed by a part can never be here. Step 3 fills this from the --unplaced list.
+ */
+/** @type {Record<string, string>} */
+export const NOT_RENDERED = {
+  'advice.noCardsMatch': 'src/ui/views/AtlasView.tsx:28 says the key goes unrendered',
+};
 ```
 
 That table holds **93 live parts** across the fourteen screens, counted with:
@@ -939,7 +958,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 Add the part table beside the other imports:
 
 ```javascript
-import { PARTS } from './alpha-parts.mjs';
+import { NOT_RENDERED, PARTS } from './alpha-parts.mjs';
 ```
 
 Then append, above the `const argv = process.argv.slice(2);` line:
@@ -966,9 +985,10 @@ function keyRecord(key, tables, refusals) {
  * The catalogue, and every problem found while building it.
  *
  * A part with an explicit `keys` array takes exactly those keys. A part without one takes every
- * key its own files mention that an earlier part of the same screen has not claimed, which is how
- * a part that owns a whole component file fills itself. Whatever a screen mentions and no part
- * claims lands in `<screen>.unassigned`, so a key can never fall out of the catalogue silently.
+ * key its own files mention that no earlier part has claimed, which is how a part that owns a
+ * whole component file fills itself. Whatever a screen mentions and no part claims lands in
+ * `<screen>.unassigned`, and whatever the table holds and no part claims must be excused by name
+ * in NOT_RENDERED, so a key can never fall out of the catalogue silently.
  */
 export async function buildCatalogue() {
   const tables = await loadCopy();
@@ -982,9 +1002,16 @@ export async function buildCatalogue() {
   const parts = [];
   const seen = new Set();
 
+  /*
+   * ONE CLAIM MAP FOR THE WHOLE TREE, key to part id. A key is filed once, under the first screen
+   * in app order that claims or mentions it, the way scripts/limelight-side-by-side.mjs files a
+   * key once through one `placed` Map. A set per screen would let today and shell both demand
+   * hero.programmeComplete and leave it unassigned on whichever screen has no part for it.
+   */
+  const claimed = new Map();
+
   for (const [screen, files] of SCREEN_FILES) {
     const inScreen = PARTS.filter((p) => p.screen === screen);
-    const claimed = new Set();
     const assigned = new Map();
 
     /*
@@ -998,8 +1025,8 @@ export async function buildCatalogue() {
       const keys = [...part.keys].sort();
       for (const k of keys) {
         if (!(k in tables.DEFAULT_COPY)) problems.push(`${part.id}: key not in DEFAULT_COPY: ${k}`);
-        if (claimed.has(k)) problems.push(`${part.id}: key claimed twice on this screen: ${k}`);
-        claimed.add(k);
+        if (claimed.has(k)) problems.push(`${part.id}: key already claimed by ${claimed.get(k)}: ${k}`);
+        claimed.set(k, part.id);
       }
       assigned.set(part.id, keys);
     }
@@ -1008,7 +1035,7 @@ export async function buildCatalogue() {
       const keys = [...keysIn(part.components)]
         .filter((k) => k in tables.DEFAULT_COPY && !claimed.has(k))
         .sort();
-      for (const k of keys) claimed.add(k);
+      for (const k of keys) claimed.set(k, part.id);
       assigned.set(part.id, keys);
     }
 
@@ -1094,6 +1121,28 @@ export async function buildCatalogue() {
     if (!SCREEN_IDS.includes(view.id)) problems.push(`no screen for view: ${view.id}`);
   }
 
+  /*
+   * EVERY KEY IN THE TABLE, placed once or excused by name. A key the app can show and no part
+   * claims is a part of the app the owner cannot comment on, which is the one failure this
+   * catalogue exists to prevent. NOT_RENDERED is checked both ways, so an excuse cannot outlive
+   * the surface it excuses.
+   */
+  const allKeys = Object.keys(tables.DEFAULT_COPY).sort();
+  for (const key of allKeys) {
+    if (claimed.has(key) && key in NOT_RENDERED) {
+      problems.push(`${claimed.get(key)} claims a key NOT_RENDERED excuses: ${key}`);
+    }
+    if (!claimed.has(key) && !(key in NOT_RENDERED)) {
+      problems.push(`no part claims and NOT_RENDERED does not excuse: ${key}`);
+    }
+  }
+  for (const key of Object.keys(NOT_RENDERED)) {
+    if (!(key in tables.DEFAULT_COPY)) problems.push(`NOT_RENDERED names a key not in DEFAULT_COPY: ${key}`);
+  }
+  const notRendered = Object.keys(NOT_RENDERED)
+    .sort()
+    .map((key) => ({ key, reason: NOT_RENDERED[key] }));
+
   const live = parts.filter((p) => p.status === 'live');
   return {
     catalogue: {
@@ -1102,8 +1151,11 @@ export async function buildCatalogue() {
         screens: SCREEN_IDS.length,
         parts: live.length,
         keys: live.reduce((n, p) => n + p.keys.length, 0),
+        notRendered: notRendered.length,
+        table: allKeys.length,
       },
       parts,
+      notRendered,
     },
     problems,
   };
@@ -1121,7 +1173,7 @@ function toMarkdown(cat) {
   out.push('node scripts/alpha-catalogue.mjs');
   out.push('```');
   out.push('');
-  out.push(`Built from \`${cat.generatedFrom}\`. ${cat.counts.parts} parts across ${cat.counts.screens} screens, holding ${cat.counts.keys} copy keys.`);
+  out.push(`Built from \`${cat.generatedFrom}\`. ${cat.counts.parts} parts across ${cat.counts.screens} screens, holding ${cat.counts.keys} of the table's ${cat.counts.table} copy keys; ${cat.counts.notRendered} have no surface and are excused by name at the foot.`);
   out.push('');
   for (const screen of SCREEN_IDS) {
     const inScreen = cat.parts.filter((p) => p.screen === screen && p.status === 'live');
@@ -1151,6 +1203,12 @@ function toMarkdown(cat) {
       out.push('');
     }
   }
+  out.push('## not rendered');
+  out.push('');
+  out.push('| Key | Why it has no surface |');
+  out.push('| --- | --- |');
+  for (const n of cat.notRendered) out.push(`| \`${n.key}\` | ${n.reason.replace(/\|/g, '\\|')} |`);
+  out.push('');
   return out.join('\n');
 }
 ```
@@ -1213,6 +1271,22 @@ Three rules settle every case:
 2. A key with no visible section, such as an aria-label on the container, goes to the part whose
    element carries it.
 3. A key rendered only inside a state the part already lists goes to that part, not to a new one.
+4. A key that another screen's files also mention is filed once, under the first screen in app
+   order. Claim it there. A later screen that wants the same key gets `already claimed by` from
+   `--check`, and that is correct, not a defect.
+
+After the fourteen screens, place what no screen reaches:
+
+```bash
+node scripts/alpha-catalogue.mjs --unplaced 2>/dev/null
+```
+
+That prints every key in `DEFAULT_COPY` the fourteen file lists do not mention, with the first
+file under `src/` that names it. For a key behind a `FORMAT` helper in `src/content/copy.ts`, open
+the helper, find the component that calls it (`git grep -n "FORMAT\.<helper>" -- src/ui`), and
+claim the key in that component's part. For a key with no surface at all, add it to
+`NOT_RENDERED` in `scripts/alpha-parts.mjs` with the file and line that proves it. Never leave a
+key in neither place: `--check` fails on it by name.
 
 Two screens have a rule of their own, because the tree already pairs the key with the section.
 Each `step.<name>` key goes to `setup.<name>`, which is the mapping `STEP_TITLE_KEY` in
@@ -1237,9 +1311,10 @@ node scripts/alpha-catalogue.mjs --count
 
 Expected: `PASS alpha catalogue`, then `93`.
 
-`--check` proves eight things at once: every id matches the grammar and starts with its screen, no
+`--check` proves nine things at once: every id matches the grammar and starts with its screen, no
 id repeats, every component path exists, every key exists in `DEFAULT_COPY`, no key is claimed
-twice on one screen, every screen's leftovers are empty, the three union-backed part sets match
+twice anywhere in the tree, every screen's leftovers are empty, every key in `DEFAULT_COPY` is
+claimed once or excused in `NOT_RENDERED` and never both, the three union-backed part sets match
 their unions in the tree, and every wizard step, settings row and view has a part.
 
 - [ ] **Step 5: Generate the catalogue, twice, and prove it is deterministic**
@@ -1323,8 +1398,9 @@ interface CataloguePart {
 
 interface Catalogue {
   generatedFrom: string;
-  counts: { screens: number; parts: number; keys: number };
+  counts: { screens: number; parts: number; keys: number; notRendered: number; table: number };
   parts: CataloguePart[];
+  notRendered: { key: string; reason: string }[];
 }
 
 const catalogue = JSON.parse(catalogueJson) as Catalogue;
@@ -1385,7 +1461,19 @@ describe('the alpha catalogue', () => {
     expect(leftovers).toEqual([]);
   });
 
-  it('quotes the clinical string the table holds, byte for byte', () => {
+  it('places every key in DEFAULT_COPY exactly once, or excuses it by name', () => {
+    const placed = new Set(live.flatMap((p) => p.keys.map((k) => k.key)));
+    const excused = new Set(catalogue.notRendered.map((n) => n.key));
+    const table = Object.keys(DEFAULT_COPY);
+    const missing = table.filter((k) => !placed.has(k) && !excused.has(k));
+    expect(missing).toEqual([]);
+    const both = [...excused].filter((k) => placed.has(k));
+    expect(both).toEqual([]);
+    expect(placed.size + excused.size).toBe(table.length);
+    expect(catalogue.counts.table).toBe(table.length);
+  });
+
+  it('quotes the default string the table holds, byte for byte', () => {
     for (const part of live) {
       for (const k of part.keys) {
         expect(DEFAULT_COPY[k.key as keyof typeof DEFAULT_COPY], k.key).toBe(k.default);
