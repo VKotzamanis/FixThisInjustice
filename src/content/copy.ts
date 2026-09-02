@@ -511,7 +511,18 @@ export type CopyKey =
   | 'button.motivationClipRemove'
   | 'status.motivationClipNotVideo'
   | 'status.motivationClipTooLarge'
-  | 'status.motivationClipNotStored';
+  | 'status.motivationClipNotStored'
+  // --- time capsule (P8 Task 7; appended by that task) ---
+  | 'button.writeCapsule'
+  | 'button.readCapsule'
+  | 'label.capsuleNote'
+  | 'label.capsuleOpensOn'
+  | 'status.capsuleSealed'
+  | 'status.capsuleWritten'
+  | 'advice.capsuleNoteShort'
+  | 'advice.capsuleNoteLong'
+  | 'advice.capsuleDateRange';
+
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -1227,6 +1238,29 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.motivationClipTooLarge': 'That file is over the size limit.',
   // Anything else the save threw. It states the outcome and stops.
   'status.motivationClipNotStored': 'The clip was not stored.',
+
+  // --- time capsule (P8 Task 7; appended by that task) ---
+  // The two controls the P8 block above did not name: the one that reaches the writing
+  // dialog, and the one that reaches an already opened capsule again. Sealing and opening are
+  // 'button.sealCapsule' and 'button.openCapsule'.
+  'button.writeCapsule': 'Write capsule',
+  'button.readCapsule': 'Read capsule',
+  'label.capsuleNote': 'Note to your future self',
+  'label.capsuleOpensOn': 'Opens on',
+  // The sealed card. It states the open date and how far off it is, and carries no part of
+  // the note: a sealed capsule that leaked a word of its contents would not be sealed.
+  // {days} arrives from FORMAT.capsuleSealed already carrying its unit. [d]
+  'status.capsuleSealed': 'Opens {date}, in {days}.', // formatted
+  // The date the note was written, as a civil date in the profile's zone, never a UTC
+  // instant. Shown only once the capsule is open.
+  'status.capsuleWritten': 'Sealed {date}.', // formatted
+  // The three refusals the writing dialog can state. Each names the bound it refuses against,
+  // because a refusal that does not say what would be accepted is a dead end. The character
+  // bound is src/domain/schema.ts MAX_NOTE_CHARS [characters]; the two dates are civil dates
+  // in the profile's zone.
+  'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
+  'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
+  'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
 };
 
 /**
@@ -1780,4 +1814,49 @@ export const FORMAT = {
 
   /** "12.4 MiB": the stored clip's size, one number with its unit. [MiB] */
   motivationClipSize: (mib: string): string => `${mib} MiB`,
+
+  // --- time capsule (P8 Task 7) ---
+
+  /**
+   * "Opens 2026-11-29, in 30 days." The date is the capsule's own LocalDate and the count is
+   * whole calendar days from today to it (src/domain/dates.ts daysBetween), never a difference
+   * of wall clocks. The unit word is singularised here, in the pattern legacySets uses, so a
+   * capsule one day off does not read "in 1 days". [d]
+   */
+  capsuleSealed: (
+    date: string,
+    days: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.capsuleSealed', overrides)
+      .replace('{date}', () => date)
+      .replace('{days}', () => `${days} ${days === 1 ? 'day' : 'days'}`),
+
+  /** "Sealed 2026-09-07.": the civil date the note was written, in the profile's zone. */
+  capsuleWritten: (date: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.capsuleWritten', overrides).replace('{date}', () => date),
+
+  /**
+   * "9 of 5000 characters": what has been written, against the bound the schema enforces.
+   * Two counts, never their difference, in the pattern complianceWeek uses. [characters]
+   */
+  capsuleCount: (written: number, max: number): string => `${written} of ${max} characters`,
+
+  /** "Write at least 20 characters before sealing." [characters] */
+  capsuleNoteShort: (count: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('advice.capsuleNoteShort', overrides).replace('{count}', () => String(count)),
+
+  /** "The note is longer than 5000 characters." The bound is schema.ts MAX_NOTE_CHARS. */
+  capsuleNoteLong: (count: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('advice.capsuleNoteLong', overrides).replace('{count}', () => String(count)),
+
+  /** "Pick a date between 2026-09-14 and 2028-09-06." Both bounds are civil dates. */
+  capsuleDateRange: (
+    from: string,
+    to: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('advice.capsuleDateRange', overrides)
+      .replace('{from}', () => from)
+      .replace('{to}', () => to),
 } as const;
