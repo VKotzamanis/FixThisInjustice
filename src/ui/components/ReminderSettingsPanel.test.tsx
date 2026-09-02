@@ -347,18 +347,34 @@ describe('the status line', () => {
   });
 
   it('reports the state an imported document leaves behind: enabled, but no device', () => {
-    // An exported document never carries the push device (src/store/persistence.ts
-    // exportJson withholds the bearer secret), so importing one onto a second browser leaves
-    // enabled = true with pushDevice = null. The panel says the literal truth - nothing has
-    // reached the server - and leaves the switch on; it does not claim reminders are off.
-    //
-    // Nothing recovers on its own: syncSchedule answers "no-device" and
-    // src/app/ReminderSync.tsx recovers only from "stale-device". The user switches the
-    // toggle off and then on, which mints a device for this browser.
+    /*
+     * An exported document never carries the push device (src/store/persistence.ts exportJson
+     * withholds the bearer secret), so importing one onto a second browser leaves enabled = true
+     * with pushDevice = null. The stale-device recovery in ReminderSettingsPanel's own ON branch
+     * reaches the same state deliberately.
+     *
+     * "Reminders are on. Schedule not sent yet." was WRONG here, not merely thin. Nothing is on:
+     * this browser holds no subscription, the Worker holds no record for it, and no push can
+     * arrive. "Not sent yet" also implies a send is coming, and none is -- syncSchedule answers
+     * "no-device" and src/app/ReminderSync.tsx recovers only from "stale-device". The line has to
+     * name the one action that fixes it, and the toggle has to stay on screen to be that action.
+     */
     seed({ enabled: true, device: null });
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersPending'))).toBeInTheDocument();
+    expect(screen.getByText(copy('status.remindersNeedReenable'))).toBeInTheDocument();
+    expect(screen.queryByText(copy('status.remindersPending'))).toBeNull();
+    expect(toggle()).toBeInTheDocument();
     expect(toggle().checked).toBe(true);
+    expect(toggle().disabled).toBe(false);
+  });
+
+  it('keeps "not sent yet" for the browser that does hold a device', () => {
+    // The two states are separated by the device alone: this browser subscribed, the Worker has
+    // simply not acknowledged a schedule yet, and a send really is coming.
+    seed({ enabled: true, device: DEVICE });
+    render(<ReminderSettingsPanel />);
+    expect(screen.getByText(copy('status.remindersPending'))).toBeInTheDocument();
+    expect(screen.queryByText(copy('status.remindersNeedReenable'))).toBeNull();
   });
 });
 
