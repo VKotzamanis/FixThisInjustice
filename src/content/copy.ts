@@ -14,7 +14,7 @@ export { LIMELIGHT_COPY } from './copy.limelight';
 /**
  * User-facing copy, default (clinical) skin.
  *
- * Contract: docs/design/2026-09-01-copy-contract.md. Every string here obeys R1-R11.
+ * Contract: docs/design/2026-09-01-copy-contract.md. Every string here obeys R1 to R13.
  * Numbers, units and quantity names are part of the contract, not of the skin: a skin may
  * rewrite the sentence around `60 kg`, never `60 kg` itself.
  *
