@@ -107,9 +107,10 @@ afterEach(() => {
 
 describe('deloadNote', () => {
   it('states the volume cut and that the load is unchanged', () => {
-    // The default table's own entry, so the note the view prints for the canonical deload is
-    // the string the copy contract fixed.
-    expect(deloadNote(0.5)).toBe(copy('status.deloadNote'));
+    // The default table's own row, filled by the frame that reads it, so the note the view
+    // prints for the canonical deload is the string the copy contract fixed. The row is a
+    // template since P8 Task 16, so the frame is what renders it and `copy` alone no longer can.
+    expect(deloadNote(0.5)).toBe(FORMAT.deloadNote(50)); // [%] of planned sets removed
   });
 
   it("reports the block's actual modifier rather than a fixed number", () => {
@@ -150,7 +151,7 @@ describe('PlanView block strip', () => {
     expect(chip(1).textContent).toContain(FORMAT.blockSessions(1, 3));
     const deload = chip(2);
     expect(deload.textContent).toContain(copy('status.deloadTag'));
-    expect(deload.textContent).toContain(copy('status.deloadNote'));
+    expect(deload.textContent).toContain(FORMAT.deloadNote(50)); // [%]
     // The ordinary block carries no deload flag: the strip states the cut where it applies.
     expect(chip(1).textContent).not.toContain(copy('status.deloadTag'));
   });
