@@ -227,3 +227,19 @@ describe('readiness row in Settings', () => {
     expect(screen.queryByTestId('readiness-screen')).toBeNull();
   });
 });
+
+/**
+ * The reminders row (P5 Task 8). Like the readiness row it is a SETTINGS_ROWS entry, so all
+ * this file has to hold is that Settings mounts it; what the panel then decides is
+ * ReminderSettingsPanel.test.tsx's subject.
+ *
+ * The test build carries neither VITE_REMINDER_API nor VITE_VAPID_PUBLIC_KEY, so the panel
+ * renders its unconfigured state here. That is the point of asserting on the heading rather
+ * than on a control: the heading is present in every one of the panel's states.
+ */
+describe('reminders row in Settings', () => {
+  it('mounts the reminder settings panel', () => {
+    render(<SettingsView />);
+    expect(screen.getByRole('heading', { name: copy('hero.reminders') })).toBeInTheDocument();
+  });
+});

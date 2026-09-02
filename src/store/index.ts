@@ -26,6 +26,7 @@ import {
   type ScheduleActions,
 } from './scheduleActions';
 import { createMotivationActions, type MotivationActions } from './motivationActions';
+import { createReminderActions, type ReminderActions } from './reminderActions';
 import {
   UNDO_WINDOW_MS,
   applyAddCustomExercise,
@@ -235,7 +236,8 @@ export interface AppActions {
  */
 export type AppStore = AppState &
   AppActions & { status: StoreStatus; session: SessionState } & ScheduleActions &
-  MotivationActions;
+  MotivationActions &
+  ReminderActions;
 
 /**
  * The persisted fields of the store, and only those: no actions, no `status`,
@@ -330,6 +332,16 @@ export const useAppStore = create<AppStore>()((set, get) => {
    * channel: neither of its two actions can be refused (motivationActions.ts says why).
    */
   const motivation = createMotivationActions({
+    set: (updater) => {
+      set((s) => updater(s));
+    },
+  });
+
+  /*
+   * P5's reminder slice. Same adapter again, and the same absence of an error channel:
+   * neither action can be refused (reminderActions.ts says why).
+   */
+  const reminders = createReminderActions({
     set: (updater) => {
       set((s) => updater(s));
     },
@@ -866,6 +878,7 @@ export const useAppStore = create<AppStore>()((set, get) => {
 
   /* P6's motivation slice (master plan §6.7). Collides with nothing. */
   ...motivation,
+  ...reminders,
 
   /*
    * The two transitions that end a session, wrapped so the non-persisted session slice and its

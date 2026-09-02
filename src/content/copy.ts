@@ -442,7 +442,27 @@ export type CopyKey =
   | 'button.legacyKeepOld'
   | 'button.legacyClose'
   // --- motivation modal (P6 Task 4; appended by that task) ---
-  | 'advice.tapForSound';
+  | 'advice.tapForSound'
+  // --- reminders and Home Screen install (P5 Task 8; appended by that task) ---
+  | 'hero.reminders'
+  | 'label.remindersEnable'
+  | 'label.reminderDayOfTime'
+  | 'label.reminderLeadTimes'
+  | 'label.reminderLead'
+  | 'advice.reminderSubscribeFailed'
+  | 'advice.reminderSyncFailed'
+  | 'hero.installHomeScreen'
+  | 'advice.installOnlyInstalledApp'
+  | 'advice.installIosVersion'
+  | 'label.installIos'
+  | 'status.installIosSafari'
+  | 'status.installIosShare'
+  | 'status.installIosAdd'
+  | 'status.installIosOpen'
+  | 'label.installAndroid'
+  | 'status.installAndroidMenu'
+  | 'status.installAndroidInstall'
+  | 'status.installAndroidOpen';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -683,13 +703,22 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'coach.insideRange': '60 kg × 7, inside the prescribed 6-8.', // formatted
 
   // --- reminders (P5) ---
-  'status.remindersUnconfigured': 'Reminders are not configured in this build.',
+  // R7: a statement of fact about this deployment, not a clause about the app's own
+  // construction. It is what the panel says when the build carried no Worker origin or no
+  // VAPID key (REMINDERS_CONFIGURED, src/config/reminders.ts).
+  'status.remindersUnconfigured': 'Reminders are not set up on this deployment.',
   'status.remindersUnsupported': 'This browser cannot receive push notifications.',
   'status.remindersNeedInstall': 'Add this app to the Home Screen first.',
-  'status.remindersDenied': 'Notifications are blocked. Re-enable them in settings.',
+  // Names WHERE the block is lifted. The permission belongs to the browser, not to the app,
+  // so "in settings" alone sends the user to the app's own Settings screen, which cannot
+  // change it. P5 Task 8 edited this line in place; it had no renderer before.
+  'status.remindersDenied': 'Notifications are blocked. Allow them in your browser site settings.',
   'status.remindersOff': 'Reminders are off.',
   'status.remindersPending': 'Reminders are on. Schedule not sent yet.',
-  'status.remindersActive': 'Reminders are active. Schedule last sent at 17:00.', // formatted
+  // template; FORMAT.remindersActive fills {time} with a local wall clock in the profile's
+  // zone (src/domain/dates.ts localTimeOf), never a UTC instant. P5 Task 8 replaced the
+  // formatted example with the slot so a skin override reaches the rendered string.
+  'status.remindersActive': 'Reminders are on. Schedule last sent at {time}.',
   'hero.installFirst': 'Install to the Home Screen first',
   'advice.installIos': 'On iPhone and iPad, only an installed app receives notifications.',
   'advice.iosVersion': 'Requires iOS 18.4 or later.',
@@ -1006,6 +1035,30 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The clip autoplays muted, which is the only autoplay any engine allows; sound needs a
   // gesture, and this line names it. Rendered only while the clip is still muted.
   'advice.tapForSound': 'Tap the video for sound.',
+  // --- reminders and Home Screen install (P5 Task 8) ---
+  'hero.reminders': 'Reminders',
+  'label.remindersEnable': 'Enable reminders',
+  // "Day-of" is hyphenated, not dashed: R5 bans the dash as a CONNECTOR, and this is one word.
+  'label.reminderDayOfTime': 'Day-of reminder time',
+  'label.reminderLeadTimes': 'Before each session',
+  // template; FORMAT.reminderLead fills it from LEAD_MINUTE_CHOICES. [min] before the slot.
+  'label.reminderLead': '{minutes} minutes before',
+  // The two failures the user can see. Neither carries the underlying message: an HTTP status
+  // or a push endpoint is not something the user can act on, and the endpoint is a credential.
+  'advice.reminderSubscribeFailed': 'The browser refused to register this device.',
+  'advice.reminderSyncFailed': 'The schedule did not reach the server.',
+  'hero.installHomeScreen': 'Install to the Home Screen',
+  'advice.installOnlyInstalledApp': 'Only an installed app receives notifications. A browser tab does not.',
+  'advice.installIosVersion': 'Requires iOS 18.4 or later.',
+  'label.installIos': 'iPhone and iPad',
+  'status.installIosSafari': 'Open this page in Safari.',
+  'status.installIosShare': 'Tap Share, the square with an upward arrow.',
+  'status.installIosAdd': 'Scroll down, tap Add to Home Screen, then tap Add.',
+  'status.installIosOpen': 'Open the app from the Home Screen icon.',
+  'label.installAndroid': 'Android Chrome',
+  'status.installAndroidMenu': 'Open the browser menu, the three dots.',
+  'status.installAndroidInstall': 'Tap Install app, then confirm.',
+  'status.installAndroidOpen': 'Open the app from the home screen icon.',
 };
 
 /**
@@ -1371,4 +1424,20 @@ export const FORMAT = {
 
   /** Why the import was refused, in the migration's own words. */
   legacyRefusedReason: (reason: string): string => `Reason: ${reason}`,
+  // --- reminders (P5 Task 8) ---
+
+  /**
+   * "120 minutes before", one lead-time choice. The words are `label.reminderLead`, read
+   * rather than restated, so a skin override reaches the rendered label; the number comes
+   * from LEAD_MINUTE_CHOICES in src/config/reminders.ts. [min] before the slot start.
+   */
+  reminderLead: (minutes: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('label.reminderLead', overrides).replace('{minutes}', () => String(minutes)),
+
+  /**
+   * "Reminders are on. Schedule last sent at 17:00." The time is a local wall clock in the
+   * profile's zone, formatted by src/domain/dates.ts, never a UTC instant.
+   */
+  remindersActive: (time: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.remindersActive', overrides).replace('{time}', () => time),
 } as const;
