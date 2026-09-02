@@ -566,3 +566,64 @@ requires the maintenance-only groups to be named rather than hidden. `{advice.ki
 the raw enum (`add-load`), which needs a copy map rather than a string edit. Plan prose addressed to
 the executor, `describe`/`it` titles, code comments and the `check-media-size.sh` CI output were left
 alone: none of them is user-facing copy.
+
+---
+## Retired and added keys (2026-09-02, P8 close-out B and D)
+
+Appended, not merged into the body above: the P9 pass rewrites the contract, and until then this
+section is the record of what the key list gained and lost after the P2-P8 sweep was written.
+
+### Retired in `1500997`
+
+Seventeen keys nothing rendered. Each was checked with `git grep` over `src` with the three copy
+tables excluded, and against the `FORMAT` frames in `copy.ts`, before deletion. Three carried
+limelight rows, which went with them (`button.play`, `button.preview`, `button.setUpProfile`), and
+`button.play` also left `copy.test.ts`'s REQUIRED list: no control ever rendered it, because the
+missed-week clip autoplays muted, which is the only autoplay an engine allows.
+
+| Key | What it named |
+| --- | --- |
+| `advice.installIos` | the iOS install instructions, never built |
+| `advice.iosVersion` | the iOS version notice beside them |
+| `advice.videoStoreFailed` | a user-supplied motivation clip that would not store |
+| `advice.videoTooLarge` | the same clip over the size cap |
+| `advice.videoWrongType` | the same clip of the wrong MIME type |
+| `advice.wipeAll` | a second wipe warning; the shipped screen uses its own |
+| `button.muteThisWeek` | a per-week mute for the missed-week screen |
+| `button.play` | a play control for a clip that autoplays muted |
+| `button.preview` | a preview control for the same clip |
+| `button.removeCustomClip` | removing a user-supplied clip |
+| `button.setUpProfile` | a setup entry point the shell never rendered |
+| `hero.installFirst` | the install-first hero above it |
+| `status.bundledClipAbsent` | the bundled clip's three probe states, none surfaced |
+| `status.bundledClipChecking` | " |
+| `status.bundledClipPresent` | " |
+| `status.customClipNone` | the custom clip's two states, neither surfaced |
+| `status.customClipStored` | " |
+
+Two keys on the same sweep list survive and were **not** deleted: `advice.weekMissedNone` has a live
+reader (`FORMAT.weekMissed` branches onto it at `completed === 0`), and `advice.downloadBackupFirst`
+was already gone. Retiring `button.setUpProfile` also closes the R1 ruling this contract's own P8
+amendment asked for: the key had been shortened to three words, and now there is nothing to cap.
+
+### Added since the sweep
+
+| Key | Default | Why it exists |
+| --- | --- | --- |
+| `status.weekMetStamp` | `Target met` | A met week and a personal record became two different claims, so the week stamp stopped reading `status.prStamp`. Limelight keeps `MOTHER` at both; the board says `ALL DEPARTED`. |
+| `label.settingsHotkeys` | `Keyboard shortcuts` | WCAG 2.1 SC 2.1.4 needs an off switch for single-character shortcuts, and the switch needs a name. |
+| `advice.hotkeysOff` | `Off leaves Escape and the modifier shortcuts bound.` | What the switch does not take away, said once beside it: SC 2.1.4 scopes itself to a single character key, so `mod+k` and Escape stay bound. |
+| `status.remindersNeedReenable` | `Reminders need enabling again on this device.` | The reminder preference travels with the exported document; the push subscription does not, because it is a bearer credential the export withholds. On the restoring device `Reminders are on` was false, not merely thin: no subscription exists and nothing is queued. The row names the device and the action, because nothing recovers on its own. |
+| `unit.characters` | `characters` | The unit `FORMAT.outOfRange` names beside a name-length bound, previously a bare word passed from `AddCustomExercise`. It is a key while `cm`, `%` and `s` are not, because those are symbols and this is an English word. |
+| `label.modality.barbell` | `Barbell` | One row per `Modality` member. The `<option>` labels in the custom-exercise form were the union MEMBERS, so the select rendered the model's own lower-case identifiers under every skin. The option VALUE is still the enum; only the label is copy. |
+| `label.modality.dumbbell` | `Dumbbell` | " |
+| `label.modality.machine` | `Machine` | " |
+| `label.modality.cable` | `Cable` | " |
+| `label.modality.bodyweight` | `Bodyweight` | " |
+
+The `label.modality.*` rows settle half of the note the previous section ends on. That note reads
+"`{advice.kind}` still renders the raw enum (`add-load`), which needs a copy map rather than a
+string edit"; `ProgressionAdvice['kind']` got its map earlier (`ADVICE_KEY` in `ExerciseCard.tsx`,
+onto `status.advice*`), and `Modality` gets one here (`MODALITY_KEY` in `AddCustomExercise.tsx`).
+Both maps are `Record<Enum, CopyKey>` and exhaustive by type, so a member added to either union is a
+compile error rather than an identifier on screen.
