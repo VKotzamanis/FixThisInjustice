@@ -51,7 +51,6 @@ export const SCREEN_FILES = [
       'src/ui/components/SessionIndicator.tsx',
       'src/ui/components/SpotlightButton.tsx',
       'src/ui/nav/views.ts',
-      'src/skins/limelight/Icon.tsx',
     ],
   ],
   ['setup', ['src/ui/setup/SetupWizard.tsx']],
