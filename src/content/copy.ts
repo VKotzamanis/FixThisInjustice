@@ -1606,7 +1606,15 @@ export const FORMAT = {
   /** "Monday start time". Used for the per-weekday slot controls. */
   slotField: (weekday: string, field: string): string => `${weekday} ${field}`,
 
-  /** "21.9 % body fat, ± 3.52 percentage points." */
+  /**
+   * "21.9 % body fat, ± 3.52 percentage points."
+   *
+   * `advice.bodyFatEstimate` in the table above is the formatted EXAMPLE of what this produces,
+   * in the same way as `advice.beverageDefault` and `why.beverageDefault` below. The row is not
+   * read by `copy()` — this frame builds the sentence from a template literal — so naming it
+   * here is the only link between the two, and copy.test.ts's call-site gate follows that link
+   * rather than retiring the row as uncalled. The gate pins the two together byte for byte.
+   */
   bodyFatEstimate: (pct: number, seePct: number): string =>
     `${pct.toFixed(1)} % body fat, ± ${seePct.toFixed(2)} percentage points.`,
 
@@ -1822,6 +1830,11 @@ export const FORMAT = {
   /**
    * R9's disclosure body for a deload week: the multiplication behind the set counts printed
    * beside it. `setModifier` is the block's own, dimensionless multiplier.
+   *
+   * `why.deloadSets` in the table above is the formatted EXAMPLE of what this produces, at the
+   * 0.5 modifier a shipped deload block carries. PlanView.tsx renders this frame, not that row,
+   * so the row's only link to a renderer is this line; copy.test.ts's call-site gate follows it
+   * and pins the two together byte for byte.
    */
   deloadSetsBasis: (setModifier: number): string =>
     `Each set count is the planned count times this block's set modifier of ${setModifier}, rounded to the nearest whole set, minimum 1. The load is unchanged.`,
