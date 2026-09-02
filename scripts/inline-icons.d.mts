@@ -5,6 +5,12 @@
  * spawning the script or duplicating its logic.
  */
 
+/** Absolute path of the source directory holding the 32x32 icon PNGs. */
+export declare const ICON_DIR: string;
+
+/** Absolute path of the source directory holding the 256x256 mascot PNGs. */
+export declare const ART_DIR: string;
+
 /** Absolute path of the generated icon module. */
 export declare const ICON_OUT: string;
 

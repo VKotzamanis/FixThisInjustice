@@ -57,7 +57,7 @@ const restrictedGlobals = [
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'legacy/**', 'node_modules/**', 'scripts/**'],
+    ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'legacy/**', 'node_modules/**'],
   },
   js.configs.recommended,
   {
@@ -124,5 +124,14 @@ export default tseslint.config(
     // eslint.config.js itself is JavaScript and is not in a TypeScript project.
     files: ['**/*.js'],
     extends: [tseslint.configs.disableTypeChecked],
+  },
+  {
+    // Node-run build/codegen scripts: no browser globals, no TS project.
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: { ...globals.node },
+    },
   },
 );
