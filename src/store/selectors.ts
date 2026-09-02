@@ -2,14 +2,15 @@ import { useMemo } from 'react';
 import type {
   AppState,
   BodyMassEntry,
+  EpochMs,
   IntakeEntry,
   LocalDate,
   PlanTemplate,
   Profile,
 } from '../domain/types';
 import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
-import { computeTargets } from '../domain/nutrition';
-import { todayLocal } from '../domain/dates';
+import { computeTargets, isInDomain } from '../domain/nutrition';
+import { compareLocalDate, todayLocal } from '../domain/dates';
 import type { SaveError } from './index';
 import { useAppStore } from './index';
 import { readRaw } from './persistence';
@@ -90,7 +91,14 @@ export function latestBodyMassEntry(state: AppState, profileId: string): BodyMas
     }
     // Civil date first, then the logging instant: two weigh-ins on one day are
     // ordered by when they were entered, not by the order of the array.
-    if (e.date > best.date || (e.date === best.date && e.loggedAt > best.loggedAt)) best = e;
+    //
+    // compareLocalDate rather than a raw `>`: the two agree today only because
+    // every LocalDate is a zero-padded ISO string, which is an invariant of
+    // dates.ts and not of this comparison. Routing the ordering through the one
+    // function that owns it means a change to the date representation has one
+    // place to be fixed instead of one place plus every inlined string compare.
+    const byDate = compareLocalDate(e.date, best.date);
+    if (byDate > 0 || (byDate === 0 && e.loggedAt > best.loggedAt)) best = e;
   }
   return best;
 }
@@ -109,10 +117,15 @@ export function nutritionInputFor(
 ): NutritionInput {
   const massKg = latest?.massKg ?? profile.body.baselineMassKg; // [kg]
   const bodyFatPct = latest?.bodyFatPct ?? profile.body.baselineBodyFatPct; // [%] or null
-  // Age in whole years from the birth year, read in the profile's own zone. A
-  // birthday during a session does not retrigger this: it is recomputed on the
-  // next profile or body-mass change. Whole years is all the Mifflin-St Jeor
-  // and the domain gate use, so the day of the birthday changes no number.
+  // Age in whole years as (current year - birth year), read in the profile's own
+  // zone. This is the age the person REACHES during this calendar year, not their
+  // age today: the day of the birthday is not knowable from `birthYear`, because
+  // the year is the only part the profile collects. Before their birthday the
+  // figure therefore runs up to one year high, and Mifflin-St Jeor's age term is
+  // -5 kcal/day per year, so the worst case understates RMR by 5 kcal/day (about
+  // 0.2 % of a 2700 kcal/day target). Collecting a full birth date would remove
+  // the error; it would also collect a date of birth this app has no other use
+  // for, so the bias is accepted and recorded rather than engineered away.
   const ageYears = Number(todayIso.slice(0, 4)) - profile.body.birthYear; // [year]
   return {
     sex: profile.body.sex,
@@ -132,20 +145,29 @@ export function nutritionInputFor(
  *
  * Null in two cases, neither of which is an error the UI has to handle: no
  * active profile, and a profile whose measurements fall outside
- * NUTRITION_DOMAIN. computeTargets throws RangeError in the second rather than
- * extrapolating an equation past the sample it was fitted on, which is the
- * right behaviour for a caller that can act on it: the setup wizard imports
- * the same bounds and blocks the value at the field. A rendering component
- * cannot act on it, and an exception thrown during render takes the tree down
- * with it, so the throw is converted to null here. Only RangeError is caught:
- * anything else is a defect in the engine and must still surface.
+ * NUTRITION_DOMAIN. The second is decided by asking isInDomain BEFORE calling
+ * the engine, not by catching what the engine throws. Both routes return null
+ * here, but they say different things about anything else that goes wrong: with
+ * the gate in front, a throw that still escapes computeTargets is a defect in
+ * the engine, and it now reaches the caller instead of being reported to the UI
+ * as "this profile has no targets". A caught RangeError could not be told apart
+ * from a legitimate domain refusal, so the wrong diagnosis was the cheap one.
+ * The setup wizard still reads NUTRITION_DOMAIN directly, because it must name
+ * the field the user has to change; a rendering component has no such control,
+ * and an exception thrown during render takes the tree down with it.
  *
- * The memo is keyed on the three inputs that can change a number. Each is read
- * through its own store subscription and each returns a stored reference, so an
- * unrelated write re-runs no arithmetic and the returned object keeps its
- * identity across re-renders.
+ * The memo is keyed on the four inputs that can change a number, `now` included.
+ * Age is derived from the civil year (nutritionInputFor), so a memo keyed only
+ * on the profile and the logs would keep serving December's age all through
+ * January: the arithmetic depends on the clock, so the clock has to be a
+ * dependency. It enters as a LocalDate rather than as the raw instant, so the
+ * value is stable within a civil day and the memo still holds across re-renders.
+ *
+ * @param now [ms] epoch instant to read the civil date from. Defaults to the
+ *   wall clock; a caller passes it to pin the day (tests, and any future
+ *   store-level clock).
  */
-export function useNutritionTargets(): NutritionTargets | null {
+export function useNutritionTargets(now: EpochMs = Date.now()): NutritionTargets | null {
   const profile = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
   );
@@ -158,25 +180,35 @@ export function useNutritionTargets(): NutritionTargets | null {
   const sessionsPerWeek = useAppStore((s) =>
     s.activeProfileId === null ? 0 : (s.availability[s.activeProfileId]?.weeklySessionTarget ?? 0),
   );
+  // Outside the memo so it is a dependency rather than a hidden read. It is a
+  // "YYYY-MM-DD" string, so an unchanged day compares equal and re-renders cost
+  // no arithmetic; the day rolling over is what makes the memo recompute.
+  //
+  // todayLocal throws RangeError on an invalid IANA zone, and that throw is now
+  // outside the removed try/catch, so it reaches the caller. That is deliberate
+  // and matches the rule above: Profile.timezone is refined by the schema, so a
+  // profile carrying an unusable zone is a document the loader would have
+  // rejected, i.e. a defect rather than a state the UI should render around.
+  const todayIso = profile === null ? null : todayLocal(profile.timezone, now);
   return useMemo(() => {
-    if (profile === null) return null;
-    const input = nutritionInputFor(profile, latest, sessionsPerWeek, todayLocal(profile.timezone));
-    try {
-      return computeTargets(input);
-    } catch (e) {
-      if (e instanceof RangeError) return null;
-      throw e;
-    }
-  }, [profile, latest, sessionsPerWeek]);
+    if (profile === null || todayIso === null) return null;
+    const input = nutritionInputFor(profile, latest, sessionsPerWeek, todayIso);
+    if (!isInDomain(input)) return null;
+    return computeTargets(input);
+  }, [profile, latest, sessionsPerWeek, todayIso]);
 }
 
 /**
  * The plan the active profile is working through, or null before setup.
  *
- * Read through the cursor rather than by searching `plans`: the cursor is the
- * one record that says which plan belongs to this profile (setPlan mints a
- * fresh plan id per profile), so a plan with no cursor is unreachable by
- * construction.
+ * Read through the cursor rather than by searching `plans`. The cursor is the
+ * one record that says which plan is CURRENT: setPlan mints a fresh plan id per
+ * profile and keeps the plan it replaced, because logged sets carry the session
+ * ids of the plan they were logged under and those ids are resolvable nowhere
+ * else. So `plans` holds every plan the profile has ever run, only one of them
+ * is active, and searching that map for "the" plan would be ambiguous by
+ * construction. `?? null` still guards the lookup: a cursor pointing at a plan
+ * that is not stored is a corrupt document, not a plan.
  */
 export function useActivePlan(): PlanTemplate | null {
   return useAppStore((s) => {

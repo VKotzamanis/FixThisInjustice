@@ -413,11 +413,46 @@ function proteinPlan(goal: GoalKind, massKg: Kg, ffmKg: Kg | null): ProteinPlan 
 }
 
 /**
+ * Inclusive bound test, and the only arithmetic either the predicate or the guard below
+ * performs, so `isInDomain` and `computeTargets` cannot drift apart. NaN and the infinities
+ * fail it: `Number.isFinite` first, then the comparisons.
+ */
+function inBound(value: number, bound: { lo: number; hi: number }): boolean {
+  return Number.isFinite(value) && value >= bound.lo && value <= bound.hi;
+}
+
+/**
+ * Whether computeTargets will accept this input. Never throws.
+ *
+ * It exists for the one caller that cannot act on an exception. The setup wizard reads
+ * NUTRITION_DOMAIN directly because it must tell the user WHICH field to change, and
+ * computeTargets keeps throwing for the same reason. A rendering selector has no control to
+ * attach a message to, and an exception thrown during render takes the tree down with it, so
+ * it asks first and renders nothing (master plan section 6.3). Gating is not the same as
+ * catching: with the gate in front, a throw that still escapes computeTargets is a defect in
+ * the engine and must reach the caller rather than be reported as "no targets".
+ *
+ * Contract: `isInDomain(x)` is true if and only if `computeTargets(x)` does not throw.
+ * nutrition.test.ts asserts that equivalence over generated inputs rather than trusting two
+ * hand-maintained field lists to stay in step.
+ */
+export function isInDomain(input: NutritionInput): boolean {
+  return (
+    inBound(input.massKg, NUTRITION_DOMAIN.massKg) &&
+    inBound(input.heightCm, NUTRITION_DOMAIN.heightCm) &&
+    inBound(input.ageYears, NUTRITION_DOMAIN.ageYears) &&
+    (input.bodyFatPct === null || inBound(input.bodyFatPct, NUTRITION_DOMAIN.bodyFatPct)) &&
+    Number.isInteger(input.sessionsPerWeek) &&
+    inBound(input.sessionsPerWeek, NUTRITION_DOMAIN.sessionsPerWeek)
+  );
+}
+
+/**
  * Throws RangeError naming the offending FIELD, so a caller can attach the message to the
  * control that produced it. Bounds are inclusive.
  */
 function requireInDomain(field: string, value: number, bound: { lo: number; hi: number }): void {
-  if (!Number.isFinite(value) || value < bound.lo || value > bound.hi) {
+  if (!inBound(value, bound)) {
     throw new RangeError(
       `computeTargets: ${field} must be a finite number in [${bound.lo}, ${bound.hi}]; received ${String(value)}`,
     );
