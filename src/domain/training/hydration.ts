@@ -30,7 +30,15 @@
  * loss fraction is POSITIVE when mass was lost.
  */
 import { localTimeOf, todayLocal } from '../dates';
-import type { AppState, EpochMs, HydrationEntry, Kg, LocalTime, ML } from '../types';
+import type {
+  AppState,
+  EpochMs,
+  HydrationEntry,
+  Kg,
+  LocalTime,
+  ML,
+  SessionAssignment,
+} from '../types';
 
 /**
  * Sex-specific baseline daily beverage target, re-exported from the nutrition
@@ -62,12 +70,68 @@ export const DAILY_SHORTFALL_AFTER: LocalTime = '18:00'; // [HH:mm] in Profile.t
 export const DAILY_SHORTFALL_FRACTION = 0.5; // dimensionless
 
 /**
+ * How long after it started a session still owns the in-session cues.
+ *
+ * Code review: the session used to be found by `assignment.date === todayLocal(...)`,
+ * which dropped every session cue the instant the session crossed local midnight.
+ * A session started at 23:50 lost its drink cadence and its post-session weigh-in
+ * prompt at 00:10, because an assignment is filed under the local day it was
+ * scheduled for while `todayLocal(now)` had already rolled over. The session is now
+ * found by its own `startedAt` - the latest assignment started at or before `now` -
+ * which is the same session the store's `session.activeAssignmentDate` names while
+ * one is open; this module is pure and is handed only AppState, so it derives the
+ * answer rather than reading that field.
+ *
+ * The search is bounded because an unbounded one would revive last week's session
+ * and prompt for its weigh-in days late. The bound has to exceed the longest
+ * plausible resistance-training session and stay below the gap between two
+ * assignments, which are filed at least one calendar day apart; 12 h sits between
+ * the two, so a session still in progress is never dropped and yesterday's is never
+ * revived. HEURISTIC, not a sourced constant, and recorded here as one.
+ */
+export const SESSION_LOOKBACK_MS = 12 * 3_600_000; // [ms] = 12 h
+
+/**
+ * How long before the session started a body-mass entry may have been logged and
+ * still count as the pre-session mass.
+ *
+ * Code review: the window used to be "the session's own local day", which admits a
+ * mass taken at breakfast and rejects one taken an hour before a session that runs
+ * past midnight. The first is the dangerous half. Body mass varies within a day by
+ * of order 1-2 kg from fluid balance and gut content, which on an 80 kg subject is
+ * 1.3-2.5 % - the same order as the 2 % threshold this measurement feeds - so a
+ * stale morning mass can manufacture or mask the flag on its own and cannot support
+ * it. A 6 h window bounds that drift while still admitting a mass taken at home
+ * before travelling to the gym. HEURISTIC, not a sourced constant: the sources cited
+ * in the file header set the threshold, not the measurement window.
+ */
+export const PRE_SESSION_MASS_WINDOW_MS = 6 * 3_600_000; // [ms] = 6 h
+
+/**
  * In-session body-mass loss above which fluid replacement was inadequate.
  * Sawka 2007 (see the file header), verbatim: prevent "excessive (> 2 % body
  * weight loss from water deficit) dehydration". The comparison is strict, so a
- * loss of exactly 2 % is not flagged.
+ * loss of exactly 2 % is not flagged - see DEHYDRATION_FRACTION_TOL for how
+ * "exactly" is decided in floating point.
  */
 export const DEHYDRATION_LOSS_FRACTION = 0.02; // dimensionless
+
+/**
+ * Numerical tolerance on that comparison, dimensionless like the fraction itself.
+ *
+ * Code review: (pre - post) / pre for a loss of exactly 2 % is not exactly 0.02
+ * in binary floating point, and which side of 0.02 it lands on depends on the
+ * subject's mass. With post = pre x 0.98 the quotient sits a few ulp ABOVE 0.02
+ * at pre = 70, 85, 96 and 110 kg, and at or below it at pre = 80 and 100 kg, so
+ * a bare `>` flagged four of those six subjects for hitting the threshold
+ * exactly and cleared the other two. A physical threshold cannot depend on the
+ * subject's mass through rounding. The tolerance is far above the worst
+ * deviation measured over those masses (8.0e-17, at pre = 70 kg) and far below
+ * the resolution of the measurement that feeds it - a 0.1 kg scale reading on
+ * an 80 kg subject resolves 1.25e-3 of body mass - so it removes the artefact
+ * without moving the physical threshold.
+ */
+export const DEHYDRATION_FRACTION_TOL = 1e-9; // dimensionless
 
 export interface HydrationCue {
   kind: 'session-check' | 'daily-shortfall' | 'post-session-weigh';
@@ -98,9 +162,39 @@ export function bodyMassLossFraction(preKg: Kg, postKg: Kg): number {
   return (preKg - postKg) / preKg;
 }
 
-/** True when the session's mass loss exceeded the ACSM 2007 threshold, strictly. */
+/**
+ * True when the session's mass loss exceeded the ACSM 2007 threshold, strictly.
+ * DEHYDRATION_FRACTION_TOL absorbs the floating-point noise of the division, so
+ * a loss of exactly 2 % is not flagged at any pre-session mass.
+ */
 export function exceedsDehydrationThreshold(preKg: Kg, postKg: Kg): boolean {
-  return bodyMassLossFraction(preKg, postKg) > DEHYDRATION_LOSS_FRACTION;
+  // dimensionless > dimensionless
+  return bodyMassLossFraction(preKg, postKg) > DEHYDRATION_LOSS_FRACTION + DEHYDRATION_FRACTION_TOL;
+}
+
+/**
+ * The session the cues belong to right now: the assignment with the latest
+ * `startedAt` at or before `now`, and within SESSION_LOOKBACK_MS of it.
+ * Selected by the instant it started, never by its scheduled local date, so a
+ * session that runs past local midnight keeps its cues. See SESSION_LOOKBACK_MS.
+ */
+function activeAssignment(
+  assignments: readonly SessionAssignment[],
+  now: EpochMs, // [ms] epoch UTC
+): SessionAssignment | null {
+  let current: SessionAssignment | null = null;
+  let currentStartedAt = -Infinity; // [ms] epoch UTC
+  for (const a of assignments) {
+    const { startedAt } = a; // [ms] epoch UTC, null = never started
+    if (startedAt === null) continue;
+    if (startedAt > now) continue; // scheduled but not started; the caller owns the clock
+    if (now - startedAt > SESSION_LOOKBACK_MS) continue; // too old to be the current session
+    if (startedAt > currentStartedAt) {
+      current = a;
+      currentStartedAt = startedAt;
+    }
+  }
+  return current;
 }
 
 /**
@@ -122,11 +216,11 @@ function latestMark(marks: readonly EpochMs[]): EpochMs {
  * Precedence, highest first. At most one cue is returned, because the view has
  * one advice line.
  *
- *  1. post-session-weigh - the session on today's date is completed, the
- *     profile opted in to pre/post weigh-ins, a pre-session mass was recorded
- *     on that local day at or before the session started, and no mass has been
- *     logged since the session ended. The pre-session entry is required:
- *     without it nothing can
+ *  1. post-session-weigh - the current session (see activeAssignment) is
+ *     completed, the profile opted in to pre/post weigh-ins, a pre-session mass
+ *     was logged within PRE_SESSION_MASS_WINDOW_MS before the session started,
+ *     and no mass has been logged since the session ended. The pre-session entry
+ *     is required: without it nothing can
  *     be compared, and Sawka 2007's rule is a comparison. Once the post-session
  *     mass is logged, the store passes both to exceedsDehydrationThreshold and
  *     the view raises the > 2 % flag; that flag is not a cue kind, because the
@@ -137,6 +231,12 @@ function latestMark(marks: readonly EpochMs[]): EpochMs {
  *     window, so the prompt cannot stack up behind a user who is already
  *     drinking, and the anchor is never earlier than the session start, so a
  *     mark from earlier in the day cannot make the first prompt due at once.
+ *     Residual limitation, left as it is: drink marks are still read from the
+ *     entry for the CURRENT local day, so a mark logged just before midnight is
+ *     invisible after it and the first prompt of the new day can arrive early.
+ *     A hydration entry is a per-local-day total and stays day-scoped for the
+ *     shortfall rule, and prompting to consult thirst one interval early is the
+ *     safe direction to fail in.
  *  3. daily-shortfall - at or after DAILY_SHORTFALL_AFTER in the profile's
  *     zone, today's logged beverage volume is below DAILY_SHORTFALL_FRACTION
  *     of the profile's own editable target.
@@ -155,7 +255,9 @@ export function hydrationCue(
   const entry: HydrationEntry | null =
     (state.hydration[profileId] ?? []).find((e) => e.date === today) ?? null;
   const volumeML = entry?.volumeML ?? 0; // [mL] logged today
-  const assignment = (state.assignments[profileId] ?? []).find((a) => a.date === today) ?? null;
+  // Found by `startedAt`, not by `date === today`: a session that crosses local
+  // midnight keeps its cues. See activeAssignment and SESSION_LOOKBACK_MS.
+  const assignment = activeAssignment(state.assignments[profileId] ?? [], now);
 
   // 1. Post-session weigh-in.
   if (
@@ -168,13 +270,18 @@ export function hydrationCue(
   ) {
     const { startedAt, completedAt } = assignment; // [ms] epoch UTC
     const masses = state.bodyMass[profileId] ?? [];
-    // "Pre-session" means logged on the session's own local day, at or before it
-    // started. Scoping to the day matters: without it any body-mass entry the
-    // user ever recorded would satisfy the guard, and a weekly weigh-in would
-    // make it vacuous. Known limitation, inherited by the > 2 % comparison the
-    // view then makes: the app cannot tell a mass taken at the gym door from
-    // one taken at breakfast the same morning.
-    const hasPreSessionMass = masses.some((b) => b.date === today && b.loggedAt <= startedAt);
+    // "Pre-session" means logged within PRE_SESSION_MASS_WINDOW_MS before the
+    // session started. A window and not a calendar day: the day scope admitted a
+    // breakfast mass, whose within-day drift is the same order as the 2 % flag it
+    // feeds, and it rejected a valid mass whenever the session ran past midnight.
+    // Some bound is still required - without one, any body-mass entry the user
+    // ever recorded would satisfy the guard and a weekly weigh-in would make it
+    // vacuous. Residual limitation, inherited by the > 2 % comparison the view
+    // then makes: within the window the app still cannot tell a mass taken at the
+    // gym door from one taken 5 h earlier.
+    const hasPreSessionMass = masses.some(
+      (b) => b.loggedAt <= startedAt && startedAt - b.loggedAt <= PRE_SESSION_MASS_WINDOW_MS,
+    );
     const hasPostSessionMass = masses.some((b) => b.loggedAt >= completedAt);
     if (hasPreSessionMass && !hasPostSessionMass) {
       return {

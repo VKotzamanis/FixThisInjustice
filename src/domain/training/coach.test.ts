@@ -8,6 +8,7 @@
 //    requires it: master plan section 3 puts the arithmetic behind a "why?" disclosure, so the
 //    plan's four-field literal no longer type-checks.
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_COPY } from '../../content/copy';
 import { makeBlock, makeExercise, makePlannedExercise, makeProfile, makeSet } from '../../test/fixtures';
 import { toStoredLoad } from '../units';
 import { coachLine } from './coach';
@@ -232,6 +233,61 @@ describe('coachLine edge cases', () => {
   });
 });
 
+describe('coachLine on a set carrying no external load', () => {
+  // Code review: `advice.loadKg === null` covers a lift the PLAN marks bodyweight, but not a
+  // loaded lift performed at zero external load. Both probes below are the reviewer's; before
+  // the fix they printed the whole suggestion back as a shortfall.
+  const lb = (n: number) => toStoredLoad(n, 'imperial'); // [lb] in, [kg] out
+  const history = [makeSet({ loadKg: 70, reps: 12 })]; // lifetime best is higher, so no PR
+  const lbAdvice: ProgressionAdvice = { ...HOLD_AT_60, loadKg: lb(135) };
+  const lbHistory = [makeSet({ loadKg: lb(200), reps: 12 })];
+
+  it('does not report the suggested load back as a shortfall (metric)', () => {
+    // Reviewer's probe: this printed "60 kg under the suggested load."
+    const line = coachLine(makeSet({ loadKg: 0, reps: 7 }), history, HOLD_AT_60, 'metric');
+    expect(line.text).not.toContain('under the suggested load');
+    expect(line.text).toBe('BW × 7, inside the prescribed 6-8.');
+  });
+
+  it('does not report the suggested load back as a shortfall (imperial)', () => {
+    // Reviewer's probe: this printed "135 lb under the suggested load."
+    const line = coachLine(makeSet({ loadKg: 0, reps: 7 }), lbHistory, lbAdvice, 'imperial');
+    expect(line.text).not.toContain('under the suggested load');
+    expect(line.text).toBe('BW × 7, inside the prescribed 6-8.');
+  });
+
+  it('judges it on repetitions alone at every rung of the range', () => {
+    const above = coachLine(makeSet({ loadKg: 0, reps: 10 }), history, HOLD_AT_60, 'metric');
+    expect(above.text).toBe('2 reps above the prescribed range.');
+    const below = coachLine(makeSet({ loadKg: 0, reps: 4 }), history, HOLD_AT_60, 'metric');
+    expect(below.text).toBe('4 reps, below the prescribed 6-8.');
+    const top = coachLine(makeSet({ loadKg: 0, reps: 8 }), history, HOLD_AT_60, 'metric');
+    expect(top.text).toBe('Top of range at BW × 8.');
+  });
+
+  it('carries no load delta in any unit, at any rung', () => {
+    const lines = [
+      coachLine(makeSet({ loadKg: 0, reps: 10 }), history, HOLD_AT_60, 'metric'),
+      coachLine(makeSet({ loadKg: 0, reps: 7 }), history, HOLD_AT_60, 'metric'),
+      coachLine(makeSet({ loadKg: 0, reps: 4 }), history, HOLD_AT_60, 'metric'),
+      coachLine(makeSet({ loadKg: 0, reps: 10 }), lbHistory, lbAdvice, 'imperial'),
+      coachLine(makeSet({ loadKg: 0, reps: 7 }), lbHistory, lbAdvice, 'imperial'),
+      coachLine(makeSet({ loadKg: 0, reps: 4 }), lbHistory, lbAdvice, 'imperial'),
+    ];
+    for (const line of lines) {
+      expect(line.text).not.toMatch(/suggested load/);
+      expect(line.text).not.toMatch(/\d\s*(kg|lb)\b/);
+    }
+  });
+
+  it('still judges a genuinely light load against the suggestion', () => {
+    // The skip keys on exactly 0, not on "small": 20 kg under a 60 kg suggestion is a
+    // measurement the deadband must still report.
+    const line = coachLine(makeSet({ loadKg: 20, reps: 7 }), history, HOLD_AT_60, 'metric');
+    expect(line.text).toBe('40 kg under the suggested load.');
+  });
+});
+
 describe('coachLine integrates with suggestedProgression', () => {
   it('announces the top of range when the engine is about to add load', () => {
     const history = [
@@ -316,5 +372,26 @@ describe('coachLine obeys the copy contract', () => {
   it('never mixes the two unit systems in one line', () => {
     for (const line of metricLines) expect(line.text).not.toContain('lb');
     for (const line of imperialLines) expect(line.text).not.toContain('kg');
+  });
+
+  it('issues no progression instruction, in a generated line or in the copy table', () => {
+    // Code review: `coach.aboveRange` read "2 reps above range. Add load next session.".
+    // Whether to add load is ProgressionAdvice's decision and is stated in its own reason;
+    // a coach line reports the set that was just logged and nothing else. The copy table is
+    // included because that is where the divergence lived, not in the generated strings.
+    const coachCopy = Object.entries(DEFAULT_COPY)
+      .filter(([key]) => key.startsWith('coach.'))
+      .map(([, text]) => text);
+    expect(coachCopy.length).toBeGreaterThan(0);
+    for (const text of [...lines.map((l) => l.text), ...coachCopy]) {
+      expect(text).not.toMatch(/add load/i);
+      expect(text).not.toMatch(/next session/i);
+    }
+  });
+
+  it('keeps the copy table above-range example equal to the string this module ships', () => {
+    const history12 = [makeSet({ loadKg: 70, reps: 12 })];
+    const line = coachLine(makeSet({ loadKg: 60, reps: 10 }), history12, HOLD_AT_60, 'metric');
+    expect(DEFAULT_COPY['coach.aboveRange']).toBe(line.text);
   });
 });

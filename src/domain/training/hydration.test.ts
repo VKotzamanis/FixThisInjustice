@@ -13,6 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
+import { DEFAULT_COPY } from '../../content/copy';
 import { defaultState } from '../schema';
 import { MICRO_PLATE_STEP } from '../types';
 import type {
@@ -29,9 +30,12 @@ import hydrationSource from './hydration.ts?raw';
 import {
   DAILY_SHORTFALL_AFTER,
   DAILY_SHORTFALL_FRACTION,
+  DEHYDRATION_FRACTION_TOL,
   DEHYDRATION_LOSS_FRACTION,
   HYDRATION_COPY_KEY,
+  PRE_SESSION_MASS_WINDOW_MS,
   SESSION_CHECK_INTERVAL_MS,
+  SESSION_LOOKBACK_MS,
   bodyMassLossFraction,
   dailyBeverageTargetML,
   exceedsDehydrationThreshold,
@@ -143,6 +147,18 @@ describe('published constants', () => {
     expect(DAILY_SHORTFALL_AFTER).toBe('18:00'); // [HH:mm] profile-local
     expect(DAILY_SHORTFALL_FRACTION).toBe(0.5); // dimensionless
     expect(DEHYDRATION_LOSS_FRACTION).toBe(0.02); // dimensionless, ACSM 2007
+    expect(DEHYDRATION_FRACTION_TOL).toBe(1e-9); // dimensionless, float noise only
+    expect(SESSION_LOOKBACK_MS).toBe(12 * 3_600_000); // [ms] 12 h
+    expect(PRE_SESSION_MASS_WINDOW_MS).toBe(6 * 3_600_000); // [ms] 6 h
+  });
+
+  it('resolves every cue kind to a key the shipped copy table defines', () => {
+    // The cue carries a CopyKey, never prose (see the file header). A key with no
+    // entry renders as nothing in the Train view, which is a silent failure.
+    for (const key of Object.values(HYDRATION_COPY_KEY)) {
+      expect(Object.keys(DEFAULT_COPY)).toContain(key);
+      expect(DEFAULT_COPY[key]).toBeTruthy();
+    }
   });
 });
 
@@ -180,6 +196,24 @@ describe('hydrationCue: session-check', () => {
     expect(hydrationCue(state, PROFILE_ID, startedAt + 35 * MIN_MS, true)?.kind).toBe(
       'session-check',
     );
+  });
+
+  it('keeps its cues after the session crosses local midnight', () => {
+    // Code review: the lookup was `assignment.date === todayLocal(now)`, so a session
+    // started at 23:50 local lost every cue at 00:00. 23:50 Europe/Athens on 2026-03-02
+    // is 21:50 UTC (UTC+2, EET); 25 min later the local day has already rolled over.
+    const lateStart: EpochMs = Date.UTC(2026, 2, 2, 21, 50); // [ms] = 23:50 local, DAY
+    const state = makeState({ assignments: { [PROFILE_ID]: [inProgress(lateStart)] } });
+    const cue = hydrationCue(state, PROFILE_ID, lateStart + 25 * MIN_MS, true); // 00:15 local
+    expect(cue?.kind).toBe('session-check');
+    expect(cue?.message).toBe(HYDRATION_COPY_KEY['session-check']);
+  });
+
+  it('does not revive a session older than the lookback window', () => {
+    const state = activeState();
+    expect(
+      hydrationCue(state, PROFILE_ID, startedAt + SESSION_LOOKBACK_MS + MIN_MS, true),
+    ).toBeNull();
   });
 
   it('stays silent while no session is active', () => {
@@ -254,7 +288,9 @@ describe('hydrationCue: post-session-weigh', () => {
     expect(hydrationCue(weighState(true, []), PROFILE_ID, completedAt + MIN_MS, false)).toBeNull();
   });
 
-  it('does not accept a mass from an earlier day as the pre-session mass', () => {
+  it('does not accept a mass logged a day before the session as the pre-session mass', () => {
+    // The calendar day is not what disqualifies it - see the previous-day case above -
+    // the 6 h window is.
     const yesterday: BodyMassEntry = {
       ...massEntry('bm-old', 96, startedAt - 24 * HOUR_MS),
       date: '2026-03-01',
@@ -262,6 +298,42 @@ describe('hydrationCue: post-session-weigh', () => {
     expect(
       hydrationCue(weighState(true, [yesterday]), PROFILE_ID, completedAt + MIN_MS, false),
     ).toBeNull();
+  });
+
+  it('does not accept a mass logged more than 6 h before the session started', () => {
+    // Same local day, so the old day-scoped rule accepted it. Body mass drifts by of
+    // order 1-2 kg within a day, which on this subject is the same order as the 2 %
+    // threshold the entry feeds, so a stale mass cannot support the flag.
+    const stale = massEntry('bm-stale', 96, startedAt - PRE_SESSION_MASS_WINDOW_MS - MIN_MS);
+    expect(hydrationCue(weighState(true, [stale]), PROFILE_ID, completedAt + MIN_MS, false)).toBeNull();
+  });
+
+  it('accepts a mass logged inside the 6 h window', () => {
+    const fresh = massEntry('bm-fresh', 96, startedAt - PRE_SESSION_MASS_WINDOW_MS + MIN_MS);
+    const cue = hydrationCue(weighState(true, [fresh]), PROFILE_ID, completedAt + MIN_MS, false);
+    expect(cue?.kind).toBe('post-session-weigh');
+  });
+
+  it('accepts a pre-session mass logged on the previous local day', () => {
+    // A session that starts at 00:30 local has its pre-session mass on the day before.
+    // The window is what qualifies the entry, not the calendar day it is filed under.
+    const startedAfterMidnight: EpochMs = Date.UTC(2026, 2, 2, 22, 30); // [ms] = 00:30 local, 03-03
+    const endedAfterMidnight: EpochMs = startedAfterMidnight + HOUR_MS;
+    const preOnPreviousDay: BodyMassEntry = massEntry('bm-eve', 96, startedAfterMidnight - HOUR_MS);
+    const state = makeState(
+      {
+        assignments: {
+          [PROFILE_ID]: [
+            { ...completedSession(startedAfterMidnight, endedAfterMidnight), date: '2026-03-03' },
+          ],
+        },
+        bodyMass: { [PROFILE_ID]: [preOnPreviousDay] }, // filed under DAY = 2026-03-02
+      },
+      makeProfile({ weighInOptIn: true }),
+    );
+    expect(hydrationCue(state, PROFILE_ID, endedAfterMidnight + MIN_MS, false)?.kind).toBe(
+      'post-session-weigh',
+    );
   });
 
   it('stays silent before the session has been completed', () => {
@@ -293,6 +365,26 @@ describe('body-mass loss check', () => {
 
   it('does not flag a loss of exactly 2 % of pre-session mass', () => {
     expect(exceedsDehydrationThreshold(100, 98)).toBe(false); // [kg], 2.0 % loss
+  });
+
+  it('does not flag exactly 2 % at any pre-session mass', () => {
+    // Code review: (pre - post) / pre for a 2 % loss lands a few ulp above 0.02 at
+    // pre = 70, 85, 96 and 110 kg and at or below it at 80 and 100 kg, so a bare `>`
+    // made a physical threshold depend on the subject's mass through rounding.
+    for (const preKg of [70, 80, 85, 96, 100, 110]) {
+      const postKg = preKg * (1 - DEHYDRATION_LOSS_FRACTION); // [kg] exactly 2 % lost
+      expect(exceedsDehydrationThreshold(preKg, postKg), `pre = ${preKg} kg`).toBe(false);
+    }
+  });
+
+  it('flags 2.01 % at every one of those masses', () => {
+    // The tolerance removes float noise, not the threshold: the first hundredth of a
+    // percentage point past 2 % is still flagged, and 0.0001 is five orders of
+    // magnitude above DEHYDRATION_FRACTION_TOL.
+    for (const preKg of [70, 80, 85, 96, 100, 110]) {
+      const postKg = preKg * (1 - 0.0201); // [kg] 2.01 % lost
+      expect(exceedsDehydrationThreshold(preKg, postKg), `pre = ${preKg} kg`).toBe(true);
+    }
   });
 
   it('flags a loss of 2.1 % of pre-session mass', () => {

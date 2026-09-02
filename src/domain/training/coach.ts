@@ -11,9 +11,12 @@
 // The strings are assembled here rather than in a view, which is the pattern Task 1's
 // `ProgressionAdvice.reason` already set: src/content/copy.ts carries the `coach.*` keys as
 // formatted EXAMPLES documenting the shape, exactly as it carries `advice.*` for progression.
-// Note that `coach.aboveRange` there reads "2 reps above range. Add load next session.", which
-// is the copy contract's older wording; this module ships the plan's "2 reps above the
-// prescribed range." and no view reads the key yet.
+// Code review: `coach.aboveRange` there read "2 reps above range. Add load next session.",
+// which both diverged from the string this module actually ships and issued a load decision.
+// The load decision is not the coach line's to make - `ProgressionAdvice` owns add-load, hold
+// and deload, and states its own reason - so the key now carries this module's wording,
+// "2 reps above the prescribed range.", and no coach string tells the user what to do next
+// session. coach.test.ts asserts that over both the generated lines and the copy table.
 import type { LoggedSet, UnitSystem } from '../types';
 import { displayLoad, formatLoad, toStoredLoad, UNIT_LABEL } from '../units';
 import {
@@ -105,8 +108,22 @@ export function coachLine(
   //    could not name a load, which includes every bodyweight lift
   //    (progression.ts returns null for ex.isBodyweight), so a bodyweight set
   //    falls straight through to the repetition rungs and is judged on reps alone.
+  //
+  //    Code review: that argument covers a lift the PLAN marks bodyweight, not a
+  //    loaded lift performed at zero external load - an unweighted dip or chin-up
+  //    logged against an exercise the engine does name a load for. There the
+  //    deadband fired and reported the entire suggestion as a shortfall ("60 kg
+  //    under the suggested load.", "135 lb under the suggested load."), which is a
+  //    statement about the suggestion, not about the set. A set carrying no
+  //    external load has no load to compare, so this rung - and with it every
+  //    load-delta string - is skipped, and the set is judged on repetitions alone
+  //    with formatLoad's bodyweight wording ("BW"). The test is exact equality and
+  //    not LOAD_EQ_TOL_KG: zero is exact in both unit systems, since
+  //    toStoredLoad(0, 'imperial') === 0, and a genuinely light load is a real
+  //    measurement that this rung must still judge.
   const suggestedKg = advice.loadKg; // [kg] canonical
-  if (suggestedKg !== null) {
+  const carriesNoExternalLoad = set.loadKg === 0; // [kg] exactly 0 = bodyweight
+  if (suggestedKg !== null && !carriesNoExternalLoad) {
     const overBandKg = toStoredLoad(OVER_BAND[units], units); // [kg]
     const underBandKg = toStoredLoad(UNDER_BAND[units], units); // [kg]
     if (set.loadKg > suggestedKg + overBandKg) {
