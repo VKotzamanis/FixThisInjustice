@@ -22,25 +22,7 @@ import {
 } from './client';
 import { FIXTURE_PROFILE_ID, FIXTURE_START_MS, makeAppState } from './state.fixture';
 import { MAX_INSTANTS, SYNC_MAX_AGE_MS } from '../../config/reminders';
-import { validatePut } from '../../../worker/src/schedule';
-import { DEVICE_ID_PATTERN } from '../../../worker/src/index';
-
-/*
- * Importing worker/src/index.ts pulls it into the app's TypeScript program, which loads the
- * DOM lib rather than @cloudflare/workers-types, so the one Workers global that module names
- * has no declaration here and `tsc -b` reports TS2304. Declaring the whole package would
- * push Workers versions of Request, Response and crypto over the DOM ones across every file
- * in src. This shim declares only the type index.ts actually reads a field from. It cannot
- * mask a Worker-side error: worker/tsconfig.json excludes src and still binds the real type,
- * so `npm --prefix worker run typecheck` checks index.ts against @cloudflare/workers-types.
- */
-declare global {
-  /** Structural stand-in for the Cloudflare cron handler argument. */
-  interface ScheduledController {
-    /** Instant the tick fired. Epoch milliseconds, UTC. */
-    readonly scheduledTime: number;
-  }
-}
+import { DEVICE_ID_PATTERN, validatePut } from '../../../worker/src/schedule';
 import type { AppState, PushDevice } from '../types';
 
 /** The two build variables client.ts reads, made writable for the unconfigured-build cases. */

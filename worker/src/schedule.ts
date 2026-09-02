@@ -27,6 +27,15 @@ export interface DeviceRecord {
   reminders: ReminderInstant[];
   /** key -> instant the push was accepted by the push service, epoch ms UTC. Dedupe map. */
   sent: Record<string, EpochMs>;
+  /**
+   * Instant of the last PUT this Worker accepted for the device. Epoch milliseconds, UTC.
+   *
+   * A sync stamp, not a touch stamp. The cron's own write-backs (markSent, removeExpired)
+   * carry it through unchanged, so it measures how long the CLIENT has been silent - the
+   * only thing isInert is entitled to draw a conclusion from. A record written before this
+   * field existed reads as 0; see parseDeviceRecord.
+   */
+  lastSyncedAt: EpochMs;
 }
 
 export type ValidateResult =
@@ -51,6 +60,28 @@ export const SENT_RETENTION_MS = 24 * 60 * 60 * 1000;
  * that can never evict a key the current schedule still needs (MAX_REMINDERS = 200).
  */
 export const MAX_SENT_ENTRIES = 2 * MAX_REMINDERS;
+/**
+ * How long a device with nothing left to send may sit untouched before the cron deletes it.
+ * Duration, milliseconds (14 days).
+ *
+ * Why a reaper exists. A record whose reminders have all fired is otherwise immortal. It is
+ * never pushed to, so the push service never returns 410, so nothing ever deletes it: it
+ * costs one KV read on each of the 1,440 daily ticks and holds one of the MAX_DEVICES slots
+ * for the life of the namespace.
+ *
+ * Why 14 days. A running client re-uploads whenever its schedule hash changes and, failing
+ * that, once its last acknowledged upload passes SYNC_MAX_AGE_MS = 6 h
+ * (src/config/reminders.ts), so it stamps this record about four times a day; 14 days is 56
+ * consecutive missed syncs. It is also well inside the FUTURE_WINDOW_MS = 21 d horizon the
+ * client uploads, and that is the stronger half of the argument: a record can only run dry
+ * after the client has been silent for the whole 21 day horizon, so the drained test fires
+ * later than this clock does, never earlier.
+ *
+ * Why being wrong is cheap. isInert requires that nothing is pending, so no reminder can be
+ * lost to a reap, and the client re-creates the record on its next sync, at most
+ * SYNC_MAX_AGE_MS later. The failure mode is one extra delete and one extra PUT.
+ */
+export const INERT_DEVICE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
 
 // Input-size bounds, all in UTF-16 code units (String.length), not bytes.
 const MAX_SECRET_LENGTH = 200;
@@ -78,6 +109,18 @@ const MAX_SUBSCRIPTION_KEY_LENGTH = 200;
  * ambiguity for the engine to backtrack over.
  */
 const REMINDER_KEY_PATTERN = /^[A-Za-z0-9_-]+(?::[A-Za-z0-9_-]+)+$/;
+
+/**
+ * Device id: the RFC 9562 §4 textual form of a UUID, lowercase hex. crypto.randomUUID() in
+ * src/domain/reminders/client.ts is the only producer, so the Worker's route matcher and the
+ * client's generator are held to one definition of the shape.
+ *
+ * It lives in this module rather than in index.ts because index.ts imports Workers-only
+ * globals: src/domain/reminders/client.test.ts asserts a generated id against this pattern,
+ * and importing index.ts to reach it dragged the Workers runtime types into the app's
+ * TypeScript program. index.ts re-exports it for one release; see the note there.
+ */
+export const DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** base64url alphabet, RFC 4648 §5, unpadded. */
 const BASE64URL_PATTERN = /^[A-Za-z0-9_-]+$/;
@@ -273,8 +316,28 @@ export function validatePut(body: unknown, now: EpochMs, existing: DeviceRecord 
       subscription,
       reminders,
       sent: existing === null ? emptySent() : prunedSent(existing.sent, now),
+      // Stamped on every accepted PUT, create and update alike: this is the one moment the
+      // Worker learns the client is still running.
+      lastSyncedAt: now,
     },
   };
+}
+
+/**
+ * Has this device gone quiet with nothing left to deliver?
+ *
+ * Two conditions, both required. Nothing pending: no reminder survives removeExpired's
+ * window, i.e. none can be selected by this tick or any later one. The boundary is
+ * `now - DUE_WINDOW_MS`, not `now`: a reminder that fell due in the last 15 minutes and has
+ * not been sent yet is still owed to the user, and testing against `now` alone would delete
+ * the record on the very tick that was about to deliver it. And silent: no accepted PUT for
+ * INERT_DEVICE_TTL_MS.
+ *
+ * Pure. `now` is epoch milliseconds, UTC.
+ */
+export function isInert(record: DeviceRecord, now: EpochMs): boolean {
+  if (record.reminders.some((r) => r.at > now - DUE_WINDOW_MS)) return false;
+  return now - record.lastSyncedAt > INERT_DEVICE_TTL_MS;
 }
 
 /** Reminders whose instant has passed within the last 15 minutes and were never sent. */
@@ -352,5 +415,15 @@ export function parseDeviceRecord(raw: unknown): DeviceRecord | null {
     if (typeof value !== "number" || !Number.isFinite(value)) return null;
     sent[key] = value;
   }
-  return { secret, subscription, reminders, sent };
+  // A record written before lastSyncedAt existed carries no stamp, and a missing stamp reads
+  // as 0, i.e. "never observed syncing under this release". That makes such a record
+  // reapable on the first reconcile tick IF it has also drained - which is exactly the
+  // inert record the reaper was written for. A legacy record that is still live either holds
+  // a future reminder (never reaped) or is re-created by its client's next sync, at most
+  // SYNC_MAX_AGE_MS later, and no reminder can be lost either way because isInert requires
+  // that nothing is pending.
+  const rawLastSyncedAt = raw["lastSyncedAt"];
+  const lastSyncedAt =
+    typeof rawLastSyncedAt === "number" && Number.isFinite(rawLastSyncedAt) ? rawLastSyncedAt : 0;
+  return { secret, subscription, reminders, sent, lastSyncedAt };
 }
