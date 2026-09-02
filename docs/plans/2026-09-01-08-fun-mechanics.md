@@ -8564,6 +8564,16 @@ Ten items: four from the original P8 scope and six from the skin system. None al
     `scripts/inline-icons.mjs`, `scripts/check-sfx-size.sh`, `scripts/check-no-emoji.mjs`,
     `public/sfx/` and `docs/sfx.md`.
 
+    Correction (2026-09-02): `SkinRoot.tsx`, `useReducedMotion.ts` and `skins/board/` did not ship
+    under those names. The skin context is `src/skins/skinContext.tsx`, exporting `useApplySkin`
+    and `useSkin`. The limelight and board tokens are the `:root[data-skin='limelight']` and
+    `:root[data-skin='board']` blocks inside `src/ui/styles/tokens.css`, not separate files under
+    `skins/`. Reduced motion is handled entirely by CSS media queries; no `useReducedMotion` hook
+    exists. The marquee, stamp and intervention components are `src/ui/components/Marquee.tsx`,
+    `src/ui/components/WeekStamp.tsx` and `src/ui/components/Intervention.tsx`, styled by
+    `src/ui/components/limelight.css`. Master plan §4's file tree is the authoritative source for
+    these paths.
+
 11. **Task 8's spotlight palette departs from this plan's literal draft in the eight places below,
     and two later passages must be adapted before they are executed** (Task 8). Recorded after
     execution, so the count in this section's opening line predates it. None of the eight alters a
@@ -8689,7 +8699,7 @@ Ten items: four from the original P8 scope and six from the skin system. None al
 - It leaves the accessibility of the cutscene unverified beyond `role="dialog"`: focus trapping and restore are not implemented or tested.
 - It does not retrofit P1's, P3's to P7's string literals into the copy module. P2's setup wizard already reads from it, and P8 converts exactly one further call site (the Today start control, Tasks 12 and 13). Every other view still renders a literal that happens to equal its default-table entry, so switching to limelight or board changes the setup wizard, that one control, the toasts and the modals this plan touches, and nothing else. Converting the rest is a per-view sweep, and it is the single largest piece of work this plan defers.
 - It does not enforce the "a skin never restates a number" rule mechanically. The rule is real and it is stated in the module, but the design documents' specimens use different example scenarios per skin (`2 sessions below target` against `2 of 4. flop era.`), so no assertion over the specimen strings can express it. Enforcement belongs where the formatter runs, which is at call sites this plan does not convert.
-- It does not skin the motivation modal's heading. Task 14 adds a body slot only, so the `<h2>` renders the clinical `Weekly target missed` under every skin and `hero.weeklyTargetMissed`'s limelight override (`the intervention`) is defined but not yet rendered. A title slot is a one-line follow-up on P6's component.
+- It does skin the motivation modal's heading, since commit `f0d078c` and the migration commit `0097c84`: `src/ui/motivation/MotivationModal.tsx:188` renders `t('hero.weeklyTargetMissed')` through `useCopy()` (adopted in `0097c84`, replacing a default-table-only `copy()` call), and `src/content/copy.limelight.ts:74` carries the limelight override, `'hero.weeklyTargetMissed': 'the intervention'`.
 - It does not measure a single rendered pixel. Every contrast figure in `src/skins/limelight/tokens.css` is quoted from the round-three plan's computed table; the icons are asserted by decoded bytes and dimensions, not by appearance; and `vitest.config.ts` stubs CSS for every sheet but `crt.css`, so the token tests read files rather than computed styles. Nothing here verifies that the limelight screens look right, and the round-three checker (44 px tap targets, no horizontal scroll at 390 px, per-node contrast) is not run against the built app by any task in this plan.
 - It ships no audio and does not audition any. Task 15's player is tested against a double; `public/sfx/` contains only `.gitkeep`; and until someone drops four `.m4a` files in, every `play()` is a silent no-op by design. The licence of whatever is dropped in is verified per file at that point, not here.
 - It does not test the marquee's or the stamp's animation. jsdom evaluates no media query and runs no CSS animation, so the reduced-motion branches are asserted through the `data-reduced-motion` attribute and the rendered item count, and the keyframes themselves are unverified. The same is true of the 44 px tap-target floor, which is a declaration in `limelight.css` that no test measures.
