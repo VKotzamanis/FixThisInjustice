@@ -58,7 +58,7 @@ const MAX_DEVICES = 100;
  * 200 reminders of ~200 octets plus the subscription sit well under it.
  */
 const MAX_BODY_BYTES = 64 * 1024;
-const DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+export const DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DEVICE_PREFIX = "dev:";
 
 function deviceKey(id: string): string {
