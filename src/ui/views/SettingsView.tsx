@@ -1,4 +1,4 @@
-import { Fragment, useState, type JSX } from 'react';
+import { Fragment, useRef, useState, type JSX } from 'react';
 import { UnitInput, loadUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT, copy } from '../../content/copy';
 import { dailyBeverageTargetML } from '../../domain/nutrition';
@@ -51,13 +51,18 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
 ];
 
 /**
- * A numeric setting that writes through to the store only while what is typed is valid.
+ * A numeric setting held as a local draft and written through to the store on BLUR or ENTER.
  *
  * The text is local for the length of the edit, because a controlled input fed straight from
  * the store cannot be cleared: deleting the last character produces "", the store refuses it,
- * and the old value snaps back under the cursor. The commit therefore happens on every
- * keystroke that parses AND validates, and an invalid entry leaves the stored value alone and
- * says why.
+ * and the old value snaps back under the cursor.
+ *
+ * Committing on every keystroke that happened to validate was the defect. Typing "2500" into
+ * a target wrote 2, then 25, then 250, then 2500: three of those are values the user never
+ * meant, each one a persisted document and each one a figure other screens would have read
+ * had the user paused there. A digit is not a decision. The commit is therefore deferred to
+ * the point where the user has finished with the field, and the draft is validated against
+ * the schema first, so an entry the loader would later refuse never reaches storage.
  *
  * The caller remounts this with `key={profile.units}` so a change of display unit re-seeds the
  * text from the store rather than reinterpreting a kilogram figure as pounds.
@@ -71,20 +76,78 @@ function NumberSetting(props: {
   validate: (value: number | null) => string | null;
   commit: (value: number) => void;
 }): JSX.Element {
-  const [text, setText] = useState(props.initial);
+  const [draft, setDraft] = useState(props.initial);
+  const [error, setError] = useState<string | null>(null);
+  /*
+   * The text last written through. A ref, not state: nothing renders from it. It exists so a
+   * commit attempt that changes nothing writes nothing — the blur that follows an Enter, and
+   * a focus-and-leave with no edit, would otherwise each repeat a write the store has taken.
+   */
+  const committed = useRef(props.initial);
+  const errorId = `${props.id}-error`;
+
+  const commitDraft = (): void => {
+    if (draft === committed.current) {
+      setError(null);
+      return;
+    }
+    const parsed = parseDecimal(draft);
+    const message = props.validate(parsed);
+    if (parsed === null || message !== null) {
+      // `?? copy(...)` covers a validator that accepts an absent value: there is still no
+      // number to commit, so the field is refused rather than silently left alone.
+      setError(message ?? copy('error.valueRequired'));
+      return;
+    }
+    setError(null);
+    committed.current = draft;
+    props.commit(parsed);
+  };
+
   return (
-    <UnitInput
-      id={props.id}
-      quantity={props.quantity}
-      unit={props.unit}
-      value={text}
-      error={props.validate(parseDecimal(text))}
-      onChange={(next) => {
-        setText(next);
-        const parsed = parseDecimal(next);
-        if (parsed !== null && props.validate(parsed) === null) props.commit(parsed);
+    <div
+      className="view-setting"
+      /*
+       * React delivers onBlur through focusout, which bubbles, so this wrapper hears the
+       * field lose focus without UnitInput having to grow a blur prop. onKeyDown does the
+       * same for Enter, which has no default action outside a form.
+       */
+      onBlur={commitDraft}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          commitDraft();
+        }
       }}
-    />
+    >
+      <UnitInput
+        id={props.id}
+        quantity={props.quantity}
+        unit={props.unit}
+        value={draft}
+        /*
+         * The message is rendered HERE rather than by UnitInput. UnitInput's own `error`
+         * carries .wiz-error, which is scoped to the setup wizard's stylesheet and is not
+         * loaded by a view; a refusal in a view has to carry .view-error. `sharedErrorId` is
+         * the documented seam for a caller-rendered message: it still sets aria-describedby
+         * and aria-invalid on the field, so the wiring is unchanged.
+         */
+        error={null}
+        sharedErrorId={error === null ? null : errorId}
+        onChange={(next) => {
+          setDraft(next);
+          // The refusal clears while the user is fixing it, and comes back on the next
+          // commit attempt if the new draft is still refused. A message that argues with
+          // every keystroke is noise, not feedback.
+          if (error !== null) setError(null);
+        }}
+      />
+      {error !== null && (
+        <p className="view-error" id={errorId} role="alert">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -295,10 +358,14 @@ export function SettingsView(): JSX.Element {
       <p className="view-note">
         {FORMAT.beverageDefault(formatVolume(dailyBeverageTargetML(profile.body.sex), units))}
       </p>
-      {/* R9: the derivation of that default, and what it deliberately excludes. */}
+      {/* R9: the derivation of that default, and what it deliberately excludes. The litres
+          come from the engine's mL/day constant rather than being restated in the copy
+          table, so the sentence cannot describe a share the app does not prescribe. */}
       <details>
         <summary>{copy('disclosure.why')}</summary>
-        <p className="view-note">{copy('why.beverageDefault')}</p>
+        <p className="view-note">
+          {FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female'))}
+        </p>
       </details>
 
       {SETTINGS_ROWS.map((row) => (
