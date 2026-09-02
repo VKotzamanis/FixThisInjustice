@@ -258,22 +258,34 @@ describe("weekly fractional set volume reproduces the content review's bands", (
 
   it('reproduces the four-day intermediate case, the engine default, set for set', () => {
     // Sets/muscle/week, fractional counting, full-gym resolution. Band 12-16 (review D2 section 7).
+    // RE-BASELINED against the corrected library: these are what the fixed muscle tags yield, not
+    // what the first draft of this file predicted. Two figures moved and both moved because a
+    // library tag moved, never because a slot did:
+    //   glutes 12.25 -> 14   the Romanian deadlift makes glutes a DIRECT mover (1.0, not 0.5), per
+    //                        the master plan section 5 hip-dominant family rule.
+    //   rear delt 4.75 -> 6.5 the single-arm dumbbell row carries rear-delt as a secondary mover,
+    //                        matching the two barbell rows it substitutes for.
+    // Every other figure is unchanged, which is the check that no slot edit leaked into the
+    // full-gym prescription while the dumbbell and bodyweight substitutions were extended.
     const volume = weeklyFractionalSets(4, 'intermediate', 'full-gym');
     const mid = (m: string) => volumeOf(volume, m).mid;
+    // In band at all three experience levels, so declared in bandMuscles:
     expect(mid('chest')).toBe(14);
     expect(mid('lats')).toBe(14);
     expect(mid('quads')).toBe(14);
+    expect(mid('glutes')).toBe(14);
     expect(mid('hamstrings')).toBe(13.5);
     expect(mid('biceps')).toBe(13);
-    // Maintenance-only at four days, below the 12-set band floor:
-    expect(mid('glutes')).toBe(12.25);
+    // Reported as maintenance-only at four days: each sits below the 12-set floor for at least one
+    // experience level. Mid-back reaches the floor exactly HERE, at intermediate, but a novice gets
+    // 10.5, so it is not in band everywhere and is not declared.
     expect(mid('mid-back')).toBe(12);
     expect(mid('front-delt')).toBe(10.5);
     expect(mid('triceps')).toBe(10.5);
     expect(mid('side-delt')).toBe(7.75);
+    expect(mid('rear-delt')).toBe(6.5);
     expect(mid('calves')).toBe(6);
     expect(mid('abs')).toBe(6);
-    expect(mid('rear-delt')).toBe(4.75);
   });
 });
 
@@ -324,6 +336,34 @@ describe('rest intervals follow the content review section 9 load classes', () =
   });
 });
 
+/**
+ * Muscles with no DIRECT exercise after substitution, by equipment tier, for every day count.
+ *
+ * Both entries are LIBRARY limits rather than slot-table choices, and library.test.ts asserts the
+ * same two ids as its own bodyweight exception set (master plan section 5): no unloaded exercise
+ * abducts the humerus against gravity through a working range (side delt), and a direct rear-delt
+ * exercise needs a dumbbell or a cable. Both keep assisting work in the bodyweight tier -- pike
+ * push-up for the side delt, inverted-row and chin-up for the rear delt -- so the generator
+ * reports them as maintenance-only rather than as absent.
+ */
+const NO_DIRECT_SLOT: Record<Equipment, string[]> = {
+  'full-gym': [],
+  'dumbbells-only': [],
+  bodyweight: ['rear-delt', 'side-delt'],
+};
+
+/**
+ * Day-count exceptions, applying to EVERY tier: the two- and three-day templates carry no
+ * elbow-extension slot at all, so the triceps gets assisting work only there. That is a slot-table
+ * limit, not a library one -- close-grip bench press, overhead extension and bench dip all exist.
+ * It is left as it is because a short week spends its slots on the compounds; adding an isolation
+ * slot would move the volume of every muscle those templates already place in band.
+ */
+const SHORT_WEEK_NO_DIRECT: Partial<Record<SessionsPerWeek, string[]>> = {
+  2: ['triceps'],
+  3: ['triceps'],
+};
+
 describe('equipment resolution', () => {
   const slot = SPLIT_TEMPLATES[4].sessions[0]?.slots[0];
 
@@ -373,11 +413,56 @@ describe('equipment resolution', () => {
     }
   });
 
+  it('trains every muscle the tier can train DIRECTLY, bar the documented exceptions', () => {
+    // The strong form of the substitution claim, and the one the generator's maintenance-only
+    // report depends on: after substitution, each equipment setting still gets DIRECT work (1.0
+    // set) for every muscle, and the muscles it does not are exactly the documented list. Asserted
+    // as an equality on the uncovered set, so closing a gap means deleting an exception rather
+    // than editing an assertion.
+    for (const equipment of EQUIPMENT) {
+      for (const d of DAY_COUNTS) {
+        const direct = new Set<string>();
+        for (const session of SPLIT_TEMPLATES[d].sessions) {
+          const used = new Set<string>();
+          for (const slot of session.slots) {
+            const ex = resolveSlot(slot, equipment, used);
+            if (!ex) continue;
+            used.add(ex.id);
+            for (const m of ex.muscleGroups) direct.add(m);
+          }
+        }
+        const uncovered = MUSCLE_GROUPS.filter((m) => !direct.has(m)).sort();
+        const expected = [
+          ...new Set([...NO_DIRECT_SLOT[equipment], ...(SHORT_WEEK_NO_DIRECT[d] ?? [])]),
+        ].sort();
+        expect({ d, equipment, uncovered }).toEqual({ d, equipment, uncovered: expected });
+      }
+    }
+  });
+
+  it('leaves nothing uncovered that the library could have covered in that tier', () => {
+    // Ties the exception list above back to the library: for the two loaded tiers every exception
+    // is a slot-table fact (the short week has no elbow-extension slot), and for the bodyweight
+    // tier every exception is a LIBRARY fact -- no unloaded exercise trains that muscle directly.
+    // Without this, an exception could quietly hide a substitution the library already supports.
+    for (const equipment of EQUIPMENT) {
+      const reachableDirect = new Set<string>();
+      for (const ex of EXERCISES) {
+        if (!ex.equipment.includes(equipment)) continue;
+        for (const m of ex.muscleGroups) reachableDirect.add(m);
+      }
+      const unreachable = MUSCLE_GROUPS.filter((m) => !reachableDirect.has(m)).sort();
+      expect({ equipment, unreachable }).toEqual({
+        equipment,
+        unreachable: NO_DIRECT_SLOT[equipment],
+      });
+    }
+  });
+
   it('substitutes without losing any muscle the equipment can still reach', () => {
-    // Substitution is by equipment, from the same candidate list, and must not silently drop a
-    // muscle group. The honest ceiling is what the library can reach at all with that equipment:
-    // no dumbbell or bodyweight exercise in the library trains the rear deltoid directly, so the
-    // claim is coverage-preserving, not coverage-complete.
+    // The weaker companion to the test above: no muscle loses stimulus of ANY kind, direct or
+    // assisting. It now holds for every tier including the bodyweight one, where the rear and side
+    // delts survive as assisting movers only (inverted-row and chin-up; pike push-up).
     for (const equipment of EQUIPMENT) {
       const reachable = new Set<string>();
       for (const ex of EXERCISES) {

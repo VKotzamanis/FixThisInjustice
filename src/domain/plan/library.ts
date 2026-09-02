@@ -6,12 +6,12 @@ import type { Exercise, Prescription, Seconds } from '../types';
  * personal literal, no medication, no location. Nothing is invented -- where the legacy file
  * carried no video search string, `videoQuery` is null and P4 hides the video control.
  *
- * Ids are the 38 canonical slugs listed in master plan section 5 (the comment above
- * `PlannedExercise` in src/domain/types.ts): the 31 legacy ports, plus the seven equipment-tier
- * exercises the Task 3 review added so the dumbbells-only and bodyweight tiers reach every
- * declared muscle. P4's src/content/formCues.ts is keyed by the same slugs, so
+ * Ids are the 40 canonical slugs listed in master plan section 5: the 31 legacy ports, the seven
+ * equipment-tier exercises the Task 3 review added, and two more (chin-up, bench-dip) from the
+ * section 5 rulings, so the dumbbells-only and bodyweight tiers reach every declared muscle they
+ * can reach at all. P4's src/content/formCues.ts is keyed by the same slugs, so
  * `formCueId === id` for every exercise that has a cue; a rename here that is not mirrored
- * there fails the FORM_CUE_IDS test rather than silently losing the cue. The seven added
+ * there fails the FORM_CUE_IDS test rather than silently losing the cue. The nine added
  * exercises have no legacy cue and no legacy search string, so they carry `formCueId: null`
  * (P4 writes the cues) and a plain "<name> form" `videoQuery` -- invented text is confined to
  * that one mechanical pattern, which library.test.ts asserts character for character.
@@ -91,10 +91,10 @@ import type { Exercise, Prescription, Seconds } from '../types';
  *   muscle        full-gym   dumbbells-only   bodyweight
  *   chest            D             D              D
  *   front-delt       D             D              D
- *   side-delt        D             D              .   <- the one true gap; see below
- *   rear-delt        D             D              s
- *   triceps          D             D              s
- *   biceps           D             D              s
+ *   side-delt        D             D              s   <- secondary only; see below
+ *   rear-delt        D             D              s   <- secondary only; see below
+ *   triceps          D             D              D   <- bench-dip closed this
+ *   biceps           D             D              D   <- chin-up closed this
  *   lats             D             D              D
  *   mid-back         D             D              D
  *   quads            D             D              D
@@ -104,13 +104,19 @@ import type { Exercise, Prescription, Seconds } from '../types';
  *   abs              D             D              D
  *
  * The bodyweight column is the honest limit of an unloaded tier and is reported, not papered
- * over. Side delt has NO stimulus without external load: horizontal-plane abduction against
- * gravity needs a weight in the hand, and master plan section 5 says the generator reports the
- * bodyweight tier as maintenance-only for it. Rear delt, triceps and biceps get secondary work
- * (inverted-row, push-up, pike-push-up) but no isolation, because a direct bodyweight option
- * for each -- chin-up, bench dip, bodyweight curl -- is outside the canonical id list and this
- * file may not invent one. Both facts are encoded as explicit exception sets in the tests, so
- * closing a gap later means deleting an exception rather than editing an assertion.
+ * over. Two groups have no direct row there and the generator reports both as maintenance-only
+ * (master plan section 5):
+ *   side delt -- no unloaded exercise abducts the humerus against gravity through a working
+ *     range; the load has to be in the hand. It is worked as an assisting mover by the pike
+ *     push-up, which is a correction to the older "no side-delt stimulus at all" wording in
+ *     section 5: the same section's ruling that every overhead press carries side-delt as a
+ *     secondary mover names the pike push-up explicitly, and that press is in this tier.
+ *   rear delt -- assisting work only, from inverted-row and chin-up. A direct option would need
+ *     a fly or a face-pull, and both need external load or a cable.
+ * The two gaps that closed did so by adding an exercise, not by re-tagging one: chin-up gives
+ * the tier direct biceps work and bench-dip direct triceps work. Both facts are encoded as
+ * explicit exception sets in the tests, so closing a gap later means deleting an exception
+ * rather than editing an assertion.
  */
 
 /** Fraction of a direct set credited to an indirect (assisting) muscle. Dimensionless. */
@@ -223,7 +229,11 @@ const EXERCISE_TABLE: Exercise[] = [
     modality: 'dumbbell',
     loadClass: 'upper-compound',
     muscleGroups: ['front-delt'],
-    secondaryMuscles: ['triceps'],
+    // side-delt matches overhead-press-barbell and push-press: master plan section 5 rules that
+    // every overhead press carries it as a secondary mover, because the humerus abducts under
+    // load while the front delt drives the press. Its absence here was an omission, not a
+    // judgement, and it under-counted side-delt volume in the dumbbells-only tier.
+    secondaryMuscles: ['side-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only'],
     videoQuery: 'dumbbell overhead press form',
     formCueId: null, // P4 writes the cue; no legacy cue object exists for this id
@@ -268,9 +278,31 @@ const EXERCISE_TABLE: Exercise[] = [
     // press is overhead rather than horizontal -- that is what moves the front delt from
     // secondary (push-up) to prime mover here.
     muscleGroups: ['front-delt'],
-    secondaryMuscles: ['triceps'],
+    // Same overhead-press ruling as the barbell and dumbbell presses (master plan section 5).
+    // This tag is the bodyweight tier's ONLY side-delt stimulus of any kind.
+    secondaryMuscles: ['side-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
     videoQuery: 'pike push-up form',
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bench-dip',
+    name: 'Bench dip',
+    isBodyweight: true,
+    // Multi-joint -- the elbow extends and the shoulder flexes against the body's weight -- so it
+    // is classed with the close-grip bench press and NOT with the overhead extension. loadClass
+    // drives the progression step and the rest interval, so this is not a taxonomy label only.
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'upper-compound',
+    // The bodyweight tier's only direct triceps work (master plan section 5 ruling). Triceps is
+    // the prime mover; the sternal chest and front delt assist through a short range, which is
+    // the same split the close-grip bench press gets with the roles of chest and triceps swapped.
+    muscleGroups: ['triceps'],
+    secondaryMuscles: ['chest', 'front-delt'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: 'bench dip form',
     formCueId: null,
     note: null,
   },
@@ -367,6 +399,25 @@ const EXERCISE_TABLE: Exercise[] = [
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
     videoQuery: 'perfect pullup form jeff nippard',
     formCueId: 'pull-up',
+    note: null,
+  },
+  {
+    id: 'chin-up',
+    name: 'Chin-up',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'upper-compound',
+    // Biceps DIRECT, which is what separates this row from the pull-up (master plan section 5
+    // ruling). The supinated grip puts the elbow flexors in line with the pull, so they shorten
+    // through the full range as prime movers rather than assisting the lats. It is the bodyweight
+    // tier's only direct biceps work. Rear delt assists the shoulder extension, as in every
+    // vertical pull.
+    muscleGroups: ['biceps', 'lats'],
+    secondaryMuscles: ['rear-delt'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: 'chin-up form',
+    formCueId: null,
     note: null,
   },
   {

@@ -43,7 +43,10 @@ export interface SplitTemplate {
   note: string; // shown on the wizard review screen; states the split's honest limits
   sessions: SessionTemplate[];
   sets: Record<Experience, Record<SlotClass, { lo: number; hi: number }>>; // sets per exercise, dimensionless count
-  bandMuscles: readonly string[]; // muscles this template places inside WEEKLY_SET_BAND
+  // Muscles this template places inside WEEKLY_SET_BAND at EVERY experience level, computed from
+  // the library's muscle tags rather than declared by hand; everything else is reported to the
+  // user as maintenance-only. templates.test.ts recomputes the list and asserts equality.
+  bandMuscles: readonly string[];
 }
 
 /**
@@ -69,6 +72,13 @@ export const WEEKLY_SET_BAND: Record<SessionsPerWeek, readonly [number, number]>
  * `bandMuscles` was evaluated against WEEKLY_SET_BAND, and the tables below are the ones that
  * land inside it. `templates.test.ts` re-runs that computation as an assertion, so a slot edit
  * that pushes a muscle out of band fails the suite rather than shipping.
+ *
+ * RE-BASELINED after the library's direct-mover rule was corrected. The set tables here did NOT
+ * move; `bandMuscles` did. Making the glutes a direct mover in the Romanian deadlift credits 1.0
+ * set instead of 0.5 to every hinge set, which lifts glute volume into the band at three, four,
+ * five and six days: the glutes are now declared there instead of being reported as maintenance-
+ * only. That is a corrected count, not a changed prescription -- the same sessions were always
+ * being performed.
  *
  * The band is compared against the MIDPOINT of each exercise's set range, because the range is a
  * double-progression device rather than two prescriptions. HONEST LIMIT: at five days an advanced
@@ -118,27 +128,46 @@ const iso = (role: string, candidates: string[]): ExerciseSlot => ({
  * bodyweight option, so one table serves all three equipment settings and the substitution keeps
  * the muscles the slot exists to train. A slot with no fitting candidate is dropped rather than
  * replaced by something it does not train; `templates.test.ts` asserts that what survives still
- * covers every muscle that equipment setting can reach at all. */
+ * trains every muscle DIRECTLY that the equipment setting can train at all, bar a short list of
+ * documented exceptions.
+ *
+ * ORDER IS LOAD-BEARING TWICE OVER. The first fitting candidate wins, so the full-gym entries stay
+ * at the head of every list: adding a lower-tier option can never change what a full-gym user is
+ * prescribed, which is why the weekly volume figures below did not move when the dumbbell and
+ * bodyweight options were added. Within a tier the order is best-fit first.
+ *
+ * The lower-tier entries are the seven equipment-tier exercises and the two section 5 ruling
+ * exercises from library.ts. Each one is here because it closes a DIRECT-coverage gap its tier
+ * could otherwise not close: db-overhead-press and pike-push-up (front delt), db-rear-delt-fly
+ * (rear delt, dumbbells only), db-romanian-deadlift and nordic-hamstring-curl (hamstrings),
+ * inverted-row (mid-back), goblet-squat (quads, so the second knee-dominant slot in a session is
+ * not dropped), chin-up (biceps) and bench-dip (triceps). What no substitution can close is
+ * listed as an exception in templates.test.ts, not papered over here. */
 const HORIZONTAL_PRESS = ['barbell-bench-press', 'incline-db-press', 'push-up'];
 const INCLINE_PRESS = ['incline-db-press', 'push-up'];
-const TRICEPS_PRESS = ['close-grip-bench-press', 'push-up'];
-const VERTICAL_PRESS = ['overhead-press-barbell', 'push-up'];
-const EXPLOSIVE_PRESS = ['push-press', 'push-up'];
+const TRICEPS_PRESS = ['close-grip-bench-press', 'bench-dip'];
+const VERTICAL_PRESS = ['overhead-press-barbell', 'db-overhead-press', 'pike-push-up'];
+const EXPLOSIVE_PRESS = ['push-press', 'db-overhead-press', 'pike-push-up'];
 const VERTICAL_PULL_A = ['lat-pulldown', 'pull-up'];
 const VERTICAL_PULL_B = ['pull-up', 'lat-pulldown'];
-const HORIZONTAL_PULL_A = ['barbell-row-pendlay', 'db-single-arm-row'];
-const HORIZONTAL_PULL_B = ['db-single-arm-row', 'barbell-row-pendlay'];
-const SQUAT = ['barbell-back-squat', 'bulgarian-split-squat'];
-const LEG_PRESS = ['leg-press', 'bulgarian-split-squat'];
+const HORIZONTAL_PULL_A = ['barbell-row-pendlay', 'db-single-arm-row', 'inverted-row'];
+const HORIZONTAL_PULL_B = ['db-single-arm-row', 'barbell-row-pendlay', 'inverted-row'];
+const SQUAT = ['barbell-back-squat', 'goblet-squat', 'bulgarian-split-squat'];
+const LEG_PRESS = ['leg-press', 'goblet-squat', 'bulgarian-split-squat'];
 const DEADLIFT = ['trap-bar-deadlift', 'conventional-deadlift', 'bulgarian-split-squat'];
 const SPLIT_SQUAT = ['bulgarian-split-squat'];
-const HINGE = ['romanian-deadlift', 'conventional-deadlift'];
-const LEG_CURL = ['leg-curl-machine'];
+const HINGE = [
+  'romanian-deadlift',
+  'conventional-deadlift',
+  'db-romanian-deadlift',
+  'nordic-hamstring-curl',
+];
+const LEG_CURL = ['leg-curl-machine', 'nordic-hamstring-curl'];
 const CALF = ['calf-raise'];
 const LATERAL = ['lateral-raise'];
-const REAR_DELT = ['face-pull'];
-const CURL_A = ['barbell-curl', 'hammer-curl'];
-const CURL_B = ['hammer-curl', 'barbell-curl'];
+const REAR_DELT = ['face-pull', 'db-rear-delt-fly'];
+const CURL_A = ['barbell-curl', 'hammer-curl', 'chin-up'];
+const CURL_B = ['hammer-curl', 'barbell-curl', 'chin-up'];
 const CORE_PLANK = ['plank'];
 const CORE_HANG = ['hanging-knee-raise', 'plank'];
 const CORE_WHEEL = ['ab-wheel-rollout', 'plank'];
@@ -228,7 +257,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
       },
     ],
     sets: SETS_2_TO_4,
-    bandMuscles: ['biceps', 'chest', 'hamstrings', 'lats', 'mid-back', 'quads'],
+    bandMuscles: ['biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'mid-back', 'quads'],
   },
   4: {
     sessionsPerWeek: 4,
@@ -281,7 +310,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
       },
     ],
     sets: SETS_2_TO_4,
-    bandMuscles: ['biceps', 'chest', 'hamstrings', 'lats', 'quads'],
+    bandMuscles: ['biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'quads'],
   },
   5: {
     sessionsPerWeek: 5,
@@ -344,7 +373,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
       },
     ],
     sets: SETS_5,
-    bandMuscles: ['abs', 'biceps', 'chest', 'hamstrings', 'lats', 'mid-back', 'quads'],
+    bandMuscles: ['abs', 'biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'mid-back', 'quads'],
   },
   6: {
     sessionsPerWeek: 6,
@@ -418,6 +447,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
       'biceps',
       'chest',
       'front-delt',
+      'glutes',
       'hamstrings',
       'lats',
       'mid-back',
