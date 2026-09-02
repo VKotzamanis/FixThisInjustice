@@ -1,7 +1,9 @@
 # Motivation video
 
-The app plays one clip after an ISO week closes below its session target.
-`src/domain/motivation/trigger.ts` chooses the week. `src/domain/motivation/assets.ts`
+The app is to play one clip after an ISO week closes below its session target. Playback is
+not built yet. `src/ui/motivation/` does not exist, and Tasks 4 to 6 of
+`docs/plans/2026-09-01-06-motivation-video.md` specify it. The domain half is built:
+`src/domain/motivation/trigger.ts` chooses the week, and `src/domain/motivation/assets.ts`
 chooses the file. This page covers the file.
 
 ## Where the clip goes
@@ -19,11 +21,14 @@ export const BUNDLED_VIDEO_SRC = `${import.meta.env.BASE_URL}media/motivation.mp
 The name is fixed. Nothing scans the directory. A file under any other name is published
 but never played, and `scripts/check-media-size.sh` still measures it.
 
-To replace the clip, overwrite that one file and rebuild. Nothing else changes.
+To replace the clip, overwrite that one file and rebuild. Nothing else changes. Nothing plays
+the clip today: the app picks it up once Tasks 4 to 6 land.
 
 Shipping no clip is a supported state. `public/media/` holds only `.gitkeep` today.
-`probeBundledVideo()` sends a HEAD request to `BUNDLED_VIDEO_SRC` and caches the answer for
-the life of the page, so the app can tell a missing clip from a broken one.
+`probeBundledVideo()` sends a HEAD request to `BUNDLED_VIDEO_SRC`, so the app can tell a
+missing clip from a broken one. It caches only a definite answer, and keeps that one for the
+life of the page. A 2xx means present. A 404 or 410 means absent. Any other status, or a fetch
+that fails, reports absent for that call alone. The next call repeats the request.
 
 ## Format
 
@@ -42,15 +47,18 @@ ffmpeg -i INPUT \
 ```
 
 `-pix_fmt yuv420p` is the chroma format browsers decode in hardware. `-movflags +faststart`
-runs a second pass that moves the index to the front of the file, so playback can begin
+runs a second pass that moves the index to the front of the file. Playback can then begin
 before the whole clip has arrived.
 
 Two facts about the player constrain the encode. WebKit's iOS video policy requires
-`playsinline`, or iPhone Safari takes the video fullscreen the moment it plays; and
-starting playback with sound requires a user gesture. The modal therefore renders a
-`<video>` that carries `playsinline` and carries neither `autoplay` nor `muted`, and calls
-`play()` only from the Play button's click handler. So the clip plays inline, at the modal's
-size, on a portrait phone. It is never played silently. Encode for that.
+`playsinline`, or iPhone Safari takes the video fullscreen the moment it plays. Starting
+playback with sound requires a user gesture.
+
+The modal is not built yet. Task 4 of `docs/plans/2026-09-01-06-motivation-video.md`
+specifies it, and sets this contract. The modal renders a `<video>` that carries
+`playsinline` and carries neither `autoplay` nor `muted`. It calls `play()` only from the
+Play button's click handler. The clip therefore plays inline, at the modal's size, on a
+portrait phone, and it never plays silently. Encode for that.
 
 ## Size
 
@@ -121,19 +129,24 @@ Not built yet. Task 6 of `docs/plans/2026-09-01-06-motivation-video.md` specifie
 
 `saveCustomVideo` rejects a file whose type does not start with `video/`, and one larger
 than `MAX_VIDEO_BYTES`. The rejection message is shown in the section and nothing is
-stored. One clip is kept per profile: storing a second deletes the first. The clip is
-written to IndexedDB (database `fti-assets`, object store `videos`) and never uploaded.
-`resolveVideoSrc` prefers it over the bundled file, and falls back to the bundled file when
-the stored id no longer resolves.
+stored. The clip is written to IndexedDB (database `fti-assets`, object store `videos`) and
+never uploaded.
 
-An export carries the asset id only. The clip itself stays on the device that chose it.
+IndexedDB is scoped to the browser, not to the profile, and `saveCustomVideo` deletes every
+other record in the store. One clip is therefore kept per browser, not per profile. Saving
+from a second profile replaces the first profile's clip. `resolveVideoSrc` prefers the stored
+clip over the bundled file, and falls back to the bundled file when the stored id no longer
+resolves.
+
+Export is not built yet either. It belongs to P7, and the plan sets the contract. An export is
+to carry the asset id only. The clip itself stays on the device that chose it.
 
 ## Why not Ogg or WebM
 
 The project's codec rule is written down for sound effects, and it applies here unchanged.
-Task 15 of `docs/plans/2026-09-01-08-fun-mechanics.md` (lines 7583 to 7586, and 8245 to
-8247) records that Ogg Vorbis has no Safari support, so an Ogg-only asset is silent on every
-iPhone, and that AAC in an MP4 container is the format every target browser decodes.
+Task 15 of `docs/plans/2026-09-01-08-fun-mechanics.md` (lines 7583 to 7586, and 8245 to 8247)
+records two findings. Ogg Vorbis has no Safari support, so an Ogg-only asset is silent on every
+iPhone. AAC in an MP4 container is the format every target browser decodes.
 `docs/design/round3/2026-09-01-round3-plan.md` line 555 says the same for Ogg Opus.
 
 The master plan's section 1.7 covers the push library and says nothing about media codecs,
