@@ -5,8 +5,8 @@
 // session is.
 //
 // Pure and clock-free: `now` is an argument, so the same five arguments always give the same
-// list. No Date object and no toISOString appears here — every wall-clock conversion goes
-// through src/domain/dates.ts, which is the only module that owns that arithmetic.
+// list. No Date object and no UTC string formatting appears here: every wall-clock conversion
+// goes through src/domain/dates.ts, which is the only module that owns that arithmetic.
 //
 // Units: `at` and `now` are epoch milliseconds, UTC. `leadMinutes` is minutes before the
 // slot's start time. `days` is whole calendar days.
@@ -34,6 +34,14 @@ const MS_PER_MINUTE = 60_000;
  *     MILLISECONDS, not calendar days: 21 calendar days spanning a daylight-saving fall-back
  *     are 21 d + 1 h of elapsed time, and the Worker rejects the whole upload with 400 if any
  *     single instant sits outside its own 21-day window.
+ *
+ * The `at <= now` rule is deliberately tighter than the Worker's. The Worker accepts any
+ * instant in [now - 1 h, now + 21 d] (worker/src/schedule.ts PAST_WINDOW_MS) and still fires
+ * one whose `at` has just passed, for as long as `at > now - 15 min` (DUE_WINDOW_MS). So an
+ * instant this module drops for being one minute stale would still have been delivered had
+ * it been uploaded. That is the point: a push for a session that has already started is
+ * noise, and the Worker's hour of slack is there to absorb clock skew and upload latency, not
+ * to give the client a second opinion.
  *
  * Wall-clock times are converted through dates.ts, so a DST transition inside the window moves
  * the epoch value and leaves the local time alone: 18:00 stays 18:00 on both sides of it.
@@ -85,6 +93,21 @@ export function computeReminderInstants(
     }
 
     const slotAt = instantOf(day.date, slot.startTime, timezone); // [ms] epoch, UTC
+    // Lead offset convention: ELAPSED TIME, not wall clock. The lead is subtracted from the
+    // slot's instant, so the user always gets exactly `lead` real minutes of notice.
+    //
+    // DST consequence, in the profile's zone only. Across a transition the gap on the clock
+    // face is not `lead` minutes. Europe/Athens moves EET (UTC+2) to EEST (UTC+3) at 03:00 on
+    // 2026-03-29, so a 90 minute lead on a 04:30 session that morning fires at 02:00 EET: 90
+    // minutes of elapsed time, 150 minutes on the clock face.
+    //
+    // Rejected: wall-clock subtraction, that is, take slot.startTime, subtract `lead` on the
+    // clock face and convert the result with instantOf. It can name a local time that does not
+    // exist or one that occurs twice, and dates.ts must then disambiguate a reading the user
+    // never chose. On the same Athens morning, 04:30 minus 90 minutes is 03:00, which is inside
+    // the gap; instantOf resolves a gap forward, giving 04:00 EEST and 30 minutes of notice
+    // instead of the promised 90. On an autumn overlap the mirror image happens: instantOf
+    // takes the earlier of the two readings, and the reminder arrives an hour early.
     for (const lead of leads) {
       const at = slotAt - lead * MS_PER_MINUTE; // [ms] epoch, UTC
       if (at <= now || at > horizonEnd) continue;
