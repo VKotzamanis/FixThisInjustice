@@ -9,6 +9,10 @@ coverage/
 .env
 .env.*
 !.env.example
+# The Worker's local secrets: VAPID_PRIVATE_JWK among them. Already covered by
+# worker/.gitignore line 3; repeated here so the secret stays untracked if that file is ever
+# moved or the worker package is restructured.
+worker/.dev.vars
 
 # tooling caches and local editor state
 graphify-out/cache/

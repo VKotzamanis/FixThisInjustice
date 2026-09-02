@@ -7,7 +7,7 @@ import worker, {
   type KvStore,
 } from "../src/index";
 import { sendPush } from "../src/push";
-import type { DeviceRecord, ReminderInstant } from "../src/schedule";
+import { INERT_DEVICE_TTL_MS, type DeviceRecord, type ReminderInstant } from "../src/schedule";
 
 vi.mock("../src/push", () => ({
   sendPush: vi.fn(() => Promise.resolve("sent")),
@@ -122,7 +122,12 @@ function seed(store: MemoryKv, record: DeviceRecord, id = DEVICE_ID): void {
   store.data.set("idx", JSON.stringify([id]));
 }
 
-function seededRecord(reminders: ReminderInstant[], sent: Record<string, number> = {}): DeviceRecord {
+/** `lastSyncedAt` defaults to NOW: a freshly synced device, which the reaper must never touch. */
+function seededRecord(
+  reminders: ReminderInstant[],
+  sent: Record<string, number> = {},
+  lastSyncedAt = NOW,
+): DeviceRecord {
   return {
     secret: SECRET,
     subscription: {
@@ -131,6 +136,7 @@ function seededRecord(reminders: ReminderInstant[], sent: Record<string, number>
     },
     reminders,
     sent,
+    lastSyncedAt,
   };
 }
 
@@ -747,6 +753,121 @@ describe("hourly idx reconcile", () => {
     const summary = await runTick(env, NOW);
     expect(kv.lists).toBe(2);
     expect(summary.devices).toBe(2);
+  });
+});
+
+/*
+ * The inert-device reaper. A record whose reminders have all fired is otherwise immortal: it
+ * is never pushed to, so it never earns a 410, so it is never deleted, and it costs one KV
+ * read on every one of the 1,440 daily ticks and holds one of the 100 MAX_DEVICES slots for
+ * as long as the namespace exists.
+ *
+ * Units: every instant is epoch milliseconds, UTC. TTL_MS mirrors INERT_DEVICE_TTL_MS in
+ * worker/src/schedule.ts; the assertion below pins the two together.
+ */
+describe("inert device reaper", () => {
+  const TTL_MS = 14 * DAY;
+
+  it("mirrors the Worker's own TTL constant", () => {
+    expect(INERT_DEVICE_TTL_MS).toBe(TTL_MS);
+  });
+
+  /** A record with nothing left to send, last synced `age` milliseconds before NOW. */
+  function drained(age: number): DeviceRecord {
+    return seededRecord([], {}, NOW - age);
+  }
+
+  it("keeps a drained record through 13 days of ticks", async () => {
+    seed(kv, drained(0));
+    for (let day = 1; day <= 13; day += 1) {
+      // Minute 0 of the hour, so every one of these is a reconcile tick: the reaper's own
+      // tick class, which is what makes the survival meaningful.
+      await runTick(env, NOW + day * DAY);
+      await runTick(env, NOW + day * DAY + 30 * MINUTE);
+    }
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+    expect(kv.deletes).toBe(0);
+  });
+
+  it("keeps a drained record at exactly the TTL and reaps it on the next reconcile tick", async () => {
+    seed(kv, drained(0));
+    await runTick(env, NOW + TTL_MS);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+
+    const summary = await runTick(env, NOW + TTL_MS + HOUR);
+    expect(summary.removed).toBe(1);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(false);
+    expect(JSON.parse(kv.data.get("idx") ?? "null")).toEqual([]);
+    expect(kv.deletes).toBe(1);
+  });
+
+  it("never reaps a record that still holds a future reminder", async () => {
+    seed(kv, seededRecord([instant("later", NOW + 20 * DAY)], {}, NOW - 30 * DAY));
+    await runTick(env, NOW);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+    expect(kv.deletes).toBe(0);
+  });
+
+  it("never reaps a record whose reminder is still inside the 15 minute due window", async () => {
+    // Uploaded 30 days ago, so the sync is stale, but this instant has not left selectDue's
+    // window yet. Reaping on a bare `at >= now` test would drop it unsent.
+    seed(kv, seededRecord([instant(KEY, NOW - 5 * MINUTE)], {}, NOW - 30 * DAY));
+    const summary = await runTick(env, NOW);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+    expect(summary.removed).toBe(0);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+  });
+
+  it("reaps nothing outside a reconcile tick, and writes nothing", async () => {
+    seed(kv, drained(30 * DAY));
+    kv.writes = 0;
+    const summary = await runTick(env, NOW + 30 * MINUTE);
+    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0 });
+    expect(kv.writes).toBe(0);
+    expect(kv.deletes).toBe(0);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+  });
+
+  it("reaps every inert record in one reconcile tick and leaves the live ones indexed", async () => {
+    const live = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
+    kv.data.set(`dev:${DEVICE_ID}`, JSON.stringify(drained(30 * DAY)));
+    kv.data.set(`dev:${live}`, JSON.stringify(seededRecord([instant("later", NOW + DAY)])));
+    kv.data.set("idx", JSON.stringify([DEVICE_ID, live]));
+
+    const summary = await runTick(env, NOW);
+    expect(summary.removed).toBe(1);
+    expect(JSON.parse(kv.data.get("idx") ?? "null")).toEqual([live]);
+    expect(kv.deletes).toBe(1);
+  });
+
+  it("stamps lastSyncedAt on every PUT, which resets the reaper clock", async () => {
+    seed(kv, drained(30 * DAY));
+    await handleFetch(putRequest([]), env, NOW);
+    const stored: unknown = JSON.parse(kv.data.get(`dev:${DEVICE_ID}`) ?? "null");
+    expect(stored).toMatchObject({ lastSyncedAt: NOW });
+    await runTick(env, NOW);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
+  });
+
+  it("does not bump lastSyncedAt when the tick writes the record back", async () => {
+    const synced = NOW - 2 * DAY;
+    seed(kv, seededRecord([instant(KEY, NOW)], {}, synced));
+    await runTick(env, NOW);
+    const stored: unknown = JSON.parse(kv.data.get(`dev:${DEVICE_ID}`) ?? "null");
+    expect(stored).toMatchObject({ lastSyncedAt: synced });
+  });
+
+  it("treats a record stored before this release, with no lastSyncedAt, as never synced", async () => {
+    // Records written by the previous Worker carry no stamp. parseDeviceRecord reads the
+    // missing field as 0, so a drained legacy record is reaped on the first reconcile tick
+    // and a legacy record with live reminders is not. The client re-creates either one on
+    // its next sync, at most SYNC_MAX_AGE_MS (6 h) later.
+    const legacy = { ...seededRecord([]) } as Partial<DeviceRecord>;
+    delete legacy.lastSyncedAt;
+    kv.data.set(`dev:${DEVICE_ID}`, JSON.stringify(legacy));
+    kv.data.set("idx", JSON.stringify([DEVICE_ID]));
+    await runTick(env, NOW);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(false);
   });
 });
 

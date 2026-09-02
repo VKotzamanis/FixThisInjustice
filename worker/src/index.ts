@@ -1,5 +1,7 @@
 import { sendPush, type PushEnv } from "./push";
 import {
+  DEVICE_ID_PATTERN,
+  isInert,
   markSent,
   parseDeviceRecord,
   pruneDelta,
@@ -10,6 +12,14 @@ import {
   type DeviceRecord,
   type EpochMs,
 } from "./schedule";
+
+/**
+ * Re-exported for one release. DEVICE_ID_PATTERN now lives in ./schedule, which holds no
+ * Workers-only globals and can therefore be imported from the app's test suite without
+ * pulling the Workers runtime types into that TypeScript program. Importers should move to
+ * `worker/src/schedule`; this line goes at the next release.
+ */
+export { DEVICE_ID_PATTERN } from "./schedule";
 
 /** One page of a KV key listing. Structurally the shape KVNamespace.list() returns. */
 export interface KvListResult {
@@ -58,7 +68,6 @@ const MAX_DEVICES = 100;
  * 200 reminders of ~200 octets plus the subscription sit well under it.
  */
 const MAX_BODY_BYTES = 64 * 1024;
-export const DEVICE_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DEVICE_PREFIX = "dev:";
 
 function deviceKey(id: string): string {
@@ -243,6 +252,16 @@ async function handleDelete(request: Request, env: Env, id: string): Promise<Res
     return jsonResponse(env, 403, { error: "secret mismatch" });
   }
   await env.REMINDERS.delete(deviceKey(id));
+  // Read-modify-write on `idx` with no compare-and-swap, exactly like handlePut, and
+  // deliberately not repaired the way handlePut repairs itself. The asymmetry is in what the
+  // two races cost. A create that loses the race leaves an id in KV but NOT in `idx`, and an
+  // unindexed device is invisible: never ticked, never counted against MAX_DEVICES, never
+  // deleted - so handlePut re-asserts on every PUT and the hourly reconcile backstops it. A
+  // removal that loses the race leaves the opposite, an id in `idx` whose record is gone, and
+  // that repairs itself for free: the next tick reads the key, gets "absent", and drops the
+  // id from `idx` in the write it was already making. Paying for a CAS here would buy nothing
+  // the next tick does not already do. runTick's own `idx` write is unguarded for the same
+  // reason.
   const ids = await readIndex(env.REMINDERS);
   if (ids.includes(id)) {
     await env.REMINDERS.put(INDEX_KEY, JSON.stringify(ids.filter((value) => value !== id)));
@@ -289,7 +308,8 @@ export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
   const stored = await readIndex(env.REMINDERS);
   let ids = stored;
   let reconciled = false;
-  if (isReconcileTick(now)) {
+  const reconcile = isReconcileTick(now);
+  if (reconcile) {
     const known = new Set(stored);
     const orphans = (await listDeviceIds(env.REMINDERS)).filter((id) => !known.has(id));
     if (orphans.length > 0) {
@@ -311,6 +331,22 @@ export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
       continue;
     }
     const record = loaded.record;
+
+    // Reap an inert device: nothing left to deliver and no client sync for
+    // INERT_DEVICE_TTL_MS. Without this, such a record is never pushed to, so it never earns
+    // a 410, so nothing ever deletes it - one KV read on every one of the 1,440 daily ticks
+    // and one of the MAX_DEVICES slots, forever.
+    //
+    // On the reconcile tick only, for two reasons. It costs one delete per reaped record
+    // against the free plan's 1,000 a day, and checking hourly rather than every minute
+    // divides the worst case by 60 while delaying a reap by at most an hour on a 14 day
+    // clock. And it keeps this loop write-free on the other 1,416 ticks of the day, which is
+    // the property the idle-tick budget in docs/RUNBOOK-reminders.md §11 rests on.
+    if (reconcile && isInert(record, now)) {
+      await env.REMINDERS.delete(deviceKey(id));
+      removed.push(id);
+      continue;
+    }
 
     const due = selectDue(record, now);
     const sentKeys: string[] = [];
@@ -340,6 +376,9 @@ export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
   }
 
   summary.removed = removed.length;
+  // Unguarded read-modify-write on `idx`, for the reason spelled out in handleDelete: a
+  // create that this write clobbers is re-asserted by that device's next PUT and by the next
+  // reconcile, and this write only ever removes ids whose records are already gone.
   if (removed.length > 0 || reconciled) {
     await env.REMINDERS.put(INDEX_KEY, JSON.stringify(ids.filter((id) => !removed.includes(id))));
     summary.writes += 1;

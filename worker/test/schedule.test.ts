@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEVICE_ID_PATTERN,
   DUE_WINDOW_MS,
+  INERT_DEVICE_TTL_MS,
+  isInert,
   MAX_REMINDERS,
   MAX_SENT_ENTRIES,
   markSent,
@@ -51,6 +54,8 @@ function record(overrides: Partial<DeviceRecord> = {}): DeviceRecord {
     },
     reminders: [],
     sent: {},
+    // Freshly synced by default; the tests that exercise the reaper clock override it.
+    lastSyncedAt: NOW,
     ...overrides,
   };
 }
@@ -174,6 +179,7 @@ describe("validatePut", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Object.keys(result.record).sort()).toEqual([
+      "lastSyncedAt",
       "reminders",
       "secret",
       "sent",
@@ -268,11 +274,69 @@ describe("secretsMatch", () => {
   });
 });
 
+describe("isInert", () => {
+  it("fixes the TTL at 14 days", () => {
+    expect(INERT_DEVICE_TTL_MS).toBe(14 * DAY);
+  });
+
+  it("is false while the device is still syncing, however empty its schedule", () => {
+    expect(isInert(record({ reminders: [], lastSyncedAt: NOW }), NOW)).toBe(false);
+  });
+
+  it("is false at exactly the TTL and true one millisecond past it", () => {
+    const drained = (age: number): DeviceRecord => record({ reminders: [], lastSyncedAt: NOW - age });
+    expect(isInert(drained(INERT_DEVICE_TTL_MS), NOW)).toBe(false);
+    expect(isInert(drained(INERT_DEVICE_TTL_MS + 1), NOW)).toBe(true);
+  });
+
+  it("is false while any reminder can still be selected, however stale the sync", () => {
+    const stale = 30 * DAY;
+    // A future instant, and one that fell due 1 ms ago: both are still owed to the user.
+    for (const at of [NOW + DAY, NOW - 1]) {
+      expect(isInert(record({ reminders: [instant("a", at)], lastSyncedAt: NOW - stale }), NOW)).toBe(
+        false,
+      );
+    }
+  });
+
+  it("draws the pending boundary at the end of the due window, not at now", () => {
+    const stale = 30 * DAY;
+    const pending = record({ reminders: [instant("a", NOW - DUE_WINDOW_MS + 1)], lastSyncedAt: NOW - stale });
+    // Inside selectDue's window: still deliverable, so not inert.
+    expect(selectDue(pending, NOW).map((r) => r.key)).toEqual(["a"]);
+    expect(isInert(pending, NOW)).toBe(false);
+    // One millisecond earlier it has left the window for good and can never be selected again.
+    const expired = record({ reminders: [instant("a", NOW - DUE_WINDOW_MS)], lastSyncedAt: NOW - stale });
+    expect(selectDue(expired, NOW)).toEqual([]);
+    expect(isInert(expired, NOW)).toBe(true);
+  });
+});
+
+describe("DEVICE_ID_PATTERN", () => {
+  it("accepts a lowercase UUID and rejects the shapes a route must not match", () => {
+    expect(DEVICE_ID_PATTERN.test("0f9b1a2c-3d4e-4f50-8a1b-2c3d4e5f6071")).toBe(true);
+    expect(DEVICE_ID_PATTERN.test("0F9B1A2C-3D4E-4F50-8A1B-2C3D4E5F6071")).toBe(false);
+    expect(DEVICE_ID_PATTERN.test("idx")).toBe(false);
+    expect(DEVICE_ID_PATTERN.test("0f9b1a2c-3d4e-4f50-8a1b-2c3d4e5f6071x")).toBe(false);
+  });
+});
+
 describe("parseDeviceRecord", () => {
   it("round-trips a stored record", () => {
     const stored = record({ reminders: [instant("a", NOW)], sent: { a: NOW } });
     const parsed: unknown = JSON.parse(JSON.stringify(stored));
     expect(parseDeviceRecord(parsed)).toEqual(stored);
+  });
+
+  it("reads a record written before lastSyncedAt existed as never synced", () => {
+    const legacy = { ...record({ reminders: [instant("a", NOW)] }) } as Partial<DeviceRecord>;
+    delete legacy.lastSyncedAt;
+    expect(parseDeviceRecord(JSON.parse(JSON.stringify(legacy)))?.lastSyncedAt).toBe(0);
+  });
+
+  it("reads a non-finite lastSyncedAt as never synced rather than rejecting the record", () => {
+    const stored = { ...record(), lastSyncedAt: "yesterday" };
+    expect(parseDeviceRecord(stored)?.lastSyncedAt).toBe(0);
   });
 
   it("returns null for corrupt data instead of throwing", () => {
