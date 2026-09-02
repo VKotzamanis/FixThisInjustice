@@ -103,7 +103,12 @@ export type SkinId = 'clinical' | 'limelight' | 'board';
 // because the fact belongs to the profile, not to one mount of the Train view: a ref reset on
 // every navigation away and back, and the fiftieth set announced itself again. Empty means
 // nothing announced yet, and the baseline is then the count before the set just logged.
-export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; }
+// hotkeys: the WCAG 2.1 SC 2.1.4 off switch for the single-character shortcuts (the view
+// digits, and j/k/arrows on the Plan view). Default TRUE, a Zod default like the two above: the
+// criterion asks for a mechanism to turn them off, not for them to ship off, and a document
+// written before the switch existed was running with them on. Combos carrying a modifier
+// (mod+k) and keys that type no character (Escape) are outside the criterion and stay bound.
+export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; }
 
 // ---- root ----
 export interface AppState {

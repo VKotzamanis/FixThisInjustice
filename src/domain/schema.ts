@@ -524,6 +524,16 @@ export const UiPrefsSchema = z.object({
    * types.ts records for all of P1-P8.
    */
   milestoneFloorByProfile: z.record(z.string(), z.int().min(0).max(MAX_TOTAL_SETS)).default({}),
+  /*
+   * Additive. The off switch for the single-character keyboard shortcuts, WCAG 2.1 SC 2.1.4.
+   *
+   * TRUE by default, and the default is the whole point of the field: the criterion asks for a
+   * MECHANISM to turn character-key shortcuts off, not for them to be off, so a document
+   * written before the switch existed opens with the shortcuts it has always had rather than
+   * losing them to a migration. CURRENT_SCHEMA_VERSION stays 3; additive with a default is the
+   * rule types.ts records for all of P1-P8.
+   */
+  hotkeys: z.boolean().default(true),
 });
 
 // ---------------------------------------------------------------------------
@@ -690,6 +700,7 @@ export function defaultState(): AppState {
       skin: 'limelight',
       sounds: false,
       milestoneFloorByProfile: {},
+      hotkeys: true,
     },
   };
 }

@@ -201,6 +201,9 @@ export function makeBlankState(profile = makeProfile(), plan = makePlan()): AppS
       sounds: false,
       // Additive, same rule: a migrated document has announced no milestone.
       milestoneFloorByProfile: {},
+      // Additive, same rule again: a migrated document has never switched the keyboard
+      // shortcuts off, and true is the state every document before the switch was in.
+      hotkeys: true,
     },
   };
 }

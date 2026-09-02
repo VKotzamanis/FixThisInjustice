@@ -723,3 +723,36 @@ describe('the skin and sounds preferences', () => {
     expect(parseState(bad).ok).toBe(false);
   });
 });
+
+/**
+ * The shortcut off switch (WCAG 2.1 SC 2.1.4, Character Key Shortcuts).
+ *
+ * The criterion asks for a MECHANISM to turn single-character shortcuts off, not for them to
+ * be off, so the preference defaults to true: the shortcuts exist, and a document written
+ * before the switch did opens with them exactly as it closed. src/ui/hotkeys.tsx reads it.
+ */
+describe('the hotkeys preference', () => {
+  it('defaults a fresh document to shortcuts on', () => {
+    const s = defaultState();
+    expect(s.ui.hotkeys).toBe(true);
+    expect(AppStateSchema.safeParse(s).success).toBe(true);
+    // Additive with a Zod default, so the version does not move.
+    expect(s.schemaVersion).toBe(3);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  });
+
+  it('backfills it onto a document that predates it', () => {
+    const result = parseState(legacyDocument());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.ui.hotkeys).toBe(true);
+  });
+
+  it('carries a stored false through unchanged', () => {
+    const doc = legacyDocument();
+    doc.ui = { ...(doc.ui as Record<string, unknown>), hotkeys: false };
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.ui.hotkeys).toBe(false);
+  });
+});

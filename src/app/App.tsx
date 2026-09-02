@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { copy } from '../content/copy';
 import { useAppStore } from '../store';
+import { useFirstGestureUnlock } from '../skins/sfx';
 import { useApplySkin } from '../skins/skinContext';
 import type { SaveErrorReason } from '../store';
 import type { Profile } from '../domain/types';
@@ -106,6 +107,15 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
     setSpotlightOpen(false);
   }, []);
 
+  /*
+   * The shortcut off switch (WCAG 2.1 SC 2.1.4), read here only to decide what is ANNOUNCED.
+   * The registry does its own read at dispatch time; this one exists because aria-keyshortcuts
+   * is a claim that the key works, and a claim that outlives the shortcut misleads exactly the
+   * users the criterion is written for. A scalar selector, so the snapshot stays referentially
+   * stable between renders.
+   */
+  const hotkeysOn = useAppStore((s) => s.ui.hotkeys);
+
   const [konami, setKonami] = useState(false);
   const closeKonami = useCallback(() => {
     setKonami(false);
@@ -174,6 +184,13 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
             key={n.id}
             type="button"
             aria-current={view === n.id}
+            /*
+             * The digit that reaches this tab, read from the registry entry rather than written
+             * out here, so a re-ordered VIEWS list cannot leave the announcement naming the old
+             * key. Absent while the shortcuts are switched off: the attribute is a promise that
+             * the key press does something, and it must not outlive the binding.
+             */
+            aria-keyshortcuts={hotkeysOn ? String(n.digit) : undefined}
             onClick={() => {
               // Through getState(), like every other action call in this codebase: the store's
               // actions are created once and never replace themselves, so subscribing to one
@@ -382,6 +399,18 @@ export function App(): ReactElement {
    * obvious. Unconditional, like every hook in this component.
    */
   useApplySkin();
+  /*
+   * The audio unlock, armed on the first gesture of any kind (P8 Task 15).
+   *
+   * It belongs in the SHELL rather than on the Start tap because the Start tap is not the only
+   * way into a session: a PWA resumed from the home screen lands straight back on Train with a
+   * session already under way, and the rest interval ends without anything having been tapped
+   * there. Train's own unlock on the Start handler stays; this one covers every other entry.
+   *
+   * Not autoplay. Nothing sounds because of it, and `ui.sounds` still gates every sound; with
+   * sounds off the player fetches nothing at all (src/skins/sfx.ts).
+   */
+  useFirstGestureUnlock();
   useHydrateOnce();
   /*
    * After useHydrateOnce, which reads the document during render, so the first run of the

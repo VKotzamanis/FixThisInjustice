@@ -75,6 +75,28 @@ export default defineConfig({
           '**/archivo-latin-ext-*',
           '**/archivo-vietnamese-*',
           /*
+           * The same trim for the two variable faces the app loads whole. Neither
+           * @fontsource-variable/geist nor @fontsource-variable/jetbrains-mono publishes a
+           * latin-only entry point, so the bare import pulls every subset the package ships
+           * and only the `latin` one is ever rendered: geist adds cyrillic, cyrillic-ext,
+           * latin-ext and vietnamese; jetbrains-mono adds those four and greek. Each is named
+           * on its own line rather than trimmed with one wildcard, because a pattern loose
+           * enough to catch them all (`**\/geist-*`) would take the latin file with them.
+           *
+           * `-wght-` distinguishes the cyrillic file from the cyrillic-ext one: the ext
+           * pattern would otherwise also match `geist-cyrillic-ext-wght-normal`, and a reader
+           * could not tell which entry was doing the work.
+           */
+          '**/geist-cyrillic-ext-*',
+          '**/geist-cyrillic-wght-*',
+          '**/geist-latin-ext-*',
+          '**/geist-vietnamese-*',
+          '**/jetbrains-mono-cyrillic-ext-*',
+          '**/jetbrains-mono-cyrillic-wght-*',
+          '**/jetbrains-mono-greek-*',
+          '**/jetbrains-mono-latin-ext-*',
+          '**/jetbrains-mono-vietnamese-*',
+          /*
            * The legacy woff of every face. @fontsource lists woff2 first and woff
            * second in each `src`, so woff is reached only by an engine with no woff2
            * support - Chrome < 36, Firefox < 39, Safari < 10, Edge < 14. None of

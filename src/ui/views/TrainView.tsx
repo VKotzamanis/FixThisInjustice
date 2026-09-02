@@ -28,6 +28,7 @@ import type { CoachLine } from '../../domain/training/coach';
 import { preSessionMass } from '../../domain/training/hydration';
 import { IDENTITY_BLOCK, blockFor } from '../../domain/training/progression';
 import type { Exercise, PlannedExercise } from '../../domain/types';
+import { playSfx } from '../../skins/sfx';
 import { useAppStore } from '../../store';
 import { useActiveProfile, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
@@ -244,6 +245,21 @@ export function TrainView(): ReactElement {
     // running timer and the training day away even when the completion was REFUSED, and left
     // the same reset missing from every other way a session ends - Today's Skip above all.
     useAppStore.getState().completeSession(profileId, today, now);
+    /*
+     * The session-done sound (P8 Task 15), fired from the DOCUMENT rather than from the tap.
+     *
+     * completeSession refuses a day that is already terminal - skipped from Today, or completed
+     * in another tab while this render went stale - and returns silently when it does, so the
+     * status is read back rather than assumed. A sound for a completion that did not happen is
+     * the audible version of a success banner over a refused write.
+     *
+     * BEFORE releaseAudio(), and it must stay there: releaseAudio() closes the shared context,
+     * and a closed context stops everything scheduled on it.
+     */
+    const ended = (useAppStore.getState().assignments[profileId] ?? []).find(
+      (a) => a.date === today,
+    );
+    if (ended?.status === 'completed') playSfx('session_done');
     releaseAudio();
     // A profile that opted in to pre/post weigh-ins stays here for the post-session mass; the
     // control below returns to Today once it is entered. Everyone else leaves at once.
