@@ -1,7 +1,7 @@
 # Skin sound effects
 
 **No audio ships in this repository, and none is planned to.** `public/sfx/` holds `.gitkeep` and
-nothing else. Sound effects are optional assets you drop in yourself, and the app is correct without
+nothing else. Sound effects are optional assets you drop in yourself. The app is correct without
 them: a moment whose file is missing plays nothing, and nothing else changes.
 
 The loader, the toggle and the CI gate are built. `src/skins/sfx.ts` fetches and decodes the files,
@@ -38,7 +38,9 @@ never played.
 | `intervention_open` | the missed-week modal opens | soft and low, never a sting; it plays over a line about a missed week | 1.0 to 1.5 s |
 
 A skin with no directory is silent. A skin with two of the four files plays those two. The skins are
-independent: sounds under `limelight/` never play under `board/`.
+independent: sounds under `limelight/` never play under `board/`. The player enforces that rather
+than trusting it, and the test that holds it is `stays silent after a skin change until the next
+unlock` in `src/skins/sfx.test.ts`.
 
 ## The toggle
 
@@ -49,21 +51,25 @@ that is deliberate: it governs motion, and a user who suppresses animation has s
 audio.
 
 While the toggle is off the app fetches nothing. An install that never turns sounds on never asks
-the network for an audio file, so a directory full of clips costs that user no bytes.
+the network for an audio file. A directory full of clips costs that user no bytes.
 
 ## The gesture requirement
 
 Browsers refuse to start audio until the user has interacted with the page, so nothing can play on
-load. The app unlocks at two points, and both sit inside a real gesture:
+load. The app unlocks at three points, and each one sits inside a real gesture:
 
 - `useFirstGestureUnlock()` listens for the first `pointerdown` or `keydown` on the window, unlocks,
   and then removes both listeners.
-- The sounds checkbox unlocks inside its own change handler when it is switched on.
+- The sounds checkbox unlocks inside its own change handler when the user switches it on.
+- The skin picker unlocks when the user chooses a different skin, which is what decodes that skin's
+  set.
 
-Unlocking also decodes. All four files for the active skin are fetched and decoded once, at the
-unlock, and the decoded audio is held. Decoding at fire time would add a variable delay, and a stamp
-sound arriving 300 ms after the stamp is worse than no sound. Switching skins decodes the new set on
-the next unlock.
+Unlocking also decodes. The unlock fetches and decodes all four files for the active skin once, and
+holds the decoded audio. Decoding at fire time would add a variable delay, and a stamp sound
+arriving 300 ms after the stamp is worse than no sound.
+
+Switching skins decodes that skin's set, and the app stays silent until the decode lands. It never
+falls back to the set the skin you left behind had loaded.
 
 A sound is one shot. It never loops, and a new one stops the one before it rather than overlapping.
 The app also stays silent while its tab is in the background.
@@ -71,8 +77,8 @@ The app also stays silent while its tab is in the background.
 ## Format
 
 **Ship AAC in an `.m4a` (MP4) container, or MP3.** Master plan section 10.10 records the decision.
-Safari plays neither Ogg Vorbis nor WebM, so an Ogg-only or WebM-only asset is silent on every
-iPhone, and an iPhone is the device this app is most likely installed on. A smaller alternate
+Safari plays neither Ogg Vorbis nor WebM. An Ogg-only or WebM-only asset is therefore silent on
+every iPhone, and an iPhone is the device this app is most likely installed on. A smaller alternate
 encoding may sit beside the universal file, never in place of it.
 
 To convert what you downloaded:
@@ -89,31 +95,45 @@ To convert what you downloaded:
 - **240 KiB (245760 bytes) per set**, counting the `.m4a` and `.mp3` files only, because one install
   downloads one file per moment.
 
-A 2 s mono clip at 96 kb/s AAC is roughly 24 kB, so 60 KiB leaves about twice the headroom a clip
-needs and none of them needs stereo.
+A set is one skin. The gate totals the bytes per immediate subdirectory of `public/sfx/`. Three
+skins at 240 KiB each pass, and a failure names the skin that broke the limit.
+
+A 2 s mono clip at 96 kb/s AAC is roughly 24 kB. The 60 KiB limit is therefore about twice the
+headroom a clip needs, and none of them needs stereo.
 
 **Length and loudness are guidance, not measurements.** Keep every clip to 2 s or less. The gate
-counts bytes and cannot tell a 2 s clip from a 5 s one encoded at a lower bitrate, so the length rule
-is yours to keep. Nothing in this project measures loudness either, and no target is asserted here:
-set the level by ear against the rest timer chime at mid volume on a phone, and leave peak headroom
-rather than normalising to full scale. If you want a measured level, `ffmpeg -af loudnorm` will give
-you one, but no gate checks it and no number here has been verified.
+counts bytes, and it cannot tell a 2 s clip from a 5 s one encoded at a lower bitrate. The length
+rule is yours to keep.
+
+Nothing in this project measures loudness either, and this page asserts no target. Set the level by
+ear against the rest timer chime, at mid volume on a phone. Leave peak headroom rather than
+normalising to full scale. `ffmpeg -af loudnorm` will give you a measured level if you want one, but
+no gate checks it and no number here has been verified.
 
 ## What CI checks, and what it does not
 
-`.github/workflows/ci.yml` runs the gate on every push and pull request, before the install. With
-the directory empty it prints `check-sfx-size: no audio under public/sfx.` and passes, which is the
-state this repository is in today.
+`.github/workflows/ci.yml` runs the gate on every push and pull request, before the install, and
+`.github/workflows/deploy.yml` runs it again before it publishes. Both are needed: the two workflows
+are independent, so a red `ci.yml` does not stop a deploy. With the directory empty the gate prints
+`check-sfx-size: no audio under public/sfx.` and passes, which is the state this repository is in
+today.
 
 The gate fails on:
 
 - any file over the per-file limit;
-- a set over the set limit;
+- any one skin's set over the set limit, naming that skin;
 - any extension other than `.m4a` or `.mp3` with no `.m4a` or `.mp3` sibling beside it.
 
 The gate does not check duration, loudness, channel count, sample rate or whether the file decodes
-at all. A corrupt 24 kB file passes CI and is silent in the app, which is the same outcome as a
-missing file and is not reported anywhere.
+at all. A corrupt 24 kB file passes CI and is silent in the app. That is the same outcome as a
+missing file, and nothing reports it.
+
+One neighbouring gate has a blind spot worth knowing about while you work locally.
+`scripts/check-no-emoji.mjs`, which both workflows run, lists its files with `git ls-files`, so it
+scans tracked files only. A component or copy table you have not yet added to the index is invisible
+to it. A local run therefore passes on a file that CI will scan the moment you commit it.
+`scripts/check-sfx-size.sh` does not share this: it walks the tree with `find`, so it sees untracked
+audio as readily as tracked audio.
 
 ## Where to get CC0 files
 
@@ -130,6 +150,12 @@ moment you download it and record it in `REFERENCES.md`.
 
 Every Kenney audio pack ships Ogg Vorbis only, so transcoding is mandatory rather than optional.
 
-**Sonniss GDC bundles are excluded.** They are often described as free to use and they are not CC0.
-The bundle licence is a proprietary royalty-free agreement that forbids supplying the sounds onward
-as sound effects, which is what a repository shipping its own `sfx/` directory would be doing.
+**Sonniss GDC bundles are excluded.** They are often described as free to use, and they are not CC0.
+The licence is the #GameAudioGDC Bundle Unlimited User License, version 2.0, and it is a proprietary
+royalty-free agreement. Its redistribution clause reads:
+
+> Licensee may not distribute, publish, sub-license or otherwise supply the sound effects as sound
+> effects to any other person, without the Licensor's prior written permission.
+
+Shipping them in an `sfx/` directory of this repository is exactly that. Fetched from
+<https://sonniss.com/gdc-bundle-license/> on 2026-09-02 and recorded in `REFERENCES.md`.

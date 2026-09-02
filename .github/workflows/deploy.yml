@@ -1,6 +1,9 @@
-# Publishes dist/ to GitHub Pages on every push to main. The build job repeats
-# CI's build and its two grep gates so nothing un-gated can reach the live site;
-# lint, types and the four-zone suite run in parallel in ci.yml on the same push.
+# Publishes dist/ to GitHub Pages on every push to main. The build job repeats CI's
+# three asset and copy gates, its build and its two grep gates, so nothing un-gated
+# can reach the live site; lint, types and the four-zone suite run in parallel in
+# ci.yml on the same push. The asset gates are repeated rather than left to ci.yml
+# because the two workflows are independent: a red ci.yml does not stop this one
+# from publishing, so a gate that runs only there does not guard the live site.
 #
 # One-time manual step, documented in docs/DEPLOY-CUTOVER-NOTE.md:
 # Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
@@ -36,11 +39,28 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Needs no Node: a clip over GitHub's 100 MiB file limit, or a file that is not an
+      # .mp4, should fail before the install spends a minute.
+      - name: Check the motivation clip's size and format
+        run: bash scripts/check-media-size.sh
+
+      # Needs no Node either, for the same reason: a sound effect over the size limit, or in a
+      # container Safari cannot decode, should fail before the install spends a minute. The
+      # repository ships no audio, so the passing output is "no audio under public/sfx".
+      - name: Check the skin sound-effect sizes and formats
+        run: bash scripts/check-sfx-size.sh
+
       # Node 22 comes from .nvmrc, the floor package.json `engines` declares.
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
+
+      # Round-three verification criterion 5: the screens use icons, not emoji. It is a Node
+      # script, so it sits after the Node version is pinned; it reads the checkout through
+      # `git ls-files` and needs no dependencies, so it runs before the install rather than after.
+      - name: No emoji in the copy tables or the components
+        run: node scripts/check-no-emoji.mjs
 
       # npm ci installs the exact package-lock.json tree; a drifted lockfile fails here.
       - name: Install

@@ -52,7 +52,12 @@ class FakeSource implements SfxSource {
 }
 
 class FakeContext implements SfxContext {
-  state: 'suspended' | 'running' | 'closed' = 'suspended';
+  /*
+   * Four states, not three. 'interrupted' is WebKit's, and it is the one an iPhone enters for an
+   * incoming call or a Siri invocation. A three-state fake would leave the state play() has to
+   * survive on the target device as the one state this suite could not express.
+   */
+  state: 'suspended' | 'running' | 'closed' | 'interrupted' = 'suspended';
   destination: unknown = {};
   decoded = 0;
   sources: FakeSource[] = [];
@@ -69,6 +74,25 @@ class FakeContext implements SfxContext {
     this.sources.push(source);
     return source;
   }
+}
+
+/*
+ * The byte length of a fetched file carries the skin it belongs to, and FakeContext turns bytes
+ * into the stand-in `duration`, so a decoded buffer names its own skin. That is what lets a test
+ * assert that the board buffer played rather than only that some buffer was set, which is the
+ * difference between catching the limelight-plays-under-board bug and missing it.
+ */
+const SKIN_BYTES: Readonly<Record<SkinId, number>> = {
+  clinical: 1100,
+  limelight: 1200,
+  board: 2400,
+};
+
+function skinOfUrl(url: string): SkinId {
+  for (const id of ['clinical', 'limelight', 'board'] as const) {
+    if (url.includes(`/sfx/${id}/`)) return id;
+  }
+  throw new Error(`no skin segment in ${url}`);
 }
 
 interface Harness {
@@ -102,7 +126,7 @@ function harness(
     fetchAudio: (url: string) => {
       fetched.push(url);
       if (failing.has(url)) return Promise.reject(new Error('404'));
-      return Promise.resolve(new ArrayBuffer(1200));
+      return Promise.resolve(new ArrayBuffer(SKIN_BYTES[skinOfUrl(url)]));
     },
   };
   return {
@@ -253,6 +277,64 @@ describe('createSfxPlayer', () => {
     expect(errors).not.toHaveBeenCalled();
     expect(warnings).not.toHaveBeenCalled();
     expect(logs).not.toHaveBeenCalled();
+  });
+
+  it('stays silent after a skin change until the next unlock', async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    h.setSkin('board');
+    /*
+     * No re-unlock has happened, so the only buffers held are limelight's. docs/sfx.md promises
+     * that sounds under limelight never play under board, and the only way to keep that promise
+     * here is silence: playing the held buffer would play the wrong skin's sound.
+     */
+    player.play('rest_over');
+    expect(h.context.sources).toHaveLength(0);
+  });
+
+  it('plays the new skin set once the skin change has been unlocked', async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    h.setSkin('board');
+    await player.unlock();
+
+    expect(h.fetched).toHaveLength(8);
+    expect(h.fetched.slice(4)).toEqual(SFX_NAMES.map((name) => sfxUrl('board', name)));
+    player.play('rest_over');
+    expect(h.context.sources).toHaveLength(1);
+    // The stand-in duration carries the skin, so this is board's buffer and not limelight's.
+    expect(h.context.sources[0]?.buffer?.duration).toBe(SKIN_BYTES.board / 1000); // [s]
+  });
+
+  it('decodes the skin that is current when the change beats the first decode', async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    const first = player.unlock();
+    // One microtask is enough for that unlock to clear resume() and start fetching limelight; the
+    // assertion states that precondition rather than trusting the tick count to stay put.
+    await Promise.resolve();
+    expect(h.fetched).toEqual([sfxUrl('limelight', 'session_done')]);
+
+    h.setSkin('board');
+    const second = player.unlock();
+    await Promise.all([first, second]);
+
+    player.play('rest_over');
+    expect(h.context.sources).toHaveLength(1);
+    expect(h.context.sources[0]?.buffer?.duration).toBe(SKIN_BYTES.board / 1000); // [s]
+  });
+
+  it('stays silent while the context is interrupted', async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    // WebKit parks the context here for an incoming call or a Siri invocation. A source scheduled
+    // on an interrupted context is a node that never sounds, so the gate is state === 'running'.
+    h.context.state = 'interrupted';
+    player.play('rest_over');
+    expect(h.context.sources).toHaveLength(0);
   });
 
   it('plays nothing after dispose', async () => {

@@ -12,6 +12,11 @@
  * (src/skins/limelight/icons.ts, illustrations.ts) are .ts files of base64 and are outside this
  * scope by construction.
  *
+ * THE BLIND SPOT IS LOCAL, AND IT IS THE WORD "TRACKED". The file list comes from `git ls-files`,
+ * which reports the index, so a component or copy table that has never been added is not scanned
+ * at all: a local run passes on a file CI will scan as soon as it is committed. Add the file, then
+ * run this again. CI does not share the blind spot, because a checkout holds tracked files only.
+ *
  * WHAT COUNTS AS AN EMOJI:
  *   - Unicode Extended_Pictographic, which is the property the standard defines for this and is
  *     wider than a hand-written code point range: it catches U+2764 HEAVY BLACK HEART, which sits

@@ -11,9 +11,14 @@
 # or .mp3 sibling sits beside it, which is the shape of a legitimate smaller alternate listed first
 # in a <source> list with the universal file behind it.
 #
-# SIZE. 60 KiB per file, 240 KiB for one skin's set of four. What one install downloads is one file
-# per moment, so the set total counts the universal files and not the alternates; the per-file limit
-# applies to every file, alternates included, because any one of them may be the one downloaded.
+# SIZE. 60 KiB per file, 240 KiB for one skin's set of four. The set total is accumulated per
+# immediate subdirectory of the directory, because a subdirectory is one skin and an install
+# downloads one skin's set: summing the whole tree instead would fail three lawful skins that each
+# sit well inside the limit. What an install downloads is one file per moment, so the set total
+# counts the universal files and not the alternates; the per-file limit applies to every file,
+# alternates included, because any one of them may be the one downloaded. A universal file lying
+# loose in the directory rather than under a skin is booked to a bucket named for that, since
+# sfxUrl() always puts a skin segment in the path and so no skin can ever fetch it.
 #
 # WHAT THIS DOES NOT MEASURE: duration. The plan's rule is 2 s or less per clip, and this gate
 # bounds bytes rather than seconds, on the arithmetic that a 2 s mono clip at 96 kb/s AAC is about
@@ -22,8 +27,12 @@
 set -eu
 
 DIR="${1:-public/sfx}"
+# A trailing slash would survive into the prefix strip that names each file's skin, so it goes here
+# rather than being handled at every use. Root is left alone: stripping it leaves nothing at all.
+if [ "$DIR" != / ]; then DIR="${DIR%/}"; fi
 PER_FILE_LIMIT=61440 # bytes, 60 KiB
 SET_LIMIT=245760     # bytes, 240 KiB, one skin's four moments
+TAB="$(printf '\t')"
 
 if [ ! -d "$DIR" ]; then
   echo "check-sfx-size: $DIR is absent. No skin ships sound effects yet."
@@ -35,7 +44,10 @@ fi
 # measures neither; the entry count below catches that case and fails closed. This mirrors
 # scripts/check-media-size.sh, which guards the same hazard for public/media/.
 listing="$(mktemp)"
-trap 'rm -f "$listing"' EXIT
+# One "<skin><tab><bytes>" line per universal file. A POSIX shell has no associative array, so the
+# per-skin totals are accumulated in awk from this file rather than in the loop below.
+sums="$(mktemp)"
+trap 'rm -f "$listing" "$sums"' EXIT
 find "$DIR" -type f ! -name '.gitkeep' | sort >"$listing"
 
 lines="$(wc -l <"$listing" | tr -d ' ')"
@@ -50,6 +62,7 @@ status=0
 total=0
 universal=0
 alternates=0
+rejected=0
 
 while IFS= read -r file; do
   [ -n "$file" ] || continue
@@ -67,6 +80,9 @@ while IFS= read -r file; do
       kind=alternate
     else
       echo "check-sfx-size: FAIL - $file is not an .m4a or .mp3 and has no .m4a or .mp3 sibling. Safari plays neither Ogg Vorbis nor WebM, so this file is silent on every iPhone." >&2
+      # Counted, not just rejected: a rejected file is audio that was found, so the summary below
+      # must not go on to report an empty directory.
+      rejected=$((rejected + 1))
       status=1
       continue
     fi
@@ -84,19 +100,38 @@ while IFS= read -r file; do
   if [ "$kind" = universal ]; then
     universal=$((universal + 1))
     total=$((total + size))
+    # Booked to the immediate subdirectory, which is the skin whose set limit these bytes count
+    # against. A file lying loose in $DIR is under no skin and says so.
+    rel="${file#"$DIR"/}"
+    case "$rel" in
+    */*) skin="${rel%%/*}" ;;
+    *) skin="(no skin directory)" ;;
+    esac
+    printf '%s%s%s\n' "$skin" "$TAB" "$size" >>"$sums"
   else
     alternates=$((alternates + 1))
   fi
 done <"$listing"
 
-if [ "$universal" -eq 0 ] && [ "$alternates" -eq 0 ]; then
+# `rejected` belongs in this test as much as the other two. A rejected file is audio that was
+# found, so a directory holding nothing but one .ogg must not be reported as holding no audio at
+# all: the FAIL line above and "no skin ships sound effects yet" cannot both be true.
+if [ "$universal" -eq 0 ] && [ "$alternates" -eq 0 ] && [ "$rejected" -eq 0 ]; then
   echo "check-sfx-size: no audio under $DIR. No skin ships sound effects yet."
   exit "$status"
 fi
 
-if [ "$total" -gt "$SET_LIMIT" ]; then
-  echo "check-sfx-size: FAIL - the universal files total $total bytes, over the $SET_LIMIT byte set limit." >&2
+# One line per skin over the limit, sorted so the same tree always reports in the same order.
+over="$(awk -F"$TAB" -v limit="$SET_LIMIT" '
+  { bytes[$1] += $2 }
+  END { for (skin in bytes) if (bytes[skin] > limit) printf "%s\t%d\n", skin, bytes[skin] }
+' "$sums" | sort)"
+
+if [ -n "$over" ]; then
   status=1
+  printf '%s\n' "$over" | while IFS="$TAB" read -r skin skin_total; do
+    echo "check-sfx-size: FAIL - the $skin set totals $skin_total bytes, over the $SET_LIMIT byte per-skin set limit." >&2
+  done
 fi
 
 if [ "$status" -ne 0 ]; then
