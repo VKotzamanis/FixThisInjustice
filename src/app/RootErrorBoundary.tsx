@@ -20,6 +20,23 @@ import { downloadText } from './download';
  *
  * Why a class: React has no hook equivalent of getDerivedStateFromError, so an
  * error boundary must be a class. It is the only class in the codebase.
+ *
+ * WHY ITS WORDS ARE LITERALS, and the one place in the app where master plan
+ * section 3's "a view imports copy(key), never a literal" does not bind. This
+ * screen renders only after something below it has thrown, so every module it
+ * reaches is a module the failure may already have implicated, and the copy
+ * table is reached through an import chain (copy.ts pulls copy.limelight.ts
+ * and copy.board.ts) rather than being a constant this file holds. It is also
+ * unskinnable by construction: the boundary sits ABOVE the store, so the skin
+ * preference is exactly what is unavailable, and every skin would render the
+ * clinical string anyway. P9 Task 16 therefore retired the seven rows that
+ * duplicated these sentences (recovery.hero, recovery.advice,
+ * recovery.exported, recovery.confirm, recovery.cleared.hero,
+ * recovery.cleared.advice, button.clearData) rather than wiring a reader to
+ * them. A string here is the last thing the user sees; it stays local to the
+ * component that shows it. The confirmation word is the exception and is
+ * interpolated from CONFIRMATION_WORD below, so the sentence and the check
+ * cannot disagree.
  */
 interface Props {
   children: ReactNode;

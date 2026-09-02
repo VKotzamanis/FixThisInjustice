@@ -105,7 +105,24 @@ function withoutSlots(value: string): string {
  *
  * The list is the P8 review's, extended the first time a table carries another symbol.
  */
-const UNIT_SYMBOLS: readonly string[] = ['s', 'kg', 'lb', 'mL', 'min'];
+const UNIT_SYMBOLS: readonly string[] = [
+  's',
+  'kg',
+  'lb',
+  'mL',
+  'min',
+  // Added in P9 (review item G14). Each is already a UNIT_TOKEN and each is case-bearing in the
+  // same way: `g` is the gram and `G` is nothing this app measures, `kcal` is not `KCAL`, `MiB`
+  // is the binary prefix `Mi` on the byte and `MB` is a different quantity, and `ms`, `mm`, `cm`
+  // are the milli- and centi- prefixes, which are lower case in the SI brochure whatever the
+  // surrounding register shouts.
+  'g',
+  'kcal',
+  'MiB',
+  'cm',
+  'mm',
+  'ms',
+];
 
 /**
  * A value with its unit symbols removed, for the CASE rules.
@@ -477,6 +494,12 @@ describe('the limelight table', () => {
     // The round-three copy table (section 3.4), mapped onto CopyKeys, plus the families the fun
     // mechanics need skinned: the coach lines, the toasts, the nav, the boot sequence and the
     // Konami refusal.
+    //
+    // THREE OF SECTION 3.4'S ROWS ARE ABSENT, and their absence is a decision rather than a gap:
+    // `status.prReached`, `status.planProgress` and `toast.setDeleted` shipped a limelight row
+    // and, for the first two, a board row, and no component ever read any of them. P9 Task 16
+    // retired all three from every table. The words survive where the app actually says them:
+    // `status.prStamp` is the record, and `coach.setDeleted` is the toast the UI queues.
     const REQUIRED: readonly CopyKey[] = [
       // round three, section 3.4
       'button.startSession',
@@ -488,10 +511,8 @@ describe('the limelight table', () => {
       'status.weekDeltaZero',
       'status.weekDeltaPositive',
       'advice.drinkToThirst',
-      'status.prReached',
       'hero.weeklyTargetMissed',
       'status.sessionCursor',
-      'status.planProgress',
       'button.extendRest',
       'button.skipRest',
       'hero.weekReview',
@@ -515,7 +536,6 @@ describe('the limelight table', () => {
       'coach.topOfRange',
       'coach.insideRange',
       // toasts
-      'toast.setDeleted',
       'status.milestoneSets',
       'status.specimenAcquired',
       // nav

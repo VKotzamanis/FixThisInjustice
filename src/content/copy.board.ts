@@ -35,10 +35,8 @@ export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'status.weekDeltaZero': '{completed} OF {target} DEPARTED. ALL ON TIME.',
   'status.weekDeltaPositive': '{completed} OF {target} DEPARTED. EXTRA SERVICE.',
   'advice.drinkToThirst': 'REFRESHMENT: DRINK TO THIRST',
-  'status.prReached': 'NEW RECORD TIME',
   'hero.weeklyTargetMissed': 'IRREGULAR OPERATIONS',
   'status.sessionCursor': 'SERVICE {shown} OF {total}',
-  'status.planProgress': '{completed} DEPARTED. {skipped} CANCELLED. {remaining} SCHEDULED.',
   // The one position where the board's upper case STOPS. `S` is the siemens and `s` is the
   // second (SI brochure table 4), so shouting the symbol with the sentence renames the quantity
   // the control changes; the words beside it still shout (P8 review).
