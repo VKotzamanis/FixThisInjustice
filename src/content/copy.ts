@@ -488,6 +488,7 @@ export type CopyKey =
   | 'status.installAndroidOpen'
   // --- motivation modal (P6 Task 4; appended by that task) ---
   | 'advice.tapForSound'
+  | 'advice.tapToMute'
   // --- P4 final review fixes (appended by that task) ---
   | 'coach.setReadout'
   | 'coach.aboveRangeOne'
@@ -632,22 +633,22 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.continue': 'Continue',
   'button.back': 'Back',
   'button.confirmStart': 'Confirm and start',
-  'advice.unitsOnce': 'Chosen once. Values are stored in kg and mL either way.',
-  'advice.timezoneDetected': 'Detected from this device. Dates and reminders use this zone.',
+  'advice.unitsOnce': 'Chosen once. Values are stored in kg and mL.',
+  'advice.timezoneDetected': 'From this device. Dates and reminders use it.',
   'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
   'advice.sexUsedFor': 'Used by the RMR, body-fat and fluid equations.',
-  'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham fat-free-mass equation.',
-  'advice.tapeMethod': 'US Navy circumference method. All girths in cm, tape level and snug.',
+  'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham equation.',
+  'advice.tapeMethod': 'US Navy circumference method. Girths in cm, tape level and snug.',
   'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
   'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
-  'advice.loadSteps': 'The smallest increment a suggested load may use.',
-  'advice.creatineOnly': 'The only supplement tracked. Dose scales with body mass.',
-  'advice.deloadEveryFourth': 'Every fourth week halves set counts. Load is unchanged.',
+  'advice.loadSteps': 'The smallest increment a suggested load uses.',
+  'advice.creatineOnly': 'Dose scales with body mass.',
+  'advice.deloadEveryFourth': 'Every fourth week halves set counts, load unchanged.',
   'hero.dailyTargets': 'Daily targets',
   'status.rateUnknown': 'Not established by the evidence base',
   'button.recordIntake': 'Record intake',
   'why.targetsBasis': 'How these numbers were derived',
-  'advice.storedUnitsUnchanged': 'Stored values never change. Mass is always held in kg.',
+  'advice.storedUnitsUnchanged': 'Stored values never change. Mass is held in kg.',
   'advice.noProfileSetupFirst': 'No profile. Complete setup first.',
 
   // --- setup wizard fields and validation (P2 Task 7; appended by that task) ---
@@ -730,8 +731,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'weekday.saturday': 'Saturday',
   'weekday.sunday': 'Sunday',
   'hero.programme': 'Programme',
-  'advice.weighIn': 'Optional. Compares body mass before and after a session.',
-  'advice.tapeOutOfDomain': 'These girths fall outside the equation. No estimate is shown.',
+  'advice.weighIn': 'Optional. Compares body mass before and after.',
+  'advice.tapeOutOfDomain': "Girths outside the equation's domain. No estimate is shown.",
   'advice.bodyFatEstimate': '21.9 % body fat, ± 3.52 percentage points.', // formatted
   'why.bodyFatEstimate':
     'The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes a user will chase, so use the estimate to track change over time, not as an absolute number.',
@@ -762,7 +763,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.beverageDefault': 'Default for the stated sex: 3000 mL per day.', // formatted
   'why.beverageDefault':
     'IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of which beverages supply 3.0 L and 2.2 L. Water in food supplies the rest and is not counted here, because an app cannot measure it.',
-  'advice.intakeRejected': 'That daily total is outside the accepted range.',
+  'advice.intakeRejected': 'Daily total outside the accepted range.',
   'error.outsideAccepted': 'Outside the accepted range.',
   'advice.viewNotBuilt': 'Today is not built yet.', // formatted
   'nav.today': 'Today',
@@ -816,17 +817,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.nextInstance': 'Try next instance',
   'button.openClip': 'Open clip',
   'button.searchInstance': 'Search instance',
-  'advice.noClipRecorded': 'No clip recorded for this exercise.',
+  'advice.noClipRecorded': 'No clip for this exercise.',
   'advice.drinkToThirst': 'Drink to thirst.',
   // template; FORMAT.beverageShortfall. Both volumes arrive formatted by src/domain/units.ts, so
   // the sentence cannot state a unit the profile does not use. It was the formatted EXAMPLE
   // 'Beverage intake 900 mL of 2600 mL today.' that nothing resolved while the frame assembled
   // the same sentence in English (P8 close-out B); the slots are the same two volumes.
   'advice.beverageShortfall': 'Beverage intake {logged} of {target} today.',
-  'advice.logPostSessionMass': 'Log your post-session body mass.',
+  'advice.logPostSessionMass': 'Log post-session body mass.',
   'why.postSessionMass':
     'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
-  'advice.fluidLoss': 'Fluid loss above 2 %. Replace it over the next hours.',
+  'advice.fluidLoss': 'Fluid loss above 2 %. Replace over the next hours.',
   // template; FORMAT.fluidLossWhy, R9's disclosure body behind 'advice.fluidLoss'. `{loss}` is
   // already fixed to one decimal by the caller (a percentage of the pre-session mass) and
   // `{threshold}` is DEHYDRATION_LOSS_FRACTION as a percentage, passed in rather than written
@@ -885,7 +886,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- motivation video (P6) ---
   'hero.weeklyTargetMissed': 'Weekly target missed',
   'hero.motivationPreview': 'Video preview',
-  'advice.motivationPreview': 'Preview. No week is being reported.',
+  'advice.motivationPreview': 'Preview. No week is reported.',
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
@@ -903,31 +904,31 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.keepImport': 'Keep this import',
   'button.startClean': 'Start clean',
   'button.downloadLegacyJson': 'Download legacy JSON',
-  'advice.noWeeksYet': 'No weeks to show yet.',
-  'advice.noSetsLogged': 'No sets logged yet.',
+  'advice.noWeeksYet': 'No weeks to show.',
+  'advice.noSetsLogged': 'No sets logged.',
   'hero.exportImport': 'Export and import',
   'button.downloadJson': 'Download JSON',
   'button.downloadSummary': 'Download summary .txt',
   'button.downloadCalendar': 'Download calendar .ics',
   'advice.jsonIsBackup': 'The JSON file is the complete backup.',
-  'advice.calendarAlarms': 'Whether an imported alarm fires is not guaranteed.',
+  'advice.calendarAlarms': 'An imported alarm may not fire.',
   'advice.importReplaces': 'Importing replaces everything on this device.',
   'status.importOk': 'Imported. The current state has been replaced.',
-  'advice.importParseFailed': 'That text is not JSON. Nothing has been changed.',
+  'advice.importParseFailed': 'That text is not JSON. Nothing changed.',
   'advice.fileUnreadable': 'The file could not be read.',
   'hero.dataOnDevice': 'Data on this device',
-  'advice.dataOnDevice': 'Everything stays on this device. There is no account.',
+  'advice.dataOnDevice': 'Everything stays on this device. No account.',
   'button.wipeAll': 'Wipe all data',
   'button.deleteLegacy': 'Delete legacy data',
-  'advice.deleteLegacy': "The old app's three keys are removed. Anything not imported is lost.",
+  'advice.deleteLegacy': 'Removes the old app data. Anything not imported is lost.',
 
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   'hero.atlas': 'Atlas',
-  'advice.atlas': 'A field journal. Every logged set may add a card.',
+  'advice.atlas': 'Every logged set may add a card.',
   'advice.noCardsMatch': 'No cards match this filter.',
   'status.undiscovered': 'UNDISCOVERED',
   'hero.timeCapsule': 'Time capsule',
-  'advice.timeCapsule': 'A note to your future self, sealed until a date you pick.',
+  'advice.timeCapsule': 'A note to your future self, sealed until a date.',
   'advice.capsuleOpenDatePassed': 'The open date has passed.',
   'button.sealCapsule': 'Seal capsule',
   'button.openCapsule': 'Open capsule',
@@ -1050,7 +1051,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.caution': 'Caution',
   // Security constraint 30: a control the user pressed never renders an empty dialog. The nine
   // equipment-tier exercises carry `formCueId: null` and reach this line.
-  'advice.noFormCues': 'No form cues recorded for this exercise.',
+  'advice.noFormCues': 'No form cues for this exercise.',
 
   // --- Train view (P4 Task 10; appended by that task) ---
   // The rest control adds a fixed 30 s. The value is part of the control, not of the skin: a
@@ -1083,7 +1084,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Distinct from `quantity.bodyMass`: the post-session entry is the second half of a PAIR,
   // and the > 2 % comparison is meaningless if the two are confused.
   'quantity.postSessionBodyMass': 'Post-session body mass',
-  'advice.noSessionToday': 'No session is assigned today. Pick one on Today.',
+  'advice.noSessionToday': 'No session assigned today. Pick one on Today.',
   // The refusal message of the seconds field on a timed set. It names what to enter, not what
   // was wrong with the entry: "invalid" tells the user nothing they can act on.
   'advice.durationNeeded': 'Enter the seconds held, above zero.',
@@ -1123,7 +1124,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // States what is absent, not what the user should have done (R7): the Log view reports
   // history and asks for nothing. `advice.noWeeksYet` and `advice.noSetsLogged`, which the
   // grid and the records list also need, are already in the table above.
-  'advice.noBodyMassLogged': 'No body mass logged yet.',
+  'advice.noBodyMassLogged': 'No body mass logged.',
   // The five compliance marks. 'Missed' is a planned day that has passed without being
   // completed or deliberately skipped; 'Not planned' is a day the programme never assigned,
   // which is a rest day and never a failure (code review A48, where rest days were marked
@@ -1155,7 +1156,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.checkImport': 'Check import',
   'button.replaceData': 'Replace data',
   'advice.importInvalidNoChange': 'An invalid file changes nothing.',
-  'advice.exportUnavailable': 'The current data could not be read back. Nothing was downloaded.',
+  'advice.exportUnavailable': 'The data could not be read. Nothing downloaded.',
   // The summary document's stand-in for the targets block when the profile falls outside the
   // domain the nutrition equations were fitted on. Stated, not silently omitted.
   'advice.targetsNotEstimatedForProfile': 'Targets are not estimated for this profile.',
@@ -1185,19 +1186,19 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.legacyDone': 'Import complete',
   // The offer. It states the fact and the one guarantee that makes accepting it safe; it asks
   // for nothing (R7).
-  'advice.legacyFound': 'Data from the old app was found on this device.',
-  'advice.legacyNothingDeleted': 'Nothing in the old app is deleted until you ask.',
+  'advice.legacyFound': 'The old app has data on this device.',
+  'advice.legacyNothingDeleted': 'Nothing is deleted until you ask.',
   // The load unit is asked for, never assumed: the legacy store held a bare number, so a wrong
   // answer rescales the whole load history by the pound-to-kilogram factor.
   'advice.legacyUnitRequired': 'Choose a unit. A wrong unit rescales every load.',
-  'advice.legacyRefused': 'The old data could not be read. Nothing has changed.',
-  'advice.legacyApplyFailed': 'The import was refused. Nothing has changed.',
-  'advice.legacyStored': 'The imported data is stored. The old data is still here.',
+  'advice.legacyRefused': 'The old data could not be read. Nothing changed.',
+  'advice.legacyApplyFailed': 'The import was refused. Nothing changed.',
+  'advice.legacyStored': 'The import is stored. The old data is untouched.',
   // Shown when the write could not be confirmed. The delete is withheld in that case, so this
   // says which of the two things happened instead of reporting a success.
-  'advice.legacyStoreUnconfirmed': 'The write was not confirmed. The old data is kept.',
-  'advice.legacyOldDataDeleted': 'The old app data has been deleted.',
-  'advice.legacyOldDataKept': 'The old app data was left in place.',
+  'advice.legacyStoreUnconfirmed': 'The write was not confirmed. The old data stays.',
+  'advice.legacyOldDataDeleted': 'The old app data is deleted.',
+  'advice.legacyOldDataKept': 'The old app data was kept.',
   // Disclosure bodies, exempt from R1-R4 (R9): a disclosure exists to hold what does not fit.
   'disclosure.legacyTransfers':
     'Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, ' +
@@ -1229,7 +1230,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
   // The gate, stated before it is met. The word itself is not named here: FORMAT.typeToConfirm
   // owns that sentence, so the label and the compared word cannot say different things.
-  'advice.exportBeforeConfirm': 'Download the backup before this can be confirmed.',
+  'advice.exportBeforeConfirm': 'Download the backup before confirming.',
   'status.exportTaken': 'Backup downloaded.',
   // --- reminders and Home Screen install (P5 Task 8) ---
   'hero.reminders': 'Reminders',
@@ -1244,7 +1245,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.reminderSubscribeFailed': 'The browser refused to register this device.',
   'advice.reminderSyncFailed': 'The schedule did not reach the server.',
   'hero.installHomeScreen': 'Install the app',
-  'advice.installOnlyInstalledApp': 'Only an installed app receives notifications. A browser tab does not.',
+  'advice.installOnlyInstalledApp': 'Only an installed app receives notifications.',
   'advice.installIosVersion': 'Requires iOS 18.4 or later.',
   'label.installIos': 'iPhone and iPad',
   'status.installIosSafari': 'Open this page in Safari.',
@@ -1260,6 +1261,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The clip autoplays muted, which is the only autoplay any engine allows; sound needs a
   // gesture, and this line names it. Rendered only while the clip is still muted.
   'advice.tapForSound': 'Tap the video for sound.',
+  // The other half of the pair: the clip's accessible name once sound is on. A control with a
+  // role and no name cannot be identified at all, so MotivationModal.tsx names the video in
+  // BOTH states. This row was the literal `TAP_TO_MUTE_LABEL` in that file until P9 Task 3.
+  'advice.tapToMute': 'Tap the video to mute.',
 
   // --- P4 final review fixes (appended by that task) ---
   // Two coach sentences src/domain/training/coach.ts ships that the ten `coach.*` keys above
@@ -1312,7 +1317,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // exempt from R1-R4. Both figures are slots filled from the constants that enforce them, so
   // neither can drift from the value the picker actually refuses. FORMAT.withSlots.
   'advice.motivationClipLimit':
-    'The limit is {bytes} bytes. Sizes here are reported in MiB, {mib} bytes each. ' +
+    'The limit is {bytes} bytes. MiB means {mib} bytes. ' +
     'A clip of 25 MiB or less plays back reliably on a phone.', // template
   'button.motivationClipPreview': 'Preview',
   'button.motivationClipRemove': 'Remove clip',
@@ -1394,13 +1399,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // because a refusal that does not say what would be accepted is a dead end. The character
   // bound is src/domain/schema.ts MAX_NOTE_CHARS [characters]; the two dates are civil dates
   // in the profile's zone.
-  'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
-  'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
+  'advice.capsuleNoteShort': 'Write at least {count} characters.', // formatted
+  'advice.capsuleNoteLong': 'Longer than {count} characters.', // formatted
   'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
   // Shown next to the date field only while it still carries the computed default and
   // that default needed clamping into the CAPSULE_MIN/MAX_DAYS_AHEAD window; not a
   // refusal, so it never blocks sealing.
-  'advice.capsuleDefaultMoved': 'The suggested date moved to fit the allowed range.',
+  'advice.capsuleDefaultMoved': 'The suggested date moved into the allowed range.',
 
 
   // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9) ---
@@ -1423,7 +1428,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.legacyReopen': 'Import old data',
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
-  'advice.wipeRemoves': 'Every profile, plan, session, set and note on this device is removed.',
+  'advice.wipeRemoves': 'Removes every profile, plan, session, set and note on this device.',
   // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
   // The row's heading. It names both controls under it, so neither the picker's legend nor
   // the toggle's label repeats it: two controls in one region sharing an accessible name
@@ -1439,7 +1444,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'option.skinBoard': 'Board',
   // What a skin may and may not change (master plan section 3): the register, never a
   // quantity. Stated once, where the choice is made.
-  'advice.skinChanges': 'A skin changes wording and colour. Numbers and units stay the same.',
+  'advice.skinChanges': 'A skin changes wording and colour, never numbers or units.',
   // The sound toggle's label. One word, like the legend above it.
   'label.settingsSounds': 'Sounds',
 
@@ -1463,7 +1468,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // reports the one thing that may still be on the device, and says the rest is gone. It names
   // a removal, not a storage failure, which src/ui/motivation/MotivationSettings.tsx reports
   // through 'status.motivationClipNotStored'.
-  'advice.clipClearFailed': 'The saved clip could not be removed. Everything else was deleted.',
+  'advice.clipClearFailed': 'The clip was not removed. Everything else was deleted.',
   // The accessible name of each typed-confirmation panel, read as the group's label. Two panels
   // can be on screen at once (the wipe in Settings and Replace in the export view directly
   // above it), and both carry a field labelled 'Type DELETE to confirm' and a 'Cancel': without
@@ -1499,7 +1504,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // R9 and round three section 3.3: the body of the missed-week screen states the fact and the
   // next action and carries no verdict on the person. The count of missed sessions is absent
   // because the compliance row beside it already prints the two counts.
-  'advice.interventionBody': 'The week is over. The next scheduled session stands.',
+  'advice.interventionBody': 'The week is over. The next session stands.',
 
   // --- the ticker (P8 Task 14) ---
   // The accessible name of the marquee strip, which is a real button so the moving line can

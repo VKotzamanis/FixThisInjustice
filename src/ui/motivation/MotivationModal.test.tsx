@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import type { ComponentProps } from 'react';
-import { MotivationModal, POSTER_DATA_URI, TAP_TO_MUTE_LABEL } from './MotivationModal';
+import { MotivationModal, POSTER_DATA_URI } from './MotivationModal';
 import {
   BUNDLED_VIDEO_SRC,
   probeBundledVideo,
@@ -173,7 +173,7 @@ describe('MotivationModal', () => {
     expect(screen.getByRole('button', { name: copy('advice.tapForSound') })).toBe(video);
 
     await user.click(video);
-    expect(screen.getByRole('button', { name: TAP_TO_MUTE_LABEL })).toBe(video);
+    expect(screen.getByRole('button', { name: copy('advice.tapToMute') })).toBe(video);
   });
 
   it('follows a mute change made outside the tap handler', async () => {
@@ -190,7 +190,7 @@ describe('MotivationModal', () => {
     await waitFor(() => {
       expect(screen.queryByText(copy('advice.tapForSound'))).toBeNull();
     });
-    expect(video.getAttribute('aria-label')).toBe(TAP_TO_MUTE_LABEL);
+    expect(video.getAttribute('aria-label')).toBe(copy('advice.tapToMute'));
 
     if (video instanceof HTMLVideoElement) video.muted = true;
     fireEvent(video, new Event('volumechange'));

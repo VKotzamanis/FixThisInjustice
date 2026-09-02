@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { copy } from '../../content/copy';
 import { makeExercise } from '../../test/fixtures';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
 import type { AppState, BodyMassEntry, LoggedSet, WeeklyReview } from '../types';
@@ -133,7 +134,7 @@ describe('buildSummary', () => {
   });
 
   it('says no weeks have been reviewed when none have', () => {
-    expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain('No weeks to show yet.');
+    expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain(copy('advice.noWeeksYet'));
   });
 
   it('lists every body-mass check-in as a LocalDate with the profile unit', () => {
@@ -155,7 +156,7 @@ describe('buildSummary', () => {
   });
 
   it('says no sets have been logged when none have', () => {
-    expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain('No sets logged yet.');
+    expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain(copy('advice.noSetsLogged'));
   });
 
   it('states records in the profile unit', () => {
