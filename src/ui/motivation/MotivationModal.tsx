@@ -18,7 +18,7 @@
 // popup still states the miss and still offers Dismiss, because the message is the feature.
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
-import type { KeyboardEvent, ReactElement } from 'react';
+import type { KeyboardEvent, ReactElement, SyntheticEvent } from 'react';
 import { ModalShell } from '../components/ModalShell';
 import {
   BUNDLED_VIDEO_SRC,
@@ -39,6 +39,18 @@ import './motivation.css';
 export const POSTER_DATA_URI =
   "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2016%209'%3E%3Crect%20width='16'%20height='9'%20fill='%230a0b0c'/%3E%3C/svg%3E";
 
+/**
+ * The clip's accessible name once sound is on.
+ *
+ * The muted state is named by `advice.tapForSound`; this is the other half, and the pair is
+ * what gives the control a name in BOTH states. It sits here rather than in
+ * src/content/copy.ts to keep this change out of a table the Settings task is appending in
+ * parallel, which is how a key gets lost in a merge. It obeys
+ * the copy contract as written (R3: five words of twelve; R5: no dash connector) and belongs
+ * beside `advice.tapForSound` as `advice.tapToMute`, which is a move, not a rewrite.
+ */
+export const TAP_TO_MUTE_LABEL = 'Tap the video to mute.';
+
 export interface MotivationModalProps {
   /**
    * The closed week being reported, or null for Settings' preview. In preview nothing is
@@ -55,6 +67,15 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
   const { review, profileId, onDismiss } = props;
   const headingId = useId();
   const dismissRef = useRef<HTMLButtonElement | null>(null);
+  /**
+   * True once this mount has answered its week. Escape, a backdrop click and the button are
+   * three routes to the same dismissal, all of them live at the same time, and the caller owns
+   * the unmount, so nothing guarantees the element is gone before a second route fires. Two
+   * calls would report one week twice: a second `markMotivationShown` and a second `onDismiss`.
+   * A ref rather than state, because the guard has to hold within the same tick a render would
+   * not have reached yet.
+   */
+  const dismissed = useRef(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [source, setSource] = useState<VideoSource | null>(null);
   /** False once the element has reported that it cannot play what it was given. */
@@ -100,6 +121,8 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
   }, []);
 
   const dismiss = useCallback((): void => {
+    if (dismissed.current) return;
+    dismissed.current = true;
     if (review !== null) {
       // Date.now() at the call site, as everywhere else in the UI: the store action takes the
       // clock reading as an argument and never takes one of its own. [ms] epoch, UTC.
@@ -128,6 +151,15 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
     void video.play().catch(() => {
       /* a refused play leaves the poster and the copy, which is the whole message anyway */
     });
+  }, []);
+
+  const syncMuted = useCallback((event: SyntheticEvent<HTMLVideoElement>): void => {
+    // The element, not this component, is the authority on mute. An engine that refuses the
+    // unmute, an OS-level mute, a hardware media key or a page the browser has muted moves
+    // `muted` with no click for `toggleSound` to see, and a hint that reads "tap for sound"
+    // over an audible clip states the opposite of the truth. The name and the hint both hang
+    // off this state, so both follow the element.
+    setMuted(event.currentTarget.muted);
   }, []);
 
   const onVideoKey = useCallback(
@@ -167,11 +199,19 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
           loop
           muted={muted}
           preload="metadata"
+          // A tap target with a click handler, a key handler and a tab stop is a button, and
+          // saying so is what makes its name reach a screen reader. <video> maps to no ARIA
+          // role, and an accessible name on a role-less element is not required to be exposed:
+          // the P6 review reports JAWS dropping this one on the floor. The name is given in
+          // BOTH states, because a control with a role and no name cannot be identified at all;
+          // the previous `undefined` arm left an unnamed button behind the moment sound came on.
+          role="button"
           tabIndex={0}
-          aria-label={muted ? copy('advice.tapForSound') : undefined}
+          aria-label={muted ? copy('advice.tapForSound') : TAP_TO_MUTE_LABEL}
           data-testid="motivation-video"
           onClick={toggleSound}
           onKeyDown={onVideoKey}
+          onVolumeChange={syncMuted}
           onError={() => {
             setPlayable(false);
           }}

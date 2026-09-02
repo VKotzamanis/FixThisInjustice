@@ -307,12 +307,19 @@ export const MOTIVATION_CLOCK_TICK_MS = 60_000;
  * snapshot that never settles. Reading the clock through state instead makes the reading a
  * dependency the component owns, and a re-render costs nothing until the minute turns.
  *
- * Both triggers are needed and neither is redundant. The interval is what makes a window
- * expire under an app left open; the visibility listener is what makes it expire under a phone
- * that was locked, where the interval is throttled to minutes or suspended outright, and where
- * the moment that matters is exactly the moment the user comes back — the argument
- * src/app/useWeeklyClose.ts makes for the same pair of triggers. No throttle is needed on the
- * visibility side: unlike a weekly closure, reading the clock is free.
+ * Both triggers are needed and neither is redundant. The interval is the only thing that can
+ * expire the window under a tab that is open and in front of the user: no store field changes,
+ * no visibility event arrives, nothing else in the app fires, and the fourteenth day still has
+ * to end the offer. The visibility listener is what expires it under a phone that was locked,
+ * where the interval is throttled to minutes or suspended outright, and where the moment that
+ * matters is exactly the moment the user comes back.
+ *
+ * src/app/useWeeklyClose.ts is NOT the precedent for that pair. It runs on visibility alone and
+ * refuses a timer (its header, lines 7 to 9): a tick in a backgrounded tab is throttled anyway
+ * and burns a wake-up to recompute state nobody is looking at. The difference here is the
+ * audience and the cost. A weekly closure catches up a tab that was away, and writes to the
+ * document; this reads a clock for a tab that is on screen, so the tick is free, and no other
+ * event exists to stand in for it.
  */
 export function useMinuteClock(): EpochMs {
   const [now, setNow] = useState<EpochMs>(() => Date.now()); // [ms] epoch, UTC
