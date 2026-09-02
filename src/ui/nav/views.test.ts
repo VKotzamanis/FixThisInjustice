@@ -21,18 +21,27 @@ import APP_SOURCE from '../../app/App.tsx?raw';
 import { VIEWS, VIEW_IDS } from './views';
 import type { ViewId } from './views';
 
+/*
+ * The id character class is `[a-z0-9-]`, not `[a-z]`: a view named `time-capsule` or `week2`
+ * would be INVISIBLE to a letters-only pattern, so both lists could gain it and this suite
+ * would go on comparing the same six ids and passing. Verified by mutation: adding
+ * `'time-capsule'` to the union and to NAV in a scratch copy of App.tsx leaves the letters-only
+ * pattern reporting 6 ids and makes this one report 7, which is what fails the length
+ * assertions below.
+ */
+
 /** The ids in `export type ViewId = 'today' | ... ;` as written in App.tsx, in source order. */
 function unionIdsFromApp(): string[] {
   const union = /export type ViewId =([^;]+);/.exec(APP_SOURCE);
   expect(union, 'App.tsx no longer declares `export type ViewId = ...;`').not.toBeNull();
-  return Array.from((union?.[1] ?? '').matchAll(/'([a-z]+)'/g), (m) => m[1] ?? '');
+  return Array.from((union?.[1] ?? '').matchAll(/'([a-z0-9-]+)'/g), (m) => m[1] ?? '');
 }
 
 /** The ids in App.tsx's `NAV` array literal, in the order the tab strip renders them. */
 function navIdsFromApp(): string[] {
   const nav = /const NAV[^=]*=\s*\[([\s\S]*?)\];/.exec(APP_SOURCE);
   expect(nav, 'App.tsx no longer declares `const NAV ... = [ ... ];`').not.toBeNull();
-  return Array.from((nav?.[1] ?? '').matchAll(/\{\s*id:\s*'([a-z]+)'/g), (m) => m[1] ?? '');
+  return Array.from((nav?.[1] ?? '').matchAll(/\{\s*id:\s*'([a-z0-9-]+)'/g), (m) => m[1] ?? '');
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { FORMAT, copy } from '../../content/copy';
 import type { PlanBlock, PlannedSession } from '../../domain/types';
 import { useActiveCursor } from '../../store/scheduleSelectors';
@@ -10,7 +10,7 @@ import {
   formatSets,
   planRowDomId,
 } from '../format/plan';
-import { usePlanRowFocus } from '../planFocus';
+import { requestPlanFocus, usePlanRowFocus } from '../planFocus';
 import './views.css';
 
 /**
@@ -139,12 +139,6 @@ export function PlanView(): JSX.Element {
   const plan = useActivePlan();
   const cursor = useActiveCursor();
   /*
-   * Delivers a deep link from the spotlight palette to one row (P8 Task 8). Called here,
-   * unconditionally and above the early return below, because it is a hook: putting it after
-   * the `plan === null` exit would change the hook order between renders.
-   */
-  usePlanRowFocus();
-  /*
    * null means "follow the cursor". Seeding the state with the cursor's week instead would
    * capture the FIRST render only, and the first render happens before hydrate() has put the
    * stored plan in place, so a reload would open the Plan view on week 1 of whatever the
@@ -153,7 +147,55 @@ export function PlanView(): JSX.Element {
    */
   const [scrubbedWeek, setScrubbedWeek] = useState<number | null>(null);
 
-  // Both hooks run before this return, so the early exit does not change the hook order.
+  /*
+   * The shown week is derived ABOVE the early return, not after it, because the deep-link
+   * effect below needs it and a hook cannot sit after a conditional return. Each fallback is
+   * the value the corresponding branch of that return renders under: no plan means one week,
+   * showing week 0, which is what the "no plan" message occupies.
+   */
+  // [sessions/week] A plan that claims none would divide the scrubber by zero.
+  const spw = plan !== null && plan.sessionsPerWeek > 0 ? plan.sessionsPerWeek : 1;
+  // [weeks] Derived from the sessions actually held, not from PlanTemplate.weeks: the
+  // scrubber must not offer a week the session list cannot fill.
+  const weekCount = plan === null ? 1 : Math.max(1, Math.ceil(plan.sessions.length / spw));
+  const cursorWeek = cursor === null ? 0 : weekOfIndex(cursor.nextSessionIndex, spw);
+  const week = Math.min(Math.max(scrubbedWeek ?? cursorWeek, 0), weekCount - 1); // 0-based
+
+  /*
+   * Delivers a deep link from the spotlight palette to one row (P8 Task 8). Called here,
+   * unconditionally and above the early return below, because it is a hook: putting it after
+   * the `plan === null` exit would change the hook order between renders.
+   */
+  const focusTarget = usePlanRowFocus();
+
+  /*
+   * PHASE ONE of the deep link: put the target's week on screen. The hook above can only focus
+   * a row that EXISTS, and this view renders one week at a time, so a link into another week
+   * would otherwise be consumed against an empty document - the user asks for a session in
+   * week 3 and the screen does not move. Which week holds a session is a fact about the plan,
+   * so it is resolved here and not in planFocus.tsx.
+   *
+   * The scrub is skipped when the target is already on screen, so an ordinary deep link does
+   * not silently pin a view that was following the cursor.
+   */
+  useEffect(() => {
+    if (focusTarget === null || plan === null) return;
+    const index = plan.sessions.findIndex(
+      (session) =>
+        session.id === focusTarget.sessionId &&
+        session.exercises.some((ex) => ex.exerciseId === focusTarget.exerciseId),
+    );
+    if (index === -1) {
+      // No week of this plan holds the row, so no scrub can reveal it and phase two will never
+      // fire. Withdraw, or the request waits for a later plan that never asked for it.
+      requestPlanFocus(null);
+      return;
+    }
+    const targetWeek = weekOfIndex(index, spw);
+    if (targetWeek !== week) setScrubbedWeek(targetWeek);
+  }, [focusTarget, plan, spw, week]);
+
+  // Every hook runs before this return, so the early exit does not change the hook order.
   if (plan === null || cursor === null) {
     return (
       <div className="view plan">
@@ -163,13 +205,6 @@ export function PlanView(): JSX.Element {
     );
   }
 
-  // [sessions/week] A plan that claims none would divide the scrubber by zero.
-  const spw = plan.sessionsPerWeek > 0 ? plan.sessionsPerWeek : 1;
-  // [weeks] Derived from the sessions actually held, not from PlanTemplate.weeks: the
-  // scrubber must not offer a week the session list cannot fill.
-  const weekCount = Math.max(1, Math.ceil(plan.sessions.length / spw));
-  const cursorWeek = weekOfIndex(cursor.nextSessionIndex, spw);
-  const week = Math.min(Math.max(scrubbedWeek ?? cursorWeek, 0), weekCount - 1); // 0-based
   const firstIndex = week * spw;
   const sessions = plan.sessions.slice(firstIndex, firstIndex + spw);
   const cursorBlock = blockOfSession(plan.blocks, cursor.nextSessionIndex);

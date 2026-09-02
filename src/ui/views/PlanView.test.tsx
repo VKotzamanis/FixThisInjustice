@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { StrictMode, type ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
 import { FORMAT, copy } from '../../content/copy';
 import { formatRest, planRowDomId } from '../format/plan';
+import { requestPlanFocus, usePendingPlanFocus } from '../planFocus';
 import { PlanView, blockOfSession, deloadNote, modifiedSets, weekOfIndex } from './PlanView';
 import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
@@ -72,13 +74,26 @@ function chip(blockNumber: number): HTMLElement {
   return screen.getByRole('button', { name: new RegExp(FORMAT.blockLabel(blockNumber)) });
 }
 
+/** The outstanding deep link, rendered, so a test can assert the request was CONSUMED. */
+function PendingProbe(): ReactElement {
+  const target = usePendingPlanFocus();
+  return (
+    <span data-testid="pending">
+      {target === null ? 'none' : `${target.sessionId}/${target.exerciseId}`}
+    </span>
+  );
+}
+
 beforeEach(() => {
   // Monday 2026-09-07, 09:30 in Europe/Athens (the profile's zone).
   vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
   useAppStore.setState(seed());
+  // Module state: a target left pending by one test would be delivered inside the next one.
+  requestPlanFocus(null);
 });
 
 afterEach(() => {
+  requestPlanFocus(null);
   vi.restoreAllMocks();
 });
 
@@ -225,6 +240,72 @@ describe('PlanView sessions', () => {
     expect(screen.getByText(copy('advice.deloadBlock'))).toBeTruthy();
     // R9: the arithmetic that produced "2" is available, and behind a disclosure.
     expect(screen.getByTestId('deload-basis').textContent).toContain(copy('disclosure.why'));
+  });
+});
+
+describe('PlanView deep link', () => {
+  it("scrubs to the target's week before focusing a row the shown week does not hold", () => {
+    // s-4 is the fourth session of six at three a week, so it sits in WEEK 2, while the view
+    // opens on the cursor's week, which is week 1. Consumed and dropped, the request would
+    // leave the user on week 1 with nothing focused and no statement that anything happened.
+    requestPlanFocus({ sessionId: 's-4', exerciseId: 'ex-7' });
+    render(<PlanView />);
+
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(2, WEEKS));
+    expect(document.activeElement?.id).toBe(planRowDomId('s-4', 'ex-7'));
+  });
+
+  it('focuses a row in the week already shown without moving the scrubber', () => {
+    requestPlanFocus({ sessionId: 's-2', exerciseId: 'ex-3' });
+    render(<PlanView />);
+
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
+    expect(document.activeElement?.id).toBe(planRowDomId('s-2', 'ex-3'));
+  });
+
+  it('consumes the request, so re-mounting the view does not jump to the row again', () => {
+    requestPlanFocus({ sessionId: 's-4', exerciseId: 'ex-7' });
+    render(
+      <>
+        <PlanView />
+        <PendingProbe />
+      </>,
+    );
+    expect(screen.getByTestId('pending').textContent).toBe('none');
+  });
+
+  it("survives StrictMode's double invocation of the delivery effect", () => {
+    // The delivery is idempotent rather than guarded against a second run: React replays the
+    // effect body with the SAME captured target on a development mount, so clearing the slot
+    // before the delivery (which is what the code did) would not have prevented the repeat
+    // either. src/main.tsx renders the app inside StrictMode, so this is the shipped path.
+    requestPlanFocus({ sessionId: 's-4', exerciseId: 'ex-7' });
+    render(
+      <StrictMode>
+        <PlanView />
+        <PendingProbe />
+      </StrictMode>,
+    );
+
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(2, WEEKS));
+    expect(document.activeElement?.id).toBe(planRowDomId('s-4', 'ex-7'));
+    expect(screen.getByTestId('pending').textContent).toBe('none');
+  });
+
+  it('withdraws a request for a row no week of this plan holds', () => {
+    // The session exists; the exercise does not. No scrub can reveal it, so the request must
+    // not sit pending for a later, unrelated plan to deliver.
+    requestPlanFocus({ sessionId: 's-2', exerciseId: 'ex-404' });
+    render(
+      <>
+        <PlanView />
+        <PendingProbe />
+      </>,
+    );
+
+    expect(screen.getByTestId('pending').textContent).toBe('none');
+    expect(document.activeElement).toBe(document.body);
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
   });
 });
 

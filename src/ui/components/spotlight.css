@@ -109,6 +109,15 @@
   color: var(--text-2, #8e97a3);
 }
 
+/*
+ * The empty-result line is a live region and is therefore mounted on every render, silent or
+ * not, so that a screen reader has it under observation before it gains text. An empty one
+ * must occupy no space.
+ */
+.spotlight-empty:empty {
+  display: none;
+}
+
 /* The tap target that opens the palette where there is no keyboard to press the combo on. */
 .spotlight-open {
   padding: 0.4rem 0.7rem;
@@ -119,11 +128,4 @@
   color: var(--text, #dde3ea);
   font-family: var(--sans, system-ui, sans-serif);
   cursor: pointer;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .spotlight,
-  .spotlight-item {
-    transition: none;
-  }
 }
