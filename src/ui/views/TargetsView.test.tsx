@@ -42,7 +42,12 @@ const PROFILE: Profile = {
   goal: { kind: 'fat-loss', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
   supplements: { creatine: true },
   hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL]
-  readiness: { screenedAt: null, flagged: false },
+  /*
+   * Screened, and cleared. This matters to the `App wiring` block below: App shows the
+   * readiness screen instead of the view shell to a profile whose `screenedAt` is null
+   * (master plan section 10.4), so an unscreened fixture would never reach the navigation.
+   */
+  readiness: { screenedAt: '2026-09-01', flagged: false },
 };
 
 /*

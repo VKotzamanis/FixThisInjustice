@@ -46,6 +46,7 @@ import {
   storedMassKg,
 } from '../components/UnitInput';
 import { useAppStore } from '../../store';
+import { ReadinessScreen, type ReadinessResult } from './ReadinessScreen';
 
 /**
  * Setup wizard.
@@ -71,7 +72,7 @@ import { useAppStore } from '../../store';
  * The steps, in order. Rendering, the step counter and the nav all read this array, so a step
  * is added by inserting one member and one branch, never by renumbering anything.
  *
- * P2 Task 9 inserts its pre-participation readiness step at READINESS_INSERT_INDEX, immediately
+ * P2 Task 9 inserted its pre-participation readiness step at READINESS_INSERT_INDEX, immediately
  * before 'review': the screen has to be answered before the profile is written, and Review is
  * the screen that writes it.
  */
@@ -83,13 +84,18 @@ export const STEPS = [
   'goal',
   'availability',
   'programme',
+  'readiness',
   'review',
 ] as const;
 
 export type StepId = (typeof STEPS)[number];
 
-/** Insertion point for Task 9's readiness step. Review is last, and stays last. */
-export const READINESS_INSERT_INDEX = STEPS.length - 1;
+/**
+ * Where the readiness step sits. Derived from the array rather than restated as a literal, so
+ * inserting a step above it cannot leave the constant pointing at a different screen. Review is
+ * last, and stays last: it is the screen that writes the profile.
+ */
+export const READINESS_INSERT_INDEX = STEPS.indexOf('readiness');
 
 const STEP_TITLE: Record<StepId, string> = {
   units: copy('step.units'),
@@ -99,6 +105,7 @@ const STEP_TITLE: Record<StepId, string> = {
   goal: copy('step.goal'),
   availability: copy('step.availability'),
   programme: copy('step.programme'),
+  readiness: copy('step.readiness'),
   review: copy('step.review'),
 };
 
@@ -260,6 +267,12 @@ interface Draft {
   weeklySessionTarget: string; // [sessions/week], as typed
   weeks: string; // [weeks], as typed
   includeCardio: boolean;
+  /**
+   * The screening result, or null until the readiness step has been completed. Held in the
+   * draft rather than written through `recordReadiness`, because that action takes a profile id
+   * and no profile exists until Confirm runs.
+   */
+  readiness: ReadinessResult | null;
 }
 
 function defaultDay(): DaySlot {
@@ -312,6 +325,7 @@ function initialDraft(): Draft {
     weeklySessionTarget: String(DEFAULT_SESSIONS_PER_WEEK),
     weeks: String(DEFAULT_WEEKS),
     includeCardio: false,
+    readiness: null,
   };
 }
 
@@ -699,6 +713,13 @@ export function SetupWizard(): JSX.Element {
       weeklyTargetError !== null ||
       Object.values(durationErrors).some((e) => e !== null),
     programme: weeksError !== null,
+    /*
+     * The readiness step has no Continue of its own in this nav: the screen renders one and
+     * enables it only once all seven questions carry an answer. This entry is what keeps Confirm
+     * disabled if the draft somehow reaches Review unscreened, since `confirmBlocked` is the OR
+     * of every step's guard.
+     */
+    readiness: draft.readiness === null,
     review: false,
   };
 
@@ -826,7 +847,8 @@ export function SetupWizard(): JSX.Element {
       barbellKg === null ||
       dumbbellPairKg === null ||
       stackKg === null ||
-      microPlateKg === null
+      microPlateKg === null ||
+      draft.readiness === null
     ) {
       return; // unreachable: every one of these blocks its own step
     }
@@ -872,9 +894,13 @@ export function SetupWizard(): JSX.Element {
         cupSizeML: DEFAULT_CUP_ML, // [mL]
         weighInOptIn: draft.weighInOptIn,
       },
-      // The pre-participation screen is P2 Task 9. A profile created before it has run is
-      // unscreened, which is what these two values mean; they are never a claim that it passed.
-      readiness: { screenedAt: null, flagged: false },
+      /*
+       * The screening answered on the readiness step, written in the SAME document write as the
+       * rest of the profile. `recordReadiness` is not used here and cannot be: it takes a
+       * profile id, and a create-then-patch would leave an unscreened profile on disk if the
+       * user abandoned Review.
+       */
+      readiness: draft.readiness,
     };
 
     const slots: AvailabilitySlot[] = enabledDays.map((d) => ({
@@ -1549,6 +1575,28 @@ export function SetupWizard(): JSX.Element {
         </fieldset>
       )}
 
+      {step === 'readiness' && (
+        <div>
+          {/* The screen renders its own fieldsets, so this step's heading stands above them.
+              It is also the element that takes focus on a step change, as on every other step. */}
+          <h2
+            className="wiz-heading wiz-heading-alone"
+            id={STEP_HEADING_ID}
+            ref={headingRef}
+            tabIndex={-1}
+          >
+            {STEP_TITLE.readiness}
+          </h2>
+          <ReadinessScreen
+            timezone={zone}
+            onComplete={(readiness) => {
+              patch({ readiness });
+              setStepIndex((n) => Math.min(STEPS.length - 1, n + 1));
+            }}
+          />
+        </div>
+      )}
+
       {step === 'review' && (
         <div data-testid="review">
           {/* Review carries fieldsets of its own, so its heading stands above them. */}
@@ -1636,7 +1684,9 @@ export function SetupWizard(): JSX.Element {
             {copy('button.back')}
           </button>
         )}
-        {stepIndex < STEPS.length - 1 && (
+        {/* The readiness step supplies its own Continue, which stays disabled until all seven
+            questions are answered, so the generic one must not also render there. */}
+        {step !== 'readiness' && stepIndex < STEPS.length - 1 && (
           <button
             type="button"
             disabled={BLOCKED[step]}

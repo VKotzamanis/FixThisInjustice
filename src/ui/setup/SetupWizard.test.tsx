@@ -10,7 +10,7 @@ import { KG_PER_LB } from '../../domain/types';
 import { toStoredMass } from '../../domain/units';
 import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
-import { FORMAT } from '../../content/copy';
+import { FORMAT, copy } from '../../content/copy';
 
 /**
  * No medication, condition or biometric-identifier field exists anywhere in this wizard by
@@ -57,6 +57,18 @@ function setValue(label: RegExp | string, value: string): void {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
+/**
+ * Answer all seven readiness questions, with a Yes for the ids named and a No for the rest.
+ * The screen blocks its own Continue until every question carries an answer, so this is what
+ * every fixture below has to do to reach Review.
+ */
+function answerReadiness(yesFor: readonly number[] = []): void {
+  for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+    const answer = yesFor.includes(id) ? copy('label.yes') : copy('label.no');
+    fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText(answer));
+  }
+}
+
 /** Drive screens 1-5 with an imperial profile, leaving the goal screen on show. */
 function fillImperialWizardToGoal(): void {
   render(<SetupWizard />);
@@ -94,17 +106,20 @@ function fillImperialWizardToAvailability(): void {
   }
 }
 
-/** Drive screens 1-7 with an imperial profile, leaving the review screen on show. */
+/** Drive screens 1-8 with an imperial profile, leaving the review screen on show. */
 function fillImperialWizard(): void {
   fillImperialWizardToAvailability();
   next();
   // 7 - programme length
   setValue(/programme length/i, '12');
   next();
+  // 8 - readiness: every screening question answered no
+  answerReadiness();
+  next();
 }
 
 describe('step order', () => {
-  it('exposes an ordered STEPS array with the readiness insertion point before Review', () => {
+  it('exposes an ordered STEPS array with the readiness step before Review', () => {
     expect([...STEPS]).toEqual([
       'units',
       'timezone',
@@ -113,11 +128,14 @@ describe('step order', () => {
       'goal',
       'availability',
       'programme',
+      'readiness',
       'review',
     ]);
-    // P2 Task 9 splices its readiness step in here; Review stays last.
-    expect(STEPS[READINESS_INSERT_INDEX]).toBe('review');
-    expect(READINESS_INSERT_INDEX).toBe(STEPS.length - 1);
+    // P2 Task 9 spliced its readiness step in at that index, and Review stays last: Review is
+    // the screen that writes the profile the screening result is a member of.
+    expect(STEPS[READINESS_INSERT_INDEX]).toBe('readiness');
+    expect(READINESS_INSERT_INDEX).toBe(STEPS.length - 2);
+    expect(STEPS[STEPS.length - 1]).toBe('review');
   });
 
   it('numbers the header from STEPS rather than a hard-coded count', () => {
@@ -272,6 +290,8 @@ describe('review screen', () => {
     setValue(/sessions per week/i, '2');
     next();
     next();
+    answerReadiness();
+    next();
     expect(screen.getByTestId('target-rate')).toHaveTextContent(
       'Not established by the evidence base',
     );
@@ -312,8 +332,9 @@ describe('submission', () => {
     expect(p.hydration.dailyTargetML).toBe(3000);
     expect(p.hydration.weighInOptIn).toBe(false);
     expect(p.supplements).toEqual({ creatine: false });
-    // Task 9 fills this in on its own screen; the wizard creates it unscreened.
-    expect(p.readiness).toEqual({ screenedAt: null, flagged: false });
+    // The readiness step ran inside this fixture and every answer was no. The date is the
+    // local date in the PROFILE's zone: 12:00 UTC is 08:00 in America/New_York.
+    expect(p.readiness).toEqual({ screenedAt: '2026-09-01', flagged: false });
 
     const availability = state.availability[id];
     expect(availability?.slots.map((s) => s.weekday)).toEqual([1, 2, 4, 5]);
@@ -355,6 +376,8 @@ describe('submission', () => {
       fireEvent.click(screen.getByLabelText(day));
     }
     next();
+    next();
+    answerReadiness();
     next();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
@@ -419,6 +442,7 @@ describe('no free-text medical field exists', () => {
       fireEvent.click(screen.getByLabelText('Tuesday'));
       setValue(/weekly session target/i, '2');
     }
+    if (STEPS[stepIndex] === 'readiness') answerReadiness();
   }
 
   it('renders no textarea and no text input outside name and time zone', () => {
@@ -439,7 +463,7 @@ describe('no free-text medical field exists', () => {
     expect(screen.getByTestId('review')).toBeInTheDocument();
   });
 
-  it('shows no medication input or copy on any screen', () => {
+  it('shows no medication input on any screen and no medication copy outside the screening', () => {
     render(<SetupWizard />);
     for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
       unblock(stepIndex);
@@ -450,7 +474,22 @@ describe('no free-text medical field exists', () => {
       ]) {
         expect(field.getAttribute('aria-label') ?? '').not.toMatch(MEDICAL_PATTERN);
       }
-      expect(document.body.textContent ?? '').not.toMatch(MEDICAL_PATTERN);
+      /*
+       * The readiness step asks whether the user takes prescribed medication for a chronic
+       * condition, so the word is on that screen by design and the copy sweep would fail on it.
+       * The constraint being protected is that no medication or condition value is ever
+       * COLLECTED or stored, which on that screen is checked structurally instead: every input
+       * is a radio, so there is nothing a user could type and nothing but a boolean to store.
+       * Do not sweep around it by unmounting the screen: its own Continue is the control this
+       * loop needs to reach Review.
+       */
+      const readiness = screen.queryByTestId('readiness-screen');
+      if (readiness) {
+        expect(readiness.querySelectorAll('textarea')).toHaveLength(0);
+        expect(readiness.querySelectorAll('input:not([type="radio"])')).toHaveLength(0);
+      } else {
+        expect(document.body.textContent ?? '').not.toMatch(MEDICAL_PATTERN);
+      }
       const continueButton = screen.queryByRole('button', { name: 'Continue' });
       if (!continueButton) break;
       fireEvent.click(continueButton);
@@ -613,7 +652,9 @@ describe('whole-number counts', () => {
 
   it('refuses a fractional programme length', () => {
     fillImperialWizard();
-    fireEvent.click(screen.getByRole('button', { name: 'Back' })); // back to Programme
+    // Review, then back through Readiness to Programme.
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
     setValue(/programme length/i, '12.4');
     expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
@@ -787,5 +828,50 @@ describe('entry aids and idempotency', () => {
     for (const label of [/^neck \(cm\)$/i, /^abdomen i \(cm\)$/i, /^hip \(cm\)$/i]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
+  });
+});
+
+/**
+ * The screening result reaches storage in the SAME document write as the rest of the profile.
+ *
+ * `recordReadiness` is not called here and cannot be: it takes a profile id, and during setup no
+ * profile exists until Confirm runs. A create-then-patch would leave an unscreened profile on
+ * disk if the user abandoned Review, so the wizard carries the result in its draft and Confirm
+ * writes it into the Profile literal it is already building.
+ */
+describe('readiness screening', () => {
+  it('writes flagged false when every answer is no', () => {
+    fillImperialWizard();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+
+    const state = useAppStore.getState();
+    const profile = state.profiles[state.activeProfileId ?? ''];
+    expect(profile?.readiness).toEqual({ screenedAt: '2026-09-01', flagged: false });
+  });
+
+  it('writes flagged true when one answer is yes', () => {
+    fillImperialWizardToAvailability();
+    next();
+    setValue(/programme length/i, '12');
+    next();
+    answerReadiness([1]);
+    next();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+
+    const state = useAppStore.getState();
+    const profile = state.profiles[state.activeProfileId ?? ''];
+    expect(profile?.readiness).toEqual({ screenedAt: '2026-09-01', flagged: true });
+  });
+
+  it('refuses Confirm while the screening has not been answered', () => {
+    fillImperialWizardToAvailability();
+    next();
+    setValue(/programme length/i, '12');
+    // Continue is the readiness screen's own control and is disabled until all seven carry an
+    // answer, so Review is unreachable and no profile can be written unscreened.
+    next();
+    expect(screen.getByTestId('readiness-screen')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Confirm and start' })).toBeNull();
   });
 });

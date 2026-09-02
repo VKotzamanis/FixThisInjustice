@@ -197,3 +197,124 @@
     flex-direction: column;
   }
 }
+
+/*
+ * Pre-participation readiness screen (P2 Task 9).
+ *
+ * Rendered inside the wizard as its own step and inside Settings as the redo panel, so it
+ * carries its own scope (.rq) rather than relying on .wiz being an ancestor.
+ *
+ * The same two numbers the wizard treats as requirements hold here, and for the same reasons
+ * (master plan section 3): min-height 2.75rem = 44 px at a 16 px root on every control the user
+ * taps, and font-size 16px on the answer labels, absolute px rather than rem so the size holds
+ * whatever the root is. The label is the tap area, not the 13 px radio inside it.
+ */
+.rq {
+  max-width: 34rem;
+  margin: 0 auto;
+  color: var(--text, #dde3ea);
+  font-family: var(--mono, ui-monospace, monospace);
+  line-height: 1.5;
+}
+
+.rq .rq-lede {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.rq fieldset {
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+}
+
+.rq legend {
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.rq .rq-text {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.rq .rq-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+}
+
+.rq .rq-answers {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.rq label.rq-answer {
+  display: flex;
+  flex: 1 1 0;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem; /* 44 px at a 16 px root: the tap-target floor */
+  min-width: 2.75rem; /* 44 px */
+  margin: 0;
+  padding: 0 0.5rem;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
+  cursor: pointer;
+}
+
+.rq label.rq-answer:focus-within {
+  outline: 2px solid var(--accent, #a3e635);
+  outline-offset: 2px;
+}
+
+.rq label.rq-answer input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+}
+
+.rq details {
+  margin: 0 0 1rem;
+}
+
+.rq summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+  cursor: pointer;
+}
+
+.rq .rq-source {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+}
+
+.rq .rq-nav {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.rq .rq-nav button {
+  flex: 1 1 0;
+  min-height: 2.75rem; /* 44 px */
+  color: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--accent, #a3e635);
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.rq .rq-nav button[disabled] {
+  opacity: 0.45;
+  cursor: default;
+}
