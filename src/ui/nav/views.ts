@@ -9,8 +9,11 @@
 // src/ui/nav/views.test.ts is the guard against a list growing back in App.tsx, and the guard
 // that every view named here has a switch arm there.
 //
-// The labels are read from the copy table at module load, exactly as App.tsx reads them, so a
-// reworded tab is one edit in src/content/copy.ts and not two.
+// The labels are read from the copy table at module load. That is the CLINICAL string and can
+// only ever be one: a module constant is baked before any skin is known. Every RENDERER -- the
+// tab strip in src/app/App.tsx and the palette in src/ui/components/Spotlight.tsx -- therefore
+// reads `copyKey` through `useCopy()` instead, and `label` survives only for the callers that
+// have no React tree to read a skin from (src/ui/components/Spotlight.test.tsx).
 
 import { copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
@@ -33,12 +36,16 @@ export interface ViewDef {
    * The tab label, resolved against the DEFAULT table at module load.
    *
    * It is the CLINICAL string and stays one: a module constant is baked once, so it cannot
-   * follow `ui.skin`. A renderer that wants the active skin's word reads `copyKey` through
-   * `useCopy()` instead, which is what src/ui/components/Spotlight.tsx does. This field
-   * survives because src/app/App.tsx still reads it and that file belongs to another task.
+   * follow `ui.skin`. NO RENDERER MAY READ IT. src/app/App.tsx read it until the P8 review, and
+   * that is what left the palette offering "the run" while the tab beside it still said "Plan";
+   * both it and src/ui/components/Spotlight.tsx now resolve `copyKey` through `useCopy()`.
+   *
+   * What is left for this field is the caller with no React tree to read a skin from, which
+   * today is src/ui/components/Spotlight.test.tsx alone. It is kept rather than dropped because
+   * something still reads it; when nothing does, it should go, and `copyKey` is the whole row.
    */
   label: string;
-  /** The row's copy key, so a renderer can resolve the label under the active skin. */
+  /** The row's copy key: the ONE thing a renderer reads, through `useCopy()`. */
   copyKey: CopyKey;
   /**
    * The keyboard digit that switches to this view: the 1-based position in VIEWS.
