@@ -7,7 +7,7 @@ import { migrateV2 } from '../../domain/migrations/v2';
 import type { MigrationReport } from '../../domain/migrations/v2';
 import { makeBlankState, makePlan, makeProfile } from '../../test/migrationFactories';
 import { cancelPendingSave, useAppStore } from '../../store';
-import { LEGACY_V2_KEY } from '../../store/persistence';
+import { LEGACY_V2_KEY, STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
 import { MigrationWizard } from './MigrationWizard';
 
@@ -67,6 +67,23 @@ function renderWizard(legacyRaw: string = LEGACY_JSON): ReturnType<typeof vi.fn>
     />,
   );
   return onFinished;
+}
+
+/**
+ * The persisted document, read back out of the fake store.
+ *
+ * The decision has to survive a reload, not merely reach memory: 'dismissed' that lived only
+ * in the store would offer the import again on the next open, which is the one thing the
+ * dismissal promises will not happen.
+ */
+function storedUiDecision(): unknown {
+  const text = storage.get(STORAGE_KEY);
+  if (text === undefined) throw new Error('nothing was written to the document key');
+  const doc: unknown = JSON.parse(text);
+  if (typeof doc !== 'object' || doc === null) throw new Error('the stored document is not an object');
+  const ui: unknown = Reflect.get(doc, 'ui');
+  if (typeof ui !== 'object' || ui === null) throw new Error('the stored document has no ui slice');
+  return Reflect.get(ui, 'legacyMigration');
 }
 
 function button(name: string): HTMLElement {
@@ -193,6 +210,9 @@ describe('MigrationWizard: applying', () => {
     preview('kg');
     apply();
     expect(useAppStore.getState().ui.legacyMigration).toBe('done');
+    // The apply forces the write rather than waiting on the persistence debounce, so the
+    // decision is already in the document by the time the delete is offered.
+    expect(storedUiDecision()).toBe('done');
   });
 
   it('keeps the legacy key until the delete step, then removes it', () => {
@@ -253,6 +273,10 @@ describe('MigrationWizard: refusal and dismissal', () => {
     expect(useAppStore.getState().ui.legacyMigration).toBe('dismissed');
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
     expect(onFinished).toHaveBeenCalledTimes(1);
+    // Dismissing does not force a write, so the debounced one is issued here. What matters is
+    // that the decision is in the document that a reload would read, not when it got there.
+    useAppStore.getState().retrySave();
+    expect(storedUiDecision()).toBe('dismissed');
   });
 
   it('dismisses from the refusal screen too, without touching the legacy key', () => {
