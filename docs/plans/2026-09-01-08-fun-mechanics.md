@@ -38,6 +38,10 @@ Copied verbatim from master plan §3. Every task implicitly includes them.
 
 **Tone in all user-facing copy:** clinical, formal, honest; no hype, no emoji, no motivational filler (the video is the one sanctioned exception). Terminology: use the defined quantity (kcal, g protein, kg, mL, RPE, RIR, 1RM) never a colloquial stand-in.
 
+**Copy in all user-facing strings (default skin):** the full rules are in `docs/design/2026-09-01-copy-contract.md`, which every UI task follows: buttons ≤ 3 words, hero lines ≤ 8 words, advice lines ≤ 12 words; no em-dashes or en-dashes as sentence connectors (en-dashes in numeric ranges such as 6–8 are fine); no emoji; no exclamation marks; arithmetic behind a `why?` disclosure and never inline.
+
+**Skins** (master plan §3, verbatim): the clinical copy is the default. A skin is a token set, a copy table (`Record<CopyKey, string>` merged over the default), an optional icon set, and optional sound effects, selected by `UiPrefs.skin`. Skins may use camp, profanity, and slang (the user's group asked for it); they may not use slurs, body-shaming, or food morality, and they never alter a number, a unit, or the meaning of a plan-altering control. Skin assets ship under licences recorded in the design docs (Google Fonts OFL; CC0/CC-BY icons; own Gemini generations).
+
 **Commits:** each task ends with a commit on `main` of this repository (no push unless the user asks). Commit messages: `feat|fix|test|chore|docs: <summary>`.
 
 ---
@@ -79,6 +83,12 @@ Expanded into the concrete checks this plan runs:
 | G11 | milestone crossing | a jump from 49 to 51 sets still yields the 50 milestone (code review A46) | 10 |
 | G12 | hotkey collisions | registering the same combo twice in one scope throws; `j` on the Train view runs the Train handler only (code review A54) | 9 |
 | G13 | cutscene keying | scrubbing the Plan view to a later block does not fire or consume the cutscene (code review A61) | 10 |
+| G14 | copy contract | no string in `DEFAULT_COPY`, `LIMELIGHT_COPY` or `BOARD_COPY` contains an em-dash, a connector en-dash, an emoji code point or an exclamation mark; every `button.*` string is at most 3 words except the one allowlisted key | 11 |
+| G15 | skin switching | `ui.skin` drives both `document.documentElement.dataset.skin` and the rendered copy of the Today start control: `Start session` → `LET'S GO BABES` → `BOARD` | 12 |
+| G16 | token coverage | every custom property the base sheet declares on `:root` (22 of them) has a value in both skin sheets, and the only declaration in the limelight sheet that sets a colour from pink is the one inside a black panel | 12 |
+| G17 | asset integrity | each of the 21 icon data URIs decodes to a 32 × 32 PNG under 1 kB and matches its measured byte length; each of the 4 illustrations decodes to 256 × 256 under 5 kB | 13 |
+| G18 | toast ordering with six classes | `undo > milestone > pr > coach > telemetry > specimen`; G9's ordering survives as a subsequence | 14 |
+| G19 | sound gates | nothing plays before an unlock, while `ui.sounds` is false, or while the tab is hidden; each file is at most 60 kB and the set at most 240 kB; an `.ogg` with no `.m4a` sibling fails CI | 15 |
 
 ---
 
@@ -121,6 +131,48 @@ src/domain/fun/blocks.test.ts             Task 10
 src/ui/components/PhaseTransition.tsx     Task 10  cutscene keyed to PlanBlock.index
 src/ui/components/MilestoneToast.tsx      Task 10  50/100/250/500/1000
 src/ui/components/PhaseTransition.test.tsx Task 10
+src/content/copy.ts                       Task 11  CopyKey union, DEFAULT_COPY, LIMELIGHT_COPY, BOARD_COPY, copy()
+src/content/copy.test.ts                  Task 11
+src/skins/skinContext.tsx                 Task 11  SkinContext, useSkin(), useCopy()
+src/domain/types.ts                       Task 11  (modify) SkinId; Task 12 (modify) UiPrefs.skin, UiPrefs.sounds
+src/domain/schema.ts                      Task 12  (modify) the two Zod fields with defaults
+src/test/funFixtures.ts                   Task 12  (modify) makeUiPrefs gains skin and sounds
+src/skins/SkinRoot.tsx                    Task 12  reads ui.skin, sets data-skin, provides SkinContext
+src/skins/SkinRoot.test.tsx               Task 12
+src/skins/limelight/tokens.css            Task 12  lime ground, ink type, pink as fill only
+src/skins/board/tokens.css                Task 12  split-flap palette, Space Mono and DM Mono
+src/skins/tokens.test.ts                  Task 12
+src/ui/settings/SkinSettings.tsx          Task 12  "the look" row and the sounds toggle
+src/ui/settings/SkinSettings.test.tsx     Task 12
+src/main.tsx                              Task 12  (modify) skin fonts and token sheets; Task 14 limelight.css
+src/app/App.tsx                           Task 12  (modify) SkinRoot; Task 15 (modify) first-gesture unlock
+src/ui/views/SettingsView.tsx             Task 12  (modify) mounts SkinSettings
+src/ui/views/TodayView.tsx                Task 12  (modify) start control through useCopy; Task 13 SkinLabel
+scripts/inline-icons.mjs                  Task 13  run once; emits the two generated modules
+src/skins/limelight/icons.ts              Task 13  generated: 16 icons + 5 panel variants as data URIs
+src/skins/limelight/illustrations.ts      Task 13  generated: 4 mascot poses as data URIs
+src/skins/limelight/Icon.tsx              Task 13  Icon, ICON_FOR_KEY, SkinLabel
+src/skins/limelight/icons.test.ts         Task 13
+src/skins/limelight/Icon.test.tsx         Task 13
+src/skins/useReducedMotion.ts             Task 14  one media-query hook, shared by marquee and stamp
+src/skins/limelight/Marquee.tsx           Task 14  pausable inverted strip
+src/skins/limelight/MotherStamp.tsx       Task 14  crowned mascot, the word, the twelve-sparkle fan
+src/skins/limelight/InterventionBody.tsx  Task 14  camp line, resting mascot, honest line beneath
+src/skins/limelight/limelight.css         Task 14  marquee, stamp and intervention, with the reduced-motion column
+src/skins/limelight/Marquee.test.tsx      Task 14
+src/skins/limelight/MotherStamp.test.tsx  Task 14
+src/skins/limelight/InterventionBody.test.tsx Task 14
+src/ui/components/ToastQueue.tsx          Task 14  (modify) the sixth toast class, `pr`
+src/ui/motivation/MotivationModal.tsx     Task 14  (modify) one added prop, body?: ReactNode
+src/ui/motivation/MotivationGate.tsx      Task 14  (modify) passes <InterventionBody/>
+src/skins/sfx.ts                          Task 15  four moments, one decoded-once player
+src/skins/sfx.test.ts                     Task 15
+src/ui/audio/chime.ts                     Task 15  (modify) getAudioContext()
+public/sfx/.gitkeep                       Task 15  the drop directory; no audio is committed
+docs/sfx.md                               Task 15  where to drop CC0 files, and the ffmpeg line
+scripts/check-sfx-size.sh                 Task 15  per-file 60 kB, set 240 kB, no Ogg without an m4a
+scripts/check-no-emoji.mjs                Task 15  round-three criterion 5, without a PCRE dependency
+.github/workflows/ci.yml                  Task 15  (modify) both gates
 ```
 
 ---
@@ -4786,6 +4838,3847 @@ Expected: lint silent; every suite passes; the build succeeds; the personal-data
 
 ---
 
+### Task 11: The copy module: default table, limelight and board overrides
+
+Master plan §3 makes the clinical copy the default and a skin "a token set, a copy table
+(`Record<CopyKey, string>` merged over the default), an optional icon set, and optional sound
+effects, selected by `UiPrefs.skin`". Nothing in P1 to P7 has a copy module yet: every view holds
+string literals. This task creates the module, pastes the binding default table from
+`docs/design/2026-09-01-copy-contract.md`, adds the two skin overrides, and makes the rules
+mechanically enforced rather than asserted in prose.
+
+**Three decisions, stated before the code so a reviewer can reject them here rather than in the diff.**
+
+1. **`copy()` is pure and lives in `src/content/`; `useCopy()` lives in `src/skins/` and reads a
+   React context.** The content layer must not import the store, or a Node script, a Vitest unit
+   test and a future server-side render all drag Zustand in to read a string. `SkinRoot` (Task 12) is
+   the single place that reads `ui.skin` and feeds `SkinContext`. Rejected: `useCopy()` calling
+   `useAppStore` directly, which is one import shorter and makes it impossible to render two skins
+   in one test tree.
+2. **The round-three and departures-board design tables key their rows by design names
+   (`start_session`, `week_delta_negative`). Those are not `CopyKey`s.** Each design row is mapped
+   onto the contract's dotted key where one already exists, and the union gains a key where none
+   does. The mapping is in the table below and is the thing to check first if a string appears under
+   the wrong control.
+3. **A skin never changes a number, a unit, or a control's meaning** (master plan §3). Entries whose
+   value carries a number are marked `// formatted`, exactly as the contract's own rows are: the
+   literal in the table is a documented specimen, and the runtime string comes from the formatter at
+   the call site. The rule binds the runtime string, so it is enforced where the formatter runs and
+   not in this table. The design documents deliberately chose a different example scenario per skin
+   (`2 sessions below target` against `2 of 4. flop era.`), so no assertion over the specimen strings
+   can express the rule, and none is written. That limitation is recorded in "What this plan does
+   not do".
+
+**Design key to `CopyKey` map.** Nine of the round-three table's 21 rows land on keys the contract
+already defines; twelve need a new key; the departures-board table's 16 rows are a subset of the same
+21 and add none.
+
+| Design key | `CopyKey` | New in P8? |
+| --- | --- | --- |
+| `start_session` | `button.startSession` | no |
+| `rest` | `status.rest` | no |
+| `skip_today` | `button.skipToday` | no |
+| `pause_plan` | `button.pausePlan` | no |
+| `train_other` | `button.trainSomethingElse` | no |
+| `hydration_cue` | `advice.drinkToThirst` | no |
+| `motivation_title` | `hero.weeklyTargetMissed` | no |
+| `skip_rest` | `button.skipRest` | no |
+| `session_done` | `hero.sessionCompleted` | no |
+| `week_delta_negative` | `status.weekDeltaNegative` | yes |
+| `week_delta_zero` | `status.weekDeltaZero` | yes |
+| `week_delta_positive` | `status.weekDeltaPositive` | yes |
+| `pr_reached` | `status.prReached` | yes |
+| `pr_stamp` | `status.prStamp` | yes |
+| `session_cursor` | `status.sessionCursor` | yes |
+| `plan_progress` | `status.planProgress` | yes |
+| `add_30s` | `button.add30s` | yes |
+| `week_review_title` | `hero.weekReview` | yes |
+| `why_progression` | `why.progression` | yes |
+| `intervention_body` | `advice.interventionBody` | yes |
+| `settings_skin` | `label.settingsSkin` | yes |
+
+`label.settingsSounds` is a thirteenth new key with no design row: §6.2 of the round-three plan
+requires a sounds toggle in Settings and the design table does not name its label. It is added to the
+default table and overridden by no skin.
+
+**Two departures from the design documents, both deliberate.**
+
+- **`button.startSession` defaults to `Start session`, not `Start`.** The round-three and board tables
+  abbreviate the default column; `docs/design/2026-09-01-copy-contract.md` is the binding table and it
+  says `Start session`, and its own rule is that "test assertions quote the default table". Task 12's
+  switching test therefore asserts `Start session` → `LET'S GO BABES` → `BOARD`.
+- **`advice.drinkToThirst` on the board skin is `REFRESHMENT: DRINK TO THIRST`, not
+  `REFRESHMENT — DRINK TO THIRST`.** Direction H's table used an em-dash as a connector, which R5
+  forbids in every skin. A colon is R5's own prescribed replacement.
+
+**Files:**
+- Create: `src/content/copy.ts`
+- Create: `src/skins/skinContext.tsx`
+- Modify: `src/domain/types.ts` (add `SkinId`, master plan §5 verbatim)
+- Test: `src/content/copy.test.ts`
+- Reference (read-only): `docs/design/2026-09-01-copy-contract.md`,
+  `docs/design/round3/2026-09-01-round3-plan.md` §3.4,
+  `docs/design/round2/2026-09-01-design-H-departures-board.html` (the copy table near the end)
+
+**Interfaces:**
+- Consumes: `SkinId` from `src/domain/types.ts` (added by step 3 of this task).
+- Produces:
+  ```ts
+  // src/content/copy.ts
+  export type CopyKey = /* 193 members; the contract's 180 plus P8's 13 */ string & {};
+  export const DEFAULT_COPY: Readonly<Record<CopyKey, string>>;
+  export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>>;   // 21 entries
+  export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>>;       // 16 entries
+  export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey, string>>>>>;
+  export function copy(key: CopyKey, skin?: SkinId): string;                 // skin defaults to "clinical"
+
+  // src/skins/skinContext.tsx
+  export const SkinContext: React.Context<SkinId>;                           // default "clinical"
+  export function useSkin(): SkinId;
+  export function useCopy(): (key: CopyKey) => string;
+  ```
+  (`CopyKey` is a literal union, written out in full in step 3. The `string & {}` above is a stand-in
+  for this interface block only, so the block stays readable; the module declares every member.)
+
+- [ ] **Step 1: Write the failing test**
+
+Create `src/content/copy.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { BOARD_COPY, DEFAULT_COPY, LIMELIGHT_COPY, SKIN_COPY, copy } from "./copy";
+import type { CopyKey } from "./copy";
+
+/**
+ * Unit tokens are excluded from a word count. The copy contract states the rule as
+ * "word counts exclude numerals and units (`60 kg × 8` counts as one word)", so a token is a
+ * word only when it contains a letter and is not one of these.
+ */
+const UNIT_TOKENS: ReadonlySet<string> = new Set(["s", "S", "kg", "lb", "mL", "%", "×"]);
+
+function wordCount(value: string): number {
+  return value.split(/\s+/).filter((token) => /\p{L}/u.test(token) && !UNIT_TOKENS.has(token)).length;
+}
+
+/**
+ * The one button in the default table that exceeds R1's three-word limit. It is P7's setup
+ * call to action. The contract grants no exemption for it, so it is allowlisted here with its
+ * reason rather than silently passed, and the plan's amendment list asks for a ruling: shorten it
+ * to `Set up profile` (3 words) or ratify the exception.
+ */
+const BUTTON_WORD_EXCEPTIONS: ReadonlySet<string> = new Set(["button.setUpProfile"]);
+
+/** Emoji ranges from the round-three verification criterion 5. */
+function hasEmoji(value: string): boolean {
+  for (const character of value) {
+    const point = character.codePointAt(0) ?? 0;
+    if (point >= 0x1f300 && point <= 0x1faff) return true;
+    if (point >= 0x2600 && point <= 0x27bf) return true;
+    if (point === 0xfe0f) return true;
+    if (point >= 0x2b00 && point <= 0x2bff) return true;
+  }
+  return false;
+}
+
+/** R5: an en-dash is legal only between two digits (`6–8`). Anywhere else it is a connector. */
+function hasConnectorEnDash(value: string): boolean {
+  for (let i = 0; i < value.length; i += 1) {
+    if (value[i] !== "–") continue;
+    const before = value[i - 1] ?? "";
+    const after = value[i + 1] ?? "";
+    if (!/\d/.test(before) || !/\d/.test(after)) return true;
+  }
+  return false;
+}
+
+const TABLES: ReadonlyArray<readonly [string, Readonly<Partial<Record<CopyKey, string>>>]> = [
+  ["DEFAULT_COPY", DEFAULT_COPY],
+  ["LIMELIGHT_COPY", LIMELIGHT_COPY],
+  ["BOARD_COPY", BOARD_COPY],
+];
+
+describe("copy tables", () => {
+  it("gives every override key a home in CopyKey", () => {
+    const defaultKeys = new Set(Object.keys(DEFAULT_COPY));
+    for (const key of Object.keys(LIMELIGHT_COPY)) expect(defaultKeys).toContain(key);
+    for (const key of Object.keys(BOARD_COPY)) expect(defaultKeys).toContain(key);
+  });
+
+  it("declares the sizes the design documents specify", () => {
+    expect(Object.keys(DEFAULT_COPY)).toHaveLength(193);
+    expect(Object.keys(LIMELIGHT_COPY)).toHaveLength(21);
+    expect(Object.keys(BOARD_COPY)).toHaveLength(16);
+  });
+
+  for (const [name, table] of TABLES) {
+    it(`keeps ${name} free of em-dashes, connector en-dashes, emoji and exclamation marks`, () => {
+      for (const [key, value] of Object.entries(table)) {
+        expect({ key, emDash: value.includes("—") }).toEqual({ key, emDash: false });
+        expect({ key, enDash: hasConnectorEnDash(value) }).toEqual({ key, enDash: false });
+        expect({ key, emoji: hasEmoji(value) }).toEqual({ key, emoji: false });
+        expect({ key, bang: value.includes("!") }).toEqual({ key, bang: false });
+      }
+    });
+
+    it(`keeps every button in ${name} at three words or fewer`, () => {
+      for (const [key, value] of Object.entries(table)) {
+        if (!key.startsWith("button.")) continue;
+        if (BUTTON_WORD_EXCEPTIONS.has(key)) continue;
+        expect({ key, words: wordCount(value) <= 3 }).toEqual({ key, words: true });
+      }
+    });
+  }
+
+  it("holds the four-word exception and nothing else", () => {
+    const overLimit = Object.entries(DEFAULT_COPY)
+      .filter(([key, value]) => key.startsWith("button.") && wordCount(value) > 3)
+      .map(([key]) => key);
+    expect(overLimit).toEqual(["button.setUpProfile"]);
+    expect(wordCount(DEFAULT_COPY["button.setUpProfile"])).toBe(4);
+  });
+
+  it("shouts exactly two limelight strings and lowercases the rest", () => {
+    const shouted = Object.entries(LIMELIGHT_COPY)
+      .filter(([, value]) => value === value.toUpperCase())
+      .map(([key]) => key)
+      .sort();
+    // The third shouted string of round-three §3.2 is the marquee, which is a component in
+    // Task 14 rather than a copy-table row.
+    expect(shouted).toEqual(["button.startSession", "status.prStamp"]);
+    expect(LIMELIGHT_COPY["button.startSession"]).toBe("LET'S GO BABES");
+    expect(LIMELIGHT_COPY["status.prStamp"]).toBe("MOTHER");
+    for (const [key, value] of Object.entries(LIMELIGHT_COPY)) {
+      if (key === "button.startSession" || key === "status.prStamp") continue;
+      expect({ key, lower: value === value.toLowerCase() }).toEqual({ key, lower: true });
+    }
+  });
+});
+
+describe("copy()", () => {
+  it("returns the clinical string when no skin is given", () => {
+    expect(copy("button.startSession")).toBe("Start session");
+    expect(copy("status.rest")).toBe("REST");
+  });
+
+  it("returns the override when the skin has one", () => {
+    expect(copy("button.startSession", "limelight")).toBe("LET'S GO BABES");
+    expect(copy("button.startSession", "board")).toBe("BOARD");
+    expect(copy("advice.drinkToThirst", "board")).toBe("REFRESHMENT: DRINK TO THIRST");
+  });
+
+  it("falls back to the default when the skin has no override", () => {
+    // The board table has no row for the intervention body; the clinical sentence stands.
+    expect(copy("advice.interventionBody", "board")).toBe(DEFAULT_COPY["advice.interventionBody"]);
+    expect(copy("hero.atlas", "limelight")).toBe(DEFAULT_COPY["hero.atlas"]);
+  });
+
+  it("gives the clinical skin an empty override table", () => {
+    expect(SKIN_COPY.clinical).toEqual({});
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+npx vitest run src/content/copy.test.ts
+```
+
+Expected: FAIL with `Failed to resolve import "./copy"`.
+
+- [ ] **Step 3: Add `SkinId` to the shared types**
+
+`src/domain/types.ts` already carries `UiPrefs`; master plan §5 declares `SkinId` immediately above
+it and the shipped file does not have it yet. Insert this line directly above the
+`// ---- ui preferences (persisted) ----` comment's `export interface UiPrefs` line:
+
+```ts
+export type SkinId = "clinical" | "limelight" | "board";
+```
+
+Verify it landed exactly once:
+
+```bash
+grep -c 'export type SkinId' src/domain/types.ts
+```
+
+Expected: `1`.
+
+- [ ] **Step 4: Write the copy module**
+
+Create `src/content/copy.ts`. Everything from the file-level comment down to `status.setsLogged` is
+`docs/design/2026-09-01-copy-contract.md` pasted verbatim; the thirteen P8 keys, the two skin tables
+and `copy()` are new.
+
+```ts
+/**
+ * User-facing copy, default (clinical) skin.
+ *
+ * Contract: docs/design/2026-09-01-copy-contract.md. Every string here obeys R1-R11.
+ * Numbers, units and quantity names are part of the contract, not of the skin: a skin may
+ * rewrite the sentence around `60 kg`, never `60 kg` itself.
+ */
+
+import type { SkinId } from '../domain/types';
+
+export type CopyKey =
+  // --- shell, save/load banners, recovery (P1) ---
+  | 'shell.status.loading'
+  | 'shell.status.loaded'
+  | 'banner.update.tag'
+  | 'banner.update.body'
+  | 'button.reload'
+  | 'banner.saveQuota.tag'
+  | 'banner.saveQuota.body'
+  | 'banner.saveUnavailable.tag'
+  | 'banner.saveUnavailable.body'
+  | 'banner.saveFailed.tag'
+  | 'banner.saveFailed.body'
+  | 'banner.loadInvalid.tag'
+  | 'banner.loadInvalid.body'
+  | 'button.exportData'
+  | 'button.retrySave'
+  | 'button.exportStoredCopy'
+  | 'button.exportStoredData'
+  | 'recovery.hero'
+  | 'recovery.advice'
+  | 'recovery.exported'
+  | 'recovery.confirm'
+  | 'button.clearData'
+  | 'recovery.cleared.hero'
+  | 'recovery.cleared.advice'
+  | 'hero.noProfile'
+  | 'advice.noProfile'
+  // --- setup wizard, targets, check-in (P2) ---
+  | 'setup.hero'
+  | 'button.continue'
+  | 'button.back'
+  | 'button.confirmStart'
+  | 'advice.unitsOnce'
+  | 'advice.timezoneDetected'
+  | 'advice.timezoneInvalid'
+  | 'advice.sexUsedFor'
+  | 'advice.bodyFatOptional'
+  | 'advice.tapeMethod'
+  | 'advice.tapeNeedFemale'
+  | 'advice.tapeNeedMale'
+  | 'advice.loadSteps'
+  | 'advice.creatineOnly'
+  | 'advice.deloadEveryFourth'
+  | 'hero.dailyTargets'
+  | 'status.rateUnknown'
+  | 'button.recordIntake'
+  | 'why.targetsBasis'
+  | 'advice.storedUnitsUnchanged'
+  | 'advice.noProfileSetupFirst'
+  // --- today and plan (P3) ---
+  | 'hero.noPlan'
+  | 'advice.completeSetup'
+  | 'hero.programmeComplete'
+  | 'hero.sessionCompleted'
+  | 'hero.sessionSkipped'
+  | 'hero.sessionInProgress'
+  | 'hero.noSessionToday'
+  | 'advice.nextSession'
+  | 'advice.noSessionIn14Days'
+  | 'advice.noSessionsLeftThisWeek'
+  | 'status.planPaused'
+  | 'status.skipReason'
+  | 'button.startSession'
+  | 'button.returnToSession'
+  | 'button.markCompleted'
+  | 'button.skipToday'
+  | 'button.confirmSkip'
+  | 'button.cancel'
+  | 'button.trainSomethingElse'
+  | 'button.trainLabelToday'
+  | 'button.pausePlan'
+  | 'button.resumePlan'
+  | 'status.deloadNote'
+  // --- training session (P4) ---
+  | 'hero.train'
+  | 'advice.noProfileTrain'
+  | 'advice.deloadBlock'
+  | 'status.rest'
+  | 'button.skipRest'
+  | 'button.logSet'
+  | 'button.deleteSet'
+  | 'button.undo'
+  | 'button.addSet'
+  | 'button.addExercise'
+  | 'button.saveExercise'
+  | 'button.finishSession'
+  | 'button.logBodyMass'
+  | 'button.formReference'
+  | 'button.formCues'
+  | 'button.nextInstance'
+  | 'button.openClip'
+  | 'button.searchInstance'
+  | 'advice.noClipRecorded'
+  | 'advice.drinkToThirst'
+  | 'advice.beverageShortfall'
+  | 'advice.logPostSessionMass'
+  | 'why.postSessionMass'
+  | 'advice.fluidLoss'
+  | 'why.fluidLoss'
+  | 'coach.setLogged'
+  | 'coach.durationLogged'
+  | 'coach.loadPr'
+  | 'coach.repPr'
+  | 'coach.overSuggested'
+  | 'coach.underSuggested'
+  | 'coach.aboveRange'
+  | 'coach.belowRange'
+  | 'coach.topOfRange'
+  | 'coach.insideRange'
+  // --- reminders (P5) ---
+  | 'status.remindersUnconfigured'
+  | 'status.remindersUnsupported'
+  | 'status.remindersNeedInstall'
+  | 'status.remindersDenied'
+  | 'status.remindersOff'
+  | 'status.remindersPending'
+  | 'status.remindersActive'
+  | 'hero.installFirst'
+  | 'advice.installIos'
+  | 'advice.iosVersion'
+  | 'push.body'
+  // --- motivation video (P6) ---
+  | 'hero.weeklyTargetMissed'
+  | 'hero.motivationPreview'
+  | 'advice.motivationPreview'
+  | 'advice.weekMissed'
+  | 'advice.weekMissedNone'
+  | 'button.play'
+  | 'button.dismiss'
+  | 'button.muteThisWeek'
+  | 'button.preview'
+  | 'button.removeCustomClip'
+  | 'status.bundledClipChecking'
+  | 'status.bundledClipPresent'
+  | 'status.bundledClipAbsent'
+  | 'status.customClipNone'
+  | 'status.customClipStored'
+  | 'advice.videoWrongType'
+  | 'advice.videoTooLarge'
+  | 'advice.videoStoreFailed'
+  // --- log, export, migration, settings (P7) ---
+  | 'hero.importFromOldApp'
+  | 'advice.importIntro'
+  | 'advice.importNothingDeleted'
+  | 'advice.importUnitsNeeded'
+  | 'advice.importUnreadable'
+  | 'advice.importNoResult'
+  | 'advice.importDownloadFirst'
+  | 'why.importRejections'
+  | 'button.runImport'
+  | 'button.keepImport'
+  | 'button.startClean'
+  | 'button.downloadLegacyJson'
+  | 'button.setUpProfile'
+  | 'advice.noWeeksYet'
+  | 'advice.noSetsLogged'
+  | 'hero.exportImport'
+  | 'button.downloadJson'
+  | 'button.downloadSummary'
+  | 'button.downloadCalendar'
+  | 'advice.jsonIsBackup'
+  | 'advice.calendarAlarms'
+  | 'advice.importReplaces'
+  | 'status.importOk'
+  | 'advice.importParseFailed'
+  | 'advice.fileUnreadable'
+  | 'hero.dataOnDevice'
+  | 'advice.dataOnDevice'
+  | 'button.wipeAll'
+  | 'advice.wipeAll'
+  | 'button.deleteLegacy'
+  | 'advice.deleteLegacy'
+  | 'confirm.typeToConfirm'
+  // --- boot, atlas, capsule, spotlight, transitions (P8) ---
+  | 'hero.atlas'
+  | 'advice.atlas'
+  | 'advice.noCardsMatch'
+  | 'status.undiscovered'
+  | 'hero.timeCapsule'
+  | 'advice.timeCapsule'
+  | 'advice.capsuleOpenDatePassed'
+  | 'button.sealCapsule'
+  | 'button.openCapsule'
+  | 'button.skipBoot'
+  | 'button.continueTransition'
+  | 'advice.noMatches'
+  | 'toast.setDeleted'
+  | 'status.setsLogged'
+  // --- skinned keys the round-three and departures-board copy tables need (P8) ---
+  | 'status.weekDeltaNegative'
+  | 'status.weekDeltaZero'
+  | 'status.weekDeltaPositive'
+  | 'status.prReached'
+  | 'status.prStamp'
+  | 'status.sessionCursor'
+  | 'status.planProgress'
+  | 'button.add30s'
+  | 'hero.weekReview'
+  | 'why.progression'
+  | 'advice.interventionBody'
+  | 'label.settingsSkin'
+  | 'label.settingsSounds';
+
+export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
+  // --- shell, save/load banners, recovery (P1) ---
+  'shell.status.loading': 'reading local data',
+  'shell.status.loaded': 'local data loaded',
+  'banner.update.tag': 'UPDATE READY',
+  'banner.update.body': 'A new version is ready.',
+  'button.reload': 'Reload',
+  'banner.saveQuota.tag': 'STORAGE FULL',
+  'banner.saveQuota.body': 'Storage is full. Export now.',
+  'banner.saveUnavailable.tag': 'NO STORAGE',
+  'banner.saveUnavailable.body': 'Storage is unavailable here. Export now.',
+  'banner.saveFailed.tag': 'SAVE FAILED',
+  'banner.saveFailed.body': 'The change could not be saved. The stored copy is unchanged.',
+  'banner.loadInvalid.tag': 'INVALID DATA',
+  'banner.loadInvalid.body': 'Stored data did not validate: unrecognized key. Nothing was overwritten.', // formatted
+  'button.exportData': 'Export data',
+  'button.retrySave': 'Retry save',
+  'button.exportStoredCopy': 'Export stored copy',
+  'button.exportStoredData': 'Export stored data',
+  'recovery.hero': 'The app could not start',
+  'recovery.advice': 'Your data is unchanged. Export it before clearing.',
+  'recovery.exported': 'Export downloaded.',
+  'recovery.confirm': 'Export first, then type DELETE.',
+  'button.clearData': 'Clear stored data',
+  'recovery.cleared.hero': 'Stored data cleared',
+  'recovery.cleared.advice': 'Reload to start empty.',
+  'hero.noProfile': 'No profile yet',
+  'advice.noProfile': 'Setup is not built yet.',
+
+  // --- setup wizard, targets, check-in (P2) ---
+  'setup.hero': 'Setup',
+  'button.continue': 'Continue',
+  'button.back': 'Back',
+  'button.confirmStart': 'Confirm and start',
+  'advice.unitsOnce': 'Chosen once. Values are stored in kg and mL either way.',
+  'advice.timezoneDetected': 'Detected from this device. Dates and reminders use this zone.',
+  'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
+  'advice.sexUsedFor': 'Used by the RMR, body-fat and fluid equations.',
+  'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham fat-free-mass equation.',
+  'advice.tapeMethod': 'US Navy circumference method. All girths in cm, tape level and snug.',
+  'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
+  'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
+  'advice.loadSteps': 'The smallest increment a suggested load may use.',
+  'advice.creatineOnly': 'The only supplement tracked. Dose scales with body mass.',
+  'advice.deloadEveryFourth': 'Every fourth week halves set counts. Load is unchanged.',
+  'hero.dailyTargets': 'Daily targets',
+  'status.rateUnknown': 'Not established by the evidence base',
+  'button.recordIntake': 'Record intake',
+  'why.targetsBasis': 'How these numbers were derived',
+  'advice.storedUnitsUnchanged': 'Stored values never change. Mass is always held in kg.',
+  'advice.noProfileSetupFirst': 'No profile. Complete setup first.',
+
+  // --- today and plan (P3) ---
+  'hero.noPlan': 'No plan configured.',
+  'advice.completeSetup': 'Complete setup to generate a plan.',
+  'hero.programmeComplete': 'Programme complete.',
+  'hero.sessionCompleted': 'Session completed.',
+  'hero.sessionSkipped': 'Session skipped.',
+  'hero.sessionInProgress': 'Session in progress.',
+  'hero.noSessionToday': 'No session scheduled today.',
+  'advice.nextSession': 'Next: Wed 07:00 Push.', // formatted; weekday, start time, label
+  'advice.noSessionIn14Days': 'No sessions in the next 14 days.',
+  'advice.noSessionsLeftThisWeek': 'No sessions remain this week.',
+  'status.planPaused': 'Plan paused since 2026-09-07.', // formatted; pause start date
+  'status.skipReason': 'Reason: illness', // formatted; the reason the user typed
+  'button.startSession': 'Start session',
+  'button.returnToSession': 'Return to session',
+  'button.markCompleted': 'Mark completed',
+  'button.skipToday': 'Skip today',
+  'button.confirmSkip': 'Confirm skip',
+  'button.cancel': 'Cancel',
+  'button.trainSomethingElse': 'Train something else',
+  'button.trainLabelToday': 'Train Legs today', // formatted; the chosen label
+  'button.pausePlan': 'Pause plan',
+  'button.resumePlan': 'Resume plan',
+  'status.deloadNote': 'volume −50 %, load unchanged', // formatted; the actual set modifier
+
+  // --- training session (P4) ---
+  'hero.train': 'TRAIN',
+  'advice.noProfileTrain': 'No profile. Complete setup first.',
+  'advice.deloadBlock': 'Deload block: set count reduced, load held.',
+  'status.rest': 'REST',
+  'button.skipRest': 'Skip',
+  'button.logSet': 'Log',
+  'button.deleteSet': 'Delete',
+  'button.undo': 'Undo',
+  'button.addSet': 'Add set',
+  'button.addExercise': 'Add exercise',
+  'button.saveExercise': 'Add',
+  'button.finishSession': 'Finish session',
+  'button.logBodyMass': 'Log body mass',
+  'button.formReference': 'Form reference',
+  'button.formCues': 'Form cues',
+  'button.nextInstance': 'Try next instance',
+  'button.openClip': 'Open clip',
+  'button.searchInstance': 'Search instance',
+  'advice.noClipRecorded': 'No clip recorded for this exercise.',
+  'advice.drinkToThirst': 'Drink to thirst.',
+  'advice.beverageShortfall': 'Beverage intake 900 mL of 2600 mL today.', // formatted
+  'advice.logPostSessionMass': 'Log your post-session body mass.',
+  'why.postSessionMass': 'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
+  'advice.fluidLoss': 'Fluid loss above 2 %. Replace it over the next hours.',
+  'why.fluidLoss': 'Loss of 2.4 % of pre-session mass, above the 2 % threshold (ACSM 2007).', // formatted
+  'coach.setLogged': 'Set logged.',
+  'coach.durationLogged': '45 s logged.', // formatted
+  'coach.loadPr': 'Load PR. Previous best 60 kg × 8.', // formatted
+  'coach.repPr': 'Rep PR at 60 kg. Previous best 8 reps.', // formatted
+  'coach.overSuggested': '2.5 kg over the suggested load.', // formatted
+  'coach.underSuggested': '5 kg under the suggested load.', // formatted
+  'coach.aboveRange': '2 reps above range. Add load next session.', // formatted
+  'coach.belowRange': '4 reps, below the prescribed 6-8.', // formatted
+  'coach.topOfRange': 'Top of range at 60 kg × 8.', // formatted
+  'coach.insideRange': '60 kg × 7, inside the prescribed 6-8.', // formatted
+
+  // --- reminders (P5) ---
+  'status.remindersUnconfigured': 'Reminders are not configured in this build.',
+  'status.remindersUnsupported': 'This browser cannot receive push notifications.',
+  'status.remindersNeedInstall': 'Add this app to the Home Screen first.',
+  'status.remindersDenied': 'Notifications are blocked. Re-enable them in settings.',
+  'status.remindersOff': 'Reminders are off.',
+  'status.remindersPending': 'Reminders are on. Schedule not sent yet.',
+  'status.remindersActive': 'Reminders are active. Schedule last sent at 17:00.', // formatted
+  'hero.installFirst': 'Install to the Home Screen first',
+  'advice.installIos': 'On iPhone and iPad, only an installed app receives notifications.',
+  'advice.iosVersion': 'Requires iOS 18.4 or later.',
+  'push.body': 'Upper A at 18:00, session 3 of 24', // formatted
+
+  // --- motivation video (P6) ---
+  'hero.weeklyTargetMissed': 'Weekly target missed',
+  'hero.motivationPreview': 'Motivation video: preview',
+  'advice.motivationPreview': 'Preview. No week is being reported.',
+  'advice.weekMissed': 'Week of 2026-08-24: 1 of 4 sessions completed.', // formatted
+  'advice.weekMissedNone': 'Week of 2026-08-24: no sessions completed.', // formatted
+  'button.play': 'Play',
+  'button.dismiss': 'Dismiss',
+  'button.muteThisWeek': 'Mute this week',
+  'button.preview': 'Preview',
+  'button.removeCustomClip': 'Remove custom clip',
+  'status.bundledClipChecking': 'Bundled clip: checking.',
+  'status.bundledClipPresent': 'Bundled clip: present.',
+  'status.bundledClipAbsent': 'Bundled clip: absent. Choose a file below.',
+  'status.customClipNone': 'Custom clip: none.',
+  'status.customClipStored': 'Custom clip: stored on this device.',
+  'advice.videoWrongType': 'Not a video file.',
+  'advice.videoTooLarge': 'File is too large. The limit is 150 MiB.',
+  'advice.videoStoreFailed': 'The file could not be stored.',
+
+  // --- log, export, migration, settings (P7) ---
+  'hero.importFromOldApp': 'Import from the old app',
+  'advice.importIntro': 'Old data was found. Set up a profile first.',
+  'advice.importNothingDeleted': 'Nothing is deleted from the old app.',
+  'advice.importUnitsNeeded': 'The old app stored no units. Two questions follow.',
+  'advice.importUnreadable': 'The old data is not JSON. Nothing has been changed.',
+  'advice.importNoResult': 'The import produced no result. Nothing has been changed.',
+  'advice.importDownloadFirst': 'Download the untouched copy before keeping this import.',
+  'why.importRejections': 'What could not be imported, and why',
+  'button.runImport': 'Run the import',
+  'button.keepImport': 'Keep this import',
+  'button.startClean': 'Start clean',
+  'button.downloadLegacyJson': 'Download legacy JSON',
+  'button.setUpProfile': 'Set up your profile',
+  'advice.noWeeksYet': 'No weeks to show yet.',
+  'advice.noSetsLogged': 'No sets logged yet.',
+  'hero.exportImport': 'Export and import',
+  'button.downloadJson': 'Download JSON',
+  'button.downloadSummary': 'Download summary .txt',
+  'button.downloadCalendar': 'Download calendar .ics',
+  'advice.jsonIsBackup': 'The JSON file is the complete backup.',
+  'advice.calendarAlarms': 'Whether an imported alarm fires is not guaranteed.',
+  'advice.importReplaces': 'Importing replaces everything on this device.',
+  'status.importOk': 'Imported. The current state has been replaced.',
+  'advice.importParseFailed': 'That text is not JSON. Nothing has been changed.',
+  'advice.fileUnreadable': 'The file could not be read.',
+  'hero.dataOnDevice': 'Data on this device',
+  'advice.dataOnDevice': 'Everything stays on this device. There is no account.',
+  'button.wipeAll': 'Wipe all data',
+  'advice.wipeAll': 'Everything on this device is removed. A JSON backup downloads first.',
+  'button.deleteLegacy': 'Delete legacy data',
+  'advice.deleteLegacy': "The old app's three keys are removed. Anything not imported is lost.",
+  'confirm.typeToConfirm': 'Type DELETE to confirm',
+
+  // --- boot, atlas, capsule, spotlight, transitions (P8) ---
+  'hero.atlas': 'Atlas',
+  'advice.atlas': 'A field journal. Every logged set may add a card.',
+  'advice.noCardsMatch': 'No cards match this filter.',
+  'status.undiscovered': 'UNDISCOVERED',
+  'hero.timeCapsule': 'Time capsule',
+  'advice.timeCapsule': 'A note to your future self, sealed until a date you pick.',
+  'advice.capsuleOpenDatePassed': 'The open date has passed.',
+  'button.sealCapsule': 'Seal capsule',
+  'button.openCapsule': 'Open capsule',
+  'button.skipBoot': 'Skip',
+  'button.continueTransition': 'Continue',
+  'advice.noMatches': 'No matches.',
+  'toast.setDeleted': 'Set deleted.',
+  'status.setsLogged': '250 sets recorded.', // formatted
+
+  // --- skinned keys (P8) ---
+  'status.weekDeltaNegative': '2 sessions below target', // formatted; the shortfall count
+  'status.weekDeltaZero': 'Target met',
+  'status.weekDeltaPositive': '1 session above target', // formatted; the surplus count
+  'status.prReached': 'Personal record',
+  'status.prStamp': 'Personal record',
+  'status.sessionCursor': 'Session 12 of 48', // formatted; ordinal and programme length
+  'status.planProgress': '10 completed · 1 skipped · 37 remaining', // formatted; three counts
+  'button.add30s': '+30 s',
+  'hero.weekReview': 'Week review',
+  // R9 fixes a disclosure summary carrying arithmetic at the literal 'why?' in every skin, so this
+  // key is the same string in all three tables. The round-three table's 'Why this load?' is that
+  // document's gloss on the default column, not the binding contract.
+  'why.progression': 'why?',
+  'advice.interventionBody': 'You missed 2 sessions this week.', // formatted; the miss count
+  'label.settingsSkin': 'Skin',
+  'label.settingsSounds': 'Sounds',
+};
+/**
+ * limelight (docs/design/round3/2026-09-01-round3-plan.md §3.4). Twenty-one rows.
+ *
+ * Register: lowercase everywhere except the two shouted rows below, which are shouted *because*
+ * everything else is not (§3.2). The third shouted string of that section is the marquee, which is
+ * a component (Task 14), not a copy row.
+ *
+ * A row marked `formatted` carries the same numerals as the clinical row it overrides; the runtime
+ * value comes from the formatter at the call site. Master plan §3: a skin may put a word beside a
+ * number, never restate or round one.
+ */
+export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
+  'button.startSession': "LET'S GO BABES", // shouted, 1 of 3
+  'status.rest': 'catch ur breath',
+  'button.skipToday': 'not today satan',
+  'button.pausePlan': 'on hiatus',
+  'button.trainSomethingElse': 'plot twist',
+  'status.weekDeltaNegative': '2 of 4. flop era.', // formatted
+  'status.weekDeltaZero': '4 of 4. she delivered.', // formatted
+  'status.weekDeltaPositive': '5 of 4. no crumbs.', // formatted
+  'advice.drinkToThirst': 'hydrate or diedrate',
+  'status.prReached': 'new best. mother.',
+  'hero.weeklyTargetMissed': 'the intervention',
+  'status.sessionCursor': 'ep. 12 of 48', // formatted
+  'status.planProgress': '10 served. 1 skipped. 37 to go.', // formatted
+  'button.add30s': '+30s',
+  'button.skipRest': "i'm ready",
+  'hero.weekReview': 'the reunion',
+  'why.progression': 'why?', // identical to the default: R9 binds every skin
+  'hero.sessionCompleted': 'ate.',
+  'status.prStamp': 'MOTHER', // shouted, 2 of 3
+  'advice.interventionBody': 'the week flopped, not you. monday is the next slot.',
+  'label.settingsSkin': 'the look',
+};
+
+/**
+ * board (docs/design/round2/2026-09-01-design-H-departures-board.html, the copy table). Sixteen
+ * rows: the round-two set, which is the round-three set minus its five additions.
+ *
+ * Register: upper case throughout, because a split-flap board has no lower case. Every term is an
+ * airport term used in its real sense; unlike limelight this column carries no slang.
+ *
+ * One departure from H's table: its `hydration_cue` row read `REFRESHMENT — DRINK TO THIRST`. R5
+ * forbids an em-dash as a connector in every skin, and a colon is R5's prescribed replacement.
+ */
+export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
+  'button.startSession': 'BOARD',
+  'status.rest': 'GATE HOLD',
+  'button.skipToday': 'CANCEL SERVICE',
+  'button.pausePlan': 'HOLD SCHEDULE',
+  'button.trainSomethingElse': 'REBOOK',
+  'status.weekDeltaNegative': '2 CANCELLED', // formatted
+  'status.weekDeltaZero': 'ALL DEPARTED',
+  'status.weekDeltaPositive': '1 EXTRA SERVICE', // formatted
+  'advice.drinkToThirst': 'REFRESHMENT: DRINK TO THIRST',
+  'status.prReached': 'NEW RECORD TIME',
+  'hero.weeklyTargetMissed': 'IRREGULAR OPERATIONS',
+  'status.sessionCursor': 'SERVICE 12 / 48', // formatted
+  'status.planProgress': '10 DEPARTED · 1 CANCELLED · 37 SCHEDULED', // formatted
+  'button.add30s': '+30 S DELAY',
+  'button.skipRest': 'EARLY DEPARTURE',
+  'hero.weekReview': 'ARRIVALS',
+};
+
+/**
+ * The override table per skin. `clinical` is empty by construction rather than by absence: the
+ * default table *is* the clinical skin, so an entry here would be a second place to change it.
+ */
+export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey, string>>>>> = {
+  clinical: {},
+  limelight: LIMELIGHT_COPY,
+  board: BOARD_COPY,
+};
+
+/**
+ * The one string lookup. A view calls copy('button.startSession'), never a literal.
+ *
+ * The override is merged over the default per key, not per table, so a skin that names ten rows
+ * inherits the other 183 rather than having to restate them.
+ */
+export function copy(key: CopyKey, skin: SkinId = 'clinical'): string {
+  return SKIN_COPY[skin][key] ?? DEFAULT_COPY[key];
+}
+```
+
+- [ ] **Step 5: Write the skin context and the `useCopy` hook**
+
+Create `src/skins/skinContext.tsx`:
+
+```tsx
+import { createContext, useCallback, useContext } from "react";
+import { copy } from "../content/copy";
+import type { CopyKey } from "../content/copy";
+import type { SkinId } from "../domain/types";
+
+/**
+ * The active skin, supplied by <SkinRoot> (Task 12), which is the only reader of ui.skin.
+ *
+ * The default is "clinical" rather than `null`, so a component rendered outside the provider (a
+ * unit test, an error boundary above the store) renders the default table instead of throwing.
+ * That is the opposite of useToasts', which throws: a missing toast queue is a wiring bug, while a
+ * missing skin has a correct answer.
+ */
+export const SkinContext = createContext<SkinId>("clinical");
+
+export function useSkin(): SkinId {
+  return useContext(SkinContext);
+}
+
+/**
+ * Returns the lookup for the active skin. The identity is stable per skin, so a component may put
+ * it in a dependency array without re-running an effect on every render.
+ */
+export function useCopy(): (key: CopyKey) => string {
+  const skin = useSkin();
+  return useCallback((key: CopyKey): string => copy(key, skin), [skin]);
+}
+```
+
+- [ ] **Step 6: Run the test to verify it passes**
+
+```bash
+npx vitest run src/content/copy.test.ts
+```
+
+Expected: PASS, `Tests  14 passed (14)`.
+
+- [ ] **Step 7: Type-check, lint and commit**
+
+```bash
+npx tsc --noEmit
+npx eslint src/content/copy.ts src/skins/skinContext.tsx src/content/copy.test.ts
+npm test
+git add src/content/copy.ts src/content/copy.test.ts src/skins/skinContext.tsx src/domain/types.ts
+git commit -m "feat: copy module with the clinical default table and the limelight and board overrides"
+```
+
+Expected: `tsc` and `eslint` silent; every suite passes.
+
+---
+### Task 12: Skin tokens, the `data-skin` root, and the Settings picker
+
+Task 11 made the strings switchable. This task makes the skin selectable and persisted, gives the
+two non-default skins their token sets, and puts one attribute on the document root that re-points
+every token at once.
+
+**The mechanism, in one sentence:** `SkinRoot` reads `ui.skin`, writes it to
+`document.documentElement.dataset.skin`, and feeds the same value to `SkinContext`, so CSS switches
+through the attribute selector and copy switches through the context, from one store field.
+
+**Why an attribute and not a class.** `:root[data-skin='limelight']` has the same specificity as a
+class would, but an attribute holds one value: a class list can carry two skins at once, and the
+resulting cascade depends on stylesheet order rather than on state. The attribute makes the invalid
+state unrepresentable.
+
+**Font packages, verified on npm on 2026-09-01** (`npm view <pkg> version`):
+`@fontsource-variable/archivo` **exists** at `5.3.0`, so the variable package is used and
+`@fontsource/archivo` is not needed. Its `standard.css` entry point declares
+`font-weight: 100 900; font-stretch: 62% 125%`, which is exactly the `wdth 62 / wght 800` cut the
+limelight display type needs. `@fontsource/dm-mono` and `@fontsource/space-mono` are both at `5.3.0`
+and ship `400.css` (both) and `700.css` (Space Mono), which is what the board skin uses.
+
+**The disclosed cost.** Measured latin-subset `woff2` payloads in those packages: Archivo variable
+90 104 B; DM Mono 400 14 820 B; Space Mono 400 16 520 B and 700 16 724 B. A browser fetches a face
+only when a rendered rule uses its family, so a clinical user downloads none of them at runtime; the
+service worker's precache glob (`**/*.{js,css,html,ico,png,svg,webmanifest,woff2}`, P6 Task 7) does
+ship all four, which is 138 168 B of install-time payload for a user who may never switch skin. That
+is accepted rather than mitigated: an offline-first PWA whose skin fails to render offline is worse
+than one that is 135 kB larger. If it ever has to go, the mitigation is a `globIgnores` entry for
+`**/archivo-*`, `**/dm-mono-*` and `**/space-mono-*`, and the cost is that the first render after a
+skin change blocks on a network fetch.
+
+**Files:**
+- Modify: `package.json` (three dependencies)
+- Modify: `src/domain/types.ts` (`UiPrefs` gains `skin` and `sounds`)
+- Modify: `src/domain/schema.ts` (`UiPrefsSchema` gains both, with defaults)
+- Modify: `src/test/funFixtures.ts` (`makeUiPrefs`)
+- Modify: `src/main.tsx` (font and token imports)
+- Modify: `src/app/App.tsx` (mount `SkinRoot`)
+- Modify: `src/ui/views/SettingsView.tsx` (mount `SkinSettings`)
+- Modify: `src/ui/views/TodayView.tsx` (route the start control's label through `useCopy`)
+- Create: `src/skins/SkinRoot.tsx`
+- Create: `src/skins/limelight/tokens.css`
+- Create: `src/skins/board/tokens.css`
+- Create: `src/ui/settings/SkinSettings.tsx`
+- Test: `src/skins/SkinRoot.test.tsx`, `src/skins/tokens.test.ts`
+- Reference (read-only): `src/ui/styles/tokens.css`,
+  `docs/design/round3/2026-09-01-round3-plan.md` §2.1 to §2.3,
+  `docs/design/round2/2026-09-01-design-H-departures-board.html` (the `:root` block)
+
+**Interfaces:**
+- Consumes: `SkinContext`, `useCopy` from `src/skins/skinContext.tsx` (Task 11); `useAppStore` and
+  `setUi` from `src/store/index.ts` (Task 4); `makeAppState`, `makeUiPrefs` from
+  `src/test/funFixtures.ts` (Task 4).
+- Produces:
+  ```ts
+  // src/domain/types.ts (two added UiPrefs members)
+  skin: SkinId;      // default "clinical"
+  sounds: boolean;   // default false
+
+  // src/skins/SkinRoot.tsx
+  export function SkinRoot(props: { children: React.ReactNode }): React.ReactElement;
+
+  // src/ui/settings/SkinSettings.tsx
+  export function SkinSettings(): React.ReactElement;
+  ```
+
+- [ ] **Step 1: Confirm the font packages and install them**
+
+```bash
+npm view @fontsource-variable/archivo version
+npm view @fontsource/dm-mono version
+npm view @fontsource/space-mono version
+npm install --save-exact=false @fontsource-variable/archivo@^5.3.0 @fontsource/dm-mono@^5.3.0 @fontsource/space-mono@^5.3.0
+node -e "const p=require('./node_modules/@fontsource-variable/archivo/package.json');console.log(p.name,p.version)"
+grep -c 'font-stretch: 62% 125%' node_modules/@fontsource-variable/archivo/standard.css
+```
+
+Expected: the three `npm view` calls print `5.3.0`; the install adds the three names to
+`package.json` `dependencies`; the `node -e` line prints
+`@fontsource-variable/archivo 5.3.0`; the `grep -c` prints a non-zero count.
+
+If `npm view @fontsource-variable/archivo version` returns `npm error code E404`, the variable
+package has been unpublished: fall back to `@fontsource/archivo` (static weights, `400.css` and
+`800.css`), drop `font-stretch` from the limelight display rule in step 7, and record the
+substitution in this plan's amendment list. As of 2026-09-01 the variable package is present and
+this branch does not apply.
+
+- [ ] **Step 2: Write the failing tests**
+
+Create `src/skins/tokens.test.ts`:
+
+```ts
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const BASE = readFileSync("src/ui/styles/tokens.css", "utf8");
+const LIMELIGHT = readFileSync("src/skins/limelight/tokens.css", "utf8");
+const BOARD = readFileSync("src/skins/board/tokens.css", "utf8");
+
+/**
+ * The custom properties the base sheet declares on :root. Derived rather than hard-coded, so a
+ * token added to the base sheet fails this suite until both skins give it a value. That failure is
+ * the point: an un-overridden token means CRT green leaking into a lime page.
+ */
+const BASE_TOKENS: readonly string[] = (() => {
+  const start = BASE.indexOf(":root {");
+  const end = BASE.indexOf("}", start);
+  const block = BASE.slice(start, end);
+  return [...block.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((match) => match[1] ?? "");
+})();
+
+describe("skin token sheets", () => {
+  it("finds the base token set", () => {
+    expect(BASE_TOKENS).toContain("--bg");
+    expect(BASE_TOKENS).toContain("--accent-rgb");
+    expect(BASE_TOKENS.length).toBe(22);
+  });
+
+  it("gives every base token a value in both skins", () => {
+    for (const token of BASE_TOKENS) {
+      expect({ token, limelight: LIMELIGHT.includes(`${token}:`) }).toEqual({ token, limelight: true });
+      expect({ token, board: BOARD.includes(`${token}:`) }).toEqual({ token, board: true });
+    }
+  });
+
+  it("scopes each skin sheet to its own attribute and never to a bare :root", () => {
+    expect(LIMELIGHT).toContain(":root[data-skin='limelight']");
+    expect(BOARD).toContain(":root[data-skin='board']");
+    expect(LIMELIGHT).not.toMatch(/^\s*:root\s*\{/m);
+    expect(BOARD).not.toMatch(/^\s*:root\s*\{/m);
+    expect(LIMELIGHT).not.toContain("data-skin='board'");
+    expect(BOARD).not.toContain("data-skin='limelight'");
+  });
+
+  it("uses the ground and accent the contrast table decided", () => {
+    // Round-three section 2.3: black on lime is 10.91:1; pink on lime is 1.41:1 and is a fill only.
+    expect(LIMELIGHT).toContain("--lime: #8ace00");
+    expect(LIMELIGHT).toContain("--ink: #000000");
+    expect(LIMELIGHT).toContain("--pink: #ff5fcb");
+    expect(LIMELIGHT).toContain("--text: var(--ink)");
+    expect(LIMELIGHT).toContain("--accent: var(--pink)");
+  });
+
+  it("never makes pink a text colour in the limelight sheet", () => {
+    // The rule has no size exception: pink is type only inside a black panel, which is the one
+    // declaration allowed to set `color` from --pink.
+    const colourFromPink = [...LIMELIGHT.matchAll(/(^|\n)\s*(--text[a-z0-9-]*|color)\s*:\s*([^;]+);/g)]
+      .filter((match) => /(--pink|#ff5fcb)/i.test(match[3] ?? ""))
+      .map((match) => (match[0] ?? "").trim());
+    expect(colourFromPink).toEqual(["color: var(--pink);"]);
+  });
+
+  it("names the board faces the fontsource packages provide", () => {
+    expect(BOARD).toContain("'Space Mono'");
+    expect(BOARD).toContain("'DM Mono'");
+    expect(BOARD).toContain("--bg: #141517");
+    expect(BOARD).toContain("--accent: var(--amber)");
+  });
+});
+```
+
+Create `src/skins/SkinRoot.test.tsx`:
+
+```tsx
+import { afterEach, describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { SkinRoot } from "./SkinRoot";
+import { useCopy } from "./skinContext";
+import { useAppStore } from "../store";
+import { makeAppState, makeUiPrefs } from "../test/funFixtures";
+import type { SkinId } from "../domain/types";
+
+/**
+ * The body of the Today view's start control, verbatim (step 13 makes TodayView this). Rendering
+ * the probe rather than TodayView keeps this suite independent of P3's assignment state, which
+ * decides whether that control appears at all.
+ */
+function StartProbe(): ReactElement {
+  const c = useCopy();
+  return (
+    <button type="button" onClick={() => {}}>
+      {c("button.startSession")}
+    </button>
+  );
+}
+
+function mount(skin: SkinId): void {
+  useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin }) }));
+  render(
+    <SkinRoot>
+      <StartProbe />
+    </SkinRoot>,
+  );
+}
+
+afterEach(() => {
+  delete document.documentElement.dataset.skin;
+});
+
+describe("SkinRoot", () => {
+  it("marks the root and renders clinical copy by default", () => {
+    mount("clinical");
+    expect(document.documentElement.getAttribute("data-skin")).toBe("clinical");
+    expect(screen.getByRole("button", { name: "Start session" })).toBeTruthy();
+  });
+
+  it("marks the root and renders limelight copy", () => {
+    mount("limelight");
+    expect(document.documentElement.getAttribute("data-skin")).toBe("limelight");
+    expect(screen.getByRole("button", { name: "LET'S GO BABES" })).toBeTruthy();
+  });
+
+  it("marks the root and renders board copy", () => {
+    mount("board");
+    expect(document.documentElement.getAttribute("data-skin")).toBe("board");
+    expect(screen.getByRole("button", { name: "BOARD" })).toBeTruthy();
+  });
+
+  it("follows a live skin change through the store", () => {
+    mount("clinical");
+    act(() => {
+      useAppStore.getState().setUi({ skin: "limelight" });
+    });
+    expect(document.documentElement.getAttribute("data-skin")).toBe("limelight");
+    expect(screen.getByRole("button", { name: "LET'S GO BABES" })).toBeTruthy();
+    act(() => {
+      useAppStore.getState().setUi({ skin: "board" });
+    });
+    expect(document.documentElement.getAttribute("data-skin")).toBe("board");
+    expect(screen.getByRole("button", { name: "BOARD" })).toBeTruthy();
+  });
+
+  it("clears the attribute when it unmounts", () => {
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: "board" }) }));
+    const view = render(
+      <SkinRoot>
+        <StartProbe />
+      </SkinRoot>,
+    );
+    expect(document.documentElement.getAttribute("data-skin")).toBe("board");
+    view.unmount();
+    expect(document.documentElement.getAttribute("data-skin")).toBeNull();
+  });
+});
+```
+
+Create `src/ui/settings/SkinSettings.test.tsx`:
+
+```tsx
+import { afterEach, describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { SkinSettings } from "./SkinSettings";
+import { SkinRoot } from "../../skins/SkinRoot";
+import { useAppStore } from "../../store";
+import { makeAppState, makeUiPrefs } from "../../test/funFixtures";
+
+afterEach(() => {
+  delete document.documentElement.dataset.skin;
+});
+
+describe("SkinSettings", () => {
+  it("shows the three skins with the active one checked", () => {
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: "limelight" }) }));
+    render(
+      <SkinRoot>
+        <SkinSettings />
+      </SkinRoot>,
+    );
+    expect(screen.getByRole("heading", { name: "the look" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "clinical" }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("radio", { name: "limelight" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("radio", { name: "board" }).getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("writes the chosen skin to the store", async () => {
+    const user = userEvent.setup();
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs() }));
+    render(
+      <SkinRoot>
+        <SkinSettings />
+      </SkinRoot>,
+    );
+    expect(screen.getByRole("heading", { name: "Skin" })).toBeTruthy();
+    await user.click(screen.getByRole("radio", { name: "board" }));
+    expect(useAppStore.getState().ui.skin).toBe("board");
+    expect(document.documentElement.getAttribute("data-skin")).toBe("board");
+  });
+
+  it("keeps sounds off until the user turns them on", async () => {
+    const user = userEvent.setup();
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs() }));
+    render(
+      <SkinRoot>
+        <SkinSettings />
+      </SkinRoot>,
+    );
+    const toggle = screen.getByRole("checkbox", { name: "Sounds" });
+    expect(useAppStore.getState().ui.sounds).toBe(false);
+    await user.click(toggle);
+    expect(useAppStore.getState().ui.sounds).toBe(true);
+  });
+});
+```
+
+- [ ] **Step 3: Run the tests to verify they fail**
+
+```bash
+npx vitest run src/skins src/ui/settings
+```
+
+Expected: FAIL with `Failed to resolve import "./SkinRoot"` and
+`ENOENT: no such file or directory, open 'src/skins/limelight/tokens.css'`.
+
+- [ ] **Step 4: Add the two `UiPrefs` members**
+
+In `src/domain/types.ts`, add `skin` and `sounds` to the `UiPrefs` interface. The shipped interface
+is written on one line and already carries `videoInstanceHost`, `legacyMigration` and
+`lastBlockSeenByProfile`; append the two members before the closing brace so the result contains
+both of these substrings:
+
+```ts
+skin: SkinId;
+```
+```ts
+sounds: boolean;
+```
+
+Both are master plan §5 verbatim (`// skin default "clinical"; sounds default false (Zod defaults,
+no version bump)`). Add that comment beside them.
+
+Verify:
+
+```bash
+grep -c 'skin: SkinId' src/domain/types.ts
+grep -c 'sounds: boolean' src/domain/types.ts
+```
+
+Expected: `1` and `1`.
+
+- [ ] **Step 5: Add the matching Zod fields**
+
+In `src/domain/schema.ts`, inside `UiPrefsSchema`, add the two fields immediately after
+`lastBlockSeenByProfile`. Both carry defaults, so a document written before P8 parses unchanged and
+`CURRENT_SCHEMA_VERSION` stays 3:
+
+```ts
+  // Additive. The default skin is the clinical copy the whole contract is written against.
+  skin: z.enum(['clinical', 'limelight', 'board']).default('clinical'),
+  // Additive. Off is the honest default for a feature whose failure mode is a phone shouting in a
+  // public gym (round-three plan section 6.2 rule 6).
+  sounds: z.boolean().default(false),
+```
+
+Verify the enum and the type cannot drift:
+
+```bash
+grep -n "z.enum(\['clinical', 'limelight', 'board'\])" src/domain/schema.ts
+grep -n 'export type SkinId' src/domain/types.ts
+```
+
+Expected: one match each, with the same three members in the same order.
+
+- [ ] **Step 6: Extend the UI-preferences fixture**
+
+In `src/test/funFixtures.ts`, add the two fields to `makeUiPrefs`'s returned object, beside
+`lastBlockSeenByProfile`:
+
+```ts
+    skin: "clinical",
+    sounds: false,
+```
+
+- [ ] **Step 7: Write the limelight token sheet**
+
+Create `src/skins/limelight/tokens.css`:
+
+```css
+/*
+ * limelight skin tokens. Design: docs/design/round3/2026-09-01-round3-plan.md sections 2.1 to 2.3.
+ *
+ * Every ratio below was computed in section 2.3 (WCAG 2.1 relative luminance, sRGB). They are
+ * quoted, not estimated, and they are what makes the palette rules below non-negotiable:
+ *   #000000 on #8ACE00 = 10.91:1  all display and body type
+ *   #454545 on #8ACE00 =  4.98:1  the fine-print floor
+ *   #FFFFFF on #8ACE00 =  1.92:1  banned: no white type on lime, anywhere
+ *   #FF5FCB on #8ACE00 =  1.41:1  banned at every size: pink is never type on lime
+ *   #000000 on #FF5FCB =  7.75:1  pink works as a fill with black type on it
+ *   #FFFFFF on #000000 = 21.00:1  type inside an inverted panel
+ *   #8ACE00 on #000000 = 10.91:1  lime type inside an inverted panel
+ *   #FF5FCB on #000000 =  7.75:1  the only place pink is ever type
+ *
+ * The rule has no size exception, deliberately: "pink is type only above 24 px" is the shape of
+ * rule that the next person to resize a heading breaks. --accent is therefore a fill, outline and
+ * offset-shadow colour in this skin, which is a different job from the CRT --accent it replaces.
+ * Any base rule that sets `color: var(--accent)` must be rewritten for this skin, not inherited.
+ */
+:root[data-skin='limelight'] {
+  --lime: #8ace00;
+  --ink: #000000;
+  --pink: #ff5fcb;
+  --fine: #454545;
+  --panel: #000000;
+  --panel-text: #ffffff;
+
+  --bg: var(--lime);
+  --bg-2: var(--lime);
+  --bg-3: var(--panel);
+  --bg-4: var(--panel);
+
+  --line: rgba(0, 0, 0, 0.22);
+  --line-2: var(--ink);
+
+  --text: var(--ink);
+  --text-2: var(--fine);
+  --text-3: var(--fine);
+
+  --accent: var(--pink);
+  --accent-d: var(--pink);
+  --accent-rgb: 255, 95, 203;
+
+  /*
+   * State colours are ink, not hues. Section 2.3 computed a ratio for five colours on this ground
+   * and for no others; an amber or a red invented here would ship an unmeasured contrast. This
+   * skin carries state with the inverted panel, the pink fill and the word.
+   */
+  --warn: var(--ink);
+  --danger: var(--ink);
+  --info: var(--ink);
+
+  --mono: 'Archivo Variable', Archivo, ui-monospace, monospace;
+  --sans: 'Archivo Variable', Archivo, Helvetica, Arial, sans-serif;
+
+  --chart-line: rgba(0, 0, 0, 0.35);
+  --chart-actual: var(--ink);
+  --chart-grid: rgba(0, 0, 0, 0.14);
+  --chart-text: var(--fine);
+  --chart-marker: var(--ink);
+
+  /* Display type: one family at two widths, as a one-Pantone flyer would have had. */
+  --display-stretch: 62%;
+  --display-weight: 800;
+  --display-tracking: -0.045em;
+  --shadow-offset: 4px;
+}
+
+:root[data-skin='limelight'] body {
+  font-family: var(--sans);
+}
+
+/* A display line: the narrow cut with a hard pink offset shadow. Never a blur, never on a numeral. */
+:root[data-skin='limelight'] .ll-display {
+  font-family: var(--sans);
+  font-weight: var(--display-weight);
+  font-stretch: var(--display-stretch);
+  letter-spacing: var(--display-tracking);
+  color: var(--ink);
+  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--pink);
+}
+
+/* The inverted panel: the marquee, the rest panel, the stamp. */
+:root[data-skin='limelight'] .ll-panel {
+  background: var(--panel);
+  color: var(--panel-text);
+}
+
+:root[data-skin='limelight'] .ll-panel .ll-panel-accent {
+  color: var(--lime);
+}
+
+/* The one declaration in this sheet allowed to set a colour from --pink: inside a black panel. */
+:root[data-skin='limelight'] .ll-panel .ll-panel-state {
+  color: var(--pink);
+}
+```
+
+- [ ] **Step 8: Write the board token sheet**
+
+Create `src/skins/board/tokens.css`:
+
+```css
+/*
+ * board skin tokens, ported from the :root block of
+ * docs/design/round2/2026-09-01-design-H-departures-board.html.
+ *
+ * The base sheet's --mono is the body face and --sans is unused by `body`, so the two map onto H's
+ * own pair the other way round from their names: --mono takes DM Mono, H's chrome face, and --sans
+ * takes Space Mono, H's display face. --disp and --chrome keep H's names so the mapping is legible.
+ *
+ * Type licences: Space Mono and DM Mono, SIL Open Font License 1.1, self-hosted through
+ * @fontsource (font-src 'self'; no fonts.googleapis.com, security constraint 19).
+ */
+:root[data-skin='board'] {
+  --board: #0b0b0c;
+  --flap: #17181a;
+  --amber: #ffb000;
+  --paper: #e8e4da;
+  --mute: #7c8288;
+  --alert: #ff6b4a;
+  --rule: #2c2f33;
+
+  --disp: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --chrome: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #141517;
+  --bg-2: var(--board);
+  --bg-3: var(--flap);
+  --bg-4: var(--rule);
+
+  --line: var(--rule);
+  --line-2: var(--mute);
+
+  --text: var(--paper);
+  --text-2: var(--mute);
+  --text-3: var(--mute);
+
+  --accent: var(--amber);
+  /* No darker amber was computed for this ground, so the accent does not vary by state depth. */
+  --accent-d: var(--amber);
+  --accent-rgb: 255, 176, 0;
+
+  --warn: var(--amber);
+  --danger: var(--alert);
+  --info: var(--paper);
+
+  --mono: var(--chrome);
+  --sans: var(--disp);
+
+  --chart-line: var(--rule);
+  --chart-actual: var(--amber);
+  --chart-grid: var(--rule);
+  --chart-text: var(--mute);
+  --chart-marker: var(--amber);
+}
+
+:root[data-skin='board'] body {
+  font-family: var(--chrome);
+}
+
+/* A board row: the display face, tabular figures, amber on near-black. */
+:root[data-skin='board'] .bd-row {
+  font-family: var(--disp);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--amber);
+}
+```
+
+- [ ] **Step 9: Write `SkinRoot`**
+
+Create `src/skins/SkinRoot.tsx`:
+
+```tsx
+import { useEffect } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { useAppStore } from "../store";
+import { SkinContext } from "./skinContext";
+
+/**
+ * The single reader of ui.skin.
+ *
+ * It writes the value to one attribute on the document root, which is what the two skin token
+ * sheets key on, and passes the same value down through SkinContext, which is what useCopy() reads.
+ * One store field therefore drives both halves of a skin, and neither half can be switched without
+ * the other.
+ *
+ * The attribute is set imperatively rather than through JSX because <html> is outside the React
+ * tree, and it is removed on unmount so a test that renders and unmounts leaves no global state.
+ */
+export function SkinRoot({ children }: { children: ReactNode }): ReactElement {
+  const skin = useAppStore((state) => state.ui.skin);
+
+  useEffect(() => {
+    document.documentElement.dataset.skin = skin;
+    return () => {
+      delete document.documentElement.dataset.skin;
+    };
+  }, [skin]);
+
+  return <SkinContext.Provider value={skin}>{children}</SkinContext.Provider>;
+}
+```
+
+- [ ] **Step 10: Import the fonts and the token sheets**
+
+In `src/main.tsx`, extend the font block and the stylesheet block. The skin sheets are imported
+after `tokens.css` so their attribute-scoped rules follow the base `:root` block in source order:
+
+```tsx
+// Self-hosted variable fonts (security constraint 19: no fonts.googleapis.com).
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource-variable/geist';
+// Skin faces. Archivo carries the wdth axis the limelight display type needs (wdth 62, wght 800);
+// Space Mono and DM Mono are the departures-board pair. A browser fetches a face only when a
+// rendered rule uses its family, so a clinical session downloads none of these.
+import '@fontsource-variable/archivo/standard.css';
+import '@fontsource/dm-mono/400.css';
+import '@fontsource/space-mono/400.css';
+import '@fontsource/space-mono/700.css';
+
+import './ui/styles/tokens.css';
+import './ui/styles/crt.css';
+import './skins/limelight/tokens.css';
+import './skins/board/tokens.css';
+```
+
+- [ ] **Step 11: Write the Settings picker**
+
+Create `src/ui/settings/SkinSettings.tsx`:
+
+```tsx
+import type { ChangeEvent, ReactElement } from "react";
+import { useAppStore } from "../../store";
+import { useCopy } from "../../skins/skinContext";
+import type { SkinId } from "../../domain/types";
+
+/**
+ * The picker labels are the skin ids themselves and are deliberately not skinned. A skin that
+ * renamed the other skins in this row would be a skin a user could not reliably leave, and the id
+ * is also what an exported JSON file carries, so the two always agree.
+ */
+const SKIN_ORDER: readonly SkinId[] = ["clinical", "limelight", "board"];
+
+export function SkinSettings(): ReactElement {
+  const skin = useAppStore((state) => state.ui.skin);
+  const sounds = useAppStore((state) => state.ui.sounds);
+  const setUi = useAppStore((state) => state.setUi);
+  const c = useCopy();
+
+  const onSoundsChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setUi({ sounds: event.target.checked });
+  };
+
+  return (
+    <section className="settings-section" aria-labelledby="settings-skin-heading">
+      <h3 id="settings-skin-heading">{c("label.settingsSkin")}</h3>
+      <div className="skin-picker" role="radiogroup" aria-labelledby="settings-skin-heading">
+        {SKIN_ORDER.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="radio"
+            aria-checked={skin === id}
+            className="skin-option"
+            onClick={() => {
+              setUi({ skin: id });
+            }}
+          >
+            {id}
+          </button>
+        ))}
+      </div>
+      <label className="settings-toggle">
+        <input type="checkbox" checked={sounds} onChange={onSoundsChange} />
+        {c("label.settingsSounds")}
+      </label>
+    </section>
+  );
+}
+```
+
+- [ ] **Step 12: Mount `SkinRoot` and `SkinSettings`**
+
+In `src/app/App.tsx`, wrap the outermost element `App` returns in `<SkinRoot>`, inside any provider
+that supplies the store and outside the view switch, so every view and every modal sees the same
+skin:
+
+```tsx
+import { SkinRoot } from "../skins/SkinRoot";
+```
+```tsx
+    <SkinRoot>
+      {/* the element App returned before this change, unmodified */}
+    </SkinRoot>
+```
+
+In `src/ui/views/SettingsView.tsx`, add the import and render `<SkinSettings />` as a section of the
+view:
+
+```tsx
+import { SkinSettings } from "../settings/SkinSettings";
+```
+```tsx
+      <SkinSettings />
+```
+
+Verify both landed:
+
+```bash
+git diff --stat src/app/App.tsx src/ui/views/SettingsView.tsx
+grep -c 'SkinRoot' src/app/App.tsx
+grep -c 'SkinSettings' src/ui/views/SettingsView.tsx
+```
+
+Expected: two files changed; `2` and `2` (an import and a use in each).
+
+- [ ] **Step 13: Route the Today start control through the copy module**
+
+P3 Task 5 renders the control as a literal. In `src/ui/views/TodayView.tsx`, replace:
+
+```tsx
+        <button type="button" onClick={onStart}>Start session</button>
+```
+
+with:
+
+```tsx
+        <button type="button" onClick={onStart}>{c("button.startSession")}</button>
+```
+
+and add the hook at the top of the component body, above the first `return`:
+
+```tsx
+  const c = useCopy();
+```
+
+with the import:
+
+```tsx
+import { useCopy } from "../../skins/skinContext";
+```
+
+Verify the literal is gone and the hook is in:
+
+```bash
+grep -c 'Start session' src/ui/views/TodayView.tsx
+grep -c 'useCopy' src/ui/views/TodayView.tsx
+npx vitest run src/ui/views/TodayView.test.tsx
+```
+
+Expected: `0`; `2`; and P3's own suite still passes, because the clinical default of
+`button.startSession` is the string it asserts.
+
+- [ ] **Step 14: Run the tests to verify they pass**
+
+```bash
+npx vitest run src/skins src/ui/settings src/content
+```
+
+Expected: PASS. `src/skins/tokens.test.ts` 6 passed, `src/skins/SkinRoot.test.tsx` 5 passed,
+`src/ui/settings/SkinSettings.test.tsx` 3 passed, `src/content/copy.test.ts` 14 passed.
+
+- [ ] **Step 15: Type-check, lint and commit**
+
+```bash
+npx tsc --noEmit
+npx eslint src package.json --ext .ts,.tsx
+npm test
+git add package.json package-lock.json src/domain/types.ts src/domain/schema.ts src/test/funFixtures.ts src/main.tsx src/app/App.tsx src/ui/views/SettingsView.tsx src/ui/views/TodayView.tsx src/skins src/ui/settings
+git commit -m "feat: skin tokens, the data-skin root and the Settings picker"
+```
+
+Expected: `tsc` and `eslint` silent; every suite passes.
+
+---
+### Task 13: Limelight icons and illustrations
+
+Round-three §4 replaced every emoji in the design with sixteen own-work 32 × 32 pixel icons, five of
+which carry a panel variant with the black outline remapped to lime so the silhouette survives an
+inverted panel. §5 added four 256 × 256 mascot illustrations. All twenty-five PNGs are already in the
+repository under `agy-artifacts/`; nothing is generated in this task.
+
+**Why data URIs and not files in `public/`.** The set is 8 072 B raw across 21 icons and 13 528 B
+across 4 illustrations, measured. As twenty-five separate requests each would cost a round trip on a
+cold cache for a decoration; inlined they are 33 kB of base64 inside a JavaScript chunk the app
+already fetches, and the CSP already admits them (`img-src 'self' data: blob:`). Rejected: an SVG
+sprite sheet, which would mean redrawing pixel art as vectors; rejected: `public/` files, which
+would need their own precache entries and a runtime cache route for a 200-byte image.
+
+**Why a committed module and not a build-time plugin.** The inputs never change: they are finished
+artwork, not source. A Vite plugin would re-encode identical bytes on every cold build and put a
+generator between a reviewer and the thing being reviewed. `scripts/inline-icons.mjs` is committed
+and run once; its output is committed; the test pins each entry's decoded size, so a re-run that
+changes a byte fails loudly.
+
+**The measured inputs** (`agy-artifacts/icons/*.png`, all 32 × 32; `agy-artifacts/mascot-*-256.png`,
+all 256 × 256):
+
+| Icon | Bytes | Icon | Bytes | Icon | Bytes |
+| --- | --- | --- | --- | --- | --- |
+| `alert` | 390 | `heel` | 411 | `skip` | 319 |
+| `barbell` | 188 | `lips` | 294 | `skull` | 369 |
+| `barbellPanel` | 214 | `martini` | 459 | `sparkle` | 416 |
+| `crown` | 393 | `megaphone` | 389 | `sparklePanel` | 453 |
+| `crownPanel` | 420 | `megaphonePanel` | 455 | `stopwatch` | 477 |
+| `drop` | 481 | `nails` | 379 | `stopwatchPanel` | 537 |
+| `fan` | 492 | `pause` | 180 | | |
+| `heart` | 356 | | | | |
+
+| Illustration | Bytes |
+| --- | --- |
+| `mascotLifting` | 3 947 |
+| `mascotCrown` | 2 645 |
+| `mascotFlop` | 2 913 |
+| `mascotResting` | 4 023 |
+
+**Files:**
+- Create: `scripts/inline-icons.mjs`
+- Create (generated, committed): `src/skins/limelight/icons.ts`, `src/skins/limelight/illustrations.ts`
+- Create: `src/skins/limelight/Icon.tsx`
+- Test: `src/skins/limelight/icons.test.ts`, `src/skins/limelight/Icon.test.tsx`
+- Reference (read-only): `agy-artifacts/icons/*.png`, `agy-artifacts/mascot-*-256.png`,
+  `docs/design/round3/2026-09-01-round3-plan.md` §4.3, §4.4, §5
+
+**Interfaces:**
+- Consumes: `useSkin`, `useCopy` from `src/skins/skinContext.tsx` (Task 11); `CopyKey` from
+  `src/content/copy.ts` (Task 11).
+- Produces:
+  ```ts
+  // src/skins/limelight/icons.ts (generated)
+  export type LimelightIconName =
+    | 'alert' | 'barbell' | 'barbellPanel' | 'crown' | 'crownPanel' | 'drop' | 'fan' | 'heart'
+    | 'heel' | 'lips' | 'martini' | 'megaphone' | 'megaphonePanel' | 'nails' | 'pause' | 'skip'
+    | 'skull' | 'sparkle' | 'sparklePanel' | 'stopwatch' | 'stopwatchPanel';
+  export const LIMELIGHT_ICONS: Readonly<Record<LimelightIconName, string>>;   // data:image/png;base64,...
+
+  // src/skins/limelight/illustrations.ts (generated)
+  export type LimelightIllustrationName = 'mascotCrown' | 'mascotFlop' | 'mascotLifting' | 'mascotResting';
+  export const LIMELIGHT_ILLUSTRATIONS: Readonly<Record<LimelightIllustrationName, string>>;
+
+  // src/skins/limelight/Icon.tsx
+  export interface IconProps { name: LimelightIconName; label?: string; size?: number }
+  export function Icon(props: IconProps): React.ReactElement | null;   // null off the limelight skin
+  export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>;
+  export function SkinLabel(props: { copyKey: CopyKey }): React.ReactElement;
+  ```
+
+- [ ] **Step 1: Write the failing test**
+
+Create `src/skins/limelight/icons.test.ts`:
+
+```ts
+import { describe, expect, it } from "vitest";
+import { LIMELIGHT_ICONS } from "./icons";
+import type { LimelightIconName } from "./icons";
+import { LIMELIGHT_ILLUSTRATIONS } from "./illustrations";
+import type { LimelightIllustrationName } from "./illustrations";
+
+const PREFIX = "data:image/png;base64,";
+
+function decode(uri: string): Uint8Array {
+  expect(uri.startsWith(PREFIX)).toBe(true);
+  const binary = atob(uri.slice(PREFIX.length));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+/** The 8-byte PNG signature, then IHDR width and height at the fixed offsets 16 and 20. */
+function pngHeader(bytes: Uint8Array): { signature: boolean; width: number; height: number } {
+  const expected = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  const signature = expected.every((byte, index) => bytes[index] === byte);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  return { signature, width: view.getUint32(16), height: view.getUint32(20) };
+}
+
+/** Decoded byte length per icon, measured from agy-artifacts/icons on 2026-09-01. */
+const ICON_BYTES: Readonly<Record<LimelightIconName, number>> = {
+  alert: 390,
+  barbell: 188,
+  barbellPanel: 214,
+  crown: 393,
+  crownPanel: 420,
+  drop: 481,
+  fan: 492,
+  heart: 356,
+  heel: 411,
+  lips: 294,
+  martini: 459,
+  megaphone: 389,
+  megaphonePanel: 455,
+  nails: 379,
+  pause: 180,
+  skip: 319,
+  skull: 369,
+  sparkle: 416,
+  sparklePanel: 453,
+  stopwatch: 477,
+  stopwatchPanel: 537,
+};
+
+const ILLUSTRATION_BYTES: Readonly<Record<LimelightIllustrationName, number>> = {
+  mascotCrown: 2645,
+  mascotFlop: 2913,
+  mascotLifting: 3947,
+  mascotResting: 4023,
+};
+
+describe("limelight icons", () => {
+  it("ships the sixteen icons and the five panel variants", () => {
+    expect(Object.keys(LIMELIGHT_ICONS).sort()).toEqual(Object.keys(ICON_BYTES).sort());
+    expect(Object.keys(LIMELIGHT_ICONS)).toHaveLength(21);
+    const panels = Object.keys(LIMELIGHT_ICONS).filter((name) => name.endsWith("Panel"));
+    expect(panels.sort()).toEqual(["barbellPanel", "crownPanel", "megaphonePanel", "sparklePanel", "stopwatchPanel"]);
+  });
+
+  it("decodes each icon to a 32 x 32 PNG under 1 kB", () => {
+    for (const [name, uri] of Object.entries(LIMELIGHT_ICONS)) {
+      const bytes = decode(uri);
+      const header = pngHeader(bytes);
+      expect({ name, ...header }).toEqual({ name, signature: true, width: 32, height: 32 });
+      expect({ name, under1k: bytes.byteLength < 1024 }).toEqual({ name, under1k: true });
+    }
+  });
+
+  it("pins each icon to its measured byte length", () => {
+    for (const [name, expectedBytes] of Object.entries(ICON_BYTES)) {
+      const uri = LIMELIGHT_ICONS[name as LimelightIconName];
+      expect({ name, bytes: decode(uri).byteLength }).toEqual({ name, bytes: expectedBytes });
+    }
+  });
+});
+
+describe("limelight illustrations", () => {
+  it("ships the four mascot poses", () => {
+    expect(Object.keys(LIMELIGHT_ILLUSTRATIONS).sort()).toEqual(["mascotCrown", "mascotFlop", "mascotLifting", "mascotResting"]);
+  });
+
+  it("decodes each illustration to a 256 x 256 PNG under 5 kB", () => {
+    for (const [name, uri] of Object.entries(LIMELIGHT_ILLUSTRATIONS)) {
+      const bytes = decode(uri);
+      const header = pngHeader(bytes);
+      expect({ name, ...header }).toEqual({ name, signature: true, width: 256, height: 256 });
+      expect({ name, under5k: bytes.byteLength < 5120 }).toEqual({ name, under5k: true });
+    }
+  });
+
+  it("pins each illustration to its measured byte length", () => {
+    for (const [name, expectedBytes] of Object.entries(ILLUSTRATION_BYTES)) {
+      const uri = LIMELIGHT_ILLUSTRATIONS[name as LimelightIllustrationName];
+      expect({ name, bytes: decode(uri).byteLength }).toEqual({ name, bytes: expectedBytes });
+    }
+  });
+});
+```
+
+Create `src/skins/limelight/Icon.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
+import { Icon, ICON_FOR_KEY, SkinLabel } from "./Icon";
+import { LIMELIGHT_ICONS } from "./icons";
+import { SkinContext } from "../skinContext";
+import type { SkinId } from "../../domain/types";
+
+function withSkin(skin: SkinId, children: ReactNode): ReactElement {
+  return <SkinContext.Provider value={skin}>{children}</SkinContext.Provider>;
+}
+
+describe("Icon", () => {
+  it("renders nothing on the clinical skin", () => {
+    render(withSkin("clinical", <Icon name="crown" label="crown" />));
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("renders nothing on the board skin", () => {
+    // Direction H ships no graphic of any kind; its whole character is type and motion.
+    render(withSkin("board", <Icon name="crown" label="crown" />));
+    expect(screen.queryByRole("img")).toBeNull();
+  });
+
+  it("renders the pixel art on the limelight skin", () => {
+    render(withSkin("limelight", <Icon name="crown" label="crown" />));
+    const image = screen.getByRole("img", { name: "crown" });
+    expect(image.getAttribute("src")).toBe(LIMELIGHT_ICONS.crown);
+    expect(image.getAttribute("width")).toBe("20");
+  });
+
+  it("hides an unlabelled icon from the accessibility tree", () => {
+    render(withSkin("limelight", <Icon name="sparkle" />));
+    expect(screen.queryByRole("img")).toBeNull();
+    expect(document.querySelectorAll("img.ll-icon")).toHaveLength(1);
+  });
+});
+
+describe("SkinLabel", () => {
+  it("puts an icon beside the limelight string and none beside the clinical one", () => {
+    const { unmount } = render(withSkin("limelight", <SkinLabel copyKey="button.startSession" />));
+    expect(screen.getByText("LET'S GO BABES")).toBeTruthy();
+    expect(document.querySelectorAll("img.ll-icon")).toHaveLength(1);
+    unmount();
+
+    render(withSkin("clinical", <SkinLabel copyKey="button.startSession" />));
+    expect(screen.getByText("Start session")).toBeTruthy();
+    expect(document.querySelectorAll("img.ll-icon")).toHaveLength(0);
+  });
+
+  it("maps every emoji position the design named onto an icon", () => {
+    // Round-three section 4.4, the "where it is used" column.
+    expect(ICON_FOR_KEY["button.startSession"]).toBe("nails");
+    expect(ICON_FOR_KEY["advice.drinkToThirst"]).toBe("drop");
+    expect(ICON_FOR_KEY["button.trainSomethingElse"]).toBe("heel");
+    expect(ICON_FOR_KEY["button.pausePlan"]).toBe("martini");
+    expect(ICON_FOR_KEY["status.weekDeltaNegative"]).toBe("skull");
+    expect(ICON_FOR_KEY["button.skipToday"]).toBe("skip");
+    expect(ICON_FOR_KEY["button.skipRest"]).toBe("skip");
+    expect(ICON_FOR_KEY["status.prStamp"]).toBe("crown");
+    expect(ICON_FOR_KEY["hero.weeklyTargetMissed"]).toBe("alert");
+    expect(ICON_FOR_KEY["advice.interventionBody"]).toBe("heart");
+    expect(ICON_FOR_KEY["hero.weekReview"]).toBe("fan");
+    expect(ICON_FOR_KEY["status.rest"]).toBe("stopwatchPanel");
+    expect(ICON_FOR_KEY["label.settingsSkin"]).toBe("crown");
+    expect(Object.keys(ICON_FOR_KEY)).toHaveLength(13);
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+```bash
+npx vitest run src/skins/limelight
+```
+
+Expected: FAIL with `Failed to resolve import "./icons"`.
+
+- [ ] **Step 3: Write the generator**
+
+Create `scripts/inline-icons.mjs`:
+
+```js
+#!/usr/bin/env node
+/**
+ * Inline the limelight PNG artwork as base64 data URIs.
+ *
+ * Run once; the two generated modules are committed and the test pins every decoded byte length,
+ * so a re-run that changes a byte fails the suite rather than sliding into a build.
+ *
+ *   node scripts/inline-icons.mjs
+ *
+ * Inputs are finished artwork, not source: agy-artifacts/icons/*.png (21 files, 32 x 32) and
+ * agy-artifacts/mascot-*-256.png (4 files, 256 x 256). Provenance and licence: own work, generated
+ * for this project; see docs/design/round3/2026-09-01-round3-plan.md sections 4.4 and 5.1.
+ */
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { basename, join } from "node:path";
+
+const ICON_DIR = "agy-artifacts/icons";
+const ART_DIR = "agy-artifacts";
+const ICON_OUT = "src/skins/limelight/icons.ts";
+const ART_OUT = "src/skins/limelight/illustrations.ts";
+
+const ICON_MAX_BYTES = 1024; // the test's ceiling; a larger file is a regenerated asset, not a typo
+const ART_MAX_BYTES = 5120;
+const ICON_SIDE = 32; // px
+const ART_SIDE = 256; // px
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** PNG IHDR carries width and height as big-endian uint32 at fixed offsets 16 and 20. */
+function pngSize(buffer, file) {
+  if (!buffer.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error(`${file}: not a PNG`);
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+/** "barbell-panel" -> "barbellPanel"; "mascot-crown-256" -> "mascotCrown". */
+function camel(stem) {
+  return stem.replace(/-256$/, "").replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase());
+}
+
+function inline(file, side, maxBytes) {
+  const buffer = readFileSync(file);
+  const { width, height } = pngSize(buffer, file);
+  if (width !== side || height !== side) throw new Error(`${file}: ${width}x${height}, expected ${side}x${side}`);
+  if (buffer.byteLength > maxBytes) throw new Error(`${file}: ${buffer.byteLength} B exceeds ${maxBytes} B`);
+  return `data:image/png;base64,${buffer.toString("base64")}`;
+}
+
+function emit(entries, typeName, constName, doc) {
+  const names = [...entries.keys()].sort();
+  const union = names.map((name) => `  | '${name}'`).join("\n");
+  const rows = names.map((name) => `  ${name}: '${entries.get(name)}',`).join("\n");
+  return `${doc}\nexport type ${typeName} =\n${union};\n\nexport const ${constName}: Readonly<Record<${typeName}, string>> = {\n${rows}\n};\n`;
+}
+
+const icons = new Map();
+for (const file of readdirSync(ICON_DIR).filter((name) => name.endsWith(".png")).sort()) {
+  icons.set(camel(basename(file, ".png")), inline(join(ICON_DIR, file), ICON_SIDE, ICON_MAX_BYTES));
+}
+if (icons.size !== 21) throw new Error(`expected 21 icons, found ${icons.size}`);
+
+const art = new Map();
+for (const pose of ["crown", "flop", "lifting", "resting"]) {
+  const file = join(ART_DIR, `mascot-${pose}-256.png`);
+  art.set(camel(`mascot-${pose}`), inline(file, ART_SIDE, ART_MAX_BYTES));
+}
+
+writeFileSync(
+  ICON_OUT,
+  emit(
+    icons,
+    "LimelightIconName",
+    "LIMELIGHT_ICONS",
+    "/* GENERATED by scripts/inline-icons.mjs from agy-artifacts/icons/*.png. Do not edit by hand.\n" +
+      " * Own work; 32 x 32 palette-snapped pixel art. Five names ending in Panel are the variants\n" +
+      " * with the black outline remapped to lime for use inside an inverted panel (round three 4.3). */\n",
+  ),
+);
+
+writeFileSync(
+  ART_OUT,
+  emit(
+    art,
+    "LimelightIllustrationName",
+    "LIMELIGHT_ILLUSTRATIONS",
+    "/* GENERATED by scripts/inline-icons.mjs from agy-artifacts/mascot-*-256.png. Do not edit by hand.\n" +
+      " * Own work; four poses of one character (round three section 5). mascotResting goes on the\n" +
+      " * intervention screen and mascotFlop on Week review, which is a tone decision, not a layout one. */\n",
+  ),
+);
+
+console.log(`wrote ${ICON_OUT} (${icons.size} icons) and ${ART_OUT} (${art.size} illustrations)`);
+```
+
+- [ ] **Step 4: Run the generator once and check what it produced**
+
+```bash
+mkdir -p src/skins/limelight
+node scripts/inline-icons.mjs
+head -c 120 src/skins/limelight/icons.ts; echo
+grep -c "data:image/png;base64," src/skins/limelight/icons.ts
+grep -c "data:image/png;base64," src/skins/limelight/illustrations.ts
+grep -o "pause: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAA" src/skins/limelight/icons.ts
+wc -c src/skins/limelight/icons.ts src/skins/limelight/illustrations.ts
+```
+
+Expected: the console line
+`wrote src/skins/limelight/icons.ts (21 icons) and src/skins/limelight/illustrations.ts (4 illustrations)`;
+the first `grep -c` prints `21`, the second `4`; the `grep -o` prints the `pause` row's opening,
+which is the shortest entry (262 characters of data URI for 180 decoded bytes) and the cheapest
+eyeball check that the encoder ran on the right file; `wc -c` reports roughly 12 kB and 19 kB.
+
+- [ ] **Step 5: Write the `Icon` component**
+
+Create `src/skins/limelight/Icon.tsx`:
+
+```tsx
+import type { ReactElement } from "react";
+import { LIMELIGHT_ICONS } from "./icons";
+import type { LimelightIconName } from "./icons";
+import { useCopy, useSkin } from "../skinContext";
+import type { CopyKey } from "../../content/copy";
+
+export interface IconProps {
+  name: LimelightIconName;
+  /** Accessible name. Omit for a decorative icon, which is then hidden from assistive technology. */
+  label?: string;
+  /** CSS box in px. The source is 32 x 32; scaling stays on integer factors where it can. */
+  size?: number;
+}
+
+/**
+ * A limelight pixel icon, or nothing.
+ *
+ * The clinical skin renders no icons: master plan section 3 makes the icon set a property of a
+ * skin, and the clinical register carries state in words. The board skin renders none either,
+ * because direction H ships no graphic at all. So the component returns null off limelight, and a
+ * call site never needs to ask which skin is active.
+ */
+export function Icon({ name, label, size = 20 }: IconProps): ReactElement | null {
+  const skin = useSkin();
+  if (skin !== "limelight") return null;
+  return (
+    <img
+      className="ll-icon"
+      src={LIMELIGHT_ICONS[name]}
+      width={size}
+      height={size}
+      alt={label ?? ""}
+      draggable={false}
+      {...(label === undefined ? { "aria-hidden": true } : {})}
+    />
+  );
+}
+
+/**
+ * Every position where direction F carried an emoji, mapped to the icon that replaced it
+ * (round-three section 4.4, the "where it is used" column). Thirteen keys for sixteen icons: the
+ * marquee lead (megaphone), its separators (sparkle) and the setlist bullet (barbell) are placed by
+ * the components in Task 14 rather than by a copy key.
+ */
+export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>> = {
+  "button.startSession": "nails",
+  "advice.drinkToThirst": "drop",
+  "button.trainSomethingElse": "heel",
+  "button.pausePlan": "martini",
+  "status.weekDeltaNegative": "skull",
+  "button.skipToday": "skip",
+  "button.skipRest": "skip",
+  "status.prStamp": "crown",
+  "hero.weeklyTargetMissed": "alert",
+  "advice.interventionBody": "heart",
+  "hero.weekReview": "fan",
+  "status.rest": "stopwatchPanel",
+  "label.settingsSkin": "crown",
+};
+
+/**
+ * A copy string with its icon in front of it. This is the one call site shape that replaces an
+ * emoji position: on limelight it renders the pixel icon and the lowercase string, on the other two
+ * skins it renders the string alone, because <Icon> returns null there.
+ */
+export function SkinLabel({ copyKey }: { copyKey: CopyKey }): ReactElement {
+  const c = useCopy();
+  const icon = ICON_FOR_KEY[copyKey];
+  return (
+    <>
+      {icon === undefined ? null : <Icon name={icon} />}
+      <span className="ll-label">{c(copyKey)}</span>
+    </>
+  );
+}
+```
+
+- [ ] **Step 6: Run the tests to verify they pass**
+
+```bash
+npx vitest run src/skins/limelight
+```
+
+Expected: PASS. `icons.test.ts` 6 passed, `Icon.test.tsx` 6 passed.
+
+- [ ] **Step 7: Use `SkinLabel` at the Today start control**
+
+Task 12 step 13 put `{c("button.startSession")}` in `src/ui/views/TodayView.tsx`. Replace that
+expression with the labelled form, which adds the `nails` icon on limelight and changes nothing on
+the other two skins:
+
+```tsx
+import { SkinLabel } from "../../skins/limelight/Icon";
+```
+```tsx
+        <button type="button" onClick={onStart}><SkinLabel copyKey="button.startSession" /></button>
+```
+
+The `c` binding stays if TodayView uses it elsewhere; remove it if this was its only use, or the
+`no-unused-vars` gate fails.
+
+Verify P3's own suite is unaffected. The icon carries `alt=""`, so the button's accessible name is
+still the string alone:
+
+```bash
+npx vitest run src/ui/views/TodayView.test.tsx
+```
+
+Expected: PASS, with the same test count as before the change.
+
+- [ ] **Step 8: Type-check, lint and commit**
+
+```bash
+npx tsc --noEmit
+npx eslint src/skins scripts/inline-icons.mjs src/ui/views/TodayView.tsx
+npm test
+git add scripts/inline-icons.mjs src/skins/limelight src/ui/views/TodayView.tsx
+git commit -m "feat: inline the limelight icon set and mascot illustrations, and the Icon component"
+```
+
+Expected: `tsc` and `eslint` silent; every suite passes.
+
+---
+### Task 14: The marquee, the MOTHER stamp, and the intervention body
+
+Three limelight-only components, one shared reduced-motion hook, and one stylesheet. Each returns
+`null` off the limelight skin, so no call site branches on `ui.skin`.
+
+**The motion budget is the whole design constraint** (round-three §2.5). Three orchestrated moments
+and nothing else moves, and **no quantity is ever animated, blurred, or faded** — the rest clock
+ticks because it is a clock, and it does not transition. That is a data-integrity rule wearing a
+motion rule's clothes, and it is why every animation here is on a decoration and none is on a
+numeral.
+
+**The tone rule decides one prop** (round-three §3.3). The intervention is the screen shown to
+someone who has just missed a week. Its title may be camp; its body may not, and its illustration is
+the mascot **resting**, not the mascot **flopped**. The flop pose goes on Week review, where "flop
+era" is aimed at seven days rather than at a person. `InterventionBody` therefore imports
+`mascotResting` and nothing else, which makes the rule structural instead of a comment someone can
+overlook.
+
+**One extension to Task 3's toast queue, not a second queue.** The stamp needs a trigger, P4 already
+detects a personal record, and the queue already orders every other interruption. A sixth toast
+class `pr` is added to `ToastQueue.tsx` in this task, slotted between `milestone` and `coach`, which
+keeps gate G9's ordering (`undo > milestone > coach > telemetry > specimen`) intact as a
+subsequence. `undo` stays first because it is still the only class with a deadline the user can miss
+irreversibly. Rejected: a separate stamp host outside the queue, which would let a stamp and an undo
+toast occupy the same corner at the same time, which is exactly the defect A59 recorded.
+
+**Files:**
+- Create: `src/skins/useReducedMotion.ts`
+- Create: `src/skins/limelight/Marquee.tsx`
+- Create: `src/skins/limelight/MotherStamp.tsx`
+- Create: `src/skins/limelight/InterventionBody.tsx`
+- Create: `src/skins/limelight/limelight.css`
+- Modify: `src/ui/components/ToastQueue.tsx` (the `pr` class)
+- Modify: `src/ui/motivation/MotivationModal.tsx` (one added prop)
+- Modify: `src/ui/motivation/MotivationGate.tsx` (pass the body)
+- Modify: `src/main.tsx` (import the stylesheet)
+- Test: `src/skins/limelight/Marquee.test.tsx`, `src/skins/limelight/MotherStamp.test.tsx`,
+  `src/skins/limelight/InterventionBody.test.tsx`
+- Reference (read-only): `docs/design/round3/2026-09-01-round3-plan.md` §2.4, §2.5, §3.3, §5
+
+**Interfaces:**
+- Consumes: `Icon`, `LimelightIconName` from `src/skins/limelight/Icon.tsx` and `./icons` (Task 13);
+  `LIMELIGHT_ILLUSTRATIONS` from `./illustrations` (Task 13); `useSkin`, `useCopy` from
+  `src/skins/skinContext.tsx` (Task 11); `ToastProvider`, `useToasts`, `selectVisible`,
+  `TOAST_PRIORITY` from `src/ui/components/ToastQueue.tsx` (Task 3); `describeMiss` from
+  `src/domain/motivation/trigger.ts` (P6 Task 1); `WeeklyReview` from `src/domain/types.ts`.
+- Produces:
+  ```ts
+  // src/skins/useReducedMotion.ts
+  export function useReducedMotion(): boolean;
+
+  // src/skins/limelight/Marquee.tsx
+  export interface MarqueeItem { readonly icon: LimelightIconName; readonly text: string }
+  export function Marquee(props: { items: readonly MarqueeItem[]; label: string }): React.ReactElement | null;
+
+  // src/skins/limelight/MotherStamp.tsx
+  export const SPARKLE_COUNT: 12;
+  export function MotherStamp(): React.ReactElement | null;
+
+  // src/skins/limelight/InterventionBody.tsx
+  export function InterventionBody(props: { review: WeeklyReview | null }): React.ReactElement;
+
+  // src/ui/components/ToastQueue.tsx (added union member, and one priority slot)
+  | { kind: "pr"; message: string }
+  // TOAST_PRIORITY becomes: undo, milestone, pr, coach, telemetry, specimen
+  // TOAST_DURATION_MS gains: pr: 7000
+
+  // src/ui/motivation/MotivationModal.tsx (added prop)
+  body?: React.ReactNode;
+  ```
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `src/skins/limelight/Marquee.test.tsx`:
+
+```tsx
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
+import { Marquee } from "./Marquee";
+import type { MarqueeItem } from "./Marquee";
+import { SkinContext } from "../skinContext";
+import type { SkinId } from "../../domain/types";
+
+const ITEMS: readonly MarqueeItem[] = [
+  { icon: "barbellPanel", text: "ep. 12 of 48" },
+  { icon: "stopwatchPanel", text: "18:00 in 8 min" },
+  { icon: "crownPanel", text: "10 served" },
+];
+
+function withSkin(skin: SkinId, children: ReactNode): ReactElement {
+  return <SkinContext.Provider value={skin}>{children}</SkinContext.Provider>;
+}
+
+/** jsdom implements no matchMedia, so a suite that needs one installs it. */
+function stubReducedMotion(matches: boolean): void {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches,
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("Marquee", () => {
+  it("renders nothing off the limelight skin", () => {
+    render(withSkin("clinical", <Marquee items={ITEMS} label="today at a glance" />));
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("doubles the item list so the translate loop is seamless", () => {
+    render(withSkin("limelight", <Marquee items={ITEMS} label="today at a glance" />));
+    expect(screen.getByRole("button", { name: "today at a glance" })).toBeTruthy();
+    expect(document.querySelectorAll(".ll-marquee-item")).toHaveLength(ITEMS.length * 2);
+  });
+
+  it("shows the first item alone under prefers-reduced-motion", () => {
+    stubReducedMotion(true);
+    render(withSkin("limelight", <Marquee items={ITEMS} label="today at a glance" />));
+    const strip = screen.getByRole("button", { name: "today at a glance" });
+    expect(strip.getAttribute("data-reduced-motion")).toBe("true");
+    expect(document.querySelectorAll(".ll-marquee-item")).toHaveLength(1);
+    expect(screen.getByText("ep. 12 of 48")).toBeTruthy();
+    expect(screen.queryByText("18:00 in 8 min")).toBeNull();
+  });
+
+  it("pauses while pressed and resumes on release", () => {
+    render(withSkin("limelight", <Marquee items={ITEMS} label="today at a glance" />));
+    const strip = screen.getByRole("button", { name: "today at a glance" });
+    expect(strip.getAttribute("data-paused")).toBe("false");
+    fireEvent.pointerDown(strip);
+    expect(strip.getAttribute("data-paused")).toBe("true");
+    fireEvent.pointerUp(strip);
+    expect(strip.getAttribute("data-paused")).toBe("false");
+  });
+
+  it("latches paused on a keyboard activation and unlatches on the next one", () => {
+    render(withSkin("limelight", <Marquee items={ITEMS} label="today at a glance" />));
+    const strip = screen.getByRole("button", { name: "today at a glance" });
+    expect(strip.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(strip, { detail: 0 });
+    expect(strip.getAttribute("aria-pressed")).toBe("true");
+    expect(strip.getAttribute("data-paused")).toBe("true");
+    fireEvent.click(strip, { detail: 0 });
+    expect(strip.getAttribute("aria-pressed")).toBe("false");
+    expect(strip.getAttribute("data-paused")).toBe("false");
+  });
+
+  it("does not latch on a pointer activation, which press-and-hold already handled", () => {
+    render(withSkin("limelight", <Marquee items={ITEMS} label="today at a glance" />));
+    const strip = screen.getByRole("button", { name: "today at a glance" });
+    fireEvent.click(strip, { detail: 1 });
+    expect(strip.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("renders nothing when it has no items", () => {
+    render(withSkin("limelight", <Marquee items={[]} label="today at a glance" />));
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+});
+```
+
+Create `src/skins/limelight/MotherStamp.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import type { ReactElement } from "react";
+import { MotherStamp, SPARKLE_COUNT } from "./MotherStamp";
+import { LIMELIGHT_ILLUSTRATIONS } from "./illustrations";
+import { SkinContext } from "../skinContext";
+import { ToastProvider, ToastQueue, useToasts, selectVisible, TOAST_PRIORITY } from "../../ui/components/ToastQueue";
+import type { Toast } from "../../ui/components/ToastQueue";
+import type { SkinId } from "../../domain/types";
+
+let api: ReturnType<typeof useToasts> | null = null;
+function Probe(): ReactElement {
+  api = useToasts();
+  return <ToastQueue />;
+}
+
+function mountQueue(skin: SkinId): ReturnType<typeof render> {
+  return render(
+    <SkinContext.Provider value={skin}>
+      <ToastProvider>
+        <Probe />
+      </ToastProvider>
+    </SkinContext.Provider>,
+  );
+}
+
+describe("MotherStamp", () => {
+  it("renders nothing off the limelight skin", () => {
+    render(
+      <SkinContext.Provider value="clinical">
+        <MotherStamp />
+      </SkinContext.Provider>,
+    );
+    expect(screen.queryByText("MOTHER")).toBeNull();
+  });
+
+  it("lands the crowned mascot, the word and the twelve-sparkle fan", () => {
+    render(
+      <SkinContext.Provider value="limelight">
+        <MotherStamp />
+      </SkinContext.Provider>,
+    );
+    expect(screen.getByText("MOTHER")).toBeTruthy();
+    const art = document.querySelector("img.ll-stamp-art");
+    expect(art?.getAttribute("src")).toBe(LIMELIGHT_ILLUSTRATIONS.mascotCrown);
+    expect(SPARKLE_COUNT).toBe(12);
+    expect(document.querySelectorAll(".ll-stamp-sparkle")).toHaveLength(12);
+  });
+});
+
+describe("the pr toast class", () => {
+  it("sits between milestone and coach in the priority order", () => {
+    expect([...TOAST_PRIORITY]).toEqual(["undo", "milestone", "pr", "coach", "telemetry", "specimen"]);
+    const queue: Toast[] = [
+      { id: "a", kind: "coach", message: "Set logged." },
+      { id: "b", kind: "pr", message: "Load PR. Previous best 60 kg × 8." },
+      { id: "c", kind: "milestone", count: 50 },
+    ];
+    expect(selectVisible(queue).map((toast) => toast.id)).toEqual(["c", "b", "a"]);
+  });
+
+  it("renders the stamp on limelight and the clinical tag elsewhere, keeping the honest line in both", () => {
+    const limelight = mountQueue("limelight");
+    act(() => {
+      api?.push({ kind: "pr", message: "Load PR. Previous best 60 kg × 8." });
+    });
+    expect(screen.getByText("MOTHER")).toBeTruthy();
+    expect(screen.getByText("Load PR. Previous best 60 kg × 8.")).toBeTruthy();
+    expect(screen.queryByText("Personal record")).toBeNull();
+    limelight.unmount();
+
+    mountQueue("clinical");
+    act(() => {
+      api?.push({ kind: "pr", message: "Load PR. Previous best 60 kg × 8." });
+    });
+    expect(screen.queryByText("MOTHER")).toBeNull();
+    expect(screen.getByText("Personal record")).toBeTruthy();
+    expect(screen.getByText("Load PR. Previous best 60 kg × 8.")).toBeTruthy();
+  });
+});
+```
+
+Create `src/skins/limelight/InterventionBody.test.tsx`:
+
+```tsx
+import { describe, expect, it } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { InterventionBody } from "./InterventionBody";
+import { LIMELIGHT_ILLUSTRATIONS } from "./illustrations";
+import { SkinContext } from "../skinContext";
+import type { WeeklyReview } from "../../domain/types";
+
+const REVIEW: WeeklyReview = {
+  profileId: "p1",
+  weekStart: "2026-08-24",
+  weekEnd: "2026-08-30",
+  target: 4,
+  completed: 1,
+  skipped: 1,
+  paused: false,
+  delta: -3, // delta = completed − target
+  evaluatedAt: 1_756_684_800_000, // 2026-09-01T00:00:00Z
+  missHandled: false,
+};
+
+describe("InterventionBody", () => {
+  it("renders the clinical sentence off the limelight skin", () => {
+    render(
+      <SkinContext.Provider value="clinical">
+        <InterventionBody review={REVIEW} />
+      </SkinContext.Provider>,
+    );
+    expect(screen.getByText("Week of 2026-08-24: 1 of 4 sessions completed.")).toBeTruthy();
+    expect(document.querySelector("img.ll-intervention-art")).toBeNull();
+  });
+
+  it("renders the camp line, the resting mascot and the honest line beneath it", () => {
+    render(
+      <SkinContext.Provider value="limelight">
+        <InterventionBody review={REVIEW} />
+      </SkinContext.Provider>,
+    );
+    expect(screen.getByText("the week flopped, not you. monday is the next slot.")).toBeTruthy();
+    expect(screen.getByText("Week of 2026-08-24: 1 of 4 sessions completed.")).toBeTruthy();
+    const art = document.querySelector("img.ll-intervention-art");
+    expect(art?.getAttribute("src")).toBe(LIMELIGHT_ILLUSTRATIONS.mascotResting);
+  });
+
+  it("never puts the flopped mascot on the intervention", () => {
+    // Round-three section 3.3: a lever in a picture cannot be argued away by the words next to it.
+    render(
+      <SkinContext.Provider value="limelight">
+        <InterventionBody review={REVIEW} />
+      </SkinContext.Provider>,
+    );
+    const sources = [...document.querySelectorAll("img")].map((image) => image.getAttribute("src"));
+    expect(sources).not.toContain(LIMELIGHT_ILLUSTRATIONS.mascotFlop);
+  });
+
+  it("drops the honest line in the Settings preview, which reports no week", () => {
+    render(
+      <SkinContext.Provider value="limelight">
+        <InterventionBody review={null} />
+      </SkinContext.Provider>,
+    );
+    expect(screen.getByText("the week flopped, not you. monday is the next slot.")).toBeTruthy();
+    expect(screen.queryByText(/Week of/)).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+```bash
+npx vitest run src/skins/limelight/Marquee.test.tsx src/skins/limelight/MotherStamp.test.tsx src/skins/limelight/InterventionBody.test.tsx
+```
+
+Expected: FAIL with `Failed to resolve import "./Marquee"`.
+
+- [ ] **Step 3: Write the reduced-motion hook**
+
+Create `src/skins/useReducedMotion.ts`:
+
+```ts
+import { useEffect, useState } from "react";
+
+const QUERY = "(prefers-reduced-motion: reduce)";
+
+function matchesReduce(): boolean {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia(QUERY).matches;
+}
+
+/**
+ * Tracks prefers-reduced-motion, and re-renders when it changes.
+ *
+ * jsdom implements no matchMedia, so the guard above is load-bearing rather than defensive: without
+ * it every component in this directory throws in the test environment. A suite that needs the
+ * reduced branch stubs matchMedia itself.
+ *
+ * This governs motion only. It has no bearing on the sound effects of Task 15: that media query
+ * says nothing about audio, and the sounds toggle is the only thing that silences a skin.
+ */
+export function useReducedMotion(): boolean {
+  const [reduced, setReduced] = useState<boolean>(matchesReduce);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const query = window.matchMedia(QUERY);
+    const onChange = (): void => {
+      setReduced(query.matches);
+    };
+    query.addEventListener("change", onChange);
+    return () => {
+      query.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  return reduced;
+}
+```
+
+- [ ] **Step 4: Write the marquee**
+
+Create `src/skins/limelight/Marquee.tsx`:
+
+```tsx
+import { useState } from "react";
+import type { MouseEvent as ReactMouseEvent, ReactElement } from "react";
+import { Icon } from "./Icon";
+import type { LimelightIconName } from "./icons";
+import { useSkin } from "../skinContext";
+import { useReducedMotion } from "../useReducedMotion";
+
+export interface MarqueeItem {
+  readonly icon: LimelightIconName;
+  readonly text: string;
+}
+
+/**
+ * The one black strip on a lime page: a lit sign, not another card.
+ *
+ * Four properties the design fixes (round-three section 2.4):
+ *  1. it inverts, so type inside it is lime (10.91:1) or white (21.00:1);
+ *  2. it is a real <button>, 44 px tall, and it pauses while pressed, which is what makes it
+ *     information rather than decoration;
+ *  3. it is where the icon set lives, so the icons have a home that is not a button label;
+ *  4. the first item is the one a reduced-motion user gets, because under `reduce` the strip stops
+ *     and shows that item alone.
+ *
+ * Pausing has two independent sources. `held` is press-and-hold, which is what a thumb does.
+ * `latched` is a toggle, and it fires only on a keyboard activation (`detail === 0`): a pointer
+ * click already produced a pointerdown/pointerup pair, so latching on it as well would leave the
+ * strip paused after every tap.
+ */
+export function Marquee({ items, label }: { items: readonly MarqueeItem[]; label: string }): ReactElement | null {
+  const skin = useSkin();
+  const reduced = useReducedMotion();
+  const [held, setHeld] = useState(false);
+  const [latched, setLatched] = useState(false);
+
+  if (skin !== "limelight" || items.length === 0) return null;
+
+  const paused = reduced || held || latched;
+  const first = items[0];
+  const rendered = reduced && first !== undefined ? [first] : [...items, ...items];
+
+  const onClick = (event: ReactMouseEvent<HTMLButtonElement>): void => {
+    if (event.detail !== 0) return;
+    setLatched((value) => !value);
+  };
+
+  return (
+    <button
+      type="button"
+      className="ll-marquee ll-panel"
+      aria-label={label}
+      aria-pressed={latched}
+      data-paused={paused ? "true" : "false"}
+      data-reduced-motion={reduced ? "true" : "false"}
+      onPointerDown={() => {
+        setHeld(true);
+      }}
+      onPointerUp={() => {
+        setHeld(false);
+      }}
+      onPointerCancel={() => {
+        setHeld(false);
+      }}
+      onPointerLeave={() => {
+        setHeld(false);
+      }}
+      onBlur={() => {
+        setHeld(false);
+      }}
+      onClick={onClick}
+    >
+      <span className="ll-marquee-track">
+        <Icon name="megaphonePanel" />
+        {rendered.map((item, index) => (
+          <span className="ll-marquee-item" key={`${index}-${item.text}`}>
+            <Icon name={item.icon} />
+            <span className="ll-marquee-text">{item.text}</span>
+            <Icon name="sparklePanel" />
+          </span>
+        ))}
+      </span>
+    </button>
+  );
+}
+```
+
+- [ ] **Step 5: Write the stamp**
+
+Create `src/skins/limelight/MotherStamp.tsx`:
+
+```tsx
+import type { ReactElement } from "react";
+import { Icon } from "./Icon";
+import { LIMELIGHT_ILLUSTRATIONS } from "./illustrations";
+import { useCopy, useSkin } from "../skinContext";
+import { useReducedMotion } from "../useReducedMotion";
+
+/** Twelve, as the design fixed it. The fan tracks are nth-child rules in limelight.css. */
+export const SPARKLE_COUNT = 12;
+
+/**
+ * The rubber stamp that lands on a personal record.
+ *
+ * The word is `status.prStamp`, which is one of the two shouted strings in the limelight table.
+ * The illustration is the crowned mascot: the coronation is the personal record, and it carries the
+ * moment so the stamp is not the only graphic event on the screen.
+ *
+ * Under prefers-reduced-motion the stamp renders in place at its final transform and the sparkles
+ * render static, which is the design's own reduced-motion column, not a blank fallback.
+ */
+export function MotherStamp(): ReactElement | null {
+  const skin = useSkin();
+  const c = useCopy();
+  const reduced = useReducedMotion();
+
+  if (skin !== "limelight") return null;
+
+  return (
+    <span className="ll-stamp" data-reduced-motion={reduced ? "true" : "false"}>
+      <img
+        className="ll-stamp-art"
+        src={LIMELIGHT_ILLUSTRATIONS.mascotCrown}
+        alt=""
+        aria-hidden
+        width={96}
+        height={96}
+        draggable={false}
+      />
+      <span className="ll-stamp-word ll-display">{c("status.prStamp")}</span>
+      <span className="ll-stamp-fan" aria-hidden>
+        {Array.from({ length: SPARKLE_COUNT }, (_, index) => (
+          <span className="ll-stamp-sparkle" key={index}>
+            <Icon name="sparklePanel" size={16} />
+          </span>
+        ))}
+      </span>
+    </span>
+  );
+}
+```
+
+- [ ] **Step 6: Add the `pr` toast class**
+
+In `src/ui/components/ToastQueue.tsx`, make three replacements and add one branch.
+
+Replace the union member list:
+
+```tsx
+export type ToastKind = "undo" | "milestone" | "coach" | "telemetry" | "specimen";
+
+export type ToastInput =
+  | { kind: "undo"; message: string; onUndo: () => void }
+  | { kind: "milestone"; count: number }
+  | { kind: "coach"; message: string }
+  | { kind: "telemetry"; message: string }
+  | { kind: "specimen"; cardId: string };
+```
+
+with:
+
+```tsx
+export type ToastKind = "undo" | "milestone" | "pr" | "coach" | "telemetry" | "specimen";
+
+export type ToastInput =
+  | { kind: "undo"; message: string; onUndo: () => void }
+  | { kind: "milestone"; count: number }
+  // P8 Task 14. `message` is P4's coach line for the record, already formatted and already
+  // carrying the number; the skin decides whether a stamp lands beside it.
+  | { kind: "pr"; message: string }
+  | { kind: "coach"; message: string }
+  | { kind: "telemetry"; message: string }
+  | { kind: "specimen"; cardId: string };
+```
+
+Replace the priority array:
+
+```tsx
+export const TOAST_PRIORITY: readonly ToastKind[] = ["undo", "milestone", "coach", "telemetry", "specimen"];
+```
+
+with:
+
+```tsx
+export const TOAST_PRIORITY: readonly ToastKind[] = ["undo", "milestone", "pr", "coach", "telemetry", "specimen"];
+```
+
+Add the duration, beside `milestone`:
+
+```tsx
+  pr: 7000, // the stamp lands over 700 ms; the toast outlives the animation by an order of magnitude
+```
+
+Add the imports:
+
+```tsx
+import { MotherStamp } from "../../skins/limelight/MotherStamp";
+import { useCopy, useSkin } from "../../skins/skinContext";
+```
+
+and, inside `ToastShell`, take both lookups once at the top of the component body, above the existing
+`useEffect`:
+
+```tsx
+  const c = useCopy();
+  const skin = useSkin();
+```
+
+then add this branch immediately after the `milestone` branch:
+
+```tsx
+  if (toast.kind === "pr") {
+    // The stamp *is* the limelight rendering of the tag, so the two are alternatives, never both:
+    // rendering the tag underneath would say "Personal record" and "MOTHER" in the same toast.
+    // `toast.message` is P4's coach line and appears in every skin, which is what keeps the number
+    // beside the camp word.
+    return (
+      <button type="button" className="toast toast-pr" onClick={() => onDismiss(id)}>
+        {skin === "limelight" ? <MotherStamp /> : <span className="toast-tag">{c("status.prStamp")}</span>}
+        <span className="toast-msg">{toast.message}</span>
+      </button>
+    );
+  }
+```
+
+- [ ] **Step 7: Write the intervention body**
+
+Create `src/skins/limelight/InterventionBody.tsx`:
+
+```tsx
+import type { ReactElement } from "react";
+import { LIMELIGHT_ILLUSTRATIONS } from "./illustrations";
+import { useCopy, useSkin } from "../skinContext";
+import { describeMiss } from "../../domain/motivation/trigger";
+import type { WeeklyReview } from "../../domain/types";
+
+/**
+ * The body of the missed-week modal, for every skin.
+ *
+ * Round-three section 3.3 makes this the one screen where the tone rule is hardest, and enforces it
+ * structurally rather than by good intentions: the title may be camp, the body may not, and the
+ * illustration is the mascot *resting*. The flop pose is imported nowhere in this file. A picture of
+ * collapse shown to someone who has just missed a week is a joke about the user, and round two's
+ * finding was that a lever in a picture cannot be argued away by the words next to it.
+ *
+ * The camp line never replaces the honest one: `describeMiss` renders beneath it as fine print, so
+ * the counts are still on screen. What was removed from that pairing is method (`delta = completed
+ * - target`), never data.
+ */
+export function InterventionBody({ review }: { review: WeeklyReview | null }): ReactElement {
+  const skin = useSkin();
+  const c = useCopy();
+
+  if (skin !== "limelight") {
+    return (
+      <p className="motivation-detail">
+        {review === null ? c("advice.motivationPreview") : describeMiss(review)}
+      </p>
+    );
+  }
+
+  return (
+    <div className="ll-intervention">
+      <img
+        className="ll-intervention-art"
+        src={LIMELIGHT_ILLUSTRATIONS.mascotResting}
+        alt=""
+        aria-hidden
+        width={128}
+        height={128}
+        draggable={false}
+      />
+      <p className="motivation-detail">{c("advice.interventionBody")}</p>
+      {review === null ? null : <p className="motivation-fine">{describeMiss(review)}</p>}
+    </div>
+  );
+}
+```
+
+- [ ] **Step 8: Give the motivation modal a body slot**
+
+In `src/ui/motivation/MotivationModal.tsx`, add one member to the props interface, directly after
+`posterSrc`:
+
+```ts
+  /**
+   * P8. Skin-supplied body. Omitted, the clinical sentence below renders, which is what the
+   * Settings preview passes. It is a slot rather than a skin lookup because this component is
+   * presentational and takes everything it renders from props.
+   */
+  body?: ReactNode;
+```
+
+Add `ReactNode` to the existing type-only React import, and destructure `body` beside the others:
+
+```tsx
+import { useCallback, useEffect, useRef, type KeyboardEvent, type ReactElement, type ReactNode } from "react";
+```
+```tsx
+  const { review, videoSrc, posterSrc, revokeOnUnmount, onDismiss, onDismissForWeek, body } = props;
+```
+
+Then replace:
+
+```tsx
+        <p className="motivation-detail">
+          {review === null ? "Preview. No week is being reported." : describeMiss(review)}
+        </p>
+```
+
+with:
+
+```tsx
+        {body ?? (
+          <p className="motivation-detail">
+            {review === null ? "Preview. No week is being reported." : describeMiss(review)}
+          </p>
+        )}
+```
+
+- [ ] **Step 9: Pass the body from the gate**
+
+In `src/ui/motivation/MotivationGate.tsx`, add the import and the prop. The gate always passes it,
+because `InterventionBody` renders the clinical sentence itself off the limelight skin; the `??`
+fallback in the modal exists for the Settings preview, which passes no body:
+
+```tsx
+import { InterventionBody } from "../../skins/limelight/InterventionBody";
+```
+```tsx
+    <MotivationModal
+      key={source.src}
+      review={review}
+      videoSrc={source.src}
+      posterSrc={POSTER_DATA_URI}
+      revokeOnUnmount={source.revoke}
+      onDismiss={mark}
+      onDismissForWeek={mark}
+      body={<InterventionBody review={review} />}
+    />
+```
+
+- [ ] **Step 10: Write the stylesheet**
+
+Create `src/skins/limelight/limelight.css`:
+
+```css
+/*
+ * limelight components. Motion budget: docs/design/round3/2026-09-01-round3-plan.md section 2.5.
+ * Three orchestrated moments and nothing else moves. No quantity is animated, blurred or faded.
+ */
+
+/* Pixel art must not be resampled smoothly, or a 32 px icon turns to mush at 20 px. */
+.ll-icon {
+  image-rendering: pixelated;
+  vertical-align: middle;
+  flex: 0 0 auto;
+}
+
+/* --- the marquee (section 2.4) --- */
+.ll-marquee {
+  display: block;
+  width: 100%;
+  min-height: 44px; /* the tap-target floor the round-three checker measures */
+  overflow: hidden;
+  border: 0;
+  padding: 0 8px;
+  cursor: pointer;
+  /* A vertical scroll started on the bar must never be captured by it. */
+  touch-action: pan-y;
+}
+
+.ll-marquee-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ll-marquee-scroll 24s linear infinite;
+}
+
+.ll-marquee[data-paused='true'] .ll-marquee-track {
+  animation-play-state: paused;
+}
+
+.ll-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ll-marquee-text {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes ll-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%); /* the item list is doubled, so -50% is one seamless loop */
+  }
+}
+
+/* --- the stamp (section 2.5, row 2) --- */
+.ll-stamp {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ll-stamp-art {
+  image-rendering: pixelated;
+}
+
+.ll-stamp-word {
+  transform: rotate(-6deg);
+  animation: ll-stamp-land 700ms cubic-bezier(0.2, 0.9, 0.2, 1) 1;
+}
+
+@keyframes ll-stamp-land {
+  from {
+    transform: rotate(-14deg) scale(2.4);
+  }
+  to {
+    transform: rotate(-6deg) scale(1);
+  }
+}
+
+.ll-stamp-fan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ll-stamp-sparkle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  animation: ll-sparkle-fan 460ms ease-out 240ms both;
+}
+
+/* Twelve tracks, one per sparkle, 30 degrees apart. */
+.ll-stamp-sparkle:nth-child(1) { --fan-angle: 0deg; }
+.ll-stamp-sparkle:nth-child(2) { --fan-angle: 30deg; }
+.ll-stamp-sparkle:nth-child(3) { --fan-angle: 60deg; }
+.ll-stamp-sparkle:nth-child(4) { --fan-angle: 90deg; }
+.ll-stamp-sparkle:nth-child(5) { --fan-angle: 120deg; }
+.ll-stamp-sparkle:nth-child(6) { --fan-angle: 150deg; }
+.ll-stamp-sparkle:nth-child(7) { --fan-angle: 180deg; }
+.ll-stamp-sparkle:nth-child(8) { --fan-angle: 210deg; }
+.ll-stamp-sparkle:nth-child(9) { --fan-angle: 240deg; }
+.ll-stamp-sparkle:nth-child(10) { --fan-angle: 270deg; }
+.ll-stamp-sparkle:nth-child(11) { --fan-angle: 300deg; }
+.ll-stamp-sparkle:nth-child(12) { --fan-angle: 330deg; }
+
+@keyframes ll-sparkle-fan {
+  from {
+    transform: rotate(var(--fan-angle)) translateY(0) rotate(calc(-1 * var(--fan-angle)));
+    opacity: 0;
+  }
+  to {
+    transform: rotate(var(--fan-angle)) translateY(-44px) rotate(calc(-1 * var(--fan-angle)));
+    opacity: 0.92;
+  }
+}
+
+/* --- the intervention (section 3.3) --- */
+.ll-intervention {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  text-align: center;
+}
+
+.ll-intervention-art {
+  image-rendering: pixelated;
+}
+
+.motivation-fine {
+  color: var(--text-2);
+  font-size: 0.85em;
+  margin: 0;
+}
+
+/*
+ * The reduced-motion column of section 2.5, verbatim: the marquee stops and centres one line, the
+ * stamp renders in place at its final transform, and the sparkles render static at 92 % opacity.
+ * The stated non-inference: this query governs motion and says nothing about audio (Task 15).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .ll-marquee-track {
+    animation: none;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .ll-stamp-word {
+    animation: none;
+    transform: rotate(-6deg);
+  }
+
+  .ll-stamp-sparkle {
+    animation: none;
+    opacity: 0.92;
+  }
+}
+```
+
+Import it in `src/main.tsx`, after the two token sheets:
+
+```tsx
+import './skins/limelight/limelight.css';
+```
+
+- [ ] **Step 11: Run the tests to verify they pass**
+
+```bash
+npx vitest run src/skins src/ui/components/ToastQueue.test.tsx src/ui/motivation
+```
+
+Expected: PASS. `Marquee.test.tsx` 7 passed, `MotherStamp.test.tsx` 4 passed,
+`InterventionBody.test.tsx` 4 passed, and Task 3's and P6's existing suites unchanged: the `pr`
+class is additive, and `body` is optional with the previous markup as its default.
+
+- [ ] **Step 12: Type-check, lint and commit**
+
+```bash
+npx tsc --noEmit
+npx eslint src
+npm test
+git add src/skins src/ui/components/ToastQueue.tsx src/ui/motivation/MotivationModal.tsx src/ui/motivation/MotivationGate.tsx src/main.tsx
+git commit -m "feat: the limelight marquee, the MOTHER stamp on a pr toast, and the intervention body"
+```
+
+Expected: `tsc` and `eslint` silent; every suite passes.
+
+---
+### Task 15: Per-skin sound effects, behind a toggle, with no audio in the repository
+
+Round-three §6 specifies four sounds and says plainly: **nothing there is built, no audio can be
+generated on this machine, and none ships with the mockup.** This task ships the loader, the gate,
+the size check and the instructions, and no audio file. A test double stands in for the
+`AudioContext`, so every rule below is asserted rather than described.
+
+**The six playback rules, and where each one lives** (round-three §6.2):
+
+| Rule | Where it is enforced |
+| --- | --- |
+| One `AudioContext`, unlocked by the first user gesture of any kind, never on load | `App.tsx`'s one-time `pointerdown`/`keydown` listener, which calls P4's `unlockAudio()`; `sfx.ts` never constructs a context |
+| Decode once, at unlock | `createSfxPlayer`'s `decodeAll`, guarded by `decodedFor`/`decodedSkin` |
+| Never autoplayed, and never from a backgrounded tab | `deps.isVisible()`, checked on every `play` |
+| One-shot, never looped, never overlapping | `current.stop()` before a new source starts |
+| `prefers-reduced-motion` has no bearing on this | stated in `useReducedMotion`'s comment and in `docs/sfx.md`; the only gate is `ui.sounds` |
+| Default off | `UiPrefsSchema`'s `.default(false)`, Task 12 |
+
+**Why the first draft's unlock point was a bug, and what replaced it.** Binding the unlock to the
+"start session" tap fails on the one path where the set's only useful sound lives: a PWA resumed
+from the home screen straight back into a session in progress never passes through that button, so
+`rest_over` would have been silent exactly there. A document-level gesture listener is not autoplay,
+because it still plays nothing until the user touches the screen.
+
+**Why the player reuses P4's context rather than making its own.** `src/ui/audio/chime.ts` already
+owns one long-lived `AudioContext` created inside a user gesture (code review A29). A second context
+would double the audio hardware claim for no benefit. The one wrinkle is that P4's `releaseAudio()`
+closes that context when a session ends, so the player re-checks context identity before playing and
+re-decodes when it changes: `AudioBuffer` is PCM data and is not owned by the context that decoded
+it, but re-decoding on a change is cheap and removes the question entirely.
+
+**The format rule is a requirement, not a preference** (round-three §6.3, and `REFERENCES.md`).
+Every Kenney audio pack ships **Ogg Vorbis only**, and MDN marks Vorbis unsupported in Safari, so
+shipping a downloaded Kenney file as-is is silent on every iPhone. **AAC in an `.m4a` (MP4) container
+is the universal file**; Opus may be added as a smaller alternate, listed first; **never ship Ogg
+alone**. `scripts/check-sfx-size.sh` fails on an `.ogg` with no `.m4a` sibling, so this cannot be
+forgotten.
+
+**Files:**
+- Create: `src/skins/sfx.ts`
+- Create: `public/sfx/.gitkeep`
+- Create: `docs/sfx.md`
+- Create: `scripts/check-sfx-size.sh`
+- Create: `scripts/check-no-emoji.mjs`
+- Modify: `src/ui/audio/chime.ts` (expose the context)
+- Modify: `src/app/App.tsx` (the first-gesture unlock)
+- Modify: `src/ui/settings/SkinSettings.tsx` (unlock inside the toggle's gesture)
+- Modify: `.github/workflows/ci.yml` (the size gate)
+- Test: `src/skins/sfx.test.ts`
+- Reference (read-only): `docs/design/round3/2026-09-01-round3-plan.md` §6, `REFERENCES.md`
+  lines for `developer.mozilla.org/.../Audio_codecs` and `.../Containers`
+
+**Interfaces:**
+- Consumes: `SkinId` from `src/domain/types.ts`; `useAppStore` from `src/store/index.ts`;
+  `getAudioContext` from `src/ui/audio/chime.ts` (added by step 4 of this task).
+- Produces:
+  ```ts
+  // src/skins/sfx.ts
+  export type SfxName = "session_done" | "pr_stamp" | "rest_over" | "intervention_open";
+  export const SFX_NAMES: readonly SfxName[];
+  export function sfxUrl(skin: SkinId, name: SfxName): string;
+  export interface SfxBuffer { readonly duration: number }
+  export interface SfxSource { buffer: SfxBuffer | null; connect(destination: unknown): unknown; start(): void; stop(): void }
+  export interface SfxContext {
+    readonly state: "suspended" | "running" | "closed";
+    readonly destination: unknown;
+    resume(): Promise<void>;
+    decodeAudioData(data: ArrayBuffer): Promise<SfxBuffer>;
+    createBufferSource(): SfxSource;
+  }
+  export interface SfxDeps { skin(): SkinId; enabled(): boolean; context(): SfxContext | null; fetchAudio(url: string): Promise<ArrayBuffer>; isVisible(): boolean }
+  export interface SfxPlayer { unlock(): Promise<void>; play(name: SfxName): void; dispose(): void }
+  export function createSfxPlayer(deps: SfxDeps): SfxPlayer;
+  export const sfxPlayer: SfxPlayer;      // wired to the store, the chime context, fetch and document
+
+  // src/ui/audio/chime.ts (added export)
+  export function getAudioContext(): AudioContext | null;
+  ```
+
+- [ ] **Step 1: Write the failing test**
+
+Create `src/skins/sfx.test.ts`:
+
+```ts
+import { describe, expect, it, vi } from "vitest";
+import { SFX_NAMES, createSfxPlayer, sfxUrl } from "./sfx";
+import type { SfxBuffer, SfxContext, SfxDeps, SfxSource } from "./sfx";
+import type { SkinId } from "../domain/types";
+
+class FakeSource implements SfxSource {
+  buffer: SfxBuffer | null = null;
+  started = 0;
+  stopped = 0;
+  connect(): unknown {
+    return null;
+  }
+  start(): void {
+    this.started += 1;
+  }
+  stop(): void {
+    this.stopped += 1;
+  }
+}
+
+class FakeContext implements SfxContext {
+  state: "suspended" | "running" | "closed" = "suspended";
+  destination: unknown = {};
+  decoded = 0;
+  sources: FakeSource[] = [];
+  resume(): Promise<void> {
+    this.state = "running";
+    return Promise.resolve();
+  }
+  decodeAudioData(data: ArrayBuffer): Promise<SfxBuffer> {
+    this.decoded += 1;
+    return Promise.resolve({ duration: data.byteLength / 1000 });
+  }
+  createBufferSource(): SfxSource {
+    const source = new FakeSource();
+    this.sources.push(source);
+    return source;
+  }
+}
+
+interface Harness {
+  context: FakeContext;
+  fetched: string[];
+  deps: SfxDeps;
+  setSkin(skin: SkinId): void;
+  setEnabled(enabled: boolean): void;
+  setVisible(visible: boolean): void;
+}
+
+function harness(over: { skin?: SkinId; enabled?: boolean; visible?: boolean; failing?: ReadonlySet<string> } = {}): Harness {
+  const context = new FakeContext();
+  const fetched: string[] = [];
+  let skin: SkinId = over.skin ?? "limelight";
+  let enabled = over.enabled ?? true;
+  let visible = over.visible ?? true;
+  const failing = over.failing ?? new Set<string>();
+  const deps: SfxDeps = {
+    skin: () => skin,
+    enabled: () => enabled,
+    context: () => context,
+    isVisible: () => visible,
+    fetchAudio: (url: string) => {
+      fetched.push(url);
+      if (failing.has(url)) return Promise.reject(new Error("404"));
+      return Promise.resolve(new ArrayBuffer(1200));
+    },
+  };
+  return {
+    context,
+    fetched,
+    deps,
+    setSkin: (next) => {
+      skin = next;
+    },
+    setEnabled: (next) => {
+      enabled = next;
+    },
+    setVisible: (next) => {
+      visible = next;
+    },
+  };
+}
+
+describe("sfxUrl", () => {
+  it("points at one file per skin per moment", () => {
+    expect(sfxUrl("limelight", "pr_stamp").endsWith("sfx/limelight/pr_stamp.m4a")).toBe(true);
+    expect(sfxUrl("board", "rest_over").endsWith("sfx/board/rest_over.m4a")).toBe(true);
+  });
+
+  it("names the four moments and no fifth", () => {
+    expect([...SFX_NAMES]).toEqual(["session_done", "pr_stamp", "rest_over", "intervention_open"]);
+  });
+});
+
+describe("createSfxPlayer", () => {
+  it("plays nothing before the first unlock", () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    player.play("rest_over");
+    expect(h.context.sources).toHaveLength(0);
+    expect(h.fetched).toHaveLength(0);
+  });
+
+  it("fetches nothing while sounds are off", async () => {
+    const h = harness({ enabled: false });
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    expect(h.fetched).toHaveLength(0);
+    expect(h.context.decoded).toBe(0);
+  });
+
+  it("resumes the context and decodes each file exactly once", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    expect(h.context.state).toBe("running");
+    expect(h.fetched).toHaveLength(4);
+    expect(h.fetched.every((url) => url.includes("/sfx/limelight/"))).toBe(true);
+    expect(h.context.decoded).toBe(4);
+    await player.unlock();
+    expect(h.fetched).toHaveLength(4);
+    expect(h.context.decoded).toBe(4);
+  });
+
+  it("re-decodes when the skin changes", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    h.setSkin("board");
+    await player.unlock();
+    expect(h.fetched).toHaveLength(8);
+    expect(h.fetched.slice(4).every((url) => url.includes("/sfx/board/"))).toBe(true);
+  });
+
+  it("starts one source and sets its buffer", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    player.play("session_done");
+    expect(h.context.sources).toHaveLength(1);
+    expect(h.context.sources[0]?.started).toBe(1);
+    expect(h.context.sources[0]?.buffer).not.toBeNull();
+  });
+
+  it("stops the previous source rather than overlapping", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    player.play("session_done");
+    player.play("pr_stamp");
+    expect(h.context.sources).toHaveLength(2);
+    expect(h.context.sources[0]?.stopped).toBe(1);
+    expect(h.context.sources[1]?.started).toBe(1);
+  });
+
+  it("stays silent while the tab is hidden", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    h.setVisible(false);
+    player.play("rest_over");
+    expect(h.context.sources).toHaveLength(0);
+  });
+
+  it("stays silent once sounds are turned off again", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    h.setEnabled(false);
+    player.play("rest_over");
+    expect(h.context.sources).toHaveLength(0);
+  });
+
+  it("silences only the moment whose file is missing", async () => {
+    const failing = new Set([sfxUrl("limelight", "rest_over")]);
+    const h = harness({ failing });
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    expect(h.context.decoded).toBe(3);
+    player.play("rest_over");
+    expect(h.context.sources).toHaveLength(0);
+    player.play("pr_stamp");
+    expect(h.context.sources).toHaveLength(1);
+  });
+
+  it("plays nothing after dispose", async () => {
+    const h = harness();
+    const player = createSfxPlayer(h.deps);
+    await player.unlock();
+    player.dispose();
+    player.play("pr_stamp");
+    expect(h.context.sources).toHaveLength(0);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+npx vitest run src/skins/sfx.test.ts
+```
+
+Expected: FAIL with `Failed to resolve import "./sfx"`.
+
+- [ ] **Step 3: Write the player**
+
+Create `src/skins/sfx.ts`:
+
+```ts
+import { useAppStore } from "../store";
+import { getAudioContext } from "../ui/audio/chime";
+import type { SkinId } from "../domain/types";
+
+/**
+ * The four moments a skin may score (round-three plan section 6.1). Four, and no more: a fifth
+ * sound turns a training app into a slot machine.
+ *
+ *  session_done       the last set is logged and the completion line renders   1.2-2.0 s
+ *  pr_stamp           the MOTHER stamp lands, timed to the 700 ms landing      0.8-1.2 s
+ *  rest_over          the rest countdown reaches 0; the only functional one    1.0-1.5 s
+ *  intervention_open  the missed-week modal opens; soft and low, not a sting   1.0-1.5 s
+ */
+export type SfxName = "session_done" | "pr_stamp" | "rest_over" | "intervention_open";
+
+export const SFX_NAMES: readonly SfxName[] = ["session_done", "pr_stamp", "rest_over", "intervention_open"];
+
+/**
+ * One file per skin per moment, under public/. AAC in an .m4a container is the universal format
+ * (MDN: "supported by all major browsers ... likely your best choice if you can only support one
+ * audio format"); Ogg is never shipped alone, because Vorbis is unsupported in Safari and this PWA
+ * is most likely installed on an iPhone.
+ *
+ * The files are not precached: master plan section 3 excludes media from injectManifest, and these
+ * are fetched on first unlock instead of riding in the app shell.
+ */
+export function sfxUrl(skin: SkinId, name: SfxName): string {
+  return `${import.meta.env.BASE_URL}sfx/${skin}/${name}.m4a`;
+}
+
+/** The slice of AudioBuffer this module uses. A real AudioBuffer satisfies it structurally. */
+export interface SfxBuffer {
+  readonly duration: number; // s
+}
+
+/** The slice of AudioBufferSourceNode this module uses. */
+export interface SfxSource {
+  buffer: SfxBuffer | null;
+  connect(destination: unknown): unknown;
+  start(): void;
+  stop(): void;
+}
+
+/**
+ * The slice of AudioContext this module uses. Declaring the structural minimum rather than taking
+ * `AudioContext` is what lets the test supply a double without an `as` cast: jsdom implements no
+ * Web Audio at all, so a real context cannot exist in the suite.
+ */
+export interface SfxContext {
+  readonly state: "suspended" | "running" | "closed";
+  readonly destination: unknown;
+  resume(): Promise<void>;
+  decodeAudioData(data: ArrayBuffer): Promise<SfxBuffer>;
+  createBufferSource(): SfxSource;
+}
+
+export interface SfxDeps {
+  skin(): SkinId;
+  /** ui.sounds. The only thing that silences a skin; prefers-reduced-motion is not consulted. */
+  enabled(): boolean;
+  context(): SfxContext | null;
+  fetchAudio(url: string): Promise<ArrayBuffer>;
+  isVisible(): boolean;
+}
+
+export interface SfxPlayer {
+  /** Must be called from inside a user gesture. Idempotent per (context, skin) pair. */
+  unlock(): Promise<void>;
+  play(name: SfxName): void;
+  dispose(): void;
+}
+
+export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
+  let buffers: Map<SfxName, SfxBuffer> | null = null;
+  let decodedFor: SfxContext | null = null;
+  let decodedSkin: SkinId | null = null;
+  let inFlight: Promise<void> | null = null;
+  let current: SfxSource | null = null;
+
+  async function decodeAll(context: SfxContext, skin: SkinId): Promise<void> {
+    const next = new Map<SfxName, SfxBuffer>();
+    for (const name of SFX_NAMES) {
+      try {
+        const data = await deps.fetchAudio(sfxUrl(skin, name));
+        next.set(name, await context.decodeAudioData(data));
+      } catch {
+        // A missing or undecodable file silences that one moment and nothing else. The repository
+        // ships public/sfx/ empty on purpose (docs/sfx.md), so "not there yet" is the normal state
+        // rather than an error, and it must never throw into a gesture handler.
+      }
+    }
+    buffers = next;
+    decodedFor = context;
+    decodedSkin = skin;
+  }
+
+  return {
+    async unlock(): Promise<void> {
+      if (!deps.enabled()) return;
+      const context = deps.context();
+      if (context === null) return;
+      if (context.state === "suspended") await context.resume();
+      const skin = deps.skin();
+      if (decodedFor === context && decodedSkin === skin && buffers !== null) return;
+      // Decoding at fire time costs a variable delay, and a stamp sound arriving 300 ms after the
+      // stamp is worse than no sound. Everything is decoded here, once, and held.
+      inFlight ??= decodeAll(context, skin).finally(() => {
+        inFlight = null;
+      });
+      await inFlight;
+    },
+
+    play(name: SfxName): void {
+      if (!deps.enabled()) return;
+      if (!deps.isVisible()) return;
+      const context = deps.context();
+      if (context === null || context.state !== "running") return;
+      if (decodedFor !== context) return; // the context was closed and rebuilt; wait for a re-unlock
+      const buffer = buffers?.get(name);
+      if (buffer === undefined) return;
+      // One-shot, never looped, never overlapping: a new fire stops the previous source.
+      if (current !== null) current.stop();
+      const source = context.createBufferSource();
+      source.buffer = buffer;
+      source.connect(context.destination);
+      source.start();
+      current = source;
+    },
+
+    dispose(): void {
+      if (current !== null) current.stop();
+      current = null;
+      buffers = null;
+      decodedFor = null;
+      decodedSkin = null;
+    },
+  };
+}
+
+/**
+ * The application-wide player. It reads the store through getState() rather than a hook, because
+ * it is called from event handlers and effects, never during a render.
+ */
+export const sfxPlayer: SfxPlayer = createSfxPlayer({
+  skin: () => useAppStore.getState().ui.skin,
+  enabled: () => useAppStore.getState().ui.sounds,
+  context: () => getAudioContext(),
+  isVisible: () => document.visibilityState === "visible",
+  fetchAudio: async (url: string): Promise<ArrayBuffer> => {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`sfx ${url}: HTTP ${response.status}`);
+    return response.arrayBuffer();
+  },
+});
+```
+
+- [ ] **Step 4: Expose P4's audio context**
+
+In `src/ui/audio/chime.ts`, add one exported accessor beside `unlockAudio`. Nothing else in that
+file changes:
+
+```ts
+/**
+ * The context unlockAudio() created, or null before the first gesture. P8's sound-effect player
+ * shares it rather than opening a second one; it re-checks identity because releaseAudio() closes
+ * this one at the end of a session.
+ */
+export function getAudioContext(): AudioContext | null {
+  return context;
+}
+```
+
+Verify:
+
+```bash
+grep -c 'export function getAudioContext' src/ui/audio/chime.ts
+```
+
+Expected: `1`.
+
+- [ ] **Step 5: Unlock on the first gesture of any kind**
+
+In `src/app/App.tsx`, add the imports and one effect inside the `App` component:
+
+```tsx
+import { unlockAudio } from "../ui/audio/chime";
+import { sfxPlayer } from "../skins/sfx";
+```
+
+```tsx
+  /*
+   * The audio unlock. Mobile Safari and Chrome both start an AudioContext suspended and resume it
+   * only inside a user gesture, so this listens for the first gesture of any kind rather than for
+   * one particular button. Binding it to "start session" instead would leave rest_over silent on a
+   * PWA resumed from the home screen straight back into a session already in progress, which is the
+   * one path where it is the only useful sound in the set.
+   *
+   * This is not autoplay: nothing plays until the user touches the screen, and even then only if
+   * ui.sounds is on.
+   */
+  useEffect(() => {
+    const onFirstGesture = (): void => {
+      unlockAudio();
+      void sfxPlayer.unlock();
+    };
+    document.addEventListener("pointerdown", onFirstGesture, { once: true });
+    document.addEventListener("keydown", onFirstGesture, { once: true });
+    return () => {
+      document.removeEventListener("pointerdown", onFirstGesture);
+      document.removeEventListener("keydown", onFirstGesture);
+    };
+  }, []);
+```
+
+- [ ] **Step 6: Unlock inside the sounds toggle's own gesture**
+
+In `src/ui/settings/SkinSettings.tsx`, replace the handler Task 12 wrote:
+
+```tsx
+  const onSoundsChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    setUi({ sounds: event.target.checked });
+  };
+```
+
+with:
+
+```tsx
+  const onSoundsChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    const next = event.target.checked;
+    setUi({ sounds: next });
+    // resume() must run inside the gesture task, not in an effect afterwards. This is the second
+    // unlock point named by round-three section 6.2 rule 1, and it is the one that matters for a
+    // user who turns sounds on before touching anything else.
+    if (next) void sfxPlayer.unlock();
+  };
+```
+
+and add the import:
+
+```tsx
+import { sfxPlayer } from "../../skins/sfx";
+```
+
+- [ ] **Step 7: Run the test to verify it passes**
+
+```bash
+npx vitest run src/skins/sfx.test.ts
+```
+
+Expected: PASS, `Tests  12 passed (12)`.
+
+- [ ] **Step 8: Create the drop directory and the size gate**
+
+```bash
+mkdir -p public/sfx
+touch public/sfx/.gitkeep
+```
+
+Create `scripts/check-sfx-size.sh`:
+
+```bash
+#!/usr/bin/env bash
+# Size and format gate for skin sound effects.
+#
+# Round-three plan section 6.3: under 60 kB per file and under 240 kB for the set of four. A 2 s
+# mono clip at 96 kb/s AAC is roughly 24 kB, so the ceiling carries about 2x headroom and no clip
+# needs stereo.
+#
+# The format check is the one that matters most. Every Kenney audio pack ships Ogg Vorbis only, and
+# MDN marks Vorbis unsupported in Safari, so an .ogg with no .m4a sibling is silent on every iPhone.
+set -euo pipefail
+
+LIMIT=61440        # bytes, 60 KiB per file
+SET_LIMIT=245760   # bytes, 240 KiB for the whole set
+DIR="public/sfx"
+
+if [ ! -d "$DIR" ]; then
+  echo "check-sfx-size: $DIR is absent. No skin ships sound effects yet."
+  exit 0
+fi
+
+status=0
+total=0
+found=0
+
+while IFS= read -r -d '' file; do
+  found=$((found + 1))
+  size=$(wc -c < "$file")
+  total=$((total + size))
+  if [ "$size" -gt "$LIMIT" ]; then
+    echo "check-sfx-size: FAIL - $file is $size bytes, over the $LIMIT byte per-file limit."
+    status=1
+  fi
+done < <(find "$DIR" -type f -name '*.m4a' -print0)
+
+while IFS= read -r -d '' ogg; do
+  if [ ! -f "${ogg%.ogg}.m4a" ]; then
+    echo "check-sfx-size: FAIL - $ogg has no .m4a sibling; Ogg alone is silent in Safari."
+    status=1
+  fi
+done < <(find "$DIR" -type f -name '*.ogg' -print0)
+
+if [ "$found" -eq 0 ]; then
+  echo "check-sfx-size: no .m4a files under $DIR. Nothing to check."
+  exit "$status"
+fi
+
+if [ "$total" -gt "$SET_LIMIT" ]; then
+  echo "check-sfx-size: FAIL - the set is $total bytes, over the $SET_LIMIT byte limit."
+  status=1
+fi
+
+if [ "$status" -eq 0 ]; then
+  echo "check-sfx-size: OK - $found file(s), $total bytes total."
+fi
+exit "$status"
+```
+
+Then `chmod +x scripts/check-sfx-size.sh`.
+
+- [ ] **Step 9: Run the gate against all four branches**
+
+```bash
+./scripts/check-sfx-size.sh; echo "empty -> exit $?"
+mkdir -p public/sfx/limelight
+head -c 24000 /dev/zero > public/sfx/limelight/pr_stamp.m4a
+./scripts/check-sfx-size.sh; echo "24 kB -> exit $?"
+head -c 61441 /dev/zero > public/sfx/limelight/rest_over.m4a
+set +e; ./scripts/check-sfx-size.sh; echo "over limit -> exit $?"; set -e
+rm -f public/sfx/limelight/rest_over.m4a
+head -c 1000 /dev/zero > public/sfx/limelight/rest_over.ogg
+set +e; ./scripts/check-sfx-size.sh; echo "ogg alone -> exit $?"; set -e
+rm -rf public/sfx/limelight
+```
+
+Expected, in order:
+
+```
+check-sfx-size: no .m4a files under public/sfx. Nothing to check.
+empty -> exit 0
+check-sfx-size: OK - 1 file(s), 24000 bytes total.
+24 kB -> exit 0
+check-sfx-size: FAIL - public/sfx/limelight/rest_over.m4a is 61441 bytes, over the 61440 byte per-file limit.
+over limit -> exit 1
+check-sfx-size: FAIL - public/sfx/limelight/rest_over.ogg has no .m4a sibling; Ogg alone is silent in Safari.
+ogg alone -> exit 1
+```
+
+Then confirm nothing was left behind: `git status --short public/sfx` shows only `.gitkeep`.
+
+- [ ] **Step 10: Add the gate to CI**
+
+In `.github/workflows/ci.yml`, add this step immediately after the existing
+`Check the motivation clip's size` step (P6 Task 7 added that one after checkout):
+
+```yaml
+      - name: Check the skin sound-effect sizes
+        run: ./scripts/check-sfx-size.sh
+```
+
+Verify the workflow still parses and the step is in place:
+
+```bash
+python3 -c "import yaml; d=yaml.safe_load(open('.github/workflows/ci.yml')); print([s.get('name') for j in d['jobs'].values() for s in j['steps']])"
+```
+
+Expected: a list containing `Check the skin sound-effect sizes` directly after
+`Check the motivation clip's size`.
+
+- [ ] **Step 11: Write the drop instructions**
+
+Create `docs/sfx.md` (the sibling of `docs/motivation-video.md`, which P6 Task 7 wrote):
+
+```markdown
+# Skin sound effects
+
+No audio ships in this repository. `public/sfx/` is empty apart from `.gitkeep`, and the app is
+correct with it empty: a moment whose file is missing is silent, and nothing else changes.
+
+Sounds are off by default and are turned on in Settings, under "the look". That toggle is the only
+thing that silences a skin. `prefers-reduced-motion` is not consulted: it governs motion, and a user
+who suppresses animation has said nothing about audio.
+
+## Where the files go
+
+    public/sfx/<skin>/<name>.m4a
+
+`<skin>` is `clinical`, `limelight` or `board`. `<name>` is one of four, and there is no fifth:
+
+| Name | Fires when | Character | Length |
+| --- | --- | --- | --- |
+| `session_done` | the last set of the session is logged | the one celebratory sound; a short rising figure | 1.2 to 2.0 s |
+| `pr_stamp` | a logged set beats the previous best for that exercise | a hard percussive stamp with a bright tail, timed to the 700 ms landing | 0.8 to 1.2 s |
+| `rest_over` | the rest countdown reaches 0 | the only functional sound of the four; audible in a noisy gym, and not like a notification | 1.0 to 1.5 s |
+| `intervention_open` | the missed-week modal opens | soft and low, never a sting; it plays over a line about a missed week | 1.0 to 1.5 s |
+
+A skin with no directory is silent. A skin with two of the four files plays those two.
+
+## Format
+
+**Ship AAC in an `.m4a` (MP4) container.** Optionally add Opus as a smaller alternate, listed first.
+**Never ship Ogg alone:** Ogg Vorbis has no Safari support, so an Ogg-only asset is silent on every
+iPhone, which is the platform this app is most likely installed on. `scripts/check-sfx-size.sh`
+fails the build on an `.ogg` with no `.m4a` sibling.
+
+Size: **under 60 kB per file, under 240 kB for the set.** A 2 s mono clip at 96 kb/s AAC is roughly
+24 kB, so there is about 2x headroom and no clip needs stereo. The gate enforces both numbers.
+
+## Transcoding
+
+Every Kenney audio pack ships Ogg Vorbis only, so transcoding is mandatory rather than optional:
+
+    ffmpeg -i in.ogg -c:a aac -b:a 96k -ac 1 out.m4a
+
+`-ac 1` is mono, which is what halves the file. Check the result plays in Safari before committing.
+
+## Where to get CC0 files
+
+Candidates to audition, not selections. Each file's licence is verified per file and recorded in
+`REFERENCES.md` with the method used to verify it.
+
+- Kenney, Interface Sounds: <https://kenney.nl/assets/interface-sounds> (CC0 1.0, attribution not
+  required; 100 files. `confirmation_00*` or `bong_001` for `session_done`, `open_00*` for
+  `intervention_open`, `tick_00*` for `rest_over`.)
+- Kenney, Digital Audio: <https://kenney.nl/assets/digital-audio> (CC0 1.0; 63 files. `powerUp*` for
+  `pr_stamp`.)
+- Kenney, UI Audio: <https://kenney.nl/assets/ui-audio> (CC0 1.0; 52 files, too click-like for these
+  four, kept as a fallback.)
+- Freesound, CC0 facet:
+  <https://freesound.org/search/?q=&f=license:%22Creative%20Commons%200%22> (CC0 1.0 per Freesound's
+  own FAQ; attribution not required, but authorship may not be claimed. Widest pool, needs
+  auditioning and a per-file licence check.)
+- OpenGameArt, CC0 sound effects:
+  <https://opengameart.org/art-search-advanced?field_art_type_tid%5B%5D=13&field_art_licenses_tid%5B%5D=4>
+  (CC0 1.0, art type Sound Effect.)
+
+**Sonniss GDC bundles are excluded.** They are often described as free to use and they are not CC0:
+the bundle licence is a proprietary royalty-free agreement that forbids supplying the sounds onward
+as sound effects, which is exactly what a repository shipping its own `sfx/` directory does.
+```
+
+- [ ] **Step 12: Type-check, lint and commit**
+
+```bash
+npx tsc --noEmit
+npx eslint src
+bash -n scripts/check-sfx-size.sh
+npm test
+npm run build
+git add src/skins/sfx.ts src/skins/sfx.test.ts src/ui/audio/chime.ts src/app/App.tsx src/ui/settings/SkinSettings.tsx public/sfx/.gitkeep docs/sfx.md scripts/check-sfx-size.sh .github/workflows/ci.yml
+git commit -m "feat: per-skin sound effects behind the sounds toggle, with a CI size and format gate"
+```
+
+Expected: `tsc` silent; `eslint` silent; `bash -n` silent; every suite passes; the build succeeds.
+
+- [ ] **Step 13: Run the full P8 gate again, with the skin system in place**
+
+```bash
+npm run lint
+npm test
+npm run build
+./scripts/check-sfx-size.sh
+git grep -nEi 'vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e]' -- 'src/' 'worker/' 'public/' 'index.html'
+node scripts/check-no-emoji.mjs
+```
+
+`scripts/check-no-emoji.mjs` is the round-three verification criterion 5 as a script. Create it in
+this step; it needs no PCRE, which `git grep -P` does and which is not guaranteed to be compiled in:
+
+```js
+#!/usr/bin/env node
+/**
+ * Round-three verification criterion 5: zero emoji characters in the copy tables and the skin
+ * modules, in the markup, the comments and the strings alike. "Gone from the visible screens" is a
+ * weaker claim than the one the user asked for, so the check is over whole files.
+ */
+import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
+
+const RANGES = [
+  [0x1f300, 0x1faff],
+  [0x2600, 0x27bf],
+  [0xfe0f, 0xfe0f],
+  [0x2b00, 0x2bff],
+];
+
+const files = execSync("git ls-files src/content/copy.ts src/skins", { encoding: "utf8" })
+  .split("\n")
+  .filter((line) => line.length > 0);
+
+let found = 0;
+for (const file of files) {
+  const text = readFileSync(file, "utf8");
+  let line = 1;
+  for (const character of text) {
+    if (character === "\n") line += 1;
+    const point = character.codePointAt(0) ?? 0;
+    if (RANGES.some(([lo, hi]) => point >= lo && point <= hi)) {
+      console.log(`${file}:${line}: emoji U+${point.toString(16).toUpperCase()}`);
+      found += 1;
+    }
+  }
+}
+
+console.log(found === 0 ? `check-no-emoji: OK - ${files.length} files clean.` : `check-no-emoji: FAIL - ${found} emoji.`);
+process.exit(found === 0 ? 0 : 1);
+```
+
+Add it to CI beside the sound gate:
+
+```yaml
+      - name: No emoji in the copy tables or the skin modules
+        run: node scripts/check-no-emoji.mjs
+```
+
+Expected: lint silent; every suite passes; the build succeeds; the sfx gate reports nothing to
+check; the personal-data grep returns nothing and exits with status 1; `check-no-emoji` prints
+`check-no-emoji: OK` and exits 0.
+
+```bash
+git add scripts/check-no-emoji.mjs .github/workflows/ci.yml
+git commit -m "chore: fail the build on an emoji in the copy tables or the skin modules"
+```
+
+---
+
 ## Self-review
 
 **1. Spec coverage.** Each item of the P8 brief maps to a task:
@@ -4809,20 +8702,72 @@ Expected: lint silent; every suite passes; the build succeeds; the personal-data
 | `PhaseTransition` keyed to `PlanBlock.index` from the cursor, once per block | 10 | `ui.lastBlockSeenByProfile` |
 | milestones at 50/100/250/500/1000 from `totalSetsLogged` | 10 | interval-based, so a jump cannot skip one |
 | tone: clinical, no emoji, cards are facts with sources | 1, 10 | ASCII test; milestone copy asserts no filler |
+| **skin system** (master plan §3 Skins, §4, §10.3): copy module with the default table and two overrides | 11 | 193 keys; 21 limelight rows, 16 board rows; the design tables' keys mapped onto `CopyKey` in a table |
+| copy contract enforced mechanically, not asserted | 11 | G14; one allowlisted four-word button, named with its reason |
+| `UiPrefs.skin` and `UiPrefs.sounds` with Zod defaults `"clinical"` and `false` | 12 | additive, so `CURRENT_SCHEMA_VERSION` stays 3 |
+| per-skin CSS tokens, selected by one root attribute | 12 | G15, G16; `#8ACE00` ground, `#000` type, `#FF5FCB` as fill and outline only |
+| Archivo for limelight, DM Mono and Space Mono for board, self-hosted | 12 | `@fontsource-variable/archivo@5.3.0` confirmed on npm; `standard.css` carries `font-stretch: 62% 125%` |
+| Settings row "the look" with the three skins and the sounds toggle | 12 | `label.settingsSkin`, `label.settingsSounds` |
+| the limelight icon set and illustrations, replacing every emoji position | 13 | G17; 16 icons, 5 panel variants, 4 mascot poses, all own work; `ICON_FOR_KEY` maps the 13 copy positions |
+| the clinical skin renders no icons | 13 | `Icon` returns null off limelight, so the board skin renders none either |
+| the pausable marquee, with `prefers-reduced-motion` showing the first item alone | 14 | a real `<button>`, 44 px, `touch-action: pan-y`, held or latched |
+| the MOTHER stamp with the crowned mascot and the twelve-sparkle fan, wired to PR detection | 14 | G18; a sixth toast class rather than a second queue |
+| the intervention body: `intervention_body` copy and the resting illustration | 14 | one added prop `body?: ReactNode`; the flop pose is imported nowhere in that file |
+| per-skin sound effects behind the sounds toggle | 15 | G19; the loader ships with a test double and no audio file |
+| where to drop CC0 files and how to transcode them | 15 | `docs/sfx.md`, the sibling of `docs/motivation-video.md`; Kenney and Freesound URLs, and the ffmpeg line |
 
-Master plan §5 types used: `SpecimenInventory` (Tasks 4, 10), `TimeCapsule` (Task 7), `UiPrefs` (Tasks 4, 6, 10). Master plan §6.7 P8 actions: all three implemented in Task 4. Master plan §7 P8 gate: Task 2, expanded into G1 through G13.
+Master plan §5 types used: `SpecimenInventory` (Tasks 4, 10), `TimeCapsule` (Task 7), `UiPrefs` (Tasks 4, 6, 10, 12), `SkinId` (Tasks 11 to 15). Master plan §6.7 P8 actions: all three implemented in Task 4; `setUi` is the only writer of `ui.skin` and `ui.sounds` in Tasks 12 and 15. Master plan §7 P8 gate: Task 2, expanded into G1 through G19. Master plan §10.3 (limelight ships opt-in, ids `clinical`, `limelight`, `board`) is implemented literally: the Zod enum, the `SkinId` union and the Settings picker all carry those three ids in that order, and the default is `clinical`.
 
-**2. Placeholder scan.** No "TBD", "TODO", "similar to Task N", "add validation" or "handle edge cases" appears anywhere. Every code step carries complete code. Seven steps modify files this plan did not create (`types.ts`, `schema.ts`, `store/index.ts`, `selectors.ts`, `TopBar.tsx`, `PlanView.tsx`, `TrainView.tsx`, `App.tsx`); each shows the exact text to insert and, where the insertion point is not unique, a grep whose expected output verifies it landed. Task 8 step 11 names the one condition under which its integration assertion may legitimately need narrowing and requires the narrowing to be recorded rather than made silently.
+**Copy-contract coverage.** Every user-visible string added by Tasks 11 to 15 comes from a copy table
+through `copy()` or `useCopy()`, with three exceptions, each deliberate and each named here: the
+three skin ids in the Settings picker (`clinical`, `limelight`, `board`), which are ids rather than
+copy and must not be renamed by a skin; the `alt=""` on every decorative image, which is the empty
+string by design; and `docs/sfx.md`, which is documentation rather than UI. R1 to R11 are asserted
+mechanically by `src/content/copy.test.ts` over all three tables (G14) rather than reviewed by eye.
+
+
+**2. Placeholder scan.** No "TBD", "TODO", "similar to Task N", "add validation" or "handle edge cases" appears anywhere. Every code step carries complete code. Tasks 11 to 15 add one conditional branch, in Task 12 step 1: what to do if `@fontsource-variable/archivo` has been unpublished. It states the exact substitute, the exact consequent edit and the requirement to record the substitution, and it names the date on which the package was confirmed present, so it is a contingency with a closed answer rather than an unfinished step. Task 13's two generated modules are the one place the plan does not print the literal file contents: they are 21 and 4 base64 blobs totalling about 31 kB. The generator that produces them is printed in full, its inputs are committed artwork, and the test pins every decoded byte length and both pixel dimensions, so the generated text is reproducible and verified rather than assumed. Seven steps modify files this plan did not create (`types.ts`, `schema.ts`, `store/index.ts`, `selectors.ts`, `TopBar.tsx`, `PlanView.tsx`, `TrainView.tsx`, `App.tsx`); each shows the exact text to insert and, where the insertion point is not unique, a grep whose expected output verifies it landed. Task 8 step 11 names the one condition under which its integration assertion may legitimately need narrowing and requires the narrowing to be recorded rather than made silently.
 
 **3. Type consistency.** Checked across tasks. `SpecimenCard`, `SpecimenRarity`, `SpecimenCategory`, `SpecimenSource` (Task 1) are consumed unchanged by Tasks 2, 3 and 5. `drawSpecimen(inventory, cards, rng, dropChance)` (Task 2) is called with exactly that argument order in Task 4. `SPECIMEN_DROP_CHANCE` is applied inside `attemptSpecimenDraw`, never at the call site, so Task 10's three-argument `attemptSpecimenDraw(profileId, exerciseId, now)` is correct. `ToastInput` (Task 3) is the parameter type of `push` in Tasks 3 and 10, and the `{ kind: "specimen"; cardId }` and `{ kind: "milestone"; count }` members match their call sites. `ViewId` (Task 8) is the type parameter of `HotkeyScope` (Task 9) and of `setView` in `SpotlightArgs` (Task 8). `planRowDomId(sessionId, exerciseId)` (Task 8) takes the same argument order in `useScrollToPlanFocus`, in the PlanView modification and in the test. `BlockStats` (Task 10) is produced by `blockStats` and consumed by `PhaseTransition` field for field. `UiPrefs.lastBlockSeenByProfile` (Task 4) is read in Task 10 with the same `Record<string, number>` shape and written through `setUi`, whose `Partial<UiPrefs>` parameter accepts it. `makeAppState` and `makePlan` (Task 4) are used with the same fixture values by Tasks 5, 6, 7, 8, 9 and 10 - in particular the fixture plan's 24 sessions and three eight-session blocks, which Task 10's `currentBlockIndex` expectations depend on.
 
-**4. Gate coverage.** Every row of the gate table names the task that satisfies it, and every row is an executable assertion rather than a claim.
+**3a. Type consistency across Tasks 11 to 15.** `CopyKey` (Task 11) is the parameter type of
+`copy()`, of the function `useCopy()` returns, of `ICON_FOR_KEY`'s keys and of `SkinLabel`'s
+`copyKey` prop, in Tasks 11, 13 and 14, with the same 193-member union in every position. `SkinId`
+(Task 11, master plan §5 verbatim) is the value type of `SkinContext`, of `UiPrefs.skin`, of the
+Zod enum, of `SKIN_COPY`'s keys, of `SkinSettings`'s `SKIN_ORDER` and of `sfxUrl`'s first parameter;
+the Zod enum's three members are listed in the same order as the union's, and Task 12 step 5's
+verification greps both so a drift is caught rather than discovered. `LimelightIconName` (Task 13,
+generated) is the `name` prop of `Icon`, the value type of `ICON_FOR_KEY` and the `icon` member of
+`MarqueeItem` (Task 14). `ToastInput` (Task 3) gains one member in Task 14 and keeps every other
+member and every existing call site unchanged; `TOAST_PRIORITY` and `TOAST_DURATION_MS` are both
+keyed by `ToastKind`, so adding `pr` to the union without adding it to the duration map is a compile
+error rather than a runtime one. `MotivationModalProps` (P6) gains one optional member, and
+`exactOptionalPropertyTypes` is why the gate passes an element rather than `undefined`:
+`InterventionBody` renders the clinical sentence itself off the limelight skin, so the `??` fallback
+in the modal exists only for the Settings preview, which omits the prop. `SfxContext` (Task 15) is a
+structural subset of the DOM `AudioContext`, which is what lets `getAudioContext()`'s
+`AudioContext | null` satisfy `SfxDeps.context` and lets the test supply a double with no `as` cast.
+
+**3b. One defect found in an earlier task while checking the above, not fixed here.** Task 4 step 4
+replaces the whole `UiPrefs` interface with a six-member version, and Task 4 step 1's `makeUiPrefs`
+returns the same six members. The shipped `src/domain/types.ts` already carries nine members: those
+six plus `videoInstanceHost`, `legacyMigration` and `lastBlockSeenByProfile`, the first two added by
+P6 and P7. An executor running Task 4 verbatim would delete two fields that `src/domain/schema.ts`
+still parses. It fails at compile time rather than losing data, so it is a build break and not a
+data-integrity failure, but it will stop Task 4 dead. The fix is one line of judgement at execution
+time: **add** `lastBlockSeenByProfile` to the interface instead of replacing it, and add
+`videoInstanceHost: null` and `legacyMigration: "pending"` to `makeUiPrefs`. Tasks 11 to 15 are
+written as additive edits with `grep` verifications for exactly this reason, and Task 12 says so in
+step 4. Flagged rather than edited: Task 4 belongs to the part of this plan that was reviewed and
+signed off before the skin system was added, and rewriting it silently would hide the finding.
+
+**4. Gate coverage.** Every row of the gate table names the task that satisfies it, and every row is an executable assertion rather than a claim. G14 to G19 extend that to the skin system: G14 and G17 are unit tests over data, G15, G16 and G18 are rendered-behaviour tests, and G19 is split between a unit test (the four playback rules) and a shell gate that runs in CI (size and format).
 
 ---
 
 ## Master plan amendments requested
 
-Four contract changes. None alters a persisted shape in a way that requires a schema version bump.
+Ten items: four from the original P8 scope and six from the skin system. None alters a persisted shape in a way that requires a schema version bump; the two new `UiPrefs` fields are additive with Zod defaults, so `CURRENT_SCHEMA_VERSION` stays 3.
 
 1. **§5 `UiPrefs` gains one field** (Task 4):
    ```ts
@@ -4840,12 +8785,63 @@ Four contract changes. None alters a persisted shape in a way that requires a sc
 
 4. **`src/store/index.ts` exposes one derived, non-persisted field** (Task 8): `exerciseNames: Readonly<Record<string, string>>`, computed once from `EXERCISE_LIBRARY` at module load. Reason: the spotlight must name exercises rather than list ids. Master plan §3 forbids persisting derived values; this one is computed, never written, and never part of `AppState`, so it cannot reach `persistence.ts`.
 
+5. **§5 `UiPrefs` gains the two skin fields, and §5 gains `SkinId`** (Tasks 11 and 12). Both are
+   already written in master plan §5 (`skin: SkinId; sounds: boolean;` with the comment `skin default
+   "clinical"; sounds default false (Zod defaults, no version bump)`), and neither is in the shipped
+   `src/domain/types.ts` yet. This is therefore an implementation of §5 rather than an amendment to
+   it, recorded here only so a reviewer knows which task lands it.
+
+6. **The copy module's `CopyKey` union gains thirteen keys** (Task 11). Twelve carry the round-three
+   and departures-board design rows that the contract's 180 keys had no home for
+   (`status.weekDeltaNegative`, `status.weekDeltaZero`, `status.weekDeltaPositive`,
+   `status.prReached`, `status.prStamp`, `status.sessionCursor`, `status.planProgress`,
+   `button.add30s`, `hero.weekReview`, `why.progression`, `advice.interventionBody`,
+   `label.settingsSkin`); the thirteenth, `label.settingsSounds`, labels the toggle round-three §6.2
+   requires and the design table does not name. `docs/design/2026-09-01-copy-contract.md` explicitly
+   licenses this: "P2 to P8 append their own keys to both the union and the table in the same task
+   that first renders them." No existing key changes value.
+
+7. **`docs/design/2026-09-01-copy-contract.md` needs a ruling on one string** (Task 11).
+   `button.setUpProfile` is `Set up your profile`, four words, and R1 caps a button at three. The
+   plan neither shortens it (that would break P7's assertion, which quotes the default table) nor
+   passes it silently: it is allowlisted in `copy.test.ts` with the reason in a comment. The ruling
+   wanted is either `Set up profile` and a matching edit to P7's test, or a stated exemption in R1.
+
+8. **A sixth toast class, `pr`** (Task 14), giving `undo > milestone > pr > coach > telemetry >
+   specimen`. Amendment 3 above already recorded that the brief's four classes became five; this
+   makes six, and the brief's ordering still survives as a subsequence. Reason: the MOTHER stamp
+   needs a trigger, P4 already detects a personal record, and a stamp hosted outside the queue could
+   occupy the same corner as an undo toast, which is the defect A59 recorded. §5 and §6.7 say nothing
+   about toast classes, so this is a P8 design note rather than a contract change.
+
+9. **The round-three design table has no row for the sounds toggle's label** (Task 12). The default
+   table gets `label.settingsSounds: 'Sounds'` and no skin overrides it, so the limelight Settings
+   screen renders one sentence-case word inside an otherwise lowercase register. That is a visible
+   wart on the exact screen the design specifies (§7.1 screen 5). The one-line fix is a
+   twenty-second row in the round-three table; it is not invented here, because inventing skin copy
+   is how a copy table stops being a design document's output.
+
+10. **§3's version floors gain three packages, and §4's file tree gains six paths** (Tasks 12 to 15).
+    Packages: `@fontsource-variable/archivo ^5.3.0`, `@fontsource/dm-mono ^5.3.0`,
+    `@fontsource/space-mono ^5.3.0`, all confirmed on npm on 2026-09-01 and all SIL OFL 1.1. Paths:
+    `src/skins/` (already named in §4 as `skins/limelight/`, now with `skinContext.tsx`,
+    `SkinRoot.tsx`, `useReducedMotion.ts`, `sfx.ts` and `skins/board/`), `src/ui/settings/`,
+    `scripts/inline-icons.mjs`, `scripts/check-sfx-size.sh`, `scripts/check-no-emoji.mjs`,
+    `public/sfx/` and `docs/sfx.md`.
+
 **Contract dependencies P8 asserts but does not own** (flagged so a reviewer can confirm them against P1 to P7 rather than discovering them mid-execution):
 
 - P3's `PlanView` must render each planned-exercise row with `id={planRowDomId(session.id, pe.exerciseId)}` and call `useScrollToPlanFocus()` once (Task 8, steps 9 and 10). If `PlanView` renders only the current session rather than every session, Task 8's deep-link assertion narrows accordingly and the narrowing is recorded here.
 - P1's `TopBar` gains an `onOpenSpotlight: () => void` prop (Task 8, step 8).
 - P4's `TrainView` routes set logging through `logSetWithRewards` rather than calling `logSet` directly (Task 10, step 11), and registers any view-local keys through `useHotkeys("train", ...)` rather than its own `window` listener (Task 9, step 8).
 - P1's store is a flat `AppState & AppActions` object, as stated in "Assumptions carried from P1 to P7". Every `useAppStore.setState` in P8's tests depends on it.
+- P1's `src/ui/styles/tokens.css` declares all of its custom properties inside a single `:root { ... }` block (Task 12's `tokens.test.ts` parses that block, and asserts there are 22 of them). If P1 splits the block, the test's count assertion is what fails, and the fix is to widen the parse rather than to loosen the assertion.
+- P3's `TodayView` renders its start control as `<button type="button" onClick={onStart}>Start session</button>` (P3 Task 5 step 7). Task 12 step 13 replaces the literal and Task 13 step 7 replaces the expression; both verify with a `grep` whose expected output is stated.
+- P4's `TrainView` pushes `{ kind: "pr", message }` into the toast queue when `coachLine()` reports a load or rep personal record, using the already-formatted clinical coach line as the message (Task 14). P8 owns the rendering of that toast, not its detection; nothing in P8 pushes one outside a test.
+- P4's `src/ui/audio/chime.ts` holds its `AudioContext` in a module-level `context` binding, which is what Task 15 step 4's `getAudioContext()` returns. P4's `releaseAudio()` closing that context at the end of a session is expected and handled: the player compares context identity and re-decodes.
+- P6's `MotivationModal` renders the miss sentence as the exact `<p className="motivation-detail">` block quoted in Task 14 step 8, and `MotivationGate` renders the modal with the exact prop list quoted in step 9.
+- P6 Task 7 added a `Check the motivation clip's size` step to `.github/workflows/ci.yml`; Task 15 step 10 inserts the sound gate directly after it.
+- P7's Settings view exists as `src/ui/views/SettingsView.tsx` and can host a new section (Task 12 step 12).
 
 **What this plan does not do.**
 
@@ -4855,3 +8851,10 @@ Four contract changes. None alters a persisted shape in a way that requires a sc
 - It does not re-verify any DOI against Crossref. Every citation is taken from the content peer review's verified evidence column; a claim the review did not verify was dropped rather than softened, and no title was reproduced that the review did not state.
 - It does not touch the five dropped legacy cards anywhere but in `DROPPED_CARD_IDS`, and it does not audit `legacy/` for the §7 medication lines - that scrub is P1's, and P7 deletes the tree.
 - It leaves the accessibility of the cutscene unverified beyond `role="dialog"`: focus trapping and restore are not implemented or tested.
+- It does not retrofit P1 to P7's string literals into the copy module. `src/content/copy.ts` holds all 193 keys, and exactly one call site is converted (the Today start control, Tasks 12 and 13). Every other view still renders a literal that happens to equal its default-table entry, so switching to limelight or board changes that one control and nothing else. Converting the rest is a per-view sweep, and it is the single largest piece of work this plan defers.
+- It does not enforce the "a skin never restates a number" rule mechanically. The rule is real and it is stated in the module, but the design documents' specimens use different example scenarios per skin (`2 sessions below target` against `2 of 4. flop era.`), so no assertion over the specimen strings can express it. Enforcement belongs where the formatter runs, which is at call sites this plan does not convert.
+- It does not skin the motivation modal's heading. Task 14 adds a body slot only, so the `<h2>` renders the clinical `Weekly target missed` under every skin and `hero.weeklyTargetMissed`'s limelight override (`the intervention`) is defined but not yet rendered. A title slot is a one-line follow-up on P6's component.
+- It does not measure a single rendered pixel. Every contrast figure in `src/skins/limelight/tokens.css` is quoted from the round-three plan's computed table; the icons are asserted by decoded bytes and dimensions, not by appearance; and `vitest.config.ts` stubs CSS for every sheet but `crt.css`, so the token tests read files rather than computed styles. Nothing here verifies that the limelight screens look right, and the round-three checker (44 px tap targets, no horizontal scroll at 390 px, per-node contrast) is not run against the built app by any task in this plan.
+- It ships no audio and does not audition any. Task 15's player is tested against a double; `public/sfx/` contains only `.gitkeep`; and until someone drops four `.m4a` files in, every `play()` is a silent no-op by design. The licence of whatever is dropped in is verified per file at that point, not here.
+- It does not test the marquee's or the stamp's animation. jsdom evaluates no media query and runs no CSS animation, so the reduced-motion branches are asserted through the `data-reduced-motion` attribute and the rendered item count, and the keyframes themselves are unverified. The same is true of the 44 px tap-target floor, which is a declaration in `limelight.css` that no test measures.
+- It does not add the board skin's own components. Direction H's split-flap motion, its flap seam and its quote-tweet inset are not built: the board skin is a token set and a sixteen-row copy table, which is enough to switch to it and read the app, and nothing more.
