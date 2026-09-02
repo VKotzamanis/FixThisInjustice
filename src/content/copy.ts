@@ -624,7 +624,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.clearData': 'Clear stored data',
   'recovery.cleared.hero': 'Stored data cleared',
   'recovery.cleared.advice': 'Reload to start empty.',
-  'hero.noProfile': 'No profile yet',
+  'hero.noProfile': 'No profile',
   'advice.noProfile': 'Setup is not built yet.',
 
   // --- setup wizard, targets, check-in (P2) ---
@@ -773,13 +773,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'nav.settings': 'Settings',
 
   // --- today and plan (P3) ---
-  'hero.noPlan': 'No plan configured.',
+  'hero.noPlan': 'No plan.',
   'advice.completeSetup': 'Complete setup to generate a plan.',
   'hero.programmeComplete': 'Programme complete.',
   'hero.sessionCompleted': 'Session completed.',
   'hero.sessionSkipped': 'Session skipped.',
   'hero.sessionInProgress': 'Session in progress.',
-  'hero.noSessionToday': 'No session scheduled today.',
+  'hero.noSessionToday': 'No session today.',
   'advice.nextSession': 'Next: {weekday} {startTime} {label}.', // template; FORMAT.nextSession
   'advice.noSessionIn14Days': 'No sessions in the next 14 days.',
   'advice.noSessionsLeftThisWeek': 'No sessions remain this week.',
@@ -884,7 +884,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- motivation video (P6) ---
   'hero.weeklyTargetMissed': 'Weekly target missed',
-  'hero.motivationPreview': 'Motivation video: preview',
+  'hero.motivationPreview': 'Video preview',
   'advice.motivationPreview': 'Preview. No week is being reported.',
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
@@ -1181,7 +1181,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- legacy migration wizard (P7 Task 3; appended by that task) ---
   'hero.legacyImport': 'Import from the old app',
-  'hero.legacyPreview': 'What the import will write',
+  'hero.legacyPreview': 'What the import writes',
   'hero.legacyDone': 'Import complete',
   // The offer. It states the fact and the one guarantee that makes accepting it safe; it asks
   // for nothing (R7).
@@ -1243,7 +1243,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // or a push endpoint is not something the user can act on, and the endpoint is a credential.
   'advice.reminderSubscribeFailed': 'The browser refused to register this device.',
   'advice.reminderSyncFailed': 'The schedule did not reach the server.',
-  'hero.installHomeScreen': 'Install to the Home Screen',
+  'hero.installHomeScreen': 'Install the app',
   'advice.installOnlyInstalledApp': 'Only an installed app receives notifications. A browser tab does not.',
   'advice.installIosVersion': 'Requires iOS 18.4 or later.',
   'label.installIos': 'iPhone and iPad',
