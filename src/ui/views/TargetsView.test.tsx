@@ -380,7 +380,14 @@ describe('TargetsView', () => {
   it('says so plainly when there is no profile instead of rendering empty targets', () => {
     useAppStore.getState().wipeAll();
     render(<TargetsView />);
-    expect(screen.getByText('No profile. Complete setup first.')).toBeInTheDocument();
+    // By key through the ACTIVE skin, not as a literal: wipeAll replaces `ui`, which puts the
+    // shipped skin back (src/domain/schema.ts defaults it to limelight), and the limelight table
+    // carries a row for this key since P9 Task 12.
+    expect(
+      screen.getByText(
+        copyFor(useAppStore.getState().ui.skin, 'advice.noProfileSetupFirst'),
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByTestId('target-kcal')).toBeNull();
   });
 });
