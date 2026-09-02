@@ -52,7 +52,7 @@ Additional checks this plan states before doing the work:
 
 | Check | Pass criterion |
 | --- | --- |
-| iOS video policy | the rendered `<video>` carries `playsinline`, carries neither `autoplay` nor `muted`, and `play()` is called only from the `Play` click handler |
+| iOS video policy | superseded by master plan decision 10.9: the rendered `<video>` carries `playsinline`, `autoplay`, `loop` and `muted`, carries no `controls`, and a tap on the element unmutes it |
 | asset round-trip | a 3-byte `video/mp4` `File` saved through `saveCustomVideo` returns from `getCustomVideoUrl` as a `blob:` URL; a non-video MIME type is rejected; a file over 157286400 bytes is rejected |
 | object URL hygiene | unmounting the modal calls the revoke callback exactly once |
 | precache | `dist/sw.js` (or the generated precache manifest) contains no entry matching `media/motivation.mp4` after `npm run build` |
@@ -808,7 +808,17 @@ git commit -m "feat: add motivation store actions and the pending-motivation sel
   - `interface MotivationModalProps { review: WeeklyReview | null; videoSrc: string; posterSrc: string; revokeOnUnmount: () => void; onDismiss: () => void; onDismissForWeek: () => void }`
   - `MotivationModal(props: MotivationModalProps): ReactElement`
 
-**Why the modal never autoplays.** WebKit's iOS video policy (REFERENCES.md, `https://webkit.org/blog/6784/new-video-policies-for-ios/`) sets three rules this component obeys literally: `playsinline` is required or iPhone Safari takes the video fullscreen on play; autoplay is permitted only when the element is muted; and starting playback *with sound* requires a user gesture. So the element carries `playsinline` and carries neither `autoplay` nor `muted`, and the only call to `play()` sits inside the `Play` button's click handler. A muted autoplay was rejected: a silent confrontation clip defeats the feature's purpose, and unmuting later would itself need the gesture.
+**Why the modal autoplays muted.** Superseded by master plan decision 10.9
+(`motivation-muted-autoplay-tap-to-unmute`, adopted 2026-09-02). The clip carries `playsinline`,
+`muted`, `autoplay` and `loop`, and no transport control (`src/ui/motivation/MotivationModal.tsx`,
+lines 199 to 202). A tap on the element unmutes it, and `advice.tapForSound` names that state while
+it holds. The draft below argued for a `Play` button; decision 10.2 had already settled the dialog
+on one `Dismiss` control, and WebKit's iOS policy permits a muted inline element to start with no
+gesture, so the clip is running before the user decides whether to hear it. The
+`MotivationModalProps` block above is also stale: the shipped interface takes `review`, `profileId`
+and one `onDismiss` (`MotivationModal.tsx:54` to `:64`), not `videoSrc`, `posterSrc`,
+`revokeOnUnmount` and two dismissal callbacks. The paragraph below inherits that error where it
+speaks of two injected dismissal callbacks.
 
 `review === null` is preview mode, used by Settings in Task 6. The modal has no other mode flag: the two dismissal callbacks are injected, so the caller decides whether dismissing records anything.
 
@@ -1914,3 +1924,11 @@ Each item is a change to `docs/plans/2026-09-01-00-master-plan.md` that this pla
 8. **§4 file tree — add `public/media/.gitkeep`, `docs/motivation-video.md`, `scripts/check-media-size.sh`, `src/ui/motivation/MotivationGate.tsx`, `src/ui/motivation/MotivationSettings.tsx`, and `src/ui/motivation/motivation.css`.** §4 lists only `MotivationModal.tsx` under `ui/motivation/`.
 
 9. **No CSP change is required, and this is worth recording.** The modal's poster is an inline `data:` SVG, admitted by the existing `img-src 'self' data: blob:`; a custom clip plays from a `blob:` object URL, admitted by the existing `media-src 'self' blob:`; the bundled clip is same-origin. If the poster ever becomes a shipped image file, `img-src 'self'` still covers it.
+
+10. **Task 4's draft is superseded by master plan decision 10.9.** The draft specified no autoplay
+    and a `Play` button. What shipped is a muted autoplay with tap-to-unmute and one `Dismiss`. The
+    reason sits in the decision; it is recorded here so that a reviewer comparing the plan against
+    `src/ui/motivation/MotivationModal.tsx` reads the difference as a decision rather than as drift.
+    Corrected in place on 2026-09-02 (P9): the "iOS video policy" row of the gate table, and the
+    paragraph that headed Task 4. The draft test and the draft component below that paragraph were
+    left as they were drafted, so the `Play` button still appears there; the paragraph now says so.
