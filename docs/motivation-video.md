@@ -1,10 +1,9 @@
 # Motivation video
 
-The app is to play one clip after an ISO week closes below its session target. Playback is
-not built yet. `src/ui/motivation/` does not exist, and Tasks 4 to 6 of
-`docs/plans/2026-09-01-06-motivation-video.md` specify it. The domain half is built:
-`src/domain/motivation/trigger.ts` chooses the week, and `src/domain/motivation/assets.ts`
-chooses the file. This page covers the file.
+The app plays one clip after an ISO week closes below its session target.
+`src/domain/motivation/trigger.ts` chooses the week and `src/domain/motivation/assets.ts`
+chooses the file. `src/ui/motivation/MotivationGate.tsx`, mounted by `src/app/App.tsx`, shows
+the modal. This page covers the file you supply.
 
 ## Where the clip goes
 
@@ -21,8 +20,7 @@ export const BUNDLED_VIDEO_SRC = `${import.meta.env.BASE_URL}media/motivation.mp
 The name is fixed. Nothing scans the directory. A file under any other name is published
 but never played, and `scripts/check-media-size.sh` still measures it.
 
-To replace the clip, overwrite that one file and rebuild. Nothing else changes. Nothing plays
-the clip today: the app picks it up once Tasks 4 to 6 land.
+To replace the clip, overwrite that one file and rebuild. Nothing else changes.
 
 Shipping no clip is a supported state. `public/media/` holds only `.gitkeep` today.
 `probeBundledVideo()` sends a HEAD request to `BUNDLED_VIDEO_SRC`, so the app can tell a
@@ -54,11 +52,11 @@ Two facts about the player constrain the encode. WebKit's iOS video policy requi
 `playsinline`, or iPhone Safari takes the video fullscreen the moment it plays. Starting
 playback with sound requires a user gesture.
 
-The modal is not built yet. Task 4 of `docs/plans/2026-09-01-06-motivation-video.md`
-specifies it, and sets this contract. The modal renders a `<video>` that carries
-`playsinline` and carries neither `autoplay` nor `muted`. It calls `play()` only from the
-Play button's click handler. The clip therefore plays inline, at the modal's size, on a
-portrait phone, and it never plays silently. Encode for that.
+The modal is `src/ui/motivation/MotivationModal.tsx`. It renders a `<video>` carrying
+`playsinline`, `autoplay`, `loop` and `muted`, with no transport controls, and a tap on the
+clip unmutes it. That supersedes the P6 plan's Play button; master plan section 10.9 records
+the decision and the reason. The clip therefore plays inline, at the modal's size, on a
+portrait phone, and it starts silently. Encode for that.
 
 ## Size
 
@@ -116,8 +114,8 @@ path test, not a precache entry.
 
 ## Using your own clip instead
 
-Not built yet. Task 6 of `docs/plans/2026-09-01-06-motivation-video.md` specifies it and
-`src/ui/motivation/` does not exist. The contract the plan sets:
+The section is `src/ui/motivation/MotivationSettings.tsx`, mounted by Settings. The contract
+Task 6 of `docs/plans/2026-09-01-06-motivation-video.md` set, and it was built to:
 
 - A Motivation video section in Settings, headed "Motivation video".
 - A line reading "Bundled clip: present.", "Bundled clip: absent. Choose a file below.",
@@ -138,8 +136,8 @@ from a second profile replaces the first profile's clip. `resolveVideoSrc` prefe
 clip over the bundled file, and falls back to the bundled file when the stored id no longer
 resolves.
 
-Export is not built yet either. It belongs to P7, and the plan sets the contract. An export is
-to carry the asset id only. The clip itself stays on the device that chose it.
+The JSON export carries the asset id only, as `MotivationState.customVideoAssetId` in
+`src/domain/types.ts`. The clip itself stays on the device that chose it.
 
 ## Why not Ogg or WebM
 
