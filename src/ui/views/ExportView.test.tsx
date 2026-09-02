@@ -2,9 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ExportView } from './ExportView';
 import { FORMAT, copy } from '../../content/copy';
-import { makeBlankState } from '../../test/migrationFactories';
-import { useAppStore } from '../../store';
+import { makeBlankState, makeProfile } from '../../test/migrationFactories';
+import { flushSave, startPersistence, useAppStore } from '../../store';
+import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
+import { parseState } from '../../domain/schema';
+import type { SessionAssignment } from '../../domain/types';
 
 /**
  * The instant every assertion is dated from: 2026-09-01T12:00:00Z, which is 2026-09-01 in
@@ -15,6 +18,17 @@ const NOW = Date.UTC(2026, 8, 1, 12, 0, 0); // [ms]
 
 /** What each synthetic download carried. jsdom implements neither of the two APIs it needs. */
 let downloads: { name: string; type: string }[] = [];
+
+/**
+ * Teardowns for every startPersistence() subscription a test started. Unconditional in
+ * afterEach, following store/index.test.ts's own pattern: a test that fails before reaching
+ * its own stop() call must not leave the subscription writing on behalf of every later test.
+ */
+const liveTeardowns = new Set<() => void>();
+
+function startPersistenceForTest(): void {
+  liveTeardowns.add(startPersistence());
+}
 
 beforeEach(() => {
   installFakeStorage();
@@ -35,6 +49,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  for (const stop of [...liveTeardowns]) stop();
+  liveTeardowns.clear();
   Reflect.deleteProperty(URL, 'createObjectURL');
   Reflect.deleteProperty(URL, 'revokeObjectURL');
 });
@@ -80,6 +96,60 @@ describe('ExportView', () => {
       'fti-summary-2026-09-01.txt',
       'fti-sessions-2026-09-01.ics',
     ]);
+  });
+
+  it('omits a VEVENT for a day already completed or skipped, but keeps a planned future day', async () => {
+    // 2026-09-01 (the mocked NOW, Athens) is a Tuesday. The fixture's availability slots
+    // (migrationFactories.makeAvailability) fall on ISO weekdays 1/3/5/6 -- Mon/Wed/Fri/Sat --
+    // so the first four training days the 28-day window covers are 09-02 (Wed), 09-04 (Fri),
+    // 09-05 (Sat) and 09-07 (Mon).
+    const assignment = (patch: Partial<SessionAssignment>): SessionAssignment => ({
+      date: '2026-09-02',
+      sessionId: 's-push',
+      sourceIndex: 0,
+      status: 'completed',
+      startedAt: NOW,
+      completedAt: NOW,
+      skipReason: null,
+      ...patch,
+    });
+    const state = {
+      ...makeBlankState(),
+      assignments: {
+        p1: [
+          assignment({ date: '2026-09-02', sessionId: 's-push', status: 'completed' }),
+          assignment({
+            date: '2026-09-04',
+            sessionId: 's-pull',
+            status: 'skipped',
+            startedAt: null,
+            completedAt: null,
+            skipReason: 'illness',
+          }),
+        ],
+      },
+    };
+    useAppStore.getState().replaceState(state);
+
+    const blobs: Blob[] = [];
+    URL.createObjectURL = vi.fn((blob: Blob | MediaSource) => {
+      if (blob instanceof Blob) blobs.push(blob);
+      return 'blob:fti/1';
+    });
+
+    render(<ExportView />);
+    click(copy('button.downloadCalendar'));
+    const ics = await blobs[0]!.text();
+
+    // The two terminal days: no VEVENT for either, regardless of whether it was completed or
+    // skipped.
+    expect(ics).not.toContain('UID:2026-09-02-s-push@fixthisinjustice');
+    expect(ics).not.toContain('UID:2026-09-04-s-pull@fixthisinjustice');
+    // The walk is not advanced by a terminal day (calendar.ts's own rule), so the first two
+    // unassigned slot days -- 09-05 (Sat) and 09-07 (Mon) -- are projected from the plan's own
+    // start (s-push, then s-pull) and must still produce a VEVENT each.
+    expect(ics).toContain('UID:2026-09-05-s-push@fixthisinjustice');
+    expect(ics).toContain('UID:2026-09-07-s-pull@fixthisinjustice');
   });
 
   it('shows the parse error and changes nothing for text that is not JSON', () => {
@@ -151,6 +221,42 @@ describe('ExportView', () => {
 
     expect(JSON.parse(useAppStore.getState().exportJson())).toEqual(JSON.parse(document_));
     expect(screen.getByText(copy('status.importOk'))).toBeTruthy();
+  });
+
+  it('persists the imported document to storage once Replace commits it', () => {
+    // The in-memory store (exportJson(), asserted above) proves the STATE changed; it says
+    // nothing about the disk. startPersistence() is not on by default in this suite -- most
+    // tests here never touch storage -- so it is switched on for this one test only.
+    const storage = installFakeStorage();
+    // The persistence subscription refuses to write until the store is marked hydrated
+    // (store/index.ts canPersist); hydrate() against the now-empty fake storage takes the
+    // "absent" branch, which only flips that flag and leaves the profile/plan the outer
+    // beforeEach already installed untouched.
+    useAppStore.getState().hydrate();
+    startPersistenceForTest();
+    render(<ExportView />);
+
+    const imported = JSON.stringify(makeBlankState(makeProfile({ displayName: 'Imported Athlete' })));
+    check(imported);
+    click(copy('button.downloadJson'));
+    fireEvent.change(screen.getByLabelText(copy('confirm.typeToConfirm')), {
+      target: { value: 'DELETE' },
+    });
+    click(copy('button.replaceData'));
+
+    // The write is debounced (SAVE_DEBOUNCE_MS); flushSave() commits it synchronously without
+    // switching this file over to fake timers.
+    flushSave();
+
+    const raw = storage.get(STORAGE_KEY);
+    expect(raw).toBeDefined();
+    const result = parseState(JSON.parse(raw ?? 'null'));
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.state.profiles[result.state.activeProfileId ?? '']?.displayName).toBe(
+        'Imported Athlete',
+      );
+    }
   });
 
   it('re-imports its own export to an equal state', () => {

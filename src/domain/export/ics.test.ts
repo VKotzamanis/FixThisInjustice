@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { instantOf } from '../dates';
 import { buildIcs } from './ics';
 import type { IcsEvent } from './ics';
@@ -177,5 +177,51 @@ describe('buildIcs', () => {
 
   it('rejects a zone it cannot resolve rather than exporting the process zone', () => {
     expect(() => buildIcs([event()], 'Not/AZone', NOW)).toThrow(RangeError);
+  });
+
+  it('labels a window that crosses a calendar year from the years it actually touches, not just the opening one', () => {
+    // 2026-12-20 to 2027-01-17 in Athens sits entirely in EET (UTC+2) winter time: EU summer
+    // time does not start until the last Sunday of March. No transition falls inside the
+    // window, so the anchor -- the only sub-component the export should emit -- must be
+    // STANDARD. Sampling only the opening year (2026) happens to still find the correct
+    // Jan/Jul offsets for Athens across this particular year boundary, so this test cannot,
+    // by itself, distinguish the single-year sampling from the fixed both-years sampling for
+    // THIS zone; it is a regression guard for the year-spanning case, not a discriminator.
+    // See the report for the synthetic discriminator that does catch the single-year defect.
+    const window: IcsEvent[] = [
+      event({ uid: 'a@x', date: '2026-12-20', startTime: '09:00' }),
+      event({ uid: 'b@x', date: '2027-01-17', startTime: '09:00' }),
+    ];
+    const out = unfold(buildIcs(window, ATHENS, NOW));
+    const anchorLines = out.filter((l) => l === 'BEGIN:STANDARD' || l === 'BEGIN:DAYLIGHT');
+    expect(anchorLines).toEqual(['BEGIN:STANDARD']); // exactly one sub-component: the anchor
+    expect(out).toContain('TZOFFSETFROM:+0200');
+    expect(out).toContain('TZOFFSETTO:+0200');
+  });
+
+  it('samples the reference offset from every year the window crosses, not just the opening one', () => {
+    // Direct proof of the fix's mechanism, independent of whether Athens's actual rule happens
+    // to be identical across the two years it is asked to sample (it is, which is why the
+    // end-to-end assertion above cannot by itself distinguish single-year from both-years
+    // sampling for this zone). The window is chosen to avoid the 15th of any month so the
+    // ordinary hourly transition scan cannot coincidentally reproduce the (month, day=15,
+    // hour=12) signature the reference-offset sampling itself uses -- which would otherwise
+    // contaminate the spy with unrelated Date.UTC calls.
+    const spy = vi.spyOn(Date, 'UTC');
+    const window: IcsEvent[] = [
+      event({ uid: 'a@x', date: '2026-12-20', startTime: '09:00' }),
+      event({ uid: 'b@x', date: '2027-01-05', startTime: '09:00' }),
+    ];
+    buildIcs(window, ATHENS, NOW);
+    const sampledYears = new Set(
+      spy.mock.calls
+        .filter(
+          (args): args is [number, number, number, number] =>
+            args[3] === 12 && args[2] === 15 && (args[1] === 0 || args[1] === 6),
+        )
+        .map(([year]) => year),
+    );
+    spy.mockRestore();
+    expect(sampledYears).toEqual(new Set([2026, 2027]));
   });
 });
