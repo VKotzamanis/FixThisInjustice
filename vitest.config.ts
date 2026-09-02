@@ -6,7 +6,9 @@ export default defineConfig({
   test: {
     testTimeout: 20_000, // [ms] UI suites run 25 s in total under a loaded runner; the default 5 s flaked (P2 final review)
     environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
+    // build/ holds the Vite plugin tests (build/cspPlugin.test.ts). They are plain
+    // Node-side unit tests but share this config so `npm test` is the single gate.
+    include: ['src/**/*.test.{ts,tsx}', 'build/**/*.test.ts'],
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
     /*
