@@ -8,7 +8,8 @@
 // session-local half - "this exercise is on today's card" - is the session slice's
 // bonusExerciseIds, which is mirrored to sessionStorage and dropped when the session ends.
 import { useState, type ReactElement } from 'react';
-import { FORMAT, copy } from '../../../content/copy';
+import { FORMAT } from '../../../content/copy';
+import { useCopy } from '../../../content/useCopy';
 import { newId } from '../../../domain/ids';
 import { EXERCISE_NAME_MAX_CHARS } from '../../../domain/schema';
 import type { Exercise, Modality, Profile } from '../../../domain/types';
@@ -19,6 +20,7 @@ const MODALITIES: readonly Modality[] = ['barbell', 'dumbbell', 'machine', 'cabl
 
 export function AddCustomExercise(props: { profile: Profile }): ReactElement {
   const { profile } = props;
+  const c = useCopy();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [modality, setModality] = useState<Modality>('dumbbell');
@@ -43,7 +45,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
     if (trimmed === '' || trimmed.length > EXERCISE_NAME_MAX_CHARS) {
       setError(
         FORMAT.outOfRange(
-          copy('quantity.exerciseName'),
+          c('quantity.exerciseName'),
           1, // [characters] ExerciseSchema.name minimum
           EXERCISE_NAME_MAX_CHARS, // [characters]
           'characters',
@@ -86,7 +88,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
     } catch {
       // The thrown text names the store function and the id it minted, neither of which the
       // user chose or can act on, so the copy line is shown instead of the message.
-      setError(copy('status.customExerciseRefused'));
+      setError(c('status.customExerciseRefused'));
       return;
     }
     setError(null);
@@ -103,7 +105,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
           setOpen(true);
         }}
       >
-        {copy('button.addExercise')}
+        {c('button.addExercise')}
       </button>
     );
   }
@@ -111,7 +113,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
   return (
     <div className="add-custom">
       <div className="unit-input">
-        <label htmlFor="custom-exercise-name">{copy('quantity.exerciseName')}</label>
+        <label htmlFor="custom-exercise-name">{c('quantity.exerciseName')}</label>
         <input
           id="custom-exercise-name"
           type="text"
@@ -131,7 +133,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
         />
       </div>
       <div className="unit-input">
-        <label htmlFor="custom-exercise-modality">{copy('label.equipment')}</label>
+        <label htmlFor="custom-exercise-modality">{c('label.equipment')}</label>
         <select
           id="custom-exercise-modality"
           value={modality}
@@ -156,10 +158,10 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
           setOpen(false);
         }}
       >
-        {copy('button.cancel')}
+        {c('button.cancel')}
       </button>
       <button type="button" onClick={submit}>
-        {copy('button.saveExercise')}
+        {c('button.saveExercise')}
       </button>
       {/*
        * role="alert" because it answers a control the user just pressed, and it is rendered

@@ -8,7 +8,8 @@
 // cue names no amount at all ("Drink to thirst"), and the button's volume is the profile's own
 // editable cup size, which is display granularity rather than a dose.
 import { useEffect, useState, type ReactElement } from 'react';
-import { FORMAT, copy } from '../../../content/copy';
+import { FORMAT } from '../../../content/copy';
+import { useCopy } from '../../../content/useCopy';
 import { HYDRATION_COPY_KEY, hydrationCue } from '../../../domain/training/hydration';
 import type { LocalDate, Profile } from '../../../domain/types';
 import { formatVolume } from '../../../domain/units';
@@ -24,6 +25,12 @@ export function HydrationBanner(props: {
   sessionActive: boolean;
 }): ReactElement | null {
   const { profile, date, sessionActive } = props;
+  /*
+   * Read unconditionally, above the `cue === null` return below: a hook behind an early return
+   * is a hook that stops being called when the cue clears, which is the rules-of-hooks defect.
+   * One subscription per banner, and the banner is a singleton on this screen.
+   */
+  const c = useCopy();
   /*
    * The whole store snapshot, deliberately: hydrationCue reads profiles, assignments,
    * hydration and bodyMass, and the store keeps AppState at its top level, so the snapshot IS
@@ -60,15 +67,15 @@ export function HydrationBanner(props: {
           formatVolume(Math.max(0, targetML - (cue.shortfallML ?? 0)), profile.units),
           formatVolume(targetML, profile.units),
         )
-      : copy(HYDRATION_COPY_KEY[cue.kind]);
+      : c(HYDRATION_COPY_KEY[cue.kind]);
 
   return (
     <div className="hydration-banner" role="status">
       <span>{message}</span>
       {cue.kind === 'post-session-weigh' ? (
         <details className="hydration-why">
-          <summary>{copy('disclosure.why')}</summary>
-          <p>{copy('why.postSessionMass')}</p>
+          <summary>{c('disclosure.why')}</summary>
+          <p>{c('why.postSessionMass')}</p>
         </details>
       ) : (
         <button

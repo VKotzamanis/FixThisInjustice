@@ -19,8 +19,9 @@
 // straight to Train never passed through Today's Start tap (code review A29); and the session
 // slice is cleared when the session ends, so a reload cannot revive a finished session.
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { crossedMilestones } from '../../domain/fun/blocks';
 import { EXERCISES } from '../../domain/plan/library';
@@ -71,6 +72,18 @@ export function TrainView(): ReactElement {
   const todaysSets = useTodaysSets();
   const profileId = profile?.id ?? null;
   const { push } = useToasts();
+  /*
+   * The skin's words, read ONCE for the whole screen and threaded down.
+   *
+   * `useCopy()` and `useCopyOverrides()` both subscribe to `ui.skin`. This view renders up to
+   * eight exercise cards of up to six set rows each, so a hook call at the leaf would put ~48
+   * subscriptions behind one field that changes at most once a session. `c` is passed to
+   * ExerciseCard as `t` and forwarded to SetRow from there; the singleton children
+   * (RestTimerPanel, HydrationBanner, AddCustomExercise, BodyMassQuickLog) read the hook
+   * themselves, because one subscription each is not worth a prop.
+   */
+  const c = useCopy();
+  const overrides = useCopyOverrides();
 
   const [openId, setOpenId] = useState<string | null>(null);
 
@@ -97,7 +110,7 @@ export function TrainView(): ReactElement {
        * here, at the boundary. The domain names which sentence to say; this file says it in the
        * words src/content/copy.ts holds, so P8's skin overlay reaches it.
        */
-      push({ kind: line.tone, message: FORMAT.withSlots(line.key, line.params) });
+      push({ kind: line.tone, message: FORMAT.withSlots(line.key, line.params, overrides) });
       if (profileId === null) return;
 
       /*
@@ -149,7 +162,7 @@ export function TrainView(): ReactElement {
        */
       if (specimen !== null) push({ kind: 'specimen', cardId: specimen });
     },
-    [push, profileId],
+    [push, profileId, overrides],
   );
 
   const onDeleted = useCallback(() => {
@@ -161,7 +174,7 @@ export function TrainView(): ReactElement {
     if (pending === null) return;
     push({
       kind: 'undo',
-      message: copy('coach.setDeleted'),
+      message: c('coach.setDeleted'),
       // [ms] epoch UTC. The buffer's own deadline, which is deletedAt + UNDO_WINDOW_MS.
       deadlineAt: pending.expiresAt,
       onUndo: () => {
@@ -172,7 +185,7 @@ export function TrainView(): ReactElement {
         useAppStore.getState().undoDelete();
       },
     });
-  }, [push]);
+  }, [push, c]);
 
   const library = useMemo<Record<string, Exercise>>(() => {
     const map: Record<string, Exercise> = {};
@@ -184,7 +197,7 @@ export function TrainView(): ReactElement {
   }, [customExercises, profileId]);
 
   if (profile === null || profileId === null) {
-    return <p className="view">{copy('advice.noProfileTrain')}</p>;
+    return <p className="view">{c('advice.noProfileTrain')}</p>;
   }
 
   const today = todayLocal(profile.timezone);
@@ -213,8 +226,8 @@ export function TrainView(): ReactElement {
   if (session === null || assignment === null) {
     return (
       <div className="view train">
-        <h2>{copy('hero.train')}</h2>
-        <p>{copy('advice.noSessionToday')}</p>
+        <h2>{c('hero.train')}</h2>
+        <p>{c('advice.noSessionToday')}</p>
         <HydrationBanner profile={profile} date={today} sessionActive={false} />
       </div>
     );
@@ -293,7 +306,7 @@ export function TrainView(): ReactElement {
         <div>
           <div className="train-eyebrow">{FORMAT.sessionEyebrow(session.ordinal, session.label)}</div>
           <h2>{session.name}</h2>
-          {block.isDeload && <div className="train-deload">{copy('advice.deloadBlock')}</div>}
+          {block.isDeload && <div className="train-deload">{c('advice.deloadBlock')}</div>}
         </div>
         <RestTimerPanel />
       </div>
@@ -310,6 +323,7 @@ export function TrainView(): ReactElement {
           return (
             <ExerciseCard
               key={planned.exerciseId}
+              t={c}
               profile={profile}
               exercise={exercise}
               planned={planned}
@@ -333,6 +347,7 @@ export function TrainView(): ReactElement {
           return (
             <ExerciseCard
               key={id}
+              t={c}
               profile={profile}
               exercise={exercise}
               planned={bonusSlot(id)}
@@ -361,7 +376,7 @@ export function TrainView(): ReactElement {
           // The reference itself: there is nothing to compare it against, so no flag.
           preSessionMassKg={null}
           id="body-mass-pre-session"
-          quantity={copy('quantity.preSessionBodyMass')}
+          quantity={c('quantity.preSessionBodyMass')}
         />
       )}
 
@@ -373,13 +388,13 @@ export function TrainView(): ReactElement {
           // null disables the comparison rather than making one against the wrong reference.
           preSessionMassKg={null}
           id="body-mass-quick"
-          quantity={copy('quantity.bodyMass')}
+          quantity={c('quantity.bodyMass')}
         />
       )}
 
       {!completed && (
         <button type="button" onClick={onFinish}>
-          {copy('button.finishSession')}
+          {c('button.finishSession')}
         </button>
       )}
 
@@ -390,7 +405,7 @@ export function TrainView(): ReactElement {
             date={today}
             preSessionMassKg={preSessionMassKg} // [kg] this session's own starting mass, or null
             id="body-mass-post-session"
-            quantity={copy('quantity.postSessionBodyMass')}
+            quantity={c('quantity.postSessionBodyMass')}
           />
           <button
             type="button"
@@ -398,7 +413,7 @@ export function TrainView(): ReactElement {
               useAppStore.getState().setUi({ lastView: 'today' });
             }}
           >
-            {copy('button.backToToday')}
+            {c('button.backToToday')}
           </button>
         </div>
       )}

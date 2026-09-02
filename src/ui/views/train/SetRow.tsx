@@ -15,7 +15,7 @@
 // field is recorded as "45 repetitions": the coach's rep-range rungs and the progression
 // engine's top-of-range test then judge a hold as if it were a set of 45.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { FORMAT, copy } from '../../../content/copy';
+import { FORMAT, type CopyKey } from '../../../content/copy';
 import type { Kg, LoggedSet, Prescription, Seconds, UnitSystem } from '../../../domain/types';
 import { displayLoad, formatLoad } from '../../../domain/units';
 import { UnitInput, loadUnit, storedLoadKg } from '../../components/UnitInput';
@@ -44,6 +44,19 @@ export function isTimedPrescription(p: Prescription): boolean {
 const MAX_DURATION_S = 86_400;
 
 export interface SetRowProps {
+  /**
+   * The active skin's copy lookup, READ ONCE BY THE VIEW AND PASSED DOWN.
+   *
+   * `useCopy()` subscribes to `ui.skin` through the store, and this component is mounted up to
+   * six times per exercise card and up to eight cards deep, so calling the hook here would put
+   * ~48 store subscriptions behind one field that changes at most once a session. TrainView
+   * reads it once and ExerciseCard forwards it, which is one subscription for the whole grid.
+   *
+   * No `overrides` companion prop: every FORMAT frame this file renders (`setCounter`,
+   * `loggedSet`, `loggedTimedSet`, the four quantity names and the two aria labels) is a pure
+   * composition with no copy key behind it, so there is no overlay for one to reach.
+   */
+  t: (key: CopyKey) => string;
   /** Unique per exercise card, so two open cards cannot mint the same DOM id. */
   domIdPrefix: string;
   n: number;
@@ -68,6 +81,7 @@ function prefill(suggestedKg: Kg | null, units: UnitSystem): string {
 
 export function SetRow(props: SetRowProps): ReactElement {
   const {
+    t,
     domIdPrefix,
     n,
     targetSets,
@@ -107,7 +121,7 @@ export function SetRow(props: SetRowProps): ReactElement {
       // The timed field says what it wants, wired to the control by UnitInput's own
       // aria-describedby / aria-invalid pair. The repetition field keeps its silent refusal:
       // changing it is outside this pass, and a message there would be a second contract.
-      if (timed) setCountError(copy('advice.durationNeeded'));
+      if (timed) setCountError(t('advice.durationNeeded'));
       return;
     }
     // A bodyweight set stores 0, never null and never a dropped falsy value (master plan
@@ -121,7 +135,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     countRef.current?.blur();
   };
 
-  const marker = isBonus ? copy('label.bonusSet') : FORMAT.setCounter(n, targetSets);
+  const marker = isBonus ? t('label.bonusSet') : FORMAT.setCounter(n, targetSets);
 
   if (logged !== null) {
     return (
@@ -136,7 +150,7 @@ export function SetRow(props: SetRowProps): ReactElement {
             : FORMAT.loggedTimedSet(formatLoad(logged.loadKg, units), logged.durationS)}
         </span>
         <button type="button" onClick={onDelete} aria-label={FORMAT.deleteSetLabel(n)}>
-          {copy('button.deleteSet')}
+          {t('button.deleteSet')}
         </button>
       </div>
     );
@@ -225,7 +239,7 @@ export function SetRow(props: SetRowProps): ReactElement {
           />
         </div>
         <button type="button" onClick={submit} aria-label={FORMAT.logSetLabel(n)}>
-          {copy('button.logSet')}
+          {t('button.logSet')}
         </button>
       </div>
     </div>
