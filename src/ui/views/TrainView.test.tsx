@@ -148,6 +148,13 @@ function seed(opts: SeedOptions = {}): AppState {
   for (const s of opts.sets ?? []) sets[s.id] = s;
   return {
     ...defaultState(),
+    /*
+     * The skin every assertion in this file quotes. The shipped default is 'limelight'
+     * (schema.ts), and P8 Task 16 put the toast queue and the shared components on
+     * `useCopy()`, so a seed that left the default in place would be read against the
+     * wrong table. A test about a skin names the one it wants.
+     */
+    ui: { ...defaultState().ui, skin: 'clinical' },
     // The ordinal the specimen draw is keyed by, and the counter the milestones are read from
     // (master plan section 10.8). Seeded so a test can stand one set short of the number it is
     // about to assert on rather than logging fifty.

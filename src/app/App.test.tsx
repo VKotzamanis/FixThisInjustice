@@ -110,6 +110,23 @@ beforeEach(() => {
   });
 });
 
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a view that reads the
+ * table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them.
+ *
+ * A seed that REPLACES `ui` puts the shipped skin back, so it is a named function rather than
+ * an inline hook body: a test that reseeds calls it again, after the seed.
+ */
+function pinClinicalSkin(): void {
+  useAppStore.setState((state) => ({ ui: { ...state.ui, skin: 'clinical' } }));
+}
+
+beforeEach(() => {
+  pinClinicalSkin();
+});
+
 describe('SaveErrorBanner', () => {
   it('says the change could not be saved and that the stored copy is unchanged', () => {
     installFakeStorage();
@@ -670,6 +687,12 @@ describe('skin attribute', () => {
   });
 
   it('mirrors the stored skin onto the document root and removes it on unmount', () => {
+    /*
+     * This suite pins the skin to clinical so its assertions quote the default copy table.
+     * This test is about the SHIPPED default, so it puts the shipped `ui` back first and
+     * states what that default is.
+     */
+    useAppStore.setState({ ui: defaultState().ui });
     // The schema default, so this is what a document that never chose a skin renders under.
     expect(useAppStore.getState().ui.skin).toBe('limelight');
 

@@ -63,12 +63,20 @@ export const DAY_MS = 86_400_000;
 
 /**
  * A parsed, schema-clean document with no profile in it. Built from defaultState() so the
- * fixtures inherit every additive field the schema gains; only the boot flag and the two
- * CRT toggles are pinned, so no test depends on the shipped defaults for them.
+ * fixtures inherit every additive field the schema gains; only the boot flag, the two CRT
+ * toggles and the skin are pinned, so no test depends on the shipped defaults for them.
+ *
+ * The skin is pinned for the reason the other three are, and it became load-bearing when
+ * P8 Task 16 put the views on `useCopy()`: the shipped default is 'limelight', so a suite
+ * quoting DEFAULT_COPY would otherwise be reading the wrong table. A suite about a skin
+ * names the one it wants.
  */
 export function emptyState(): AppState {
   const base = defaultState();
-  return { ...base, ui: { ...base.ui, bootSeen: true, scanlines: false, flicker: false } };
+  return {
+    ...base,
+    ui: { ...base.ui, bootSeen: true, scanlines: false, flicker: false, skin: 'clinical' },
+  };
 }
 
 export function makeProfile(timezone: TimeZone): Profile {
