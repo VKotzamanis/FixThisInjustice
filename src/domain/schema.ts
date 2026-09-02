@@ -527,11 +527,14 @@ export const UiPrefsSchema = z.object({
   /*
    * Additive. The off switch for the single-character keyboard shortcuts, WCAG 2.1 SC 2.1.4.
    *
-   * TRUE by default, and the default is the whole point of the field: the criterion asks for a
-   * MECHANISM to turn character-key shortcuts off, not for them to be off, so a document
-   * written before the switch existed opens with the shortcuts it has always had rather than
-   * losing them to a migration. CURRENT_SCHEMA_VERSION stays 3; additive with a default is the
-   * rule types.ts records for all of P1-P8.
+   * TRUE by default, and the default is the whole point of the field. The criterion applies to
+   * a shortcut implemented "using only letter (including upper- and lower-case letters),
+   * punctuation, number, or symbol characters", and it admits three ways to conform - turn off,
+   * remap, or active only on focus. This build takes the first, which is a MECHANISM to switch
+   * them off rather than a requirement that they ship off, so a document written before the
+   * switch existed opens with the shortcuts it has always had rather than losing them to a
+   * migration. CURRENT_SCHEMA_VERSION stays 3; additive with a default is the rule types.ts
+   * records for all of P1-P8.
    */
   hotkeys: z.boolean().default(true),
 });
