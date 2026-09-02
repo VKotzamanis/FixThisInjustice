@@ -522,6 +522,7 @@ export type CopyKey =
   | 'advice.capsuleNoteShort'
   | 'advice.capsuleNoteLong'
   | 'advice.capsuleDateRange'
+  | 'advice.capsuleDefaultMoved'
   // --- Atlas view (P8 Task 5) ---
   | 'label.rarityCommon'
   | 'label.rarityUncommon'
@@ -1285,6 +1286,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
   'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
   'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
+  // Shown next to the date field only while it still carries the computed default and
+  // that default needed clamping into the CAPSULE_MIN/MAX_DAYS_AHEAD window; not a
+  // refusal, so it never blocks sealing.
+  'advice.capsuleDefaultMoved': 'The suggested date moved to fit the allowed range.',
 
   // --- Atlas view (P8 Task 5) ---
   // The Atlas's own heading, its subtitle and its locked slot are the P8 block above

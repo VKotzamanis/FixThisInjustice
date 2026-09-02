@@ -67,8 +67,9 @@ export const CAPSULE_MIN_DAYS_AHEAD = 7;
  * The bound is a promise, not a preference. Everything this app stores lives in one browser's
  * storage on one device, with no account and no server copy (master plan section 3), so a
  * capsule dated beyond the life of that storage would be a commitment the app cannot keep.
- * Two years is also longer than any plan the generator produces, so no plan's last day is ever
- * refused by it.
+ * The generator's maximum of 24 weeks (src/domain/plan/generator.ts PLAN_WEEKS_MAX) is always
+ * inside the bound; the schema permits longer plans (src/domain/schema.ts MAX_PLAN_WEEKS = 104
+ * weeks), for which the clamp below applies.
  */
 export const CAPSULE_MAX_DAYS_AHEAD = 730;
 
@@ -105,6 +106,11 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
   // form is mounted long before it is opened.
   const [chosenDate, setChosenDate] = useState<LocalDate | null>(null);
   const [dialog, setDialog] = useState<CapsuleDialog>('none');
+  // False until the writer's first keystroke or blur in either field. A pristine dialog starts
+  // with an empty note, which is shorter than CAPSULE_MIN_CHARS, so `refusal` below is already
+  // 'noteShort' before anyone has typed; without this gate the dialog would open already
+  // flagged invalid (code review item 1).
+  const [touched, setTouched] = useState(false);
 
   const headingId = useId();
   const dialogHeadingId = useId();
@@ -139,6 +145,11 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
         ? latest
         : planEnd;
   const opensOn = chosenDate ?? suggested;
+  // True only while the field still shows the computed default (chosenDate === null) and that
+  // default needed clamping into the window, i.e. it is not the plan's own last day. Once the
+  // writer picks a date, chosenDate is no longer null and "the default was moved" stops being
+  // the relevant fact.
+  const defaultWasMoved = chosenDate === null && compareLocalDate(suggested, planEnd) !== 0;
 
   const trimmed = note.trim();
   const dateInWindow =
@@ -161,10 +172,15 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
         : refusal === 'dateRange'
           ? FORMAT.capsuleDateRange(earliest, latest)
           : null;
+  // Gates both the refusal <p> and the aria-describedby that points at it: rendering one
+  // without the other leaves aria-describedby dangling on a nonexistent id (code review item 1).
+  const showRefusal = touched && refusalLine !== null;
 
   const seal = (): void => {
     // The control is disabled while a bound is unmet; this is the second gate, and it returns
-    // rather than throwing so a draft is never lost to an error boundary.
+    // rather than throwing so a draft is never lost to an error boundary. Unlike the note's
+    // aria-invalid and the refusal line, this does not check `touched`: a pristine dialog must
+    // not let a keystroke-free Enter seal an empty note.
     if (refusal !== null) return;
     // The action is read from the store at the call site rather than selected into a
     // variable, which is the pattern src/ui/views/TrainView.tsx uses: an action is stable, so
@@ -178,6 +194,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
     });
     setNote('');
     setChosenDate(null);
+    setTouched(false);
     setDialog('none');
   };
 
@@ -230,10 +247,14 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
               rows={6}
               maxLength={CAPSULE_MAX_CHARS}
               value={note}
-              aria-describedby={refusal === null ? undefined : refusalId}
-              aria-invalid={refusal === 'noteShort' || refusal === 'noteLong'}
+              aria-describedby={showRefusal ? refusalId : undefined}
+              aria-invalid={touched && (refusal === 'noteShort' || refusal === 'noteLong')}
               onChange={(e) => {
                 setNote(e.currentTarget.value);
+                setTouched(true);
+              }}
+              onBlur={() => {
+                setTouched(true);
               }}
             />
             <span className="capsule-count" data-testid="capsule-count">
@@ -250,16 +271,25 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
               value={opensOn}
               min={earliest}
               max={latest}
-              aria-describedby={refusal === null ? undefined : refusalId}
+              aria-describedby={showRefusal ? refusalId : undefined}
               aria-invalid={refusal === 'dateRange'}
               onChange={(e) => {
                 setChosenDate(e.currentTarget.value);
+                setTouched(true);
+              }}
+              onBlur={() => {
+                setTouched(true);
               }}
             />
 
+            {/* Informational, not a refusal: the seal control is not blocked by this. Shown
+                only while the field still carries the computed default, so it disappears the
+                moment the writer picks their own date. */}
+            {defaultWasMoved && <p className="capsule-advice">{copy('advice.capsuleDefaultMoved')}</p>}
+
             {/* One line, whichever bound is unmet. role="status" so it is announced when it
                 appears rather than only when the field is next read. */}
-            {refusalLine !== null && (
+            {showRefusal && (
               <p className="capsule-refusal" id={refusalId} role="status">
                 {refusalLine}
               </p>
