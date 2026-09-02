@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   createScheduleActions,
+  isDomainMinted,
   refusesLabel,
   refusesTransition,
   type ScheduleActions,
@@ -9,6 +10,7 @@ import {
   DAY_MS,
   MONDAY,
   NOW_MS,
+  PLAN_ID,
   PREV_MONDAY,
   PROFILE_ID,
   TUESDAY,
@@ -19,6 +21,29 @@ import {
 import { parseState } from '../domain/schema';
 import { projectedCalendar } from '../domain/schedule/calendar';
 import type { AppState } from '../domain/types';
+
+/*
+ * A throw the schedule domain never mints, injected at the seam the slice calls. This is the
+ * reviewer's probe: the classifier used to ask only whether the STATE was one the domain may
+ * refuse in, so any unrelated failure that happened to arrive while a gate was closed was
+ * swallowed into the refusal banner and its stack was lost.
+ *
+ * The flag is armed inside one test and disarmed in its finally, so every other test in this
+ * file runs the real transition; the rest of the module — isPaused and isTerminal, which the
+ * classifiers use, and upsertAssignment, which calendar.ts uses — is passed through untouched.
+ */
+const novelThrow = vi.hoisted(() => ({ armed: false }));
+
+vi.mock('../domain/schedule/cursor', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../domain/schedule/cursor')>();
+  return {
+    ...actual,
+    startSession: (...args: Parameters<typeof actual.startSession>) => {
+      if (novelThrow.armed) throw new TypeError('NOVEL: a failure the domain never mints');
+      return actual.startSession(...args);
+    },
+  };
+});
 
 const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
 const MWF = [1, 3, 5] as const;
@@ -287,5 +312,155 @@ describe('the cursor does not move with the clock', () => {
     expect(h.read().cursors[PROFILE_ID]).toEqual(before);
     expect(h.read().assignments[PROFILE_ID]).toEqual([]);
     expectStorable(h.read());
+  });
+});
+
+/*
+ * The other half of the classification (master plan §6.4 as amended). A refusal needs the
+ * error to be domain-minted AND the state to agree; the tests above pin states that agree, so
+ * these pin the error shape, which is what the state check alone could not see.
+ */
+describe('a throw the domain did not mint', () => {
+  it('propagates out of a state whose gate the classifier does recognise', () => {
+    const h = harness(seed());
+    h.actions.startSession(PROFILE_ID, MONDAY, NOW_MS);
+    // MONDAY is now the open day, so every other day is inside the single-open-assignment
+    // gate. That used to be licence enough to swallow whatever the call threw.
+    expect(refusesTransition(h.read(), PROFILE_ID, TUESDAY)).toBe(true);
+    const before = h.read();
+
+    novelThrow.armed = true;
+    try {
+      expect(() => h.actions.startSession(PROFILE_ID, TUESDAY, NOW_MS + DAY_MS)).toThrow(
+        /^NOVEL: /,
+      );
+    } finally {
+      novelThrow.armed = false;
+    }
+
+    expect(h.read()).toBe(before); // the document is untouched either way
+    expect(h.error()).toBeNull(); // and the user is not told it was a schedule problem
+  });
+
+  it('recognises the two shapes the domain mints and nothing else', () => {
+    // cursor.ts: Error, prefixed with the calling function's name.
+    expect(isDomainMinted(new Error(`startSession: a session is already in progress on ${MONDAY}`)))
+      .toBe(true);
+    // calendar.ts: RangeError, for every gate it closes.
+    expect(isDomainMinted(new RangeError(`assignToday: the plan is paused on ${MONDAY}`))).toBe(
+      true,
+    );
+    expect(isDomainMinted(new TypeError('NOVEL: a failure the domain never mints'))).toBe(false);
+    // The domain's wording without the domain's prefix is not the domain's throw.
+    expect(isDomainMinted(new Error('a session is already in progress'))).toBe(false);
+    expect(isDomainMinted('a string nobody threw on purpose')).toBe(false);
+  });
+});
+
+/*
+ * Profile and plan guards. A profile id nobody owns and a cursor naming a plan that is not
+ * stored are both defects — a caller bug and a corrupt document — but the domain answers each
+ * of them with an empty projection or an untouched state, which the classifier then read as
+ * "the week has nothing left to offer". The guards run before the transition and outside the
+ * classification, so neither can be reported as a schedule the user could fix.
+ */
+describe('profile and plan guards', () => {
+  const UNKNOWN = 'nobody';
+
+  it('every schedule action rejects an unknown profile, naming itself', () => {
+    const h = harness(seed());
+    const calls: [string, () => void][] = [
+      ['startSession', () => h.actions.startSession(UNKNOWN, MONDAY, NOW_MS)],
+      ['completeSession', () => h.actions.completeSession(UNKNOWN, MONDAY, NOW_MS)],
+      ['skipSession', () => h.actions.skipSession(UNKNOWN, MONDAY, null)],
+      ['pausePlan', () => h.actions.pausePlan(UNKNOWN, MONDAY, null)],
+      ['resumePlan', () => h.actions.resumePlan(UNKNOWN, WEDNESDAY)],
+      ['assignToday', () => h.actions.assignToday(UNKNOWN, MONDAY, 'Push')],
+      ['closeWeeks', () => h.actions.closeWeeks(UNKNOWN, NOW_MS)],
+    ];
+    const before = h.read();
+
+    for (const [name, call] of calls) {
+      expect(call).toThrow(`${name}: "${UNKNOWN}" is not a known profile`);
+    }
+
+    expect(h.read()).toBe(before);
+    // The reviewer's probe: assignToday on an unknown profile used to reach the user as
+    // "not among the sessions remaining (none)" — a refusal about a profile that does not
+    // exist, and a document the schema would have rejected had anything been written.
+    expect(h.error()).toBeNull();
+  });
+
+  it('a cursor naming a plan that is not stored is a defect on every action that needs one', () => {
+    const dangling: AppState = { ...seed(), plans: {} };
+    const h = harness(dangling);
+    const missing = `names plan "${PLAN_ID}", which is not stored`;
+
+    expect(() => h.actions.startSession(PROFILE_ID, MONDAY, NOW_MS)).toThrow(missing);
+    expect(() => h.actions.completeSession(PROFILE_ID, MONDAY, NOW_MS)).toThrow(missing);
+    expect(() => h.actions.skipSession(PROFILE_ID, MONDAY, null)).toThrow(missing);
+    expect(() => h.actions.assignToday(PROFILE_ID, MONDAY, 'Push')).toThrow(missing);
+    expect(() => h.actions.closeWeeks(PROFILE_ID, NOW_MS)).toThrow(missing);
+
+    // startSession and closeWeeks used to return the state unchanged and report nothing at
+    // all; assignToday used to report an empty week. Neither says "this document is corrupt".
+    expect(h.read()).toBe(dangling);
+    expect(h.error()).toBeNull();
+  });
+
+  it('closeWeeks still runs for a profile the wizard has not given a plan yet', () => {
+    // App mounts useWeeklyClose above the setup branch, so the background catch-up runs
+    // between createProfile and setPlan. No cursor is a legal state with nothing to review;
+    // it is the DANGLING cursor above that is corrupt.
+    const noPlan: AppState = { ...seed(), cursors: {}, plans: {} };
+    const h = harness(noPlan);
+
+    h.actions.closeWeeks(PROFILE_ID, NOW_MS);
+
+    expect(h.read()).toBe(noPlan);
+    expect(h.error()).toBeNull();
+  });
+});
+
+/*
+ * Clearing the refusal. The message is answered by the next attempt that CHANGES the document,
+ * identity being the domain's own no-op signal. A no-op that cleared it would tell the user
+ * their complaint had been dealt with by an action that did nothing at all — and on a finished
+ * plan or an unpaused plan, every remaining control is a no-op, so the banner would clear
+ * itself on the first thing they tried and leave them nothing to read.
+ */
+describe('a documented no-op leaves the standing refusal up', () => {
+  it('resumePlan with nothing paused', () => {
+    const h = harness(seed());
+    h.actions.assignToday(PROFILE_ID, MONDAY, 'Cardio');
+    const refusal = h.error();
+    expect(refusal).not.toBeNull();
+    const before = h.read();
+
+    h.actions.resumePlan(PROFILE_ID, WEDNESDAY); // cursor.ts: not paused, so a no-op
+
+    expect(h.read()).toBe(before);
+    expect(h.error()).toBe(refusal);
+  });
+
+  it('startSession on a finished plan', () => {
+    const h = harness(
+      seedState({
+        labels: LABELS,
+        weekdays: [...MWF],
+        startedOn: PREV_MONDAY,
+        timezone: TZ_ATHENS,
+        nextSessionIndex: LABELS.length, // [sessions] one past the last: the plan is finished
+      }),
+    );
+    h.actions.assignToday(PROFILE_ID, MONDAY, 'Push');
+    const refusal = h.error();
+    expect(refusal).not.toBeNull();
+    const before = h.read();
+
+    h.actions.startSession(PROFILE_ID, MONDAY, NOW_MS); // nothing left to assign: a no-op
+
+    expect(h.read()).toBe(before);
+    expect(h.error()).toBe(refusal);
   });
 });

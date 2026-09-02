@@ -8,10 +8,15 @@
 // builds a fresh array on every call, and zustand 5 compares snapshots with Object.is and has
 // no equality-function overload, so a selector that returns a new array each time makes
 // useSyncExternalStore re-render until React gives up ("The result of getSnapshot should be
-// cached to avoid an infinite loop"). Results are therefore memoised on the IDENTITY of the
-// state object they were computed from: every action replaces the state object, so a cache
-// entry can never outlive the document it describes, and a WeakMap lets old states be
-// collected with their entries.
+// cached to avoid an infinite loop").
+//
+// Results are memoised on the identity of the DOCUMENT SLICES the derivation reads, not on the
+// identity of the store object. The store object is replaced by every set(), including the
+// ones that write only the non-persisted `status` slice — a refusal message, a save failure —
+// and keying on it made every one of those invalidate every calendar entry and hand
+// useSyncExternalStore a fresh array for a document that had not changed. The slices are
+// replaced rather than mutated by every action that touches them (cursor.ts and calendar.ts
+// are pure), so identity is a sound stand-in for value equality here.
 //
 // Every hook that needs today's civil date takes an optional `now` [ms] epoch, UTC. It
 // defaults to the wall clock and exists so a test can pin the day; the date itself is always
@@ -31,6 +36,7 @@ import type {
   WeeklyReview,
 } from '../domain/types';
 import { useAppStore } from './index';
+import { useActivePlan } from './selectors';
 
 /*
  * One frozen instance per empty result, shared by every caller. A fresh [] would be a new
@@ -41,24 +47,55 @@ const EMPTY_DAYS: readonly CalendarDay[] = Object.freeze([]);
 const EMPTY_LABELS: readonly string[] = Object.freeze([]);
 const EMPTY_REVIEWS: readonly WeeklyReview[] = Object.freeze([]);
 
-const calendarCache = new WeakMap<object, Map<string, readonly CalendarDay[]>>();
-const labelCache = new WeakMap<object, Map<string, readonly string[]>>();
+/**
+ * The document slices both derivations in this file read, in a fixed order.
+ *
+ * calendar.ts reads exactly these five (availability, plans, cursors, pauses, assignments) and
+ * nothing else — no profile, no ui, and none of the log arrays — so a change to any other part
+ * of the document cannot change a projected calendar or a remaining-labels list. Adding a read
+ * to calendar.ts means adding its slice here; leaving it out would serve a stale result, so
+ * this list is the one thing to keep in step with that module.
+ */
+function documentSlices(state: AppState): readonly object[] {
+  return [state.availability, state.plans, state.cursors, state.pauses, state.assignments];
+}
+
+function sameSlices(a: readonly object[], b: readonly object[]): boolean {
+  return a.length === b.length && a.every((slice, i) => slice === b[i]);
+}
+
+interface CacheEntry<T> {
+  /** The slice identities the value was computed from; the entry is valid while they hold. */
+  slices: readonly object[];
+  value: T;
+}
+
+/*
+ * The WeakMap is anchored on `assignments` — any of the five slices would do — so that the
+ * cache of a document nothing refers to any more can be collected with it, which is what a
+ * WeakMap buys and a plain Map would not. The anchor is a container, not the cache key: what
+ * decides a hit is the slice comparison in cached(), so a change to any OTHER slice reuses the
+ * bucket and overwrites the entry rather than serving it.
+ */
+const calendarCache = new WeakMap<object, Map<string, CacheEntry<readonly CalendarDay[]>>>();
+const labelCache = new WeakMap<object, Map<string, CacheEntry<readonly string[]>>>();
 
 function cached<T>(
-  store: WeakMap<object, Map<string, T>>,
+  store: WeakMap<object, Map<string, CacheEntry<T>>>,
   state: AppState,
   key: string,
   compute: () => T,
 ): T {
-  let byKey = store.get(state);
+  const slices = documentSlices(state);
+  let byKey = store.get(state.assignments);
   if (!byKey) {
-    byKey = new Map<string, T>();
-    store.set(state, byKey);
+    byKey = new Map<string, CacheEntry<T>>();
+    store.set(state.assignments, byKey);
   }
   const hit = byKey.get(key);
-  if (hit !== undefined) return hit;
+  if (hit && sameSlices(hit.slices, slices)) return hit.value;
   const fresh = compute();
-  byKey.set(key, fresh);
+  byKey.set(key, { slices, value: fresh });
   return fresh;
 }
 
@@ -103,9 +140,9 @@ export function selectTimeZone(state: AppState): TimeZone {
  *
  * `plans` holds every plan the profile has ever run (setPlan keeps the one it replaces, so
  * logged sets can still resolve their session ids), so the cursor is the only record that
- * says which one is current. selectors.ts's useActivePlan() is the same derivation in hook
- * form, shipped by P2; this is the pure form, which the calendar selectors below need
- * inside a store subscription.
+ * says which one is current. This is the pure form, for a caller that needs the derivation
+ * inside a store subscription of its own; the hook form is selectors.ts's useActivePlan(),
+ * which usePlan() below is a name for.
  */
 export function selectPlan(state: AppState): PlanTemplate | null {
   const id = state.activeProfileId;
@@ -139,8 +176,16 @@ export function useTodayDate(now: EpochMs = Date.now()): LocalDate {
   return todayLocal(useTimeZone(), now);
 }
 
+/**
+ * Master plan §6.7's name for P2's useActivePlan, and nothing more than a name for it.
+ *
+ * It used to subscribe with selectPlan, which made two hooks over one derivation: identical
+ * today, free to drift tomorrow, and a reviewer reading either one had no way to know the
+ * other existed. One derivation, two spellings, is the arrangement useCursor/useActiveCursor
+ * already uses below.
+ */
 export function usePlan(): PlanTemplate | null {
-  return useAppStore(selectPlan);
+  return useActivePlan();
 }
 
 export function useCursor(): PlanCursor | null {
@@ -150,6 +195,23 @@ export function useCursor(): PlanCursor | null {
 /** Master plan §6.7's name for useCursor, kept so both spellings resolve to one selector. */
 export function useActiveCursor(): PlanCursor | null {
   return useCursor();
+}
+
+/**
+ * Why the last schedule action the user attempted was refused, or null when nothing is
+ * standing (master plan §6.4 as amended; the field is documented on StoreStatus in index.ts).
+ *
+ * The read half of the refusal channel, so the banner subscribes to one selector rather than
+ * reaching into `status` through a selector of its own; clearActionError() is the write half
+ * the dismiss control calls. The value is a string, which useSyncExternalStore compares by
+ * value, so this selector cannot loop however often the store notifies.
+ *
+ * It reads the non-persisted `status` slice rather than the document, which is why it takes
+ * the store type rather than AppState: a refusal is a fact about one attempt, never a field of
+ * the document (master plan §3).
+ */
+export function useActionError(): string | null {
+  return useAppStore((s) => s.status.lastActionError);
 }
 
 /** Every closed week for the active profile, oldest first. Empty until a week has ended. */

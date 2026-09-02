@@ -12,7 +12,11 @@ import { defaultState } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { newId } from '../domain/ids';
 import { dailyBeverageTargetML } from '../domain/nutrition';
-import { createScheduleActions, type ScheduleActions } from './scheduleActions';
+import {
+  createScheduleActions,
+  requireProfile,
+  type ScheduleActions,
+} from './scheduleActions';
 import type { SaveFailure, SaveResult } from './persistence';
 import {
   clearStorage,
@@ -116,24 +120,14 @@ export interface AppActions {
   setActiveProfile(id: string): void;
 }
 
-/**
- * Guard for every action that writes a record keyed by a profile id.
- *
- * The schema's root refinement rejects a document whose per-profile map carries
- * a key no profile owns (master plan section 5), and the store is the only
- * writer, so the check belongs at the point of writing rather than at the next
- * reload: a caller that passes an id nobody owns has a bug, and the alternative
- * to throwing is a document that cannot be saved and a silent data loss at the
- * next load. `updateProfile` is deliberately not on this path — its contract
- * says an unknown id is a no-op, and it writes nothing keyed by that id.
+/*
+ * requireProfile — the guard for every action that writes a record keyed by a
+ * profile id — is imported from ./scheduleActions rather than defined here.
+ * The P1/P2 actions below and the P3 schedule slice have to agree on what "not
+ * a known profile" means, so there is exactly one definition of it; it sits on
+ * that side of the import edge because this module already imports that one,
+ * and the reverse would be a cycle. See its doc comment for the rationale.
  */
-function requireProfile(state: AppState, action: string, profileId: string): Profile {
-  const profile = state.profiles[profileId];
-  if (profile === undefined) {
-    throw new Error(`${action}: "${profileId}" is not a known profile`);
-  }
-  return profile;
-}
 
 /**
  * The persisted document sits at the top level of the store beside the actions
