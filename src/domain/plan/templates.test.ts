@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { EXERCISES, EXERCISE_BY_ID, INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
 import {
+  bandMusclesFor,
   prescriptionFor,
   resolveSlot,
   restSFor,
@@ -52,12 +53,30 @@ describe('template integrity', () => {
     }
   });
 
-  it('marks exactly one heavy slot per session, and it is the first', () => {
+  it('marks at most one heavy slot per session, and it is the first', () => {
     for (const d of DAY_COUNTS) {
       for (const session of SPLIT_TEMPLATES[d].sessions) {
         const heavy = session.slots.filter((s) => s.intensity === 'heavy');
-        expect(heavy.length).toBe(1);
-        expect(session.slots[0]?.intensity).toBe('heavy');
+        expect(heavy.length, `${d} days, ${session.label}`).toBeLessThanOrEqual(1);
+        if (heavy.length === 1) expect(session.slots[0]?.intensity).toBe('heavy');
+      }
+    }
+  });
+
+  it('never marks a slot heavy when no candidate can be loaded to the heavy class', () => {
+    // Content review D2 section 9 defines heavy as >= 80 % 1RM at <= 6 reps. A slot whose every
+    // candidate is an unloaded AMRAP movement has no %1RM to declare, so `heavy` would be a claim
+    // the prescription cannot honour. The five-day accessory push-up used to carry it.
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        for (const slot of session.slots) {
+          if (slot.intensity !== 'heavy') continue;
+          const loadable = slot.candidates.some((id) => {
+            const ex = EXERCISE_BY_ID[id];
+            return ex !== undefined && prescriptionFor(ex, 'heavy').kind === 'reps';
+          });
+          expect(loadable, `${d} days, ${session.label}, ${slot.role}`).toBe(true);
+        }
       }
     }
   });
@@ -74,13 +93,26 @@ describe('template integrity', () => {
     }
   });
 
-  it('declares band muscles from the library vocabulary, sorted and without repeats', () => {
+  it('declares band muscles from the library vocabulary, sorted and without repeats, per tier', () => {
     for (const d of DAY_COUNTS) {
-      const declared = SPLIT_TEMPLATES[d].bandMuscles;
-      expect(declared.length).toBeGreaterThanOrEqual(4);
-      expect(new Set(declared).size).toBe(declared.length);
-      expect([...declared]).toEqual([...declared].sort());
-      for (const m of declared) expect(MUSCLE_GROUPS as readonly string[]).toContain(m);
+      for (const equipment of EQUIPMENT) {
+        const declared = bandMusclesFor(d, equipment);
+        expect(declared.length, `${d} days, ${equipment}`).toBeGreaterThan(0);
+        expect(new Set(declared).size).toBe(declared.length);
+        expect([...declared]).toEqual([...declared].sort());
+        for (const m of declared) expect(MUSCLE_GROUPS as readonly string[]).toContain(m);
+      }
+    }
+  });
+
+  it('keeps the flat bandMuscles list identical to the full-gym tier', () => {
+    // One declaration, two views: the flat list is the shape the P2 Task 4 contract published and
+    // generator.test.ts iterates, so it must not become a second, drifting source of truth.
+    for (const d of DAY_COUNTS) {
+      expect(SPLIT_TEMPLATES[d].bandMuscles).toBe(bandMusclesFor(d, 'full-gym'));
+      expect(SPLIT_TEMPLATES[d].bandMusclesByEquipment['full-gym']).toBe(
+        SPLIT_TEMPLATES[d].bandMuscles,
+      );
     }
   });
 
@@ -119,12 +151,14 @@ describe('template integrity', () => {
  * a direct set counts 1.0, an indirect set INDIRECT_SET_FRACTION = 0.5. Sets are dimensionless
  * counts, so every figure below is in sets/muscle/week.
  *
- * STATISTIC. Each slot prescribes a RANGE of sets (setsLo to setsHi) because the progression is
- * double progression: the range is the device the user climbs, not two separate prescriptions.
- * The weekly figure compared against the review's band is therefore the MIDPOINT of that range,
- * which is the volume a user in steady state actually performs. This is stated rather than
- * assumed: the range endpoints are reported alongside, and the separate assertion below shows
- * that even the TOP of the range never exceeds the band's upper bound for any muscle.
+ * STATISTIC. Each slot prescribes an INTERVAL of sets (setsLo to setsHi), and a band stated as a
+ * single weekly figure has to be compared against one number, so the comparison uses the MIDPOINT
+ * of that interval: the arithmetic mean of setsLo and setsHi. The midpoint is NOT a claim that
+ * the user climbs the interval over a block -- double progression climbs REPS at a fixed set count
+ * and then adds load (content review D2 section 10). The interval is there because a session can
+ * lose or gain a set to the clock, and the midpoint is the middle of it. The endpoints are carried
+ * alongside rather than discarded, and the assertion below bounds the interval TOP against the
+ * 20 sets/muscle/week evidence ceiling in every one of the 45 day-count x experience x tier cells.
  */
 function weeklyFractionalSets(
   d: SessionsPerWeek,
@@ -165,30 +199,40 @@ function volumeOf(
 }
 
 describe("weekly fractional set volume reproduces the content review's bands", () => {
-  it('places exactly the declared band muscles inside the band, at every experience level', () => {
+  it('declares exactly the in-band muscles in all 45 day x experience x tier cells', () => {
+    // The band claim is PER TIER (master plan section 5): the same slot table resolves to
+    // different exercises under each equipment setting and so places different muscles in band.
+    // bandMusclesFor is not a wish list -- it is exactly the set the slot table verifiably places
+    // in band at all three experience levels. Anything else is maintenance-only for that tier.
     for (const d of DAY_COUNTS) {
       const [bandLo, bandHi] = WEEKLY_SET_BAND[d];
-      const inBandEverywhere = MUSCLE_GROUPS.filter((m) =>
-        EXPERIENCES.every((e) => {
-          const { mid } = volumeOf(weeklyFractionalSets(d, e, 'full-gym'), m);
-          return mid >= bandLo && mid <= bandHi;
-        }),
-      );
-      // bandMuscles is not a wish list: it is exactly the set the slot table verifiably places
-      // in band. Anything else is reported to the user as maintenance-only.
-      expect([...SPLIT_TEMPLATES[d].bandMuscles]).toEqual([...inBandEverywhere].sort());
+      for (const equipment of EQUIPMENT) {
+        const inBandEverywhere = MUSCLE_GROUPS.filter((m) =>
+          EXPERIENCES.every((e) => {
+            const { mid } = volumeOf(weeklyFractionalSets(d, e, equipment), m);
+            return mid >= bandLo && mid <= bandHi;
+          }),
+        );
+        expect({ d, equipment, declared: [...bandMusclesFor(d, equipment)] }).toEqual({
+          d,
+          equipment,
+          declared: [...inBandEverywhere].sort(),
+        });
+      }
     }
   });
 
-  it('keeps every declared band muscle inside the band for every experience level', () => {
+  it('keeps every declared band muscle inside the band in all 45 cells', () => {
     for (const d of DAY_COUNTS) {
       const [bandLo, bandHi] = WEEKLY_SET_BAND[d];
-      for (const e of EXPERIENCES) {
-        const volume = weeklyFractionalSets(d, e, 'full-gym');
-        for (const m of SPLIT_TEMPLATES[d].bandMuscles) {
-          const { mid } = volumeOf(volume, m);
-          expect(mid, `${d} days, ${e}, ${m}`).toBeGreaterThanOrEqual(bandLo);
-          expect(mid, `${d} days, ${e}, ${m}`).toBeLessThanOrEqual(bandHi);
+      for (const equipment of EQUIPMENT) {
+        for (const e of EXPERIENCES) {
+          const volume = weeklyFractionalSets(d, e, equipment);
+          for (const m of bandMusclesFor(d, equipment)) {
+            const { mid } = volumeOf(volume, m);
+            expect(mid, `${d} days, ${e}, ${equipment}, ${m}`).toBeGreaterThanOrEqual(bandLo);
+            expect(mid, `${d} days, ${e}, ${equipment}, ${m}`).toBeLessThanOrEqual(bandHi);
+          }
         }
       }
     }
@@ -209,29 +253,36 @@ describe("weekly fractional set volume reproduces the content review's bands", (
     const EVIDENCE_CEILING = 20; // sets/muscle/week, top of the ACSM 2026 deceleration range
     for (const d of DAY_COUNTS) {
       const bandHi = WEEKLY_SET_BAND[d][1];
-      for (const e of EXPERIENCES) {
-        const volume = weeklyFractionalSets(d, e, 'full-gym');
-        for (const m of MUSCLE_GROUPS) {
-          const { mid, hi } = volumeOf(volume, m);
-          expect(mid, `${d} days, ${e}, ${m} midpoint`).toBeLessThanOrEqual(bandHi);
-          expect(hi, `${d} days, ${e}, ${m} range top`).toBeLessThanOrEqual(EVIDENCE_CEILING);
+      for (const equipment of EQUIPMENT) {
+        for (const e of EXPERIENCES) {
+          const volume = weeklyFractionalSets(d, e, equipment);
+          for (const m of MUSCLE_GROUPS) {
+            const { mid, hi } = volumeOf(volume, m);
+            expect(mid, `${d} days, ${e}, ${equipment}, ${m} midpoint`).toBeLessThanOrEqual(bandHi);
+            expect(hi, `${d} days, ${e}, ${equipment}, ${m} interval top`).toBeLessThanOrEqual(
+              EVIDENCE_CEILING,
+            );
+          }
         }
       }
     }
   });
 
-  it('leaves every muscle outside the declared set genuinely under-dosed, not over-dosed', () => {
-    // "Maintenance-only" must mean BELOW the band. A muscle excluded from bandMuscles because it
-    // overshot would be a programming error wearing an honest label.
+  it('leaves every undeclared muscle genuinely under-dosed in its tier, not over-dosed', () => {
+    // "Maintenance-only" must mean BELOW the band. A muscle left out of a tier's list because it
+    // overshot would be a programming error wearing an honest label, so the exclusion reason is
+    // asserted rather than assumed -- in every tier, not just the full-gym one.
     for (const d of DAY_COUNTS) {
       const bandLo = WEEKLY_SET_BAND[d][0];
-      const declared = new Set(SPLIT_TEMPLATES[d].bandMuscles);
-      for (const m of MUSCLE_GROUPS) {
-        if (declared.has(m)) continue;
-        const belowSomewhere = EXPERIENCES.some(
-          (e) => volumeOf(weeklyFractionalSets(d, e, 'full-gym'), m).mid < bandLo,
-        );
-        expect(belowSomewhere, `${d} days, ${m}`).toBe(true);
+      for (const equipment of EQUIPMENT) {
+        const declared = new Set<string>(bandMusclesFor(d, equipment));
+        for (const m of MUSCLE_GROUPS) {
+          if (declared.has(m)) continue;
+          const belowSomewhere = EXPERIENCES.some(
+            (e) => volumeOf(weeklyFractionalSets(d, e, equipment), m).mid < bandLo,
+          );
+          expect(belowSomewhere, `${d} days, ${equipment}, ${m}`).toBe(true);
+        }
       }
     }
   });
@@ -244,7 +295,7 @@ describe("weekly fractional set volume reproduces the content review's bands", (
       const [bandLo, bandHi] = WEEKLY_SET_BAND[d];
       const bandMid = (bandLo + bandHi) / 2;
       const byExperience = EXPERIENCES.map((e) => weeklyFractionalSets(d, e, 'full-gym'));
-      for (const m of SPLIT_TEMPLATES[d].bandMuscles) {
+      for (const m of bandMusclesFor(d, 'full-gym')) {
         const [novice, intermediate, advanced] = byExperience.map((v) => volumeOf(v, m).mid);
         expect(novice, `${d} days, ${m}`).toBeDefined();
         if (novice === undefined || intermediate === undefined || advanced === undefined) continue;
@@ -312,6 +363,33 @@ describe('prescriptions', () => {
     expect(pushUp && prescriptionFor(pushUp, 'moderate')).toEqual({ kind: 'amrap', minimum: null });
     expect(plank && prescriptionFor(plank, 'light')).toEqual({ kind: 'time', targetS: 60 }); // [s]
     expect(rower && prescriptionFor(rower, 'light')).toEqual({ kind: 'duration', targetS: 1200 }); // [s]
+  });
+
+  it('prescribes AMRAP for every unloaded bodyweight compound, at every intensity', () => {
+    // Master plan section 5: push-up, pull-up, chin-up, bench-dip, inverted-row and pike-push-up
+    // take an AMRAP prescription because no load step exists to progress. Asserted at all three
+    // intensities because the slot a substitution lands in decides the intensity, and the
+    // prescription must not depend on it.
+    const unloaded = ['push-up', 'pull-up', 'chin-up', 'bench-dip', 'inverted-row', 'pike-push-up'];
+    for (const id of unloaded) {
+      const ex = EXERCISE_BY_ID[id];
+      expect(ex, id).toBeDefined();
+      if (!ex) continue;
+      for (const intensity of ['heavy', 'moderate', 'light'] as const) {
+        expect(prescriptionFor(ex, intensity), `${id} at ${intensity}`).toEqual({
+          kind: 'amrap',
+          minimum: null,
+        });
+      }
+    }
+  });
+
+  it('keeps a rep range where the bodyweight movement can still be loaded or timed', () => {
+    // The exclusions from the AMRAP list, so the list cannot quietly grow to every bodyweight row.
+    const weighted = EXERCISE_BY_ID['weighted-pull-up'];
+    const wheel = EXERCISE_BY_ID['ab-wheel-rollout'];
+    expect(weighted && prescriptionFor(weighted, 'heavy')).toEqual({ kind: 'reps', lo: 4, hi: 6 });
+    expect(wheel && prescriptionFor(wheel, 'light')).toEqual({ kind: 'reps', lo: 8, hi: 12 });
   });
 });
 
@@ -487,6 +565,30 @@ describe('equipment resolution', () => {
         }
       }
     }
+  });
+
+  it('never fills an isolation slot with a lats-direct compound', () => {
+    // The lats over-credit the content review flagged: the chin-up used to be the bodyweight
+    // fallback of both curl lists, so an ISOLATION slot added a lats-direct compound on top of the
+    // pull slots that already trained the lats. Asserted structurally, in every tier, so the
+    // arrangement cannot come back through a different candidate list.
+    const offenders: string[] = [];
+    for (const d of DAY_COUNTS) {
+      for (const equipment of EQUIPMENT) {
+        for (const session of SPLIT_TEMPLATES[d].sessions) {
+          const used = new Set<string>();
+          for (const slot of session.slots) {
+            const ex = resolveSlot(slot, equipment, used);
+            if (!ex) continue;
+            used.add(ex.id);
+            if (slot.slotClass === 'isolation' && ex.muscleGroups.includes('lats')) {
+              offenders.push(`${d}d/${equipment}/${session.label}/${slot.role}=${ex.id}`);
+            }
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
   });
 
   it('trains chest, back, quads and hamstrings under every equipment setting', () => {

@@ -46,15 +46,16 @@ import type { Exercise, Prescription, Seconds } from '../types';
  *     producing it: erector spinae in a squat or deadlift, abdominals in a standing press,
  *     forearm flexors in a row, rotator cuff in any press. These earn no set credit at all.
  *
- * Applied to the lower body the rule sorts the lifts into three families. `library.test.ts`
- * asserts each family membership, so a future re-tag that breaks the rule fails a test rather
- * than silently shifting the weekly volume figure:
+ * Applied to the lower body the rule sorts the lifts into THREE FAMILIES, named and populated
+ * by master plan section 5. `library.test.ts` asserts each family membership, so a future re-tag
+ * that breaks the rule fails a test rather than silently shifting the weekly volume figure:
  *
  *   HIP-DOMINANT -- large hip range, knee angle roughly held
- *     romanian-deadlift, db-romanian-deadlift, conventional-deadlift
- *     -> glutes AND hamstrings DIRECT. Quads are secondary in the conventional pull only,
- *        where the shank is inclined and the knee extends off the floor; the Romanian variants
- *        hold the knee, so quads are listed nowhere.
+ *     conventional-deadlift, romanian-deadlift, db-romanian-deadlift (section 5 lists the
+ *     nordic-hamstring-curl here too; see the exception below)
+ *     -> glutes AND hamstrings DIRECT, quads SECONDARY WHERE LOADED. Quads are loaded in the
+ *        conventional pull only, where the shank is inclined and the knee extends off the floor;
+ *        the Romanian variants hold the knee, so quads are listed nowhere in those rows.
  *   HIP-DOMINANT HYBRID -- large hip range WITH substantial knee excursion
  *     trap-bar-deadlift, bulgarian-split-squat
  *     -> quads AND glutes DIRECT, hamstrings SECONDARY. The hamstrings produce a real
@@ -64,6 +65,15 @@ import type { Exercise, Prescription, Seconds } from '../types';
  *     barbell-back-squat, leg-press, goblet-squat
  *     -> quads DIRECT, glutes AND hamstrings SECONDARY. Same hamstring argument as above, plus
  *        the hip range is smaller than in any hinge.
+ *
+ * THE ONE EXCEPTION, stated rather than reconciled away: section 5 lists nordic-hamstring-curl
+ * among the hip-dominant lifts, but the family rule cannot be applied to it as written. The
+ * movement is resisted knee FLEXION at a fixed hip; there is no hip-extension range to credit, so
+ * the row carries hamstrings DIRECT and no glutes, where every other hip-dominant lift carries
+ * both. Tagging its glutes direct to match the family would credit a muscle that does not
+ * lengthen or shorten through the movement. The row is therefore tagged by the rule (prime mover
+ * through a large range under load) rather than by the family label, and library.test.ts's
+ * hip-dominant assertions cover the three hinges only.
  *
  * This is an engineering judgement inside a cited counting rule, not a published table.
  *
