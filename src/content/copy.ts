@@ -1,3 +1,16 @@
+import { BOARD_COPY } from './copy.board';
+import { LIMELIGHT_COPY } from './copy.limelight';
+import type { SkinId } from '../domain/types';
+
+/**
+ * The two skin tables live in their own files, because a table of ninety camp strings and a table
+ * of five hundred clinical ones are read for different reasons and reviewed by different eyes.
+ * They are re-exported here so the copy module is one import site, and so `SKIN_COPY` below and a
+ * test that quotes a row cannot end up holding two different objects.
+ */
+export { BOARD_COPY } from './copy.board';
+export { LIMELIGHT_COPY } from './copy.limelight';
+
 /**
  * User-facing copy, default (clinical) skin.
  *
@@ -563,7 +576,17 @@ export type CopyKey =
   | 'advice.clipClearFailed'
   | 'label.confirmWipe'
   | 'label.confirmDeleteLegacy'
-  | 'label.confirmReplace';
+  | 'label.confirmReplace'
+  // --- the week review, the personal-record stamp and the skinned status lines (P8 Task 11) ---
+  | 'status.weekDeltaNegative'
+  | 'status.weekDeltaZero'
+  | 'status.weekDeltaPositive'
+  | 'status.prReached'
+  | 'status.prStamp'
+  | 'status.sessionCursor'
+  | 'status.planProgress'
+  | 'hero.weekReview'
+  | 'advice.interventionBody';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -869,7 +892,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.keepImport': 'Keep this import',
   'button.startClean': 'Start clean',
   'button.downloadLegacyJson': 'Download legacy JSON',
-  'button.setUpProfile': 'Set up your profile',
+  // R1 caps a button at three words and this one was four. The possessive is the word that
+  // carries nothing: the contract's own R1 example drops exactly this kind of word (P8 Task 11).
+  'button.setUpProfile': 'Set up profile',
   'advice.noWeeksYet': 'No weeks to show yet.',
   'advice.noSetsLogged': 'No sets logged yet.',
   'hero.exportImport': 'Export and import',
@@ -1414,16 +1439,69 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.confirmWipe': 'Confirm wipe',
   'label.confirmDeleteLegacy': 'Confirm legacy delete',
   'label.confirmReplace': 'Confirm replace',
+
+  // --- the week review, the personal-record stamp and the skinned status lines (P8 Task 11) ---
+  // The three week rows are TEMPLATES, not formatted examples. The round-three and
+  // departures-board design tables each wrote their own scenario into this row ("2 sessions below
+  // target" against "2 of 4. flop era."), and one skin's specimen cannot be checked against
+  // another's. With the two counts as slots, the numbers come from the domain in every skin and
+  // the rule "a skin never changes a number" is decided by the suite rather than asserted in
+  // prose. FORMAT.withSlots fills them; both are counts of sessions over one week.
+  'status.weekDeltaNegative': 'Weekly target missed. {completed} of {target} sessions completed.',
+  'status.weekDeltaZero': 'Weekly target met. {completed} of {target} sessions completed.',
+  'status.weekDeltaPositive':
+    'Weekly target exceeded. {completed} of {target} sessions completed.',
+  // The line and the stamp carry the same words and are two keys because they are two things: one
+  // is read in a list, the other lands on the screen as a graphic, and round three shouts exactly
+  // one of them.
+  'status.prReached': 'Personal record',
+  'status.prStamp': 'Personal record',
+  // template; FORMAT.planPositionLabel reads this key, so the session indicator's accessible name
+  // is a string a skin can reach. The visible short form (FORMAT.planPosition, "S 12/48") is an
+  // abbreviation of the same two counts and carries no words to skin.
+  'status.sessionCursor': 'Session {shown} of {total}',
+  // template; three counts of sessions, never a difference between them (R9).
+  'status.planProgress': '{completed} completed, {skipped} skipped, {remaining} remaining',
+  'hero.weekReview': 'Week review',
+  // R9 and round three section 3.3: the body of the missed-week screen states the fact and the
+  // next action and carries no verdict on the person. The count of missed sessions is absent
+  // because the compliance row beside it already prints the two counts.
+  'advice.interventionBody': 'The week is over. The next scheduled session stands.',
 };
 
 /**
- * One string from the default table, with an optional skin overlay merged over it.
+ * One string from the default table, with an optional overlay merged over it.
  *
- * The overlay is a parameter rather than a read of `UiPrefs.skin` because no skin table ships
- * yet: this keeps the signature the contract asks for without pretending a selection exists.
+ * The overlay stays a plain table rather than a `SkinId` so this function keeps no knowledge of
+ * how a skin is chosen: the FORMAT frames below pass it through, a test passes a literal, and
+ * `copyFor` passes the selected skin's table. Every call site that already passes an overlay
+ * therefore reaches a skin without being touched.
  */
 export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string {
   return overrides?.[key] ?? DEFAULT_COPY[key];
+}
+
+/**
+ * The override table per skin. `clinical` is empty by construction rather than by absence: the
+ * default table IS the clinical skin, so a row here would be a second place to change it.
+ */
+export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey, string>>>>> = {
+  clinical: {},
+  limelight: LIMELIGHT_COPY,
+  board: BOARD_COPY,
+};
+
+/**
+ * One string, resolved for a skin. This is the whole of the selection: the override is merged per
+ * KEY, not per table, so a skin that names ninety rows inherits the rest rather than restating
+ * them, and a row a skin forgets is a clinical sentence rather than a blank.
+ *
+ * Pure, and free of the store: `useCopy()` in ./useCopy.ts is the React binding that reads
+ * `ui.skin` and calls this. A content module that read `UiPrefs` itself would drag Zustand into
+ * a Node script and a unit test that only wanted a string.
+ */
+export function copyFor(skin: SkinId, key: CopyKey): string {
+  return copy(key, SKIN_COPY[skin]);
 }
 
 /**
@@ -1585,10 +1663,20 @@ export const FORMAT = {
    * aloud, so the indicator's accessible name comes from here instead. `status` is a copy
    * key's string (`hero.programmeComplete`) or '', as in `screenedOn` above.
    */
-  planPositionLabel: (shown: number, total: number, status: string): string =>
-    status === ''
-      ? `Session ${shown} of ${total}`
-      : `Session ${shown} of ${total}. ${status}`,
+  planPositionLabel: (
+    shown: number,
+    total: number,
+    status: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string => {
+    // The words are `status.sessionCursor`, read rather than restated, so a skin reaches the one
+    // string this indicator says aloud; the default row renders exactly what this frame held
+    // before. Both counts are this frame's own arguments, so no table can move them.
+    const cursor = copy('status.sessionCursor', overrides)
+      .replace('{shown}', () => String(shown))
+      .replace('{total}', () => String(total));
+    return status === '' ? cursor : `${cursor}. ${status}`;
+  },
 
   // --- Plan view (P3 Task 6) ---
 
