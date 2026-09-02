@@ -343,6 +343,18 @@ export type CopyKey =
   | 'status.readinessConsult'
   | 'button.startReadiness'
   | 'button.redoReadiness'
+  // --- Today view (P3 Task 5; appended by that task) ---
+  | 'hero.nextFourteenDays'
+  | 'status.remainingThisWeek'
+  | 'status.dayCompleted'
+  | 'status.daySkipped'
+  | 'status.dayInProgress'
+  | 'status.dayPaused'
+  | 'status.dayPlanned'
+  | 'status.dayRest'
+  | 'label.skipReason'
+  | 'advice.pauseHoldsCursor'
+  | 'banner.actionRefused.tag'
   // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
   | 'label.planPosition'
   | 'status.planComplete';
@@ -718,6 +730,24 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.readinessConsult': 'Physician consult advised.',
   'button.startReadiness': 'Start readiness screen',
   'button.redoReadiness': 'Redo readiness screen',
+
+  // --- Today view (P3 Task 5; appended by that task) ---
+  'hero.nextFourteenDays': 'Next 14 days',
+  'status.remainingThisWeek': 'Remaining this week',
+  // The six day states the 14-day strip can be in. They are the accessible NAME of each
+  // glyph: the glyph itself is drawn (SVG), so it has no text for a screen reader to read.
+  'status.dayCompleted': 'Completed',
+  'status.daySkipped': 'Skipped',
+  'status.dayInProgress': 'In progress',
+  'status.dayPaused': 'Paused',
+  'status.dayPlanned': 'Planned',
+  'status.dayRest': 'Rest',
+  // A short free-text field, and deliberately not a medical one: it is stored verbatim in
+  // SessionAssignment.skipReason and never interpreted, so the label states no category.
+  'label.skipReason': 'Reason (optional)',
+  'advice.pauseHoldsCursor': 'Paused days consume no session.',
+  // A refusal left the document exactly as it was; the tag says so before the reason does.
+  'banner.actionRefused.tag': 'NOT APPLIED',
   // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
   'label.planPosition': 'Plan position',
   'status.planComplete': 'complete',
@@ -839,6 +869,40 @@ export const FORMAT = {
     'The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of ' +
     `which beverages supply ${(maleML / 1000).toFixed(1)} L and ${(femaleML / 1000).toFixed(1)} L. ` +
     'Water in food supplies the rest and is not counted here, because an app cannot measure it.',
+
+  // --- Today view (P3 Task 5) ---
+
+  /**
+   * "Push, 07:00, 2 exercises". The label is the plan's own session label, the time is the
+   * availability slot's `HH:mm` in the profile's zone, and the count is what the session
+   * holds. Commas, not middots or dashes (copy contract R5).
+   */
+  sessionSummary: (label: string, startTime: string, exerciseCount: number): string =>
+    `${label}, ${startTime}, ${exerciseCount} ${exerciseCount === 1 ? 'exercise' : 'exercises'}`,
+
+  /**
+   * "3–4 × 6–10 reps". Both operands arrive already formatted from src/ui/format/plan.ts, so
+   * this frame owns the multiplication sign and nothing else. The en dashes are numeric
+   * ranges, which R5 retains.
+   */
+  setsBy: (sets: string, prescription: string): string => `${sets} × ${prescription}`,
+
+  /** "Next: Wed 07:00 Push." The weekday abbreviation comes from a LocalDate, never a Date. */
+  nextSession: (weekday: string, startTime: string, label: string): string =>
+    `Next: ${weekday} ${startTime} ${label}.`,
+
+  /** "Plan paused since 2026-09-07." The date is the open pause's own `from`. */
+  pausedSince: (date: string): string => `Plan paused since ${date}.`,
+
+  /** "Reason: illness". The reason is the user's text, reproduced and never classified. */
+  skipReason: (reason: string): string => `Reason: ${reason}`,
+
+  /** "Train Legs today". The label is one of remainingLabelsThisWeek. */
+  trainLabelToday: (label: string): string => `Train ${label} today`,
+
+  /** "6 of 6 sessions closed on 2026-09-07." The date is PlanCursor.completedOn. */
+  programmeClosed: (total: number, date: string): string =>
+    `${total} of ${total} sessions closed on ${date}.`,
 
   // --- session indicator in the top bar (P3 Task 7) ---
 

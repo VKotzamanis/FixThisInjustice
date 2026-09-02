@@ -65,6 +65,16 @@ export interface ScheduleActions {
   assignToday(profileId: string, date: LocalDate, label: string): void;
   closeWeeks(profileId: string, now: EpochMs): void;
   setUi(patch: Partial<UiPrefs>): void;
+  /**
+   * Clears `status.lastActionError`.
+   *
+   * The refusal banner's dismiss control, and nothing else. A refusal is a fact about ONE
+   * attempt, so it must be dismissable without the user having to make a second attempt
+   * succeed first: on a paused plan the only way out would otherwise be an action the domain
+   * refuses for the same reason. It writes no persisted field and takes no arguments, so it
+   * cannot be mistaken for a transition.
+   */
+  clearActionError(): void;
 }
 
 /**
@@ -193,5 +203,14 @@ export function createScheduleActions(deps: ScheduleActionDeps): ScheduleActions
     // Identical to the P1 implementation in index.ts, which this replaces when the slice is
     // spread last. A preference is not a schedule attempt, so it leaves lastActionError alone.
     setUi: (patch) => deps.set((s) => ({ ...s, ui: { ...s.ui, ...patch } })),
+
+    /*
+     * Not routed through attempt() either: there is no transition to apply and nothing that
+     * can throw. It goes straight to the same idempotent channel every attempt reports
+     * through, so a dismiss of an already-clear banner costs no state object and no re-render.
+     */
+    clearActionError: () => {
+      deps.setActionError(null);
+    },
   };
 }
