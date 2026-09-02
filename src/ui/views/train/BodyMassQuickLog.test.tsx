@@ -12,7 +12,7 @@
 // name and the words around it cannot come from two different skins.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FORMAT, copy, copyFor } from '../../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
 import { DEHYDRATION_LOSS_FRACTION } from '../../../domain/training/hydration';
 import type { SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
@@ -85,6 +85,23 @@ describe('BodyMassQuickLog: the limelight voice', () => {
       screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }),
     ).toBeInTheDocument();
     expect(screen.getByText(copyFor('limelight', 'advice.fluidLoss'))).toBeInTheDocument();
+  });
+
+  it('reads the disclosure body through the overlay, which has no word for it either', () => {
+    /*
+     * P8 close-out D: `FORMAT.fluidLossWhy` reads `why.fluidLoss` since close-out B, and this
+     * component now hands it `useCopyOverrides()`. No table carries that key, and round three
+     * section 3.3 is why: the title may be camp, the body may not, and every word left in this
+     * one is a defined quantity or the ACSM 2007 citation.
+     */
+    renderLog('limelight');
+    submitMass('limelight', POST_KG);
+
+    const threshold = DEHYDRATION_LOSS_FRACTION * PERCENT; // [%]
+    expect(
+      screen.getByText(FORMAT.fluidLossWhy('3.0', threshold, SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.fluidLossWhy('3.0', threshold))).toBeInTheDocument();
   });
 
   it('records the entry the store was handed, whatever the skin', () => {

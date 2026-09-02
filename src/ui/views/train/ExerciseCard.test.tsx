@@ -47,6 +47,7 @@ function renderCard(skin: SkinId, onCoach: (line: CoachLine, specimen: string | 
     <TrainingModalsProvider>
       <ExerciseCard
         t={lookup(skin)}
+        overrides={SKIN_COPY[skin]}
         profile={makeProfile()}
         exercise={BENCH}
         planned={makePlannedExercise({ exerciseId: BENCH.id })}
@@ -105,6 +106,29 @@ describe('ExerciseCard: the limelight voice', () => {
     const rows = screen.getAllByText(copyFor('limelight', 'button.logSet'));
     expect(rows.length).toBeGreaterThan(0);
     expect(screen.queryByText(copy('button.logSet'))).toBeNull();
+  });
+
+  it('forwards the overlay to every set row as well as the lookup', () => {
+    /*
+     * P8 close-out D. The counter is `FORMAT.setCounter`, which reads `status.setCounter`, so
+     * the rows need the TABLE and not only the lookup. Same argument as `t`: read once at the
+     * view, threaded through this card, never subscribed to per row.
+     */
+    renderCard('limelight', vi.fn());
+    // makePlannedExercise prescribes setsLo 3 and makeBlock leaves the modifier at 1.
+    expect(screen.getByText(FORMAT.setCounter(1, 3, SKIN_COPY.limelight))).toBeInTheDocument();
+    expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
+  });
+
+  it('leaves the prescription line clinical, which is what the table says about it', () => {
+    // `status.setsBy` carries no limelight row (copy.test.ts records why: the mockup's own card
+    // renders the clinical string). The card still resolves it THROUGH the overlay, so this is
+    // the case that fails if a row is added without revisiting the decision.
+    renderCard('limelight', vi.fn());
+    expect(
+      screen.getByText(FORMAT.setsBy('3', '6\u20138 reps', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.setsBy('3', '6\u20138 reps'))).toBeInTheDocument();
   });
 
   it('reports a coach line whose key the skin table names', () => {

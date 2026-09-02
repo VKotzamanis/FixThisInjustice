@@ -160,7 +160,10 @@ export function RestTimerPanel(): ReactElement | null {
             strokeLinecap="round"
           />
         </svg>
-        <span className="rest-time">{FORMAT.restRemaining(minutes, seconds)}</span>
+        {/* The overlay reaches the readout too (P8 close-out D). No table words it today, and
+            the zero padding stays in the frame: digit count is a property of a clock, not a
+            word a skin may change. */}
+        <span className="rest-time">{FORMAT.restRemaining(minutes, seconds, overrides)}</span>
       </div>
       <div className="rest-controls">
         <div className="rest-label">{c('status.rest')}</div>

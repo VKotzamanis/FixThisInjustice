@@ -8,12 +8,13 @@
 // section 3.4 names for `advice.drinkToThirst`, and asserting the literal here would let a
 // reworded table pass a stale test.
 //
-// The in-session branch is the one under test because it is the only cue whose whole body is a
-// single copy key. The shortfall branch is a FORMAT frame with two volumes in it and no
-// overlay parameter (see the note in the last case).
+// Both branches are under test. The in-session cue is a single copy key; the shortfall cue is a
+// FORMAT frame with two volumes in it, and since P8 close-out B that frame reads
+// `advice.beverageShortfall` and takes an overlay, so close-out D hands it this banner's own
+// `useCopyOverrides()` and the skin reaches it like any other string.
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { FORMAT, copy, copyFor } from '../../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
 import { SESSION_CHECK_INTERVAL_MS } from '../../../domain/training/hydration';
 import type { AppState, Profile, SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
@@ -25,6 +26,11 @@ const TODAY = '2026-03-02';
 const NOW = Date.UTC(2026, 2, 2, 10, 0, 0);
 /** [ms] Started long enough ago that the in-session cadence is due. */
 const STARTED_AT = NOW - SESSION_CHECK_INTERVAL_MS - 60_000;
+/**
+ * [ms] epoch UTC. 19:00 on 2026-03-02 in Europe/Athens, which is past DAILY_SHORTFALL_AFTER
+ * (18:00). March 2 precedes the EU DST change, so the offset is UTC+2.
+ */
+const EVENING = Date.UTC(2026, 2, 2, 17, 0, 0);
 
 const PROFILE: Profile = makeProfile();
 
@@ -53,6 +59,16 @@ function renderBanner(skin: SkinId): void {
   render(<HydrationBanner profile={PROFILE} date={TODAY} sessionActive />);
 }
 
+/**
+ * The daily-shortfall branch: no session under way, past 18:00 in the profile's zone, and
+ * nothing logged today, so the volume is below DAILY_SHORTFALL_FRACTION of the 3000 mL target.
+ */
+function renderShortfall(skin: SkinId): void {
+  vi.setSystemTime(EVENING);
+  useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin }) }));
+  render(<HydrationBanner profile={PROFILE} date={TODAY} sessionActive={false} />);
+}
+
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
@@ -67,6 +83,12 @@ describe('HydrationBanner: the clinical words', () => {
     renderBanner('clinical');
     expect(screen.getByText(copy('advice.drinkToThirst'))).toBeInTheDocument();
   });
+
+  it('states the daily shortfall and names the drink control in the default words', () => {
+    renderShortfall('clinical');
+    expect(screen.getByText(FORMAT.beverageShortfall('0 mL', '3000 mL'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: FORMAT.logVolume('250 mL') })).toBeInTheDocument();
+  });
 });
 
 describe('HydrationBanner: the limelight voice', () => {
@@ -78,11 +100,28 @@ describe('HydrationBanner: the limelight voice', () => {
     expect(screen.queryByText(copy('advice.drinkToThirst'))).toBeNull();
   });
 
-  it('keeps the drink control naming the profile volume, which no skin may restate', () => {
+  it('names the drink control in the skin words, keeping the profile volume', () => {
     renderBanner('limelight');
-    // `FORMAT.logVolume` takes no overlay parameter, so this control is the clinical frame in
-    // every skin. That is recorded here rather than left implicit: the volume is the profile's
-    // own cup size and belongs to the contract, not to the skin.
-    expect(screen.getByRole('button', { name: FORMAT.logVolume('250 mL') })).toBeInTheDocument();
+    /*
+     * P8 close-out B gave `FORMAT.logVolume` a copy key and an overlay parameter, and close-out
+     * D passes this banner's `useCopyOverrides()` into it, so the control follows the skin.
+     * What does NOT follow the skin is the VOLUME: 250 mL is the profile's own cup size, it
+     * reaches the frame as a slot, and copy.limelight.ts rule 1 keeps it there.
+     */
+    expect(
+      screen.getByRole('button', {
+        name: FORMAT.logVolume('250 mL', SKIN_COPY.limelight),
+      }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: FORMAT.logVolume('250 mL') })).toBeNull();
+  });
+
+  it('states the shortfall in the skin words, keeping both volumes', () => {
+    renderShortfall('limelight');
+    // Nothing logged today against the fixture's 3000 mL target.
+    expect(
+      screen.getByText(FORMAT.beverageShortfall('0 mL', '3000 mL', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(FORMAT.beverageShortfall('0 mL', '3000 mL'))).toBeNull();
   });
 });

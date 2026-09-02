@@ -47,6 +47,13 @@ export interface ExerciseCardProps {
    * the ~48 leaves (see SetRowProps.t).
    */
   t: (key: CopyKey) => string;
+  /**
+   * The active skin's override table, read once by the view beside `t` and threaded the same
+   * way. Three of this card's frames read a copy key since P8 close-out B (`setsBy`,
+   * `lastSessionSets`, `suggestedLoad`) and the rows below read a fourth (`setCounter`), so a
+   * card that took only the lookup would render four clinical strings inside a skinned screen.
+   */
+  overrides: Readonly<Partial<Record<CopyKey, string>>>;
   profile: Profile;
   exercise: Exercise;
   planned: PlannedExercise;
@@ -72,6 +79,7 @@ export interface ExerciseCardProps {
 export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   const {
     t,
+    overrides,
     profile,
     exercise,
     planned,
@@ -170,7 +178,11 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
       <button type="button" className="ex-head" onClick={onToggle} aria-expanded={isOpen}>
         <span className="ex-title">{title}</span>
         <span className="ex-sub">
-          {FORMAT.setsBy(String(targetSets), formatPrescription(planned.prescription))}
+          {FORMAT.setsBy(
+            String(targetSets),
+            formatPrescription(planned.prescription),
+            overrides,
+          )}
         </span>
         <span className="ex-prog">{FORMAT.exerciseProgress(todaysSets.length, targetSets)}</span>
       </button>
@@ -184,6 +196,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   lastDate ?? '',
                   formatLoad(lastSession[0]?.loadKg ?? null, profile.units),
                   lastSession.map((s) => String(s.reps ?? 0)).join(', '),
+                  overrides,
                 )}
               </span>
             )}
@@ -191,6 +204,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
               {FORMAT.suggestedLoad(
                 formatLoad(suggestedKg, profile.units),
                 t(ADVICE_KEY[advice.kind]),
+                overrides,
               )}
             </span>
           </div>
@@ -238,6 +252,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                 <SetRow
                   key={n}
                   t={t}
+                  overrides={overrides}
                   domIdPrefix={domIdPrefix}
                   n={n}
                   targetSets={targetSets}

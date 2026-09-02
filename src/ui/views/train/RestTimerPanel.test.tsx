@@ -12,7 +12,7 @@
 // specifies and the one a backgrounded PWA actually takes.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { copy, copyFor } from '../../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
 import type { SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import { makeAppState, makeUiPrefs } from '../../../test/funFixtures';
@@ -89,6 +89,21 @@ describe('RestTimerPanel: the limelight voice', () => {
       screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') }),
     ).toBeInTheDocument();
     expect(screen.queryByText(copy('status.rest'))).toBeNull();
+  });
+
+  it('reads the clock through the active overlay, which has no word for it', () => {
+    /*
+     * P8 close-out D. `FORMAT.restRemaining` reads `status.restRemaining` and this panel now
+     * passes `useCopyOverrides()` into it. The limelight table carries no row for that key on
+     * purpose (copy.test.ts records why: the mockup renders "1:47" and the string is two slots
+     * and a colon), so the readout is the default under every skin, and this case is what would
+     * fail if a row were ever added without revisiting that decision.
+     */
+    renderPanel('limelight');
+    expect(
+      screen.getByText(FORMAT.restRemaining(1, 30, SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.restRemaining(1, 30))).toBeInTheDocument();
   });
 });
 

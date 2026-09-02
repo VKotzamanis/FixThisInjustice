@@ -52,11 +52,16 @@ export interface SetRowProps {
    * ~48 store subscriptions behind one field that changes at most once a session. TrainView
    * reads it once and ExerciseCard forwards it, which is one subscription for the whole grid.
    *
-   * No `overrides` companion prop: every FORMAT frame this file renders (`setCounter`,
-   * `loggedSet`, `loggedTimedSet`, the four quantity names and the two aria labels) is a pure
-   * composition with no copy key behind it, so there is no overlay for one to reach.
+   * `overrides` is its companion, threaded the same way and for the same reason: since P8
+   * close-out B, `FORMAT.setCounter` reads `status.setCounter` rather than assembling "SET 2/3"
+   * from a template literal, so a row needs the skin's TABLE as well as its lookup. The other
+   * frames this file renders (`loggedSet`, `loggedTimedSet`, the four quantity names and the
+   * two aria labels) are still pure compositions with no copy key behind them, so they take no
+   * overlay and none is passed to them.
    */
   t: (key: CopyKey) => string;
+  /** The active skin's override table, read once by the view (see `t`). */
+  overrides: Readonly<Partial<Record<CopyKey, string>>>;
   /** Unique per exercise card, so two open cards cannot mint the same DOM id. */
   domIdPrefix: string;
   n: number;
@@ -82,6 +87,7 @@ function prefill(suggestedKg: Kg | null, units: UnitSystem): string {
 export function SetRow(props: SetRowProps): ReactElement {
   const {
     t,
+    overrides,
     domIdPrefix,
     n,
     targetSets,
@@ -135,7 +141,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     countRef.current?.blur();
   };
 
-  const marker = isBonus ? t('label.bonusSet') : FORMAT.setCounter(n, targetSets);
+  const marker = isBonus ? t('label.bonusSet') : FORMAT.setCounter(n, targetSets, overrides);
 
   if (logged !== null) {
     return (
