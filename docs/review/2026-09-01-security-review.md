@@ -12,6 +12,10 @@ Deployment target reviewed as stated: GitHub Pages, `https://vkotzamanis.github.
 The repository has **zero commits** and no git remote at review time. Findings about publication
 therefore describe the state that deploying this tree would create, not a breach that has occurred.
 
+The `legacy/` tree was deleted in `1311f84`. Every citation in this review is kept, because a
+review records what was found on a date. Each file is one command away, for example
+`git show 1311f84^:legacy/console-store.jsx`.
+
 ---
 
 ## Summary
@@ -171,6 +175,9 @@ requiring history rewrite, not a follow-up commit. Verify before the first push:
       $ rm -rf logs/
     </button>
 ```
+
+> The legacy tree was deleted in `1311f84`. This file is reachable at
+> `git show 1311f84^:legacy/console-app.jsx`.
 
 This button renders inside `<main>` on every view. It destroys all logged data on a single click:
 no `confirm()`, no undo, no export prompt. The sibling `reset()` at `console-store.jsx:280-287`
@@ -475,6 +482,9 @@ const [s, setS] = useState(() => {
   return { ...defaultState(), ...(persisted || {}) };
 });
 ```
+
+> The legacy tree was deleted in `1311f84`. This file is reachable at
+> `git show 1311f84^:legacy/console-store.jsx`.
 
 The key name `fti.console.v2` encodes a version, but nothing reads it: there is no version field
 inside the payload, no migration step, and no rejection of an unrecognised shape. The `v2` suffix
@@ -858,3 +868,7 @@ Scope, and what changed:
 Residual, recorded in `docs/plans/2026-09-01-05-reminders.md`: an imported document can carry
 `reminderSettings.enabled = true` with no device, which the panel reports as "Reminders are
 on. Schedule not sent yet." until the user switches the toggle off and on.
+
+Closed 2026-09-02 in `02dee88`. An imported document that carries `reminderSettings.enabled = true`
+with no device now reads `Reminders need enabling again on this device.` The panel names the device
+and the action, because no subscription exists and nothing is queued.
