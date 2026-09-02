@@ -16,10 +16,10 @@ training data. One optional Cloudflare Worker sends session reminders and does n
 | Targets | daily energy, protein and drink targets from the nutrition engine |
 | Log | body mass against projection, weekly compliance, best reps, and records |
 | Atlas | the specimen cards by rarity, with a locked slot for each card not yet drawn |
-| Settings | profile, availability, reminders, skin, sound, export and deletion |
+| Settings | readiness, profile, equipment, hydration, reminders, clip, skin, sound, data |
 
-The tab list is declared once, in `src/ui/nav/views.ts`. Export is reached from Settings
-rather than from the tab strip.
+The tab list is declared once, in `src/ui/nav/views.ts`. Export is reached from the data
+section of Settings rather than from the tab strip. Availability is set in the setup wizard.
 
 Two things sit outside the strip. Reminders arrive as Web Push sent by the Worker. A week
 that closes below its session target opens a short motivation clip, which you supply.
