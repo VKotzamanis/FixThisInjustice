@@ -135,6 +135,7 @@ export function Spotlight({
   const plan = useActivePlan();
   const titleId = useId();
   const listId = useId();
+  const emptyId = useId();
   const optionIdPrefix = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -174,11 +175,30 @@ export function Spotlight({
 
   const results = useMemo(() => filterSpotlightItems(items, query), [items, query]);
 
-  // The query box takes the caret. This runs AFTER ModalShell's own effect, which focuses the
-  // panel, because React flushes a child's effects before its parent's.
+  /*
+   * Opening and closing, keyed on `open` and not on the mount.
+   *
+   * The palette is CONTROLLED and stays mounted with `open` toggling, so a mount-only effect
+   * would run exactly once, while `open` is false and the input does not exist yet: the caret
+   * would stay on the panel ModalShell focuses, and the user would type into nothing.
+   *
+   * On open, the query box takes the caret. This runs AFTER ModalShell's own effect, which
+   * focuses the panel, because React flushes a child's effects before its parent's, and
+   * ModalShell remounts on every open. The optional call is the guard for the render in which
+   * `open` is false and the ref therefore holds null.
+   *
+   * On close, the query and the selection are dropped. They are component state, and closing
+   * does not unmount the component, so without this the palette reopens on the last query with
+   * whatever row the last arrow press had left active.
+   */
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (open) {
+      inputRef.current?.focus();
+      return;
+    }
+    setQuery('');
+    setActive(0);
+  }, [open]);
 
   const optionId = (index: number): string => `${optionIdPrefix}-${index}`;
 
@@ -222,8 +242,12 @@ export function Spotlight({
         className="spotlight-query"
         aria-label={copy('label.spotlightQuery')}
         placeholder={copy('label.spotlightQuery')}
-        aria-expanded
+        /* Whether the popup HAS anything in it, not whether the dialog is open: hard-coded
+           true, a screen reader announces an expanded listbox over a query that matched
+           nothing. */
+        aria-expanded={results.length > 0}
         aria-controls={listId}
+        aria-describedby={emptyId}
         aria-autocomplete="list"
         aria-activedescendant={results.length === 0 ? undefined : optionId(active)}
         autoComplete="off"
@@ -260,7 +284,14 @@ export function Spotlight({
         ))}
       </ul>
 
-      {results.length === 0 && <p className="spotlight-empty">{copy('advice.noSpotlightMatch')}</p>}
+      {/* Mounted on every render, empty when there is nothing to say, rather than inserted
+          with its text: a live region added to the document at the same moment as its content
+          is not reliably announced, because the region was not present to be observed. The
+          combobox points at it with aria-describedby so the sentence is also reachable on
+          demand and not only as an announcement. */}
+      <p id={emptyId} role="status" className="spotlight-empty">
+        {results.length === 0 ? copy('advice.noSpotlightMatch') : ''}
+      </p>
     </ModalShell>
   );
 }

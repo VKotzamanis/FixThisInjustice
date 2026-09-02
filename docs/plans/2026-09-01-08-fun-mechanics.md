@@ -8530,6 +8530,56 @@ Ten items: four from the original P8 scope and six from the skin system. None al
     `scripts/inline-icons.mjs`, `scripts/check-sfx-size.sh`, `scripts/check-no-emoji.mjs`,
     `public/sfx/` and `docs/sfx.md`.
 
+11. **Task 8's spotlight palette departs from this plan's literal draft in the eight places below,
+    and two later passages must be adapted before they are executed** (Task 8). Recorded after
+    execution, so the count in this section's opening line predates it. None of the eight alters a
+    persisted shape or a master plan contract; each is the draft meeting the code that shipped.
+
+    1. **Six views, not eight.** The draft's registry lists `protocols`, `atlas` and `export`. The
+       shipped `src/app/App.tsx` declares six ids (`today`, `plan`, `train`, `targets`, `log`,
+       `settings`), and Task 8 may not edit that file, so `src/ui/nav/views.ts` names those six.
+       `src/ui/nav/views.test.ts` reads App.tsx as text and asserts that the registry and the
+       union hold the same ids in the same order, which is what keeps the duplication safe for
+       the one task it stands for.
+    2. **The result list caps at 8, not 12, and matching is a case-insensitive substring of the
+       LABEL alone,** not of `label + hint`. The hint is the session a row sits in, so matching it
+       would return exercises whose own names share nothing with the query.
+    3. **`src/ui/planFocus.tsx` is module state read through `useSyncExternalStore`; there is no
+       `PlanFocusProvider`.** A context needs its provider mounted in `src/app/App.tsx`, which
+       Task 9 owns and Task 8 may not edit, so the palette would have had nowhere to publish
+       from. Module state needs no provider and works whether or not the Plan view is mounted.
+    4. **No `store.exerciseNames`.** Rows are named through `exerciseName()` from
+       `src/ui/format/plan.ts`, which already exists and already documents the fallback to the
+       raw id for an exercise the library no longer holds.
+    5. **`SPOTLIGHT_COMBO` (`'mod+k'`) is exported from `src/ui/nav/views.ts` and bound by
+       nobody in Task 8.** The palette is a controlled component (`open` / `onClose`) and
+       registers no `window` listener: code review A54 was two listeners on one key, and Task 9
+       exists to make exactly one possible. Task 9 binds the constant.
+    6. **The tap target is `src/ui/components/SpotlightButton.tsx`, not a prop on `TopBar`.**
+       There is no TopBar in this codebase; App.tsx renders the tab strip inline. The contract
+       dependency below that reads "P1's `TopBar` gains an `onOpenSpotlight` prop" is met by
+       mounting this component in one line, which is Task 9's edit to make.
+    7. **A cross-week deep link scrubs the week before it focuses the row.** The Plan view
+       renders one week at a time, so a link into another week names a row that is not in the
+       document when the request arrives. Delivery is therefore two-phase: `usePlanRowFocus()`
+       returns the pending target and consumes it only once the row exists, and `PlanView`
+       resolves the target's week (which is a fact about the plan, not about the palette),
+       scrubs to it, and lets the next render deliver. A request naming a row no week of the
+       plan holds is withdrawn by `PlanView`, so it cannot wait for a later, unrelated plan.
+       The draft consumed the request on sight, which silently dropped every cross-week link.
+    8. **The hook is `usePlanRowFocus()`, not `useScrollToPlanFocus()`,** and it focuses the row
+       before scrolling to it: a scroll moves the viewport and tells a screen reader nothing.
+
+    Two passages of this plan are now wrong and must be adapted where they are executed:
+
+    - **Task 9 step 7 (lines ~4078 and ~4093)** imports `PlanFocusProvider` from
+      `"../ui/planFocus"` and wraps the app body in it. That export does not exist and will not:
+      drop both the import and the wrapper, and add nothing in their place.
+    - **Amendment 4 above (line ~8483)** requires `src/store/index.ts` to expose
+      `exerciseNames: Readonly<Record<string, string>>`. Task 8 neither adds it nor reads it, and
+      no other task needs it as written. Any later step that quotes `s.exerciseNames` reads
+      `exerciseName(id)` from `src/ui/format/plan.ts` instead.
+
 **Contract dependencies P8 asserts but does not own** (flagged so a reviewer can confirm them against P1 to P7 rather than discovering them mid-execution):
 
 - P3's `PlanView` must render each planned-exercise row with `id={planRowDomId(session.id, pe.exerciseId)}` and call `useScrollToPlanFocus()` once (Task 8, steps 9 and 10). If `PlanView` renders only the current session rather than every session, Task 8's deep-link assertion narrows accordingly and the narrowing is recorded here.

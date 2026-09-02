@@ -16,8 +16,10 @@
 // currently mounted, and is the arrangement src/ui/components/ModalShell.tsx already uses for
 // the scroll lock: one slot, shared by every subtree in the document.
 //
-// The request is CONSUMED, not merely read: it is cleared the moment it is delivered, so
-// re-mounting the Plan view later does not jump the user to a row they asked for once.
+// The request is CONSUMED, not merely read: it is cleared the moment it is DELIVERED, so
+// re-mounting the Plan view later does not jump the user to a row they asked for once. Cleared
+// on sight instead, a link into a week the view is not showing would be swallowed in silence,
+// which is the defect this file's usePlanRowFocus documents at length.
 
 import { useEffect, useSyncExternalStore } from 'react';
 import { planRowDomId } from './format/plan';
@@ -77,25 +79,49 @@ export function usePendingPlanFocus(): PlanFocusTarget | null {
 
 /**
  * Called once, unconditionally, at the top of PlanView. Delivers any outstanding request to the
- * row it names: keyboard focus first, then the scroll.
+ * row it names: keyboard focus first, then the scroll. Returns the request it is still waiting
+ * to deliver, or null.
  *
  * FOCUS, NOT ONLY SCROLL. Scrolling moves the viewport and tells a screen reader nothing. The
  * row carries tabIndex={-1} so it can take focus programmatically without entering the tab
  * order, which is what makes the deep link land for a keyboard or screen-reader user too.
+ *
+ * TWO PHASES, AND WHY THE TARGET IS RETURNED. The Plan view renders ONE WEEK at a time, so a
+ * link into another week names a row that is not in the document when the request arrives.
+ * This hook cannot fix that itself: which week holds a session is a fact about the plan, which
+ * the caller holds and this module does not. So phase one is the caller's - it reads the
+ * returned target, scrubs to that target's week, and re-renders - and phase two is this effect
+ * finding the row that scrub produced. A caller that ignores the return value gets the old
+ * behaviour for rows already on screen and no delivery for the rest.
+ *
+ * CONSUMED AT DELIVERY, NOT AT READ. Clearing on sight would drop exactly the cross-week
+ * request phase one exists to serve. The request therefore survives until the row is found,
+ * and the caller withdraws it (requestPlanFocus(null)) when no week of the plan holds it, so
+ * an unresolvable request cannot sit pending for a later, unrelated plan to deliver.
  */
-export function usePlanRowFocus(): void {
+export function usePlanRowFocus(): PlanFocusTarget | null {
   const target = usePendingPlanFocus();
 
+  /*
+   * No dependency array, deliberately: this is a retry, and the thing it waits on is the DOM
+   * rather than a value React can compare. React commits the DOM before an effect runs, so
+   * "after every render of the Plan view" is exactly "every time the row set may have changed"
+   * - the week scrub, a late hydration, a plan swap. Once the request is delivered or
+   * withdrawn, `target` is null and every later run is the single check below.
+   */
   useEffect(() => {
     if (target === null) return;
-    // Cleared BEFORE the delivery, so this effect cannot run twice for one request (React's
-    // development double-invoke, or any later re-render of the Plan view).
-    requestPlanFocus(null);
 
     const row = document.getElementById(planRowDomId(target.sessionId, target.exerciseId));
-    // A plan generated against an earlier library, or a row outside the week being shown, has
-    // no element. Doing nothing is the honest outcome; the view is already correct.
+    // Not there YET: the caller is expected to scrub to the target's week, and the next render
+    // is the next attempt. Doing nothing is the honest outcome for this pass.
     if (row === null) return;
+
+    // Cleared as the delivery happens. React's development double-invoke replays this effect
+    // body with the SAME captured target, so it does run twice for one request; both halves of
+    // the delivery are idempotent (clearing a cleared slot is a no-op, and focusing the focused
+    // row is one too), which is what makes the repeat harmless rather than prevented.
+    requestPlanFocus(null);
 
     row.focus();
     // jsdom implements no layout and therefore does not define scrollIntoView, so the guard is
@@ -103,5 +129,7 @@ export function usePlanRowFocus(): void {
     if (typeof row.scrollIntoView === 'function') {
       row.scrollIntoView({ block: 'center' });
     }
-  }, [target]);
+  });
+
+  return target;
 }
