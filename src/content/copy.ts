@@ -913,7 +913,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.jsonIsBackup': 'The JSON file is the complete backup.',
   'advice.calendarAlarms': 'An imported alarm may not fire.',
   'advice.importReplaces': 'Importing replaces everything on this device.',
-  'status.importOk': 'Imported. The current state has been replaced.',
+  'status.importOk': 'Imported. The state was replaced.',
   'advice.importParseFailed': 'That text is not JSON. Nothing changed.',
   'advice.fileUnreadable': 'The file could not be read.',
   'hero.dataOnDevice': 'Data on this device',
@@ -940,7 +940,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- setup wizard, review fixes (P2 Task 7) ---
   'status.targetsNotEstimated':
-    'Targets are not estimated for these entries. Go back and check the body screen.',
+    'Targets are not estimated for these entries. Check the body screen.',
 
   // --- targets and settings, review fixes (P2 Task 8) ---
   // Accessible name of the view-switching landmark. The word "navigation" is deliberately
@@ -1288,8 +1288,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.refusalSessionOpen': 'A session is already in progress on {date}.', // template
   'status.refusalAlreadyStarted': 'This session already started on {date}.', // template
   'status.refusalNotNextDay': '{date} is not the next session day.', // template
-  'status.refusalLabelNotOffered':
-    '{label} is not among the sessions remaining on {date}.', // template
+  'status.refusalLabelNotOffered': '{label} is not offered on {date}.', // template
   // Anything the mapper does not recognise. It says what happened and stops: naming a cause
   // this build cannot identify would be a guess presented as a fact.
   'status.refusalUnrecognised': 'That change was refused.',
@@ -1311,7 +1310,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // the document whose record is gone -- where "a clip is stored" is still the honest sentence,
   // because the id IS in the document whatever IndexedDB did with the bytes.
   'status.motivationClipNone': 'No clip chosen. The bundled clip plays.',
-  'status.motivationClipStored': 'A clip is stored on this device.',
+  'status.motivationClipStored': 'A clip is stored.',
   'advice.motivationClipStorage': 'Stored on this device, never uploaded.',
   // R9: the limit and the unit the size line uses, behind the "why?" disclosure and therefore
   // exempt from R1-R4. Both figures are slots filled from the constants that enforce them, so
