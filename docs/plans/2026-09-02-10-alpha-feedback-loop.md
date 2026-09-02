@@ -2977,7 +2977,7 @@ Run before the plan is handed to an implementer, and again at Task 16.
 | The owner asked for | Task |
 | --- | --- |
 | review each step and page | 4 to 8, one page per screen group in app order |
-| leave comments on each section | 4, a box and a skin chip row per part; 8, comment threads |
+| leave comments on each section | 4, a box per part; 8, comment threads |
 | function as an alpha tester | 5, page 0 is the procedure |
 | catalogue feedback on each possible part | 1 to 3, 93 parts with stable ids and a gate |
 | use an agentic approach to implement | 11 to 15, one template per feedback kind |
