@@ -16,6 +16,15 @@
 //      asserted rather than assumed.
 //   3. Added a parseState round-trip, an incremental-close ordering case, a no-op case for a
 //      cursor whose plan is missing from state, and a MAX_WEEKS_EVALUATED bound case.
+//   4. Added the window-anchor cases. MAX_WEEKS_EVALUATED bounds the walk, and the walk used
+//      to start at the plan's first week, so a plan older than 520 weeks spent its whole
+//      budget in the distant past and never closed the week that just ended. The window is
+//      now anchored at the most recent weeks, and the bound case in "idempotence and bounds"
+//      is inverted to assert that instead of the old behaviour.
+//   5. Added coverage for the two non-terminal assignment statuses, a session completed on a
+//      day with no availability slot (the pick-today control refuses such a day, so the case
+//      asserts the refusal and then drives the cursor directly), a Pacific/Kiritimati
+//      (UTC+14) profile, and a paused review's parseState round-trip.
 //
 // Coupling note: the counting tests drive state through cursor.ts (completeSession,
 // skipSession, pausePlan, resumePlan) exactly as the plan wrote them, so they inherit
@@ -23,8 +32,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { closeWeeks, MAX_WEEKS_EVALUATED } from './weekly';
-import { completeSession, pausePlan, resumePlan, skipSession } from './cursor';
+import { completeSession, pausePlan, resumePlan, skipSession, startSession } from './cursor';
+import { assignToday, remainingLabelsThisWeek } from './calendar';
 import {
+  assignmentOn,
   DAY_MS,
   MONDAY,
   NOW_MS,
@@ -38,9 +49,9 @@ import {
   TZ_ATHENS,
   TZ_LOS_ANGELES,
 } from '../../test/scheduleFixtures';
-import { instantOf, localDateOf } from '../dates';
+import { instantOf, isoWeekday, localDateOf } from '../dates';
 import { parseState } from '../schema';
-import type { AppState, EpochMs, WeeklyReview } from '../types';
+import type { AppState, EpochMs, LocalDate, TimeZone, WeeklyReview } from '../types';
 
 const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
 const MWF = [1, 3, 5] as const;
@@ -54,6 +65,22 @@ function seed(timezone: string): AppState {
     weeklySessionTarget: 3,
     startedOn: PREV_MONDAY,
     timezone,
+  });
+}
+
+/**
+ * The same programme, started 574 weeks (11 years) before NOW_MS — comfortably past the
+ * MAX_WEEKS_EVALUATED window, so the window's anchor decides which weeks are reachable.
+ */
+const LONG_AGO: LocalDate = '2015-09-07'; // a Monday
+
+function seedLongAgo(): AppState {
+  return seedState({
+    labels: LABELS,
+    weekdays: [...MWF],
+    weeklySessionTarget: 3,
+    startedOn: LONG_AGO,
+    timezone: TZ_ATHENS,
   });
 }
 
@@ -133,6 +160,42 @@ describe('closeWeeks — the current week is never closed, at either zone bounda
   });
 });
 
+// ---------------------------------------------------------------------------
+// The extreme eastern zone. Pacific/Kiritimati is UTC+14 with no DST — the largest offset on
+// the map — so its Monday begins while most of the world, UTC included, is still on Sunday.
+// It is the zone that catches a boundary computed on the UTC line instead of the profile's.
+// ---------------------------------------------------------------------------
+
+const TZ_KIRITIMATI: TimeZone = 'Pacific/Kiritimati';
+
+/** [ms] Sunday 2026-09-06 23:59 in Kiritimati = 2026-09-06T09:59Z. */
+const KI_SUN_2359: EpochMs = instantOf(PREV_SUNDAY, '23:59', TZ_KIRITIMATI);
+/** [ms] Monday 2026-09-07 00:01 in Kiritimati = 2026-09-06T10:01Z — two minutes later. */
+const KI_MON_0001: EpochMs = instantOf(MONDAY, '00:01', TZ_KIRITIMATI);
+
+describe('closeWeeks — Pacific/Kiritimati (UTC+14) closes its week on its own clock', () => {
+  it('reads its Monday boundary as still Sunday in Athens and in UTC', () => {
+    // The premise of the cases below, asserted rather than assumed.
+    expect(localDateOf(KI_SUN_2359, TZ_KIRITIMATI)).toBe(PREV_SUNDAY);
+    expect(localDateOf(KI_MON_0001, TZ_KIRITIMATI)).toBe(MONDAY);
+    expect(localDateOf(KI_MON_0001, TZ_ATHENS)).toBe(PREV_SUNDAY);
+    expect(localDateOf(KI_MON_0001, 'UTC')).toBe(PREV_SUNDAY);
+  });
+
+  it('closes nothing at Sunday 23:59 local', () => {
+    expect(closedWeekStarts(TZ_KIRITIMATI, KI_SUN_2359)).toEqual([]);
+  });
+
+  it('closes the finished week at Monday 00:01 local, two minutes later', () => {
+    expect(closedWeekStarts(TZ_KIRITIMATI, KI_MON_0001)).toEqual([PREV_MONDAY]);
+  });
+
+  it('closes it at that instant while an Athens profile, still on Sunday, closes nothing', () => {
+    expect(closedWeekStarts(TZ_KIRITIMATI, KI_MON_0001)).toEqual([PREV_MONDAY]);
+    expect(closedWeekStarts(TZ_ATHENS, KI_MON_0001)).toEqual([]);
+  });
+});
+
 describe('closeWeeks — counting', () => {
   it('counts completed and skipped assignments inside the week', () => {
     let s = seed(TZ_ATHENS);
@@ -188,6 +251,49 @@ describe('closeWeeks — counting', () => {
     const out = closeWeeks(seed(TZ_ATHENS), PROFILE_ID, NOW_MS);
     // startedOn is 2026-08-31, so 2026-08-24 .. 2026-08-30 is never evaluated.
     expect(reviews(out).map((r) => r.weekStart)).toEqual([PREV_MONDAY]);
+  });
+
+  it('counts a planned assignment as neither completed nor skipped', () => {
+    const planned = assignToday(seed(TZ_ATHENS), PROFILE_ID, PREV_MONDAY, 'Push');
+    expect(assignmentOn(planned, PREV_MONDAY)?.status).toBe('planned');
+    const r = reviews(closeWeeks(planned, PROFILE_ID, NOW_MS))[0];
+    expect(r?.completed).toBe(0);
+    expect(r?.skipped).toBe(0);
+    expect(r?.delta).toBe(-3); // a day that was never closed out is a miss, not a skip
+  });
+
+  it('counts an in-progress assignment as neither completed nor skipped', () => {
+    const planned = assignToday(seed(TZ_ATHENS), PROFILE_ID, PREV_MONDAY, 'Push');
+    const open = startSession(planned, PROFILE_ID, PREV_MONDAY, NOW_MS - 6 * DAY_MS); // [ms]
+    expect(assignmentOn(open, PREV_MONDAY)?.status).toBe('in-progress');
+    const r = reviews(closeWeeks(open, PROFILE_ID, NOW_MS))[0];
+    expect(r?.completed).toBe(0);
+    expect(r?.skipped).toBe(0);
+    expect(r?.delta).toBe(-3);
+  });
+
+  /*
+   * "Train today" on a day the availability never offered. The pick-today control itself
+   * (calendar.ts assignToday) refuses such a day — gateReason's fourth rule only lets a pick
+   * land on the day the projection serves the cursor's next session, and a slotless day serves
+   * nothing — so the refusal is asserted here rather than assumed. The user still reaches the
+   * day through the cursor, which materialises an assignment on any unpaused day, and the
+   * review counts sessions closed out, not slots filled.
+   */
+  it('counts a session completed on a day with no availability slot', () => {
+    const base = seed(TZ_ATHENS);
+    // Premise: the profile trains Mon/Wed/Fri, so Sunday carries no slot at all.
+    expect(base.availability[PROFILE_ID]?.slots.map((slot) => slot.weekday)).toEqual([...MWF]);
+    expect(isoWeekday(PREV_SUNDAY)).toBe(7);
+    expect(remainingLabelsThisWeek(base, PROFILE_ID, PREV_SUNDAY)).toEqual([]);
+    expect(() => assignToday(base, PROFILE_ID, PREV_SUNDAY, 'Push')).toThrow(RangeError);
+
+    const s = completeSession(base, PROFILE_ID, PREV_SUNDAY, NOW_MS - DAY_MS); // [ms]
+    expect(assignmentOn(s, PREV_SUNDAY)?.status).toBe('completed');
+    const r = reviews(closeWeeks(s, PROFILE_ID, NOW_MS))[0];
+    expect(r?.completed).toBe(1);
+    expect(r?.skipped).toBe(0);
+    expect(r?.delta).toBe(-2);
   });
 });
 
@@ -270,17 +376,42 @@ describe('closeWeeks — idempotence and bounds', () => {
     expect(reviews(out).every((r) => r.delta === -3)).toBe(true);
   });
 
-  it('stops at MAX_WEEKS_EVALUATED when startedOn is far in the past', () => {
+  // Inverted (deviation 4). This case used to assert the old anchor: 520 weeks walked forward
+  // from startedOn, so the oldest week closed was 2000-01-03 and the week that just ended was
+  // never reached. The window is now anchored at the most recent weeks instead.
+  it('evaluates the most recent MAX_WEEKS_EVALUATED weeks when startedOn is far in the past', () => {
     const s = seedState({
       labels: LABELS,
       weekdays: [...MWF],
       weeklySessionTarget: 3,
-      startedOn: '2000-01-03', // a Monday, 1391 weeks before NOW_MS
+      startedOn: '2000-01-03', // a Monday, 1392 weeks before NOW_MS
       timezone: TZ_ATHENS,
     });
     const out = closeWeeks(s, PROFILE_ID, NOW_MS);
-    expect(reviews(out)).toHaveLength(MAX_WEEKS_EVALUATED);
-    expect(reviews(out)[0]?.weekStart).toBe('2000-01-03');
+    // The window is the 520 weeks ending with the current one, and the current week is never
+    // closed, so 519 weeks close: weekStart(today − 7 × 519 d) = 2016-09-26 through 2026-08-31.
+    expect(reviews(out)).toHaveLength(MAX_WEEKS_EVALUATED - 1);
+    expect(reviews(out)[0]?.weekStart).toBe('2016-09-26');
+    expect(reviews(out).at(-1)?.weekStart).toBe(PREV_MONDAY);
+    expect(reviews(out).map((r) => r.weekStart)).not.toContain('2000-01-03');
+  });
+
+  it('closes the week that just ended even when the plan started 11 years ago', () => {
+    const out = closeWeeks(seedLongAgo(), PROFILE_ID, NOW_MS);
+    expect(reviews(out).at(-1)?.weekStart).toBe(PREV_MONDAY);
+    expect(reviews(out).at(-1)?.weekEnd).toBe(PREV_SUNDAY);
+  });
+
+  it('re-anchors the window on a later call, so a year of new weeks still closes', () => {
+    const once = closeWeeks(seedLongAgo(), PROFILE_ID, NOW_MS);
+    const later = closeWeeks(once, PROFILE_ID, NOW_MS + 365 * DAY_MS); // [ms]
+    expect(later).not.toBe(once); // the second call has work to do; it is not a no-op
+    // NOW_MS + 365 d is Tuesday 2027-09-07 in Athens, so the current week starts 2027-09-06
+    // and the 52 weeks 2026-09-07 .. 2027-08-30 are the ones now closable.
+    expect(reviews(later).length - reviews(once).length).toBe(52);
+    expect(reviews(later).at(-1)?.weekStart).toBe('2027-08-30');
+    // Already-reviewed weeks are not charged against the guard, so the backlog keeps advancing.
+    expect(reviews(later).map((r) => r.weekStart)).toContain(PREV_MONDAY);
   });
 
   it('is a no-op without a profile, availability, or cursor', () => {
@@ -306,5 +437,25 @@ describe('closeWeeks — persistence', () => {
     expect(parsed.ok ? '' : parsed.error).toBe('');
     if (!parsed.ok) return;
     expect(parsed.state.weeklyReviews[PROFILE_ID]).toEqual(reviews(out));
+  });
+
+  /*
+   * The paused shape is round-tripped separately because it is the one the schema cannot
+   * check. WeeklyReviewSchema is a plain z.object: it bounds each field on its own and
+   * carries no cross-field refinement, so nothing in it ties delta to completed − target or
+   * forces delta = 0 on a paused week. A document with paused = true and delta = -3 parses
+   * clean. closeWeeks is therefore the only guarantor of delta's semantics, and this test
+   * pins what it writes for a paused week alongside the pause record that produced it.
+   */
+  it('round-trips a paused review, whose delta only closeWeeks constrains', () => {
+    const paused = pausePlan(seed(TZ_ATHENS), PROFILE_ID, PREV_WEDNESDAY, 'illness');
+    const out = closeWeeks(paused, PROFILE_ID, NOW_MS);
+    expect(reviews(out)[0]?.paused).toBe(true);
+    expect(reviews(out)[0]?.delta).toBe(0); // completed − target would have been −3
+    const parsed = parseState(JSON.parse(JSON.stringify(out)) as unknown);
+    expect(parsed.ok ? '' : parsed.error).toBe('');
+    if (!parsed.ok) return;
+    expect(parsed.state.weeklyReviews[PROFILE_ID]).toEqual(reviews(out));
+    expect(parsed.state.pauses[PROFILE_ID]).toEqual(pausesOf(out));
   });
 });
