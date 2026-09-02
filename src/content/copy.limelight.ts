@@ -70,6 +70,17 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // the date stay exactly the slots the domain filled. The MULTIPLICATION SIGN is the default's
   // and is a unit token, not a word.
   'status.lastSessionSets': 'last show {date}: {load} \u00d7 {reps}',
+  // The suggested-load line's ABSENCE row (whole-app review, item 2). `label.suggestedLoad`
+  // itself stays clinical for the reason copy.test.ts records: its `{kind}` slot arrives already
+  // resolved from a `status.advice*` row this table does not carry, so a camp frame around a
+  // clinical kind would read as two voices in one sentence. That objection does not reach here.
+  // This row has NO SLOT: no kind to disagree with, no load to invent, no number at all, which
+  // is what makes a word of this table's own safe in a position the sibling row cannot take one.
+  //
+  // A show that has no script for a number is unscripted, and this table already spells a
+  // session as a show and a finished plan as `wrapped`. Case alone earns no row in this file, so
+  // a lower-cased "no load suggested" would not have qualified; this is a different word.
+  'label.noSuggestedLoad': 'unscripted',
   'hero.weeklyTargetMissed': 'the intervention',
   'status.sessionCursor': 'ep. {shown} of {total}',
   // `+30 s`, not `+30s`: the SPACE and the LOWER CASE are the unit, not typography. SI 5.4.3
@@ -265,9 +276,10 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   /*
    * WHAT STAYS CLINICAL ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
    *
-   * 130 default keys reach Today, Train, Plan or Settings with no row in this table. Twenty took
-   * one above. The other 110 are named below, grouped so each reason is written once rather than
-   * once per key. Recount the list against the tree with the sweep in
+   * 131 default keys reach Today, Train, Plan or Settings. Twenty-one took a row above, the
+   * twenty-first being `label.noSuggestedLoad`, which the whole-app review added with a row in
+   * both tables. The other 110 are named below, grouped so each reason is written once rather
+   * than once per key. Recount the list against the tree with the sweep in
    * docs/plans/2026-09-02-09-prose-and-docs-pass.md, Task 12 step 1, WITH ONE CORRECTION: that
    * sweep greps for a single-quoted key and a view that hands a key to a component as a JSX prop
    * writes it in double quotes (`titleKey="label.confirmWipe"`, `copyKey="button.skipToday"`).

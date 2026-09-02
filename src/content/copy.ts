@@ -565,7 +565,9 @@ export type CopyKey =
   | 'label.modality.machine'
   | 'label.modality.cable'
   | 'label.modality.bodyweight'
-  | 'unit.characters';
+  | 'unit.characters'
+  // --- the suggested-load line has a row for the absence too (whole-app review, item 2) ---
+  | 'label.noSuggestedLoad';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1530,6 +1532,25 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // because those are SYMBOLS and this is an English word: a symbol reads the same in every
   // register, a word does not.
   'unit.characters': 'characters',
+
+  // --- the suggested-load line has a row for the absence too (whole-app review, item 2) ---
+  // `suggestedProgression` returns `loadKg: null` for a bodyweight exercise, for a prescription
+  // with no rep range and nothing logged, and for any exercise with no history. Until now the
+  // card put `formatLoad(null, units)` — the em dash `NO_VALUE` of src/ui/format/plan.ts — into
+  // `label.suggestedLoad`'s `{load}` slot and rendered "Suggested —: Hold load". Contract R5
+  // retains a bare em dash as a WHOLE CELL ("a placeholder, not a connector"), and a dash
+  // standing between two words of a sentence is neither. The absence gets its own row instead,
+  // and because that row carries no slot there is no position for a dash to occupy.
+  //
+  // Three words, no full stop, like every other `label.*` row. It states what the engine did
+  // and no more: the words the adjacent `advice.reason` line already carries say WHY, in the
+  // engine's own sentence ("Bodyweight lift: add repetitions, not load."), so this row does not
+  // repeat the reason and does not need to.
+  //
+  // "No suggestion yet" was the first draft and is rejected: `yet` is a promise, and for a
+  // bodyweight exercise it is a false one — `isBodyweight` returns null forever, so the load
+  // suggestion the word implies is never coming. The shipped form is true in all four branches.
+  'label.noSuggestedLoad': 'No load suggested',
 };
 
 /**

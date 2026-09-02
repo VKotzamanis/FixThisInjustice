@@ -39,6 +39,7 @@ import type {
   SkinId,
   UnitSystem,
 } from '../../domain/types';
+import { NO_VALUE } from '../format/plan';
 import { useAppStore } from '../../store';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
@@ -400,6 +401,56 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     expect(screen.getAllByText(copy('disclosure.why')).length).toBeGreaterThan(0);
     expect(screen.getByText(advice.why)).toBeInTheDocument();
     expect(screen.getByText(advice.reason)).toBeInTheDocument();
+  });
+
+  /*
+   * The null-load branch of the suggested-load line (whole-app review, item 2).
+   *
+   * `suggestedProgression` returns `loadKg: null` in four positions: a bodyweight exercise, a
+   * non-`reps` prescription with nothing logged, a deload block with nothing logged, and a
+   * loaded exercise with no history at all. `formatLoad(null, units)` is the em dash
+   * `NO_VALUE` (src/ui/format/plan.ts), which copy contract R5 retains as a WHOLE CELL and
+   * never inside a sentence, so substituting it into `label.suggestedLoad`'s `{load}` slot
+   * produced "Suggested \u2014: Hold load" under every skin. The absence now has a row of its
+   * own, `label.noSuggestedLoad`, which carries no slot and therefore no dash.
+   */
+  it('gives the absent suggestion its own line rather than a dash inside the frame', () => {
+    // A loaded upper compound with no history: progression.ts's "nothing logged, so nothing to
+    // suggest from" branch, kind `hold`, loadKg null.
+    seedStore(seed({ sets: [] }));
+    renderTrain();
+
+    expect(
+      screen.queryByText(FORMAT.suggestedLoad(NO_VALUE, copy('status.adviceHold'))),
+    ).toBeNull();
+    expect(screen.getByText(copy('label.noSuggestedLoad'))).toBeInTheDocument();
+  });
+
+  it('keeps the frame when a load exists, so only the null branch changed', () => {
+    seedStore(seed({ sets: metTopHistory(UPPER.id, 60) }));
+    renderTrain();
+
+    expect(
+      screen.getByText(FORMAT.suggestedLoad('62.5 kg', copy('status.adviceAddLoad'))),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(copy('label.noSuggestedLoad'))).toBeNull();
+  });
+
+  it('says the same absence in the limelight table\'s own words', () => {
+    seedStore(withSkin(seed({ sets: [] }), 'limelight'));
+    renderTrain();
+
+    expect(
+      screen.getByText(copyFor('limelight', 'label.noSuggestedLoad')),
+    ).toBeInTheDocument();
+    // The clinical row is off the screen, which is what makes the assertion above about the
+    // table rather than about a string that happens to match.
+    expect(screen.queryByText(copy('label.noSuggestedLoad'))).toBeNull();
+    expect(
+      screen.queryByText(
+        FORMAT.suggestedLoad(NO_VALUE, copy('status.adviceHold'), SKIN_COPY.limelight),
+      ),
+    ).toBeNull();
   });
 
   it('names the last session rather than deriving it from the clock', () => {
