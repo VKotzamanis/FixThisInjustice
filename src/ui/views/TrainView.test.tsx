@@ -44,7 +44,7 @@ import { installFakeStorage } from '../../store/testStorage';
 import { UNDO_WINDOW_MS } from '../../store/training';
 import { makeBlock, makePlannedExercise, makeProfile, makeSet } from '../../test/fixtures';
 import { playSfx } from '../../skins/sfx';
-import { playChime, vibrate } from '../audio/chime';
+import { playChime, releaseAudio, vibrate } from '../audio/chime';
 import { ToastProvider, ToastQueue } from '../components/ToastQueue';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
 import { TrainView } from './TrainView';
@@ -1224,6 +1224,49 @@ describe('TrainView finish', () => {
 
     expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('skipped');
     expect(playSfx).not.toHaveBeenCalled();
+  });
+
+  /*
+   * P8 close-out defect: releaseAudio() used to close the shared context unconditionally, right
+   * after playSfx('session_done') scheduled a source on it. AudioContext.close() stops every
+   * scheduled node immediately, so the sound that had just fired was cut, and every later sound
+   * (pr_stamp, intervention_open) stayed silent for the rest of the document's life, because the
+   * first-gesture unlock (useFirstGestureUnlock, src/skins/sfx.ts) fires once and disarms itself
+   * - there is no later gesture left to resume a freshly-built context from.
+   *
+   * The fix reads ui.sounds and passes it through: releaseAudio({ sounds: true }) suspends the
+   * context instead of closing it (src/ui/audio/chime.ts), which the sfx player's play() then
+   * resumes on its own next call. This test only reaches the mock boundary - both chime.ts and
+   * sfx.ts are doubled above - so it asserts the CONTRACT this view owes them: the sound is
+   * fired before the release, and the release is told sounds are on.
+   */
+  it('plays the session-done sound before releasing audio, and tells it to suspend rather than close when sounds are on', () => {
+    vi.mocked(playSfx).mockClear();
+    vi.mocked(releaseAudio).mockClear();
+    seedStore(seed());
+    useAppStore.setState((s) => ({ ui: { ...s.ui, sounds: true } }));
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+
+    expect(playSfx).toHaveBeenCalledWith('session_done');
+    expect(releaseAudio).toHaveBeenCalledWith({ sounds: true });
+    const playOrder = vi.mocked(playSfx).mock.invocationCallOrder[0];
+    const releaseOrder = vi.mocked(releaseAudio).mock.invocationCallOrder[0];
+    if (playOrder === undefined || releaseOrder === undefined) {
+      throw new Error('both mocks must have been called');
+    }
+    expect(playOrder).toBeLessThan(releaseOrder);
+  });
+
+  it('tells releaseAudio to close, not suspend, when sounds are off', () => {
+    vi.mocked(releaseAudio).mockClear();
+    seedStore(seed()); // seed()'s ui carries the shipped default: sounds off (schema.ts)
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+
+    expect(releaseAudio).toHaveBeenCalledWith({ sounds: false });
   });
 });
 

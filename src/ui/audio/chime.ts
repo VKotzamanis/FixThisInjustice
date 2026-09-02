@@ -14,7 +14,8 @@
  *
  * P8 task 15's sound-effects player reuses this context through getAudioContext() instead of
  * constructing a second one, and re-checks identity because releaseAudio() closes this one at
- * the end of a session.
+ * the end of a session when sounds are off, and rebuilds a new one on the next unlock; while
+ * sounds are on it only suspends the context, so that check keeps passing across the cycle.
  *
  * No audio file is involved: the chime is synthesised, so nothing here touches the CSP's
  * media-src, and there is no inline script (master plan section 3).
@@ -45,7 +46,8 @@ function audioContextConstructor(): (new () => AudioContext) | null {
 
 /**
  * The shared context, constructed on demand: the first call builds it, every later call returns
- * that same object until releaseAudio() closes it and the next call builds a fresh one.
+ * that same object until releaseAudio() closes it (sounds off) and the next call builds a fresh
+ * one, or forever while releaseAudio() only suspends it (sounds on).
  *
  * A NON-NULL RETURN DOES NOT MEAN SOUND IS POSSIBLE. Constructing a context outside a user
  * gesture is allowed everywhere, and the context it returns starts in state "suspended" on iOS
@@ -123,13 +125,38 @@ export function playChime(): boolean {
 }
 
 /**
- * Close the shared context. Called when a session ends: an open context holds audio hardware
- * and, on iOS, keeps the app's audio session alive for nothing.
+ * Release the shared context at the end of a session: an open, running context holds audio
+ * hardware and, on iOS, keeps the app's audio session alive for nothing.
+ *
+ * P8 close-out defect: TrainView plays 'session_done' (src/skins/sfx.ts) and calls this
+ * synchronously afterwards, in the same tick. AudioContext.close() stops every node scheduled
+ * on the context immediately, so a close() here cut the sound that had just been scheduled, and
+ * every later sound (pr_stamp, intervention_open) stayed silent for the rest of the document's
+ * life: the first-gesture unlock (useFirstGestureUnlock, src/skins/sfx.ts) fires once and
+ * disarms itself, so there is no later gesture to resume() a freshly-built context from.
+ *
+ * `sounds` is ui.sounds, read by the caller. When true, the context is only SUSPENDED, never
+ * closed: MDN documents suspend() as "temporarily halting audio hardware access and reducing
+ * CPU/battery usage", the same hardware-release goal close() serves, but it does not tear the
+ * context down - the object survives, which is what lets the sfx player's play() resume() and
+ * reuse it, and what keeps decodedFor's identity check (src/skins/sfx.ts) valid across the
+ * cycle, so nothing needs re-decoding. When `sounds` is false (the default, and every call site
+ * before this parameter existed), nothing is enabled to interrupt, so the context is closed
+ * exactly as before and the module reference is dropped so the next unlock builds a fresh one.
  */
-export function releaseAudio(): void {
+export function releaseAudio(options: { sounds?: boolean } = {}): void {
+  const sounds = options.sounds ?? false;
   const ctx = context;
-  context = null;
   if (ctx === null) return;
+  if (sounds) {
+    void ctx.suspend().catch(() => {
+      // Suspending a context the browser already tore down rejects. Nothing to recover: the
+      // context is left in whatever state the browser put it in, and play() already gates on
+      // state === 'running', so a botched suspend cannot produce sound it should not.
+    });
+    return;
+  }
+  context = null;
   void ctx.close().catch(() => {
     // Closing a context that the browser already tore down rejects. Nothing to recover: the
     // module reference is dropped either way, and the next unlock builds a fresh context.

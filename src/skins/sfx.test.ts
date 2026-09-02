@@ -61,7 +61,9 @@ class FakeContext implements SfxContext {
   destination: unknown = {};
   decoded = 0;
   sources: FakeSource[] = [];
+  resumeCalls = 0;
   resume(): Promise<void> {
+    this.resumeCalls += 1;
     this.state = 'running';
     return Promise.resolve();
   }
@@ -344,6 +346,72 @@ describe('createSfxPlayer', () => {
     player.dispose();
     player.play('pr_stamp');
     expect(h.context.sources).toHaveLength(0);
+  });
+
+  /*
+   * P8 close-out defect: P4's releaseAudio() (src/ui/audio/chime.ts) now suspends the shared
+   * context rather than closing it while ui.sounds is on, so a moment fired after a session
+   * ends lands on a context that is alive but not running. resume() must be called from inside
+   * this call (the session-complete tap is a user gesture already on the stack; every browser
+   * refuses resume() called later, from a promise continuation with no gesture on it), and the
+   * scheduled playback follows once the browser grants it.
+   */
+  describe('play() against a suspended context', () => {
+    it('resumes the context and starts the source once resume settles', async () => {
+      const h = harness();
+      const player = createSfxPlayer(h.deps);
+      await player.unlock(); // unlock's own resume(), against the initial suspended state
+      h.context.state = 'suspended'; // what releaseAudio({ sounds: true }) leaves behind
+      const resumeCallsBeforePlay = h.context.resumeCalls;
+
+      player.play('session_done');
+
+      // resume() is called synchronously, inside this call - the same call chain a gesture
+      // handler (TrainView's finish tap) started - never deferred to a later microtask.
+      expect(h.context.resumeCalls).toBe(resumeCallsBeforePlay + 1);
+      await vi.waitFor(() => {
+        expect(h.context.sources).toHaveLength(1);
+      });
+      expect(h.context.state).toBe('running');
+      expect(h.context.sources[0]?.started).toBe(1);
+      expect(h.context.sources[0]?.buffer).not.toBeNull();
+    });
+
+    it('keeps the decodedFor identity across the suspend/resume cycle, so nothing is re-decoded', async () => {
+      const h = harness();
+      const player = createSfxPlayer(h.deps);
+      await player.unlock();
+      expect(h.context.decoded).toBe(4);
+      h.context.state = 'suspended';
+
+      player.play('pr_stamp');
+      await vi.waitFor(() => {
+        expect(h.context.sources).toHaveLength(1);
+      });
+
+      expect(h.context.decoded).toBe(4); // same context object, same decoded buffers - no re-decode
+    });
+
+    it('skips silently, never logging, when the browser refuses to resume', async () => {
+      const h = harness();
+      const player = createSfxPlayer(h.deps);
+      await player.unlock();
+      h.context.state = 'suspended';
+      h.context.resume = () => Promise.reject(new Error('resume requires a user gesture'));
+      const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+      const warnings = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      const logs = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+
+      player.play('session_done');
+      // Flush the rejected promise's microtasks without asserting a positive outcome, since the
+      // point under test is that NOTHING happens.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(h.context.sources).toHaveLength(0);
+      expect(errors).not.toHaveBeenCalled();
+      expect(warnings).not.toHaveBeenCalled();
+      expect(logs).not.toHaveBeenCalled();
+    });
   });
 });
 

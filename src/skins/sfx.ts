@@ -129,6 +129,61 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
     decodedSkin = skin;
   }
 
+  /*
+   * P4's releaseAudio() (src/ui/audio/chime.ts) suspends the shared context, rather than closing
+   * it, while ui.sounds is on - TrainView's session-complete tap is the case this was written
+   * for. So a moment fired here can land on a context that is alive but not running, and this is
+   * the gate that resumes it before giving up.
+   *
+   * resume() MUST be called synchronously, inside the call that reaches this branch: every
+   * browser refuses resume() invoked later, from a promise continuation with no user gesture on
+   * the call stack, and a gesture is exactly what got play() called in the first place (the
+   * session-complete tap qualifies). The scheduling itself waits for the browser's answer, so
+   * this function re-enters itself once resume() settles rather than assuming the context is
+   * still in the state it was in when resume() was called - a tab hidden or sounds turned off in
+   * the interval must still be honoured, and recursing through every gate again is how.
+   *
+   * A rejection - no gesture reached it after all, or the permission was revoked - is the
+   * documented silent fallback, same contract as chime.ts's unlockAudio: never a console line,
+   * because public/sfx/ shipping empty is normal and a refusal here is not a bug to report.
+   */
+  function attemptPlay(name: SfxName): void {
+    if (!deps.enabled()) return;
+    if (!deps.isVisible()) return;
+    const context = deps.context();
+    if (context === null) return;
+    if (context.state === 'suspended') {
+      void context.resume().then(
+        () => {
+          attemptPlay(name);
+        },
+        () => {
+          // Refused outside a gesture, or mid-flight permission loss. Silence, never a log.
+        },
+      );
+      return;
+    }
+    if (context.state !== 'running') return;
+    /*
+     * The held buffers belong to exactly one (context, skin) pair, and this is the gate that
+     * keeps docs/sfx.md's promise that sounds under limelight never play under board: after a
+     * skin change the set is the old skin's, so the moment is silent until the next unlock has
+     * decoded the new one. The context half of the pair is the same rule for a context that P4's
+     * releaseAudio() closed (sounds off) and rebuilt, or suspended and resumed in place (sounds
+     * on) - either way this identity check is what catches a stale buffer set.
+     */
+    if (decodedFor !== context || decodedSkin !== deps.skin()) return;
+    const buffer = buffers?.get(name);
+    if (buffer === undefined) return;
+    // One-shot, never looped, never overlapping: a new fire stops the previous source.
+    if (current !== null) current.stop();
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source.start();
+    current = source;
+  }
+
   return {
     async unlock(): Promise<void> {
       // The first gate, and the one that keeps the promise in docs/sfx.md: with sounds off nothing
@@ -174,27 +229,7 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
     },
 
     play(name: SfxName): void {
-      if (!deps.enabled()) return;
-      if (!deps.isVisible()) return;
-      const context = deps.context();
-      if (context === null || context.state !== 'running') return;
-      /*
-       * The held buffers belong to exactly one (context, skin) pair, and this is the gate that
-       * keeps docs/sfx.md's promise that sounds under limelight never play under board: after a
-       * skin change the set is the old skin's, so the moment is silent until the next unlock has
-       * decoded the new one. The context half of the pair is the same rule for a context that P4's
-       * releaseAudio() closed and rebuilt.
-       */
-      if (decodedFor !== context || decodedSkin !== deps.skin()) return;
-      const buffer = buffers?.get(name);
-      if (buffer === undefined) return;
-      // One-shot, never looped, never overlapping: a new fire stops the previous source.
-      if (current !== null) current.stop();
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.connect(context.destination);
-      source.start();
-      current = source;
+      attemptPlay(name);
     },
 
     dispose(): void {
