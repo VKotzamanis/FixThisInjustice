@@ -128,7 +128,7 @@ export function ReminderSettingsPanel(): JSX.Element | null {
       ? 'unsupported'
       : availability === 'needs-install'
         ? 'needs-install'
-        : permissionDenied() && !settings.enabled
+        : permissionDenied()
           ? 'denied'
           : settings.enabled
             ? 'active'
@@ -172,11 +172,30 @@ export function ReminderSettingsPanel(): JSX.Element | null {
               setError('advice.reminderSyncFailed');
             } else if (sync.status === 'failed') setError('advice.reminderSyncFailed');
           } else {
-            // Worker first, store second: see the component comment.
-            if (pushDevice !== null) await unsubscribe(pushDevice);
+            // Worker first, store second: see the component comment. The local disable always
+            // runs, even when the Worker delete fails, so the user is never stuck with the
+            // switch reading "on" while believing they turned it off; the failure is still
+            // surfaced so it is not silent, using the nearest existing copy (there is no key
+            // specific to an unsubscribe failure among status.reminders*/advice.reminder*).
+            if (pushDevice !== null) {
+              const result = await unsubscribe(pushDevice);
+              if (!result.ok) setError('advice.reminderSyncFailed');
+            }
             useAppStore.getState().setPushDevice(null);
             useAppStore.getState().setReminderSettings(profileId, { ...settings, enabled: false });
           }
+        } catch {
+          // Neither subscribe() nor syncSchedule() is contracted to throw (both resolve with a
+          // result object), so reaching here means something failed outside that contract. No
+          // store write in the ON branch happens before subscribe() resolves, so the only thing
+          // to undo is a write from later in this same attempt (e.g. setPushDevice(result.device)
+          // succeeding before a later step throws); both writes are reset to the values this
+          // closure captured at the start of the attempt (`pushDevice`, `settings`), which are
+          // no-ops (by the identity checks in reminderActions.ts) when nothing had actually
+          // changed yet.
+          useAppStore.getState().setPushDevice(pushDevice);
+          useAppStore.getState().setReminderSettings(profileId, settings);
+          setError('advice.reminderSubscribeFailed');
         } finally {
           setBusy(false);
         }

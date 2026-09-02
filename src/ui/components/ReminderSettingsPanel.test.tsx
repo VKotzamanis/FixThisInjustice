@@ -177,6 +177,26 @@ describe('switching reminders on', () => {
     expect(syncMock).not.toHaveBeenCalled();
   });
 
+  it('reports the generic failure and rolls back when subscribe rejects', async () => {
+    // subscribe() is a caller contract that resolves with {ok, reason} rather than throwing,
+    // but nothing in this component enforces that at the type level, and a runtime failure
+    // upstream of that contract (e.g. a bug in the client, or a mock in test) must not leave
+    // an unhandled rejection with no user-visible copy and no store write undone.
+    subscribeMock.mockRejectedValue(new Error('boom'));
+    seed({ device: DEVICE });
+    render(<ReminderSettingsPanel />);
+    await click(toggle());
+
+    await waitFor(() => {
+      expect(screen.getByText(copy('advice.reminderSubscribeFailed'))).toBeInTheDocument();
+    });
+    // Nothing was written before subscribe threw, so "roll back" here means the pre-attempt
+    // pushDevice/settings are left exactly as seeded, not merely coincidentally unchanged.
+    expect(useAppStore.getState().pushDevice).toEqual(DEVICE);
+    expect(settings()?.enabled).toBe(false);
+    expect(syncMock).not.toHaveBeenCalled();
+  });
+
   it('reports a denied permission with the copy that names where to allow it', async () => {
     subscribeMock.mockResolvedValue({ ok: false, reason: 'denied' });
     render(<ReminderSettingsPanel />);
@@ -259,6 +279,12 @@ describe('switching reminders off', () => {
     await waitFor(() => {
       expect(settings()?.enabled).toBe(false);
     });
+    // The local state clears regardless, but the failure must not be silent: there is no copy
+    // key specific to an unsubscribe failure (grepped status.reminders*/advice.reminder*), so
+    // this reuses advice.reminderSyncFailed, the nearest existing "did not reach the server"
+    // copy for a Worker-side push failure.
+    expect(useAppStore.getState().pushDevice).toBeNull();
+    expect(screen.getByText(copy('advice.reminderSyncFailed'))).toBeInTheDocument();
   });
 });
 
@@ -351,6 +377,17 @@ describe('states the panel cannot act on', () => {
     vi.stubGlobal('Notification', { permission: 'denied' });
     render(<ReminderSettingsPanel />);
     expect(screen.getByText(copy('status.remindersDenied'))).toBeInTheDocument();
+  });
+
+  it('reports a standing block even after reminders were already switched on', () => {
+    // The plan's order: denial is checked before the enabled branch, so a permission the user
+    // revoked after turning reminders on must still surface as denied, not as "Reminders are
+    // on" (which would tell the user their reminders will fire when the browser will not
+    // deliver them).
+    seed({ enabled: true, device: SYNCED });
+    vi.stubGlobal('Notification', { permission: 'denied' });
+    render(<ReminderSettingsPanel />);
+    expect(screen.getByRole('status').textContent).toBe(copy('status.remindersDenied'));
   });
 
   it('says reminders are not set up on this deployment and disables the toggle', async () => {
