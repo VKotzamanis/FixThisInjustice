@@ -30,7 +30,7 @@ import { formatLoad, formatMass } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { latestBodyMassEntry, nutritionInputFor } from '../../store/selectors';
 import { makeProfile, makeSet, resetFixtureIds } from '../../test/fixtures';
-import { LogView } from './LogView';
+import { LogView, weeksBetween } from './LogView';
 
 const NOW_MS = Date.UTC(2026, 2, 2, 9, 0); // [ms] epoch, UTC; 2026-03-02 11:00 in Athens
 const TODAY = '2026-03-02'; // Monday
@@ -239,6 +239,31 @@ describe('LogView compliance', () => {
     ]);
   });
 
+  it('caps the grid at MAX_WEEKS_SHOWN (26), keeping the most recent weeks', () => {
+    // Started 40 ISO weeks before TODAY's Monday (2026-03-02): 41 candidate weeks, 15 more than
+    // the 26-week cap in LogView.tsx. The cap must drop the OLDEST weeks, not the newest, so the
+    // grid still ends on the week containing today.
+    useAppStore.setState(
+      seed({
+        cursors: {
+          [PROFILE_ID]: {
+            planId: PLAN.id,
+            nextSessionIndex: 0,
+            startedOn: '2025-05-26', // Monday, 40 weeks before TODAY (2026-03-02)
+            completedOn: null,
+          },
+        },
+      }),
+    );
+    render(<LogView />);
+    const rows = screen.getAllByRole('rowheader').map((n) => n.textContent ?? '');
+    expect(rows).toHaveLength(26);
+    // First surviving week: 25 weeks before today's week (2026-03-02 - 25*7d = 2025-09-08).
+    expect(rows[0]).toContain('2025-09-08');
+    // Last row is always today's week.
+    expect(rows.at(-1)).toContain('2026-03-02');
+  });
+
   it('says so before any week exists', () => {
     // No cursor and no availability: nothing has been scheduled, so there is nothing to grade.
     useAppStore.setState(seed({ cursors: {}, availability: {}, assignments: {} }));
@@ -285,5 +310,13 @@ describe('LogView weekly AMRAP', () => {
     );
     render(<LogView />);
     expect(screen.queryByText(copy('hero.repsPerWeek'))).toBeNull();
+  });
+});
+
+describe('weeksBetween', () => {
+  it('returns the one week containing both dates when from and to are 0 days apart', () => {
+    // The rule the code implements: it walks Mondays from weekStart(from) through weekStart(to)
+    // inclusive, so two dates in the same ISO week collapse to that single week, not zero weeks.
+    expect(weeksBetween('2026-03-02', '2026-03-02')).toEqual(['2026-03-02']);
   });
 });

@@ -170,6 +170,7 @@ export function LogView(): ReactElement {
         baselineDate={baselineDate}
         expectedRateKgPerWeek={rateKgPerWeek} // [kg/week]
         horizonDays={horizonDays} // [d]
+        today={today}
       />
       {/* R9: the rate the dashed line is drawn at, and the rule behind it, are arithmetic. */}
       <details data-testid="body-mass-basis">
