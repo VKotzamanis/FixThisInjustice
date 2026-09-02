@@ -1373,6 +1373,49 @@ describe('TrainView: the limelight voice', () => {
     expect(screen.getByText(copyFor('limelight', 'coach.setDeleted'))).toBeInTheDocument();
   });
 
+  it('reaches the three converted frames the limelight table gives a voice', () => {
+    /*
+     * P8 close-out D. The eyebrow is this view's own frame, the last-session line is
+     * ExerciseCard's and the set counter is a SetRow's, so one render proves the overlay was
+     * threaded at all three levels. Every expectation is the FRAME called with
+     * `SKIN_COPY.limelight`, never a sentence: the frames own the substitution and the table
+     * owns the words.
+     */
+    seedStore(withSkin(seed({ sets: metTopHistory(UPPER.id, 60) }), 'limelight'));
+    renderTrain();
+
+    // Session 1, label 'Upper', from the seeded plan.
+    expect(
+      screen.getByText(FORMAT.sessionEyebrow(1, 'Upper', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        FORMAT.lastSessionSets(YESTERDAY, '60 kg', '8, 8, 8', SKIN_COPY.limelight),
+      ),
+    ).toBeInTheDocument();
+    // setsLo 3 with an unmodified block, so the prescribed count is 3.
+    expect(
+      screen.getAllByText(FORMAT.setCounter(1, 3, SKIN_COPY.limelight)).length,
+    ).toBeGreaterThan(0);
+    // The clinical forms are gone from the screen, which is what makes the three above
+    // assertions about the table rather than about a string that happens to match.
+    expect(screen.queryByText(FORMAT.sessionEyebrow(1, 'Upper'))).toBeNull();
+    expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
+  });
+
+  it('leaves the four frames the table has no word for in the clinical string', () => {
+    // The other half of the same decision: `status.setsBy`, `status.restRemaining`,
+    // `label.suggestedLoad` and `why.fluidLoss` carry no limelight row (copy.test.ts records
+    // the reason for each), so the overlay resolves to the default and the screen says so.
+    seedStore(withSkin(seed({ sets: metTopHistory(UPPER.id, 60) }), 'limelight'));
+    renderTrain();
+
+    expect(screen.getByText(FORMAT.setsBy('3', '6\u20138 reps'))).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.setsBy('3', '6\u20138 reps', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+  });
+
   it('carries the skin down to the controls the children own', () => {
     // The hydration cue is HydrationBanner's, the finish control is this view's, and the log
     // control is a SetRow two levels down reading the `t` prop. All three on one screen.

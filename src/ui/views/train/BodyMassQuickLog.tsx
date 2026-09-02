@@ -14,7 +14,7 @@
 // and it cannot tell a weigh-in taken clothed from one taken stripped.
 import { useState, type ReactElement } from 'react';
 import { FORMAT } from '../../../content/copy';
-import { useCopy } from '../../../content/useCopy';
+import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import {
   DEHYDRATION_LOSS_FRACTION,
   bodyMassLossFraction,
@@ -41,6 +41,11 @@ export function BodyMassQuickLog(props: {
   // `quantity` arrives already resolved: TrainView reads it from the same skin table, so the
   // field name and the words around it cannot come from two different skins.
   const c = useCopy();
+  // The same skin's table, for the one frame here that carries a value: `FORMAT.fluidLossWhy`
+  // reads `why.fluidLoss` since P8 close-out B (close-out D passes the overlay). No table words
+  // that key, and round three section 3.3 is the reason: the title may be camp, the body of a
+  // derivation may not.
+  const overrides = useCopyOverrides();
   const [text, setText] = useState(''); // as typed, in the display unit
   const [flag, setFlag] = useState<string | null>(null);
   const [flagWhy, setFlagWhy] = useState<string | null>(null);
@@ -58,7 +63,7 @@ export function BodyMassQuickLog(props: {
       // Sign convention: bodyMassLossFraction is POSITIVE for a loss.
       const lossPct = (bodyMassLossFraction(preSessionMassKg, massKg) * PERCENT).toFixed(1); // [%]
       setFlag(c('advice.fluidLoss'));
-      setFlagWhy(FORMAT.fluidLossWhy(lossPct, DEHYDRATION_LOSS_FRACTION * PERCENT));
+      setFlagWhy(FORMAT.fluidLossWhy(lossPct, DEHYDRATION_LOSS_FRACTION * PERCENT, overrides));
     } else {
       setFlag(null);
       setFlagWhy(null);

@@ -13,7 +13,7 @@
 // reworded table moves the expectation with the string it is about.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { FORMAT, copy, copyFor, type CopyKey } from '../../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor, type CopyKey } from '../../../content/copy';
 import { useAppStore } from '../../../store';
 import { makeAppState, makeUiPrefs } from '../../../test/funFixtures';
 import type { Prescription, SkinId } from '../../../domain/types';
@@ -34,6 +34,7 @@ const TIMED: Prescription = { kind: 'time', targetS: 45 }; // [s]
 function renderRow(patch: Partial<SetRowProps> = {}): void {
   const props: SetRowProps = {
     t: lookup('clinical'),
+    overrides: SKIN_COPY.clinical,
     domIdPrefix: 'ex-test',
     n: 1,
     targetSets: 3, // [sets]
@@ -86,6 +87,29 @@ describe('SetRow: the limelight voice', () => {
     fireEvent.keyDown(field, { key: 'Enter' });
 
     expect(screen.getByText(copyFor('limelight', 'advice.durationNeeded'))).toBeInTheDocument();
+  });
+
+  it('counts the row through the overlay it is handed', () => {
+    /*
+     * P8 close-out D. `FORMAT.setCounter` reads `status.setCounter`, which the limelight table
+     * words as "set {n} of {targetSets}". The table arrives as a PROP beside `t`, for the
+     * reason `t` is a prop: one subscription at the view, not one per row.
+     */
+    withSkin('limelight');
+    renderRow({ t: lookup('limelight'), overrides: SKIN_COPY.limelight });
+
+    expect(screen.getByText(FORMAT.setCounter(1, 3, SKIN_COPY.limelight))).toBeInTheDocument();
+    expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
+  });
+
+  it('reads the overlay prop and never the store either', () => {
+    // The store says limelight and both props say clinical. The counter follows the props,
+    // which is the same guarantee the case below makes for the lookup.
+    withSkin('limelight');
+    renderRow({ t: lookup('clinical'), overrides: SKIN_COPY.clinical });
+
+    expect(screen.getByText(FORMAT.setCounter(1, 3))).toBeInTheDocument();
+    expect(screen.queryByText(FORMAT.setCounter(1, 3, SKIN_COPY.limelight))).toBeNull();
   });
 
   it('reads the prop and never the store, so a row cannot subscribe on its own', () => {

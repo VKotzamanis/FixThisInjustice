@@ -93,8 +93,14 @@ function SessionCard(props: {
    * value that is the same for all. Same argument as ToastQueue's.
    */
   t: (key: CopyKey) => string;
+  /*
+   * The same skin's table, handed down for the same reason `t` is: `FORMAT.setsBy` reads
+   * `status.setsBy` since P8 close-out B, so a card that took only the lookup printed the
+   * clinical set count on every one of up to 48 rows (P8 close-out D).
+   */
+  overrides: Readonly<Partial<Record<CopyKey, string>>>;
 }): JSX.Element {
-  const { session, block, isNext, t } = props;
+  const { session, block, isNext, t, overrides } = props;
   const setModifier = block?.setModifier ?? 1; // dimensionless, 1 = as planned
   return (
     <li
@@ -133,6 +139,7 @@ function SessionCard(props: {
                   modifiedSets(ex.setsHi, setModifier), // [sets]
                 ),
                 formatPrescription(ex.prescription),
+                overrides,
               )}
             </span>
             <span className="ps-rest">{formatRest(ex.restS)}</span>
@@ -313,6 +320,7 @@ export function PlanView(): JSX.Element {
               block={blockOfSession(plan.blocks, index)}
               isNext={index === cursor.nextSessionIndex}
               t={t}
+              overrides={overrides}
             />
           );
         })}

@@ -309,6 +309,57 @@ describe('the limelight table', () => {
     );
   });
 
+  it('carries the three Train frames the mockup gives a voice, and no more', () => {
+    /*
+     * P8 close-out D wired the nine converted frames to the overlay at their call sites, which
+     * made a row here reachable for the first time. Three of the seven candidates earned one,
+     * each traced to a position the limelight mockup actually draws
+     * (docs/design/round3/2026-09-01-design-I-limelight.html):
+     *
+     *   status.sessionEyebrow   the train system bar, "upper . ep. 12", and the today sub-line
+     *   status.setCounter       the ticker item, "set 3 of 3 . bench"
+     *   status.lastSessionSets  no mockup row; this table's own word for a session, which
+     *                           `nav.train`, `hero.sessionInProgress` and `status.bootSchedule`
+     *                           already set.
+     *
+     * The four that stay clinical are asserted below, so a later row cannot be added without
+     * answering the reason recorded against it.
+     */
+    expect(LIMELIGHT_COPY['status.sessionEyebrow']).toBe('ep. {ordinal}, {label}');
+    expect(LIMELIGHT_COPY['status.setCounter']).toBe('set {n} of {targetSets}');
+    expect(LIMELIGHT_COPY['status.lastSessionSets']).toBe(
+      'last show {date}: {load} \u00d7 {reps}',
+    );
+  });
+
+  it('leaves the four Train frames with nothing to say in the clinical words', () => {
+    /*
+     * Each absence is a decision, not an omission.
+     *
+     * `status.setsBy`      the mockup's own exercise card renders "3 x 6-8", which IS the
+     *                      clinical string: two numbers and the multiplication sign, with no
+     *                      word for a skin to change.
+     * `status.restRemaining` the mockup renders "1:47". The string is two slots and a colon, so
+     *                      a row would carry no word at all.
+     * `label.suggestedLoad` the mockup's line is "140 lb. up 5.", which rewrites the ADVICE
+     *                      KIND and invents an increment. `{kind}` arrives already resolved
+     *                      from `status.advice*`, which this table does not carry, and nothing
+     *                      computes the step as a value, so shipping the mockup's sentence
+     *                      would mean a skin inventing a number. Section 8, adopted item 2 of
+     *                      the round-three plan refused a plate breakdown for that same reason.
+     * `why.fluidLoss`      round three, section 3.3: the title may be camp, the body may not.
+     *                      Every word left in it is a defined quantity or the citation.
+     */
+    for (const key of [
+      'status.setsBy',
+      'status.restRemaining',
+      'label.suggestedLoad',
+      'why.fluidLoss',
+    ] as const) {
+      expect({ key, row: LIMELIGHT_COPY[key] }).toEqual({ key, row: undefined });
+    }
+  });
+
   it('shouts three keys carrying two words, and lowercases the rest', () => {
     // Round three, section 3.2: the uppercase list is closed at three, and the third is the
     // marquee, which is a component (Task 14) rather than a copy row. Three KEYS shout here and

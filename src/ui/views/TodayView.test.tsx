@@ -845,6 +845,23 @@ describe('TodayView: the limelight voice', () => {
     ).toBeTruthy();
   });
 
+  it("keeps the session preview's set counts in the clinical string, under the overlay", () => {
+    /*
+     * P8 close-out D wired `useCopyOverrides()` into this view's `FORMAT.setsBy` call. The
+     * limelight table carries no `status.setsBy` row on purpose (copy.test.ts records why: the
+     * mockup's own card renders "3 x 6-8", which IS the default), so the preview reads the same
+     * under both skins. That is asserted rather than assumed, so adding a row later fails here
+     * instead of silently changing a plan row.
+     */
+    withSkin('limelight');
+    render(<TodayView />);
+
+    expect(
+      screen.getAllByText(FORMAT.setsBy('3\u20134', '6\u201310 reps', SKIN_COPY.limelight)),
+    ).toHaveLength(2);
+    expect(screen.getAllByText(FORMAT.setsBy('3\u20134', '6\u201310 reps'))).toHaveLength(2);
+  });
+
   it('states a met week in the limelight words, beside the shouted stamp', () => {
     withSkin('limelight');
     withReview(MET_WEEK);

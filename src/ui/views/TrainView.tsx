@@ -78,9 +78,10 @@ export function TrainView(): ReactElement {
    * `useCopy()` and `useCopyOverrides()` both subscribe to `ui.skin`. This view renders up to
    * eight exercise cards of up to six set rows each, so a hook call at the leaf would put ~48
    * subscriptions behind one field that changes at most once a session. `c` is passed to
-   * ExerciseCard as `t` and forwarded to SetRow from there; the singleton children
-   * (RestTimerPanel, HydrationBanner, AddCustomExercise, BodyMassQuickLog) read the hook
-   * themselves, because one subscription each is not worth a prop.
+   * ExerciseCard as `t` and forwarded to SetRow from there, and `overrides` rides beside it for
+   * the frames that carry a value (P8 close-out D); the singleton children (RestTimerPanel,
+   * HydrationBanner, AddCustomExercise, BodyMassQuickLog) read both hooks themselves, because
+   * one subscription each is not worth a prop.
    */
   const c = useCopy();
   const overrides = useCopyOverrides();
@@ -304,7 +305,9 @@ export function TrainView(): ReactElement {
     <div className="view train">
       <div className="train-header">
         <div>
-          <div className="train-eyebrow">{FORMAT.sessionEyebrow(session.ordinal, session.label)}</div>
+          <div className="train-eyebrow">
+            {FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)}
+          </div>
           <h2>{session.name}</h2>
           {block.isDeload && <div className="train-deload">{c('advice.deloadBlock')}</div>}
         </div>
@@ -324,6 +327,7 @@ export function TrainView(): ReactElement {
             <ExerciseCard
               key={planned.exerciseId}
               t={c}
+              overrides={overrides}
               profile={profile}
               exercise={exercise}
               planned={planned}
@@ -348,6 +352,7 @@ export function TrainView(): ReactElement {
             <ExerciseCard
               key={id}
               t={c}
+              overrides={overrides}
               profile={profile}
               exercise={exercise}
               planned={bonusSlot(id)}

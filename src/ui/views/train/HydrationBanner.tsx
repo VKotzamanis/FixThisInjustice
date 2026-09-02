@@ -9,7 +9,7 @@
 // editable cup size, which is display granularity rather than a dose.
 import { useEffect, useState, type ReactElement } from 'react';
 import { FORMAT } from '../../../content/copy';
-import { useCopy } from '../../../content/useCopy';
+import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { HYDRATION_COPY_KEY, hydrationCue } from '../../../domain/training/hydration';
 import type { LocalDate, Profile } from '../../../domain/types';
 import { formatVolume } from '../../../domain/units';
@@ -31,6 +31,13 @@ export function HydrationBanner(props: {
    * One subscription per banner, and the banner is a singleton on this screen.
    */
   const c = useCopy();
+  /*
+   * The same skin's table, read beside the lookup and above the early return for the same
+   * reason. The two frames this banner renders read a copy key since P8 close-out B
+   * (`advice.beverageShortfall` and `button.logVolume`), so without the overlay the shortfall
+   * sentence and the drink control were the only clinical strings on a skinned Train screen.
+   */
+  const overrides = useCopyOverrides();
   /*
    * The whole store snapshot, deliberately: hydrationCue reads profiles, assignments,
    * hydration and bodyMass, and the store keeps AppState at its top level, so the snapshot IS
@@ -66,6 +73,7 @@ export function HydrationBanner(props: {
           // the target, and reporting a negative volume would be a defect wearing a number.
           formatVolume(Math.max(0, targetML - (cue.shortfallML ?? 0)), profile.units),
           formatVolume(targetML, profile.units),
+          overrides,
         )
       : c(HYDRATION_COPY_KEY[cue.kind]);
 
@@ -88,7 +96,7 @@ export function HydrationBanner(props: {
             setNow(at);
           }}
         >
-          {FORMAT.logVolume(formatVolume(profile.hydration.cupSizeML, profile.units))}
+          {FORMAT.logVolume(formatVolume(profile.hydration.cupSizeML, profile.units), overrides)}
         </button>
       )}
     </div>

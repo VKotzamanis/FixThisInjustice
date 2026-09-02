@@ -51,6 +51,25 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // number, so R1 is met.
   'button.logVolume': 'hydrate {volume}',
   'advice.beverageShortfall': 'beverage intake {logged} of {target} today. top it up.',
+  // The three Train frames P8 close-out D made reachable, each traced to a position the
+  // mockup draws (docs/design/round3/2026-09-01-design-I-limelight.html). Close-out B converted
+  // the frames; until close-out D threaded the overlay through ExerciseCard, SetRow and
+  // TrainView, a row here would have rendered nowhere, which is why they arrive now.
+  //
+  // The eyebrow is the mockup's train system bar, "upper . ep. 12", and the today screen's own
+  // sub-line under the session name; `status.sessionCursor` above already spells a session as
+  // an episode, so the two agree. `{label}` is the PLAN's session name and `{date}` is a
+  // LocalDate: a slot filled from the user's own data is outside the copy contract, and this
+  // table neither lower-cases nor restates one.
+  'status.sessionEyebrow': 'ep. {ordinal}, {label}',
+  // The mockup's ticker item, "set 3 of 3 . bench". The quantity name `set` is the contract's
+  // (R11) and survives; the separator is the only thing this row changes.
+  'status.setCounter': 'set {n} of {targetSets}',
+  // No mockup row for this one. `show` is this table's own word for a session, set by
+  // `nav.train`, `hero.sessionInProgress` and `status.bootSchedule`, and the load, the reps and
+  // the date stay exactly the slots the domain filled. The MULTIPLICATION SIGN is the default's
+  // and is a unit token, not a word.
+  'status.lastSessionSets': 'last show {date}: {load} \u00d7 {reps}',
   'status.prReached': 'new best. mother.',
   'hero.weeklyTargetMissed': 'the intervention',
   'status.sessionCursor': 'ep. {shown} of {total}',

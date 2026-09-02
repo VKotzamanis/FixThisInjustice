@@ -343,6 +343,7 @@ export function TodayView(): JSX.Element {
                 {FORMAT.setsBy(
                   formatSets(ex.setsLo, ex.setsHi), // [sets]
                   formatPrescription(ex.prescription),
+                  overrides,
                 )}
               </span>
               <span className="sess-rest">{formatRest(ex.restS)}</span>

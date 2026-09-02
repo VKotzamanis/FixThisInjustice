@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode, type ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { formatRest, planRowDomId } from '../format/plan';
 import { requestPlanFocus, usePendingPlanFocus } from '../planFocus';
 import { PlanView, blockOfSession, deloadNote, modifiedSets } from './PlanView';
@@ -360,5 +360,23 @@ describe('PlanView under a skin', () => {
     pinSkin('clinical');
     render(<PlanView />);
     expect(screen.getByText(copyFor('clinical', 'nav.plan'))).toBeInTheDocument();
+  });
+
+  it('renders each row through the overlay, which has no word for a set count', () => {
+    /*
+     * P8 close-out D: `SessionCard` takes the skin's table beside its lookup, for the same
+     * reason it takes the lookup, and passes it to `FORMAT.setsBy`. The limelight table carries
+     * no `status.setsBy` row (copy.test.ts records why), so the rows read the same under both
+     * skins; the assertion is here so that adding one fails a test rather than a plan.
+     */
+    pinSkin('limelight');
+    render(<PlanView />);
+
+    expect(
+      screen.getAllByText(FORMAT.setsBy('3\u20134', '6\u201310 reps', SKIN_COPY.limelight)),
+    ).toHaveLength(SPW * 2);
+    expect(screen.getAllByText(FORMAT.setsBy('3\u20134', '6\u201310 reps'))).toHaveLength(
+      SPW * 2,
+    );
   });
 });
