@@ -66,18 +66,20 @@ import { seedFromString, seededRng } from './rng';
 export const SPECIMEN_DROP_CHANCE = 0.02; // [dimensionless] probability per logged set
 
 /**
- * `SpecimenInventory` plus the ordinal ledger rule 3 needs: which card each set ordinal
- * produced. The field is optional and additive, so an inventory persisted before it existed
- * reads as "no ordinal has been recorded yet" rather than as invalid state.
+ * An inventory carrying the ordinal ledger rule 3 needs: which card each set ordinal produced.
  *
- * It is declared here rather than in src/domain/types.ts because the store action that writes
- * and persists it is plan Task 4; that task moves the field into `SpecimenInventory` and its
- * Zod schema. Until then this type is the contract.
+ * Now an alias. The field was declared here as an intersection over `SpecimenInventory` while
+ * `SpecimenInventory` did not have it; plan Task 4 moved it into src/domain/types.ts and into
+ * `SpecimenInventorySchema`, which is what makes it survive a save and load (a `z.object`
+ * strips unknown keys, so before that move the ledger lasted only until the next reload). The
+ * alias stays so no call site or test moves, and so the name still says which contract these
+ * two functions depend on.
+ *
+ * The map is keyed by the ordinal rendered as a decimal string rather than by a number,
+ * because a JSON object key always is one and the type must state what a reloaded document
+ * actually holds. Indexing it with the numeric ordinal is unchanged: JavaScript coerces.
  */
-export type OrdinalKeyedInventory = SpecimenInventory & {
-  /** Set ordinal -> the id of the card that ordinal produced. */
-  readonly acquiredByOrdinal?: Readonly<Record<number, string>>;
-};
+export type OrdinalKeyedInventory = SpecimenInventory;
 
 /**
  * Share of drops each rarity should win from a full pool, given the rarity weights.

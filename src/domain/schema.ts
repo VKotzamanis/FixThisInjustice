@@ -71,6 +71,8 @@ const MAX_LEAD_MINUTES = 1_440;
 const MAX_NOTE_CHARS = 5_000;
 /** [characters] Maximum length of a DNS name, RFC 1035; bounds the video host. */
 const MAX_HOSTNAME_CHARS = 253;
+/** [characters] Specimen card id, e.g. "c001". A sanity ceiling, not the shipped length. */
+const MAX_CARD_ID_CHARS = 40;
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -444,6 +446,21 @@ export const MotivationStateSchema = z.object({
 // Fun mechanics and UI preferences
 // ---------------------------------------------------------------------------
 
+/**
+ * A logged set's ordinal as a JSON object key: a decimal integer, unsigned and unpadded.
+ * Keys are validated rather than accepted as any string, for the same reason `notes` validates
+ * its inner keys as local dates: the store is the only writer and it writes String(ordinal), so
+ * anything else in this position is a corrupted document rather than data to be kept.
+ */
+const SetOrdinalKeySchema = z.string().regex(/^(?:0|[1-9][0-9]*)$/, 'expected a set ordinal');
+
+/**
+ * A specimen card id. Bounded, not checked against the shipped pool: this module knows nothing
+ * about src/content, and a card retired from the pool must not make an old document unreadable
+ * (drawSpecimenForLoggedSet already returns null for an id the pool no longer holds).
+ */
+const CardIdSchema = z.string().min(1).max(MAX_CARD_ID_CHARS);
+
 export const SpecimenInventorySchema = z.object({
   profileId: z.string().min(1),
   acquired: z.record(
@@ -451,6 +468,18 @@ export const SpecimenInventorySchema = z.object({
     z.object({ at: EpochMsSchema /* [ms] */, exerciseId: z.string().min(1).nullable() }),
   ),
   totalSetsLogged: z.int().min(0).max(MAX_TOTAL_SETS), // [sets] lifetime counter
+  /*
+   * Additive (master plan section 10.8): set ordinal -> the id of the card that ordinal drew.
+   * Without it the field was stripped on every load, because a z.object drops unknown keys, and
+   * the ordinal ledger that stops a delete-and-relog rerolling a drop would have survived only
+   * until the next reload.
+   *
+   * Optional rather than carrying a default: an absent map and an empty one are the same state
+   * to every reader (`?.[ordinal]` is undefined either way), while a default would make the
+   * field required on every SpecimenInventory in the tree and would write a key into documents
+   * that never recorded one. CURRENT_SCHEMA_VERSION stays 3 either way.
+   */
+  acquiredByOrdinal: z.record(SetOrdinalKeySchema, CardIdSchema).optional(),
 });
 
 export const TimeCapsuleSchema = z.object({
