@@ -326,7 +326,7 @@ Until it ships, the enablement order is the one the platform forces.
 5. Go to **Settings**, then **Reminders**, and turn on **Enable reminders**.
 6. Allow notifications when the system asks.
 
-Step 1 to 4 are not optional on iOS. Safari delivers Web Push only to a web app installed
+Steps 1 to 4 are not optional on iOS. Safari delivers Web Push only to a web app installed
 on the Home Screen, from iOS 16.4 (`REFERENCES.md` line 5). This app sets its floor at iOS
 18.4 for a separate reason: Screen Wake Lock inside an installed web app was broken until
 that release (platform fact 2 of `docs/plans/2026-09-01-05-reminders.md`).
