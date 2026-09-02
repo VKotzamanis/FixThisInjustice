@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { IDBFactory } from 'fake-indexeddb';
 import { openDB, type DBSchema } from 'idb';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ASSET_DB_NAME,
   ASSET_DB_VERSION,
@@ -27,6 +27,23 @@ function videoFile(bytes: number, type = 'video/mp4', name = 'clip.mp4'): File {
   return new File([new Uint8Array(bytes)], name, { type }); // bytes = payload length
 }
 
+/** Name of the throwaway database used to manufacture a genuine open failure. */
+const AHEAD_DB_NAME = 'fti-assets-open-failure';
+
+/**
+ * A stand-in for indexedDB.open that fails once, the way a real failure reaches us: not a
+ * synchronous throw but an IDBOpenDBRequest that fires 'error', so openDB returns a REJECTED
+ * promise. Manufactured by leaving a database at version 2 on the factory and then asking for
+ * version 1, which the spec answers with VersionError. Safari private mode and a quota refusal
+ * differ only in the error they carry.
+ */
+async function failingOpen(): Promise<() => IDBOpenDBRequest> {
+  const ahead = await openDB(AHEAD_DB_NAME, 2);
+  ahead.close();
+  const realOpen = globalThis.indexedDB.open.bind(globalThis.indexedDB);
+  return () => realOpen(AHEAD_DB_NAME, 1);
+}
+
 function motivation(customVideoAssetId: string | null): { motivation: Record<string, MotivationState> } {
   return {
     motivation: {
@@ -39,6 +56,13 @@ beforeEach(() => {
   // fake-indexeddb keeps its databases on the factory, so a fresh factory is a fresh disk.
   globalThis.indexedDB = new IDBFactory();
   resetAssetDbForTests();
+});
+
+afterEach(() => {
+  // Lifted here, not at the end of each test body: a failed assertion aborts the body, and a
+  // stubbed fetch left standing would answer for the next test as well. Spies are restored by
+  // the suite-wide restoreMocks in vitest.config.ts; global stubs are not covered by it.
+  vi.unstubAllGlobals();
 });
 
 describe('custom video asset store', () => {
@@ -76,12 +100,55 @@ describe('custom video asset store', () => {
     );
   });
 
+  it('accepts a video the browser gave no type for, judging it by extension', async () => {
+    // The iOS Files app can hand over a .mov with type ''. The file is playable; only the
+    // metadata is missing, so the extension is the only evidence there is.
+    const id = await saveCustomVideo(videoFile(8, '', 'IMG_0421.MOV'), 1); // EpochMs, UTC
+    const db = await openDB<AssetDbForTests>(ASSET_DB_NAME, ASSET_DB_VERSION);
+    const record = await db.get('videos', id);
+    db.close();
+    expect(record?.name).toBe('IMG_0421.MOV');
+    // getCustomVideoUrl rebuilds the Blob with this type, and a <video> element handed a blob
+    // URL with an empty type has nothing to go on, so the extension supplies one.
+    expect(record?.type).toBe('video/quicktime');
+  });
+
+  it('accepts an untyped .mp4 and .m4v as well', async () => {
+    await expect(saveCustomVideo(videoFile(8, '', 'clip.mp4'), 1)).resolves.toBeTypeOf('string');
+    await expect(saveCustomVideo(videoFile(8, '', 'clip.m4v'), 1)).resolves.toBeTypeOf('string');
+  });
+
+  it('rejects a file with no type and no video extension', async () => {
+    await expect(saveCustomVideo(videoFile(4, '', 'notes.txt'), 1)).rejects.toThrow(
+      /Not a video file/,
+    );
+  });
+
   it('rejects a file over the size cap', async () => {
     const oversize = videoFile(0);
     Object.defineProperty(oversize, 'size', { value: MAX_VIDEO_BYTES + 1 }); // bytes
     // Asserts the cap is named in bytes; the article is left out so a sentence-case
     // tweak to the message does not break the assertion.
     await expect(saveCustomVideo(oversize, 1)).rejects.toThrow(/limit is 157286400 bytes/);
+  });
+
+  it('keeps one clip only: a second save replaces the first', async () => {
+    const first = await saveCustomVideo(videoFile(8, 'video/mp4', 'first.mp4'), 1); // EpochMs, UTC
+    const second = await saveCustomVideo(videoFile(8, 'video/mp4', 'second.mp4'), 2);
+    expect(second).not.toBe(first);
+
+    const db = await openDB<AssetDbForTests>(ASSET_DB_NAME, ASSET_DB_VERSION);
+    const keys = await db.getAllKeys('videos');
+    db.close();
+    // Two records is up to 300 MiB for one clip the user can play, and the orphan is
+    // unreachable: nothing in state names it once customVideoAssetId moves on.
+    expect(keys).toEqual([second]);
+    expect(await getCustomVideoUrl(first)).toBeNull();
+  });
+
+  it('leaves deleteCustomVideo a no-op for an id that is not there', async () => {
+    // Task 6 calls this on a possibly stale id; it must not throw.
+    await expect(deleteCustomVideo('never-stored')).resolves.toBeUndefined();
   });
 
   it('returns null for an unknown id', async () => {
@@ -118,19 +185,75 @@ describe('resolveVideoSrc and the bundled probe', () => {
     expect((await resolveVideoSrc(motivation('gone'), 'p1')).src).toBe(BUNDLED_VIDEO_SRC);
   });
 
+  it('falls back to the bundled clip when the database cannot be opened', async () => {
+    const openOnceAndFail = await failingOpen();
+    const open = vi.spyOn(globalThis.indexedDB, 'open').mockImplementationOnce(openOnceAndFail);
+
+    const fallback = await resolveVideoSrc(motivation('any-asset'), 'p1');
+    expect(fallback.src).toBe(BUNDLED_VIDEO_SRC);
+    expect(open).toHaveBeenCalledTimes(1);
+    fallback.revoke();
+  });
+
+  it('reopens the database on the next call instead of caching the rejection', async () => {
+    const openOnceAndFail = await failingOpen();
+    vi.spyOn(globalThis.indexedDB, 'open').mockImplementationOnce(openOnceAndFail);
+    await resolveVideoSrc(motivation('any-asset'), 'p1');
+
+    // The stub is spent, so this reaches the real factory. No resetAssetDbForTests() here:
+    // that is the point. A cached rejected promise would keep every later call failing for
+    // the rest of the page's life, which is what one Safari private-mode refusal would cost.
+    const id = await saveCustomVideo(videoFile(8), 1); // EpochMs, UTC
+    const got = await resolveVideoSrc(motivation(id), 'p1');
+    expect(got.src).toMatch(/^blob:/);
+    got.revoke();
+  });
+
   it('probes the bundled file once and caches the answer', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true });
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, status: 200 });
     vi.stubGlobal('fetch', fetchMock);
     expect(await probeBundledVideo()).toBe(true);
     expect(await probeBundledVideo()).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith(BUNDLED_VIDEO_SRC, { method: 'HEAD' });
-    vi.unstubAllGlobals();
   });
 
   it('reports the bundled file as absent when the HEAD request fails', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
     expect(await probeBundledVideo()).toBe(false);
-    vi.unstubAllGlobals();
+  });
+
+  it('caches a 404 as absent', async () => {
+    // Definite: the server answered, and the answer is that the file was not deployed.
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await probeBundledVideo()).toBe(false);
+    expect(await probeBundledVideo()).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not cache a network failure', async () => {
+    // Unreachable is not absent. Offline at first paint would otherwise tell Settings for the
+    // rest of the page's life that a clip which is in fact deployed does not exist.
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await probeBundledVideo()).toBe(false);
+    expect(await probeBundledVideo()).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not cache an indefinite HTTP status', async () => {
+    // A 503 from a proxy says nothing about what was deployed, so it is retried.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValue({ ok: true, status: 200 });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await probeBundledVideo()).toBe(false);
+    expect(await probeBundledVideo()).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
