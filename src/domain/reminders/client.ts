@@ -132,6 +132,33 @@ function deviceUrl(deviceId: string): string | null {
   return base === null ? null : `${base}/v1/devices/${deviceId}`;
 }
 
+/**
+ * Was `current` minted under exactly `expected`?
+ *
+ * A VAPID key rotation leaves the browser holding a subscription the new key cannot sign
+ * for: the push service rejects every message against it, silently, forever. Reusing such a
+ * subscription is therefore worse than minting a new one, so the keys are compared rather
+ * than assumed equal.
+ *
+ * The loop runs over the full length instead of returning at the first mismatch. This is not
+ * a timing defence (the key is public); it is a guard against an early exit that reads a
+ * prefix match as equality. The sentinels differ from each other so an index that is somehow
+ * absent can never contribute a zero difference, even though the length check precedes it.
+ */
+function sameApplicationServerKey(
+  current: ArrayBuffer | null | undefined,
+  expected: Uint8Array<ArrayBuffer>,
+): boolean {
+  if (current === null || current === undefined) return false;
+  if (current.byteLength !== expected.length) return false;
+  const actual = new Uint8Array(current);
+  let difference = 0;
+  for (let index = 0; index < expected.length; index += 1) {
+    difference |= (actual[index] ?? 0x100) ^ (expected[index] ?? 0x200);
+  }
+  return difference === 0;
+}
+
 function readSubscriptionFields(
   subscription: PushSubscription,
 ): { endpoint: string; p256dh: string; auth: string } | null {
@@ -208,9 +235,28 @@ export async function subscribe(
   try {
     const registration = await navigator.serviceWorker.ready;
     const current = await registration.pushManager.getSubscription();
-    const subscription =
-      current ??
-      (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey }));
+    let subscription = current;
+    // `options` is optional chained because a runtime that predates PushSubscriptionOptions
+    // reports undefined rather than the declared object; that reads as "key unknown", which
+    // resubscribes, rather than as a TypeError that would surface as reason "failed".
+    if (
+      subscription !== null &&
+      !sameApplicationServerKey(subscription.options?.applicationServerKey, applicationServerKey)
+    ) {
+      try {
+        // The boolean result is discarded and a rejection is swallowed: either way the stale
+        // subscription is not one this device can keep using, and the resubscribe below is
+        // the remedy in both cases. Nothing is logged, because the endpoint is a credential.
+        await subscription.unsubscribe();
+      } catch {
+        // Deliberately empty: see above.
+      }
+      subscription = null;
+    }
+    subscription ??= await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey,
+    });
     const fields = readSubscriptionFields(subscription);
     if (fields === null) return { ok: false, reason: 'failed' };
 
@@ -258,6 +304,21 @@ function lastSyncIsFresh(lastSyncAt: EpochMs | null, now: EpochMs): boolean {
   return age >= 0 && age <= SYNC_MAX_AGE_MS;
 }
 
+/*
+ * Contract the UI must honour (Task 8). This module returns outcomes and stores nothing, so
+ * three rules live with the caller rather than here.
+ *
+ * 1. On "stale-device", clear state.pushDevice and call subscribe() once. The Worker record
+ *    is gone or belongs to another secret, so every further sync repeats the same 403 or
+ *    404. Once, not in a loop: if the fresh subscription is refused too, staleness was not
+ *    the fault and a retry loop would only spend the permission prompt against it.
+ * 2. When the user switches reminders off, await unsubscribe(pushDevice) before writing
+ *    enabled = false. In the other order the sync short circuits on "disabled" and the
+ *    Worker record is never deleted, so the device keeps receiving until its endpoint dies.
+ * 3. A "disabled" result must never clear the Worker record. It reports that this client
+ *    had nothing to upload, not that the server should forget the device; deleting on it
+ *    would silence a device whose owner paused reminders for a single day.
+ */
 /**
  * Upload the next SCHEDULE_HORIZON_DAYS days of instants, unless the Worker already holds
  * them and the upload is recent.

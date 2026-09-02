@@ -23,6 +23,24 @@ import {
 import { FIXTURE_PROFILE_ID, FIXTURE_START_MS, makeAppState } from './state.fixture';
 import { MAX_INSTANTS, SYNC_MAX_AGE_MS } from '../../config/reminders';
 import { validatePut } from '../../../worker/src/schedule';
+import { DEVICE_ID_PATTERN } from '../../../worker/src/index';
+
+/*
+ * Importing worker/src/index.ts pulls it into the app's TypeScript program, which loads the
+ * DOM lib rather than @cloudflare/workers-types, so the one Workers global that module names
+ * has no declaration here and `tsc -b` reports TS2304. Declaring the whole package would
+ * push Workers versions of Request, Response and crypto over the DOM ones across every file
+ * in src. This shim declares only the type index.ts actually reads a field from. It cannot
+ * mask a Worker-side error: worker/tsconfig.json excludes src and still binds the real type,
+ * so `npm --prefix worker run typecheck` checks index.ts against @cloudflare/workers-types.
+ */
+declare global {
+  /** Structural stand-in for the Cloudflare cron handler argument. */
+  interface ScheduledController {
+    /** Instant the tick fired. Epoch milliseconds, UTC. */
+    readonly scheduledTime: number;
+  }
+}
 import type { AppState, PushDevice } from '../types';
 
 /** The two build variables client.ts reads, made writable for the unconfigured-build cases. */
@@ -61,14 +79,25 @@ vi.mock('../../config/reminders', async (importOriginal) => {
 const NOW = FIXTURE_START_MS;
 const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/abc123';
 const OTHER_ENDPOINT = 'https://updates.push.services.mozilla.com/wpush/v2/xyz789';
+/** The configured key. 87 base64url characters decode to 65 bytes, an uncompressed P-256 point. */
+const VAPID = `BP${'A'.repeat(85)}`;
+/** A second, equally well formed 65 byte key: the key the deployment rotated to. */
+const ROTATED_VAPID = `BQ${'B'.repeat(85)}`;
+/*
+ * The same 65 byte key in the two encodings a deployment can hand the build. The decoder
+ * tolerates both deliberately: a VAPID public key copied out of the Cloudflare dashboard and
+ * one read back from `wrangler secret` can differ in alphabet and padding, so the key arrives
+ * either as base64url with no padding or as standard base64 with "+", "/" and a trailing "=".
+ * Rejecting either encoding would refuse a key that is in fact correct.
+ */
+const KEY_BASE64URL = `BP${'-_'.repeat(42)}A`;
+const KEY_BASE64_PADDED = `${KEY_BASE64URL.replace(/-/g, '+').replace(/_/g, '/')}=`;
 // RFC 8291: p256dh is a 65 octet uncompressed P-256 point (87 base64url characters, and the
 // leading "BA" decodes to the mandatory 0x04 tag octet); auth is 16 octets (22 characters).
 // The Worker validates both lengths, so a short placeholder would fail validatePut below.
 const KEYS = { p256dh: `BA${'x'.repeat(85)}`, auth: 'tBHItJI5svbpez7KI4CCAA' };
 const SECRET = 's'.repeat(43);
 const DEVICE_ID = '0f9b1a2c-3d4e-4f50-8a1b-2c3d4e5f6071';
-/** Mirrors DEVICE_ID_PATTERN in worker/src/index.ts: anything else earns a 404. */
-const WORKER_DEVICE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 function device(overrides: Partial<PushDevice> = {}): PushDevice {
   return {
@@ -111,9 +140,38 @@ function stubDisplayMode(standalone: boolean): void {
   );
 }
 
-function pushSubscription(endpoint: string, unsubscribeSpy: () => Promise<boolean>): unknown {
+/**
+ * Decode base64url to the ArrayBuffer shape PushSubscriptionOptions.applicationServerKey
+ * carries. Kept separate from the client's own decoder so a bug there cannot cancel out.
+ */
+function keyBytes(base64Url: string): ArrayBuffer {
+  const padded = base64Url
+    .replace(/-/g, '+')
+    .replace(/_/g, '/')
+    .padEnd(Math.ceil(base64Url.length / 4) * 4, '=');
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes.buffer;
+}
+
+/** The applicationServerKey the client handed to pushManager.subscribe. */
+function keyPassedTo(subscribeSpy: MockInstance): Uint8Array {
+  const options: unknown = subscribeSpy.mock.calls[0]?.[0];
+  const key: unknown = (options as { applicationServerKey: unknown }).applicationServerKey;
+  if (!(key instanceof Uint8Array)) throw new Error('expected a Uint8Array applicationServerKey');
+  return key;
+}
+
+function pushSubscription(
+  endpoint: string,
+  unsubscribeSpy: () => Promise<boolean>,
+  applicationServerKey: ArrayBuffer | null,
+): unknown {
   return {
     endpoint,
+    // The key the subscription was minted under, i.e. what a rotation invalidates.
+    options: { userVisibleOnly: true, applicationServerKey },
     unsubscribe: unsubscribeSpy,
     toJSON: () => ({ endpoint, keys: { ...KEYS } }),
   };
@@ -128,13 +186,25 @@ interface StubbedPush {
 /**
  * Install a service worker registration whose push manager already holds
  * `existingEndpoint` (or nothing when null) and mints `ENDPOINT` on a fresh subscribe.
+ *
+ * @param existingKey   application server key on the held subscription. Defaults to the
+ *                      configured one, so callers that do not care read as "no rotation".
+ * @param unsubscribeImpl what the held subscription's unsubscribe() does.
  */
-function stubPushEnvironment(existingEndpoint: string | null): StubbedPush {
-  const unsubscribeSpy = vi.fn(() => Promise.resolve(true));
+function stubPushEnvironment(
+  existingEndpoint: string | null,
+  existingKey: ArrayBuffer | null = keyBytes(VAPID),
+  unsubscribeImpl: () => Promise<boolean> = () => Promise.resolve(true),
+): StubbedPush {
+  const unsubscribeSpy = vi.fn(unsubscribeImpl);
   const existing =
-    existingEndpoint === null ? null : pushSubscription(existingEndpoint, unsubscribeSpy);
+    existingEndpoint === null
+      ? null
+      : pushSubscription(existingEndpoint, unsubscribeSpy, existingKey);
   const getSubscriptionSpy = vi.fn(() => Promise.resolve(existing));
-  const subscribeSpy = vi.fn(() => Promise.resolve(pushSubscription(ENDPOINT, unsubscribeSpy)));
+  const subscribeSpy = vi.fn(() =>
+    Promise.resolve(pushSubscription(ENDPOINT, unsubscribeSpy, keyBytes(VAPID))),
+  );
   Object.defineProperty(navigator, 'serviceWorker', {
     configurable: true,
     value: {
@@ -173,7 +243,7 @@ function watchConsole(): MockInstance[] {
 
 beforeEach(() => {
   config.base = 'https://fti-reminders.example.workers.dev';
-  config.vapid = `BP${'A'.repeat(85)}`;
+  config.vapid = VAPID;
   stubDisplayMode(false);
 });
 
@@ -216,6 +286,14 @@ describe('isInstalledPwa', () => {
 
   it('is false in a plain browser tab', () => {
     expect(isInstalledPwa()).toBe(false);
+  });
+
+  it('is false without throwing when the runtime exposes no matchMedia', () => {
+    // Some embedded webviews ship no matchMedia at all. An unguarded query would raise a
+    // TypeError out of a capability check, i.e. the one place that must never throw.
+    vi.stubGlobal('matchMedia', undefined);
+    expect(isInstalledPwa()).toBe(false);
+    expect(['ready', 'needs-install', 'unsupported']).toContain(pushAvailability());
   });
 });
 
@@ -291,7 +369,10 @@ describe('subscribe', () => {
     const result = await subscribe(null, null, NOW);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.device.deviceId).toMatch(WORKER_DEVICE_ID);
+    // The pattern is imported from the Worker, not copied: a change on either side fails
+    // here. Asserted through .test() rather than toMatch(): vitest's toMatch(undefined)
+    // passes silently, so a broken import would leave this assertion vacuous.
+    expect(DEVICE_ID_PATTERN.test(result.device.deviceId)).toBe(true);
     expect(result.device.secret).toMatch(/^[A-Za-z0-9_-]{43}$/);
     expect(result.device.endpoint).toBe(ENDPOINT);
     expect(result.device.keys).toEqual(KEYS);
@@ -313,10 +394,10 @@ describe('subscribe', () => {
 
   it('falls back to the configured VAPID key when the caller passes none', async () => {
     const { subscribeSpy } = stubPushEnvironment(null);
-    config.vapid = `BQ${'B'.repeat(85)}`;
+    config.vapid = ROTATED_VAPID;
     await subscribe(null, null, NOW);
     const explicit = stubPushEnvironment(null);
-    await subscribe(`BQ${'B'.repeat(85)}`, null, NOW);
+    await subscribe(ROTATED_VAPID, null, NOW);
     const fromConfig: unknown = subscribeSpy.mock.calls[0]?.[0];
     const fromCaller: unknown = explicit.subscribeSpy.mock.calls[0]?.[0];
     expect(fromConfig).toEqual(fromCaller);
@@ -356,6 +437,91 @@ describe('subscribe', () => {
     expect(result.device.endpoint).toBe(OTHER_ENDPOINT);
     expect(result.device.deviceId).not.toBe(stored.deviceId);
     expect(result.device.secret).not.toBe(stored.secret);
+  });
+
+  it('refuses a VAPID key one byte short of a P-256 point', async () => {
+    stubPushEnvironment(null);
+    // 86 base64url characters decode to 64 bytes: well formed, and still the wrong key.
+    await expect(subscribe('B'.repeat(86), null, NOW)).resolves.toEqual({
+      ok: false,
+      reason: 'not-configured',
+    });
+  });
+
+  it('refuses a VAPID key one byte longer than a P-256 point', async () => {
+    stubPushEnvironment(null);
+    // 88 base64url characters with no padding decode to 66 bytes.
+    await expect(subscribe('C'.repeat(88), null, NOW)).resolves.toEqual({
+      ok: false,
+      reason: 'not-configured',
+    });
+  });
+
+  it('accepts a 65 byte key in either base64 alphabet and decodes both alike', async () => {
+    expect(KEY_BASE64URL).toHaveLength(87);
+    expect(KEY_BASE64_PADDED).toHaveLength(88);
+    expect(KEY_BASE64_PADDED.endsWith('=')).toBe(true);
+    expect(KEY_BASE64_PADDED).toMatch(/\+/);
+    expect(KEY_BASE64_PADDED).toMatch(/\//);
+
+    const urlSafe = stubPushEnvironment(null);
+    await expect(subscribe(KEY_BASE64URL, null, NOW)).resolves.toMatchObject({ ok: true });
+    const standard = stubPushEnvironment(null);
+    await expect(subscribe(KEY_BASE64_PADDED, null, NOW)).resolves.toMatchObject({ ok: true });
+
+    const fromUrlSafe = keyPassedTo(urlSafe.subscribeSpy);
+    const fromStandard = keyPassedTo(standard.subscribeSpy);
+    expect(fromUrlSafe).toHaveLength(65);
+    expect(Array.from(fromStandard)).toEqual(Array.from(fromUrlSafe));
+  });
+
+  it('reuses the current subscription when its application server key still matches', async () => {
+    const { subscribeSpy, unsubscribeSpy } = stubPushEnvironment(ENDPOINT);
+    await expect(subscribe(null, device(), NOW)).resolves.toMatchObject({ ok: true });
+    expect(subscribeSpy).not.toHaveBeenCalled();
+    expect(unsubscribeSpy).not.toHaveBeenCalled();
+  });
+
+  it('replaces a subscription minted under a superseded VAPID key', async () => {
+    // After a key rotation the held subscription is signed for a key the server no longer
+    // owns, so every push against it is rejected until the subscription is replaced.
+    const { subscribeSpy, unsubscribeSpy } = stubPushEnvironment(
+      ENDPOINT,
+      keyBytes(ROTATED_VAPID),
+    );
+    await expect(subscribe(null, null, NOW)).resolves.toMatchObject({ ok: true });
+    expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
+    expect(subscribeSpy).toHaveBeenCalledTimes(1);
+    // Order matters: the stale registration goes before the replacement is requested.
+    const droppedAt = unsubscribeSpy.mock.invocationCallOrder[0] ?? Number.POSITIVE_INFINITY;
+    const mintedAt = subscribeSpy.mock.invocationCallOrder[0] ?? Number.NEGATIVE_INFINITY;
+    expect(droppedAt).toBeLessThan(mintedAt);
+    expect(Array.from(keyPassedTo(subscribeSpy))).toEqual(
+      Array.from(new Uint8Array(keyBytes(VAPID))),
+    );
+  });
+
+  it('resubscribes when the current subscription reports no application server key', async () => {
+    // unsubscribe() resolving false is not an error: the subscription is gone either way.
+    const { subscribeSpy, unsubscribeSpy } = stubPushEnvironment(ENDPOINT, null, () =>
+      Promise.resolve(false),
+    );
+    await expect(subscribe(null, null, NOW)).resolves.toMatchObject({ ok: true });
+    expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
+    expect(subscribeSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('subscribes afresh even when dropping the superseded subscription rejects', async () => {
+    const spies = watchConsole();
+    const { subscribeSpy, unsubscribeSpy } = stubPushEnvironment(
+      ENDPOINT,
+      keyBytes(ROTATED_VAPID),
+      () => Promise.reject(new Error('subscription already gone')),
+    );
+    await expect(subscribe(null, null, NOW)).resolves.toMatchObject({ ok: true });
+    expect(unsubscribeSpy).toHaveBeenCalledTimes(1);
+    expect(subscribeSpy).toHaveBeenCalledTimes(1);
+    for (const spy of spies) expect(spy).not.toHaveBeenCalled();
   });
 
   it('reports failed when the push service rejects the subscription', async () => {
