@@ -10,6 +10,23 @@
  * document, including the one-off prompt for whether historical loads were
  * entered in kg or lb.
  */
+/*
+ * The legacy v2 store lives under a DIFFERENT localStorage key ("fti.console.v2"), so it is
+ * not a step of the ordered chain below: the chain walks one `fti.v3` document from an older
+ * schemaVersion to the current one, and the v2 import is invoked by the migration wizard with
+ * the unit the user names at the prompt. It is re-exported here so this module stays the
+ * single entry point for migration code.
+ */
+export { CUP_ML, applyMigration, migrateV2 } from './v2';
+export type {
+  ApplyMigrationResult,
+  LegacyUnit,
+  MigrateV2Options,
+  MigrateV2Result,
+  MigrationReport,
+  MigrationSkip,
+} from './v2';
+
 export interface Migration {
   /** Schema version this step accepts. */
   readonly from: number;
