@@ -1,0 +1,172 @@
+/*
+ * Setup wizard, phone first.
+ *
+ * Two numbers here are requirements, not taste (master plan section 3):
+ *
+ *   font-size: 16px on every text-entry control. Mobile Safari zooms the viewport when a
+ *   focused input's computed font-size is below 16 px, and the zoom does not reverse on blur.
+ *   The rule is absolute px rather than rem because it must hold whatever the root size is.
+ *
+ *   min-height: 2.75rem = 44 px at the 16 px root, the minimum interactive target. Every
+ *   control the user taps carries it: inputs, selects, buttons, and the label wrapping a
+ *   checkbox or radio (the label is the tap area, not the 13 px box inside it).
+ *
+ * Every custom property carries a literal fallback so the wizard renders whether or not the
+ * P1 token sheet is loaded.
+ */
+.wiz {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 1rem 1rem 4rem;
+  color: var(--text, #dde3ea);
+  background: var(--bg, #0a0b0c);
+  font-family: var(--mono, ui-monospace, monospace);
+  line-height: 1.5;
+}
+
+.wiz h1 {
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin: 0 0 0.25rem;
+}
+
+.wiz .wiz-step {
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+  margin: 0 0 1.25rem;
+}
+
+.wiz fieldset {
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  margin: 0 0 1rem;
+  padding: 0.75rem;
+}
+
+.wiz legend {
+  padding: 0 0.4rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+}
+
+.wiz .wiz-field {
+  display: block;
+  margin: 0 0 0.75rem;
+}
+
+.wiz .wiz-field > label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+/* The whole label is the tap target for a checkbox or a radio. */
+.wiz label.wiz-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  font-size: 0.9rem;
+}
+
+.wiz input[type='text'],
+.wiz input[type='number'],
+.wiz input[type='time'],
+.wiz input[type='date'],
+.wiz select {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.4rem 0.5rem;
+  color: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.wiz input[type='checkbox'],
+.wiz input[type='radio'] {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+}
+
+.wiz .wiz-row {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.wiz .wiz-row > * {
+  flex: 1 1 0;
+}
+
+.wiz .wiz-nav {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.wiz button {
+  flex: 1 1 0;
+  min-height: 2.75rem;
+  color: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--accent, #a3e635);
+  font-family: inherit;
+  font-size: 16px;
+  letter-spacing: 0.06em;
+}
+
+.wiz button[disabled] {
+  opacity: 0.45;
+  border-color: var(--line-2, rgba(220, 230, 240, 0.16));
+}
+
+.wiz .wiz-note {
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+  margin: 0.25rem 0 0.75rem;
+}
+
+/* A validation message is never a colour cue alone: it is text, and it is always rendered. */
+.wiz .wiz-error {
+  font-size: 0.8rem;
+  color: var(--danger, #f87171);
+  margin: 0.25rem 0 0.75rem;
+}
+
+.wiz details {
+  margin: 0 0 0.75rem;
+}
+
+.wiz summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+  cursor: pointer;
+}
+
+.wiz dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.wiz dt {
+  color: var(--text-2, #8e97a3);
+}
+
+.wiz dd {
+  margin: 0;
+  text-align: right;
+}
+
+@media (max-width: 24rem) {
+  .wiz .wiz-row {
+    flex-direction: column;
+  }
+}
