@@ -15,6 +15,31 @@ import type { CopyKey } from './copy';
  * whose title bar says DEPARTURES and whose tab says "Train" reads as two designs. Everything
  * else falls through to the clinical string, which is the point of a partial table.
  *
+ * THE RULE THIS TABLE ADOPTS, AND THE ONE IT REJECTS (P9 Task 14).
+ *
+ * The rule: a row exists only where a real airport term already names the thing the key names.
+ * Round two's section 5 supplies that vocabulary and states the test itself: "every one of these
+ * is a real airport term used in its real sense".
+ *
+ * The alternative, rejected: mirror limelight's coverage, which is 120 rows against this table's
+ * 37. Matching it would mean minting airport words for a hydration shortfall, a body-mass
+ * check-in and a creatine dose. A board that says REFRESHMENT SERVICE IRREGULAR about a glass of
+ * water is a joke wearing a uniform, and discipline is the only thing this skin has: the moment
+ * it invents a term, the term stops being one.
+ *
+ * WHAT FALLS THROUGH TO THE CLINICAL STRING, ON PURPOSE. Distinct default keys each area
+ * renders, counted against the tree on 2026-09-02:
+ *
+ *   the setup wizard       104 keys, 1 row (button.continue)
+ *   the readiness screen     9 keys, 1 row (button.continue)
+ *   the nutrition targets   20 keys, no row
+ *   the migration wizard    34 keys, 1 row (button.cancel)
+ *   the export view         18 keys, no row
+ *   the data section         9 keys, no row
+ *
+ * Those two rows are the controls every flow shares, not a foothold. A board names a gate
+ * control. It does not name a protein target.
+ *
  * The same four rules bind this file as bind copy.limelight.ts: slots and numbers are the
  * default's, no emoji, and no camp on a control whose misreading costs data.
  *
@@ -59,6 +84,31 @@ export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // The ticker's control (P8 Task 14). A board announces, so it carries the marquee; the strip
   // is a button whose only effect is to stop the line, and its name says so in the board's case.
   'button.pauseTicker': 'PAUSE TICKER',
+
+  // --- P9 Task 14: the status vocabulary round two's section 5 already names ---
+  // "each status also prints its word (ON TIME, DEPARTED, CANCELLED, HELD)", and the design's
+  // Today screen is "a departures list, one row per upcoming session, with today's service
+  // highlighted amber and marked BOARDING". The fourteen-day strip is that list, so its six
+  // states take the six words rather than any this table would have to invent. `DEPARTED` also
+  // stands at `hero.sessionCompleted`, which is the same fact stated on the session screen: a
+  // real board prints one status word wherever it reports that status.
+  'status.dayPlanned': 'SCHEDULED',
+  'status.dayInProgress': 'BOARDING',
+  'status.dayCompleted': 'DEPARTED',
+  'status.daySkipped': 'CANCELLED',
+  'status.dayPaused': 'HELD',
+  'status.dayRest': 'NO SERVICE',
+  // The screen heading, so it agrees with the tab `nav.train` already renames.
+  'hero.train': 'DEPARTURES',
+  // The empty day. The design's word is the first sentence; the second is the default's own
+  // instruction and stays, because a board that reports no service still says where to book one.
+  'advice.noSessionToday': 'NO SERVICE TODAY. PICK ONE ON TODAY.',
+  // Two controls a concourse names in its own words. PROCEED is the sign at every gate, and
+  // CANCEL is the term the design already uses for a service that will not run
+  // (`button.skipToday` reads CANCEL SERVICE). The abort stays an abort: the copy suite checks
+  // that no override puts a commit word on `button.cancel`.
+  'button.continue': 'PROCEED',
+  'button.cancel': 'CANCEL',
 
   // --- the nav, so the tabs and the board speak one language ---
   'nav.today': 'TODAY',
