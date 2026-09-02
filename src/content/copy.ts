@@ -527,7 +527,17 @@ export type CopyKey =
   | 'label.rarityUncommon'
   | 'label.rarityRare'
   | 'label.atlasCollected'
-  | 'label.atlasSource';
+  | 'label.atlasSource'
+  // --- generic boot sequence (P8 Task 6; appended by that task) ---
+  | 'hero.boot'
+  | 'status.bootConsole'
+  | 'status.bootPlan'
+  | 'status.bootPlanName'
+  | 'status.bootWeek'
+  | 'status.bootSchedule'
+  | 'status.bootStore'
+  | 'status.bootOk'
+  | 'status.bootReady';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1284,6 +1294,30 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.atlasCollected': 'Collected',
   // The label over a card's citation in the detail dialog.
   'label.atlasSource': 'Source',
+  // --- generic boot sequence (P8 Task 6) ---
+  // The accessible name of the boot screen. The screen is not a live region: its text changes
+  // every 90 ms and a live region would read the whole block again on every line.
+  'hero.boot': 'Starting up',
+  // The three step labels. Each one names something the app is doing to its own stored
+  // document and nothing about the person using it. The legacy sequence printed a named
+  // individual's body composition and a medication line; content review section 7 removed
+  // both, and no key here can carry either back.
+  'status.bootConsole': 'FTI CONSOLE v3',
+  'status.bootPlan': 'Loading plan',
+  'status.bootStore': 'Restoring local store',
+  // The three plan facts, as templates: the value in each slot is the plan's own and the words
+  // around it are this table's, so a skin rewrites the line without touching Boot.tsx
+  // (FORMAT.withSlots). The week is the CURSOR's week, never the calendar's, for the reason
+  // SessionIndicator records: the two diverge the moment a session is missed.
+  'status.bootPlanName': 'plan {name}', // template; FORMAT.withSlots
+  'status.bootWeek': 'week {week} of {weeks}', // template; FORMAT.withSlots
+  'status.bootSchedule': '{count} sessions per week', // template; FORMAT.withSlots
+  // The word the dotted leader ends on, and the last line of the sequence. Both are console
+  // register rather than prose, which is exactly why they are keys: a skin that is not a
+  // console rewrites them without reaching into the component.
+  'status.bootOk': 'OK',
+  'status.bootReady': 'READY.',
+
 };
 
 /**
@@ -1905,4 +1939,21 @@ export const FORMAT = {
    */
   atlasSource: (citation: string, doi: string | null): string =>
     doi === null ? citation : `${citation} DOI ${doi}`,
+  // --- generic boot sequence (P8 Task 6) ---
+
+  /**
+   * "Loading plan ................. OK". The dotted leader holds `OK` in one column, which is
+   * what makes the step lines read as a list rather than as separate sentences. A leader is
+   * not a connector, so contract R5's ban on the dash does not reach it.
+   *
+   * Both words arrive already resolved from the table above (`status.boot*`), as in
+   * `screenedOn` and `planPosition`, so this frame states nothing of its own and a skin
+   * reaches every word it prints.
+   *
+   * 32 columns, not the legacy sequence's 44: the longest label here is 21 characters, and 44
+   * would push the line past a 320 px phone in the monospace face the boot renders in.
+   */
+  bootStep: (label: string, ok: string): string =>
+    `${label} ${'.'.repeat(Math.max(1, 32 - label.length))} ${ok}`,
+
 } as const;
