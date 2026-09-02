@@ -357,7 +357,16 @@ export type CopyKey =
   | 'banner.actionRefused.tag'
   // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
   | 'label.planPosition'
-  | 'status.planComplete';
+  | 'status.planComplete'
+  // --- Plan view (P3 Task 6; appended by that task) ---
+  | 'label.blockStrip'
+  | 'label.block'
+  | 'status.blockSessions'
+  | 'status.deloadTag'
+  | 'label.week'
+  | 'label.weekOfCount'
+  | 'status.nextSession'
+  | 'why.deloadSets';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -751,6 +760,26 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
   'label.planPosition': 'Plan position',
   'status.planComplete': 'complete',
+
+  // --- Plan view (P3 Task 6; appended by that task) ---
+  // The accessible name of the block strip. The chips are buttons that move the week
+  // scrubber, so the group needs a name of its own for the list they form.
+  'label.blockStrip': 'Training blocks',
+  'label.block': 'Block 1', // formatted; the 1-based block number
+  'status.blockSessions': 'sessions 1–3', // formatted; the block's session range
+  // The flag on a deload chip. Set beside `status.deloadNote`, which states the size of the
+  // cut: this word says only that the block is one, so a skin can reword it without touching
+  // the quantity beside it.
+  'status.deloadTag': 'DELOAD',
+  'label.week': 'Week',
+  'label.weekOfCount': 'Week 1 of 2', // formatted; the shown week and the plan's week count
+  // The cursor marker on the session the plan will serve next. Lower case: it is a mark on a
+  // row, not a heading.
+  'status.nextSession': 'next',
+  // R9: how a deload week's set counts were derived. Behind a `why?` disclosure, because the
+  // user acts on the COUNT and not on the multiplication that produced it.
+  'why.deloadSets':
+    'Each set count is the planned count times this block\'s set modifier of 0.5, rounded to the nearest whole set, minimum 1. The load is unchanged.', // formatted
 };
 
 /**
@@ -926,4 +955,35 @@ export const FORMAT = {
     status === ''
       ? `Session ${shown} of ${total}`
       : `Session ${shown} of ${total}. ${status}`,
+
+  // --- Plan view (P3 Task 6) ---
+
+  /** "Block 2". `blockNumber` is 1-based; `PlanBlock.index` is 0-based, so the view adds one. */
+  blockLabel: (blockNumber: number): string => `Block ${blockNumber}`,
+
+  /**
+   * "sessions 4–6": the plan positions a block covers, 1-based and inclusive. The en dash is a
+   * numeric range, which copy contract R5 retains.
+   */
+  blockSessions: (from: number, to: number): string => `sessions ${from}–${to}`,
+
+  /**
+   * "volume −50 %, load unchanged". `cutPct` is the percentage of PLANNED SETS the block
+   * removes, computed by the caller from `PlanBlock.setModifier` so the note can never
+   * overstate a cut the plan does not make. The load half is not a variable: master plan
+   * section 5 and content review section 2.2 (Bosquet 2007) fix `loadModifier` at 1 for a
+   * deload, so a deload that changed the load would be a defect, not a different sentence.
+   * The leading mark is U+2212 MINUS SIGN, not a dash: it is arithmetic, not a connector.
+   */
+  deloadNote: (cutPct: number): string => `volume −${cutPct} %, load unchanged`,
+
+  /** "Week 1 of 2". Both are 1-based counts of weeks over the whole plan. */
+  weekOfCount: (shown: number, total: number): string => `Week ${shown} of ${total}`,
+
+  /**
+   * R9's disclosure body for a deload week: the multiplication behind the set counts printed
+   * beside it. `setModifier` is the block's own, dimensionless multiplier.
+   */
+  deloadSetsBasis: (setModifier: number): string =>
+    `Each set count is the planned count times this block's set modifier of ${setModifier}, rounded to the nearest whole set, minimum 1. The load is unchanged.`,
 } as const;

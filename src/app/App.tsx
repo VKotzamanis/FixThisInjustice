@@ -11,8 +11,10 @@ import {
   useLoadError,
   useSaveError,
 } from '../store/selectors';
+import { SessionIndicator } from '../ui/components/SessionIndicator';
 import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
+import { PlanView } from '../ui/views/PlanView';
 import { SettingsView } from '../ui/views/SettingsView';
 import { TargetsView } from '../ui/views/TargetsView';
 import { TodayView } from '../ui/views/TodayView';
@@ -89,7 +91,7 @@ function ViewShell(): ReactElement {
       {view === 'targets' && <TargetsView />}
       {view === 'settings' && <SettingsView />}
       {view === 'today' && <TodayView />}
-      {view === 'plan' && <Placeholder name={copy('nav.plan')} />}
+      {view === 'plan' && <PlanView />}
       {view === 'train' && <Placeholder name={copy('nav.train')} />}
       {view === 'log' && <Placeholder name={copy('nav.log')} />}
     </>
@@ -296,6 +298,12 @@ export function App(): ReactElement {
         <span className="brand">
           FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
         </span>
+        {/*
+         * The plan position the CURSOR stands at, mounted here so it is visible from every
+         * view (P3 Task 7). It renders nothing until a plan exists, so the header keeps its
+         * two-element layout through setup.
+         */}
+        <SessionIndicator />
         <span>{hydrated ? 'local data loaded' : 'reading local data'}</span>
       </header>
 

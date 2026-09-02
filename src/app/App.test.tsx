@@ -7,8 +7,9 @@ import { defaultState, useAppStore } from '../store';
 import { STORAGE_KEY } from '../store/persistence';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
-import { copy } from '../content/copy';
+import { FORMAT, copy } from '../content/copy';
 import type { Profile } from '../domain/types';
+import { MONDAY, NOW_MS, seedState } from '../test/scheduleFixtures';
 
 /**
  * The download helper is the seam. It is the one thing in these tests that
@@ -247,5 +248,38 @@ describe('readiness gate', () => {
     });
     expect(screen.queryByTestId('readiness-screen')).toBeNull();
     expect(screen.getByRole('navigation', { name: copy('nav.label') })).toBeInTheDocument();
+  });
+});
+
+/**
+ * The top bar's plan position (P3 Task 7, wiring deferred to Task 6).
+ *
+ * The indicator itself is covered by SessionIndicator.test.tsx; what is asserted here is that
+ * it is MOUNTED in the header, because a component nobody renders reports nothing.
+ */
+describe('top bar', () => {
+  const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    // Writes stay in an in-memory map, and the empty store makes hydrate() take its "absent"
+    // branch, which keeps the seeded document in memory instead of replacing it.
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+  });
+
+  it('reports the cursor position in the header once a plan exists', () => {
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+
+    render(<App />);
+
+    const indicator = within(screen.getByRole('banner')).getByTestId('session-indicator');
+    // Session 1 of 6, from the cursor: never a calendar day (code review A11).
+    expect(indicator.textContent).toBe(FORMAT.planPosition(1, LABELS.length, ''));
+  });
+
+  it('shows no position before a plan exists', () => {
+    render(<App />);
+
+    expect(screen.queryByTestId('session-indicator')).toBeNull();
   });
 });

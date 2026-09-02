@@ -1,0 +1,253 @@
+import { useState, type JSX } from 'react';
+import { FORMAT, copy } from '../../content/copy';
+import type { PlanBlock, PlannedSession } from '../../domain/types';
+import { useActiveCursor } from '../../store/scheduleSelectors';
+import { useActivePlan } from '../../store/selectors';
+import {
+  exerciseName,
+  formatPrescription,
+  formatRest,
+  formatSets,
+  planRowDomId,
+} from '../format/plan';
+import './views.css';
+
+/**
+ * The Plan view.
+ *
+ * The plan is calendar-free: blocks and sessions in the order the programme runs them, with
+ * the cursor marking the one that comes next. Nothing here reads a date, and nothing here
+ * writes: the week scrubber is a VIEW of the session list, not a position in it, so scrubbing
+ * cannot desynchronise the programme (code review A14, where moving the week silently changed
+ * the session shown under "today is ...").
+ *
+ * A deload block cuts VOLUME and leaves the load alone (master plan section 5, content review
+ * section 2.2, Bosquet 2007: `setModifier` 0.4-0.6, `loadModifier` fixed at 1). Both the note
+ * on the chip and the set counts in a deload week are computed from the block's OWN
+ * `setModifier`, so neither can overstate a cut the plan does not make.
+ */
+
+/**
+ * The note on a deload chip, from the block's own set modifier.
+ *
+ * @param setModifier dimensionless multiplier on the planned set count, 1 = unchanged
+ */
+export function deloadNote(setModifier: number): string {
+  const cutPct = Math.round((1 - setModifier) * 100); // [%] of planned sets removed
+  return FORMAT.deloadNote(cutPct);
+}
+
+/**
+ * Zero-based week index of a session position.
+ *
+ * @param sessionIndex 0-based position in `PlanTemplate.sessions`
+ * @param sessionsPerWeek [sessions/week]
+ */
+export function weekOfIndex(sessionIndex: number, sessionsPerWeek: number): number {
+  // A plan with no weekly rate cannot be chunked, and dividing by it would put Infinity into
+  // the scrubber's value. Week 0 is the only answer that is not a lie.
+  if (sessionsPerWeek <= 0) return 0;
+  return Math.floor(sessionIndex / sessionsPerWeek);
+}
+
+/**
+ * The set count a block actually prescribes.
+ *
+ * @param sets [sets] the planned count
+ * @param setModifier dimensionless block multiplier
+ * @returns [sets] whole sets, never fewer than one
+ *
+ * Rounded rather than truncated, so a 3-set lift in a 0.5 deload is 2 sets and not 1, and
+ * floored at one set, because a count that rounds to nothing would print a session with no
+ * work in it. The LOAD is never touched here: a deload block carries `loadModifier === 1`.
+ */
+export function modifiedSets(sets: number, setModifier: number): number {
+  return Math.max(1, Math.round(sets * setModifier));
+}
+
+/** The block a session position falls in, or null past the end of the last block. */
+export function blockOfSession(
+  blocks: readonly PlanBlock[],
+  sessionIndex: number,
+): PlanBlock | null {
+  return (
+    blocks.find(
+      (b) =>
+        sessionIndex >= b.firstSessionIndex &&
+        sessionIndex < b.firstSessionIndex + b.sessionCount,
+    ) ?? null
+  );
+}
+
+/** One session and its exercises, as the block it sits in prescribes them. */
+function SessionCard(props: {
+  session: PlannedSession;
+  block: PlanBlock | null;
+  isNext: boolean;
+}): JSX.Element {
+  const { session, block, isNext } = props;
+  const setModifier = block?.setModifier ?? 1; // dimensionless, 1 = as planned
+  return (
+    <li
+      className={'plan-session' + (isNext ? ' is-next' : '')}
+      data-testid="plan-session"
+      data-cursor={isNext ? 'true' : 'false'}
+    >
+      <div className="ps-head">
+        {/* The plan position of this session. PlannedSession.ordinal is 1-based and the
+            invariant sessions[i].ordinal === i + 1 is maintained by the domain, including
+            across assignToday's swap, so it is read rather than recomputed from the index. */}
+        <span className="ps-ordinal">{String(session.ordinal).padStart(2, '0')}</span>
+        <h3 className="ps-name">{session.name}</h3>
+        <span className="ps-label">{session.label}</span>
+        {isNext && <span className="ps-cursor">{copy('status.nextSession')}</span>}
+      </div>
+      <div className="ps-list">
+        {session.exercises.map((ex) => (
+          <div
+            key={ex.exerciseId}
+            /* P8 Task 8 deep-links to this row by id; the shape lives in format/plan.ts so the
+               link and the row cannot drift apart. */
+            id={planRowDomId(session.id, ex.exerciseId)}
+            className="ps-row"
+            data-testid="plan-row"
+          >
+            <span className="ps-ex">{exerciseName(ex.exerciseId)}</span>
+            <span className="ps-sets">
+              {FORMAT.setsBy(
+                formatSets(
+                  modifiedSets(ex.setsLo, setModifier), // [sets]
+                  modifiedSets(ex.setsHi, setModifier), // [sets]
+                ),
+                formatPrescription(ex.prescription),
+              )}
+            </span>
+            <span className="ps-rest">{formatRest(ex.restS)}</span>
+          </div>
+        ))}
+      </div>
+    </li>
+  );
+}
+
+export function PlanView(): JSX.Element {
+  const plan = useActivePlan();
+  const cursor = useActiveCursor();
+  /*
+   * null means "follow the cursor". Seeding the state with the cursor's week instead would
+   * capture the FIRST render only, and the first render happens before hydrate() has put the
+   * stored plan in place, so a reload would open the Plan view on week 1 of whatever the
+   * cursor said at boot. Deriving the shown week and letting a scrub override it keeps the
+   * default correct without a synchronising effect.
+   */
+  const [scrubbedWeek, setScrubbedWeek] = useState<number | null>(null);
+
+  // Both hooks run before this return, so the early exit does not change the hook order.
+  if (plan === null || cursor === null) {
+    return (
+      <div className="view plan">
+        <h2>{copy('nav.plan')}</h2>
+        <p className="view-note">{copy('hero.noPlan')}</p>
+      </div>
+    );
+  }
+
+  // [sessions/week] A plan that claims none would divide the scrubber by zero.
+  const spw = plan.sessionsPerWeek > 0 ? plan.sessionsPerWeek : 1;
+  // [weeks] Derived from the sessions actually held, not from PlanTemplate.weeks: the
+  // scrubber must not offer a week the session list cannot fill.
+  const weekCount = Math.max(1, Math.ceil(plan.sessions.length / spw));
+  const cursorWeek = weekOfIndex(cursor.nextSessionIndex, spw);
+  const week = Math.min(Math.max(scrubbedWeek ?? cursorWeek, 0), weekCount - 1); // 0-based
+  const firstIndex = week * spw;
+  const sessions = plan.sessions.slice(firstIndex, firstIndex + spw);
+  const cursorBlock = blockOfSession(plan.blocks, cursor.nextSessionIndex);
+  // The set modifier applies per BLOCK, and a week can straddle two of them, so the deload
+  // line is shown when any session in the shown week sits in a deload block.
+  const deloadBlock =
+    sessions
+      .map((_, i) => blockOfSession(plan.blocks, firstIndex + i))
+      .find((b) => b !== null && b.isDeload) ?? null;
+
+  return (
+    <div className="view plan">
+      <h2>{copy('nav.plan')}</h2>
+
+      <div className="plan-blocks" role="group" aria-label={copy('label.blockStrip')}>
+        {plan.blocks.map((block) => {
+          const from = block.firstSessionIndex + 1; // 1-based plan position
+          const to = block.firstSessionIndex + block.sessionCount; // inclusive
+          const isCurrent = cursorBlock !== null && cursorBlock.index === block.index;
+          return (
+            <button
+              key={block.index}
+              type="button"
+              className={'plan-chip' + (block.isDeload ? ' is-deload' : '')}
+              /* The cursor's block, which is a fact about the programme, is separate from the
+                 block the scrubber is showing, which is a fact about this screen. */
+              data-current={isCurrent ? 'true' : 'false'}
+              aria-pressed={weekOfIndex(block.firstSessionIndex, spw) === week}
+              onClick={() => {
+                setScrubbedWeek(weekOfIndex(block.firstSessionIndex, spw));
+              }}
+            >
+              <span className="pc-id">{FORMAT.blockLabel(block.index + 1)}</span>{' '}
+              <span className="pc-range">{FORMAT.blockSessions(from, to)}</span>
+              {block.isDeload && (
+                <>
+                  {' '}
+                  <span className="pc-flag">{copy('status.deloadTag')}</span>{' '}
+                  <span className="pc-note">{deloadNote(block.setModifier)}</span>
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="plan-scrub">
+        <label htmlFor="plan-week">{copy('label.week')}</label>
+        <input
+          id="plan-week"
+          type="range"
+          min={1}
+          max={weekCount}
+          step={1}
+          value={week + 1}
+          onChange={(e) => {
+            setScrubbedWeek(Number(e.target.value) - 1);
+          }}
+        />
+        <span className="plan-week-label" data-testid="week-label">
+          {FORMAT.weekOfCount(week + 1, weekCount)}
+        </span>
+      </div>
+
+      {deloadBlock !== null && (
+        <>
+          <p className="view-note">{copy('advice.deloadBlock')}</p>
+          {/* R9: the set counts beside this are what the user acts on; the multiplication
+              that produced them is not, so it sits behind the disclosure. */}
+          <details data-testid="deload-basis">
+            <summary>{copy('disclosure.why')}</summary>
+            <p className="view-note">{FORMAT.deloadSetsBasis(deloadBlock.setModifier)}</p>
+          </details>
+        </>
+      )}
+
+      <ol className="plan-sessions">
+        {sessions.map((session, i) => {
+          const index = firstIndex + i; // 0-based plan position
+          return (
+            <SessionCard
+              key={session.id}
+              session={session}
+              block={blockOfSession(plan.blocks, index)}
+              isNext={index === cursor.nextSessionIndex}
+            />
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
