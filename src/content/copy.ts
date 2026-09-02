@@ -31,7 +31,7 @@ export { LIMELIGHT_COPY } from './copy.limelight';
  * override reaches the rendered string (`status.milestoneSets`, `status.specimenAcquired`).
  */
 export type CopyKey =
-  // --- shell, save/load banners, recovery (P1) ---
+  // --- shell and the save/load banners (P1) ---
   | 'shell.status.loading'
   | 'shell.status.loaded'
   | 'banner.update.tag'
@@ -49,15 +49,6 @@ export type CopyKey =
   | 'button.retrySave'
   | 'button.exportStoredCopy'
   | 'button.exportStoredData'
-  | 'recovery.hero'
-  | 'recovery.advice'
-  | 'recovery.exported'
-  | 'recovery.confirm'
-  | 'button.clearData'
-  | 'recovery.cleared.hero'
-  | 'recovery.cleared.advice'
-  | 'hero.noProfile'
-  | 'advice.noProfile'
   // --- setup wizard, targets, check-in (P2) ---
   | 'setup.hero'
   | 'button.continue'
@@ -77,7 +68,6 @@ export type CopyKey =
   | 'hero.dailyTargets'
   | 'status.rateUnknown'
   | 'button.recordIntake'
-  | 'why.targetsBasis'
   | 'advice.storedUnitsUnchanged'
   | 'advice.noProfileSetupFirst'
   // --- setup wizard fields and validation (P2 Task 7; appended by that task) ---
@@ -185,7 +175,6 @@ export type CopyKey =
   | 'why.beverageDefault'
   | 'advice.intakeRejected'
   | 'error.outsideAccepted'
-  | 'advice.viewNotBuilt'
   | 'nav.today'
   | 'nav.plan'
   | 'nav.train'
@@ -202,7 +191,6 @@ export type CopyKey =
   | 'hero.noSessionToday'
   | 'advice.nextSession'
   | 'advice.noSessionIn14Days'
-  | 'advice.noSessionsLeftThisWeek'
   | 'status.planPaused'
   | 'status.skipReason'
   | 'button.startSession'
@@ -262,7 +250,6 @@ export type CopyKey =
   | 'status.remindersActive'
   // P8 close-out B: enabled on paper, with no subscription behind it.
   | 'status.remindersNeedReenable'
-  | 'push.body'
   // --- motivation video (P6) ---
   | 'hero.weeklyTargetMissed'
   | 'hero.motivationPreview'
@@ -271,17 +258,6 @@ export type CopyKey =
   | 'advice.weekMissedNone'
   | 'button.dismiss'
   // --- log, export, migration, settings (P7) ---
-  | 'hero.importFromOldApp'
-  | 'advice.importIntro'
-  | 'advice.importNothingDeleted'
-  | 'advice.importUnitsNeeded'
-  | 'advice.importUnreadable'
-  | 'advice.importNoResult'
-  | 'advice.importDownloadFirst'
-  | 'why.importRejections'
-  | 'button.runImport'
-  | 'button.keepImport'
-  | 'button.startClean'
   | 'button.downloadLegacyJson'
   | 'advice.noWeeksYet'
   | 'advice.noSetsLogged'
@@ -311,10 +287,6 @@ export type CopyKey =
   | 'button.sealCapsule'
   | 'button.openCapsule'
   | 'button.skipBoot'
-  | 'button.continueTransition'
-  | 'advice.noMatches'
-  | 'toast.setDeleted'
-  | 'status.setsLogged'
   // --- setup wizard, review fixes (P2 Task 7) ---
   | 'status.targetsNotEstimated'
   // --- targets and settings, review fixes (P2 Task 8) ---
@@ -570,10 +542,8 @@ export type CopyKey =
   | 'status.weekDeltaNegative'
   | 'status.weekDeltaZero'
   | 'status.weekDeltaPositive'
-  | 'status.prReached'
   | 'status.prStamp'
   | 'status.sessionCursor'
-  | 'status.planProgress'
   | 'hero.weekReview'
   | 'advice.interventionBody'
   | 'button.pauseTicker'
@@ -599,7 +569,7 @@ export type CopyKey =
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
-  // --- shell, save/load banners, recovery (P1) ---
+  // --- shell and the save/load banners (P1) ---
   'shell.status.loading': 'reading local data',
   'shell.status.loaded': 'local data loaded',
   'banner.update.tag': 'UPDATE READY',
@@ -621,15 +591,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.retrySave': 'Retry save',
   'button.exportStoredCopy': 'Export stored copy',
   'button.exportStoredData': 'Export stored data',
-  'recovery.hero': 'The app could not start',
-  'recovery.advice': 'Your data is unchanged. Export it before clearing.',
-  'recovery.exported': 'Export downloaded.',
-  'recovery.confirm': 'Export first, then type DELETE.',
-  'button.clearData': 'Clear stored data',
-  'recovery.cleared.hero': 'Stored data cleared',
-  'recovery.cleared.advice': 'Reload to start empty.',
-  'hero.noProfile': 'No profile',
-  'advice.noProfile': 'Setup is not built yet.',
 
   // --- setup wizard, targets, check-in (P2) ---
   'setup.hero': 'Setup',
@@ -650,7 +611,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.dailyTargets': 'Daily targets',
   'status.rateUnknown': 'Not established by the evidence base',
   'button.recordIntake': 'Record intake',
-  'why.targetsBasis': 'How these numbers were derived',
   'advice.storedUnitsUnchanged': 'Stored values never change. Mass is held in kg.',
   'advice.noProfileSetupFirst': 'No profile. Complete setup first.',
 
@@ -768,7 +728,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of which beverages supply 3.0 L and 2.2 L. Water in food supplies the rest and is not counted here, because an app cannot measure it.',
   'advice.intakeRejected': 'Daily total outside the accepted range.',
   'error.outsideAccepted': 'Outside the accepted range.',
-  'advice.viewNotBuilt': 'Today is not built yet.', // formatted
   'nav.today': 'Today',
   'nav.plan': 'Plan',
   'nav.train': 'Train',
@@ -786,7 +745,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.noSessionToday': 'No session today.',
   'advice.nextSession': 'Next: {weekday} {startTime} {label}.', // template; FORMAT.nextSession
   'advice.noSessionIn14Days': 'No sessions in the next 14 days.',
-  'advice.noSessionsLeftThisWeek': 'No sessions remain this week.',
   'status.planPaused': 'Plan paused since {date}.', // template; FORMAT.pausedSince
   'status.skipReason': 'Reason: {reason}', // template; FORMAT.skipReason
   'button.startSession': 'Start session',
@@ -869,7 +827,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Names WHERE the block is lifted. The permission belongs to the browser, not to the app,
   // so "in settings" alone sends the user to the app's own Settings screen, which cannot
   // change it. P5 Task 8 edited this line in place; it had no renderer before.
-  'status.remindersDenied': 'Notifications are blocked. Allow them in your browser site settings.',
+  'status.remindersDenied': 'Notifications are blocked. Allow them in browser site settings.',
   'status.remindersOff': 'Reminders are off.',
   'status.remindersPending': 'Reminders are on. Schedule not sent yet.',
   // Enabled in the document, with no push subscription behind it: what an IMPORT leaves (the
@@ -884,7 +842,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // zone (src/domain/dates.ts localTimeOf), never a UTC instant. P5 Task 8 replaced the
   // formatted example with the slot so a skin override reaches the rendered string.
   'status.remindersActive': 'Reminders are on. Schedule last sent at {time}.',
-  'push.body': 'Upper A at 18:00, session 3 of 24', // formatted
 
   // --- motivation video (P6) ---
   'hero.weeklyTargetMissed': 'Weekly target missed',
@@ -895,17 +852,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.dismiss': 'Dismiss',
 
   // --- log, export, migration, settings (P7) ---
-  'hero.importFromOldApp': 'Import from the old app',
-  'advice.importIntro': 'Old data was found. Set up a profile first.',
-  'advice.importNothingDeleted': 'Nothing is deleted from the old app.',
-  'advice.importUnitsNeeded': 'The old app stored no units. Two questions follow.',
-  'advice.importUnreadable': 'The old data is not JSON. Nothing has been changed.',
-  'advice.importNoResult': 'The import produced no result. Nothing has been changed.',
-  'advice.importDownloadFirst': 'Download the untouched copy before keeping this import.',
-  'why.importRejections': 'What could not be imported, and why',
-  'button.runImport': 'Run import',
-  'button.keepImport': 'Keep import',
-  'button.startClean': 'Start clean',
   'button.downloadLegacyJson': 'Download legacy JSON',
   'advice.noWeeksYet': 'No weeks to show.',
   'advice.noSetsLogged': 'No sets logged.',
@@ -936,10 +882,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.sealCapsule': 'Seal capsule',
   'button.openCapsule': 'Open capsule',
   'button.skipBoot': 'Skip',
-  'button.continueTransition': 'Continue',
-  'advice.noMatches': 'No matches.',
-  'toast.setDeleted': 'Set deleted.',
-  'status.setsLogged': '250 sets recorded.', // formatted
 
   // --- setup wizard, review fixes (P2 Task 7) ---
   'status.targetsNotEstimated':
@@ -989,8 +931,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.notScreened': 'Not screened.',
   'status.readinessNoFlags': 'No flags.',
   'status.readinessConsult': 'Physician consult advised.',
-  'button.startReadiness': 'Start readiness screen',
-  'button.redoReadiness': 'Redo readiness screen',
+  // "screening", not "screen": the process, not the piece of glass it runs on. `status.notScreened`
+  // above already names it that way, and R11 asks the table to use one term for one thing (P9).
+  'button.startReadiness': 'Start readiness screening',
+  'button.redoReadiness': 'Redo readiness screening',
 
   // --- Today view (P3 Task 5; appended by that task) ---
   'hero.nextFourteenDays': 'Next 14 days',
@@ -1491,17 +1435,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.weekDeltaZero': 'Weekly target met. {completed} of {target} sessions completed.',
   'status.weekDeltaPositive':
     'Weekly target exceeded. {completed} of {target} sessions completed.',
-  // The line and the stamp carry the same words and are two keys because they are two things: one
-  // is read in a list, the other lands on the screen as a graphic, and round three shouts exactly
-  // one of them.
-  'status.prReached': 'Personal record',
+  // The stamp that lands on the screen as a graphic. `status.prReached`, the list line that
+  // carried the same words, was retired in P9 Task 16: nothing read it. Round three shouts this
+  // one (LIMELIGHT_COPY: MOTHER).
   'status.prStamp': 'Personal record',
   // template; FORMAT.planPositionLabel reads this key, so the session indicator's accessible name
   // is a string a skin can reach. The visible short form (FORMAT.planPosition, "S 12/48") is an
   // abbreviation of the same two counts and carries no words to skin.
   'status.sessionCursor': 'Session {shown} of {total}',
-  // template; three counts of sessions, never a difference between them (R9).
-  'status.planProgress': '{completed} completed, {skipped} skipped, {remaining} remaining',
   'hero.weekReview': 'Week review',
   // R9 and round three section 3.3: the body of the missed-week screen states the fact and the
   // next action and carries no verdict on the person. The count of missed sessions is absent
@@ -1694,9 +1635,6 @@ export const FORMAT = {
 
   /** "Default for the stated sex: 3000 mL per day." The volume is already formatted. */
   beverageDefault: (volume: string): string => `Default for the stated sex: ${volume} per day.`,
-
-  /** "Today is not built yet." The name comes from the navigation entry. */
-  notBuiltYet: (view: string): string => `${view} is not built yet.`,
 
   /**
    * "2 days selected for 4 sessions per week. Select at least 4 days." Both counts are

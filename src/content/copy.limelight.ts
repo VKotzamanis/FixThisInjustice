@@ -70,10 +70,8 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // the date stay exactly the slots the domain filled. The MULTIPLICATION SIGN is the default's
   // and is a unit token, not a word.
   'status.lastSessionSets': 'last show {date}: {load} \u00d7 {reps}',
-  'status.prReached': 'new best. mother.',
   'hero.weeklyTargetMissed': 'the intervention',
   'status.sessionCursor': 'ep. {shown} of {total}',
-  'status.planProgress': '{completed} served. {skipped} skipped. {remaining} to go.',
   // `+30 s`, not `+30s`: the SPACE and the LOWER CASE are the unit, not typography. SI 5.4.3
   // puts a space between the value and the symbol, and `s` is the second while `S` is the
   // siemens, so the shortened form states no quantity at all. This table lower-cases its words;
@@ -118,7 +116,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // the wart amendment 9 records for the sounds toggle. Three words, so R1 is met, and the
   // uppercase list round three closed is untouched.
   'button.pauseTicker': 'pause the ticker',
-  'button.continueTransition': 'go on',
   // The one refusal the schedule mints that this skin has a word for. `button.pausePlan` is
   // "on hiatus" here, so the sentence that reports a day the pause covers uses the same word;
   // the DATE stays the slot the domain filled, and the refusal still says the plan is stopped,
@@ -171,7 +168,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'coach.insideRange': '{load} × {reps}, inside the prescribed {lo}-{hi}. locked in.',
 
   // --- the toasts ---
-  'toast.setDeleted': 'set deleted. gone.',
   'status.milestoneSets': '{count} sets recorded. no crumbs.',
   'status.specimenAcquired': 'new {rarity} specimen. obsessed.',
 
@@ -212,7 +208,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'advice.noSessionToday': 'nothing assigned today. pick one on today.',
   'advice.noSetsLogged': 'no sets yet. start something.',
   'advice.noCardsMatch': 'nothing matches that filter.',
-  'advice.noMatches': 'nothing.',
   'advice.noSpotlightMatch': 'nothing.',
   'advice.atlas': 'a field journal. every logged set might drop a card.',
   'advice.timeCapsule': 'a note to future you, sealed until a date you pick.',

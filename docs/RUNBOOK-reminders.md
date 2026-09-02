@@ -349,7 +349,7 @@ The status line carries exactly one of eight strings. They are the `status.remin
 - `Reminders are not set up on this deployment.`
 - `This browser cannot receive push notifications.`
 - `Add this app to the Home Screen first.`
-- `Notifications are blocked. Allow them in your browser site settings.`
+- `Notifications are blocked. Allow them in browser site settings.`
 - `Reminders are off.`
 - `Reminders are on. Schedule not sent yet.`
 - `Reminders need enabling again on this device.`
