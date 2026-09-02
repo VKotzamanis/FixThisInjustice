@@ -1,0 +1,94 @@
+/*
+ * The Konami overlay (P8 Task 16; the sheet added by P8 close-out B).
+ *
+ * The component shipped with three class names and no rules, which its own header recorded as a
+ * known gap: "This task writes no stylesheet ... the overlay is therefore unstyled at the time
+ * of writing." Unstyled, `.konami-bg` is a plain block in normal flow, so the one easter egg in
+ * the app pushed the view down rather than covering it, and the dialog it declares itself to be
+ * had no surface at all.
+ *
+ * z-index 56: one above the boot sequence (55, boot.css) and above the two CRT presentation
+ * layers (50 and 51, src/ui/styles/crt.css), because the sequence detector is bound at the shell
+ * and can fire while the boot is still printing; below the toast stack (60, toastQueue.css),
+ * which must stay readable over everything, and below nothing else. It is deliberately ABOVE the
+ * missed-week popup (50, motivation.css) and the cutscene (49, phaseTransition.css) only in the
+ * ordering sense: neither can coexist with it in practice, and if one did the overlay is the
+ * layer the user just summoned with ten keystrokes.
+ *
+ * The backdrop is `rgb(0 0 0 / 0.72)`, the same wash src/ui/styles/train.css gives its two
+ * modals and src/ui/views/atlas.css gives its card dialog, so a full-screen surface in this app
+ * dims the page by one amount rather than three.
+ *
+ * Every custom property carries a literal fallback, as boot.css and phaseTransition.css do, so
+ * the overlay renders whether or not the P1 token sheet has loaded.
+ */
+.konami-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.72);
+}
+
+.konami {
+  /* 32rem = 512 px at the 16 px root: the ASCII box below is 47 characters wide, which is
+     wider than a phone, so the panel is capped and the <pre> scrolls inside it rather than
+     stretching the backdrop. */
+  width: min(32rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1rem;
+  color: var(--text, #dde3ea);
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  font-family: var(--mono, ui-monospace, monospace);
+}
+
+.konami-art {
+  margin: 0;
+  font: inherit;
+  font-size: 0.7rem;
+  /* The box only lines up in a fixed column, so the whitespace is significant and a narrow
+     screen scrolls the art rather than wrapping it out of shape (boot.css does the same). */
+  white-space: pre;
+  overflow-x: auto;
+  color: var(--text-3, #5a6270);
+}
+
+.konami-line {
+  margin: 0.75rem 0 1rem;
+  line-height: 1.5;
+}
+
+.konami button {
+  /* 2.75rem = 44 px at the 16 px root: the tap target size master plan section 3 sets. */
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  color: inherit;
+  background: var(--bg-3, #1c2026);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  font: inherit;
+  cursor: pointer;
+}
+
+.konami button:focus-visible {
+  outline: 1px solid var(--accent, #a3e635);
+  outline-offset: -2px;
+}
+
+/*
+ * The overlay arrives without an entrance, so there is no animation to suppress. What is
+ * suppressed is the only motion it could produce: a scroll into view raised by focusing the
+ * dismiss button on a screen the user has not asked to move.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .konami-bg,
+  .konami {
+    scroll-behavior: auto;
+    transition: none;
+    animation: none;
+  }
+}

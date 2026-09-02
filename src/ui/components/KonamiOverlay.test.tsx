@@ -139,6 +139,39 @@ describe('KonamiOverlay', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
+  it('puts focus on its dismiss control at mount', () => {
+    /*
+     * The overlay declares role="dialog" aria-modal="true", which is the selector the hotkey
+     * registry and ToastQueue both read as "the app behind this is not taking commands". A
+     * dialog that announces itself that way and leaves focus on whatever the user last touched
+     * strands a screen reader outside the thing that has just covered the screen, and leaves a
+     * keyboard user tabbing through the app underneath it.
+     *
+     * The dismiss control, not the dialog box: it is the only thing in here to do, the overlay
+     * traps no focus and holds no decision, and focusing the panel would make Tab the first
+     * useful key rather than Enter.
+     */
+    render(<KonamiOverlay onClose={() => {}} />);
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: copy('button.dismiss') }),
+    );
+  });
+
+  it('gives focus back to whatever had it, when it lets itself go', () => {
+    // The overlay closes on its own timer whether or not anyone touched it, so a focus moved
+    // in and not moved back leaves the user on <body> with their place in the page gone.
+    const opener = document.createElement('button');
+    document.body.appendChild(opener);
+    opener.focus();
+    expect(document.activeElement).toBe(opener);
+
+    const view = render(<KonamiOverlay onClose={() => {}} />);
+    expect(document.activeElement).not.toBe(opener);
+    view.unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
   it('closes itself if it is left alone', () => {
     vi.useFakeTimers();
     const close = vi.fn();

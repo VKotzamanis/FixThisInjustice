@@ -191,11 +191,33 @@ export function Boot({ onDone }: { onDone?: () => void }): ReactElement | null {
    * Completion, in an effect rather than in the timeout: under reduced motion every line is
    * already printed at mount, so there is no timeout to hang it on, and the two paths must
    * record the boot the same way.
+   *
+   * THE LAST LINE IS HELD FOR ONE INTERVAL. It was not: the effect that saw the last line
+   * printed called finish() in the same commit, finish() sets `bootSeen`, and BootGate unmounts
+   * the sequence on the next render, so READY. -- the line the whole sequence ends on -- was on
+   * screen for a single frame. One BOOT_LINE_INTERVAL_MS rather than a number of its own,
+   * because the dwell is then the same beat every other line was printed at and reads as the
+   * last step rather than as a pause. It costs 90 ms on a sequence the constant's own comment
+   * keeps under the 1 s a user reads as "the app started".
+   *
+   * REDUCED MOTION DOES NOT HOLD. There is no last line to dwell on when all of them were
+   * printed at mount, and 90 ms of a screen this user would otherwise never see is a flash, not
+   * a dwell. Both paths still record the boot through the same `finish`.
+   *
+   * `finished` is in the guard and in the dependencies so the effect re-runs once after finish()
+   * and clears the timeout it scheduled, rather than leaving one pending or scheduling a second.
    */
   useEffect(() => {
-    if (!active || shown < lines.length) return;
-    finish();
-  }, [active, shown, lines.length, finish]);
+    if (!active || finished || shown < lines.length) return undefined;
+    if (reduced) {
+      finish();
+      return undefined;
+    }
+    const handle = setTimeout(finish, BOOT_LINE_INTERVAL_MS); // [ms] one line's beat
+    return () => {
+      clearTimeout(handle);
+    };
+  }, [active, finished, reduced, shown, lines.length, finish]);
 
   /*
    * Any key skips, which is what a boot screen is expected to do, and it is also the keyboard

@@ -19,13 +19,16 @@
 // reason the roles are here; the overlay traps no focus and is not a ModalShell, because it
 // answers nothing and holds no decision.
 //
-// NO CSS. This task writes no stylesheet (P8 "what this plan does not do": every component
-// uses class names P1's src/ui/styles/ is expected to carry). The overlay is therefore
-// unstyled at the time of writing, which is recorded in the task report.
+// THE CSS ARRIVED LATE. P8 Task 16 wrote no stylesheet ("what this plan does not do": every
+// component uses class names P1's src/ui/styles/ is expected to carry), so `.konami-bg` was a
+// plain block in normal flow and the one easter egg in the app pushed the view down instead of
+// covering it. P8 close-out B adds konami.css beside this file, which is where every other
+// component in this directory keeps its rules.
 
 import { useEffect, useRef } from 'react';
 import type { ReactElement } from 'react';
 import { useCopy } from '../../content/useCopy';
+import './konami.css';
 
 /**
  * The sequence, in normalised (lowercased `KeyboardEvent.key`) form.
@@ -102,6 +105,31 @@ export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElemen
   const line = t('status.konami');
   const latest = useRef(onClose);
   latest.current = onClose;
+  const dismissRef = useRef<HTMLButtonElement>(null);
+
+  /*
+   * Focus moves into the overlay at mount and back where it came from at unmount.
+   *
+   * `role="dialog" aria-modal="true"` is a promise to assistive technology that the app behind
+   * this is not taking commands. Leaving focus outside it breaks that promise in both
+   * directions: a screen reader goes on reading the page under the overlay, and a keyboard user
+   * tabs through controls the overlay has covered. The DISMISS BUTTON rather than the panel,
+   * because it is the only thing in here to do; focusing the box would make Tab the first
+   * useful key rather than Enter.
+   *
+   * The restore is the same pattern src/ui/components/ModalShell.tsx documents, and it matters
+   * more here than in a dialog the user opened deliberately: this one closes itself after
+   * KONAMI_OVERLAY_MS whether or not anyone touched it, and focus would land on <body> with the
+   * user's place in the page gone. Focusing a detached node is a no-op, which covers the whole
+   * tree unmounting at once.
+   */
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dismissRef.current?.focus();
+    return () => {
+      opener?.focus();
+    };
+  }, []);
 
   useEffect(() => {
     // ANY key, which is why this is not a hotkey binding: the registry maps one combo to one
@@ -130,6 +158,7 @@ export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElemen
         <p className="konami-line">{line}</p>
         <button
           type="button"
+          ref={dismissRef}
           onClick={() => {
             onClose();
           }}

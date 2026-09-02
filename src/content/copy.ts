@@ -1339,8 +1339,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   //
   // The three rarity words, as a section heading and as the eyebrow on a card. They live here
   // rather than being printed from the SpecimenRarity enum so a skin can rename a tier without
-  // renaming the enum the draw weights in src/domain/fun/specimens.ts are keyed by. The case is
-  // the word's own: unlike the toast eyebrow, no stylesheet shouts these.
+  // renaming the enum the draw weights in src/domain/fun/specimens.ts are keyed by.
+  //
+  // THE CASE HERE IS THE STORED CASE, NOT THE RENDERED ONE, and this comment claimed the
+  // opposite until P8 close-out B ("no stylesheet shouts these"). Three rules in
+  // src/ui/views/atlas.css do: `.atlas-section h3`, `.atlas-card-rarity` and
+  // `.atlas-modal-rarity` all carry `text-transform: uppercase`, so every tier word renders as
+  // COMMON, UNCOMMON or RARE on screen. That is the same split the toast eyebrow uses and it is
+  // the right one: the table holds the WORD so a skin can change it, the sheet holds the CASE so
+  // a skin can change that too without a second copy of the string. `status.undiscovered` beside
+  // it is the exception -- it is stored upper case and no rule transforms it -- which is worth
+  // knowing before anyone tries to make the two consistent by editing this table.
   'label.rarityCommon': 'Common',
   'label.rarityUncommon': 'Uncommon',
   'label.rarityRare': 'Rare',
@@ -2209,6 +2218,19 @@ export const FORMAT = {
    */
   atlasSource: (citation: string, doi: string | null): string =>
     doi === null ? citation : `${citation} DOI ${doi}`,
+
+  /**
+   * "Common, UNDISCOVERED": the accessible name of a locked Atlas slot.
+   *
+   * Both words arrive already resolved from the table above, as in `bootStep` and
+   * `complianceCell`, so this frame states nothing of its own and a skin reaches every word it
+   * prints. It exists because a name assembled in the view would be a user-facing string outside
+   * the copy tables, and because the two <span>s the slot prints run together without it.
+   *
+   * A COMMA, not a dash: contract R5 bans an em-dash as a connector in every skin, and the two
+   * halves are an attribute and a state rather than a clause and its aside.
+   */
+  atlasLockedName: (rarity: string, undiscovered: string): string => `${rarity}, ${undiscovered}`,
   // --- generic boot sequence (P8 Task 6) ---
 
   /**
@@ -2220,8 +2242,22 @@ export const FORMAT = {
    * `screenedOn` and `planPosition`, so this frame states nothing of its own and a skin
    * reaches every word it prints.
    *
-   * 32 columns, not the legacy sequence's 44: the longest label here is 21 characters, and 44
-   * would push the line past a 320 px phone in the monospace face the boot renders in.
+   * The LEADER ends at column 32, not the legacy sequence's 44, because the longest label here is
+   * 21 characters ('Restoring local store') and a 44-column leader would put a much longer line
+   * on a 320 px phone in the monospace face the boot renders in.
+   *
+   * THE RENDERED LINE IS 36 CHARACTERS, not 32, and this comment said 32 until P8 close-out B.
+   * The count is `label + 1 + (32 - label.length) + 1 + ok.length`, which is 34 + ok.length for
+   * every label short enough to leave a leader, so with `status.bootOk` = 'OK' every step line
+   * is exactly 36 characters whatever the label is. That is the property the fixed column buys.
+   *
+   * 36 characters slightly overruns a 320 px phone and is meant to. src/ui/components/boot.css
+   * sets `.boot-pre` to 0.8rem = 12.8 px inside 1.5rem of padding on each side, leaving 272 px;
+   * at a monospace advance of 0.6 em (7.68 px, the ratio of the ui-monospace faces in the
+   * fallback stack) the line measures about 276 px, so roughly 5 px sit outside the box. The
+   * same rule sets `overflow-x: auto`, so that scrolls rather than wrapping the leader out of
+   * its column. Measured from the declarations, not from a rendered screen: no test in this
+   * repository measures a pixel.
    */
   bootStep: (label: string, ok: string): string =>
     `${label} ${'.'.repeat(Math.max(1, 32 - label.length))} ${ok}`,

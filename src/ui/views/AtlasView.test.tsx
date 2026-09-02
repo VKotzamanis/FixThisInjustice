@@ -133,6 +133,34 @@ describe('AtlasView ordering', () => {
   });
 });
 
+describe('AtlasView accessible names', () => {
+  it('names an owned card by its title, so the rarity does not run into it', () => {
+    /*
+     * The button held two <span>s and no label, so its name was computed from its contents and
+     * the two ran together: "CommonThe crested newt". The rarity is already the section heading
+     * above the grid and the eyebrow inside the card, so the NAME is the title alone; nothing is
+     * lost from the announcement and the duplication goes.
+     */
+    render(<AtlasView />);
+    const card = SPECIMEN_BY_ID['c001']!;
+    expect(screen.getByRole('button', { name: card.title })).toBe(
+      screen.getByTestId('atlas-card-c001'),
+    );
+  });
+
+  it('names a locked slot by its rarity and the word that says it is undrawn', () => {
+    // The slot is not a control, so it carries no name at all by default: a generic element has
+    // no role to hang one on. `role="img"` is what makes the label reach assistive technology,
+    // and the label repeats exactly what the two spans print, so nothing is hidden by it.
+    render(<AtlasView />);
+    const slot = screen.getByTestId('atlas-card-c003');
+    expect(slot.getAttribute('role')).toBe('img');
+    expect(slot).toHaveAccessibleName(
+      FORMAT.atlasLockedName(copy('label.rarityCommon'), copy('status.undiscovered')),
+    );
+  });
+});
+
 describe('AtlasView locked slots', () => {
   it('shows an undrawn card as a silhouette carrying its rarity and nothing else', () => {
     render(<AtlasView />);
