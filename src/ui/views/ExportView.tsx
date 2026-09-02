@@ -106,7 +106,11 @@ export function ExportView(): JSX.Element {
      * was written to prevent. Re-parsing the serialised copy could only ADD a failure mode.
      */
     const state = selectState(useAppStore.getState());
-    downloadText(`fti-summary-${stamp}.txt`, buildSummary(state, profileId, Date.now()));
+    downloadText(
+      `fti-summary-${stamp}.txt`,
+      buildSummary(state, profileId, Date.now()),
+      'text/plain;charset=utf-8',
+    );
   };
 
   const downloadCalendar = (): void => {
@@ -133,7 +137,11 @@ export function ExportView(): JSX.Element {
       });
     }
     try {
-      downloadText(`fti-sessions-${stamp}.ics`, buildIcs(events, profile.timezone, Date.now()));
+      downloadText(
+        `fti-sessions-${stamp}.ics`,
+        buildIcs(events, profile.timezone, Date.now()),
+        'text/calendar;charset=utf-8',
+      );
     } catch {
       // buildIcs refuses a zone it cannot resolve rather than falling back to the device's.
       // A stored zone this build's ICU data does not carry is the one way that happens.

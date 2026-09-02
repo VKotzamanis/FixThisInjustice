@@ -11,9 +11,18 @@
  * CSP note (master plan section 3): `blob:` appears in img-src and media-src,
  * not in default-src. A download triggered by `<a download>` is not a fetch the
  * policy governs, so no directive has to be widened for this.
+ *
+ * `mime` defaults to `application/json` so every existing two-argument call keeps its old
+ * behaviour; a caller exporting a non-JSON document (plain text, `.ics`) passes its real type,
+ * so a browser that dispatches on Blob.type rather than the filename extension offers the
+ * right handler for it.
  */
-export function downloadText(filename: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+export function downloadText(
+  filename: string,
+  text: string,
+  mime: string = 'application/json',
+): void {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;
