@@ -89,9 +89,11 @@ export function createReminderActions(deps: ReminderActionDeps): ReminderActions
     setPushDevice: (device) => {
       deps.set((s) => {
         // Identity is the no-op signal here too. Clearing an already absent device is the
-        // common case: it is what the sync effect does on every "stale-device" result.
+        // common case: it is what the sync effect does on every "stale-device" result. That
+        // case is `s.pushDevice === null && device === null`, which is already `null === null`
+        // under strict equality, so it is covered by the identity check above and needs no
+        // separate branch.
         if (s.pushDevice === device) return s;
-        if (s.pushDevice === null && device === null) return s;
         return { ...s, pushDevice: device };
       });
     },
