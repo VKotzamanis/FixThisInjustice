@@ -96,10 +96,16 @@ export function remainingS(timer: RestTimer, now: EpochMs): Seconds {
  * Full span of the timer including any extensions; drives the progress ring, which cannot use
  * durationS because `extend` deliberately leaves that field alone.
  *
- * @returns span endsAt - startedAt [s], >= 0
+ * Rounds UP, the same way remainingS does. The two are divided and compared by the caller
+ * (elapsed / total for the ring, remaining for the readout), so rounding them differently lets
+ * remainingS exceed totalS on a fractional span: a 90.2 s span reads as 91 s remaining out of a
+ * 90 s total at t = startedAt, and the ring draws past full. A fractional span is reachable
+ * because `extend` takes an unconstrained deltaS.
+ *
+ * @returns span endsAt - startedAt [s], >= 0, >= remainingS at any `now` >= startedAt
  */
 export function totalS(timer: RestTimer): Seconds {
-  return Math.max(0, Math.round((timer.endsAt - timer.startedAt) / 1000)); // [s]
+  return Math.max(0, Math.ceil((timer.endsAt - timer.startedAt) / 1000)); // [s]
 }
 
 /**
@@ -124,10 +130,15 @@ export function extend(timer: RestTimer, deltaS: number): RestTimer {
  */
 export function defaultRestS(ex: PlannedExercise, lib: Record<string, Exercise>): Seconds {
   const exercise = lib[ex.exerciseId];
-  // Unknown exercise (a custom exercise not in the passed map): the conservative default is
-  // the shortest interval, which never over-prescribes clock time for work that may not need
-  // it. This is the one value chosen here rather than by restSFor, because there is no
-  // Exercise to stratify on.
-  if (exercise === undefined) return REST_ISOLATION_S; // [s]
+  // Unknown exercise (a custom exercise not in the passed map): there is no Exercise to
+  // stratify on, so this is the one value chosen here rather than by restSFor. It matches
+  // restSFor's own fallthrough, the moderate-compound default, so an unknown exercise gets the
+  // same rest as a known compound the stratification cannot place.
+  //
+  // The shortest interval is NOT the conservative choice, which is why it is not used: under-
+  // resting a set that is in fact a heavy compound costs reps and load in the sets that follow
+  // (de Salles 2009, Grgic 2018, Schoenfeld 2016, cited above), while over-resting a set that
+  // is in fact isolation work costs clock time and nothing else. The asymmetry runs one way.
+  if (exercise === undefined) return REST_MODERATE_COMPOUND_S; // [s]
   return restSFor(exercise, ex.prescription); // [s]
 }

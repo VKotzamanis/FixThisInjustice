@@ -64,6 +64,32 @@ describe('FORM_CUES', () => {
     expect(row).toMatch(/torso heave/i);
   });
 
+  it('states the trap-bar result per joint, including the higher knee moment', () => {
+    // Swinton PA et al. (2011), J Strength Cond Res 25(7):2000-2009,
+    // DOI 10.1519/JSC.0b013e3181e73f87, PMID 21659894: peak moments at the lumbar spine, hip
+    // and ankle were LOWER with the trap bar, and the peak KNEE moment was HIGHER. An
+    // unqualified "lowers the peak joint moments" states the opposite of the knee result, so
+    // the tip has to name the joints and the direction at each of them.
+    const tip = FORM_CUES['trap-bar-deadlift']?.tip ?? '';
+    expect(tip).toMatch(/lumbar/i);
+    expect(tip).toMatch(/hip/i);
+    expect(tip).toMatch(/ankle/i);
+    expect(tip).toMatch(/knee/i);
+    // The knee sentence has to carry the increase, not just the joint name.
+    const up = '(higher|greater|raise|rais\\w+|increas\\w+)';
+    expect(tip).toMatch(new RegExp(`(knee[^.]*${up})|(${up}[^.]*knee)`, 'i'));
+  });
+
+  it('keeps the legacy Pendlay concentric intent and the stair-climber rail advice', () => {
+    // Port fidelity, both directions. The legacy Pendlay execution read "Explosively pull the
+    // bar to LOWER chest / upper abs"; dropping the adverb changes the prescribed bar speed,
+    // which is the point of a dead-stop row. The legacy stair-climber tip read "If you need to
+    // grip rails, slow down"; substituting "lower the level" changes which variable the user is
+    // told to move.
+    expect(JSON.stringify(FORM_CUES['barbell-row-pendlay']?.execution)).toMatch(/explosive/i);
+    expect(FORM_CUES['stair-climber']?.tip ?? '').toMatch(/slow down/i);
+  });
+
   it('does not claim knee push-ups fail to transfer', () => {
     expect(JSON.stringify(FORM_CUES['push-up'])).not.toMatch(/don't transfer|do not transfer/i);
   });
