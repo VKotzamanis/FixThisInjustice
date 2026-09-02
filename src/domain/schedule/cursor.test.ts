@@ -10,6 +10,12 @@ import {
   startSession,
   upsertAssignment,
 } from './cursor';
+/*
+ * The module's own text, read through vite's ?raw loader, so the "no clock in this module"
+ * claim is asserted rather than trusted. ?raw rather than node:fs because tsconfig.app.json
+ * pins `types` to the vite client typings, under which node:fs has no declaration.
+ */
+import cursorSource from './cursor.ts?raw';
 import {
   assignmentOn,
   cursorOf,
@@ -28,10 +34,14 @@ import {
   WEDNESDAY,
 } from '../../test/scheduleFixtures';
 import { parseState } from '../schema';
-import type { AppState, PlanPause, SessionAssignment } from '../types';
+import type { AppState, LocalDate, PlanPause, SessionAssignment } from '../types';
 
 const THREE = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
 const WEEKDAYS = [1, 3, 5] as const;
+
+/* The fixtures stop at Sunday; the round-trip run continues past a pause into the next week. */
+const NEXT_MONDAY: LocalDate = '2026-09-14';
+const NEXT_TUESDAY: LocalDate = '2026-09-15';
 
 function seed(nextSessionIndex = 0) {
   return seedState({ labels: THREE, weekdays: [...WEEKDAYS], nextSessionIndex });
@@ -122,6 +132,23 @@ describe('upsertAssignment', () => {
     const list = upsertAssignment([a], { ...a, status: 'completed' });
     expect(list).toHaveLength(1);
     expect(list[0]?.status).toBe('completed');
+  });
+
+  /*
+   * The postcondition is "the returned list is sorted by date", not "sorted when the input
+   * already was". calendar.ts's assignToday writes through this function directly and a
+   * document persisted by an older build can arrive in any order, so the replace branch sorts
+   * too. The alternative — declaring the list unordered and making every consumer index by
+   * date — was rejected because projectedCalendar and the Today view both read it in order.
+   */
+  it('returns a date-sorted list on replace, not only on insert', () => {
+    const later: SessionAssignment = { ...a, date: FRIDAY, sessionId: 's-3', sourceIndex: 2 };
+    const earlier: SessionAssignment = { ...a, date: MONDAY, sessionId: 's-1', sourceIndex: 0 };
+    const unsorted = [later, earlier, a]; // FRIDAY, MONDAY, WEDNESDAY
+    const list = upsertAssignment(unsorted, { ...earlier, status: 'completed' });
+    expect(list.map((x) => x.date)).toEqual([MONDAY, WEDNESDAY, FRIDAY]);
+    expect(list.find((x) => x.date === MONDAY)?.status).toBe('completed');
+    expect(unsorted.map((x) => x.date)).toEqual([FRIDAY, MONDAY, WEDNESDAY]); // input untouched
   });
 });
 
@@ -335,6 +362,21 @@ describe('pausePlan / resumePlan', () => {
     expect(isPaused(pausesOf(resumed), WEDNESDAY)).toBe(false);
   });
 
+  /*
+   * [from, from) contains no days: a user who pauses and resumes on the same day was never
+   * paused. resumePlan records that rather than refusing it, so a mistaken pause is undone by
+   * resuming on the day it started.
+   */
+  it('records a same-day resume as an empty pause', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, WEDNESDAY, 'travel');
+    const resumed = resumePlan(paused, PROFILE_ID, WEDNESDAY);
+    expect(pausesOf(resumed)[0]?.from).toBe(WEDNESDAY);
+    expect(pausesOf(resumed)[0]?.to).toBe(WEDNESDAY);
+    expect(isPaused(pausesOf(resumed), TUESDAY)).toBe(false);
+    expect(isPaused(pausesOf(resumed), WEDNESDAY)).toBe(false);
+    expectValid(resumed);
+  });
+
   it('allows a second pause after the first is closed', () => {
     const first = resumePlan(pausePlan(seed(0), PROFILE_ID, MONDAY, null), PROFILE_ID, WEDNESDAY);
     const second = pausePlan(first, PROFILE_ID, FRIDAY, null);
@@ -364,30 +406,240 @@ describe('schema round-trip', () => {
     expectValid(paused);
     const resumed = resumePlan(paused, PROFILE_ID, SUNDAY);
     expectValid(resumed);
-    // Two sessions are already closed out (one completed, one skipped); four days with no
-    // assignment yet close the remaining four, so the cursor ends one past the last session.
+    /*
+     * Two sessions are already closed out (one completed, one skipped); four days with no
+     * assignment yet close the remaining four, so the cursor ends one past the last session.
+     * None of the four may fall inside [FRIDAY, SUNDAY): a paused day materialises nothing, so
+     * the run continues into the following week rather than through the pause.
+     */
     let state = resumed;
     expect(cursorOf(state).nextSessionIndex).toBe(2);
-    const days = [THURSDAY, FRIDAY, SATURDAY, SUNDAY];
+    const days = [THURSDAY, SUNDAY, NEXT_MONDAY, NEXT_TUESDAY];
     for (const [i, date] of days.entries()) {
       state = completeSession(state, PROFILE_ID, date, NOW_MS + (i + 1) * DAY_MS); // [ms]
       expectValid(state);
     }
     expect(cursorOf(state).nextSessionIndex).toBe(6);
-    expect(cursorOf(state).completedOn).toBe(SUNDAY);
+    expect(cursorOf(state).completedOn).toBe(NEXT_TUESDAY);
   });
 });
 
 describe('invariant: the cursor is attendance-driven, not clock-driven (code review A11)', () => {
-  it('60 days of clock advance with no completions leave nextSessionIndex unchanged', () => {
-    const s = seed(0);
-    const laterInstants = [1, 7, 30, 60].map((d) => NOW_MS + d * DAY_MS); // [ms]
-    for (const t of laterInstants) {
-      // Nothing in cursor.ts reads a clock; the only clock input is an explicit argument.
-      const untouched = startSession(s, PROFILE_ID, MONDAY, t);
-      expect(cursorOf(untouched).nextSessionIndex).toBe(0);
+  /*
+   * Chained, not re-derived: one state is carried through 60 days of clock and calendar
+   * advance. The earlier version rebuilt the state from the same seed on every iteration,
+   * which could only ever prove that a single call is pure.
+   */
+  it('60 days pass with no completion and the cursor does not move', () => {
+    let state = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    for (const day of [1, 7, 30, 60]) {
+      // The same open Monday, re-entered on a later calendar day: the clock moves, the plan does not.
+      state = startSession(state, PROFILE_ID, MONDAY, NOW_MS + day * DAY_MS); // [ms]
+      expect(cursorOf(state).nextSessionIndex).toBe(0);
+      expect(cursorOf(state).completedOn).toBeNull();
+      expect(assignmentOn(state, MONDAY)?.startedAt).toBe(NOW_MS); // first start wins
     }
-    expect(cursorOf(s).nextSessionIndex).toBe(0);
-    expect(nextSession(planOf(s), cursorOf(s))?.id).toBe('s-1');
+    expect(nextSession(planOf(state), cursorOf(state))?.id).toBe('s-1');
+    // Attendance, and only attendance, moves it: 60 elapsed days plus one session is one step.
+    const done = completeSession(state, PROFILE_ID, MONDAY, NOW_MS + 60 * DAY_MS); // [ms]
+    expect(cursorOf(done).nextSessionIndex).toBe(1);
+    expectValid(done);
+  });
+
+  /*
+   * The behavioural test above cannot see a clock read on a branch it does not take, so the
+   * ban is also asserted against the module's own source text.
+   */
+  it('reads no clock: the module names no Date and no today helper', () => {
+    for (const banned of ['Date.now', 'todayLocal', 'new Date']) {
+      expect(cursorSource).not.toContain(banned);
+    }
+  });
+});
+
+describe('invariant: the cursor never runs past the last session', () => {
+  const REST: LocalDate[] = [TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY];
+
+  /*
+   * The reviewer's sequence. Monday is started and left in progress, the six other days of the
+   * week are closed out — which exhausts the six-session plan on Sunday — and the stale Monday
+   * is closed out last.
+   *
+   * Tuesday-Sunday are seeded as `planned` rather than materialised one call at a time because
+   * the single-open-assignment rule now refuses to open a second day while Monday is in
+   * progress. They carry exactly the sessionId and sourceIndex the cursor would have handed
+   * them (Tuesday at index 0, ... Sunday at index 5), so Monday and Tuesday both point at s-1:
+   * that duplication is the corrupted shape the clamp has to survive. The clamp cannot lean on
+   * the single-open rule for its safety, because calendar.ts's assignToday writes assignments
+   * through upsertAssignment directly and a document persisted by an older build can already
+   * hold several open days.
+   */
+  function staleMondayWeek(): AppState {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    const planned: SessionAssignment[] = REST.map((date, i) => ({
+      date,
+      sessionId: `s-${i + 1}`,
+      sourceIndex: i, // [sessions] offset, as the cursor stood when the day was opened
+      status: 'planned',
+      startedAt: null,
+      completedAt: null,
+      skipReason: null,
+    }));
+    let state: AppState = {
+      ...started,
+      assignments: { [PROFILE_ID]: [...(started.assignments[PROFILE_ID] ?? []), ...planned] },
+    };
+    for (const [i, date] of REST.entries()) {
+      state = completeSession(state, PROFILE_ID, date, NOW_MS + (i + 1) * DAY_MS); // [ms]
+    }
+    return state;
+  }
+
+  it('reaches the end of the plan with Monday still open', () => {
+    const week = staleMondayWeek();
+    expect(planOf(week).sessions).toHaveLength(6);
+    expect(cursorOf(week).nextSessionIndex).toBe(6);
+    expect(cursorOf(week).completedOn).toBe(SUNDAY);
+    expect(assignmentOn(week, MONDAY)?.status).toBe('in-progress');
+  });
+
+  it('completing the stale Monday leaves the index at 6 of 6 and completedOn unchanged', () => {
+    const after = completeSession(staleMondayWeek(), PROFILE_ID, MONDAY, NOW_MS + 7 * DAY_MS); // [ms]
+    expect(cursorOf(after).nextSessionIndex).toBe(6); // 6 of 6, never 7
+    expect(cursorOf(after).completedOn).toBe(SUNDAY); // stamped once, by the session that finished the plan
+    expect(assignmentOn(after, MONDAY)?.status).toBe('completed'); // the day still closes out
+    expectValid(after);
+  });
+
+  it('skipping the stale Monday clamps the same way', () => {
+    const after = skipSession(staleMondayWeek(), PROFILE_ID, MONDAY, 'never went back to it');
+    expect(cursorOf(after).nextSessionIndex).toBe(6);
+    expect(cursorOf(after).completedOn).toBe(SUNDAY);
+    expect(assignmentOn(after, MONDAY)?.status).toBe('skipped');
+    expectValid(after);
+  });
+});
+
+describe('invariant: at most one open assignment per profile', () => {
+  const OPEN_ON_MONDAY = `a session is already in progress on ${MONDAY}`;
+
+  it('refuses to start a second day while Monday is in progress', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    expect(() => startSession(started, PROFILE_ID, TUESDAY, NOW_MS + DAY_MS)).toThrow(
+      `startSession: ${OPEN_ON_MONDAY}`,
+    );
+  });
+
+  it('refuses to complete a fresh day while Monday is in progress', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    expect(() => completeSession(started, PROFILE_ID, TUESDAY, NOW_MS + DAY_MS)).toThrow(
+      `completeSession: ${OPEN_ON_MONDAY}`,
+    );
+  });
+
+  it('refuses to skip a fresh day while Monday is in progress', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    expect(() => skipSession(started, PROFILE_ID, TUESDAY, 'busy')).toThrow(
+      `skipSession: ${OPEN_ON_MONDAY}`,
+    );
+  });
+
+  /* Open means non-terminal, not in-progress: a planned day nobody pressed Start on counts. */
+  it('counts a planned, never-started day as open', () => {
+    const seeded = seed(0);
+    const planned: SessionAssignment = {
+      date: MONDAY,
+      sessionId: 's-1',
+      sourceIndex: 0,
+      status: 'planned',
+      startedAt: null,
+      completedAt: null,
+      skipReason: null,
+    };
+    const state: AppState = { ...seeded, assignments: { [PROFILE_ID]: [planned] } };
+    expect(() => startSession(state, PROFILE_ID, TUESDAY, NOW_MS + DAY_MS)).toThrow(
+      OPEN_ON_MONDAY,
+    );
+  });
+
+  it('lets the open day be completed, and then the next day starts', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    const done = completeSession(started, PROFILE_ID, MONDAY, NOW_MS + 3_600_000); // [ms]
+    const next = startSession(done, PROFILE_ID, TUESDAY, NOW_MS + DAY_MS); // [ms]
+    expect(assignmentOn(next, TUESDAY)?.status).toBe('in-progress');
+    expect(assignmentOn(next, TUESDAY)?.sourceIndex).toBe(1);
+    expect(cursorOf(next).nextSessionIndex).toBe(1); // start does not advance; the complete did
+    expectValid(next);
+  });
+
+  it('lets the open day be skipped, and then the next day starts', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    const skipped = skipSession(started, PROFILE_ID, MONDAY, 'illness');
+    const next = startSession(skipped, PROFILE_ID, TUESDAY, NOW_MS + DAY_MS); // [ms]
+    expect(assignmentOn(next, TUESDAY)?.status).toBe('in-progress');
+    expect(cursorOf(next).nextSessionIndex).toBe(1);
+    expectValid(next);
+  });
+
+  /* Re-entering the day that is already open is not a second assignment. */
+  it('still allows the open day itself to be restarted', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    expect(() => startSession(started, PROFILE_ID, MONDAY, NOW_MS + 60_000)).not.toThrow(); // [ms]
+  });
+});
+
+describe('invariant: a paused day materialises nothing', () => {
+  it('refuses to start a day inside a pause', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, MONDAY, 'travel');
+    expect(() => startSession(paused, PROFILE_ID, MONDAY, NOW_MS)).toThrow(
+      `startSession: the plan is paused on ${MONDAY}`,
+    );
+  });
+
+  it('refuses to complete a fresh day inside a pause', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, MONDAY, 'travel');
+    expect(() => completeSession(paused, PROFILE_ID, MONDAY, NOW_MS)).toThrow(
+      `completeSession: the plan is paused on ${MONDAY}`,
+    );
+  });
+
+  it('refuses to skip a fresh day inside a pause', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, MONDAY, 'travel');
+    expect(() => skipSession(paused, PROFILE_ID, MONDAY, 'away')).toThrow(
+      `skipSession: the plan is paused on ${MONDAY}`,
+    );
+  });
+
+  it('completes a session that was already in progress when the pause began', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    const paused = pausePlan(started, PROFILE_ID, MONDAY, 'illness');
+    const done = completeSession(paused, PROFILE_ID, MONDAY, NOW_MS + 3_600_000); // [ms]
+    expect(assignmentOn(done, MONDAY)?.status).toBe('completed');
+    expect(cursorOf(done).nextSessionIndex).toBe(1);
+    expectValid(done);
+  });
+
+  it('skips a session that was already in progress when the pause began', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS);
+    const paused = pausePlan(started, PROFILE_ID, MONDAY, 'illness');
+    const skipped = skipSession(paused, PROFILE_ID, MONDAY, 'illness');
+    expect(assignmentOn(skipped, MONDAY)?.status).toBe('skipped');
+    expect(cursorOf(skipped).nextSessionIndex).toBe(1);
+    expectValid(skipped);
+  });
+
+  it('materialises again on the first day after the pause', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, MONDAY, 'travel');
+    const resumed = resumePlan(paused, PROFILE_ID, TUESDAY); // half-open [MONDAY, TUESDAY)
+    const next = startSession(resumed, PROFILE_ID, TUESDAY, NOW_MS + DAY_MS); // [ms]
+    expect(assignmentOn(next, TUESDAY)?.status).toBe('in-progress');
+    expect(cursorOf(next).nextSessionIndex).toBe(0);
+    expectValid(next);
+  });
+
+  /* A finished plan has nothing to materialise, so the pause has nothing to refuse. */
+  it('is still a no-op, not a throw, once the plan is finished', () => {
+    const paused = pausePlan(seed(6), PROFILE_ID, MONDAY, 'travel');
+    expect(startSession(paused, PROFILE_ID, MONDAY, NOW_MS)).toBe(paused);
   });
 });
