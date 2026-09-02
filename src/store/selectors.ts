@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type {
   AppState,
   BodyMassEntry,
@@ -8,11 +8,13 @@ import type {
   LoggedSet,
   PlanTemplate,
   Profile,
+  WeeklyReview,
 } from '../domain/types';
 import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
 import { computeTargets, isInDomain } from '../domain/nutrition';
 import { compareLocalDate, todayLocal } from '../domain/dates';
 import { sortSetHistory } from '../domain/training/progression';
+import { pendingMotivation } from '../domain/motivation/trigger';
 import type { RestTimer } from '../domain/training/restTimer';
 import type { SaveError } from './index';
 import { useAppStore } from './index';
@@ -287,4 +289,77 @@ export function useTodaysSets(): LoggedSet[] {
 /** The running rest interval, or null. Session slice: never persisted, mirrored per tab. */
 export function useRestTimer(): RestTimer | null {
   return useAppStore((s) => s.session.restTimer);
+}
+
+/**
+ * [ms] How often the motivation clock is allowed to move. The quantity the selector below
+ * compares against it is the age of a closed week, measured in days (MOTIVATION_MISS_WINDOW_DAYS
+ * = 14), so a minute is four orders of magnitude finer than the threshold it feeds and the only
+ * thing a shorter tick could buy is re-renders.
+ */
+export const MOTIVATION_CLOCK_TICK_MS = 60_000;
+
+/**
+ * A clock reading that changes at most once a minute, and whenever the tab becomes visible.
+ *
+ * A selector must not read `Date.now()` in its body: zustand hands the result to
+ * `useSyncExternalStore`, which compares snapshots, so a value that moves on every render is a
+ * snapshot that never settles. Reading the clock through state instead makes the reading a
+ * dependency the component owns, and a re-render costs nothing until the minute turns.
+ *
+ * Both triggers are needed and neither is redundant. The interval is what makes a window
+ * expire under an app left open; the visibility listener is what makes it expire under a phone
+ * that was locked, where the interval is throttled to minutes or suspended outright, and where
+ * the moment that matters is exactly the moment the user comes back — the argument
+ * src/app/useWeeklyClose.ts makes for the same pair of triggers. No throttle is needed on the
+ * visibility side: unlike a weekly closure, reading the clock is free.
+ */
+export function useMinuteClock(): EpochMs {
+  const [now, setNow] = useState<EpochMs>(() => Date.now()); // [ms] epoch, UTC
+
+  useEffect(() => {
+    const tick = (): void => {
+      setNow(Date.now()); // [ms] epoch, UTC
+    };
+    const id = window.setInterval(tick, MOTIVATION_CLOCK_TICK_MS);
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+
+  return now;
+}
+
+/**
+ * The week that still owes the user a popup, or null.
+ *
+ * Returns the WeeklyReview object held in the store, so the reference is stable between
+ * renders and cannot drive `useSyncExternalStore` into a loop. The four store fields
+ * `pendingMotivation` reads are selected separately, each of them a stable record reference,
+ * and the derivation happens in `useMemo`; a selector that built `{ weeklyReviews, motivation,
+ * profiles }` inside its own body would mint a new object on every notification and loop, which
+ * is the rule `useTodaysSets` above already follows.
+ *
+ * The active-session suppression is NOT here — it belongs to the gate that renders the modal,
+ * so that the Settings preview can reuse this selector unchanged.
+ */
+export function usePendingMotivation(): WeeklyReview | null {
+  const profileId = useAppStore((s) => s.activeProfileId);
+  const weeklyReviews = useAppStore((s) => s.weeklyReviews);
+  const motivation = useAppStore((s) => s.motivation);
+  const profiles = useAppStore((s) => s.profiles);
+  const now = useMinuteClock(); // [ms] epoch, UTC
+
+  return useMemo(
+    () =>
+      profileId === null
+        ? null
+        : pendingMotivation({ weeklyReviews, motivation, profiles }, profileId, now),
+    [weeklyReviews, motivation, profiles, profileId, now],
+  );
 }
