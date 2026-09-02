@@ -526,17 +526,6 @@ export type CopyKey =
   | 'status.motivationClipNotVideo'
   | 'status.motivationClipTooLarge'
   | 'status.motivationClipNotStored'
-  // --- time capsule (P8 Task 7; appended by that task) ---
-  | 'button.writeCapsule'
-  | 'button.readCapsule'
-  | 'label.capsuleNote'
-  | 'label.capsuleOpensOn'
-  | 'status.capsuleSealed'
-  | 'status.capsuleWritten'
-  | 'advice.capsuleNoteShort'
-  | 'advice.capsuleNoteLong'
-  | 'advice.capsuleDateRange'
-  | 'advice.capsuleDefaultMoved'
   // --- Atlas view (P8 Task 5) ---
   | 'label.rarityCommon'
   | 'label.rarityUncommon'
@@ -553,14 +542,25 @@ export type CopyKey =
   | 'status.bootStore'
   | 'status.bootOk'
   | 'status.bootReady'
+  // --- time capsule (P8 Task 7; appended by that task) ---
+  | 'button.writeCapsule'
+  | 'button.readCapsule'
+  | 'label.capsuleNote'
+  | 'label.capsuleOpensOn'
+  | 'status.capsuleSealed'
+  | 'status.capsuleWritten'
+  | 'advice.capsuleNoteShort'
+  | 'advice.capsuleNoteLong'
+  | 'advice.capsuleDateRange'
+  | 'advice.capsuleDefaultMoved'
+  // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9; appended by that task) ---
+  | 'nav.atlas'
+  | 'status.konami'
   // --- the Settings data section (P7 Task 6; appended by that task) ---
   | 'button.downloadBackup'
   | 'button.wipeConfirm'
   | 'button.legacyReopen'
   | 'advice.wipeRemoves'
-  // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9; appended by that task) ---
-  | 'nav.atlas'
-  | 'status.konami'
   // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
   | 'hero.skin'
   | 'label.settingsSkin'
@@ -1156,7 +1156,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The dialog's own heading, which is also what names it to a screen reader.
   'hero.spotlight': 'Search',
   // The tap target that opens the palette on a phone, where there is no keyboard to press the
-  // combo on. R2: three words or fewer, and it names the action rather than the mechanism.
+  // combo on. R1: three words or fewer, and it names the action rather than the mechanism.
   'button.openSpotlight': 'Search',
   // The combobox's accessible name, and its placeholder. It states what the palette searches,
   // so the empty field is not a guess: views and the exercises the plan prescribes.
@@ -1312,33 +1312,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Anything else the save threw. It states the outcome and stops.
   'status.motivationClipNotStored': 'The clip was not stored.',
 
-  // --- time capsule (P8 Task 7; appended by that task) ---
-  // The two controls the P8 block above did not name: the one that reaches the writing
-  // dialog, and the one that reaches an already opened capsule again. Sealing and opening are
-  // 'button.sealCapsule' and 'button.openCapsule'.
-  'button.writeCapsule': 'Write capsule',
-  'button.readCapsule': 'Read capsule',
-  'label.capsuleNote': 'Note to your future self',
-  'label.capsuleOpensOn': 'Opens on',
-  // The sealed card. It states the open date and how far off it is, and carries no part of
-  // the note: a sealed capsule that leaked a word of its contents would not be sealed.
-  // {days} arrives from FORMAT.capsuleSealed already carrying its unit. [d]
-  'status.capsuleSealed': 'Opens {date}, in {days}.', // formatted
-  // The date the note was written, as a civil date in the profile's zone, never a UTC
-  // instant. Shown only once the capsule is open.
-  'status.capsuleWritten': 'Sealed {date}.', // formatted
-  // The three refusals the writing dialog can state. Each names the bound it refuses against,
-  // because a refusal that does not say what would be accepted is a dead end. The character
-  // bound is src/domain/schema.ts MAX_NOTE_CHARS [characters]; the two dates are civil dates
-  // in the profile's zone.
-  'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
-  'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
-  'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
-  // Shown next to the date field only while it still carries the computed default and
-  // that default needed clamping into the CAPSULE_MIN/MAX_DAYS_AHEAD window; not a
-  // refusal, so it never blocks sealing.
-  'advice.capsuleDefaultMoved': 'The suggested date moved to fit the allowed range.',
-
   // --- Atlas view (P8 Task 5) ---
   // The Atlas's own heading, its subtitle and its locked slot are the P8 block above
   // ('hero.atlas', 'advice.atlas', 'status.undiscovered'), which this task renders rather than
@@ -1379,6 +1352,43 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.bootOk': 'OK',
   'status.bootReady': 'READY.',
 
+
+  // --- time capsule (P8 Task 7; appended by that task) ---
+  // The two controls the P8 block above did not name: the one that reaches the writing
+  // dialog, and the one that reaches an already opened capsule again. Sealing and opening are
+  // 'button.sealCapsule' and 'button.openCapsule'.
+  'button.writeCapsule': 'Write capsule',
+  'button.readCapsule': 'Read capsule',
+  'label.capsuleNote': 'Note to your future self',
+  'label.capsuleOpensOn': 'Opens on',
+  // The sealed card. It states the open date and how far off it is, and carries no part of
+  // the note: a sealed capsule that leaked a word of its contents would not be sealed.
+  // {days} arrives from FORMAT.capsuleSealed already carrying its unit. [d]
+  'status.capsuleSealed': 'Opens {date}, in {days}.', // formatted
+  // The date the note was written, as a civil date in the profile's zone, never a UTC
+  // instant. Shown only once the capsule is open.
+  'status.capsuleWritten': 'Sealed {date}.', // formatted
+  // The three refusals the writing dialog can state. Each names the bound it refuses against,
+  // because a refusal that does not say what would be accepted is a dead end. The character
+  // bound is src/domain/schema.ts MAX_NOTE_CHARS [characters]; the two dates are civil dates
+  // in the profile's zone.
+  'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
+  'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
+  'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
+  // Shown next to the date field only while it still carries the computed default and
+  // that default needed clamping into the CAPSULE_MIN/MAX_DAYS_AHEAD window; not a
+  // refusal, so it never blocks sealing.
+  'advice.capsuleDefaultMoved': 'The suggested date moved to fit the allowed range.',
+
+
+  // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9) ---
+  // The eighth tab. One word, like every other tab label, and the name the view already gives
+  // itself: the specimen collection, not "cards" or "collection".
+  'nav.atlas': 'Atlas',
+  // The whole content of the Konami overlay. Playful, and still the default skin: no emoji
+  // (R6), no exclamation mark (R8), no dash as a connector (R5). It states what the sequence
+  // did and what it did not buy, which is the only thing the screen is for.
+  'status.konami': 'No cheat code found. A squat cannot be skipped.',
   // --- the Settings data section (P7 Task 6; appended by that task) ---
   // The wipe panel's own export control. Named apart from `button.downloadJson`, which
   // ExportView carries in the same section: two controls sharing one accessible name cannot
@@ -1392,16 +1402,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
   'advice.wipeRemoves': 'Every profile, plan, session, set and note on this device is removed.',
-
-
-  // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9) ---
-  // The eighth tab. One word, like every other tab label, and the name the view already gives
-  // itself: the specimen collection, not "cards" or "collection".
-  'nav.atlas': 'Atlas',
-  // The whole content of the Konami overlay. Playful, and still the default skin: no emoji
-  // (R6), no exclamation mark (R8), no dash as a connector (R5). It states what the sequence
-  // did and what it did not buy, which is the only thing the screen is for.
-  'status.konami': 'No cheat code found. A squat cannot be skipped.',
   // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
   // The row's heading. It names both controls under it, so neither the picker's legend nor
   // the toggle's label repeats it: two controls in one region sharing an accessible name
@@ -2143,6 +2143,46 @@ export const FORMAT = {
           .replace('{completed}', () => String(completed))
           .replace('{target}', () => String(target)),
 
+  // --- Atlas view (P8 Task 5) ---
+
+  /**
+   * "5 of 37": cards held against cards that exist. Both operands are counts of CARDS and both
+   * are derived from SPECIMEN_CARDS by the view, so adding a card to the pool moves the
+   * denominator without an edit here. Copy contract R9 is not engaged: the frame states a
+   * count and performs no arithmetic the user has to follow.
+   */
+  atlasCount: (owned: number, total: number): string => `${owned} of ${total}`,
+
+  /**
+   * "Nosaka K, Newton M, Sacco P (2002). Scand J Med Sci Sports 12(6):337-346.
+   * DOI 10.1034/j.1600-0838.2002.10178.x".
+   *
+   * The citation arrives verbatim from the card and is never rewritten here. The DOI is printed
+   * as a bare identifier and not as a resolver URL: the shipped Content-Security-Policy grants
+   * no connect-src for doi.org or Crossref, so a link would be a control the app cannot honour,
+   * and the copy contract keeps URLs out of the default skin. A card whose cited work predates
+   * the DOI system carries null (CARDS_WITHOUT_DOI) and prints its citation alone.
+   */
+  atlasSource: (citation: string, doi: string | null): string =>
+    doi === null ? citation : `${citation} DOI ${doi}`,
+  // --- generic boot sequence (P8 Task 6) ---
+
+  /**
+   * "Loading plan ................. OK". The dotted leader holds `OK` in one column, which is
+   * what makes the step lines read as a list rather than as separate sentences. A leader is
+   * not a connector, so contract R5's ban on the dash does not reach it.
+   *
+   * Both words arrive already resolved from the table above (`status.boot*`), as in
+   * `screenedOn` and `planPosition`, so this frame states nothing of its own and a skin
+   * reaches every word it prints.
+   *
+   * 32 columns, not the legacy sequence's 44: the longest label here is 21 characters, and 44
+   * would push the line past a 320 px phone in the monospace face the boot renders in.
+   */
+  bootStep: (label: string, ok: string): string =>
+    `${label} ${'.'.repeat(Math.max(1, 32 - label.length))} ${ok}`,
+
+
   // --- time capsule (P8 Task 7) ---
 
   /**
@@ -2187,44 +2227,4 @@ export const FORMAT = {
     copy('advice.capsuleDateRange', overrides)
       .replace('{from}', () => from)
       .replace('{to}', () => to),
-
-  // --- Atlas view (P8 Task 5) ---
-
-  /**
-   * "5 of 37": cards held against cards that exist. Both operands are counts of CARDS and both
-   * are derived from SPECIMEN_CARDS by the view, so adding a card to the pool moves the
-   * denominator without an edit here. Copy contract R9 is not engaged: the frame states a
-   * count and performs no arithmetic the user has to follow.
-   */
-  atlasCount: (owned: number, total: number): string => `${owned} of ${total}`,
-
-  /**
-   * "Nosaka K, Newton M, Sacco P (2002). Scand J Med Sci Sports 12(6):337-346.
-   * DOI 10.1034/j.1600-0838.2002.10178.x".
-   *
-   * The citation arrives verbatim from the card and is never rewritten here. The DOI is printed
-   * as a bare identifier and not as a resolver URL: the shipped Content-Security-Policy grants
-   * no connect-src for doi.org or Crossref, so a link would be a control the app cannot honour,
-   * and the copy contract keeps URLs out of the default skin. A card whose cited work predates
-   * the DOI system carries null (CARDS_WITHOUT_DOI) and prints its citation alone.
-   */
-  atlasSource: (citation: string, doi: string | null): string =>
-    doi === null ? citation : `${citation} DOI ${doi}`,
-  // --- generic boot sequence (P8 Task 6) ---
-
-  /**
-   * "Loading plan ................. OK". The dotted leader holds `OK` in one column, which is
-   * what makes the step lines read as a list rather than as separate sentences. A leader is
-   * not a connector, so contract R5's ban on the dash does not reach it.
-   *
-   * Both words arrive already resolved from the table above (`status.boot*`), as in
-   * `screenedOn` and `planPosition`, so this frame states nothing of its own and a skin
-   * reaches every word it prints.
-   *
-   * 32 columns, not the legacy sequence's 44: the longest label here is 21 characters, and 44
-   * would push the line past a 320 px phone in the monospace face the boot renders in.
-   */
-  bootStep: (label: string, ok: string): string =>
-    `${label} ${'.'.repeat(Math.max(1, 32 - label.length))} ${ok}`,
-
 } as const;
