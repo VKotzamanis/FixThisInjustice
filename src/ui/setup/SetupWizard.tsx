@@ -1,10 +1,16 @@
-import { useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX, type Ref } from 'react';
 import './setup.css';
 import { FORMAT, copy } from '../../content/copy';
 import { NAVY_SEE_PCT, NAVY_SITE_LABEL, estimateBodyFatNavy } from '../../domain/bodyfat';
 import { deviceTimeZone, isValidLocalDate, isValidTimeZone, todayLocal } from '../../domain/dates';
 import { newId } from '../../domain/ids';
-import { NUTRITION_DOMAIN, computeTargets, dailyBeverageTargetML } from '../../domain/nutrition';
+import {
+  NUTRITION_DOMAIN,
+  computeTargets,
+  dailyBeverageTargetML,
+  isInDomain,
+  type NutritionInput,
+} from '../../domain/nutrition';
 import { EXERCISES } from '../../domain/plan/library';
 import {
   PLAN_WEEKS_MAX,
@@ -17,6 +23,7 @@ import {
   DEFAULT_BARBELL_STEP,
   DEFAULT_DUMBBELL_STEP,
   DEFAULT_STACK_STEP,
+  KG_PER_LB,
   MICRO_PLATE_STEP,
   type ActivityLevel,
   type Availability,
@@ -123,6 +130,19 @@ const DEFAULT_DISPLAY_NAME = 'Operator'; // used only when the optional name is 
 const MAX_STEP_KG = 100; // [kg]
 const MAX_SESSION_DURATION_MIN = 1440; // [min]
 
+/*
+ * DOM ids for the messages that belong to more than one control, or to a control this file
+ * renders itself rather than through UnitInput. Every one of them is referenced from an
+ * aria-describedby on the control(s) that produced it while, and only while, it is on screen.
+ */
+const STEP_HEADING_ID = 'wiz-step-heading';
+const TIMEZONE_LIST_ID = 'f-timezone-options';
+const HEIGHT_ERROR_ID = 'f-height-error';
+const TAPE_ERROR_ID = 'f-tape-error';
+const TARGET_DATE_ERROR_ID = 'f-target-date-error';
+const WEEKDAY_ERROR_ID = 'f-weekday-error';
+const AVAILABILITY_DAYS_ERROR_ID = 'f-availability-days-error';
+
 /** Display name of each RMR equation. A proper noun, not skin copy. */
 const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
   'mifflin-st-jeor': 'Mifflin-St Jeor',
@@ -179,6 +199,26 @@ const SESSIONS_PER_WEEK_OPTIONS: readonly SessionsPerWeek[] = [2, 3, 4, 5, 6];
  */
 function withoutDashConnector(text: string): string {
   return text.replace(/\s+—\s+/g, ': ');
+}
+
+/**
+ * The step heading, rendered INSIDE the fieldset's legend (HTML allows heading content there).
+ * One string serves as the group's name and as the document heading, so neither is a duplicate
+ * of the other, and it is the element that takes focus on a step change: tabIndex -1 makes it
+ * programmatically focusable without adding it to the tab order, so the next Tab press
+ * continues into the step's first control rather than restarting at the top of the document.
+ */
+function StepHeading(props: {
+  title: string;
+  headingRef: Ref<HTMLHeadingElement>;
+}): JSX.Element {
+  return (
+    <legend>
+      <h2 className="wiz-heading" id={STEP_HEADING_ID} ref={props.headingRef} tabIndex={-1}>
+        {props.title}
+      </h2>
+    </legend>
+  );
 }
 
 interface DaySlot {
@@ -297,6 +337,40 @@ interface Bound {
   hi: number;
 }
 
+/**
+ * A bound rounded INWARD to 0.1, for message text.
+ *
+ * Rounding to nearest prints a bound that is itself refused: the 30 kg floor is 66.1387 lb,
+ * which rounds to 66.1 lb, and 66.1 lb converts back to 29.98 kg. Every endpoint this returns
+ * converts to a value strictly inside the bound it came from, so a user who types the number
+ * the message names is accepted.
+ */
+function inwardBound(bound: Bound): Bound {
+  return { lo: Math.ceil(bound.lo * 10) / 10, hi: Math.floor(bound.hi * 10) / 10 };
+}
+
+/**
+ * A canonical kg bound expressed in the display unit, for message text only. The conversion is
+ * the exact inverse of toStoredMass (1 lb = 0.45359237 kg exactly, master plan section 3), not
+ * displayMass, because displayMass rounds to nearest and a message bound must round inward.
+ */
+function massBoundInDisplayUnit(kgBound: Bound, units: UnitSystem): Bound {
+  if (units === 'metric') return inwardBound(kgBound); // [kg]
+  return inwardBound({ lo: kgBound.lo / KG_PER_LB, hi: kgBound.hi / KG_PER_LB }); // [lb]
+}
+
+/** The stature domain in inches, inward-rounded, for the imperial height message. */
+const HEIGHT_BOUND_IN: Bound = inwardBound({
+  lo: NUTRITION_DOMAIN.heightCm.lo / CM_PER_INCH, // [in]
+  hi: NUTRITION_DOMAIN.heightCm.hi / CM_PER_INCH, // [in]
+});
+
+/** The ids of the messages currently on screen, for aria-describedby, or undefined when none is. */
+function describedBy(...ids: (string | null)[]): string | undefined {
+  const shown = ids.filter((id): id is string => id !== null);
+  return shown.length === 0 ? undefined : shown.join(' ');
+}
+
 /** Required numeric field: empty is an error, and so is a value outside the bound. */
 function requiredInRange(
   quantity: string,
@@ -312,15 +386,42 @@ function requiredInRange(
   return null;
 }
 
-/** Optional numeric field: empty is acceptable; a value outside the bound is not. */
-function optionalInRange(
+/**
+ * Required whole-number count. `Math.round` is never applied to a user value: the schema stores
+ * `birthYear`, `weeklySessionTarget` and the plan's `weeks` as `z.int()`, so a fraction is
+ * refused here, visibly, rather than rounded into the document behind the user's back.
+ */
+function requiredIntegerInRange(
   quantity: string,
   text: string,
   bound: Bound,
   unit?: string,
 ): string | null {
-  if (text.trim() === '') return null;
-  return requiredInRange(quantity, text, bound, unit);
+  const value = parseDecimal(text);
+  if (value === null) return copy('error.valueRequired');
+  if (!Number.isInteger(value)) return copy('error.wholeNumber');
+  if (value < bound.lo || value > bound.hi) {
+    return FORMAT.outOfRange(quantity, bound.lo, bound.hi, unit);
+  }
+  return null;
+}
+
+/**
+ * A body mass entered in the display unit, validated in CANONICAL kg after the exact conversion.
+ *
+ * This is not the same test as comparing the entered number against a rounded display bound, and
+ * the difference is a crash: 66.1 lb clears a 66.1 lb floor, converts to 29.98 kg, and
+ * computeTargets throws RangeError on it while Review renders (master plan section 6.3). The
+ * rounded bound appears in the message text and nowhere else.
+ */
+function massDomainError(quantity: string, text: string, units: UnitSystem): string | null {
+  const kg = storedMassKg(text, units); // [kg] exact
+  if (kg === null) return copy('error.valueRequired');
+  if (kg < NUTRITION_DOMAIN.massKg.lo || kg > NUTRITION_DOMAIN.massKg.hi) {
+    const shown = massBoundInDisplayUnit(NUTRITION_DOMAIN.massKg, units); // [lb] or [kg]
+    return FORMAT.outOfRange(quantity, shown.lo, shown.hi, massUnit(units));
+  }
+  return null;
 }
 
 /** A load increment: strictly positive, and no larger than the schema's per-step cap. */
@@ -346,8 +447,40 @@ function girthError(text: string): string | null {
 export function SetupWizard(): JSX.Element {
   const [draft, setDraft] = useState<Draft>(initialDraft);
   const [stepIndex, setStepIndex] = useState(0);
+  /** Latched by the first successful confirm; the profile is created exactly once. */
+  const [submitted, setSubmitted] = useState(false);
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
+
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const shownStepIndex = useRef(stepIndex);
+
+  /*
+   * Focus follows the step. Without this the focus ring stays on the Continue button that has
+   * just been replaced, so a keyboard or screen-reader user is left at the bottom of a screen
+   * whose contents changed silently. The first render is skipped: arriving at the wizard should
+   * not pull focus away from wherever the user already is.
+   */
+  useEffect(() => {
+    if (shownStepIndex.current === stepIndex) return;
+    shownStepIndex.current = stepIndex;
+    headingRef.current?.focus();
+  }, [stepIndex]);
+
+  /*
+   * The IANA zone list the platform knows, for the time-zone field's datalist. Intl.
+   * supportedValuesOf is ES2022 and absent on older engines, and a locked-down engine can throw
+   * on it, so both are treated as "no list" rather than as a failure: the field stays a plain
+   * text entry validated by isValidTimeZone.
+   */
+  const timeZoneOptions = useMemo((): readonly string[] => {
+    if (typeof Intl.supportedValuesOf !== 'function') return [];
+    try {
+      return Intl.supportedValuesOf('timeZone');
+    } catch {
+      return [];
+    }
+  }, []);
 
   function patch(next: Partial<Draft>): void {
     setDraft((d) => ({ ...d, ...next }));
@@ -408,11 +541,6 @@ export function SetupWizard(): JSX.Element {
         ? tapeEstimate
         : null;
 
-  const massBound: Bound = {
-    lo: round1(displayMass(NUTRITION_DOMAIN.massKg.lo, draft.units)),
-    hi: round1(displayMass(NUTRITION_DOMAIN.massKg.hi, draft.units)),
-  };
-
   const enabledDays = WEEKDAYS.filter((d) => draft.days[d.value].enabled);
 
   // ---- validation -----------------------------------------------------------------------
@@ -424,16 +552,18 @@ export function SetupWizard(): JSX.Element {
   const birthYearError =
     birthYear === null
       ? copy('error.valueRequired')
-      : ageYears === null ||
-          ageYears < NUTRITION_DOMAIN.ageYears.lo ||
-          ageYears > NUTRITION_DOMAIN.ageYears.hi
-        ? FORMAT.outOfRange(
-            copy('quantity.age'),
-            NUTRITION_DOMAIN.ageYears.lo,
-            NUTRITION_DOMAIN.ageYears.hi,
-            UNIT.years,
-          )
-        : null;
+      : !Number.isInteger(birthYear)
+        ? copy('error.wholeNumber')
+        : ageYears === null ||
+            ageYears < NUTRITION_DOMAIN.ageYears.lo ||
+            ageYears > NUTRITION_DOMAIN.ageYears.hi
+          ? FORMAT.outOfRange(
+              copy('quantity.age'),
+              NUTRITION_DOMAIN.ageYears.lo,
+              NUTRITION_DOMAIN.ageYears.hi,
+              UNIT.years,
+            )
+          : null;
 
   const heightError =
     heightCm === null
@@ -448,18 +578,13 @@ export function SetupWizard(): JSX.Element {
             )
           : FORMAT.outOfRange(
               copy('quantity.height'),
-              round1(NUTRITION_DOMAIN.heightCm.lo / CM_PER_INCH),
-              round1(NUTRITION_DOMAIN.heightCm.hi / CM_PER_INCH),
+              HEIGHT_BOUND_IN.lo,
+              HEIGHT_BOUND_IN.hi,
               UNIT.inch,
             )
         : null;
 
-  const massError = requiredInRange(
-    copy('quantity.bodyMass'),
-    draft.mass,
-    massBound,
-    massUnit(draft.units),
-  );
+  const massError = massDomainError(copy('quantity.bodyMass'), draft.mass, draft.units);
 
   const knownBodyFatError =
     draft.bodyFatMode === 'known'
@@ -505,12 +630,12 @@ export function SetupWizard(): JSX.Element {
       : null,
   };
 
-  const targetMassError = optionalInRange(
-    copy('quantity.targetBodyMass'),
-    draft.targetMass,
-    massBound,
-    massUnit(draft.units),
-  );
+  // Optional: an empty target is not an error. A target that IS given is held to the same
+  // canonical kg bound as the baseline, so the profile never stores a mass the engine refuses.
+  const targetMassError =
+    draft.targetMass.trim() === ''
+      ? null
+      : massDomainError(copy('quantity.targetBodyMass'), draft.targetMass, draft.units);
 
   const targetDateError =
     draft.targetDate === '' || isValidLocalDate(draft.targetDate)
@@ -518,6 +643,17 @@ export function SetupWizard(): JSX.Element {
       : copy('error.valueRequired');
 
   const weekdayError = enabledDays.length === 0 ? copy('error.pickOneDay') : null;
+
+  /*
+   * The generator builds draft.sessionsPerWeek sessions in every week and the cursor can only
+   * place a session on an available weekday, so fewer checked days than sessions silently drops
+   * sessions off the calendar. It blocks, and the message names both counts because the fix is a
+   * choice between them: check more days, or choose a smaller split.
+   */
+  const availabilityDaysError =
+    enabledDays.length > 0 && enabledDays.length < draft.sessionsPerWeek
+      ? FORMAT.daysForSessions(enabledDays.length, draft.sessionsPerWeek)
+      : null;
 
   const durationErrors: Record<number, string | null> = {};
   for (const day of enabledDays) {
@@ -532,12 +668,12 @@ export function SetupWizard(): JSX.Element {
   const weeklyTargetError =
     enabledDays.length === 0
       ? null
-      : requiredInRange(copy('quantity.weeklySessionTarget'), draft.weeklySessionTarget, {
+      : requiredIntegerInRange(copy('quantity.weeklySessionTarget'), draft.weeklySessionTarget, {
           lo: 1,
           hi: enabledDays.length,
         });
 
-  const weeksError = requiredInRange(
+  const weeksError = requiredIntegerInRange(
     copy('quantity.programmeWeeks'),
     draft.weeks,
     { lo: PLAN_WEEKS_MIN, hi: PLAN_WEEKS_MAX },
@@ -559,21 +695,37 @@ export function SetupWizard(): JSX.Element {
     goal: targetMassError !== null || targetDateError !== null,
     availability:
       weekdayError !== null ||
+      availabilityDaysError !== null ||
       weeklyTargetError !== null ||
       Object.values(durationErrors).some((e) => e !== null),
     programme: weeksError !== null,
     review: false,
   };
 
+  /*
+   * Confirm writes every screen's answers at once, so it is gated on every screen's guard rather
+   * than on the one the user is looking at. Reaching Review already requires each of them to have
+   * passed; this closes the case where a value goes stale behind the user (a unit switch, a
+   * weekday unchecked on the way back through) and keeps the store write off the invalid path.
+   */
+  const confirmBlocked = STEPS.some((s) => BLOCKED[s]);
+
   // ---- derived plan and targets ---------------------------------------------------------
 
   const weeksTyped = parseDecimal(draft.weeks);
-  // Clamped for the preview only. The Programme step is blocked while `weeks` is out of range,
-  // so the plan that is actually stored always uses the number the user typed.
+  /*
+   * The preview falls back to the default while the entry is unusable; it is never the typed
+   * value adjusted. Rounding or clamping here would show a plan for a length the user did not
+   * ask for, and the Programme step blocks on exactly the same conditions, so the plan that is
+   * stored is always the number the user typed.
+   */
   const weeks =
-    weeksTyped === null
-      ? DEFAULT_WEEKS
-      : Math.min(PLAN_WEEKS_MAX, Math.max(PLAN_WEEKS_MIN, Math.round(weeksTyped))); // [weeks]
+    weeksTyped !== null &&
+    Number.isInteger(weeksTyped) &&
+    weeksTyped >= PLAN_WEEKS_MIN &&
+    weeksTyped <= PLAN_WEEKS_MAX
+      ? weeksTyped // [weeks]
+      : DEFAULT_WEEKS; // [weeks]
 
   const plan = useMemo(
     () =>
@@ -610,33 +762,33 @@ export function SetupWizard(): JSX.Element {
       : draft.sessionsPerWeek;
 
   /**
-   * Null until every input is inside NUTRITION_DOMAIN. The gate is the same one the field
-   * messages report, so the engine is never called with a value the form has already refused.
+   * Null until every input is inside NUTRITION_DOMAIN.
+   *
+   * The gate is `isInDomain`, which is the engine's OWN predicate: master plan section 6.3
+   * specifies it as exactly the condition `computeTargets` throws on, so no gap can open between
+   * what a field message checks and what the engine accepts. Restating the field conditions here
+   * would leave that gap, and a gap in render is an uncaught RangeError, not a message. When the
+   * predicate is false the review screen says the targets are not estimated.
    */
   const targets = useMemo(() => {
     if (massKg === null || heightCm === null || ageYears === null) return null;
-    if (birthYearError !== null || heightError !== null || massError !== null) return null;
-    if (knownBodyFatError !== null || tapeDomainError !== null) return null;
-    return computeTargets({
+    const input: NutritionInput = {
       sex: draft.sex,
       ageYears, // [years]
       heightCm, // [cm]
       massKg, // [kg]
-      bodyFatPct, // [%] or null
+      bodyFatPct, // [%] of body mass, or null
       activity: draft.activity,
       goal: draft.goalKind,
-      sessionsPerWeek: sessionsPerWeekForTargets, // [sessions/week]
+      sessionsPerWeek: sessionsPerWeekForTargets, // [sessions/week], integer
       creatine: draft.creatine,
-    });
+    };
+    if (!isInDomain(input)) return null;
+    return computeTargets(input);
   }, [
     massKg,
     heightCm,
     ageYears,
-    birthYearError,
-    heightError,
-    massError,
-    knownBodyFatError,
-    tapeDomainError,
     bodyFatPct,
     draft.sex,
     draft.activity,
@@ -659,6 +811,9 @@ export function SetupWizard(): JSX.Element {
   // ---- submit ---------------------------------------------------------------------------
 
   function confirm(): void {
+    // Idempotent by latch, not by the disabled attribute alone: a double tap can deliver two
+    // clicks before React has re-rendered the button, and each one would create a new profile.
+    if (submitted || confirmBlocked) return;
     const barbellKg = storedLoadKg(draft.barbellStep, draft.units); // [kg]
     const dumbbellPairKg = storedLoadKg(draft.dumbbellStep, draft.units); // [kg]
     const stackKg = storedLoadKg(draft.stackStep, draft.units); // [kg]
@@ -729,10 +884,14 @@ export function SetupWizard(): JSX.Element {
         (parseDecimal(draft.days[d.value].durationMin) ?? DEFAULT_SESSION_DURATION_MIN) *
         SECONDS_PER_MINUTE, // [s]
     }));
-    const requested = weeklyTargetTyped ?? slots.length; // [sessions/week]
+    /*
+     * Stored as typed. The availability step refuses a fraction and refuses anything outside
+     * 1..slots.length, so there is nothing left here to round or clamp, and rounding a value the
+     * user typed is exactly what the schema's z.int() would have hidden.
+     */
     const availability: Availability = {
       slots,
-      weeklySessionTarget: Math.min(Math.max(1, Math.round(requested)), Math.max(1, slots.length)),
+      weeklySessionTarget: weeklyTargetTyped ?? slots.length, // [sessions/week], integer
     };
 
     /*
@@ -749,6 +908,7 @@ export function SetupWizard(): JSX.Element {
     store.createProfile(profile);
     store.setAvailability(profileId, availability);
     store.setPlan(profileId, plan, today);
+    setSubmitted(true);
   }
 
   // ---- render ---------------------------------------------------------------------------
@@ -759,11 +919,18 @@ export function SetupWizard(): JSX.Element {
   return (
     <div className="wiz">
       <h1>{copy('setup.hero')}</h1>
-      <p className="wiz-step">{FORMAT.stepOf(stepIndex + 1, STEPS.length, STEP_TITLE[step])}</p>
+      {/*
+       * The step counter is the live region: it is the one line that changes on every step, so
+       * a polite announcement of it names both the position and the screen without the heading
+       * having to be re-read.
+       */}
+      <p className="wiz-step" role="status" aria-live="polite" data-testid="wiz-step-status">
+        {FORMAT.stepOf(stepIndex + 1, STEPS.length, STEP_TITLE[step])}
+      </p>
 
       {step === 'units' && (
         <fieldset>
-          <legend>{STEP_TITLE.units}</legend>
+          <StepHeading title={STEP_TITLE.units} headingRef={headingRef} />
           <p className="wiz-note">{copy('advice.unitsOnce')}</p>
           <label className="wiz-inline">
             <input
@@ -792,20 +959,35 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'timezone' && (
         <fieldset>
-          <legend>{STEP_TITLE.timezone}</legend>
+          <StepHeading title={STEP_TITLE.timezone} headingRef={headingRef} />
           <p className="wiz-note">{copy('advice.timezoneDetected')}</p>
           <div className="wiz-field">
             <label htmlFor="f-timezone">{copy('label.timezone')}</label>
+            {/*
+             * An IANA identifier is case-sensitive and contains no words: autocapitalising,
+             * autocorrecting or spell-checking it can only corrupt it.
+             */}
             <input
               id="f-timezone"
               type="text"
               value={draft.timezone}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              list={timeZoneOptions.length === 0 ? undefined : TIMEZONE_LIST_ID}
               aria-invalid={timezoneError !== null}
               aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
               onChange={(e) => {
                 patch({ timezone: e.target.value });
               }}
             />
+            {timeZoneOptions.length > 0 && (
+              <datalist id={TIMEZONE_LIST_ID}>
+                {timeZoneOptions.map((tz) => (
+                  <option key={tz} value={tz} />
+                ))}
+              </datalist>
+            )}
             {timezoneError !== null && (
               <p className="wiz-error" id="f-timezone-error">
                 {timezoneError}
@@ -817,7 +999,7 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'body' && (
         <fieldset>
-          <legend>{STEP_TITLE.body}</legend>
+          <StepHeading title={STEP_TITLE.body} headingRef={headingRef} />
 
           <div className="wiz-field">
             <label htmlFor="f-name">{copy('label.name')}</label>
@@ -887,6 +1069,7 @@ export function SetupWizard(): JSX.Element {
                   unit={null}
                   value={draft.heightFt}
                   error={null}
+                  sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
                   onChange={(v) => {
                     patch({ heightFt: v });
                   }}
@@ -897,12 +1080,18 @@ export function SetupWizard(): JSX.Element {
                   unit={null}
                   value={draft.heightIn}
                   error={null}
+                  sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
                   onChange={(v) => {
                     patch({ heightIn: v });
                   }}
                 />
               </div>
-              {heightError !== null && <p className="wiz-error">{heightError}</p>}
+              {/* One stature, two fields: the message is rendered once and described by both. */}
+              {heightError !== null && (
+                <p className="wiz-error" id={HEIGHT_ERROR_ID}>
+                  {heightError}
+                </p>
+              )}
             </>
           )}
 
@@ -979,6 +1168,7 @@ export function SetupWizard(): JSX.Element {
                 unit={UNIT.cm}
                 value={draft.neck}
                 error={girthError(draft.neck)}
+                sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                 onChange={(v) => {
                   patch({ neck: v });
                 }}
@@ -991,6 +1181,7 @@ export function SetupWizard(): JSX.Element {
                 unit={UNIT.cm}
                 value={draft.waist}
                 error={girthError(draft.waist)}
+                sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                 onChange={(v) => {
                   patch({ waist: v });
                 }}
@@ -1004,6 +1195,7 @@ export function SetupWizard(): JSX.Element {
                     unit={UNIT.cm}
                     value={draft.hip}
                     error={girthError(draft.hip)}
+                    sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                     onChange={(v) => {
                       patch({ hip: v });
                     }}
@@ -1022,7 +1214,12 @@ export function SetupWizard(): JSX.Element {
                     ? copy('advice.tapeOutOfDomain')
                     : FORMAT.bodyFatEstimate(tapeEstimate, NAVY_SEE_PCT[draft.sex])}
               </p>
-              {tapeDomainError !== null && <p className="wiz-error">{tapeDomainError}</p>}
+              {/* One estimate, three girths: described by each of the fields that produced it. */}
+              {tapeDomainError !== null && (
+                <p className="wiz-error" id={TAPE_ERROR_ID}>
+                  {tapeDomainError}
+                </p>
+              )}
               {tapeEstimate !== null && (
                 <details>
                   <summary>{copy('disclosure.why')}</summary>
@@ -1038,7 +1235,7 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'training' && (
         <fieldset>
-          <legend>{STEP_TITLE.training}</legend>
+          <StepHeading title={STEP_TITLE.training} headingRef={headingRef} />
 
           <div className="wiz-field">
             <label htmlFor="f-activity">{copy('label.activity')}</label>
@@ -1150,7 +1347,7 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'goal' && (
         <fieldset>
-          <legend>{STEP_TITLE.goal}</legend>
+          <StepHeading title={STEP_TITLE.goal} headingRef={headingRef} />
 
           <div className="wiz-field">
             <label htmlFor="f-goal">{copy('label.goal')}</label>
@@ -1187,11 +1384,16 @@ export function SetupWizard(): JSX.Element {
               type="date"
               value={draft.targetDate}
               aria-invalid={targetDateError !== null}
+              aria-describedby={targetDateError === null ? undefined : TARGET_DATE_ERROR_ID}
               onChange={(e) => {
                 patch({ targetDate: e.target.value });
               }}
             />
-            {targetDateError !== null && <p className="wiz-error">{targetDateError}</p>}
+            {targetDateError !== null && (
+              <p className="wiz-error" id={TARGET_DATE_ERROR_ID}>
+                {targetDateError}
+              </p>
+            )}
           </div>
 
           <label className="wiz-inline">
@@ -1222,7 +1424,7 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'availability' && (
         <fieldset>
-          <legend>{STEP_TITLE.availability}</legend>
+          <StepHeading title={STEP_TITLE.availability} headingRef={headingRef} />
 
           <div className="wiz-field">
             <label htmlFor="f-sessions">{copy('label.sessionsPerWeek')}</label>
@@ -1249,6 +1451,11 @@ export function SetupWizard(): JSX.Element {
                 <input
                   type="checkbox"
                   checked={draft.days[d.value].enabled}
+                  aria-invalid={weekdayError !== null || availabilityDaysError !== null}
+                  aria-describedby={describedBy(
+                    weekdayError === null ? null : WEEKDAY_ERROR_ID,
+                    availabilityDaysError === null ? null : AVAILABILITY_DAYS_ERROR_ID,
+                  )}
                   onChange={(e) => {
                     patchDay(d.value, { enabled: e.target.checked });
                   }}
@@ -1285,7 +1492,20 @@ export function SetupWizard(): JSX.Element {
               )}
             </div>
           ))}
-          {weekdayError !== null && <p className="wiz-error">{weekdayError}</p>}
+          {/*
+           * Both messages are about the SET of checked days, so every weekday control describes
+           * them: there is no single control that owns the fault.
+           */}
+          {weekdayError !== null && (
+            <p className="wiz-error" id={WEEKDAY_ERROR_ID}>
+              {weekdayError}
+            </p>
+          )}
+          {availabilityDaysError !== null && (
+            <p className="wiz-error" id={AVAILABILITY_DAYS_ERROR_ID}>
+              {availabilityDaysError}
+            </p>
+          )}
 
           <UnitInput
             id="f-weekly-target"
@@ -1303,7 +1523,7 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'programme' && (
         <fieldset>
-          <legend>{STEP_TITLE.programme}</legend>
+          <StepHeading title={STEP_TITLE.programme} headingRef={headingRef} />
           <UnitInput
             id="f-weeks"
             quantity={copy('quantity.programmeWeeks')}
@@ -1331,10 +1551,21 @@ export function SetupWizard(): JSX.Element {
 
       {step === 'review' && (
         <div data-testid="review">
+          {/* Review carries fieldsets of its own, so its heading stands above them. */}
+          <h2
+            className="wiz-heading wiz-heading-alone"
+            id={STEP_HEADING_ID}
+            ref={headingRef}
+            tabIndex={-1}
+          >
+            {STEP_TITLE.review}
+          </h2>
           <fieldset>
             <legend>{copy('hero.dailyTargets')}</legend>
             {targets === null ? (
-              <p className="wiz-error">{copy('error.valueRequired')}</p>
+              <p className="wiz-error" data-testid="targets-unavailable">
+                {copy('status.targetsNotEstimated')}
+              </p>
             ) : (
               <>
                 <dl>
@@ -1418,7 +1649,7 @@ export function SetupWizard(): JSX.Element {
           </button>
         )}
         {stepIndex === STEPS.length - 1 && (
-          <button type="button" onClick={confirm}>
+          <button type="button" disabled={confirmBlocked || submitted} onClick={confirm}>
             {copy('button.confirmStart')}
           </button>
         )}

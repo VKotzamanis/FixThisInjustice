@@ -37,11 +37,28 @@ export interface UnitInputProps {
   error: string | null;
   /** "any" (default) for a measured quantity; "1" for a count. */
   step?: string;
+  /**
+   * DOM id of a message that this field shares with others and that the CALLER renders, for a
+   * quantity no single field owns: feet and inches produce one stature, and the three girths
+   * produce one body-fat estimate. Pass the id while that message is on screen and null while
+   * it is not, so both the description and the invalid state track it. A shared message is not
+   * rendered here, because rendering it once per field would announce it once per field.
+   */
+  sharedErrorId?: string | null;
 }
 
 export function UnitInput(props: UnitInputProps): JSX.Element {
   const label = props.unit === null ? props.quantity : FORMAT.quantityWithUnit(props.quantity, props.unit);
   const errorId = `${props.id}-error`;
+  const sharedErrorId = props.sharedErrorId ?? null;
+  /*
+   * Both messages are described, and either one marks the control invalid. A field that is
+   * refused by a message it does not itself render is still a refused field: leaving
+   * aria-invalid false there would make the block invisible to a screen reader.
+   */
+  const describedIds = [props.error === null ? null : errorId, sharedErrorId].filter(
+    (id): id is string => id !== null,
+  );
   return (
     <div className="wiz-field">
       <label htmlFor={props.id}>{label}</label>
@@ -51,8 +68,8 @@ export function UnitInput(props: UnitInputProps): JSX.Element {
         inputMode="decimal"
         step={props.step ?? 'any'}
         value={props.value}
-        aria-invalid={props.error !== null}
-        aria-describedby={props.error === null ? undefined : errorId}
+        aria-invalid={props.error !== null || sharedErrorId !== null}
+        aria-describedby={describedIds.length === 0 ? undefined : describedIds.join(' ')}
         onChange={(e) => {
           props.onChange(e.target.value);
         }}
