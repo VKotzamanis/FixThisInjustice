@@ -78,7 +78,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'button.addSet': 'one more',
   'button.finishSession': "that's a wrap",
   'button.openSpotlight': 'find it',
-  'button.setUpProfile': 'make it official',
   'button.sealCapsule': 'seal it',
   'button.openCapsule': 'open it',
   'button.writeCapsule': 'write it',
@@ -90,11 +89,10 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // uppercase list round three closed is untouched.
   'button.pauseTicker': 'pause the ticker',
   'button.continueTransition': 'go on',
-  // The missed-week screen. `dismiss` closes the clip and `play` starts it; neither is a commit,
-  // so both may be camp.
-  'button.play': 'roll it',
+  // The missed-week screen. `dismiss` closes the clip; it is not a commit, so it may be camp.
+  // The clip plays itself, muted, which is the only autoplay an engine allows, so there is no
+  // play control here to name (P8 close-out B retired the unused `button.play`).
   'button.dismiss': 'not now',
-  'button.preview': 'sneak peek',
   'button.motivationClipPreview': 'sneak peek',
   'button.retrySave': 'try again',
 
