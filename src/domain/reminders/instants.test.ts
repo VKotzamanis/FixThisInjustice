@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest';
 import { computeReminderInstants, scheduleHash } from './instants';
 import { FIXTURE_PROFILE_ID, makeAppState } from './state.fixture';
 import { MAX_HORIZON_MS, MAX_INSTANTS } from '../../config/reminders';
-import type { AppState, ReminderSettings, SessionAssignment } from '../types';
+import { instantOf } from '../dates';
+import type { AppState, IsoWeekday, ReminderSettings, SessionAssignment } from '../types';
 
 const PROFILE_ID = FIXTURE_PROFILE_ID;
 
@@ -25,6 +26,23 @@ const NOV02_1700 = 1_793_660_400_000; // Mon 2026-11-02 17:00 CST
 const NOV16_0800 = 1_794_837_600_000; // Mon 2026-11-16 08:00 CST
 const WEEK_PLUS_HOUR_MS = 608_400_000; // [ms] 7 d + 1 h: the DST shift the fixture proves
 const HOUR_MS = 3_600_000; // [ms]
+
+// Lead-offset convention (P5 Task 5 review, item 1). Europe/Athens moves EET (UTC+2) to EEST
+// (UTC+3) at 03:00 local on 2026-03-29, so 03:00 to 03:59 does not exist that day. Every value
+// below was computed with Intl.DateTimeFormat against the tz database, not with this module.
+const ATHENS = 'Europe/Athens';
+const ATHENS_SLOT_0430 = 1_774_747_800_000; // Sun 2026-03-29 04:30 EEST = 2026-03-29T01:30Z
+const ATHENS_LEAD_90 = 1_774_742_400_000; // 04:30 EEST minus 90 min elapsed = 02:00 EET
+const ATHENS_WALL_0300 = 1_774_746_000_000; // the nonexistent 03:00 reading, resolved to 04:00 EEST
+const ATHENS_NOW = 1_774_648_800_000; // Sat 2026-03-28 00:00 EET, before every instant below
+const NINETY_MINUTES_MS = 5_400_000; // [ms] 90 min of elapsed time
+
+// 200-instant cap (P5 Task 5 review, item 4).
+const CAP_NOW = 1_793_054_400_000; // Mon 2026-10-26 17:40 CDT
+const CAP_LAST_KEPT = 1_794_786_000_000; // Sun 2026-11-15 17:40 CST, the 200th instant
+const CAP_DROPPED = 1_794_786_600_000; // Sun 2026-11-15 17:50 CST, the 201st and latest
+/** Nine leads, 10 min apart, so a training day carries 1 day-of plus 9 leads. [min] */
+const CAP_LEADS = [90, 80, 70, 60, 50, 40, 30, 20, 10];
 
 function makeState(settings: ReminderSettings, pausedOn: string | null = null): AppState {
   return makeAppState({ settings, pausedOn });
@@ -48,6 +66,30 @@ function assignment(
 }
 
 const SETTINGS: ReminderSettings = { enabled: true, dayOfTime: '08:00', leadMinutes: [120, 60] };
+
+/** The fixture profile moved to another zone and another slot time, everything else intact. */
+function relocated(
+  settings: ReminderSettings,
+  timezone: string,
+  weekdays: IsoWeekday[],
+  startTime: string,
+): AppState {
+  const base = makeAppState({ settings });
+  const profile = base.profiles[PROFILE_ID];
+  if (profile === undefined) throw new Error('fixture profile is missing');
+  return {
+    ...base,
+    profiles: { [PROFILE_ID]: { ...profile, timezone } },
+    availability: {
+      [PROFILE_ID]: {
+        slots: weekdays.map((weekday) => ({ weekday, startTime, expectedDurationS: 3600 })), // [s]
+        weeklySessionTarget: weekdays.length, // [sessions/week]
+      },
+    },
+  };
+}
+
+const EVERY_WEEKDAY: IsoWeekday[] = [1, 2, 3, 4, 5, 6, 7];
 
 describe('computeReminderInstants', () => {
   it('emits a day-of instant and one instant per lead time for every training day', () => {
@@ -294,6 +336,79 @@ describe('computeReminderInstants', () => {
     expect(computeReminderInstants(makeState(SETTINGS), PROFILE_ID, '2026-10-26', 0, OCT26_0000)).toEqual(
       [],
     );
+  });
+
+  it('keeps a lead exactly leadMinutes of elapsed time before the slot across a spring-forward', () => {
+    // The convention under test: the lead is elapsed time, not wall-clock subtraction. On the
+    // morning Athens loses an hour, a 04:30 session gets its 90 minute lead at 02:00 EET, which
+    // is 90 real minutes of notice and a 150 minute gap on the clock face.
+    const state = relocated(
+      { enabled: true, dayOfTime: '08:00', leadMinutes: [90] },
+      ATHENS,
+      [7], // Sunday: 2026-03-29
+      '04:30',
+    );
+    const instants = computeReminderInstants(state, PROFILE_ID, '2026-03-29', 1, ATHENS_NOW);
+    const slotAt = instantOf('2026-03-29', '04:30', ATHENS);
+    const lead = instants.find((i) => i.key === '2026-03-29:lead:90');
+
+    expect(slotAt).toBe(ATHENS_SLOT_0430);
+    expect(lead?.at).toBe(ATHENS_SLOT_0430 - NINETY_MINUTES_MS);
+    expect(lead?.at).toBe(ATHENS_LEAD_90);
+    expect((slotAt - (lead?.at ?? 0)) / 60_000).toBe(90); // [min] elapsed, exactly
+
+    // The rejected alternative, for the record: subtracting 90 minutes on the wall clock gives
+    // 03:00, which does not exist that day. instantOf resolves the gap forward to 04:00 EEST,
+    // 30 minutes of notice rather than the promised 90.
+    expect(instantOf('2026-03-29', '03:00', ATHENS)).toBe(ATHENS_WALL_0300);
+    expect(ATHENS_SLOT_0430 - ATHENS_WALL_0300).toBe(30 * 60_000); // [ms]
+    expect(lead?.at).not.toBe(ATHENS_WALL_0300);
+  });
+
+  it('caps the list at 200 instants and drops the latest, not the soonest', () => {
+    // The cap cannot be reached through the UI: the horizon holds at most 21 days and the
+    // settings screen offers three lead choices, so the ceiling a user can produce is
+    // 21 x (1 + 3) = 84. This state therefore comes from outside the UI (an imported or
+    // hand-edited document), which is the case the cap exists for.
+    //
+    // Arithmetic: a slot every weekday at 18:00, nine leads at 16:30..17:50, a day-of at
+    // 08:00. `now` is 17:40 on the first day, so that day keeps only its 17:50 lead;
+    // 2026-10-27..2026-11-15 keep all ten each. 1 + 20 x 10 = 201 instants before the cap.
+    const state = relocated(
+      { enabled: true, dayOfTime: '08:00', leadMinutes: CAP_LEADS },
+      'America/Chicago',
+      EVERY_WEEKDAY,
+      '18:00',
+    );
+    const instants = computeReminderInstants(state, PROFILE_ID, '2026-10-26', 21, CAP_NOW);
+
+    expect(instants).toHaveLength(MAX_INSTANTS);
+    expect(instants.map((i) => i.at)).toEqual([...instants.map((i) => i.at)].sort((a, b) => a - b));
+    // Soonest first: the first day contributes exactly its one surviving lead.
+    expect(instants.filter((i) => i.key.startsWith('2026-10-26:')).map((i) => i.key)).toEqual([
+      '2026-10-26:lead:10',
+    ]);
+    // The 201st, which is the latest, is the one that went.
+    expect(instants.at(-1)?.key).toBe('2026-11-15:lead:20');
+    expect(instants.at(-1)?.at).toBe(CAP_LAST_KEPT);
+    expect(instants.some((i) => i.key === '2026-11-15:lead:10')).toBe(false);
+    expect(instants.every((i) => i.at < CAP_DROPPED)).toBe(true);
+    // Nothing else was thinned: the last day keeps nine of its ten.
+    expect(instants.filter((i) => i.key.startsWith('2026-11-15:'))).toHaveLength(9);
+  });
+
+  it('keeps a future lead on an in-progress day whose day-of instant has already passed', () => {
+    const state = makeAppState({
+      settings: { enabled: true, dayOfTime: '00:00', leadMinutes: [120, 60] },
+      assignments: [assignment('2026-10-26', 'session-3', 'in-progress')],
+    });
+    // Midday: the 00:00 day-of instant is twelve hours gone, both leads are still ahead.
+    const instants = computeReminderInstants(state, PROFILE_ID, '2026-10-26', 14, OCT26_1200);
+    expect(instants.filter((i) => i.key.startsWith('2026-10-26:')).map((i) => [i.key, i.at])).toEqual([
+      ['2026-10-26:lead:120', OCT26_1600],
+      ['2026-10-26:lead:60', OCT26_1700],
+    ]);
+    expect(instants.some((i) => i.key === '2026-10-26:day-of:0')).toBe(false);
   });
 });
 
