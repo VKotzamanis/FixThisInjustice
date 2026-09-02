@@ -1,6 +1,17 @@
 import { create } from 'zustand';
-import type { AppState, UiPrefs } from '../domain/types';
+import type {
+  AppState,
+  Availability,
+  IntakeEntry,
+  LocalDate,
+  PlanTemplate,
+  Profile,
+  UiPrefs,
+} from '../domain/types';
 import { defaultState } from '../domain/schema';
+import { compareLocalDate } from '../domain/dates';
+import { newId } from '../domain/ids';
+import { dailyBeverageTargetML } from '../domain/nutrition';
 import type { SaveFailure, SaveResult } from './persistence';
 import {
   clearStorage,
@@ -62,6 +73,42 @@ export interface AppActions {
    * invoke from the save-failure banner. The one write not driven by a change.
    */
   retrySave(): void;
+
+  // P2
+  /**
+   * Inserts the profile, seeds its per-profile log arrays, and makes it active
+   * when nothing else is.
+   */
+  createProfile(p: Profile): void;
+  /** Shallow patch of one profile. An unknown id is a no-op. */
+  updateProfile(id: string, patch: Partial<Profile>): void;
+  /** Stores a plan for one profile and starts its cursor at session 0. */
+  setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void;
+  /** One intake entry per civil date; a second entry for a date replaces the first. */
+  logIntake(profileId: string, entry: IntakeEntry): void;
+  /** The weekday slots and weekly session target the wizard collects; P3 consumes them. */
+  setAvailability(profileId: string, a: Availability): void;
+  /** Result of the pre-participation screen (master plan section 10, P2 item 20). */
+  recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void;
+}
+
+/**
+ * Guard for every action that writes a record keyed by a profile id.
+ *
+ * The schema's root refinement rejects a document whose per-profile map carries
+ * a key no profile owns (master plan section 5), and the store is the only
+ * writer, so the check belongs at the point of writing rather than at the next
+ * reload: a caller that passes an id nobody owns has a bug, and the alternative
+ * to throwing is a document that cannot be saved and a silent data loss at the
+ * next load. `updateProfile` is deliberately not on this path — its contract
+ * says an unknown id is a no-op, and it writes nothing keyed by that id.
+ */
+function requireProfile(state: AppState, action: string, profileId: string): Profile {
+  const profile = state.profiles[profileId];
+  if (profile === undefined) {
+    throw new Error(`${action}: "${profileId}" is not a known profile`);
+  }
+  return profile;
 }
 
 /**
@@ -265,6 +312,110 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     // document than the one about to be written.
     cancelPendingSave();
     get().reportSaveResult(save(selectState(get())));
+  },
+
+  createProfile(p: Profile): void {
+    const s = get();
+    // The hydration target is a stored preference, not a derived value, so it
+    // has to hold a number from the moment the profile exists. A caller that
+    // left it at 0 gets the IOM 2005 beverage figure for the profile's sex
+    // (nutrition.ts, dailyBeverageTargetML) rather than a silent zero target.
+    const stored: Profile =
+      p.hydration.dailyTargetML > 0
+        ? p
+        : {
+            ...p,
+            hydration: { ...p.hydration, dailyTargetML: dailyBeverageTargetML(p.body.sex) }, // [mL/day]
+          };
+    set({
+      // Keyed by the profile's own id, which is the invariant the schema's root
+      // refinement checks: profiles[id].id === id.
+      profiles: { ...s.profiles, [stored.id]: stored },
+      activeProfileId: s.activeProfileId ?? stored.id,
+      // Seed the profile-keyed log arrays so no later action has to guard
+      // against undefined. Existing arrays are kept: this must not be a way to
+      // erase a profile's history.
+      pauses: { ...s.pauses, [stored.id]: s.pauses[stored.id] ?? [] },
+      assignments: { ...s.assignments, [stored.id]: s.assignments[stored.id] ?? [] },
+      bodyMass: { ...s.bodyMass, [stored.id]: s.bodyMass[stored.id] ?? [] },
+      hydration: { ...s.hydration, [stored.id]: s.hydration[stored.id] ?? [] },
+      intake: { ...s.intake, [stored.id]: s.intake[stored.id] ?? [] },
+      weeklyReviews: { ...s.weeklyReviews, [stored.id]: s.weeklyReviews[stored.id] ?? [] },
+    });
+  },
+
+  updateProfile(id: string, patch: Partial<Profile>): void {
+    const s = get();
+    const current = s.profiles[id];
+    if (current === undefined) return;
+    // Shallow by contract: a caller patching `body` or `goal` supplies the whole
+    // sub-object. `id` is not re-derived from the patch, so a patch carrying a
+    // different id cannot move the record away from its key.
+    set({ profiles: { ...s.profiles, [id]: { ...current, ...patch, id } } });
+  },
+
+  setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void {
+    const s = get();
+    requireProfile(s, 'setPlan', profileId);
+    // A PlanTemplate belongs to exactly one profile (master plan section 5), so
+    // the stored copy always gets a fresh id. Without it, handing the same
+    // generated template to two profiles would leave one record that either
+    // profile's later edits would rewrite under the other.
+    const stored: PlanTemplate = { ...plan, id: newId() };
+    const replaced = s.cursors[profileId]?.planId ?? null;
+    const plans: Record<string, PlanTemplate> = { ...s.plans, [stored.id]: stored };
+    // Re-planning replaces the plan rather than accumulating plans: the cursor
+    // about to be overwritten was the only reference to the old one, so keeping
+    // it would leave a record no code path ever reads or deletes. The check is
+    // cheap insurance in case a later plan does share a plan between cursors —
+    // deleting a plan another cursor still points at would strand that profile.
+    const stillReferenced = Object.entries(s.cursors).some(
+      ([id, cursor]) => id !== profileId && cursor.planId === replaced,
+    );
+    if (replaced !== null && !stillReferenced) delete plans[replaced];
+    set({
+      plans,
+      cursors: {
+        ...s.cursors,
+        [profileId]: { planId: stored.id, nextSessionIndex: 0, startedOn, completedOn: null },
+      },
+    });
+  },
+
+  logIntake(profileId: string, entry: IntakeEntry): void {
+    const s = get();
+    requireProfile(s, 'logIntake', profileId);
+    if (entry.profileId !== profileId) {
+      throw new Error(
+        `logIntake: entry.profileId "${entry.profileId}" does not match the map key "${profileId}"`,
+      );
+    }
+    const list = s.intake[profileId] ?? [];
+    // One entry per civil date: a second entry for the same date replaces the
+    // first, so the daily total the user last typed is the one stored. Kept in
+    // date order so every reader can assume it without re-sorting.
+    const next = [...list.filter((e) => e.date !== entry.date), entry].sort((a, b) =>
+      compareLocalDate(a.date, b.date),
+    );
+    set({ intake: { ...s.intake, [profileId]: next } });
+  },
+
+  setAvailability(profileId: string, a: Availability): void {
+    const s = get();
+    requireProfile(s, 'setAvailability', profileId);
+    set({ availability: { ...s.availability, [profileId]: a } });
+  },
+
+  recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void {
+    const s = get();
+    // Unlike updateProfile, an unknown id throws here: a discarded screen is
+    // the one case where losing the write changes what the app tells the user
+    // about their health (a flagged screen shows the physician-consult notice
+    // at every session start), so it must not fail silently.
+    const current = requireProfile(s, 'recordReadiness', profileId);
+    set({
+      profiles: { ...s.profiles, [profileId]: { ...current, readiness: { screenedAt, flagged } } },
+    });
   },
 }));
 
