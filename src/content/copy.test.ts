@@ -802,6 +802,163 @@ describe('the converted frames render the clinical string they replaced', () => 
   });
 });
 
+/*
+ * THE P9 CALL-SITE GATE, MOVED OFF A SHELL GREP (whole-app review, item 3).
+ *
+ * The master plan's P9 row asks that `git grep` find a call site for every key in
+ * `DEFAULT_COPY`. Run against `src` with `src/content/copy*.ts` excluded, that grep reports four
+ * keys as uncalled which are not dead at all: `advice.bodyFatEstimate`, `advice.beverageDefault`,
+ * `why.beverageDefault` and `why.deloadSets`. Each is a FORMATTED SPECIMEN row — the table holds
+ * the finished sentence a template-literal frame in `copy.ts` builds, marked `// formatted` where
+ * it is defined — so the thing that renders it lives in the one file the grep excludes. Retiring
+ * them on the grep's word would delete the specimen that pins the frame's wording, and
+ * `why.deloadSets` is the text a user reads behind the deload disclosure at PlanView.tsx:308.
+ *
+ * This test is that gate, with the frame path included, and it replaces the shell command rather
+ * than supplementing it: it runs on every push, it reads the tree the app actually ships, and it
+ * cannot be run with the wrong pathspec.
+ *
+ * HOW THE CORPUS IS BUILT, and what each half is worth.
+ *
+ *   The call-site half is every `.ts`/`.tsx` file under `src` except `copy.*` and except the
+ *   suites, read as raw text through `import.meta.glob`. A key found there is read by code:
+ *   `copy('key')`, `t('key')`, a `Record<..., CopyKey>` table, or a JSX prop
+ *   (`copyKey="button.skipToday"`), which is why the search is over text and not over quoted
+ *   literals alone. The suites are out because a key only a test names is dead by definition;
+ *   excluding them costs nothing, measured both ways on 2026-09-02, and it halves the corpus.
+ *
+ *   The frame half is `copy.ts` itself with its DECLARATION REGION removed — the `CopyKey` union
+ *   through the closing brace of `DEFAULT_COPY`. That cut is what makes the test mean anything:
+ *   the union names every key by construction, so searching `copy.ts` whole would pass every key
+ *   including a genuinely dead one. What is left is the frames, `copy`, `copyFor` and the skin
+ *   map.
+ *
+ * WHAT A HIT IN THE FRAME HALF PROVES, AND WHAT IT DOES NOT. For most keys it is a call:
+ * `copy('label.weekOfCount', overrides)` inside `FORMAT.weekOfCount`. For the four specimen rows
+ * it is the key NAMED in the frame's doc comment, because the frame builds the sentence from a
+ * template literal and never reads the key. A comment is a weaker link than a call, so the four
+ * are pinned a second time below, byte for byte against the frame that renders them. That
+ * assertion is the real gate for those rows; this one keeps them from being swept.
+ */
+describe('the call-site gate over DEFAULT_COPY', () => {
+  /** Every `.ts`/`.tsx` file under `src`, as raw text, keyed by its root-relative path. */
+  const SOURCES: Record<string, string> = import.meta.glob(
+    ['/src/**/*.{ts,tsx}', '!/src/**/*.test.{ts,tsx}'],
+    { query: '?raw', import: 'default', eager: true },
+  );
+
+  /** `src/content/copy.ts`, `copy.limelight.ts`, `copy.board.ts`: tables, never renderers. */
+  const IS_COPY_TABLE = /\/copy\.[^/]*$/;
+  /** Any suite. The glob already excludes these; this is what asserts that it still does. */
+  const IS_TEST = /\.test\.tsx?$/;
+
+  /** The four rows whose only link to a renderer is the frame's doc comment. */
+  const SPECIMEN_ROWS = [
+    'advice.bodyFatEstimate',
+    'advice.beverageDefault',
+    'why.beverageDefault',
+    'why.deloadSets',
+  ] as const;
+
+  it('reads the tree it claims to read', () => {
+    // A glob that resolved to nothing would make every assertion below vacuously true, so the
+    // corpus is asserted before it is searched. 100 is a floor well under the count on
+    // 2026-09-02 (131 files), not the count itself: this test is about the glob working.
+    expect(Object.keys(SOURCES).length).toBeGreaterThan(100);
+    expect(SOURCES['/src/content/copy.ts']).toContain('export const DEFAULT_COPY');
+    expect(SOURCES['/src/ui/views/PlanView.tsx']).toContain('FORMAT.deloadSetsBasis');
+  });
+
+  it('finds a call site or a frame for every key', () => {
+    const copySource = SOURCES['/src/content/copy.ts'];
+    if (copySource === undefined) throw new Error('the glob did not reach src/content/copy.ts');
+
+    // The declaration region: the union through the closing brace of the table. Both markers are
+    // asserted rather than assumed, so a rename that moved them fails here instead of silently
+    // leaving the union in the corpus and passing every key.
+    const unionStart = copySource.indexOf('export type CopyKey');
+    const tableStart = copySource.indexOf('export const DEFAULT_COPY');
+    const tableEnd = copySource.indexOf('\n};\n', tableStart);
+    // `indexOf` returns -1 for a marker that moved, and -1 would slice the region from the wrong
+    // end and leave the union in the corpus. Ordered, so a rename fails here and not silently.
+    expect(unionStart).toBeGreaterThanOrEqual(0);
+    expect(unionStart).toBeLessThan(tableStart);
+    expect(tableStart).toBeLessThan(tableEnd);
+
+    const frames = copySource.slice(0, unionStart) + copySource.slice(tableEnd + '\n};\n'.length);
+    // The cut worked only if the union is gone. `'shell.status.loading'` is the first member and
+    // is read nowhere else in this file's remainder.
+    expect(frames).not.toContain("| 'shell.status.loading'");
+
+    const callSites = Object.entries(SOURCES)
+      .filter(([path]) => !IS_COPY_TABLE.test(path))
+      .map(([, text]) => text)
+      .join('\n');
+
+    const uncalled = Object.keys(DEFAULT_COPY).filter(
+      (key) => !callSites.includes(key) && !frames.includes(key),
+    );
+    expect(uncalled).toEqual([]);
+  });
+
+  it('excludes the copy tables and the suites, or the gate would pass on itself', () => {
+    // The three tables are in the corpus and are filtered out by name, asserted here rather than
+    // trusted to a regular expression nobody reads: a hit in `copy.limelight.ts` or
+    // `copy.board.ts` says only that a skin has a row, not that anything renders it.
+    const tables = Object.keys(SOURCES).filter((path) => IS_COPY_TABLE.test(path));
+    expect(tables.sort()).toEqual([
+      '/src/content/copy.board.ts',
+      '/src/content/copy.limelight.ts',
+      '/src/content/copy.ts',
+    ]);
+
+    // The suites are excluded by the glob's own negative pattern, so nothing here has to filter
+    // them; this asserts the pattern still bites. `copy.test.ts` would be absent even without
+    // it: Vite omits the importing module from its own `import.meta.glob` (measured 2026-09-02,
+    // the same glob from a second file in this directory does list copy.test.ts).
+    expect(Object.keys(SOURCES).filter((path) => IS_TEST.test(path))).toEqual([]);
+    expect(Object.keys(SOURCES)).not.toContain('/src/content/copy.test.ts');
+  });
+
+  it('pins each specimen row to the frame that renders it, byte for byte', () => {
+    // What the doc-comment hit above stands in for. A specimen row is the table's copy of a
+    // sentence a template literal builds, so the two can drift silently; these four assertions
+    // are what stops that. The arguments are the values the shipped row was formatted from:
+    // 21.9 % and its 3.52-point standard error, the 0.5 set modifier of a deload block, and the
+    // IOM beverage shares of 3000 and 2200 mL/day.
+    expect(FORMAT.bodyFatEstimate(21.9, 3.52)).toBe(DEFAULT_COPY['advice.bodyFatEstimate']);
+    expect(FORMAT.deloadSetsBasis(0.5)).toBe(DEFAULT_COPY['why.deloadSets']);
+    expect(FORMAT.beverageDefault('3000 mL')).toBe(DEFAULT_COPY['advice.beverageDefault']);
+    expect(FORMAT.beverageBasis(3000, 2200)).toBe(DEFAULT_COPY['why.beverageDefault']);
+  });
+
+  it('shows the four really do depend on the frame path', () => {
+    // Without this the gate could keep passing after someone gave the four rows an ordinary
+    // call site, and the frame half would be carrying nothing. Each of the four is absent from
+    // every production file and present in the frame region: that is the claim the gate's
+    // second half exists for, stated as an assertion rather than as a comment.
+    const callSites = Object.entries(SOURCES)
+      .filter(([path]) => !IS_COPY_TABLE.test(path))
+      .map(([, text]) => text)
+      .join('\n');
+    const copySource = SOURCES['/src/content/copy.ts'];
+    if (copySource === undefined) throw new Error('the glob did not reach src/content/copy.ts');
+    const tableEnd = copySource.indexOf('\n};\n', copySource.indexOf('export const DEFAULT_COPY'));
+    const frames =
+      copySource.slice(0, copySource.indexOf('export type CopyKey')) +
+      copySource.slice(tableEnd + '\n};\n'.length);
+
+    for (const key of SPECIMEN_ROWS) {
+      expect({ key, inCode: callSites.includes(key), inFrames: frames.includes(key) }).toEqual({
+        key,
+        inCode: false,
+        inFrames: true,
+      });
+      expect(DEFAULT_COPY[key]).toBeTypeOf('string');
+    }
+  });
+});
+
 /**
  * What this file does not check.
  *
