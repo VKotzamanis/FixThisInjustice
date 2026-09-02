@@ -589,7 +589,8 @@ export type CopyKey =
   | 'status.sessionCursor'
   | 'status.planProgress'
   | 'hero.weekReview'
-  | 'advice.interventionBody';
+  | 'advice.interventionBody'
+  | 'button.pauseTicker';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1476,6 +1477,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // next action and carries no verdict on the person. The count of missed sessions is absent
   // because the compliance row beside it already prints the two counts.
   'advice.interventionBody': 'The week is over. The next scheduled session stands.',
+
+  // --- the ticker (P8 Task 14) ---
+  // The accessible name of the marquee strip, which is a real button so the moving line can
+  // be stopped (round three section 2.4). It names what activating it DOES; whether it is
+  // currently stopped is aria-pressed's job, so the name stays the same in both states.
+  'button.pauseTicker': 'Pause the ticker',
 };
 
 /**

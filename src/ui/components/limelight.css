@@ -1,0 +1,248 @@
+/*
+ * The three round-three components: the marquee, the week stamp and the intervention.
+ * Design: docs/design/round3/2026-09-01-round3-plan.md sections 2.4, 2.5 and 3.3, and the
+ * .mq / stamp / intervention blocks of docs/design/round3/2026-09-01-design-I-limelight.html.
+ *
+ * MOTION BUDGET (section 2.5). Three orchestrated moments and nothing else moves, and NO
+ * QUANTITY is ever animated, blurred or faded. Every animation below is on a decoration: the
+ * strip that carries the words, the stamp WORD, and the sparkles. The counts beside them are
+ * static text, which is a data-integrity rule wearing a motion rule's clothes.
+ *
+ * ONE SHEET FOR THREE COMPONENTS, which is what P8 Task 14 specified: the reduced-motion block
+ * at the end is a single statement of the whole budget, and splitting it across three files
+ * would put three copies of that media query in the bundle.
+ *
+ * SKIN SCOPE. The class names carry the `ll-` prefix because the design is limelight's, but the
+ * components render on more than one skin: the marquee is limelight and board, the stamp and the
+ * intervention are every skin. Colour therefore comes from the skin tokens, never from a literal;
+ * `.ll-panel` and `.ll-display` in src/ui/styles/tokens.css are limelight-scoped already, so the
+ * inversion and the offset shadow apply there and nowhere else.
+ */
+
+/* --- the marquee (section 2.4) --- */
+
+.ll-marquee {
+  margin: 8px 0;
+}
+
+/*
+ * A real button, so the strip can be stopped: section 2.4 point 2 is what makes it information
+ * rather than decoration. 44 px is the tap-target floor the round-three checker measures.
+ * touch-action: pan-y so a vertical scroll started on the bar is never captured by it.
+ */
+.ll-marquee-strip {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  overflow: hidden;
+  border: 0;
+  border-top: 3px solid var(--line-2);
+  border-bottom: 3px solid var(--line-2);
+  padding: 0 8px;
+  background: var(--bg-3);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: pan-y;
+}
+
+.ll-marquee-track {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ll-marquee-scroll 24s linear infinite;
+}
+
+/* Three ways to stop it, and the pointer one is the design's own `:active`. */
+.ll-marquee-strip[data-paused='true'] .ll-marquee-track,
+.ll-marquee-strip:hover .ll-marquee-track,
+.ll-marquee-strip:focus-visible .ll-marquee-track,
+.ll-marquee-strip:active .ll-marquee-track {
+  animation-play-state: paused;
+}
+
+.ll-marquee-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px;
+}
+
+/* Tabular figures so a scrolling count does not jitter its own width. */
+.ll-marquee-text {
+  font-variant-numeric: tabular-nums;
+}
+
+@keyframes ll-marquee-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    /* The item list is doubled in the markup, so -50% is exactly one seamless loop. */
+    transform: translateX(-50%);
+  }
+}
+
+/*
+ * The same words, once, for assistive technology. The moving copy is aria-hidden: it is doubled
+ * for the loop, so leaving it in the accessibility tree would announce every line twice.
+ * Clipped rather than display:none, which would take it out of the tree as well.
+ */
+.ll-marquee-static {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- the week stamp (section 2.5, row 2) --- */
+
+.ll-stamp {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.ll-stamp-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1.6rem;
+  transform: rotate(-6deg);
+  animation: ll-stamp-land 700ms cubic-bezier(0.2, 0.9, 0.2, 1) 1;
+}
+
+/* The counts. Static, always: section 2.5 forbids animating a quantity. */
+.ll-stamp-line {
+  margin: 0;
+  color: var(--text-2);
+}
+
+@keyframes ll-stamp-land {
+  from {
+    transform: rotate(-14deg) scale(2.4);
+  }
+
+  to {
+    transform: rotate(-6deg) scale(1);
+  }
+}
+
+.ll-stamp-fan {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.ll-stamp-sparkle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  animation: ll-sparkle-fan 460ms ease-out 240ms both;
+}
+
+/* Twelve tracks, one per sparkle, 30 degrees apart. */
+.ll-stamp-sparkle:nth-child(1) { --fan-angle: 0deg; }
+.ll-stamp-sparkle:nth-child(2) { --fan-angle: 30deg; }
+.ll-stamp-sparkle:nth-child(3) { --fan-angle: 60deg; }
+.ll-stamp-sparkle:nth-child(4) { --fan-angle: 90deg; }
+.ll-stamp-sparkle:nth-child(5) { --fan-angle: 120deg; }
+.ll-stamp-sparkle:nth-child(6) { --fan-angle: 150deg; }
+.ll-stamp-sparkle:nth-child(7) { --fan-angle: 180deg; }
+.ll-stamp-sparkle:nth-child(8) { --fan-angle: 210deg; }
+.ll-stamp-sparkle:nth-child(9) { --fan-angle: 240deg; }
+.ll-stamp-sparkle:nth-child(10) { --fan-angle: 270deg; }
+.ll-stamp-sparkle:nth-child(11) { --fan-angle: 300deg; }
+.ll-stamp-sparkle:nth-child(12) { --fan-angle: 330deg; }
+
+@keyframes ll-sparkle-fan {
+  from {
+    transform: rotate(var(--fan-angle)) translateY(0) rotate(calc(-1 * var(--fan-angle)));
+    opacity: 0;
+  }
+
+  to {
+    transform: rotate(var(--fan-angle)) translateY(-44px) rotate(calc(-1 * var(--fan-angle)));
+    opacity: 0.92;
+  }
+}
+
+/* --- the intervention (section 3.3) --- */
+
+/*
+ * Nothing here animates. The screen is shown to someone who has just missed a week, and a
+ * flourish on that screen is the motion version of a joke about the user.
+ */
+.ll-intervention {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.ll-intervention-title {
+  margin: 0;
+}
+
+.ll-intervention-body {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.ll-intervention-line {
+  margin: 0;
+  color: var(--text-2);
+}
+
+/*
+ * The reduced-motion column of section 2.5, verbatim: the marquee stops and shows one line, the
+ * stamp renders in place at its final transform, and the sparkles render static at 92 % opacity.
+ * The stated non-inference: this query governs motion and says nothing about audio, which the
+ * sounds toggle alone silences (src/skins/sfx.ts).
+ *
+ * The single-line rule is CSS rather than a JS media-query read on purpose: the strip then stops
+ * before the first paint, and the component keeps one rendering for every user.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .ll-marquee-track {
+    animation: none;
+    justify-content: center;
+    width: 100%;
+  }
+
+  /*
+   * "Every item preceded by another item", not :first-child: the megaphone that leads the strip
+   * is the track's first child, so a :first-child rule would hide every item including the one
+   * this column exists to keep.
+   */
+  .ll-marquee-item ~ .ll-marquee-item {
+    display: none;
+  }
+
+  .ll-stamp-word {
+    animation: none;
+    transform: rotate(-6deg);
+  }
+
+  .ll-stamp-sparkle {
+    animation: none;
+    opacity: 0.92;
+  }
+}

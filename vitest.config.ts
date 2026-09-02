@@ -26,6 +26,14 @@ export default defineConfig({
      * is not anchored with `$` the way crt.css is. The id it has to match is
      * `.../tokens.css?raw` (measured 2026-09-02: an anchored regex yielded a 0-length string).
      */
-    css: { include: [/crt\.css$/, /tokens\.css(\?|$)/] },
+    /*
+     * limelight.css joins them for crt.css's reason exactly (P8 Task 14): the marquee's
+     * prefers-reduced-motion rule is a guarantee the app makes -- the strip stops and shows one
+     * line -- it is CSS rather than component state so that it holds before the first paint, and
+     * jsdom evaluates no media query. src/ui/components/Marquee.test.tsx therefore asserts the
+     * rule in the injected stylesheet text, which requires the sheet to be processed rather than
+     * stubbed.
+     */
+    css: { include: [/crt\.css$/, /tokens\.css(\?|$)/, /limelight\.css(\?|$)/] },
   },
 });
