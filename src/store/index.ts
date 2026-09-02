@@ -11,12 +11,14 @@ import type {
   ML,
   PlanTemplate,
   Profile,
+  SessionAssignment,
   UiPrefs,
 } from '../domain/types';
 import { defaultState } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { newId } from '../domain/ids';
 import { dailyBeverageTargetML } from '../domain/nutrition';
+import { EXERCISE_BY_ID } from '../domain/plan/library';
 import type { RestTimer } from '../domain/training/restTimer';
 import {
   createScheduleActions,
@@ -161,6 +163,17 @@ export interface AppActions {
    * A no-op when nothing is buffered.
    */
   undoDelete(): void;
+  /**
+   * Would `undoDelete()` restore something if it were called at `now`?
+   *
+   * The undo control must not outlive the buffer it acts on (P4 polish item 8). The view holds
+   * its own offer on screen, so it needs to ask the store rather than recompute the deadline
+   * from a second clock read: two Date.now() calls a millisecond apart used to be enough to
+   * leave a live control the store would silently refuse.
+   *
+   * @param now [ms] epoch UTC; the caller owns the clock, as everywhere else in this contract.
+   */
+  undoAvailable(now: EpochMs): boolean;
   /** @param now [ms] epoch UTC, the instant the weigh-in was entered. */
   logBodyMass(e: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void;
   /**
@@ -175,7 +188,13 @@ export interface AppActions {
   setRestTimer(t: RestTimer | null): void;
   /** Adds a user-defined exercise to one profile's library under a freshly generated id (A26). */
   addCustomExercise(profileId: string, ex: Exercise): void;
-  /** Marks an exercise as added to this session beyond the plan. Idempotent. */
+  /**
+   * Marks an exercise as added to this session beyond the plan. Idempotent.
+   *
+   * Throws on an id neither the shipped library nor the active profile's own custom library
+   * knows: the slice is mirrored to session storage, so an unknown id would be read back on
+   * every reload to render a card that can never appear.
+   */
   addBonusExercise(exerciseId: string): void;
   /**
    * Records the civil day whose session is open, or clears it. Session slice only; mirrored,
@@ -284,7 +303,58 @@ function withoutPersisting(mutate: () => void): void {
   }
 }
 
-export const useAppStore = create<AppStore>()((set, get) => ({
+export const useAppStore = create<AppStore>()((set, get) => {
+  /*
+   * P3's schedule slice, built before the store object so the two transitions that END a
+   * session can be wrapped below. The adapter is the whole of the store's involvement: the
+   * slice sees a pure AppState -> AppState transition and a channel for the refusal message,
+   * and knows nothing about zustand, persistence, or the status slice.
+   */
+  const schedule = createScheduleActions({
+    set: (updater) => {
+      set((s) => updater(s));
+    },
+    setActionError: (message) => {
+      // Idempotent by contract (ScheduleActionDeps): the slice calls this after every
+      // attempt, and an unchanged message must not mint a new status object and re-render
+      // every subscriber. Compared by value because the field is a string.
+      if (get().status.lastActionError === message) return;
+      set({ status: { ...get().status, lastActionError: message } });
+    },
+  });
+
+  /**
+   * The assignment for one civil day, or null. Read before and after a transition so the
+   * wrapper below can tell a real move from a refusal or a documented no-op.
+   */
+  const assignmentOn = (profileId: string, date: LocalDate): SessionAssignment | null =>
+    (get().assignments[profileId] ?? []).find((a) => a.date === date) ?? null;
+
+  /**
+   * Runs a transition and resets the session slice when it actually ended that day's session.
+   *
+   * The reset belongs to the store rather than to the Train view (P4 polish item 3). The view
+   * cleared the slice unconditionally after completeSession, so a REFUSED completion still
+   * threw away the running timer and the training day; and `skipSession` - reachable from
+   * Today, with the same finality for the cursor - cleared nothing at all, leaving a rest
+   * timer counting down for a session that no longer existed and an activeAssignmentDate that
+   * would file the next logged set against it.
+   *
+   * "Actually ended" is a comparison of the assignment record's identity plus its status, not
+   * of the status alone: the slice actions replace the objects they touch, so identity is the
+   * store's own no-op signal, and a transition that was refused or that had nothing to do
+   * leaves the record it would have rewritten untouched.
+   */
+  const endingSession = (profileId: string, date: LocalDate, run: () => void): void => {
+    const before = assignmentOn(profileId, date);
+    run();
+    const after = assignmentOn(profileId, date);
+    if (after === null || after === before) return;
+    if (after.status !== 'completed' && after.status !== 'skipped') return;
+    get().clearSessionSlice();
+  };
+
+  return {
   ...defaultState(),
   status: {
     lastSaveError: null,
@@ -701,6 +771,13 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     });
   },
 
+  undoAvailable(now: EpochMs): boolean {
+    const pending = get().session.undo;
+    // Same comparison undoDelete makes, so the control and the action cannot disagree: the
+    // buffer is spent at `now > expiresAt`, and available at exactly expiresAt.
+    return pending !== null && now <= pending.expiresAt;
+  },
+
   logBodyMass(entry: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void {
     set((s) => applyLogBodyMass(s, entry, newId(), now)); // now: [ms] epoch, UTC
   },
@@ -724,6 +801,17 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   addBonusExercise(exerciseId: string): void {
     set((s) => {
+      /*
+       * The id must name an exercise this profile can actually render (P4 polish item 6): the
+       * shipped library, or its own custom one. The Train view resolves cards from exactly
+       * that overlay and drops any id it cannot resolve, so an unknown id used to be accepted,
+       * mirrored, and then silently ignored on every render for the rest of the tab's life.
+       */
+      const profileId = s.activeProfileId;
+      const custom = profileId === null ? [] : (s.customExercises[profileId] ?? []);
+      if (EXERCISE_BY_ID[exerciseId] === undefined && !custom.some((e) => e.id === exerciseId)) {
+        throw new Error(`addBonusExercise: "${exerciseId}" is not a known exercise`);
+      }
       // Idempotent: tapping "add" twice adds one exercise. The list is an ordered set, and the
       // order is the order the user added them in.
       if (s.session.bonusExerciseIds.includes(exerciseId)) return s;
@@ -761,24 +849,27 @@ export const useAppStore = create<AppStore>()((set, get) => ({
    * same name. Only setUi collides today, and the two implementations are the same shallow
    * patch, so the precedence changes no behaviour; it is stated here because the ordering is
    * what makes the file safe to extend.
-   *
-   * The adapter is the whole of the store's involvement: the slice sees a pure
-   * AppState -> AppState transition and a channel for the refusal message, and knows nothing
-   * about zustand, persistence, or the status slice.
    */
-  ...createScheduleActions({
-    set: (updater) => {
-      set((s) => updater(s));
-    },
-    setActionError: (message) => {
-      // Idempotent by contract (ScheduleActionDeps): the slice calls this after every
-      // attempt, and an unchanged message must not mint a new status object and re-render
-      // every subscriber. Compared by value because the field is a string.
-      if (get().status.lastActionError === message) return;
-      set({ status: { ...get().status, lastActionError: message } });
-    },
-  }),
-}));
+  ...schedule,
+
+  /*
+   * The two transitions that end a session, wrapped so the non-persisted session slice and its
+   * mirror go with it. Declared AFTER the spread, so these win; each calls the slice's own
+   * implementation, which is captured in `schedule` and is not reachable through get().
+   */
+  completeSession(profileId: string, date: LocalDate, now: EpochMs): void {
+    endingSession(profileId, date, () => {
+      schedule.completeSession(profileId, date, now); // now: [ms] epoch, UTC
+    });
+  },
+
+  skipSession(profileId: string, date: LocalDate, reason: string | null): void {
+    endingSession(profileId, date, () => {
+      schedule.skipSession(profileId, date, reason);
+    });
+  },
+  };
+});
 
 /** Writes any coalesced state immediately. Safe to call when nothing is pending. */
 export function flushSave(): void {

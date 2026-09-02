@@ -32,6 +32,7 @@
 import { localTimeOf, todayLocal } from '../dates';
 import type {
   AppState,
+  BodyMassEntry,
   EpochMs,
   HydrationEntry,
   Kg,
@@ -198,6 +199,36 @@ function activeAssignment(
 }
 
 /**
+ * The body-mass entry that counts as this session's PRE-session mass, or null.
+ *
+ * The latest entry logged at or before `startedAt` and no more than
+ * PRE_SESSION_MASS_WINDOW_MS before it. Exported because the Train view needs
+ * exactly the reference the post-session cue's own guard uses (P4 polish item
+ * 2): the > 2 % comparison is meaningful only against the mass this session
+ * started from, and the view previously compared against
+ * Profile.body.baselineMassKg - a mass from whenever the profile was set up,
+ * which reports the programme's mass change rather than the session's fluid
+ * loss and can manufacture or mask the flag on its own.
+ *
+ * Ties are broken by the latest `loggedAt`, never by array position: the store
+ * keeps bodyMass sorted by civil DATE, so two entries on one day arrive in
+ * insertion order and position is not a fact about when they were measured.
+ */
+export function preSessionMass(
+  masses: readonly BodyMassEntry[],
+  startedAt: EpochMs, // [ms] epoch UTC
+): BodyMassEntry | null {
+  let best: BodyMassEntry | null = null;
+  for (const entry of masses) {
+    const { loggedAt } = entry; // [ms] epoch UTC
+    if (loggedAt > startedAt) continue; // after the session began: not a pre-session mass
+    if (startedAt - loggedAt > PRE_SESSION_MASS_WINDOW_MS) continue; // too stale to compare
+    if (best === null || loggedAt > best.loggedAt) best = entry;
+  }
+  return best;
+}
+
+/**
  * The most recent drink mark of the day, or 0 when there is none.
  * Marks are written by the app itself and are therefore never ahead of `now`;
  * were one to be, the cadence below would simply not fire, which is the safe
@@ -231,12 +262,12 @@ function latestMark(marks: readonly EpochMs[]): EpochMs {
  *     window, so the prompt cannot stack up behind a user who is already
  *     drinking, and the anchor is never earlier than the session start, so a
  *     mark from earlier in the day cannot make the first prompt due at once.
- *     Residual limitation, left as it is: drink marks are still read from the
- *     entry for the CURRENT local day, so a mark logged just before midnight is
- *     invisible after it and the first prompt of the new day can arrive early.
- *     A hydration entry is a per-local-day total and stays day-scoped for the
- *     shortfall rule, and prompting to consult thirst one interval early is the
- *     safe direction to fail in.
+ *     Marks are read from the entry for the current local day AND from the entry
+ *     for the day the session started on, which are the same entry except across
+ *     local midnight; a drink logged at 23:55 therefore still anchors the window
+ *     at 00:10. Residual limitation, left as it is: a session spanning more than
+ *     those two civil days would lose the earliest of them, which no plausible
+ *     resistance-training session does (SESSION_LOOKBACK_MS bounds it at 12 h).
  *  3. daily-shortfall - at or after DAILY_SHORTFALL_AFTER in the profile's
  *     zone, today's logged beverage volume is below DAILY_SHORTFALL_FRACTION
  *     of the profile's own editable target.
@@ -279,9 +310,7 @@ export function hydrationCue(
     // vacuous. Residual limitation, inherited by the > 2 % comparison the view
     // then makes: within the window the app still cannot tell a mass taken at the
     // gym door from one taken 5 h earlier.
-    const hasPreSessionMass = masses.some(
-      (b) => b.loggedAt <= startedAt && startedAt - b.loggedAt <= PRE_SESSION_MASS_WINDOW_MS,
-    );
+    const hasPreSessionMass = preSessionMass(masses, startedAt) !== null;
     const hasPostSessionMass = masses.some((b) => b.loggedAt >= completedAt);
     if (hasPreSessionMass && !hasPostSessionMass) {
       return {
@@ -294,7 +323,24 @@ export function hydrationCue(
 
   // 2. In-session cadence. No volume is named; the instruction is to drink to thirst.
   if (sessionActive && assignment !== null && assignment.startedAt !== null) {
-    const anchor = Math.max(assignment.startedAt, latestMark(entry?.marks ?? [])); // [ms] epoch UTC
+    /*
+     * The marks of TODAY and of the day the session started on (P4 polish item 9). A hydration
+     * entry is a per-local-day total and stays day-scoped for the shortfall rule, so a session
+     * that crosses local midnight had its own drinks filed under the previous day and became
+     * invisible the moment the day rolled over: the anchor fell back to the session start,
+     * hours earlier, and the first prompt after midnight was due at once. Reading the second
+     * day costs one more find over a list with one entry per day.
+     */
+    const startedOn = todayLocal(tz, assignment.startedAt); // the session's own civil day
+    const sessionDayEntry: HydrationEntry | null =
+      startedOn === today
+        ? entry
+        : ((state.hydration[profileId] ?? []).find((e) => e.date === startedOn) ?? null);
+    const anchor = Math.max(
+      assignment.startedAt,
+      latestMark(entry?.marks ?? []),
+      latestMark(sessionDayEntry?.marks ?? []),
+    ); // [ms] epoch UTC
     if (now - anchor >= SESSION_CHECK_INTERVAL_MS) {
       return {
         kind: 'session-check',

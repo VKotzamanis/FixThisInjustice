@@ -18,6 +18,7 @@ import {
   LoggedSetSchema,
 } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
+import { EXERCISE_BY_ID } from '../domain/plan/library';
 import { requireProfile } from './scheduleActions';
 import type {
   AppState,
@@ -171,6 +172,18 @@ export function applyAddHydration(
  *
  * The empty-name check is the schema's (`name: z.string().min(1)`), not a hand-written one:
  * the P4 plan asks for the rule to live in the schema wherever the schema already carries it.
+ *
+ * The id must be free, in both directions (P4 polish item 6). The Train view resolves an
+ * exercise as EXERCISES overlaid with the profile's own, so a custom entry under a SHIPPED id
+ * shadows that exercise everywhere: every set already logged against the real one would render
+ * and progress against the user's copy of it, and the shipped record would be unreachable. A
+ * duplicate within the profile is worse still - two records under one id make "which exercise
+ * is this set against" unanswerable, and the answer would depend on array order. Both are
+ * thrown rather than ignored, because the caller minted the id and a silent no-op would leave
+ * it believing the exercise was added.
+ *
+ * Order matters: the profile guard runs first, then the schema, then the id. A caller passing
+ * a bad profile AND a colliding id is told about the profile, which is the fault it can act on.
  */
 export function applyAddCustomExercise(
   state: AppState,
@@ -180,6 +193,16 @@ export function applyAddCustomExercise(
   requireProfile(state, 'addCustomExercise', profileId);
   const exercise = parseOrThrow(ExerciseSchema, ex, 'addCustomExercise');
   const existing = state.customExercises[profileId] ?? [];
+  if (EXERCISE_BY_ID[exercise.id] !== undefined) {
+    throw new Error(
+      `addCustomExercise: "${exercise.id}" is already an exercise in the shipped library`,
+    );
+  }
+  if (existing.some((e) => e.id === exercise.id)) {
+    throw new Error(
+      `addCustomExercise: "${exercise.id}" is already a custom exercise of "${profileId}"`,
+    );
+  }
   return {
     ...state,
     customExercises: { ...state.customExercises, [profileId]: [...existing, exercise] },

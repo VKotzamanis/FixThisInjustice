@@ -2,12 +2,16 @@
 //
 // One body-mass entry, logged from inside a session.
 //
-// Known limitation, stated because silence about it reads as completeness: `preSessionMassKg`
-// is the PROFILE BASELINE, not a same-day pre-session mass. A true pre/post pair needs a
-// prompt at session start, which belongs with P3's startSession and is not implemented. The
-// > 2 % flag is therefore measured against the baseline, which is the wrong reference for a
-// single session; it is still the comparison ACSM 2007 defines, made against the only mass the
-// app currently has.
+// `preSessionMassKg` is now the mass THIS session started from, supplied by the Train view
+// from the hydration module's own rule (the latest entry within 6 h before the assignment's
+// startedAt), and null when there is none. The view collects it before the first set from a
+// profile that opted in to weigh-ins. It used to be Profile.body.baselineMassKg, which is a
+// mass from whenever the profile was set up: comparing against it reported the programme's
+// mass change rather than the session's fluid loss.
+//
+// Residual limitation, stated because silence about it reads as completeness: within the 6 h
+// window the app still cannot tell a mass taken at the gym door from one taken 5 h earlier,
+// and it cannot tell a weigh-in taken clothed from one taken stripped.
 import { useState, type ReactElement } from 'react';
 import { FORMAT, copy } from '../../../content/copy';
 import {

@@ -8,9 +8,10 @@ import { copy } from '../../content/copy';
  * sessionStorage, not localStorage and not the persisted document: master plan section 10.4
  * requires the notice at every session start, so the dismissal must die with the browser
  * session. localStorage would silence it for good, and the store would persist a UI preference
- * that is not a preference. This is the ONE sanctioned use of Web Storage outside
- * src/store/persistence.ts, and it is scoped to this file; the ESLint ban covers localStorage
- * only, so no override was needed to write it.
+ * that is not a preference. This file and src/store/sessionMirror.ts are the only two
+ * sanctioned sessionStorage users in the app, and eslint.config.js exempts exactly those two
+ * from the `no-restricted-globals` / `no-restricted-syntax` ban (P4 polish item 5). The
+ * localStorage ban still applies here: this dismissal must not outlive the browser session.
  */
 export const READINESS_NOTICE_KEY = 'fti.readinessNoticeDismissed';
 

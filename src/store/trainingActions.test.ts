@@ -61,8 +61,15 @@ function startPersistenceForTest(): void {
   liveTeardowns.add(stop);
 }
 
+/**
+ * The raw Web Storage backing. The `sessionStorage` global is not named here; see the note in
+ * sessionMirror.test.ts and the ESLint gate it describes (P4 polish item 5). Installing the
+ * fake per test also makes the mirror hermetic, which `sessionStorage.clear()` was doing.
+ */
+let storage: Map<string, string>;
+
 beforeEach(() => {
-  sessionStorage.clear();
+  storage = installFakeStorage();
   const profile = makeProfile();
   useAppStore.setState({
     ...defaultState(),
@@ -92,7 +99,6 @@ afterEach(() => {
     stop();
   }
   vi.useRealTimers();
-  sessionStorage.clear();
 });
 
 describe('logSet', () => {
@@ -148,6 +154,23 @@ describe('deleteSet / undoDelete', () => {
     expectStorable();
   });
 
+  it('reports the offer as unavailable once the window has closed', () => {
+    // What the view asks before it draws an Undo control (P4 polish item 8). The answer must
+    // be the same comparison undoDelete makes, or the control and the action disagree.
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const id = useAppStore.getState().logSet(setInput, NOW);
+    useAppStore.getState().deleteSet(id);
+
+    expect(useAppStore.getState().undoAvailable(NOW)).toBe(true);
+    expect(useAppStore.getState().undoAvailable(NOW + UNDO_WINDOW_MS)).toBe(true); // exactly at
+    expect(useAppStore.getState().undoAvailable(NOW + UNDO_WINDOW_MS + 100)).toBe(false); // 6.1 s
+  });
+
+  it('reports no offer when nothing is buffered', () => {
+    expect(useAppStore.getState().undoAvailable(NOW)).toBe(false);
+  });
+
   it('mints no buffer for an unknown id', () => {
     useAppStore.getState().deleteSet('nope');
     expect(useAppStore.getState().session.undo).toBeNull();
@@ -162,7 +185,7 @@ describe('deleteSet / undoDelete', () => {
   it('never mirrors the buffered set', () => {
     const id = useAppStore.getState().logSet(setInput, NOW);
     useAppStore.getState().deleteSet(id);
-    expect(sessionStorage.getItem(SESSION_KEY)).toBeNull();
+    expect(storage.get(SESSION_KEY)).toBeUndefined();
   });
 });
 
@@ -186,6 +209,25 @@ describe('the session slice', () => {
     useAppStore.getState().setRestTimer(startRest(90, NOW));
     useAppStore.getState().setRestTimer(null);
     expect(loadSessionMirror()?.restTimer).toBeNull();
+  });
+
+  it('refuses a bonus exercise no library and no profile knows', () => {
+    // The session slice is mirrored, so an id with no Exercise behind it would be written to
+    // storage and read back on every reload to render a card that can never appear.
+    expect(() => {
+      useAppStore.getState().addBonusExercise('not-an-exercise');
+    }).toThrow(/not-an-exercise/);
+    expect(useAppStore.getState().session.bonusExerciseIds).toEqual([]);
+  });
+
+  it('accepts a bonus exercise from the profile own custom library', () => {
+    useAppStore
+      .getState()
+      .addCustomExercise('profile-1', makeExercise({ id: 'custom-1', name: 'Cable crunch' }));
+
+    useAppStore.getState().addBonusExercise('custom-1');
+
+    expect(useAppStore.getState().session.bonusExerciseIds).toEqual(['custom-1']);
   });
 
   it('adds each bonus exercise once, in order', () => {
@@ -213,14 +255,137 @@ describe('the session slice', () => {
   });
 
   it('starts empty when the mirror is corrupt', async () => {
-    sessionStorage.setItem(SESSION_KEY, '{not json');
+    storage.set(SESSION_KEY, '{not json');
     vi.resetModules();
     const reloaded = await import('./index');
     expect(reloaded.useAppStore.getState().session).toEqual(EMPTY_SESSION);
   });
 });
 
+/**
+ * A plan, a cursor and one in-progress assignment on TRAIN_DATE, with the session slice
+ * populated the way an open Train view populates it.
+ */
+const TRAIN_DATE = '2026-03-02';
+
+function seedOpenSession(): void {
+  useAppStore.setState({
+    plans: {
+      'plan-1': {
+        id: 'plan-1',
+        version: 1,
+        name: 'Upper / lower',
+        sessionsPerWeek: 4, // [sessions/week]
+        weeks: 12, // [weeks]
+        sessions: [
+          {
+            id: 'session-1',
+            ordinal: 1,
+            name: 'Upper A',
+            kind: 'lift',
+            label: 'Upper',
+            exercises: [],
+          },
+        ],
+        blocks: [],
+      },
+    },
+    cursors: {
+      'profile-1': {
+        planId: 'plan-1',
+        nextSessionIndex: 0,
+        startedOn: TRAIN_DATE,
+        completedOn: null,
+      },
+    },
+    assignments: {
+      'profile-1': [
+        {
+          date: TRAIN_DATE,
+          sessionId: 'session-1',
+          sourceIndex: 0,
+          status: 'in-progress',
+          startedAt: NOW, // [ms] epoch, UTC
+          completedAt: null,
+          skipReason: null,
+        },
+      ],
+    },
+  });
+  fillSessionSlice();
+}
+
+/** The three mirrored fields, as an open session leaves them. */
+function fillSessionSlice(): void {
+  useAppStore.getState().setRestTimer(startRest(90, NOW)); // [s], [ms]
+  useAppStore.getState().setActiveAssignmentDate(TRAIN_DATE);
+  useAppStore.getState().addBonusExercise('face-pull');
+}
+
 describe('resetting the session slice', () => {
+  it('completeSession clears the slice and its mirror', () => {
+    seedOpenSession();
+
+    useAppStore.getState().completeSession('profile-1', TRAIN_DATE, NOW + 3_600_000);
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
+    expect(useAppStore.getState().session).toEqual(EMPTY_SESSION);
+    expect(loadSessionMirror()).toBeNull();
+  });
+
+  it('skipSession clears the slice and its mirror, exactly as completeSession does', () => {
+    // A skipped session is over in every sense a completed one is: the cursor advances and no
+    // further set belongs to it. Leaving the slice up left a rest timer counting down for a
+    // session that no longer exists, and a training day that logged the next set against it.
+    seedOpenSession();
+
+    useAppStore.getState().skipSession('profile-1', TRAIN_DATE, 'illness');
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('skipped');
+    expect(useAppStore.getState().session).toEqual(EMPTY_SESSION);
+    expect(loadSessionMirror()).toBeNull();
+  });
+
+  it('leaves the slice alone when the skip changes nothing', () => {
+    // Only a transition that MOVED the document ends the session. A second skip of an
+    // already-skipped day is a documented no-op, and a no-op must not reach into a slice that
+    // by then belongs to whatever the user is doing next.
+    seedOpenSession();
+    useAppStore.getState().skipSession('profile-1', TRAIN_DATE, 'illness');
+    fillSessionSlice();
+
+    useAppStore.getState().skipSession('profile-1', TRAIN_DATE, 'illness again');
+
+    expect(useAppStore.getState().session.activeAssignmentDate).toBe(TRAIN_DATE);
+    expect(useAppStore.getState().session.restTimer).not.toBeNull();
+    expect(useAppStore.getState().session.bonusExerciseIds).toEqual(['face-pull']);
+  });
+
+  it('leaves the slice alone when the transition is refused', () => {
+    seedOpenSession();
+    // A pause over the training day: cursor.ts refuses the transition and the document is not
+    // rewritten, so the session the user still has open must survive.
+    useAppStore.getState().pausePlan('profile-1', '2026-03-01', null);
+    useAppStore.setState({
+      assignments: { 'profile-1': [] },
+      cursors: {
+        'profile-1': {
+          planId: 'plan-1',
+          nextSessionIndex: 0,
+          startedOn: TRAIN_DATE,
+          completedOn: null,
+        },
+      },
+    });
+    fillSessionSlice();
+
+    useAppStore.getState().skipSession('profile-1', TRAIN_DATE, null);
+
+    expect(useAppStore.getState().status.lastActionError).toMatch(/paused/);
+    expect(useAppStore.getState().session.activeAssignmentDate).toBe(TRAIN_DATE);
+    expect(useAppStore.getState().session.restTimer).not.toBeNull();
+  });
+
   it('wipeAll clears the slice and its mirror', () => {
     installFakeStorage();
     useAppStore.getState().setRestTimer(startRest(90, NOW));

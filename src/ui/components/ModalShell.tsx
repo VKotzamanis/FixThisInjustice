@@ -15,6 +15,43 @@ import type { ReactElement, ReactNode } from 'react';
  * Everything inside the panel that can take focus. `iframe` is included because a framed
  * video is a tab stop, so leaving it out would let Tab walk out of the dialog through it.
  */
+/**
+ * How many shells currently hold the scroll lock, and the page's own overflow from before the
+ * first of them took it.
+ *
+ * `document.body.style.overflow` is one global slot and more than one shell can be mounted at
+ * a time (the form cues open over the video modal), so each shell saving what it found and
+ * restoring it on unmount is wrong in both directions: closing the FIRST of two stacked shells
+ * restored '' and unlocked the page under the second, and closing the second then restored the
+ * 'hidden' it had found, locking the page for the rest of the app's life. The lock is therefore
+ * taken once, by the first shell, and released once, by the last (P4 polish item 4).
+ *
+ * Module scope, not a ref: the counter has to be shared by every shell in the document, and
+ * the shells are mounted by different providers and different roots.
+ */
+let scrollLockCount = 0;
+let overflowBeforeLock = '';
+
+/** Takes the scroll lock for one shell and returns the release for its effect cleanup. */
+function acquireScrollLock(): () => void {
+  if (scrollLockCount === 0) {
+    overflowBeforeLock = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+  }
+  scrollLockCount += 1;
+  let released = false;
+  return () => {
+    // Idempotent: a cleanup that ran twice must not drop the count below the shells that are
+    // still open, which would unlock the page under them.
+    if (released) return;
+    released = true;
+    scrollLockCount -= 1;
+    if (scrollLockCount > 0) return;
+    scrollLockCount = 0;
+    document.body.style.overflow = overflowBeforeLock;
+  };
+}
+
 const FOCUSABLE = [
   'a[href]',
   'button:not([disabled])',
@@ -84,12 +121,11 @@ export function ModalShell(props: ModalShellProps): ReactElement {
     };
 
     window.addEventListener('keydown', onKey);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const releaseScrollLock = acquireScrollLock();
 
     return () => {
       window.removeEventListener('keydown', onKey);
-      document.body.style.overflow = previousOverflow;
+      releaseScrollLock();
       // The dialog unmounts on close, so this is where focus goes back to the control that
       // opened it. Focusing a detached node is a no-op, which covers the whole tree
       // unmounting at once.

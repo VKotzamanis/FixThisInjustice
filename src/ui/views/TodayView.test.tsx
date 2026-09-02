@@ -5,6 +5,7 @@ import { FORMAT, copy } from '../../content/copy';
 import { formatRest } from '../format/plan';
 import { TodayView } from './TodayView';
 import { useAppStore } from '../../store';
+import { installFakeStorage } from '../../store/testStorage';
 import {
   DAY_MS,
   MONDAY,
@@ -72,8 +73,9 @@ beforeEach(() => {
   // status.lastActionError is not part of AppState, so setState does not reset it and a
   // refusal raised by one test would otherwise render a banner in the next.
   useAppStore.getState().clearActionError();
-  // ReadinessNotice remembers its dismissal in sessionStorage for the browser session.
-  sessionStorage.clear();
+  // ReadinessNotice remembers its dismissal in session storage for the browser session; the
+  // fake backing keeps that hermetic without naming the global (ESLint gate, P4 polish item 5).
+  installFakeStorage();
 });
 
 afterEach(() => {
