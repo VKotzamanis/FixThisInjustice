@@ -310,6 +310,41 @@ describe('TodayView controls', () => {
     expect(s.cursors[PROFILE_ID]?.nextSessionIndex).toBe(0); // a pause consumes no session
   });
 
+  /*
+   * The controls answer to the OPEN PAUSE, not to the hero's status. An assignment that was
+   * already open when the pause began keeps the in-progress hero (master plan section 6.4),
+   * and gating on that status offered Pause for a plan that is already paused while hiding
+   * the Resume that lifts it.
+   */
+  it('offers Resume and withholds Pause for an open session under an open pause', () => {
+    withAssignment({
+      date: MONDAY,
+      sessionId: 's-1',
+      sourceIndex: 0,
+      status: 'in-progress',
+      startedAt: NOW_MS, // [ms] epoch, UTC
+      completedAt: null,
+      skipReason: null,
+    });
+    setState({
+      ...useAppStore.getState(),
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
+    });
+    render(<TodayView />);
+
+    expect(screen.getByText(copy('hero.sessionInProgress'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copy('button.pausePlan') })).toBeNull();
+    fireEvent.click(button('button.resumePlan'));
+    expect(useAppStore.getState().pauses[PROFILE_ID]?.[0]?.to).toBe(MONDAY);
+  });
+
+  it('bounds the skip reason at 120 characters', () => {
+    render(<TodayView />);
+    fireEvent.click(button('button.skipToday'));
+    // [characters] The UI bound on a short free-text reason; the value is stored verbatim.
+    expect(screen.getByLabelText(copy('label.skipReason')).getAttribute('maxlength')).toBe('120');
+  });
+
   it('Resume plan closes the open pause at today', () => {
     setState({
       ...useAppStore.getState(),
@@ -422,6 +457,25 @@ describe('TodayView: a refused action', () => {
     expect(useAppStore.getState().assignments[PROFILE_ID]).toBe(before);
   });
 
+  it('stays on Today when the start is refused', () => {
+    openDayLastFriday();
+    render(<TodayView />);
+    const before = useAppStore.getState().ui.lastView;
+
+    fireEvent.click(button('button.startSession'));
+
+    // The refusal left the document exactly as it was, so there is no open session to switch
+    // to: Train would show a day that was never started, and the banner that explains why
+    // would be left behind on a view the user is no longer looking at.
+    const s = useAppStore.getState();
+    expect(s.ui.lastView).toBe(before);
+    expect(s.ui.lastView).not.toBe('train');
+    expect(s.assignments[PROFILE_ID]?.some((a) => a.date === MONDAY)).toBe(false);
+    expect(screen.getByRole('alert').textContent).toContain(
+      `a session is already in progress on ${PREV_FRIDAY}`,
+    );
+  });
+
   it('dismisses the banner without making another attempt', () => {
     openDayLastFriday();
     render(<TodayView />);
@@ -479,6 +533,25 @@ describe('TodayView: the 14-day strip', () => {
     expect(within(rows[0] as HTMLElement).getByLabelText(copy('status.dayCompleted'))).toBeTruthy();
     expect(within(rows[1] as HTMLElement).getByLabelText(copy('status.dayPaused'))).toBeTruthy();
   });
+
+  it('takes the list name from the heading, and names each glyph exactly once', () => {
+    render(<TodayView />);
+    const list = screen.getByRole('list', { name: copy('hero.nextFourteenDays') });
+
+    // One string in the DOM: the list points at the heading rather than repeating it.
+    const labelledBy = list.getAttribute('aria-labelledby');
+    expect(labelledBy).not.toBeNull();
+    expect(list.getAttribute('aria-label')).toBeNull();
+    expect(document.getElementById(labelledBy ?? '')?.textContent).toBe(
+      copy('hero.nextFourteenDays'),
+    );
+
+    // aria-label is what the accessible-name computation reads; a <title> child would be a
+    // second copy of the same name that nothing can reach.
+    const row = screen.getAllByTestId('strip-day')[0] as HTMLElement;
+    const glyph = within(row).getByLabelText(copy('status.dayPlanned'));
+    expect(glyph.querySelector('title')).toBeNull();
+  });
 });
 
 describe('TodayView: one whole training day', () => {
@@ -508,7 +581,15 @@ describe('App wiring', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: copy('nav.today') }));
     expect(screen.getByText('Push 1')).toBeTruthy();
-    expect(screen.getByText(FORMAT.planPosition(1, TOTAL, ''))).toBeTruthy();
+    /*
+     * Scoped to the view. P3 Task 6 mounted Task 7's SessionIndicator in the top bar, so the
+     * same cursor position is now on screen twice by design: once in the header, once in this
+     * hero. That they agree is the point (both read PlanCursor.nextSessionIndex); a document
+     * query would just be ambiguous.
+     */
+    expect(
+      within(screen.getByRole('main')).getByText(FORMAT.planPosition(1, TOTAL, '')),
+    ).toBeTruthy();
     expect(useAppStore.getState().ui.lastView).toBe('today');
   });
 });
