@@ -8,6 +8,7 @@ import { displayLoad, formatVolume, toStoredLoad } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
+import { MotivationSettings } from '../motivation/MotivationSettings';
 import { ReadinessScreen } from '../setup/ReadinessScreen';
 import './views.css';
 
@@ -51,6 +52,7 @@ interface SettingsRow {
 const SETTINGS_ROWS: readonly SettingsRow[] = [
   { id: 'readiness', render: (profile) => <ReadinessRow profile={profile} /> },
   { id: 'reminders', render: () => <ReminderSettingsPanel /> },
+  { id: 'motivation-clip', render: () => <MotivationSettings /> },
 ];
 
 /**

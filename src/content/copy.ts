@@ -498,7 +498,20 @@ export type CopyKey =
   | 'status.refusalAlreadyStarted'
   | 'status.refusalNotNextDay'
   | 'status.refusalLabelNotOffered'
-  | 'status.refusalUnrecognised';
+  | 'status.refusalUnrecognised'
+  // --- motivation clip in Settings (P6 Task 6; appended by that task) ---
+  | 'hero.motivationVideo'
+  | 'label.motivationClipChoose'
+  | 'label.motivationClipReplace'
+  | 'status.motivationClipNone'
+  | 'status.motivationClipStored'
+  | 'advice.motivationClipStorage'
+  | 'advice.motivationClipLimit'
+  | 'button.motivationClipPreview'
+  | 'button.motivationClipRemove'
+  | 'status.motivationClipNotVideo'
+  | 'status.motivationClipTooLarge'
+  | 'status.motivationClipNotStored';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -1183,6 +1196,37 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Anything the mapper does not recognise. It says what happened and stops: naming a cause
   // this build cannot identify would be a guess presented as a fact.
   'status.refusalUnrecognised': 'That change was refused.',
+
+  // --- motivation clip in Settings (P6 Task 6) ---
+  // The section heading. "Video" rather than "clip" so it matches the popup this previews
+  // ('hero.motivationPreview'); the FILE the user picks is a clip throughout.
+  'hero.motivationVideo': 'Motivation video',
+  // The picker's label, which is also the replace control: one clip is stored per profile, so
+  // choosing a second one is the replacement. Two labels rather than one, because "Choose a
+  // clip" over a section that already holds one would be asking for a second.
+  'label.motivationClipChoose': 'Choose a clip',
+  'label.motivationClipReplace': 'Replace the clip',
+  // The two states with no file name to show. The second is what a reload leaves: the id
+  // survives in the document, the name does not (see the note in MotivationSettings.tsx).
+  'status.motivationClipNone': 'No clip chosen. The bundled clip plays.',
+  'status.motivationClipStored': 'A clip is stored on this device.',
+  'advice.motivationClipStorage': 'Stored on this device, never uploaded.',
+  // R9: the limit and the unit the size line uses, behind the "why?" disclosure and therefore
+  // exempt from R1-R4. Both figures are slots filled from the constants that enforce them, so
+  // neither can drift from the value the picker actually refuses. FORMAT.withSlots.
+  'advice.motivationClipLimit':
+    'The limit is {bytes} bytes. Sizes here are reported in MiB, {mib} bytes each. ' +
+    'A clip of 25 MiB or less plays back reliably on a phone.', // template
+  'button.motivationClipPreview': 'Preview',
+  'button.motivationClipRemove': 'Remove clip',
+  // The two refusals src/domain/motivation/assets.ts mints, mapped by key in
+  // MotivationSettings.tsx. Neither repeats what the thrown message says: the browser's MIME
+  // type and the limit in bytes are not things the user can act on, and the limit is one
+  // number, held above, rather than a second copy of it here that could drift.
+  'status.motivationClipNotVideo': 'That file is not a video.',
+  'status.motivationClipTooLarge': 'That file is over the size limit.',
+  // Anything else the save threw. It states the outcome and stops.
+  'status.motivationClipNotStored': 'The clip was not stored.',
 };
 
 /**
@@ -1724,4 +1768,16 @@ export const FORMAT = {
       const value = params[name];
       return value === undefined ? slot : String(value);
     }),
+
+  // --- motivation clip in Settings (P6 Task 6) ---
+
+  /**
+   * "Clip: holiday.mp4". The file name the browser reported for the clip that was picked.
+   * Never a path: File.name carries the base name only, which is all the user needs to tell
+   * one clip from another.
+   */
+  motivationClipName: (name: string): string => `Clip: ${name}`,
+
+  /** "12.4 MiB": the stored clip's size, one number with its unit. [MiB] */
+  motivationClipSize: (mib: string): string => `${mib} MiB`,
 } as const;
