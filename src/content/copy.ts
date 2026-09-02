@@ -546,7 +546,15 @@ export type CopyKey =
   | 'advice.wipeRemoves'
   // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9; appended by that task) ---
   | 'nav.atlas'
-  | 'status.konami';
+  | 'status.konami'
+  // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
+  | 'hero.skin'
+  | 'label.settingsSkin'
+  | 'option.skinClinical'
+  | 'option.skinLimelight'
+  | 'option.skinBoard'
+  | 'advice.skinChanges'
+  | 'label.settingsSounds';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1354,6 +1362,24 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // (R6), no exclamation mark (R8), no dash as a connector (R5). It states what the sequence
   // did and what it did not buy, which is the only thing the screen is for.
   'status.konami': 'No cheat code found. A squat cannot be skipped.',
+  // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
+  // The row's heading. It names both controls under it, so neither the picker's legend nor
+  // the toggle's label repeats it: two controls in one region sharing an accessible name
+  // cannot be told apart by a screen reader.
+  'hero.skin': 'Look and sound',
+  // The radio group's legend, which is also the group's accessible name.
+  'label.settingsSkin': 'Skin',
+  // The three names are proper nouns, and they are deliberately NOT skinned. A skin that
+  // renamed the other skins in this row would be a skin a user could not reliably leave, and
+  // the name here matches the id an exported document carries, so screen and file agree.
+  'option.skinClinical': 'Clinical',
+  'option.skinLimelight': 'Limelight',
+  'option.skinBoard': 'Board',
+  // What a skin may and may not change (master plan section 3): the register, never a
+  // quantity. Stated once, where the choice is made.
+  'advice.skinChanges': 'A skin changes wording and colour. Numbers and units stay the same.',
+  // The sound toggle's label. One word, like the legend above it.
+  'label.settingsSounds': 'Sounds',
 };
 
 /**

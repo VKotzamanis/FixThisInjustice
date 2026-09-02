@@ -309,6 +309,10 @@ function blankState(profile: Profile, plan: PlanTemplate): AppState {
       videoInstanceHost: null,
       legacyMigration: 'pending',
       lastBlockSeenByProfile: {},
+      // P8 Task 12. Additive, so this literal only has to name them because it is a whole
+      // UiPrefs rather than a patch; the values are defaultState()'s own.
+      skin: 'limelight',
+      sounds: false,
     },
   };
 }

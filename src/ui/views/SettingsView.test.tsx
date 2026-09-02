@@ -256,3 +256,16 @@ describe('motivation clip row in Settings', () => {
     ).toBeInTheDocument();
   });
 });
+
+/**
+ * The skin row (P8 Task 12). Same shape as the three rows above: this file holds only that
+ * Settings mounts it, and SkinSettings.test.tsx owns what the picker then writes.
+ */
+describe('skin row in Settings', () => {
+  it('mounts the skin picker', () => {
+    render(<SettingsView />);
+    expect(
+      screen.getByRole('group', { name: copy('label.settingsSkin') }),
+    ).toBeInTheDocument();
+  });
+});

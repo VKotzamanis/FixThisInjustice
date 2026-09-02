@@ -89,7 +89,14 @@ export interface SpecimenInventory { profileId: string; acquired: Record<string,
 export interface TimeCapsule { note: string; writtenAt: EpochMs; opensOn: LocalDate; opened: boolean; }
 
 // ---- ui preferences (persisted) ----
-export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; }
+// The three shipped skins, in the order the picker offers them. One id, never a class list:
+// a list can carry two skins at once and the cascade then depends on stylesheet order rather
+// than on state, so the attribute makes the invalid state unrepresentable.
+export type SkinId = 'clinical' | 'limelight' | 'board';
+// skin default 'limelight'; sounds default false (Zod defaults, no version bump). The default
+// is the round-three merge rather than the clinical set the copy contract is written against:
+// clinical stays reachable from the picker and stays the bare `:root` token block.
+export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; }
 
 // ---- root ----
 export interface AppState {
