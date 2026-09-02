@@ -28,12 +28,17 @@ function entry(date: string, massKg: number, id: string): BodyMassEntry {
   };
 }
 
-/** A six-month projection losing 0.5 kg per week from a 95.3 kg baseline. */
+/**
+ * A six-month projection losing 0.5 kg per week from a 95.3 kg baseline.
+ * `today` sits exactly at the 168-day horizon's end (2026-06-22), so it clamps nothing here —
+ * these fixture-wide values exist to keep every test below unchanged by the projection clamp.
+ */
 const BASE = {
   baselineKg: 95.3, // [kg]
   baselineDate: '2026-01-05',
   expectedRateKgPerWeek: -0.5, // [kg/week] signed; negative is loss
   horizonDays: 168, // [d]
+  today: '2026-06-22',
 };
 
 function labels(container: HTMLElement, testId: string): string[] {
@@ -95,6 +100,7 @@ describe('BodyMassChart', () => {
         baselineDate="2026-01-05"
         expectedRateKgPerWeek={0} // [kg/week]
         horizonDays={28} // [d]
+        today="2026-02-02" // the 28-day horizon's end: the clamp is a no-op for this test
       />,
     );
     const ticks = labels(container, 'y-label');
@@ -165,5 +171,55 @@ describe('BodyMassChart', () => {
         ticks[ticks.length - 1] ?? '',
       ),
     );
+  });
+
+  it('clamps the projection to today, not the far end of a long horizonDays', () => {
+    // horizonDays: 168 (~24 weeks) is the plan's own example; today sits only 30 days after the
+    // baseline. The dashed projection must stop at today even though the horizontal domain (the
+    // date axis) still spans the full 168-day horizon.
+    const today = '2026-02-04'; // [date] baseline (2026-01-05) + 30 d
+    const { container } = render(
+      <BodyMassChart
+        entries={[entry('2026-02-04', 94, 'a')]} // sits exactly at today: a reference x-coordinate
+        units="metric"
+        {...BASE}
+        today={today}
+      />,
+    );
+    const projD = container.querySelector("[data-testid='projection']")?.getAttribute('d') ?? '';
+    const projEndX = projD.split(' ')[4]; // "M x1 y1 L x2 y2" -> x2
+    const todayPointX = container
+      .querySelector("[data-testid='measured-point']")
+      ?.getAttribute('cx');
+    expect(projEndX).toBe(todayPointX);
+    // The axis itself is unaffected: it still spans the full 168-day horizon. Only the
+    // projection line is clamped.
+    expect(labels(container, 'x-label')).toEqual(['2026-01-05', '2026-06-22']);
+  });
+
+  it('still ends the projection at today when a weigh-in is dated after today', () => {
+    // A future-dated weigh-in (baseline + 200 d: past both today and the 168-day horizon) widens
+    // the domain per the "extends the domain" behaviour above. It must not drag the dashed
+    // projection line out with it.
+    const today = '2026-02-04'; // [date] baseline (2026-01-05) + 30 d
+    const { container } = render(
+      <BodyMassChart
+        entries={[
+          entry('2026-02-04', 94, 'today-point'), // baseline + 30 d
+          entry('2026-07-24', 90, 'future-point'), // baseline + 200 d
+        ]}
+        units="metric"
+        {...BASE}
+        today={today}
+      />,
+    );
+    const projD = container.querySelector("[data-testid='projection']")?.getAttribute('d') ?? '';
+    const projEndX = projD.split(' ')[4];
+    const points = [...container.querySelectorAll("[data-testid='measured-point']")];
+    const todayPointX = points[0]?.getAttribute('cx'); // ascending date order: today-point is first
+    expect(projEndX).toBe(todayPointX);
+    // The domain DID extend to the future weigh-in (proof the widening still happens); the
+    // projection still stopped at today rather than following it out.
+    expect(labels(container, 'x-label')[1]).toBe('2026-07-24');
   });
 });

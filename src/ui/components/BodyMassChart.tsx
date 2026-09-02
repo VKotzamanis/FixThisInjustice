@@ -38,6 +38,14 @@ export interface BodyMassChartProps {
   expectedRateKgPerWeek: number | null; // [kg/week]
   /** How far the projection runs forward from the baseline date. */
   horizonDays: number; // [d]
+  /**
+   * The profile's civil today. The dashed projection line stops here regardless of how far
+   * `horizonDays` reaches or how far a weigh-in is dated into the future: the engine states a
+   * rate for the present, and a line drawn past today would extrapolate a rate the engine never
+   * gave for that span. The chart's own horizontal domain (the date axis) is unaffected — only
+   * the projection's endpoint is clamped.
+   */
+  today: LocalDate;
   /** Rendered height in CSS pixels; the viewBox is fixed and scales into it. */
   height?: number; // [px]
 }
@@ -68,7 +76,8 @@ function coord(n: number): string {
 }
 
 export function BodyMassChart(props: BodyMassChartProps): ReactElement {
-  const { entries, units, baselineKg, baselineDate, expectedRateKgPerWeek, horizonDays } = props;
+  const { entries, units, baselineKg, baselineDate, expectedRateKgPerWeek, horizonDays, today } =
+    props;
   const height = props.height ?? DEFAULT_HEIGHT;
 
   // Programme order, not entry order: a weigh-in typed in late still belongs to the civil day
@@ -94,11 +103,16 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
   const lastDate = addDays(baselineDate, lastDay);
 
   // ---- projection ------------------------------------------------------------------------
-  // Drawn from the baseline at the engine's own rate, over the same horizontal domain as the
-  // measurements, so the eye compares like with like.
+  // Drawn from the baseline at the engine's own rate. The line's own end is clamped to today
+  // (never past it, never before the domain's own start), independent of how far the horizontal
+  // domain (lastDay, above) reaches: a long horizonDays or a future-dated weigh-in widens the
+  // AXIS so those points are visible, but the engine's rate was only ever stated through today,
+  // so drawing the dashed line any further would extrapolate a rate nobody gave.
   const rate = expectedRateKgPerWeek; // [kg/week]
+  const todayDay = daysBetween(baselineDate, today); // [d] relative to baselineDate
+  const projEndDay = Math.min(lastDay, Math.max(firstDay, todayDay)); // [d] clamped to today
   const projStartKg = rate === null ? null : baselineKg + (rate * firstDay) / 7; // [kg]
-  const projEndKg = rate === null ? null : baselineKg + (rate * lastDay) / 7; // [kg]
+  const projEndKg = rate === null ? null : baselineKg + (rate * projEndDay) / 7; // [kg]
 
   // ---- vertical domain: masses -----------------------------------------------------------
   // The baseline is always in the domain: it is the reference the projection starts from, and
@@ -223,7 +237,7 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
       {projStartKg !== null && projEndKg !== null && (
         <path
           data-testid="projection"
-          d={`M ${coord(xAt(firstDay))} ${coord(yAt(projStartKg))} L ${coord(xAt(lastDay))} ${coord(yAt(projEndKg))}`}
+          d={`M ${coord(xAt(firstDay))} ${coord(yAt(projStartKg))} L ${coord(xAt(projEndDay))} ${coord(yAt(projEndKg))}`}
           fill="none"
           stroke="var(--chart-line)"
           strokeWidth="1.25"
