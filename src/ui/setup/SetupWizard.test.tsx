@@ -7,6 +7,9 @@ import { EXERCISES } from '../../domain/plan/library';
 import { generatePlan, volumeReport } from '../../domain/plan/generator';
 import { SPLIT_TEMPLATES } from '../../domain/plan/templates';
 import { KG_PER_LB } from '../../domain/types';
+import { toStoredMass } from '../../domain/units';
+import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
+import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
 import { FORMAT } from '../../content/copy';
 
 /**
@@ -54,8 +57,8 @@ function setValue(label: RegExp | string, value: string): void {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
-/** Drive screens 1-7 with an imperial profile, leaving the review screen on show. */
-function fillImperialWizard(): void {
+/** Drive screens 1-5 with an imperial profile, leaving the goal screen on show. */
+function fillImperialWizardToGoal(): void {
   render(<SetupWizard />);
   // 1 - units
   fireEvent.click(screen.getByLabelText('Pounds (lb)'));
@@ -78,12 +81,22 @@ function fillImperialWizard(): void {
   next();
   // 5 - goal
   setValue(/^goal$/i, 'fat-loss');
+}
+
+/** Continue to availability, with four weekdays checked for the four-session split. */
+function fillImperialWizardToAvailability(): void {
+  fillImperialWizardToGoal();
   next();
   // 6 - availability
   setValue(/sessions per week/i, '4');
   for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
     fireEvent.click(screen.getByLabelText(day));
   }
+}
+
+/** Drive screens 1-7 with an imperial profile, leaving the review screen on show. */
+function fillImperialWizard(): void {
+  fillImperialWizardToAvailability();
   next();
   // 7 - programme length
   setValue(/programme length/i, '12');
@@ -399,9 +412,12 @@ describe('no free-text medical field exists', () => {
       setValue(/body mass \(kg\)/i, '80');
     }
     if (STEPS[stepIndex] === 'availability') {
+      // The weekday count may not fall below sessions per week, and 2 is the lowest the
+      // sessions-per-week list offers, so the smallest passing selection is two days.
+      setValue(/sessions per week/i, '2');
       fireEvent.click(screen.getByLabelText('Monday'));
-      // One day selected, so the weekly target cannot stay at the four-day default.
-      setValue(/weekly session target/i, '1');
+      fireEvent.click(screen.getByLabelText('Tuesday'));
+      setValue(/weekly session target/i, '2');
     }
   }
 
@@ -467,8 +483,10 @@ describe('copy rules', () => {
         setValue(/body mass \(kg\)/i, '80');
       }
       if (STEPS[stepIndex] === 'availability') {
+        setValue(/sessions per week/i, '2');
         fireEvent.click(screen.getByLabelText('Monday'));
-        setValue(/weekly session target/i, '1');
+        fireEvent.click(screen.getByLabelText('Tuesday'));
+        setValue(/weekly session target/i, '2');
       }
       for (const button of screen.getAllByRole('button')) {
         expect((button.textContent ?? '').trim().split(/\s+/).length).toBeLessThanOrEqual(3);
@@ -477,6 +495,297 @@ describe('copy rules', () => {
       const continueButton = screen.queryByRole('button', { name: 'Continue' });
       if (!continueButton) break;
       fireEvent.click(continueButton);
+    }
+  });
+});
+
+/**
+ * The rounded display bound is not the domain.
+ *
+ * NUTRITION_DOMAIN.massKg is [30, 300] kg. Rounding those to 0.1 lb gives [66.1, 661.4] lb, and
+ * both endpoints convert back OUTSIDE the kg bound (66.1 lb = 29.98 kg, 661.4 lb = 300.01 kg).
+ * A form that compares the entered lb value against the rounded lb bound therefore admits a mass
+ * that computeTargets refuses with a RangeError, which surfaces as a crash while Review renders.
+ */
+describe('the converted value is what the domain gate tests', () => {
+  const FLOOR_LB = '66.1'; // [lb] the 30 kg floor rounded to 0.1 lb
+  const CEILING_LB = '661.4'; // [lb] the 300 kg ceiling rounded to 0.1 lb
+  const INSIDE_LB = '66.2'; // [lb] the floor rounded INWARD, which the message quotes
+
+  /** Male, 30 y at the pinned clock, 5 ft 11 in, with the body mass under test. */
+  function imperialBodyStep(massLb: string): void {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Pounds (lb)'));
+    next();
+    next();
+    fireEvent.click(screen.getByLabelText('Male'));
+    setValue(/birth year/i, '1996');
+    setValue(/^feet$/i, '5');
+    setValue(/^inches$/i, '11');
+    setValue(/body mass \(lb\)/i, massLb);
+  }
+
+  function inputAt(massKg: number) {
+    return {
+      sex: 'male',
+      ageYears: 30, // [years]
+      heightCm: IMPERIAL_HEIGHT_CM, // [cm]
+      massKg, // [kg]
+      bodyFatPct: null,
+      activity: 'moderate',
+      goal: 'fat-loss',
+      sessionsPerWeek: 4, // [sessions/week]
+      creatine: false,
+    } as const;
+  }
+
+  it('blocks a lb entry whose exact kg conversion is under the 30 kg floor', () => {
+    const kg = toStoredMass(Number(FLOOR_LB), 'imperial'); // [kg] 29.982 kg
+    expect(kg).toBeLessThan(NUTRITION_DOMAIN.massKg.lo);
+    expect(isInDomain(inputAt(kg))).toBe(false);
+    expect(() => computeTargets(inputAt(kg))).toThrow(RangeError);
+
+    imperialBodyStep(FLOOR_LB);
+    expect(screen.getByText('Body mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    next();
+    expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
+  });
+
+  it('blocks a lb entry whose exact kg conversion is over the 300 kg ceiling', () => {
+    const kg = toStoredMass(Number(CEILING_LB), 'imperial'); // [kg] 300.008 kg
+    expect(kg).toBeGreaterThan(NUTRITION_DOMAIN.massKg.hi);
+    imperialBodyStep(CEILING_LB);
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  it('accepts the bound the message quotes, and that bound is inside the domain', () => {
+    const kg = toStoredMass(Number(INSIDE_LB), 'imperial'); // [kg] 30.028 kg
+    expect(isInDomain(inputAt(kg))).toBe(true);
+    imperialBodyStep(INSIDE_LB);
+    expect(screen.queryByText(/body mass must be/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('holds an optional target body mass to the same kg bound', () => {
+    fillImperialWizardToGoal();
+    setValue(/target body mass \(lb\)/i, FLOOR_LB);
+    expect(screen.getByText('Target body mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    setValue(/target body mass \(lb\)/i, '120');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('quotes an imperial stature bound that is itself inside the cm domain', () => {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Pounds (lb)'));
+    next();
+    next();
+    setValue(/birth year/i, '1996');
+    setValue(/^feet$/i, '3');
+    setValue(/^inches$/i, '11'); // 47 in = 119.38 cm, under the 120 cm floor
+    setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
+    expect(screen.getByText('Height must be 47.3 to 90.5 in.')).toBeInTheDocument();
+    // 47.3 in x 2.54 cm/in = 120.142 cm and 90.5 in = 229.87 cm: both inside [120, 230] cm.
+    expect(47.3 * 2.54).toBeGreaterThanOrEqual(NUTRITION_DOMAIN.heightCm.lo);
+    expect(90.5 * 2.54).toBeLessThanOrEqual(NUTRITION_DOMAIN.heightCm.hi);
+  });
+});
+
+/**
+ * The schema stores birthYear, weeklySessionTarget and the plan's weeks as z.int(). A fraction
+ * is refused where it is typed rather than rounded into the document behind the user's back.
+ */
+describe('whole-number counts', () => {
+  it('refuses a fractional birth year instead of rounding it', () => {
+    render(<SetupWizard />);
+    next();
+    next();
+    setValue(/height \(cm\)/i, '180');
+    setValue(/body mass \(kg\)/i, '80');
+    setValue(/birth year/i, '1996.5');
+    expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    setValue(/birth year/i, '1996');
+    expect(screen.queryByText('Enter a whole number.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('refuses a fractional programme length', () => {
+    fillImperialWizard();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' })); // back to Programme
+    setValue(/programme length/i, '12.4');
+    expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    setValue(/programme length/i, String(PLAN_WEEKS_MIN));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('refuses a fractional weekly session target', () => {
+    fillImperialWizardToAvailability();
+    setValue(/weekly session target/i, '3.5');
+    expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    setValue(/weekly session target/i, '3');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+
+  it('writes a document that passes parseState once the fractions are corrected', () => {
+    fillImperialWizard();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
+    const result = parseState(raw);
+    expect(result.ok ? null : result.error).toBeNull();
+    const state = useAppStore.getState();
+    const id = state.activeProfileId ?? '';
+    expect(Number.isInteger(state.profiles[id]?.body.birthYear)).toBe(true);
+    expect(Number.isInteger(state.availability[id]?.weeklySessionTarget)).toBe(true);
+  });
+});
+
+describe('focus, announcement and message binding', () => {
+  it('moves focus to the step heading on every step change', () => {
+    render(<SetupWizard />);
+    const first = screen.getByRole('heading', { level: 2 });
+    expect(first).toHaveTextContent('Units');
+    expect(first).toHaveAttribute('tabindex', '-1');
+    next();
+    const second = screen.getByRole('heading', { level: 2 });
+    expect(second).toHaveTextContent('Time zone');
+    expect(document.activeElement).toBe(second);
+  });
+
+  it('announces the step in a polite live region', () => {
+    render(<SetupWizard />);
+    const status = screen.getByTestId('wiz-step-status');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(status).toHaveTextContent(FORMAT.stepOf(1, STEPS.length, 'Units'));
+    next();
+    expect(status).toHaveTextContent(FORMAT.stepOf(2, STEPS.length, 'Time zone'));
+  });
+
+  /** The message an aria-describedby id points at, or null when the id resolves to nothing. */
+  function describedText(control: HTMLElement): string {
+    const ids = (control.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+    return ids.map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
+  }
+
+  it('binds the feet and inches message to both controls', () => {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Pounds (lb)'));
+    next();
+    next();
+    setValue(/birth year/i, '1996');
+    setValue(/^feet$/i, '3');
+    setValue(/^inches$/i, '11');
+    setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
+    for (const label of [/^feet$/i, /^inches$/i]) {
+      const control = screen.getByLabelText(label);
+      expect(control).toHaveAttribute('aria-invalid', 'true');
+      expect(describedText(control)).toContain('Height must be');
+    }
+  });
+
+  it('binds the tape-domain message to the girth controls', () => {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Kilograms (kg)'));
+    next();
+    next();
+    setValue(/birth year/i, '1996');
+    setValue(/height \(cm\)/i, '180');
+    setValue(/body mass \(kg\)/i, '95.3');
+    fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
+    setValue(/^neck \(cm\)$/i, '40');
+    setValue(/abdomen ii \(cm\)/i, '182'); // Navy estimate 60.1 %, above the 60 % ceiling
+    for (const label of [/^neck \(cm\)$/i, /abdomen ii \(cm\)/i]) {
+      const control = screen.getByLabelText(label);
+      expect(control).toHaveAttribute('aria-invalid', 'true');
+      expect(describedText(control)).toContain('Body fat must be 3 to 60 %.');
+    }
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  it('binds the target-date message to its control', () => {
+    fillImperialWizardToGoal();
+    const control = screen.getByLabelText(/target date/i);
+    // jsdom and every conforming browser sanitise an invalid entry in <input type="date"> to
+    // "", so the message is only reachable in a user agent that falls back to a text field.
+    // Switching the type here is exactly that fallback, not a way around the component.
+    control.setAttribute('type', 'text');
+    fireEvent.change(control, { target: { value: '2026-02-30' } });
+    expect(control).toHaveAttribute('aria-invalid', 'true');
+    expect(describedText(control)).not.toBe('');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+  });
+
+  it('binds the weekday message to every weekday control', () => {
+    fillImperialWizardToAvailability();
+    for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
+      fireEvent.click(screen.getByLabelText(day)); // uncheck the four the helper checked
+    }
+    for (const day of ['Monday', 'Sunday']) {
+      const control = screen.getByLabelText(day);
+      expect(control).toHaveAttribute('aria-invalid', 'true');
+      expect(describedText(control)).toContain('Select at least one weekday.');
+    }
+  });
+});
+
+describe('availability against sessions per week', () => {
+  it('blocks when fewer weekdays are checked than the split needs, naming both counts', () => {
+    fillImperialWizardToAvailability(); // 4 sessions per week, 4 days checked
+    fireEvent.click(screen.getByLabelText('Thursday'));
+    fireEvent.click(screen.getByLabelText('Friday')); // 2 days left, 4 sessions per week
+    expect(
+      screen.getByText('2 days selected for 4 sessions per week. Select at least 4 days.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+
+    fireEvent.click(screen.getByLabelText('Thursday'));
+    fireEvent.click(screen.getByLabelText('Friday'));
+    expect(screen.queryByText(/days selected for/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+  });
+});
+
+describe('entry aids and idempotency', () => {
+  it('turns off text assistance on the time-zone field and offers the platform zone list', () => {
+    render(<SetupWizard />);
+    next();
+    const control = screen.getByLabelText(/^time zone$/i);
+    expect(control).toHaveAttribute('autocapitalize', 'none');
+    expect(control).toHaveAttribute('autocorrect', 'off');
+    expect(control).toHaveAttribute('spellcheck', 'false');
+    const listId = control.getAttribute('list');
+    expect(listId).not.toBeNull();
+    const list = document.getElementById(listId ?? '');
+    expect(list?.tagName.toLowerCase()).toBe('datalist');
+    const values = [...(list?.querySelectorAll('option') ?? [])].map((o) => o.value);
+    expect(values).toContain('America/New_York');
+  });
+
+  it('creates one profile however many times Confirm is clicked', () => {
+    fillImperialWizard();
+    const button = screen.getByRole('button', { name: 'Confirm and start' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(Object.keys(useAppStore.getState().profiles)).toHaveLength(1);
+    expect(button).toBeDisabled();
+  });
+
+  it('states the unit on every tape girth label', () => {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Kilograms (kg)'));
+    next();
+    next();
+    fireEvent.click(screen.getByLabelText('Female'));
+    setValue(/birth year/i, '1996');
+    setValue(/height \(cm\)/i, '165');
+    setValue(/body mass \(kg\)/i, '62.5');
+    fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
+    for (const label of [/^neck \(cm\)$/i, /^abdomen i \(cm\)$/i, /^hip \(cm\)$/i]) {
+      expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
   });
 });

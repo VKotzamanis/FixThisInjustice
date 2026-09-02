@@ -151,7 +151,7 @@ export type CopyKey =
   | 'error.valueRequired'
   | 'error.pickOneDay'
   | 'error.positive'
-  | 'error.range'
+  | 'error.wholeNumber'
   // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
   | 'hero.intakeCheckIn'
   | 'hero.profile'
@@ -315,7 +315,9 @@ export type CopyKey =
   | 'button.continueTransition'
   | 'advice.noMatches'
   | 'toast.setDeleted'
-  | 'status.setsLogged';
+  | 'status.setsLogged'
+  // --- setup wizard, review fixes (P2 Task 7) ---
+  | 'status.targetsNotEstimated';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -460,7 +462,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'error.valueRequired': 'Enter a number.',
   'error.pickOneDay': 'Select at least one weekday.',
   'error.positive': 'Enter a number greater than zero.',
-  'error.range': 'Body mass must be 30 to 300 kg.', // formatted
+  'error.wholeNumber': 'Enter a whole number.',
 
   // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
   'hero.intakeCheckIn': 'Intake check-in',
@@ -637,6 +639,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.noMatches': 'No matches.',
   'toast.setDeleted': 'Set deleted.',
   'status.setsLogged': '250 sets recorded.', // formatted
+
+  // --- setup wizard, review fixes (P2 Task 7) ---
+  'status.targetsNotEstimated':
+    'Targets are not estimated for these entries. Go back and check the body screen.',
 };
 
 /**
@@ -720,4 +726,12 @@ export const FORMAT = {
 
   /** "Today is not built yet." The name comes from the navigation entry. */
   notBuiltYet: (view: string): string => `${view} is not built yet.`,
+
+  /**
+   * "2 days selected for 4 sessions per week. Select at least 4 days." Both counts are
+   * named because the fix is a choice between them: add days, or reduce the split.
+   */
+  daysForSessions: (days: number, sessionsPerWeek: number): string =>
+    `${days} days selected for ${sessionsPerWeek} sessions per week. ` +
+    `Select at least ${sessionsPerWeek} days.`,
 } as const;

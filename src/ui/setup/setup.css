@@ -37,6 +37,33 @@
   margin: 0 0 1.25rem;
 }
 
+/*
+ * The step heading. It carries tabIndex -1 and receives focus on every step change, so it needs
+ * a focus ring a sighted keyboard user can see; :focus-visible gives it one for keyboard entry
+ * without drawing a ring for the programmatic focus that follows a pointer click.
+ */
+.wiz .wiz-heading {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Review has fieldsets of its own, so its heading stands above them rather than in a legend. */
+.wiz .wiz-heading-alone {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+}
+
+.wiz .wiz-heading:focus {
+  outline: none;
+}
+
+.wiz .wiz-heading:focus-visible {
+  outline: 2px solid var(--accent, #a3e635);
+  outline-offset: 2px;
+}
+
 .wiz fieldset {
   border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
   margin: 0 0 1rem;
