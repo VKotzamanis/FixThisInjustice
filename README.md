@@ -104,7 +104,8 @@ untrusted to the same account.
 
 **No personal data in the repository.** No medication, biometric or location string belongs in
 tracked source. Both workflows grep the tree for the forbidden identifiers and fail on a hit.
-The two review directories and `REFERENCES.md` are exempt, because they discuss the terms.
+`docs/review/`, `docs/plans/`, and `REFERENCES.md` are exempt because they discuss the terms;
+`graphify-out/` is exempt because it is a generated index of the other three.
 
 ## Coming from the old console
 
