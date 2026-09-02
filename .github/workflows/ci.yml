@@ -14,6 +14,14 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Job level, not step level. P5 populates these repository variables; empty is a valid
+    # build because the reminder worker is optional. VITE_REMINDER_API is read twice: by
+    # build/cspPlugin.ts during `npm run build`, and by scripts/check-dist-csp.sh, which
+    # asserts the built connect-src names exactly that origin. Scoped to the Build step,
+    # the variable is unset by the time the check runs and its assertion is inert.
+    env:
+      VITE_REMINDER_API: ${{ vars.VITE_REMINDER_API }}
+      VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v7
 
@@ -44,10 +52,6 @@ jobs:
         run: npm run test:tz
 
       - name: Build
-        env:
-          # P5 populates these repository variables; empty is a valid build because the reminder worker is optional.
-          VITE_REMINDER_API: ${{ vars.VITE_REMINDER_API }}
-          VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
         run: npm run build
 
       - name: Build hygiene
@@ -102,9 +106,32 @@ jobs:
         run: |
           set -euo pipefail
           # One-character classes keep the pattern from matching its own definition; git grep exits 1 on no match, which is the passing case, and also when a pathspec (worker/, added by P5) matches no tracked file.
-          if ! git grep -nEi 'vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e]' -- 'src/' 'worker/' 'public/' 'index.html'; then
+          # \b is load-bearing: unanchored and case-insensitive, 'ymca' matched the letters yMca inside a base64 data URI in src/skins/limelight/icons.ts (commit 8511f21), so the job failed on generated data rather than on prose.
+          # The two generated asset modules are excluded as well. Measured 2026-09-02: \b alone already clears that false positive, so the exclusions are belt and braces, and they can be dropped if their blind spot matters more.
+          if ! git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- 'src/' 'worker/' 'public/' 'index.html' ':!src/skins/limelight/icons.ts' ':!src/skins/limelight/illustrations.ts'; then
             echo "PASS: no medication or location identifier in src/, worker/, public/ or index.html"
           else
             echo "FAIL: personal health data found in shipped source"
             exit 1
           fi
+
+  # The Worker is a separate npm package with its own lockfile, so it gets its own job
+  # rather than extra steps in `verify`. It is not linted here: worker/ sits outside the
+  # root ESLint configuration, and tsc plus Vitest are its gates.
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
