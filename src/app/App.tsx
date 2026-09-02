@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { copy } from '../content/copy';
+import { useCopy } from '../content/useCopy';
 import { useAppStore } from '../store';
 import { useFirstGestureUnlock } from '../skins/sfx';
 import { useApplySkin } from '../skins/skinContext';
@@ -116,6 +116,18 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
    */
   const hotkeysOn = useAppStore((s) => s.ui.hotkeys);
 
+  /*
+   * The strip's words, resolved at RENDER against the active skin.
+   *
+   * NOT `copy()` and NOT the registry's `label`. Both are the DEFAULT table: `label` is a module
+   * constant src/ui/nav/views.ts bakes at import, so it cannot follow `ui.skin` at all, and the
+   * landmark's name was a bare `copy()` call beside it. Under limelight that left the palette
+   * offering "the run" and the tab beside it still reading "Plan" (P8 review). The registry's
+   * `copyKey` is the row, and this is the reader, which is exactly what
+   * src/ui/components/Spotlight.tsx does with the same rows.
+   */
+  const c = useCopy();
+
   const [konami, setKonami] = useState(false);
   const closeKonami = useCallback(() => {
     setKonami(false);
@@ -178,7 +190,7 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
 
   return (
     <>
-      <nav className="viewnav" aria-label={copy('nav.label')}>
+      <nav className="viewnav" aria-label={c('nav.label')}>
         {VIEWS.map((n) => (
           <button
             key={n.id}
@@ -198,7 +210,7 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
               useAppStore.getState().setUi({ lastView: n.id });
             }}
           >
-            {n.label}
+            {c(n.copyKey)}
           </button>
         ))}
         {/*

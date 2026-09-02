@@ -10,10 +10,10 @@ import { LEGACY_V2_KEY, STORAGE_KEY } from '../store/persistence';
 import { makeBlankState } from '../test/migrationFactories';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
-import { FORMAT, copy } from '../content/copy';
+import { FORMAT, copy, copyFor } from '../content/copy';
 import { WARMUP_NOTICE } from '../content/formCues';
 import { unlockAudio } from '../ui/audio/chime';
-import type { LocalDate, Profile, WeeklyReview } from '../domain/types';
+import type { LocalDate, Profile, SkinId, WeeklyReview } from '../domain/types';
 import { addDays, todayLocal } from '../domain/dates';
 import { probeBundledVideo, resolveVideoSrc } from '../domain/motivation/assets';
 import { EMPTY_SESSION } from '../store/sessionMirror';
@@ -121,14 +121,16 @@ beforeEach(() => {
  * each of them.
  *
  * A seed that REPLACES `ui` puts the shipped skin back, so it is a named function rather than
- * an inline hook body: a test that reseeds calls it again, after the seed.
+ * an inline hook body: a test that reseeds calls it again, after the seed. It takes the skin as
+ * an argument because the strip and the picker are now read under each of the three, and a
+ * second helper that set a different field would be the drift this one exists to prevent.
  */
-function pinClinicalSkin(): void {
-  useAppStore.setState((state) => ({ ui: { ...state.ui, skin: 'clinical' } }));
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((state) => ({ ui: { ...state.ui, skin } }));
 }
 
 beforeEach(() => {
-  pinClinicalSkin();
+  pinSkin();
 });
 
 describe('SaveErrorBanner', () => {
@@ -1052,5 +1054,88 @@ describe('keyboard', () => {
 
     expect(screen.queryByText(copy('status.konami'))).toBeNull();
     expect(useAppStore.getState().ui.lastView).toBe('today');
+  });
+});
+
+/**
+ * THE TAB STRIP UNDER A SKIN (P8 review).
+ *
+ * The strip rendered `ViewDef.label`, which src/ui/nav/views.ts resolves from the DEFAULT table
+ * at MODULE LOAD, and named the landmark through a bare `copy('nav.label')`. Both are baked
+ * before any skin is known, so under limelight the palette listed "the run" and the tab beside
+ * it still said "Plan": one app speaking two languages about the same view.
+ *
+ * Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the table
+ * instead of having to be rewritten beside it. This is the convention
+ * src/ui/components/Spotlight.test.tsx already uses for the same rows.
+ */
+describe('the tab strip under a skin', () => {
+  const LABELS = ['Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    // seedState pins clinical (src/test/scheduleFixtures.ts, emptyState), so each case below
+    // states the skin it is about rather than inheriting one.
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+  });
+
+  it('names the landmark and the tabs in the limelight words', () => {
+    pinSkin('limelight');
+    render(<App />);
+
+    expect(
+      screen.getByRole('navigation', { name: copyFor('limelight', 'nav.label') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'nav.today') }),
+    ).toBeInTheDocument();
+    // The clinical word is GONE rather than merely joined: a strip carrying both would be the
+    // same defect in a different shape.
+    expect(screen.queryByRole('button', { name: copyFor('clinical', 'nav.today') })).toBeNull();
+  });
+
+  it('names them in the board words, falling back per key rather than per table', () => {
+    pinSkin('board');
+    render(<App />);
+
+    expect(
+      screen.getByRole('button', { name: copyFor('board', 'nav.train') }),
+    ).toBeInTheDocument();
+    // BOARD_COPY names no landmark and no Targets tab, so both fall through to the default.
+    // The fall-through is per KEY, which is what makes a partial override table safe.
+    expect(
+      screen.getByRole('navigation', { name: copyFor('clinical', 'nav.label') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'nav.targets') }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the default table under clinical', () => {
+    pinSkin('clinical');
+    render(<App />);
+
+    expect(
+      screen.getByRole('navigation', { name: copyFor('clinical', 'nav.label') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'nav.today') }),
+    ).toBeInTheDocument();
+  });
+
+  it('follows a skin changed while the strip is on screen', () => {
+    pinSkin('clinical');
+    render(<App />);
+
+    act(() => {
+      useAppStore.getState().setUi({ skin: 'limelight' });
+    });
+
+    // A label read at module load cannot do this at all: the words have to be resolved at
+    // RENDER for a live skin change to reach the strip.
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'nav.settings') }),
+    ).toBeInTheDocument();
   });
 });

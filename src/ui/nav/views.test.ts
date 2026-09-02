@@ -66,6 +66,30 @@ describe('the view registry', () => {
     }
   });
 
+  it('keys every view at nav.<id>, so the label and the key cannot name two rows', () => {
+    // `label` and `copyKey` are two statements about the same row, and a renderer now reads the
+    // second. A row whose key named a different view would put one tab's word on another tab.
+    for (const view of VIEWS) {
+      expect(view.copyKey).toBe(`nav.${view.id}`);
+    }
+  });
+
+  it('is read by the strip through the copy key, not through the baked label', () => {
+    /*
+     * `label` is resolved from the DEFAULT table at MODULE LOAD, so a component that renders it
+     * renders the clinical word under every skin: that is what put "the run" in the palette and
+     * "Plan" on the tab beside it (P8 review). The strip must reach the row through `copyKey`
+     * and `useCopy()`, which is what src/ui/components/Spotlight.tsx already does, and the
+     * landmark's own name must come from the same reader rather than from a bare `copy()` call.
+     *
+     * Asserted as source text for the reason the header of this file gives: what is asserted is
+     * the ABSENCE of a call, which is not a value a module can export.
+     */
+    expect(APP_SOURCE).not.toMatch(/\{n\.label\}/);
+    expect(APP_SOURCE).toMatch(/n\.copyKey/);
+    expect(APP_SOURCE).not.toMatch(/aria-label=\{copy\(/);
+  });
+
   it('numbers the hotkey digits 1..n in registry order, with no gap or repeat', () => {
     // The digits are what P8 Task 9 binds; a gap would leave a view unreachable by keyboard and
     // a repeat would bind one key to two views.
