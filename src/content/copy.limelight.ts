@@ -160,6 +160,11 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'status.planComplete': 'wrapped',
   'status.undiscovered': 'still a mystery',
   'label.settingsSounds': 'the noise',
+  // The shortcut off switch (P8 close-out B), in the pattern the two settings labels beside it
+  // already use. The word the criterion defines is kept: this is the switch for the app's
+  // single-character shortcuts and nothing else, so no skin may make it sound like a preference
+  // about something broader.
+  'label.settingsHotkeys': 'the shortcuts',
   'advice.noSessionIn14Days': 'nothing booked for 14 days. dry spell.',
   'advice.noSessionToday': 'nothing assigned today. pick one on today.',
   'advice.noSetsLogged': 'no sets yet. start something.',

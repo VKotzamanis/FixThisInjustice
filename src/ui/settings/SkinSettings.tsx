@@ -18,7 +18,8 @@ const SKIN_LABEL: Readonly<Record<SkinId, CopyKey>> = {
 };
 
 /**
- * The Settings row that chooses the skin and turns sounds on (P8 Task 12).
+ * The Settings row that chooses the skin, turns sounds on, and switches the single-character
+ * shortcuts off (P8 Task 12; the shortcut switch added by P8 close-out B).
  *
  * A native radio group inside a fieldset, not a row of buttons carrying role="radio". The
  * platform control brings arrow-key roving focus, the group's accessible name from the legend,
@@ -32,6 +33,7 @@ const SKIN_LABEL: Readonly<Record<SkinId, CopyKey>> = {
 export function SkinSettings(): JSX.Element {
   const skin = useSkin();
   const sounds = useAppStore((state) => state.ui.sounds);
+  const hotkeys = useAppStore((state) => state.ui.hotkeys);
 
   /*
    * The action is reached through getState() at the moment of the change rather than selected
@@ -65,14 +67,40 @@ export function SkinSettings(): JSX.Element {
     if (next) void sfxPlayer.unlock();
   };
 
+  /*
+   * The WCAG 2.1 SC 2.1.4 mechanism, wired to the field ae13db6 added.
+   *
+   * No unlock and no second field: a keyboard preference decodes nothing and resumes nothing, so
+   * the gesture is not spent here. `setUi` is a shallow patch, so this cannot disturb the skin,
+   * the sounds flag, or the last view sitting beside it in `ui`.
+   *
+   * What it takes away is decided by src/ui/hotkeys.tsx, not here: combos carrying a modifier
+   * (`mod+k`) and keys that type no character (Escape) stay bound whatever this checkbox says,
+   * because a switch that stranded the user in one view would be an accessibility defect of its
+   * own. This component only records the preference.
+   */
+  const onHotkeysChange = (event: ChangeEvent<HTMLInputElement>): void => {
+    useAppStore.getState().setUi({ hotkeys: event.target.checked });
+  };
+
   return (
     <>
       <h2>{copy('hero.skin')}</h2>
       <p className="view-note">{copy('advice.skinChanges')}</p>
-      <fieldset className="skin-picker">
+      {/*
+        * THE CLASS NAMES ARE THE SHEET'S, NOT THIS COMPONENT'S. `skin-picker`, `skin-option` and
+        * `settings-toggle` named no rule in any stylesheet this app loads, so the picker
+        * rendered at the browser default: a checkbox with no 44 px target, in a fieldset with a
+        * default border src/ui/views/views.css styles nowhere. Rather than write a fourth
+        * stylesheet for three declarations, this row now uses the classes the rest of Settings
+        * uses -- a bare <fieldset> with a <legend>, and `view-inline` on every label -- which is
+        * exactly src/ui/components/ReminderSettingsPanel.tsx's markup and which views.css
+        * already gives `min-height: 2.75rem` (44 px at the 16 px root) and a token palette.
+        */}
+      <fieldset>
         <legend>{copy('label.settingsSkin')}</legend>
         {SKIN_IDS.map((id) => (
-          <label key={id} className="skin-option">
+          <label key={id} className="view-inline">
             <input
               type="radio"
               name="skin"
@@ -84,10 +112,15 @@ export function SkinSettings(): JSX.Element {
           </label>
         ))}
       </fieldset>
-      <label className="settings-toggle">
+      <label className="view-inline">
         <input type="checkbox" checked={sounds} onChange={onSoundsChange} />
         {copy('label.settingsSounds')}
       </label>
+      <label className="view-inline">
+        <input type="checkbox" checked={hotkeys} onChange={onHotkeysChange} />
+        {copy('label.settingsHotkeys')}
+      </label>
+      <p className="view-note">{copy('advice.hotkeysOff')}</p>
     </>
   );
 }

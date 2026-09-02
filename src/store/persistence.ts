@@ -191,10 +191,14 @@ export function clearStorage(): void {
  *
  * WHAT THE IMPORTING BROWSER SEES. It has no device, so the first sync returns "no-device"
  * and uploads nothing. If the imported document also carried `reminderSettings.enabled =
- * true`, the panel reads "Reminders are on. Schedule not sent yet." until the user switches
- * the toggle off and on, which mints a device for that browser. That is the same two-step
- * recovery the stale-device path already uses (src/app/ReminderSync.tsx), and it is stated in
- * "what this plan does not do" in docs/plans/2026-09-01-05-reminders.md.
+ * true`, the panel reads `status.remindersNeedReenable` ("Reminders need enabling again on
+ * this device.") and keeps the toggle on screen, because switching it off and on is the one
+ * thing that mints a device for that browser. That is the same two-step recovery the
+ * stale-device path already uses (src/app/ReminderSync.tsx), and it is stated in "what this
+ * plan does not do" in docs/plans/2026-09-01-05-reminders.md.
+ *
+ * It read "Reminders are on. Schedule not sent yet." until P8 close-out B, which was false on
+ * both halves: nothing was on, and nothing was queued to send.
  */
 export function exportJson(state: AppState): string {
   return `${JSON.stringify({ ...state, pushDevice: null }, null, 2)}\n`;

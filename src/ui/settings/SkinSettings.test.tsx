@@ -101,6 +101,47 @@ describe('SkinSettings', () => {
     expect(sfx.unlock).toHaveBeenCalledTimes(1);
   });
 
+  it('offers the character-key shortcuts an off switch that starts on', async () => {
+    /*
+     * WCAG 2.1 SC 2.1.4 asks for a MECHANISM to turn single-character shortcuts off, not for
+     * them to ship off, which is why the stored default is true (src/domain/schema.ts, a Zod
+     * default) and this is the control that criterion names. Until now `ui.hotkeys` was written
+     * by nothing in the app: the field existed, the registry read it, and no screen could reach
+     * it, so the criterion was met on paper and not in the product.
+     */
+    const user = userEvent.setup();
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs() }));
+    render(<SkinSettings />);
+
+    const toggle = screen.getByRole('checkbox', { name: copy('label.settingsHotkeys') });
+    expect(toggle).toBeChecked();
+    expect(useAppStore.getState().ui.hotkeys).toBe(true);
+
+    await user.click(toggle);
+    expect(useAppStore.getState().ui.hotkeys).toBe(false);
+    expect(toggle).not.toBeChecked();
+
+    await user.click(toggle);
+    expect(useAppStore.getState().ui.hotkeys).toBe(true);
+  });
+
+  it('writes the hotkeys field alone, and spends no audio gesture on it', async () => {
+    const user = userEvent.setup();
+    useAppStore.setState(
+      makeAppState({ ui: makeUiPrefs({ skin: 'board', sounds: true, lastView: 'train' }) }),
+    );
+    render(<SkinSettings />);
+
+    await user.click(screen.getByRole('checkbox', { name: copy('label.settingsHotkeys') }));
+    const ui = useAppStore.getState().ui;
+    expect(ui.hotkeys).toBe(false);
+    expect(ui.skin).toBe('board');
+    expect(ui.sounds).toBe(true);
+    expect(ui.lastView).toBe('train');
+    // Nothing to decode and no context to resume: a keyboard preference is not an audio one.
+    expect(sfx.unlock).not.toHaveBeenCalled();
+  });
+
   it('unlocks audio on a skin change, after the new skin is in the store', async () => {
     const user = userEvent.setup();
     useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));

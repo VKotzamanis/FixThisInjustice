@@ -61,14 +61,20 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
   { id: 'readiness', render: (profile) => <ReadinessRow profile={profile} /> },
   { id: 'reminders', render: () => <ReminderSettingsPanel /> },
   { id: 'motivation-clip', render: () => <MotivationSettings /> },
+  { id: 'skin', render: () => <SkinSettings /> },
   /*
-   * Last, and deliberately: the section holds the two destructive controls (P7 Task 6),
-   * and a wipe belongs at the bottom of the screen rather than above the fields a user
-   * came here to edit. It also mounts ExportView, which is written to be one row and had
-   * no mount point until now, so the backup is reachable from the same place.
+   * Last, and deliberately: the section holds the two destructive controls (P7 Task 6), and a
+   * wipe belongs at the bottom of the screen rather than above the fields a user came here to
+   * edit. It also mounts ExportView, which is written to be one row, so the backup is reachable
+   * from the same place and a user who arrives to destroy something passes the control that
+   * keeps a copy of it on the way in.
+   *
+   * IT IS LAST AGAIN, which it was not: the skin row sat below it, so the wipe stood between
+   * the profile fields and a look-and-sound preference and every user who wanted a checkbox
+   * walked past it. Moving the preference up is the whole fix; the destructive section did not
+   * move, and nothing may be appended after it.
    */
   { id: 'data', render: () => <DataSection /> },
-  { id: 'skin', render: () => <SkinSettings /> },
 ];
 
 /**

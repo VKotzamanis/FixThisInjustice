@@ -31,6 +31,7 @@ export type ReminderStatus =
   | 'needs-install'
   | 'denied'
   | 'off'
+  | 'needs-reenable'
   | 'active';
 
 /** The copy key each state renders, and the two states that carry a value instead. */
@@ -40,6 +41,7 @@ const STATUS_COPY: Readonly<Record<Exclude<ReminderStatus, 'active'>, CopyKey>> 
   'needs-install': 'status.remindersNeedInstall',
   denied: 'status.remindersDenied',
   off: 'status.remindersOff',
+  'needs-reenable': 'status.remindersNeedReenable',
 };
 
 /**
@@ -128,6 +130,20 @@ export function ReminderSettingsPanel(): JSX.Element | null {
   const settings: ReminderSettings = stored ?? DEFAULT_REMINDER_SETTINGS;
   const availability = pushAvailability();
 
+  /*
+   * 'needs-reenable' sits between 'active' and 'off', and it is the one state the document
+   * alone cannot express: `settings.enabled` is the user's PREFERENCE and `pushDevice` is this
+   * browser's SUBSCRIPTION, and the two are stored in different places for a reason. The
+   * preference travels in an export; the subscription does not, because `pushDevice.secret` is
+   * a bearer credential the export deliberately withholds (src/store/persistence.ts). So an
+   * imported document, and the stale-device recovery in the ON branch below, both land here:
+   * enabled true, device null, nothing subscribed and nothing queued to send.
+   *
+   * Reported ABOVE 'active' rather than folded into it. Reading `lastSyncAt === null` as
+   * "pending" conflated a browser that has subscribed and is waiting for the Worker to
+   * acknowledge a schedule with one that has not subscribed at all, and told the second that
+   * reminders were on.
+   */
   const status: ReminderStatus = !REMINDERS_CONFIGURED
     ? 'not-configured'
     : availability === 'unsupported'
@@ -136,13 +152,17 @@ export function ReminderSettingsPanel(): JSX.Element | null {
         ? 'needs-install'
         : permissionDenied()
           ? 'denied'
-          : settings.enabled
-            ? 'active'
-            : 'off';
+          : settings.enabled && pushDevice === null
+            ? 'needs-reenable'
+            : settings.enabled
+              ? 'active'
+              : 'off';
 
   // A toggle is offered only where switching it could do something. On 'unsupported' and
   // 'needs-install' the subscribe call cannot succeed, so a disabled switch would be an
   // invitation to a dead end; the status line and the install guide are the whole answer.
+  // 'needs-reenable' is NOT one of those: the toggle is the recovery, so it stays offered and
+  // enabled, checked, and the user turns it off and on to mint a device for this browser.
   const offersToggle = status !== 'unsupported' && status !== 'needs-install';
 
   const handleToggle = useCallback(

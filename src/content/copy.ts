@@ -260,6 +260,8 @@ export type CopyKey =
   | 'status.remindersOff'
   | 'status.remindersPending'
   | 'status.remindersActive'
+  // P8 close-out B: enabled on paper, with no subscription behind it.
+  | 'status.remindersNeedReenable'
   | 'hero.installFirst'
   | 'advice.installIos'
   | 'advice.iosVersion'
@@ -592,7 +594,10 @@ export type CopyKey =
   | 'advice.interventionBody'
   | 'button.pauseTicker'
   // --- the week stamp reads its own key, not the record's (P8 close-out B) ---
-  | 'status.weekMetStamp';
+  | 'status.weekMetStamp'
+  // --- the WCAG 2.1 SC 2.1.4 off switch finally has a control to name (P8 close-out B) ---
+  | 'label.settingsHotkeys'
+  | 'advice.hotkeysOff';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -856,6 +861,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.remindersDenied': 'Notifications are blocked. Allow them in your browser site settings.',
   'status.remindersOff': 'Reminders are off.',
   'status.remindersPending': 'Reminders are on. Schedule not sent yet.',
+  // Enabled in the document, with no push subscription behind it: what an IMPORT leaves (the
+  // export withholds pushDevice, which is a bearer credential -- src/store/persistence.ts) and
+  // what the stale-device recovery in ReminderSettingsPanel.tsx leaves on purpose. Saying
+  // "Reminders are on" there was false, not merely thin: no subscription exists, the Worker
+  // holds no record for this browser, and nothing is queued to send. The sentence names the
+  // device because the preference travelled with the document and the subscription did not,
+  // and it names the action, because nothing recovers on its own.
+  'status.remindersNeedReenable': 'Reminders need enabling again on this device.',
   // template; FORMAT.remindersActive fills {time} with a local wall clock in the profile's
   // zone (src/domain/dates.ts localTimeOf), never a UTC instant. P5 Task 8 replaced the
   // formatted example with the slot so a skin override reaches the rendered string.
@@ -1500,6 +1513,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // words because the claims are different. `status.prStamp` stays, unrenamed and unmoved, for
   // the record toast that P4 detects.
   'status.weekMetStamp': 'Target met',
+
+  // --- the shortcut off switch (P8 close-out B) ---
+  // `ui.hotkeys` has existed since ae13db6 and the registry has read it since; nothing in the
+  // app wrote it, so WCAG 2.1 SC 2.1.4 ("a mechanism is available to turn the shortcut off")
+  // was satisfied by a field no user could reach. This names the checkbox that reaches it.
+  // "Keyboard shortcuts" is the criterion's own vocabulary, not a coined phrase, and it names
+  // what the switch governs rather than what switching it does, because the control is a
+  // checkbox whose state says the rest.
+  'label.settingsHotkeys': 'Keyboard shortcuts',
+  // What the switch does NOT take away, said once, beside it. SC 2.1.4 scopes itself to a
+  // shortcut a single character key fires on its own, so src/ui/hotkeys.tsx leaves `mod+k` and
+  // Escape bound whatever this preference says. A user who turned the shortcuts off and then
+  // found the palette still opening would read that as the switch not working.
+  'advice.hotkeysOff': 'Off leaves Escape and the modifier shortcuts bound.',
 };
 
 /**

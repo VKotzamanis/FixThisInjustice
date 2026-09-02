@@ -289,6 +289,30 @@ describe('skin row in Settings', () => {
       screen.getByRole('group', { name: copy('label.settingsSkin') }),
     ).toBeInTheDocument();
   });
+
+  it('stands above the data section, and the wipe is still the last control', () => {
+    /*
+     * ORDER IS THE ARGUMENT. The data section holds the two destructive controls, and a screen
+     * that puts a wipe between the profile fields and a look-and-sound preference asks the user
+     * to walk past it to reach a checkbox. The data section stays last of the rows for exactly
+     * the reason its own comment gives; what moves is the skin row, from below it to above it.
+     *
+     * Asserted on DOM order rather than on the array, because the array is an implementation
+     * detail and the position on the screen is the fact.
+     */
+    render(<SettingsView />);
+    const headings = [...document.querySelectorAll('h2')].map((h) => h.textContent);
+    const skin = headings.indexOf(copy('hero.skin'));
+    const data = headings.indexOf(copy('hero.dataOnDevice'));
+    expect(skin).toBeGreaterThan(-1);
+    expect(data).toBeGreaterThan(-1);
+    expect(skin).toBeLessThan(data);
+
+    // Nothing the user can press comes after the wipe.
+    const buttons = [...document.querySelectorAll('button')];
+    const wipe = buttons.findIndex((b) => b.textContent === copy('button.wipeAll'));
+    expect(wipe).toBe(buttons.length - 1);
+  });
 });
 
 /*
