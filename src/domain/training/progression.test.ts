@@ -146,7 +146,8 @@ describe('suggestedProgression', () => {
     );
     expect(advice.kind).toBe('hold');
     expect(advice.loadKg).toBe(60); // [kg]
-    expect(advice.why).toContain('2 of 3');
+    expect(advice.why).toContain('2 sets reached 8 repetitions');
+    expect(advice.why).toContain('3 prescribed sets required');
   });
 
   it('does not advance on two top-range sets inside one unfinished session', () => {
@@ -218,6 +219,8 @@ describe('suggestedProgression', () => {
     expect(advice.kind).toBe('hold');
     expect(advice.loadKg).toBe(60); // [kg]
     expect(advice.nextPrescription).toEqual({ kind: 'amrap', minimum: 8 });
+    // Article agreement: the kind is interpolated, so an "A amrap" reading is unreachable.
+    expect(advice.why).toContain('The "amrap" prescription sets no top');
   });
 
   it('returns extend-reps with an unchanged prescription for a bodyweight AMRAP', () => {
@@ -445,5 +448,294 @@ describe('isCompletedSet', () => {
     expect(isCompletedSet(makeSet({ loadKg: 0, reps: 12 }))).toBe(true); // A60: 0 is not falsy here
     expect(isCompletedSet(makeSet({ loadKg: null }))).toBe(false);
     expect(isCompletedSet(makeSet({ reps: null }))).toBe(false);
+  });
+});
+
+/**
+ * Reads the shared copy frame "N set(s) reached ... M prescribed set(s) required"
+ * out of a `why` string, so a test can check that a branch's counts agree with the
+ * advice it returned rather than matching a literal sentence.
+ */
+function metCounts(why: string): { met: number; required: number } {
+  const m = /(\d+) sets? reached [\s\S]*?(\d+) prescribed sets? required/.exec(why);
+  return m ? { met: Number(m[1]), required: Number(m[2]) } : { met: -1, required: -1 };
+}
+
+describe('suggestedProgression counts PRESCRIBED sets, not logged sets', () => {
+  // Master plan section 6.5: "hold load until every prescribed set of the LAST
+  // session reached prescription.hi". The predicate is metCount >= setsLo, never
+  // metCount === lastSession.length. Extra non-bonus work cannot revoke a
+  // progression the prescribed sets already earned.
+  it('adds load when the three prescribed sets met the top and a back-off set did not', () => {
+    const history = [
+      ...session('2026-03-02', 3, 60, 8), // the prescribed sets, at the working load
+      // A back-off set: lighter than the working load, more repetitions, NOT a bonus
+      // set, so the old `metCount === lastSession.length` test wrongly held the load.
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 4, loadKg: 50, reps: 12 }),
+    ];
+    const advice = suggestedProgression(
+      history,
+      makePlannedExercise({ setsLo: 3, setsHi: 4 }),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('add-load');
+    expect(advice.loadKg).toBeCloseTo(62.5, 10); // [kg] 60 + one 2.5 kg step
+    expect(metCounts(advice.why)).toEqual({ met: 3, required: 3 });
+  });
+
+  it('takes the required count from setsLo, so setsHi never gates a progression', () => {
+    // setsLo is what the session prescribes; setsHi is the top of an OPTIONAL volume
+    // range. Gating on setsHi would stall a lifter who performs the prescription.
+    const advice = suggestedProgression(
+      session('2026-03-02', 3, 60, 8),
+      makePlannedExercise({ setsLo: 3, setsHi: 5 }),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('add-load');
+    expect(metCounts(advice.why)).toEqual({ met: 3, required: 3 });
+  });
+
+  it('states counts consistently with the advice: a hold never claims the prescription was met', () => {
+    const held = suggestedProgression(
+      [
+        ...session('2026-03-02', 2, 60, 8),
+        makeSet({ assignmentDate: '2026-03-02', setNumber: 3, loadKg: 60, reps: 7 }),
+      ],
+      makePlannedExercise(),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(held.kind).toBe('hold');
+    const heldCounts = metCounts(held.why);
+    expect(heldCounts.met).toBeGreaterThanOrEqual(0); // the frame was found at all
+    expect(heldCounts.met).toBeLessThan(heldCounts.required);
+    expect(held.why).not.toMatch(/\bAll\b/); // "All N prescribed sets" is an add-load claim
+
+    const added = suggestedProgression(
+      session('2026-03-02', 3, 60, 8),
+      makePlannedExercise(),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(added.kind).toBe('add-load');
+    const addedCounts = metCounts(added.why);
+    expect(addedCounts.met).toBeGreaterThanOrEqual(addedCounts.required);
+    expect(addedCounts.required).toBe(3);
+  });
+
+  it('inflects the copy frame, so one prescribed set never reads "1 prescribed sets"', () => {
+    const advice = suggestedProgression(
+      session('2026-03-02', 1, 60, 8),
+      makePlannedExercise({ setsLo: 1, setsHi: 1 }),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('add-load');
+    expect(advice.why).toContain('1 set reached 8 repetitions');
+    expect(advice.why).toContain('1 prescribed set required');
+    expect(advice.why).not.toMatch(/1 prescribed sets/);
+    expect(advice.why).not.toMatch(/\b1 sets\b/);
+  });
+});
+
+describe('suggestedProgression working-load rule', () => {
+  // L is the HEAVIEST non-bonus load of the last session, and only sets within
+  // LOAD_EQ_TOL_KG of L count towards the prescribed-set tally.
+  it('reads the working load as the heaviest non-bonus load of a mixed-load session', () => {
+    const history = [
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 1, loadKg: 62.5, reps: 6 }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 2, loadKg: 60, reps: 8 }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 3, loadKg: 60, reps: 8 }),
+    ];
+    const advice = suggestedProgression(
+      history,
+      makePlannedExercise(),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    // L = 62.5 kg; the two 60 kg sets are outside the tolerance, so nothing counts.
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(62.5); // [kg]
+    expect(metCounts(advice.why)).toEqual({ met: 0, required: 3 });
+    expect(advice.why).toContain('62.5 kg');
+  });
+
+  it('counts a load within LOAD_EQ_TOL_KG of the working load as the same load', () => {
+    // A kg/lb round trip leaves float residue; 0.005 kg is well inside the 0.01 kg
+    // tolerance and must not silently break the tally.
+    const history = [
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 1, loadKg: 60, reps: 8 }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 2, loadKg: 60 - 0.005, reps: 8 }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 3, loadKg: 60, reps: 8 }),
+    ];
+    const advice = suggestedProgression(
+      history,
+      makePlannedExercise(),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('add-load');
+    expect(metCounts(advice.why)).toEqual({ met: 3, required: 3 });
+  });
+});
+
+describe('suggestedProgression on prescriptions with no rep ceiling', () => {
+  /** A timed set: a load and a duration, no repetition count. */
+  function timedSet(setNumber: number, loadKg: number, durationS: number): LoggedSet {
+    return makeSet({
+      assignmentDate: '2026-03-02',
+      setNumber,
+      loadKg, // [kg]
+      reps: null, // [repetitions] not recorded for timed work
+      durationS, // [s]
+    });
+  }
+
+  it('holds the load actually used for a "time" prescription logged as a duration', () => {
+    const advice = suggestedProgression(
+      [timedSet(1, 20, 45), timedSet(2, 20, 45), timedSet(3, 20, 40)],
+      makePlannedExercise({ prescription: { kind: 'time', targetS: 45 } }),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(20); // [kg] carried from the last performed set
+    expect(advice.why).toContain('20 kg');
+    expect(advice.nextPrescription).toEqual({ kind: 'time', targetS: 45 });
+  });
+
+  it('holds the load actually used for a "duration" prescription', () => {
+    const advice = suggestedProgression(
+      [timedSet(1, 32.5, 60), timedSet(2, 32.5, 60)],
+      makePlannedExercise({ prescription: { kind: 'duration', targetS: 60 } }),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(32.5); // [kg]
+    expect(advice.nextPrescription).toEqual({ kind: 'duration', targetS: 60 });
+  });
+
+  it('holds with a null load for a timed prescription with nothing logged', () => {
+    const advice = suggestedProgression(
+      [],
+      makePlannedExercise({ prescription: { kind: 'time', targetS: 45 } }),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBeNull();
+  });
+
+  it('holds the load for a "none" prescription: there is no target to progress against', () => {
+    const advice = suggestedProgression(
+      session('2026-03-02', 3, 45, 15),
+      makePlannedExercise({ prescription: { kind: 'none' } }),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(45); // [kg]
+    expect(advice.nextPrescription).toEqual({ kind: 'none' });
+  });
+
+  it('ignores a stray duration-only set when the prescription does have a rep ceiling', () => {
+    // A duration-only set records no repetitions, so it cannot have reached the top
+    // of the range. It counts as performed (it sets the working load) but never met.
+    const history = [
+      ...session('2026-03-02', 3, 60, 8),
+      timedSet(4, 70, 30), // heavier, so it becomes the working load
+    ];
+    const advice = suggestedProgression(
+      history,
+      makePlannedExercise(),
+      makeExercise(),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(70); // [kg] heaviest non-bonus load of the session
+    expect(metCounts(advice.why)).toEqual({ met: 0, required: 3 });
+  });
+});
+
+describe('advice copy contract R5: no dash connectors', () => {
+  // Copy contract R5: no em-dash or en-dash as a connector. An en-dash INSIDE a
+  // numeric range ("6–8 repetitions") is explicitly retained, so it is stripped
+  // before the assertion and every remaining dash is a connector.
+  function connectorDashes(text: string): string {
+    return text.replace(/(?<=\d)–(?=\d)/g, '-');
+  }
+
+  const ex = makeExercise();
+  const bodyweight = makeExercise({ id: 'pull-up', isBodyweight: true, modality: 'bodyweight' });
+  const timed = [
+    makeSet({ assignmentDate: '2026-03-02', setNumber: 1, loadKg: 20, reps: null, durationS: 45 }),
+  ];
+  const r5Cases: [string, LoggedSet[], PlannedExercise, Exercise, PlanBlock][] = [
+    ['deload', session('2026-03-02', 3, 60, 8), makePlannedExercise(), ex, makeBlock({ isDeload: true })],
+    [
+      'bodyweight',
+      session('2026-03-02', 3, 0, 8, { exerciseId: 'pull-up' }),
+      makePlannedExercise({ exerciseId: 'pull-up' }),
+      bodyweight,
+      makeBlock(),
+    ],
+    [
+      'amrap',
+      session('2026-03-02', 3, 60, 14),
+      makePlannedExercise({ prescription: { kind: 'amrap', minimum: null } }),
+      ex,
+      makeBlock(),
+    ],
+    ['time', timed, makePlannedExercise({ prescription: { kind: 'time', targetS: 45 } }), ex, makeBlock()],
+    [
+      'duration',
+      timed,
+      makePlannedExercise({ prescription: { kind: 'duration', targetS: 45 } }),
+      ex,
+      makeBlock(),
+    ],
+    ['none', session('2026-03-02', 3, 45, 15), makePlannedExercise({ prescription: { kind: 'none' } }), ex, makeBlock()],
+    ['no history', [], makePlannedExercise(), ex, makeBlock()],
+    ['hold', session('2026-03-02', 3, 60, 7), makePlannedExercise(), ex, makeBlock()],
+    ['step guard', session('2026-03-02', 3, 20, 8), makePlannedExercise(), ex, makeBlock()],
+    ['add-load', session('2026-03-02', 3, 60, 8), makePlannedExercise(), ex, makeBlock()],
+    [
+      'add-load with a back-off set',
+      [
+        ...session('2026-03-02', 3, 60, 8),
+        makeSet({ assignmentDate: '2026-03-02', setNumber: 4, loadKg: 50, reps: 12 }),
+      ],
+      makePlannedExercise(),
+      ex,
+      makeBlock(),
+    ],
+  ];
+
+  it.each(r5Cases)('%s: reason and why carry no dash connector', (_name, history, planned, exercise, block) => {
+    const advice = suggestedProgression(history, planned, exercise, makeProfile(), block);
+    expect(connectorDashes(advice.reason)).not.toMatch(/[—–]/);
+    expect(connectorDashes(advice.why)).not.toMatch(/[—–]/);
+  });
+
+  it.each(r5Cases)('%s: reason stays within the 12-word limit', (_name, history, planned, exercise, block) => {
+    const advice = suggestedProgression(history, planned, exercise, makeProfile(), block);
+    expect(advice.reason.trim().split(/\s+/).length).toBeLessThanOrEqual(MAX_REASON_WORDS);
+    expect(advice.reason).not.toContain('!');
+    expect(advice.why.length).toBeGreaterThan(0);
   });
 });

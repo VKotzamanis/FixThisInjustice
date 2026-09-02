@@ -12,6 +12,11 @@
 //    "null-guarded by caller"; defining the guard once here stops each caller reinventing it.
 //    `e1RM` itself is unchanged and stays unguarded.
 //  - `MAX_REASON_WORDS` is exported so the copy-contract test asserts against the same number.
+//  - The plan's section 6.5 literal speaks only of repetitions. A "time" or "duration"
+//    prescription is logged with `durationS` and `reps === null`, which `isCompletedSet`
+//    rejects, so the hold branch reported no load at all for timed work. `isPerformedSet`
+//    (internal) accepts either evidence of work; `isCompletedSet` and `CompletedSet` are
+//    unchanged because coach.ts needs the repetition count for its personal-best rule.
 import { compareLocalDate } from '../dates';
 import type {
   Exercise,
@@ -90,6 +95,23 @@ export function isCompletedSet(s: LoggedSet): s is CompletedSet {
 }
 
 /**
+ * A set that carries a load and evidence that work was done. The evidence is a
+ * repetition count for a rep or AMRAP prescription and a duration for a `time` or
+ * `duration` one, so a plank or a carry is performed work even with `reps === null`.
+ * `loadKg === 0` is a real bodyweight load and never "absent" (code review A60), so
+ * only `null` disqualifies a set here.
+ *
+ * This is deliberately weaker than `isCompletedSet`, which stays as it is: coach.ts
+ * compares repetitions at a load for its personal-best rule and cannot use a set
+ * with no repetition count.
+ */
+type PerformedSet = LoggedSet & { loadKg: Kg };
+
+function isPerformedSet(s: LoggedSet): s is PerformedSet {
+  return s.loadKg !== null && (s.reps !== null || s.durationS !== null);
+}
+
+/**
  * Programme order, never wall-clock order. Code review A23: the legacy sorted
  * by `loggedAt`, so a set logged while scrubbing a future week outranked the
  * real history. `loggedAt` stays in storage for audit and orders nothing.
@@ -157,6 +179,30 @@ function rangeText(p: Prescription): string {
   return p.kind === 'reps' ? `${p.lo}–${p.hi} repetitions` : 'no bounded rep range';
 }
 
+/**
+ * The single copy frame for the set tally, used by BOTH count-bearing branches so a
+ * hold and an add-load can never describe the same session differently. It reports
+ * the met count and the required count as two separate numbers and never asserts
+ * that "all" sets were met: the met count may legitimately exceed the required count
+ * when the lifter performed the optional sets between setsLo and setsHi, and it is
+ * below it in every hold. Both nouns are inflected, which is what retires the
+ * "All 1 prescribed sets" copy.
+ */
+function metCountText(
+  metCount: number, // [sets] at the working load with reps >= prescription.hi
+  prescribedSets: number, // [sets] required = max(1, planned.setsLo)
+  hiReps: number, // [repetitions] top of the prescribed range
+  loadText: string, // working load, already formatted in the display unit
+  date: string, // assignment date of the last session
+): string {
+  const met = metCount === 1 ? 'set' : 'sets';
+  const required = prescribedSets === 1 ? 'set' : 'sets';
+  return (
+    `${metCount} ${met} reached ${hiReps} repetitions at ${loadText} on ${date}; ` +
+    `${prescribedSets} prescribed ${required} required`
+  );
+}
+
 export function suggestedProgression(
   history: readonly LoggedSet[],
   planned: PlannedExercise,
@@ -168,11 +214,13 @@ export function suggestedProgression(
   const units = profile.units;
   const base = { prescription, nextPrescription: prescription };
 
-  // Prescribed, completed sets for this exercise only. Bonus sets are extra work
-  // by definition and never decide whether the prescription was met.
+  // Performed, non-bonus sets for this exercise only. Bonus sets are extra work by
+  // definition and never decide whether the prescription was met, and never set the
+  // working load. `isPerformedSet` rather than `isCompletedSet`, so a timed set
+  // (durationS recorded, reps === null) is still visible to the rules below.
   const ordered = sortSetHistory(
     history.filter((s) => s.exerciseId === ex.id && !s.isBonus),
-  ).filter(isCompletedSet);
+  ).filter(isPerformedSet);
   const last = ordered.at(-1);
 
   // 1. A deload block is a programme-level instruction and outranks everything
@@ -205,15 +253,23 @@ export function suggestedProgression(
     };
   }
 
-  // 3. Only a bounded rep prescription can trigger a load increment: timed and
-  //    AMRAP work has no top of the range to reach.
+  // 3. Only a bounded rep prescription can trigger a load increment: `amrap`,
+  //    `time`, `duration` and `none` set no top of a range to reach.
+  //    Timed-prescription rule: a `time` or `duration` set is logged with `durationS`
+  //    and `reps === null`. It is performed work, so it reaches `last` here and the
+  //    hold carries the load actually used, instead of reporting no load at all.
   if (prescription.kind !== 'reps') {
+    const heldText = last ? ` at ${formatLoad(last.loadKg, units)}` : '';
+    const timedNote =
+      prescription.kind === 'time' || prescription.kind === 'duration'
+        ? ' A timed set records a duration and no repetition count; it still counts as performed, so the load above is the one last used.'
+        : '';
     return {
       ...base,
       kind: 'hold',
-      loadKg: last ? last.loadKg : null, // [kg]
+      loadKg: last ? last.loadKg : null, // [kg] 0 is a valid bodyweight load, not "absent"
       reason: 'No fixed rep range: hold the load.',
-      why: `Double progression raises the load only once every prescribed set reaches the top of the range. A "${prescription.kind}" prescription sets no top, so the load is unchanged.`,
+      why: `Double progression raises the load only once every prescribed set reaches the top of the range. The "${prescription.kind}" prescription sets no top, so the load is unchanged${heldText}.${timedNote}`,
     };
   }
 
@@ -227,15 +283,42 @@ export function suggestedProgression(
     };
   }
 
-  // The working load of the last session, and whether every prescribed set of
-  // that session reached the top of the range at that load.
+  // Working-load rule. L is the HEAVIEST non-bonus load of the last session, and a
+  // set counts as being "at the working load" only when its load is within
+  // LOAD_EQ_TOL_KG of L. Warm-up and back-off sets sit below L by construction, so
+  // they neither move L nor count towards it. A set logged ABOVE the rest of the
+  // session becomes L instead, which leaves the lighter sets outside the tolerance
+  // and holds the load: the engine never advances from a load that was not repeated.
   const lastSession = ordered.filter((s) => s.assignmentDate === last.assignmentDate);
   const workingLoadKg = lastSession.reduce((m, s) => Math.max(m, s.loadKg), 0); // [kg]
+
+  // Prescribed-set rule (master plan section 6.5: "hold load until every prescribed
+  // set of the LAST session reached prescription.hi"). The required count is
+  // planned.setsLo, floored at 1. setsLo is what the session prescribes; setsHi is
+  // the top of an OPTIONAL volume range, so it does not enter this rule at all:
+  // gating on setsHi would stall a lifter who performs exactly the prescription.
+  //
+  // The test is `metCount >= prescribedSets`, never `metCount === lastSession.length`.
+  // The length form counted LOGGED sets, so a single extra non-bonus back-off set
+  // (3 x 60 kg x 8 plus 50 kg x 12, setsLo 3) revoked a progression the three
+  // prescribed sets had already earned. A set with no repetition count recorded
+  // (timed work logged against a rep prescription) can never have reached the top,
+  // so it is performed but not met.
   const prescribedSets = Math.max(1, planned.setsLo); // [sets]
   const metCount = lastSession.filter(
-    (s) => s.reps >= prescription.hi && Math.abs(s.loadKg - workingLoadKg) <= LOAD_EQ_TOL_KG,
+    (s) =>
+      s.reps !== null &&
+      s.reps >= prescription.hi &&
+      Math.abs(s.loadKg - workingLoadKg) <= LOAD_EQ_TOL_KG,
   ).length; // [sets]
-  const metTop = lastSession.length >= prescribedSets && metCount === lastSession.length;
+  const metTop = metCount >= prescribedSets;
+  const countText = metCountText(
+    metCount,
+    prescribedSets,
+    prescription.hi,
+    formatLoad(workingLoadKg, units),
+    last.assignmentDate,
+  );
 
   if (!metTop) {
     return {
@@ -243,7 +326,7 @@ export function suggestedProgression(
       kind: 'hold',
       loadKg: workingLoadKg, // [kg]
       reason: `Hold ${formatLoad(workingLoadKg, units)} until every set reaches ${prescription.hi} repetitions.`,
-      why: `${metCount} of ${prescribedSets} prescribed sets reached ${prescription.hi} repetitions at ${formatLoad(workingLoadKg, units)} on ${last.assignmentDate}. The load rises only when every prescribed set does.`,
+      why: `${countText}. The load rises only when every prescribed set reaches the top of the range at the working load.`,
     };
   }
 
@@ -288,6 +371,6 @@ export function suggestedProgression(
     kind: 'add-load',
     loadKg: nextKg, // [kg]
     reason: `Add ${formatLoad(deltaKg, units)} and reset to ${prescription.lo} repetitions.`,
-    why: `All ${prescribedSets} prescribed sets reached ${prescription.hi} repetitions at ${formatLoad(workingLoadKg, units)}. ${(fraction * 100).toFixed(1)} % of that is ${formatLoad(deltaTargetKg, units)}, which rounds down to the ${formatLoad(stepKg, units)} equipment step and is floored at one step: ${formatLoad(deltaKg, units)}, giving ${formatLoad(nextKg, units)}. The 2-10 % band is ACSM 2009; the ${(fraction * 100).toFixed(1)} % choice inside it is a heuristic, not a finding.`,
+    why: `${countText}. ${(fraction * 100).toFixed(1)} % of the working load is ${formatLoad(deltaTargetKg, units)}, which rounds down to the ${formatLoad(stepKg, units)} equipment step and is floored at one step: ${formatLoad(deltaKg, units)}, giving ${formatLoad(nextKg, units)}. The 2-10 % band is ACSM 2009; the ${(fraction * 100).toFixed(1)} % choice inside it is a heuristic, not a finding.`,
   };
 }
