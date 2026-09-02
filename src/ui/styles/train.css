@@ -1,0 +1,343 @@
+/*
+ * Train-view surfaces: the two P4 modals, and the session UI P4 Task 10 mounts.
+ *
+ * Every colour is a token from src/ui/styles/tokens.css; nothing here introduces a palette
+ * entry. The plan's draft of this file named --bg-1, --fg-1, --fg-2 and --fg-3, which P1 never
+ * defined; the shipped tokens are --bg-2/--bg-3/--bg-4, --text/--text-2/--text-3 and --line,
+ * and those are what is used below. --danger already exists, so no token was added.
+ *
+ * The eyebrows and section headings are upper-cased HERE, not in copy.ts: the strings stay
+ * sentence case so a skin can rewrite them without shouting, and the capitals stay a
+ * presentation choice.
+ */
+
+.vmod-bg,
+.fcm-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.vmod,
+.fcm {
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  width: min(48rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.vmod:focus-visible,
+.fcm:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.vmod-head,
+.fcm-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.vmod-eyebrow,
+.fcm-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.vmod-name,
+.fcm-name {
+  font-size: 1rem;
+  font-weight: 500;
+  margin: 0.15rem 0 0;
+}
+
+.vmod-close,
+.fcm-close {
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.25rem;
+  cursor: pointer;
+}
+
+.vmod-instance {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.vmod-inst-host {
+  color: var(--text-2);
+}
+
+.vmod-inst-meta {
+  color: var(--text-3);
+  margin-right: auto;
+}
+
+.vmod-instance button {
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  font: inherit;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+/* 16:9, so the frame does not reflow when the instance answers. */
+.vmod-frame {
+  position: relative;
+  padding-top: 56.25%;
+}
+
+.vmod-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.vmod-search {
+  padding: 1.5rem 1rem;
+}
+
+.vmod-search-eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0;
+}
+
+.vmod-search-q {
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+}
+
+.vmod-search-note {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  margin: 0;
+}
+
+.vmod-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.vmod-link {
+  color: var(--accent);
+  border: 1px solid var(--line-2);
+  padding: 0.5rem 0.75rem;
+  text-align: center;
+  text-decoration: none;
+}
+
+.fcm-body {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fcm-warmup,
+.fcm-none {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  border-left: 2px solid var(--line-2);
+  padding-left: 0.75rem;
+  margin: 0;
+}
+
+.fcm-caution {
+  font-size: 0.8rem;
+  color: var(--danger);
+  border-left: 2px solid var(--danger);
+  padding-left: 0.75rem;
+  margin: 0;
+}
+
+.fcm-h {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 0 0 0.35rem;
+}
+
+.fcm-danger {
+  color: var(--danger);
+}
+
+.fcm-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fcm-tip {
+  font-size: 0.85rem;
+  color: var(--text-2);
+  margin: 0;
+}
+
+/* --- Train view (mounted by P4 Task 10; the classes the plan's markup names) --- */
+
+.train-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.train-warmup {
+  font-size: 0.8rem;
+  color: var(--text-2);
+  border-left: 2px solid var(--line-2);
+  padding-left: 0.75rem;
+  margin: 0.75rem 0;
+}
+
+.ex-card {
+  border: 1px solid var(--line-2);
+  margin-bottom: 0.5rem;
+}
+
+.ex-head {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 0.75rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ex-body {
+  padding: 0 0.75rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ex-prev {
+  font-size: 0.8rem;
+  color: var(--text-3);
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.set-row {
+  display: grid;
+  grid-template-columns: 4rem 1fr 1fr auto;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.set-row.done {
+  opacity: 0.6;
+}
+
+.unit-input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.unit-input label {
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  color: var(--text-3);
+}
+
+.unit-input input {
+  width: 100%;
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  color: var(--text);
+  padding: 0.4rem;
+  font: inherit;
+}
+
+.rest-panel {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.rest-ring {
+  position: relative;
+  width: 64px;
+  height: 64px;
+}
+
+.rest-time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.hydration-banner {
+  border: 1px solid var(--accent);
+  padding: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+  font-size: 0.85rem;
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.session-toast {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 4.5rem;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.session-toast > div {
+  background: var(--bg-3);
+  border: 1px solid var(--line-2);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.session-toast .telemetry {
+  color: var(--accent);
+}

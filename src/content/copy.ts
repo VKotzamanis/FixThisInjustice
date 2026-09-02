@@ -366,7 +366,19 @@ export type CopyKey =
   | 'label.week'
   | 'label.weekOfCount'
   | 'status.nextSession'
-  | 'why.deloadSets';
+  | 'why.deloadSets'
+  // --- video and form-cue modals (P4 Task 8; appended by that task) ---
+  | 'label.formReference'
+  | 'label.videoSearch'
+  | 'status.videoInstance'
+  | 'button.closeModal'
+  | 'label.formCues'
+  | 'label.cueSetup'
+  | 'label.cueExecution'
+  | 'label.cueMistakes'
+  | 'label.cueTip'
+  | 'label.caution'
+  | 'advice.noFormCues';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -780,6 +792,29 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // user acts on the COUNT and not on the multiplication that produced it.
   'why.deloadSets':
     'Each set count is the planned count times this block\'s set modifier of 0.5, rounded to the nearest whole set, minimum 1. The load is unchanged.', // formatted
+
+  // --- video and form-cue modals (P4 Task 8; appended by that task) ---
+  // The accessible name of the video dialog and the eyebrow above the exercise name. Set in
+  // sentence case; the eyebrow's capitals are a text-transform in train.css, so a skin
+  // rewriting this string does not have to shout.
+  'label.formReference': 'Form reference',
+  // The heading over the search panel shown when no clip id is recorded for the exercise.
+  'label.videoSearch': 'Search',
+  'status.videoInstance': 'instance 1 of 6', // formatted; the 1-based position in the allowlist
+  // The accessible name of the close control on both dialogs. The glyph itself is the token
+  // set's mark, which copy contract R6 admits; this is what a screen reader says instead.
+  'button.closeModal': 'Close',
+  'label.formCues': 'Form cues and common mistakes',
+  'label.cueSetup': 'Setup',
+  'label.cueExecution': 'Execution',
+  'label.cueMistakes': 'Common mistakes',
+  'label.cueTip': 'Tip',
+  // Prefixes the one cue that carries a safety note (the braced breath hold of a heavy squat).
+  // The word is load-bearing: colour alone must not be what marks the line as a warning.
+  'label.caution': 'Caution',
+  // Security constraint 30: a control the user pressed never renders an empty dialog. The nine
+  // equipment-tier exercises carry `formCueId: null` and reach this line.
+  'advice.noFormCues': 'No form cues recorded for this exercise.',
 };
 
 /**
@@ -986,4 +1021,14 @@ export const FORMAT = {
    */
   deloadSetsBasis: (setModifier: number): string =>
     `Each set count is the planned count times this block's set modifier of ${setModifier}, rounded to the nearest whole set, minimum 1. The load is unchanged.`,
+
+  // --- video and form-cue modals (P4 Task 8) ---
+
+  /**
+   * "instance 2 of 6": which Invidious front-end the modal is framing. `shown` is 1-based;
+   * the modal holds a 0-based index into `src/config/videoInstances.ts`, so the view adds one.
+   * `total` is that list's length, which is also what generates the CSP frame-src allowlist,
+   * so the count the user reads and the count the browser enforces cannot differ.
+   */
+  videoInstanceOf: (shown: number, total: number): string => `instance ${shown} of ${total}`,
 } as const;
