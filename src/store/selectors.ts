@@ -5,12 +5,15 @@ import type {
   EpochMs,
   IntakeEntry,
   LocalDate,
+  LoggedSet,
   PlanTemplate,
   Profile,
 } from '../domain/types';
 import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
 import { computeTargets, isInDomain } from '../domain/nutrition';
 import { compareLocalDate, todayLocal } from '../domain/dates';
+import { sortSetHistory } from '../domain/training/progression';
+import type { RestTimer } from '../domain/training/restTimer';
 import type { SaveError } from './index';
 import { useAppStore } from './index';
 import { readRaw } from './persistence';
@@ -228,4 +231,60 @@ export function useIntakeForDate(date: LocalDate): IntakeEntry | null {
     // logIntake keeps at most one entry per date, so the first match is the only one.
     return (s.intake[id] ?? []).find((e) => e.date === date) ?? null;
   });
+}
+
+/**
+ * Every logged set for one exercise and the active profile, in programme order
+ * (assignmentDate, then setNumber), which is the order suggestedProgression reads.
+ *
+ * The raw `sets` record is selected first because it is a stable reference; the array is
+ * derived inside useMemo rather than inside the Zustand selector, where a fresh array on every
+ * render would be a changed snapshot to useSyncExternalStore and would loop.
+ *
+ * Ordering is sortSetHistory's, not wall-clock: code review A23 records the legacy defect
+ * where a set logged while scrubbing a future week outranked the real history.
+ */
+export function useExerciseHistory(exerciseId: string): LoggedSet[] {
+  const sets = useAppStore((s) => s.sets);
+  const profileId = useAppStore((s) => s.activeProfileId);
+  return useMemo(() => {
+    if (profileId === null) return [];
+    return sortSetHistory(
+      Object.values(sets).filter((x) => x.profileId === profileId && x.exerciseId === exerciseId),
+    );
+  }, [sets, profileId, exerciseId]);
+}
+
+/**
+ * Every set logged against the training day for the active profile, in programme order.
+ *
+ * The day is the session slice's `activeAssignmentDate` when a session is open, and the
+ * profile's civil today otherwise. It is resolved during render rather than inside the memo so
+ * that it is a dependency: a "YYYY-MM-DD" string compares by value, so an unchanged day costs
+ * no re-filtering, and the day rolling over past midnight is what makes the memo recompute.
+ * Reading the clock inside the memo instead would serve yesterday's sets until some unrelated
+ * store update happened to invalidate it.
+ */
+export function useTodaysSets(): LoggedSet[] {
+  const sets = useAppStore((s) => s.sets);
+  const profileId = useAppStore((s) => s.activeProfileId);
+  const timezone = useAppStore((s) =>
+    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId]?.timezone ?? null),
+  );
+  const activeDate = useAppStore((s) => s.session.activeAssignmentDate);
+  // todayLocal throws RangeError on an unusable IANA zone, which the schema refuses at load,
+  // so a throw here is a corrupt document reaching the error boundary rather than a state the
+  // view should render around (the same rule useNutritionTargets follows).
+  const date = activeDate ?? (timezone === null ? null : todayLocal(timezone));
+  return useMemo(() => {
+    if (profileId === null || date === null) return [];
+    return sortSetHistory(
+      Object.values(sets).filter((x) => x.profileId === profileId && x.assignmentDate === date),
+    );
+  }, [sets, profileId, date]);
+}
+
+/** The running rest interval, or null. Session slice: never persisted, mirrored per tab. */
+export function useRestTimer(): RestTimer | null {
+  return useAppStore((s) => s.session.restTimer);
 }

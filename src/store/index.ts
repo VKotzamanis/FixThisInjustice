@@ -2,8 +2,13 @@ import { create } from 'zustand';
 import type {
   AppState,
   Availability,
+  BodyMassEntry,
+  EpochMs,
+  Exercise,
   IntakeEntry,
   LocalDate,
+  LoggedSet,
+  ML,
   PlanTemplate,
   Profile,
   UiPrefs,
@@ -12,11 +17,28 @@ import { defaultState } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { newId } from '../domain/ids';
 import { dailyBeverageTargetML } from '../domain/nutrition';
+import type { RestTimer } from '../domain/training/restTimer';
 import {
   createScheduleActions,
   requireProfile,
   type ScheduleActions,
 } from './scheduleActions';
+import {
+  UNDO_WINDOW_MS,
+  applyAddCustomExercise,
+  applyAddHydration,
+  applyDeleteSet,
+  applyLogBodyMass,
+  applyLogSet,
+  applyRestoreSet,
+} from './training';
+import {
+  EMPTY_SESSION,
+  clearSessionMirror,
+  initialSession,
+  saveSessionMirror,
+  type SessionState,
+} from './sessionMirror';
 import type { SaveFailure, SaveResult } from './persistence';
 import {
   clearStorage,
@@ -118,6 +140,43 @@ export interface AppActions {
   recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void;
   /** Points the app at another stored profile. Throws on an unknown id. */
   setActiveProfile(id: string): void;
+
+  // P4
+  /**
+   * Logs one set and returns the id it was stored under, so the caller can offer an undo
+   * without re-reading the store. Throws on a set the schema refuses (master plan section 5:
+   * loadKg 0 is valid, negative and non-finite are not; RPE is on the 0.5 grid) or on a
+   * profile that does not exist.
+   *
+   * @param now [ms] epoch UTC, the instant the set was logged.
+   */
+  logSet(set: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): string;
+  /**
+   * Removes one set and holds it in the non-persisted undo buffer for UNDO_WINDOW_MS. An
+   * unknown id is a no-op and mints no buffer.
+   */
+  deleteSet(id: string): void;
+  /**
+   * Restores the buffered set if the window has not closed, and clears the buffer either way.
+   * A no-op when nothing is buffered.
+   */
+  undoDelete(): void;
+  /** @param now [ms] epoch UTC, the instant the weigh-in was entered. */
+  logBodyMass(e: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void;
+  /**
+   * Adds one drink to the profile's total for `date` (upsert by civil day) and records the
+   * instant.
+   *
+   * @param volumeML [mL] non-negative integer.
+   * @param now [ms] epoch UTC, the instant of the drink.
+   */
+  addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void;
+  /** Starts, replaces or clears the rest interval. Session slice only; never persisted. */
+  setRestTimer(t: RestTimer | null): void;
+  /** Adds a user-defined exercise to one profile's library under a freshly generated id (A26). */
+  addCustomExercise(profileId: string, ex: Exercise): void;
+  /** Marks an exercise as added to this session beyond the plan. Idempotent. */
+  addBonusExercise(exerciseId: string): void;
 }
 
 /*
@@ -139,7 +198,8 @@ export interface AppActions {
  * than as another set of signatures copied into AppActions, so the seven schedule actions are
  * declared once, next to the implementation that satisfies them.
  */
-export type AppStore = AppState & AppActions & { status: StoreStatus } & ScheduleActions;
+export type AppStore = AppState &
+  AppActions & { status: StoreStatus; session: SessionState } & ScheduleActions;
 
 /**
  * The persisted fields of the store, and only those: no actions, no `status`,
@@ -219,6 +279,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     lastActionError: null,
   },
 
+  /*
+   * The non-persisted session slice, restored from its sessionStorage mirror at store
+   * creation. This is what makes a reload mid-session keep the rest timer running and the
+   * training day open: the slice is rebuilt before React mounts, so nothing renders a session
+   * that has silently forgotten what the user was doing thirty seconds ago. An absent,
+   * unreadable or refused mirror yields EMPTY_SESSION (src/store/sessionMirror.ts).
+   */
+  session: initialSession(),
+
   hydrate(): void {
     const result = load();
     // Hydrating is a read, so none of its three outcomes may schedule a write.
@@ -292,6 +361,11 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     // Only this app's key. Any other owner of origin data (the P7 asset store)
     // is cleared by the same caller, not from here.
     clearStorage();
+    // The session mirror is this app's other key. It is not the document, but it names the
+    // day the user was training and holds a running timer, so a wipe that left it behind
+    // would restore both on the next reload, over a store that no longer has the profile or
+    // the assignment they refer to.
+    clearSessionMirror();
     // Two writes have to be stopped, not one. The debounce may already hold the
     // pre-wipe document, and the reset below is itself a persisted change; left
     // alone, either re-creates the key one debounce interval after the user
@@ -300,6 +374,7 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     withoutPersisting(() => {
       set({
         ...defaultState(),
+        session: EMPTY_SESSION,
         status: {
           lastSaveError: null,
           // The user chose to clear, so writes resume from the next change on.
@@ -490,17 +565,20 @@ export const useAppStore = create<AppStore>()((set, get) => ({
        */
       assignments: { ...s.assignments, [profileId]: [] },
       pauses: { ...s.pauses, [profileId]: [] },
+      /*
+       * The non-persisted session slice goes with them, in the same set(), for the same
+       * reason: `activeAssignmentDate` names a row in the schedule just cleared, the rest
+       * timer belongs to a session of the plan just replaced, and the bonus exercises were
+       * added to that session. The in-progress guard above makes this a formality rather than
+       * a data loss — a running timer implies an in-progress assignment, which has already
+       * thrown by this line — but leaving the slice behind would still hand the new plan the
+       * old plan's open day.
+       */
+      session: EMPTY_SESSION,
     });
-    /*
-     * Non-persisted session slice: nothing to reset yet. P4 adds
-     * `session: { restTimer: RestTimer | null; activeAssignmentDate: LocalDate |
-     * null }` to this store (master plan section 6.7, mirrored to
-     * sessionStorage). Both fields point at the schedule that was just cleared,
-     * so P4 clears them HERE, inside the set() above, at the same time as
-     * `assignments`. The in-progress guard makes that a formality rather than a
-     * data loss: a running timer implies an in-progress assignment, which has
-     * already thrown by this line.
-     */
+    // Outside the set() because it is I/O, not state: without it a reload would restore the
+    // slice this set() just cleared.
+    clearSessionMirror();
   },
 
   logIntake(profileId: string, entry: IntakeEntry): void {
@@ -549,6 +627,97 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const current = requireProfile(s, 'recordReadiness', profileId);
     set({
       profiles: { ...s.profiles, [profileId]: { ...current, readiness: { screenedAt, flagged } } },
+    });
+  },
+
+  /*
+   * ---- P4 ----
+   *
+   * Each of these is a call into a pure transformer in ./training under set(), plus, for the
+   * three that touch the session slice, one write to the sessionStorage mirror. The rules
+   * about what a log action does to the document live in that module; nothing here branches
+   * on the document's contents, and nothing here reads a clock except where the contract in
+   * master plan section 6.7 gives the action no `now` parameter to read it from.
+   *
+   * The updater form of set() is used throughout so the read and the write are one atomic
+   * step, and so a transformer that throws (a schema refusal, an unknown profile) leaves the
+   * store untouched: zustand applies nothing when the updater does not return.
+   */
+
+  logSet(input: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): string {
+    // The id is minted before the write so it can be returned: the caller needs it to offer
+    // an undo, and re-deriving it from the document afterwards would mean searching by value.
+    const id = newId();
+    set((s) => applyLogSet(s, input, id, now)); // now: [ms] epoch, UTC
+    return id;
+  },
+
+  deleteSet(id: string): void {
+    set((s) => {
+      const { next, removed } = applyDeleteSet(s, id);
+      // Identity preserved for an unknown id: no persisted field changed, so no write, and no
+      // undo buffer holding nothing.
+      if (removed === null) return s;
+      /*
+       * Date.now() rather than an injected instant: master plan section 6.7 gives deleteSet
+       * no `now` parameter, and the expiry is a fact about the tab (when the control stops
+       * being offered), not about the record. Tests pin it with fake timers.
+       */
+      const session: SessionState = {
+        ...s.session,
+        undo: { set: removed, expiresAt: Date.now() + UNDO_WINDOW_MS }, // [ms] epoch, UTC
+      };
+      // The mirror is deliberately not rewritten here: it carries only the three durable
+      // fields, none of which this action touches (src/store/sessionMirror.ts).
+      return { ...next, session };
+    });
+  },
+
+  undoDelete(): void {
+    set((s) => {
+      const pending = s.session.undo;
+      if (pending === null) return s;
+      // Spent either way: an undo offered after the window closed must not silently restore
+      // the set, and the buffer must not survive the attempt.
+      const session: SessionState = { ...s.session, undo: null };
+      if (Date.now() > pending.expiresAt) return { ...s, session };
+      // The record goes back exactly as it was, id and loggedAt included.
+      return { ...applyRestoreSet(s, pending.set), session };
+    });
+  },
+
+  logBodyMass(entry: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void {
+    set((s) => applyLogBodyMass(s, entry, newId(), now)); // now: [ms] epoch, UTC
+  },
+
+  addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void {
+    set((s) => applyAddHydration(s, profileId, date, volumeML, now)); // volumeML: [mL], now: [ms]
+  },
+
+  setRestTimer(t: RestTimer | null): void {
+    set((s) => {
+      const session: SessionState = { ...s.session, restTimer: t };
+      // Mirrored: this is the field a mid-session reload must not lose.
+      saveSessionMirror(session);
+      return { ...s, session };
+    });
+  },
+
+  addCustomExercise(profileId: string, ex: Exercise): void {
+    set((s) => applyAddCustomExercise(s, profileId, ex));
+  },
+
+  addBonusExercise(exerciseId: string): void {
+    set((s) => {
+      // Idempotent: tapping "add" twice adds one exercise. The list is an ordered set, and the
+      // order is the order the user added them in.
+      if (s.session.bonusExerciseIds.includes(exerciseId)) return s;
+      const session: SessionState = {
+        ...s.session,
+        bonusExerciseIds: [...s.session.bonusExerciseIds, exerciseId],
+      };
+      saveSessionMirror(session);
+      return { ...s, session };
     });
   },
 
