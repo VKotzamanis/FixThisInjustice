@@ -18,6 +18,7 @@
 // older build) costs the user a restored timer and nothing else, so none of them may throw
 // into a store initialiser that runs before React mounts.
 import { z } from 'zod';
+import { isValidLocalDate } from '../domain/dates';
 import type { EpochMs, LocalDate, LoggedSet } from '../domain/types';
 import type { RestTimer } from '../domain/training/restTimer';
 
@@ -58,9 +59,24 @@ export const EMPTY_SESSION: SessionState = {
  *
  * Written out here rather than reused from the domain because a mirror is untrusted input:
  * it is user-editable storage, it can be written by an older build, and it reaches a store
- * initialiser. The bounds are structural (a timer is three finite numbers, a date is a
- * "YYYY-MM-DD" string) and the list of bonus ids is capped so a hand-edited mirror cannot
- * inflate the session.
+ * initialiser. The bounds are structural (a timer is three finite numbers, a date is a real
+ * civil day) and the list of bonus ids is capped so a hand-edited mirror cannot inflate the
+ * session.
+ *
+ * Two of the checks are semantic rather than structural, because the structural version of
+ * each admitted a payload the app cannot act on (P4 polish items 7):
+ *
+ *  - the date is checked with the domain's own isValidLocalDate, not with the "YYYY-MM-DD"
+ *    shape. The shape accepts "2026-02-30", which names no day; it would then be handed to
+ *    useTodaysSets as the training day and would match no assignment and no logged set,
+ *    silently, for the rest of the tab's life.
+ *  - the timer must not end before it started. remainingS clamps at 0, but totalS is
+ *    endsAt - startedAt and the rest panel divides by it to draw its progress ring, so an
+ *    inverted interval renders a negative fraction. No startRest or extend can produce one.
+ *
+ * A refusal takes the WHOLE mirror down rather than the offending field, which is this
+ * module's documented contract: every failure mode costs a restored timer and nothing else,
+ * and a partially-trusted mirror would be a third state with no reader.
  */
 const MirrorSchema = z.object({
   restTimer: z
@@ -69,10 +85,14 @@ const MirrorSchema = z.object({
       endsAt: z.number().int().finite(), // [ms] epoch UTC
       durationS: z.number().nonnegative().finite(), // [s]
     })
+    // Non-strict: endsAt === startedAt is the zero-length interval startRest(0, t) produces.
+    .refine((t) => t.endsAt >= t.startedAt, {
+      message: 'endsAt is before startedAt',
+    })
     .nullable(),
   activeAssignmentDate: z
     .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((d) => isValidLocalDate(d), { message: 'not a calendar-valid "YYYY-MM-DD" date' })
     .nullable(),
   bonusExerciseIds: z.array(z.string().min(1)).max(50),
 });

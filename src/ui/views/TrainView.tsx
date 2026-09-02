@@ -19,11 +19,11 @@ import { todayLocal } from '../../domain/dates';
 import { newId } from '../../domain/ids';
 import { EXERCISES } from '../../domain/plan/library';
 import type { CoachLine } from '../../domain/training/coach';
+import { preSessionMass } from '../../domain/training/hydration';
 import { IDENTITY_BLOCK, blockFor } from '../../domain/training/progression';
 import type { Exercise, PlannedExercise } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { useActiveProfile, useTodaysSets } from '../../store/selectors';
-import { UNDO_WINDOW_MS } from '../../store/training';
 import { releaseAudio, unlockAudio } from '../audio/chime';
 import { ReadinessNotice } from '../components/ReadinessNotice';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -38,8 +38,6 @@ import './views.css';
 
 /** [ms] How long a coach line stays on screen. Long enough to read, short enough to ignore. */
 const COACH_TOAST_MS = 5_000;
-/** [ms] How often expired toasts are swept. Half a second is below the shortest toast. */
-const TOAST_SWEEP_MS = 500;
 /** The most toasts on screen at once; older ones are dropped rather than stacked. */
 const MAX_TOASTS = 3;
 
@@ -66,6 +64,7 @@ export function TrainView(): ReactElement {
   const cursors = useAppStore((s) => s.cursors);
   const assignments = useAppStore((s) => s.assignments);
   const customExercises = useAppStore((s) => s.customExercises);
+  const bodyMass = useAppStore((s) => s.bodyMass);
   const bonusExerciseIds = useAppStore((s) => s.session.bonusExerciseIds);
   const todaysSets = useTodaysSets();
 
@@ -87,14 +86,41 @@ export function TrainView(): ReactElement {
     };
   }, []);
 
+  /*
+   * Toasts are withdrawn AT their own expiry, by a timeout scheduled for the earliest one,
+   * rather than by a fixed sweep interval (P4 polish item 8). The Undo offer is the reason:
+   * its deadline is the store's undo buffer, so a sweep on its own cadence left a live Undo
+   * control the store would refuse for up to one sweep period. Rescheduling on every change of
+   * `toasts` is cheap; there are at most three.
+   *
+   * The instant is read ONCE, when the timer fires, and closed over by the updater. React
+   * evaluates a functional update at render time, so a `Date.now()` inside the updater would
+   * be a different, later instant than the one the timer was scheduled against. A timer that
+   * fired a hair early is rescheduled rather than dropped: an unchanged list re-runs no
+   * effect, so a sweep that removed nothing would be the last one this list ever got.
+   */
   useEffect(() => {
-    const id = window.setInterval(() => {
-      setToasts((items) => items.filter((t) => t.expiresAt > Date.now()));
-    }, TOAST_SWEEP_MS);
-    return () => {
-      window.clearInterval(id);
+    if (toasts.length === 0) return;
+    let id: number | undefined;
+    const schedule = (): void => {
+      const soonest = Math.min(...toasts.map((t) => t.expiresAt)); // [ms] epoch UTC
+      id = window.setTimeout(
+        () => {
+          const firedAt = Date.now(); // [ms] epoch UTC
+          if (toasts.every((t) => t.expiresAt > firedAt)) {
+            schedule();
+            return;
+          }
+          setToasts((items) => items.filter((t) => t.expiresAt > firedAt));
+        },
+        Math.max(0, soonest - Date.now()),
+      );
     };
-  }, []);
+    schedule();
+    return () => {
+      if (id !== undefined) window.clearTimeout(id);
+    };
+  }, [toasts]);
 
   const pushToast = useCallback((item: Omit<ToastItem, 'id'>) => {
     setToasts((items) => [...items.slice(-(MAX_TOASTS - 1)), { ...item, id: newId() }]);
@@ -114,17 +140,22 @@ export function TrainView(): ReactElement {
   );
 
   const onDeleted = useCallback(() => {
+    // The offer expires with the store's buffer, READ FROM IT rather than recomputed from a
+    // second clock read: an Undo control the store would refuse is worse than no control at
+    // all, and two Date.now() calls a millisecond apart were enough to produce one. A delete
+    // that buffered nothing (an unknown id) makes no offer.
+    const pending = useAppStore.getState().session.undo;
+    if (pending === null) return;
     pushToast({
       text: copy('coach.setDeleted'),
       tone: 'undo',
-      // The offer expires with the store's buffer, not before or after it: an Undo control the
-      // store would refuse is worse than no control at all.
-      expiresAt: Date.now() + UNDO_WINDOW_MS, // [ms] epoch UTC
+      expiresAt: pending.expiresAt, // [ms] epoch UTC, the buffer's own deadline
       actionLabel: copy('button.undo'),
       onAction: () => {
         // Through getState(), like every other action call in this codebase: the store's
         // actions are created once and never replace themselves, so subscribing to one buys
         // nothing and hands the component an unbound method.
+        if (!useAppStore.getState().undoAvailable(Date.now())) return;
         useAppStore.getState().undoDelete();
       },
     });
@@ -155,6 +186,17 @@ export function TrainView(): ReactElement {
   const block =
     plan === null || assignment === null ? IDENTITY_BLOCK : blockFor(plan, assignment.sourceIndex);
   const sessionActive = assignment !== null && assignment.status === 'in-progress';
+  /*
+   * The mass this session started from, by the hydration module's own rule (the latest entry
+   * within 6 h before startedAt). It is the ONLY reference the > 2 % comparison can use: the
+   * profile baseline is a mass from whenever the profile was set up, so comparing against it
+   * reports the programme's mass change and raises the dehydration flag on every session of a
+   * subject who has since lost weight (P4 polish item 2).
+   */
+  const preSessionMassKg =
+    assignment === null || assignment.startedAt === null
+      ? null
+      : (preSessionMass(bodyMass[profileId] ?? [], assignment.startedAt)?.massKg ?? null); // [kg]
 
   if (session === null || assignment === null) {
     return (
@@ -186,12 +228,11 @@ export function TrainView(): ReactElement {
 
   const onFinish = (): void => {
     const now = Date.now(); // [ms] epoch UTC
+    // The store resets the session slice and its mirror itself, and only when the transition
+    // actually ended the session (P4 polish item 3). Clearing it here instead threw the
+    // running timer and the training day away even when the completion was REFUSED, and left
+    // the same reset missing from every other way a session ends - Today's Skip above all.
     useAppStore.getState().completeSession(profileId, today, now);
-    useAppStore.getState().setRestTimer(null);
-    useAppStore.getState().setActiveAssignmentDate(null);
-    // Subsumes the two calls above and drops the bonus ids and the undo buffer with them; both
-    // are made explicitly first because master plan section 6.7 names them individually.
-    useAppStore.getState().clearSessionSlice();
     releaseAudio();
     // A profile that opted in to pre/post weigh-ins stays here for the post-session mass; the
     // control below returns to Today once it is entered. Everyone else leaves at once.
@@ -201,6 +242,15 @@ export function TrainView(): ReactElement {
   };
 
   const completed = assignment.status === 'completed';
+  // The pre-session half of the pair is asked for once, before the first set, and only from a
+  // profile that opted in. After a set is logged the moment has passed: a mass taken 40 minutes
+  // into a session is not the mass the session started from, and offering it then would produce
+  // a pair whose difference is not the session's fluid loss.
+  const asksPreSessionMass =
+    !completed &&
+    profile.hydration.weighInOptIn &&
+    preSessionMassKg === null &&
+    todaysSets.length === 0;
 
   return (
     <div className="view train">
@@ -269,13 +319,23 @@ export function TrainView(): ReactElement {
 
       <AddCustomExercise profile={profile} />
 
-      {!completed && (
+      {asksPreSessionMass && (
         <BodyMassQuickLog
           profile={profile}
           date={today}
-          // No same-day pre-session mass is collected (see BodyMassQuickLog's header), so the
-          // in-session entry raises no flag: null disables the comparison rather than making
-          // one against the wrong reference twice.
+          // The reference itself: there is nothing to compare it against, so no flag.
+          preSessionMassKg={null}
+          id="body-mass-pre-session"
+          quantity={copy('quantity.preSessionBodyMass')}
+        />
+      )}
+
+      {!completed && !asksPreSessionMass && (
+        <BodyMassQuickLog
+          profile={profile}
+          date={today}
+          // A weigh-in taken mid-session is neither half of the pair, so it raises no flag:
+          // null disables the comparison rather than making one against the wrong reference.
           preSessionMassKg={null}
           id="body-mass-quick"
           quantity={copy('quantity.bodyMass')}
@@ -293,7 +353,7 @@ export function TrainView(): ReactElement {
           <BodyMassQuickLog
             profile={profile}
             date={today}
-            preSessionMassKg={profile.body.baselineMassKg} // [kg] the profile baseline, not a pre-session pair
+            preSessionMassKg={preSessionMassKg} // [kg] this session's own starting mass, or null
             id="body-mass-post-session"
             quantity={copy('quantity.postSessionBodyMass')}
           />

@@ -28,10 +28,19 @@ const MINUTE_THRESHOLD_S = 120;
  */
 export const NO_VALUE = '—';
 
+/**
+ * The symbol for a duration in seconds.
+ *
+ * Not a member of UNIT_LABEL: that table maps a UNIT SYSTEM to the mass, load and volume units
+ * it displays, and an SI second is a second in both of them. Exported so the timed-set field
+ * labels itself from the same constant this file prints with.
+ */
+export const SECONDS_UNIT = 's';
+
 /** [s] -> "45 s" or "2 min". */
 export function formatSeconds(s: Seconds): string {
   if (s >= MINUTE_THRESHOLD_S && s % 60 === 0) return `${s / 60} min`;
-  return `${s} s`;
+  return `${s} ${SECONDS_UNIT}`;
 }
 
 /**

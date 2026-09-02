@@ -389,8 +389,10 @@ export type CopyKey =
   | 'status.adviceExtendReps'
   | 'status.adviceDeload'
   | 'quantity.exerciseName'
+  | 'quantity.preSessionBodyMass'
   | 'quantity.postSessionBodyMass'
   | 'advice.noSessionToday'
+  | 'advice.durationNeeded'
   | 'coach.setDeleted'
   | 'notification.restOver'
   // --- toast queue (P8 Task 3; appended by that task) ---
@@ -854,10 +856,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.adviceExtendReps': 'Extend repetitions',
   'status.adviceDeload': 'Deload',
   'quantity.exerciseName': 'Exercise name',
+  // The first half of the pair. Collected before the first set of a session the user opted in
+  // to weigh, because the > 2 % rule compares a session against ITS OWN starting mass, and no
+  // other mass in the document can stand in for it.
+  'quantity.preSessionBodyMass': 'Pre-session body mass',
   // Distinct from `quantity.bodyMass`: the post-session entry is the second half of a PAIR,
   // and the > 2 % comparison is meaningless if the two are confused.
   'quantity.postSessionBodyMass': 'Post-session body mass',
   'advice.noSessionToday': 'No session is assigned today. Pick one on Today.',
+  // The refusal message of the seconds field on a timed set. It names what to enter, not what
+  // was wrong with the entry: "invalid" tells the user nothing they can act on.
+  'advice.durationNeeded': 'Enter the seconds held, above zero.',
   // Reports the deletion; the Undo control beside it is `button.undo`. Stated, not apologised
   // for: the record is recoverable for six seconds and the control says so.
   'coach.setDeleted': 'Set deleted.',
@@ -1111,6 +1120,13 @@ export const FORMAT = {
   /** "Set 2 reps". Repetitions are a dimensionless count, so no unit is composed onto it. */
   setRepsQuantity: (n: number): string => `Set ${n} reps`,
 
+  /**
+   * "Set 2 duration", the quantity a `time` or `duration` prescription collects instead of a
+   * repetition count. The field composes the unit onto it the way every other UnitInput does,
+   * so the label reads "Set 2 duration (s)" and the seconds are part of the accessible name.
+   */
+  setDurationQuantity: (n: number): string => `Set ${n} duration`,
+
   /** "Set 2 bodyweight": the toggle that stores loadKg 0 rather than an entered load. */
   setBodyweightQuantity: (n: number): string => `Set ${n} bodyweight`,
 
@@ -1125,6 +1141,13 @@ export const FORMAT = {
    * a logged value is never re-rounded here, and "BW" reaches this frame unchanged.
    */
   loggedSet: (load: string, reps: string): string => `${load} × ${reps}`,
+
+  /**
+   * "BW × 45 s", one logged timed set. Separate from `loggedSet` because the second operand
+   * is a DURATION and carries its unit: printing "BW × 45" beside "60 kg × 8" would make a
+   * hold indistinguishable from a rep count at a glance.
+   */
+  loggedTimedSet: (load: string, durationS: number): string => `${load} × ${durationS} s`,
 
   /** "2/3": sets logged today against the count this block prescribes. */
   exerciseProgress: (done: number, targetSets: number): string => `${done}/${targetSets}`,

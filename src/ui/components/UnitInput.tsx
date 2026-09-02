@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import type { JSX, RefObject } from 'react';
 import type { UnitSystem } from '../../domain/types';
 import { UNIT_LABEL, toStoredLoad, toStoredMass } from '../../domain/units';
 import { FORMAT } from '../../content/copy';
@@ -46,6 +46,18 @@ export interface UnitInputProps {
    */
   sharedErrorId?: string | null;
   /**
+   * Keypad for the value: "decimal" (default) for a measured quantity, "numeric" for a whole
+   * count. Added by the P4 polish pass for the timed-set field, whose value is a whole number
+   * of seconds; a decimal keypad there offers a separator the field cannot use.
+   */
+  inputMode?: 'decimal' | 'numeric';
+  /**
+   * Handle on the input element, for a caller that has to move focus into or out of it. Added
+   * by the P4 polish pass for the set row, where Enter walks load -> count -> submit and the
+   * count field is blurred on submit so the phone keypad closes.
+   */
+  inputRef?: RefObject<HTMLInputElement | null>;
+  /**
    * Inert field. Added by P4 Task 10 for the bodyweight toggle: a set logged as bodyweight
    * stores loadKg 0, so the load the user typed before ticking it is not the value that will
    * be stored, and a field that still accepts input would say otherwise. Optional and
@@ -71,8 +83,9 @@ export function UnitInput(props: UnitInputProps): JSX.Element {
       <label htmlFor={props.id}>{label}</label>
       <input
         id={props.id}
+        ref={props.inputRef}
         type="number"
-        inputMode="decimal"
+        inputMode={props.inputMode ?? 'decimal'}
         step={props.step ?? 'any'}
         disabled={props.disabled ?? false}
         value={props.value}

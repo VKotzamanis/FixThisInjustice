@@ -292,4 +292,42 @@ describe('applyAddCustomExercise', () => {
       /not a known profile/,
     );
   });
+
+  it('refuses an id the shipped library already uses', () => {
+    // The view builds its library as EXERCISES overlaid with the profile's own, so a custom
+    // entry under a shipped id SHADOWS that exercise: every set ever logged against the real
+    // barbell bench press would render, and progress, against the user's copy of it.
+    const ex = makeExercise({ id: 'barbell-bench-press', name: 'My bench' });
+    expect(() => applyAddCustomExercise(makeState(), 'profile-1', ex)).toThrow(
+      /barbell-bench-press/,
+    );
+  });
+
+  it('refuses an id this profile already has a custom exercise under', () => {
+    const first = makeExercise({ id: 'custom-1', name: 'Cable crunch' });
+    const clash = makeExercise({ id: 'custom-1', name: 'Something else' });
+    const withFirst = applyAddCustomExercise(makeState(), 'profile-1', first);
+    expect(() => applyAddCustomExercise(withFirst, 'profile-1', clash)).toThrow(/custom-1/);
+    // The refusal is a throw, not a silent append: two records under one id would make
+    // "which exercise is this set against" unanswerable.
+    expect(withFirst.customExercises['profile-1']).toHaveLength(1);
+  });
+
+  it('allows two profiles the same custom id', () => {
+    // customExercises is keyed by profile, so an id is only required to be unique within one.
+    const ex = makeExercise({ id: 'custom-1', name: 'Cable crunch' });
+    const base = makeState();
+    const other = makeProfile({ id: 'profile-2' });
+    const twoProfiles: AppState = {
+      ...base,
+      profiles: { ...base.profiles, 'profile-2': other },
+    };
+    const next = applyAddCustomExercise(
+      applyAddCustomExercise(twoProfiles, 'profile-1', ex),
+      'profile-2',
+      ex,
+    );
+    expect(next.customExercises['profile-1']).toHaveLength(1);
+    expect(next.customExercises['profile-2']).toHaveLength(1);
+  });
 });

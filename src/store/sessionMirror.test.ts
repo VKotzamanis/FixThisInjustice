@@ -12,13 +12,24 @@ import {
   saveSessionMirror,
 } from './sessionMirror';
 import { startRest } from '../domain/training/restTimer';
-import { makeStorageUnavailable } from './testStorage';
+import { installFakeStorage, makeStorageUnavailable } from './testStorage';
 
 const T0 = Date.UTC(2026, 2, 2, 18, 0, 0); // [ms] epoch, UTC
 
+/**
+ * The raw Web Storage backing, seeded and read through installFakeStorage's Map.
+ *
+ * The `sessionStorage` global is deliberately not named here: the ESLint gate (P4 polish item
+ * 5) exempts src/store/sessionMirror.ts and the readiness notice only, on the same argument
+ * src/store/testStorage.ts already makes for localStorage - a test that named the global would
+ * be indistinguishable from application code doing it. Installing the fake also makes each
+ * test hermetic, which `sessionStorage.clear()` was doing before.
+ */
+let storage: Map<string, string>;
+
 describe('sessionMirror', () => {
   beforeEach(() => {
-    sessionStorage.clear();
+    storage = installFakeStorage();
   });
 
   it('returns null when nothing was written', () => {
@@ -68,23 +79,23 @@ describe('sessionMirror', () => {
         expiresAt: T0 + 6_000, // [ms]
       },
     });
-    const raw = sessionStorage.getItem(SESSION_KEY) ?? '';
+    const raw = storage.get(SESSION_KEY) ?? '';
     expect(raw).not.toContain('undo');
     expect(loadSessionMirror()?.restTimer).toBeNull();
   });
 
   it('returns null for corrupt JSON instead of throwing', () => {
-    sessionStorage.setItem(SESSION_KEY, '{not json');
+    storage.set(SESSION_KEY, '{not json');
     expect(loadSessionMirror()).toBeNull();
   });
 
   it('returns null for a structurally invalid payload', () => {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ restTimer: { startedAt: 'soon' } }));
+    storage.set(SESSION_KEY, JSON.stringify({ restTimer: { startedAt: 'soon' } }));
     expect(loadSessionMirror()).toBeNull();
   });
 
   it('returns null for a mirror carrying a malformed date', () => {
-    sessionStorage.setItem(
+    storage.set(
       SESSION_KEY,
       JSON.stringify({
         restTimer: null,
@@ -93,6 +104,50 @@ describe('sessionMirror', () => {
       }),
     );
     expect(loadSessionMirror()).toBeNull();
+  });
+
+  it('returns null for a mirror carrying a calendar-invalid date', () => {
+    // "2026-02-30" passes the "YYYY-MM-DD" shape and names no day. The mirror is user-editable
+    // storage, so the restored date is checked with the domain's own isValidLocalDate rather
+    // than with a regex, and a date the calendar refuses takes the whole mirror down with it.
+    storage.set(
+      SESSION_KEY,
+      JSON.stringify({
+        restTimer: null,
+        activeAssignmentDate: '2026-02-30',
+        bonusExerciseIds: [],
+      }),
+    );
+    expect(loadSessionMirror()).toBeNull();
+  });
+
+  it('returns null for a timer that ends before it started', () => {
+    // remainingS clamps at 0 and totalS would go NEGATIVE, which the rest panel divides by to
+    // draw its ring. An inverted interval is not a timer that has run out; it is a payload no
+    // startRest could have produced.
+    storage.set(
+      SESSION_KEY,
+      JSON.stringify({
+        restTimer: { startedAt: T0, endsAt: T0 - 1_000, durationS: 90 }, // [ms], [ms], [s]
+        activeAssignmentDate: '2026-03-02',
+        bonusExerciseIds: [],
+      }),
+    );
+    expect(loadSessionMirror()).toBeNull();
+  });
+
+  it('accepts a timer that has already run out', () => {
+    // endsAt === startedAt is a zero-length interval, which startRest(0, t) produces and the
+    // panel renders as 0:00. Only endsAt < startedAt is refused.
+    storage.set(
+      SESSION_KEY,
+      JSON.stringify({
+        restTimer: { startedAt: T0, endsAt: T0, durationS: 0 }, // [ms], [ms], [s]
+        activeAssignmentDate: null,
+        bonusExerciseIds: [],
+      }),
+    );
+    expect(loadSessionMirror()?.restTimer).toEqual({ startedAt: T0, endsAt: T0, durationS: 0 });
   });
 
   it('clears the mirror', () => {

@@ -40,6 +40,7 @@ import {
   dailyBeverageTargetML,
   exceedsDehydrationThreshold,
   hydrationCue,
+  preSessionMass,
 } from './hydration';
 
 const PROFILE_ID = 'profile-1';
@@ -209,6 +210,31 @@ describe('hydrationCue: session-check', () => {
     expect(cue?.message).toBe(HYDRATION_COPY_KEY['session-check']);
   });
 
+  it('reads the drink marks of the day the session STARTED on, not only of today', () => {
+    /*
+     * P4 polish item 9. Marks were read from the entry for the CURRENT local day only, so a
+     * drink logged at 23:55 became invisible at midnight and the anchor fell back to the
+     * session start hours earlier, making the first prompt of the new day due at once.
+     *
+     * 23:00 Europe/Athens on 2026-03-02 is 21:00 UTC (UTC+2, EET). The drink is at 23:55
+     * local, and `now` is 00:10 local the next day: 15 min after the mark, 70 min after the
+     * start. The cadence is 20 min, so the anchor decides the answer on its own.
+     */
+    const lateStart: EpochMs = Date.UTC(2026, 2, 2, 21, 0); // [ms] = 23:00 local on DAY
+    const drinkAt: EpochMs = Date.UTC(2026, 2, 2, 21, 55); // [ms] = 23:55 local on DAY
+    const now: EpochMs = Date.UTC(2026, 2, 2, 22, 10); // [ms] = 00:10 local on 2026-03-03
+    const state = makeState({
+      assignments: { [PROFILE_ID]: [inProgress(lateStart)] },
+      hydration: { [PROFILE_ID]: [drank(250, [drinkAt])] }, // filed under DAY, the start day
+    });
+
+    expect(hydrationCue(state, PROFILE_ID, now, true)).toBeNull();
+    // And it becomes due 20 min after that mark, not 20 min after the session started.
+    expect(hydrationCue(state, PROFILE_ID, drinkAt + 20 * MIN_MS, true)?.kind).toBe(
+      'session-check',
+    );
+  });
+
   it('does not revive a session older than the lookback window', () => {
     const state = activeState();
     expect(
@@ -254,6 +280,39 @@ describe('hydrationCue: daily-shortfall', () => {
     const cue = hydrationCue(makeState(), PROFILE_ID, AT_1800_LOCAL, false);
     expect(cue?.kind).toBe('daily-shortfall');
     expect(cue?.shortfallML).toBe(TARGET_ML); // [mL]
+  });
+});
+
+describe('preSessionMass', () => {
+  /*
+   * P4 polish item 2. The Train view needs the same reference the cue's own guard uses, so the
+   * rule is exported once and read twice instead of being restated in the view. It used to
+   * compare the post-session mass against Profile.body.baselineMassKg, which is a mass from
+   * whenever the profile was set up: on a subject whose baseline is months old, the > 2 %
+   * comparison reported the programme's mass change, not the session's fluid loss.
+   */
+  const startedAt = AT_1200_LOCAL;
+
+  it('returns the latest entry inside the window before the session started', () => {
+    const older = massEntry('bm-old', 96, startedAt - 3 * HOUR_MS); // [kg]
+    const newer = massEntry('bm-new', 95.4, startedAt - MIN_MS); // [kg]
+    expect(preSessionMass([older, newer], startedAt)?.id).toBe('bm-new');
+    // Array order must not decide it: the rule is "latest loggedAt", not "last appended".
+    expect(preSessionMass([newer, older], startedAt)?.id).toBe('bm-new');
+  });
+
+  it('accepts a mass logged exactly at the session start and at the window edge', () => {
+    expect(preSessionMass([massEntry('bm-at', 96, startedAt)], startedAt)?.id).toBe('bm-at');
+    const edge = massEntry('bm-edge', 96, startedAt - PRE_SESSION_MASS_WINDOW_MS);
+    expect(preSessionMass([edge], startedAt)?.id).toBe('bm-edge');
+  });
+
+  it('refuses a mass older than the window and one logged after the session started', () => {
+    const stale = massEntry('bm-stale', 96, startedAt - PRE_SESSION_MASS_WINDOW_MS - 1);
+    const later = massEntry('bm-later', 96, startedAt + MIN_MS);
+    expect(preSessionMass([stale], startedAt)).toBeNull();
+    expect(preSessionMass([later], startedAt)).toBeNull();
+    expect(preSessionMass([], startedAt)).toBeNull();
   });
 });
 

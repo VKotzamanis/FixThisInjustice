@@ -8,19 +8,26 @@
 // mirror once, before anything mounts. A test that imported the store at the top of the file
 // would have run that line before it could seed the mirror.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { installFakeStorage } from './testStorage';
 
 /** [ms] epoch UTC. */
 const NOW = Date.UTC(2026, 2, 2, 10, 0, 0);
 const MIRROR_KEY = 'fti.session.v3';
 
+/**
+ * The raw Web Storage backing. The `sessionStorage` global is not named here; see the note in
+ * sessionMirror.test.ts and the ESLint gate it describes (P4 polish item 5).
+ */
+let storage: Map<string, string>;
+
 beforeEach(() => {
-  sessionStorage.clear();
+  storage = installFakeStorage();
   vi.resetModules();
 });
 
 describe('session restore', () => {
   it('restores a running rest timer from sessionStorage at module init', async () => {
-    sessionStorage.setItem(
+    storage.set(
       MIRROR_KEY,
       JSON.stringify({
         restTimer: { startedAt: NOW - 30_000, endsAt: NOW + 60_000, durationS: 90 },
@@ -40,7 +47,7 @@ describe('session restore', () => {
   });
 
   it('restores the bonus exercises added beyond the plan', async () => {
-    sessionStorage.setItem(
+    storage.set(
       MIRROR_KEY,
       JSON.stringify({
         restTimer: null,
@@ -63,7 +70,7 @@ describe('session restore', () => {
   });
 
   it('starts empty on a mirror the schema refuses, without throwing', async () => {
-    sessionStorage.setItem(MIRROR_KEY, '{"restTimer":{"startedAt":"soon"}}');
+    storage.set(MIRROR_KEY, '{"restTimer":{"startedAt":"soon"}}');
 
     const { useAppStore } = await import('./index');
 
@@ -78,7 +85,7 @@ describe('setActiveAssignmentDate', () => {
     useAppStore.getState().setActiveAssignmentDate('2026-03-02');
 
     expect(useAppStore.getState().session.activeAssignmentDate).toBe('2026-03-02');
-    expect(sessionStorage.getItem(MIRROR_KEY)).toContain('2026-03-02');
+    expect(storage.get(MIRROR_KEY)).toContain('2026-03-02');
   });
 
   it('clears the training day without touching the rest timer', async () => {
@@ -110,7 +117,7 @@ describe('clearSessionSlice', () => {
       undo: null,
     });
     // Removed, not rewritten empty: a reload must not revive a finished session.
-    expect(sessionStorage.getItem(MIRROR_KEY)).toBeNull();
+    expect(storage.get(MIRROR_KEY)).toBeUndefined();
   });
 
   it('leaves the persisted document untouched', async () => {

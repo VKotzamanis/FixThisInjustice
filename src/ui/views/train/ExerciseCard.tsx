@@ -27,7 +27,7 @@ import { useExerciseHistory } from '../../../store/selectors';
 import { useFormCuesModal } from '../../components/FormCuesModal';
 import { useVideoModal } from '../../components/VideoModal';
 import { formatPrescription } from '../../format/plan';
-import { SetRow } from './SetRow';
+import { SetRow, type SetEntry } from './SetRow';
 import '../../styles/train.css';
 
 /** One label per ProgressionAdvice.kind. Exhaustive by type, so a fifth kind fails to compile. */
@@ -117,7 +117,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   // restS 0 in the plan means "use the cited default for this exercise and rep range".
   const restS = planned.restS > 0 ? planned.restS : defaultRestS(planned, library); // [s]
 
-  const handleLog = (n: number, loadKg: Kg, reps: number): void => {
+  const handleLog = (n: number, loadKg: Kg, entry: SetEntry): void => {
     const set: Omit<LoggedSet, 'id' | 'loggedAt'> = {
       profileId: profile.id,
       assignmentDate,
@@ -129,8 +129,10 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
       isBonus: isBonusExercise || n > targetSets,
       loadKg, // [kg] canonical
       enteredUnit: profile.units,
-      reps, // [repetitions]
-      durationS: null, // [s] P4 offers no timed-set control; see the plan's omissions
+      // Exactly one of these carries the measurement, decided by the prescription in SetRow:
+      // repetitions for a rep or AMRAP prescription, seconds for a time or duration one.
+      reps: entry.reps, // [repetitions] or null
+      durationS: entry.durationS, // [s] or null
       rpe: null, // P4 writes null; no RPE control is in scope
     };
     const now = Date.now(); // [ms] epoch UTC
@@ -223,11 +225,12 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   targetSets={targetSets}
                   isBonus={n > targetSets}
                   units={profile.units}
+                  prescription={planned.prescription}
                   suggestedKg={suggestedKg}
                   logged={logged}
                   isBodyweightExercise={exercise.isBodyweight}
-                  onLog={(loadKg, reps) => {
-                    handleLog(n, loadKg, reps);
+                  onLog={(loadKg, entry) => {
+                    handleLog(n, loadKg, entry);
                   }}
                   onDelete={() => {
                     if (logged === null) return;

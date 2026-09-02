@@ -16,7 +16,7 @@
 //    path master plan section 6.5 actually specifies.
 //  - The audio module is mocked at the module boundary: jsdom has no Web Audio, so the real
 //    playChime would return false without telling this suite whether it was reached.
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, copy } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
@@ -26,6 +26,7 @@ import { suggestedProgression } from '../../domain/training/progression';
 import { toStoredLoad } from '../../domain/units';
 import type {
   AppState,
+  BodyMassEntry,
   Exercise,
   LoggedSet,
   PlanTemplate,
@@ -36,6 +37,7 @@ import type {
 import { useAppStore } from '../../store';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
+import { UNDO_WINDOW_MS } from '../../store/training';
 import { makeBlock, makePlannedExercise, makeProfile, makeSet } from '../../test/fixtures';
 import { playChime, vibrate } from '../audio/chime';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
@@ -63,6 +65,13 @@ const MINUTE_MS = 60_000; // [ms]
 const UPPER: Exercise = (() => {
   const ex = EXERCISES.find((e) => e.loadClass === 'upper-compound' && !e.isBodyweight);
   if (ex === undefined) throw new Error('the exercise library has no loaded upper compound');
+  return ex;
+})();
+
+/** The shipped timed hold: bodyweight, prescribed in seconds rather than in repetitions. */
+const PLANK: Exercise = (() => {
+  const ex = EXERCISE_BY_ID['plank'];
+  if (ex === undefined) throw new Error('library.ts no longer defines plank');
   return ex;
 })();
 
@@ -181,6 +190,19 @@ function logRow(n: number, load: string, reps: string, unit = 'kg'): void {
   const repsField = screen.getByLabelText(FORMAT.setRepsQuantity(n));
   fireEvent.change(repsField, { target: { value: reps } });
   fireEvent.keyDown(repsField, { key: 'Enter' });
+}
+
+/** A body-mass entry an hour before the session started: a valid pre-session mass. */
+function preMass(massKg: number): BodyMassEntry {
+  return {
+    id: 'bm-pre',
+    profileId: 'profile-1',
+    date: TODAY,
+    massKg, // [kg]
+    enteredUnit: 'metric',
+    bodyFatPct: null, // [%]
+    loggedAt: NOW - 3_600_000, // [ms] epoch UTC, 1 h before startedAt
+  };
 }
 
 /** Three prescribed sets at 60 kg x 8 on the previous session: the top of the range, met. */
@@ -363,6 +385,61 @@ describe('TrainView set logging feedback', () => {
     expect(useAppStore.getState().sets['set-1']?.loadKg).toBe(60); // [kg]
   });
 
+  it('withdraws the Undo control when the store buffer expires', () => {
+    /*
+     * P4 polish item 8. The offer used to be swept on a 500 ms interval against an expiry the
+     * VIEW computed from its own Date.now(), so between the buffer closing and the next sweep
+     * there was a live Undo control the store would silently refuse.
+     *
+     * The whole timer set is faked, not just Date, because what is under test is the timer
+     * that withdraws the offer. The clock is then advanced in 100 ms slices rather than in one
+     * jump: React evaluates a functional state update at RENDER time, so a single jump would
+     * run every queued sweep against the final instant and hide the gap that a browser, which
+     * renders after each tick, actually shows.
+     */
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const set = makeSet({ id: 'set-1', exerciseId: UPPER.id, loadKg: 60, reps: 8 });
+    seedStore(seed({ sets: [set] }));
+    renderTrain();
+
+    // Deleted off the sweep cadence, so a control still on screen cannot be an artefact of
+    // the two clocks happening to line up.
+    act(() => {
+      vi.advanceTimersByTime(250); // [ms]
+    });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    expect(screen.getByRole('button', { name: copy('button.undo') })).toBeInTheDocument();
+
+    for (let elapsed = 0; elapsed < UNDO_WINDOW_MS + 100; elapsed += 100) {
+      act(() => {
+        vi.advanceTimersByTime(100); // [ms]
+      });
+    }
+
+    // 6.1 s after the delete: the store would refuse the undo, so nothing may offer it.
+    expect(screen.queryByRole('button', { name: copy('button.undo') })).toBeNull();
+    expect(useAppStore.getState().sets['set-1']).toBeUndefined();
+  });
+
+  it('keeps the Undo control up for the whole window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const set = makeSet({ id: 'set-1', exerciseId: UPPER.id, loadKg: 60, reps: 8 });
+    seedStore(seed({ sets: [set] }));
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    for (let elapsed = 0; elapsed < UNDO_WINDOW_MS - 100; elapsed += 100) {
+      act(() => {
+        vi.advanceTimersByTime(100); // [ms]
+      });
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.undo') }));
+    expect(useAppStore.getState().sets['set-1']?.loadKg).toBe(60); // [kg]
+  });
+
   it('adds a bonus row beyond the prescribed set count', () => {
     seedStore(seed());
     renderTrain();
@@ -381,6 +458,97 @@ describe('TrainView set logging feedback', () => {
 
     const stored = Object.values(useAppStore.getState().sets);
     expect(stored[0]?.isBonus).toBe(true);
+  });
+});
+
+describe('TrainView timed sets', () => {
+  /*
+   * P4 polish item 1. A `time` or `duration` prescription was logged through the repetition
+   * field: the row asked for reps, stored them, and wrote durationS null, so a 45 s plank was
+   * recorded as "45 repetitions" and every rep-range rule in the coach and the progression
+   * engine then judged it as one.
+   */
+  const plankSeed = (targetS: number): AppState =>
+    seed({
+      exercise: PLANK,
+      planned: { exerciseId: PLANK.id, prescription: { kind: 'time', targetS }, restS: 60 }, // [s]
+    });
+
+  it('logs a plank as a duration, with no repetition count', () => {
+    seedStore(plankSeed(45));
+    renderTrain();
+
+    expect(screen.queryByLabelText(FORMAT.setRepsQuantity(1))).toBeNull();
+    const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
+    // A whole-second count, so the phone keypad is the numeric one, not the decimal one.
+    expect(field.getAttribute('inputmode')).toBe('numeric');
+
+    fireEvent.change(field, { target: { value: '45' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    const stored = Object.values(useAppStore.getState().sets);
+    expect(stored).toHaveLength(1);
+    expect(stored[0]?.durationS).toBe(45); // [s]
+    expect(stored[0]?.reps).toBeNull();
+    expect(stored[0]?.loadKg).toBe(0); // [kg] a plank is a bodyweight hold
+    expect(screen.getByText(FORMAT.loggedTimedSet('BW', 45))).toBeInTheDocument();
+  });
+
+  it('reports the logged hold in the coach line', () => {
+    seedStore(plankSeed(45));
+    renderTrain();
+
+    const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
+    fireEvent.change(field, { target: { value: '50' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(screen.getByText('50 s logged.')).toBeInTheDocument();
+  });
+
+  it('names what is wrong with an unusable duration instead of failing silently', () => {
+    seedStore(plankSeed(45));
+    renderTrain();
+
+    const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
+    fireEvent.change(field, { target: { value: '0' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.logSetLabel(1) }));
+
+    expect(screen.getByText(copy('advice.durationNeeded'))).toBeInTheDocument();
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(Object.values(useAppStore.getState().sets)).toHaveLength(0);
+  });
+
+  it('refuses a hold longer than the schema would store, without crashing the view', () => {
+    // The store answers an out-of-range duration with a throw, which would take the session
+    // view to the error boundary over a mistyped field. The row refuses it first.
+    seedStore(plankSeed(45));
+    renderTrain();
+
+    const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
+    fireEvent.change(field, { target: { value: '86401' } }); // [s] one second past one day
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(screen.getByText(copy('advice.durationNeeded'))).toBeInTheDocument();
+    expect(Object.values(useAppStore.getState().sets)).toHaveLength(0);
+  });
+
+  it('starts the rest timer from a timed set like any other', () => {
+    seedStore(plankSeed(45));
+    renderTrain();
+
+    const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
+    fireEvent.change(field, { target: { value: '45' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(useAppStore.getState().session.restTimer?.durationS).toBe(60); // [s]
+  });
+
+  it('keeps the repetition field for a repetition prescription', () => {
+    seedStore(seed());
+    renderTrain();
+
+    expect(screen.getByLabelText(FORMAT.setRepsQuantity(1))).toBeInTheDocument();
+    expect(screen.queryByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`)).toBeNull();
   });
 });
 
@@ -512,12 +680,38 @@ describe('TrainView hydration and body mass', () => {
     expect(useAppStore.getState().bodyMass['profile-1']?.[0]?.massKg).toBe(94.4); // [kg]
   });
 
-  it('flags a post-session loss above 2 % of the reference mass', () => {
+  it('offers a pre-session mass at session start when the profile opted in', () => {
+    // P4 polish item 2: the pair the > 2 % rule needs starts here. Before the first set,
+    // because a mass taken after 40 min of work is not the mass the session started from.
     seedStore(seed({ weighInOptIn: true }));
+    renderTrain();
+
+    fireEvent.change(screen.getByLabelText(`${copy('quantity.preSessionBodyMass')} (kg)`), {
+      target: { value: '96' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.logBodyMass') }));
+
+    expect(useAppStore.getState().bodyMass['profile-1']?.[0]?.massKg).toBe(96); // [kg]
+    // Once it is on record the prompt is done; the ordinary in-session quick log takes over.
+    expect(screen.queryByLabelText(`${copy('quantity.preSessionBodyMass')} (kg)`)).toBeNull();
+    expect(screen.getByLabelText(`${copy('quantity.bodyMass')} (kg)`)).toBeInTheDocument();
+  });
+
+  it('offers no pre-session mass to a profile that did not opt in', () => {
+    seedStore(seed({ weighInOptIn: false }));
+    renderTrain();
+
+    expect(screen.queryByLabelText(`${copy('quantity.preSessionBodyMass')} (kg)`)).toBeNull();
+    expect(screen.getByLabelText(`${copy('quantity.bodyMass')} (kg)`)).toBeInTheDocument();
+  });
+
+  it('flags a post-session loss above 2 % of the PRE-SESSION mass', () => {
+    // 95 kg an hour before the session started, 92 kg after it: a 3.2 % loss, above the
+    // ACSM 2007 threshold. The reference is the pre-session entry, not the profile baseline.
+    seedStore({ ...seed({ weighInOptIn: true }), bodyMass: { 'profile-1': [preMass(95)] } });
     renderTrain();
     fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
 
-    // Baseline 95 kg; 92 kg is a 3.2 % loss, above the ACSM 2007 threshold.
     fireEvent.change(screen.getByLabelText(`${copy('quantity.postSessionBodyMass')} (kg)`), {
       target: { value: '92' },
     });
@@ -525,6 +719,25 @@ describe('TrainView hydration and body mass', () => {
 
     expect(screen.getByText(copy('advice.fluidLoss'))).toBeInTheDocument();
     expect(screen.getByText(FORMAT.fluidLossWhy('3.2', 2))).toBeInTheDocument();
+  });
+
+  it('measures the loss against the pre-session mass, never the profile baseline', () => {
+    /*
+     * P4 polish item 2. The fixture's baseline is 95 kg and is dated 2026-01-01. A subject who
+     * has since dropped to 70 kg loses 0.7 kg over this session - 1.0 %, inside the threshold -
+     * but is 26 % below the baseline, so the old comparison raised the dehydration flag on
+     * every single session. The flag has to report THIS session or it reports nothing.
+     */
+    seedStore({ ...seed({ weighInOptIn: true }), bodyMass: { 'profile-1': [preMass(70)] } });
+    renderTrain();
+    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+
+    fireEvent.change(screen.getByLabelText(`${copy('quantity.postSessionBodyMass')} (kg)`), {
+      target: { value: '69.3' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copy('button.logBodyMass') }));
+
+    expect(screen.queryByText(copy('advice.fluidLoss'))).toBeNull();
   });
 });
 
@@ -589,7 +802,7 @@ describe('TrainView finish', () => {
   it('completes the session, clears the session slice and returns to Today', () => {
     seedStore(seed());
     useAppStore.getState().setActiveAssignmentDate(TODAY);
-    useAppStore.getState().addBonusExercise('some-exercise');
+    useAppStore.getState().addBonusExercise('face-pull');
     useAppStore
       .getState()
       .setRestTimer({ startedAt: NOW, endsAt: NOW + 60_000, durationS: 60 });
