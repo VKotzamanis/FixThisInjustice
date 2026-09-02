@@ -295,6 +295,20 @@ describe('the limelight table', () => {
     expect(LIMELIGHT_COPY['status.weekMetStamp']).toBe('MOTHER');
   });
 
+  it('carries the two Train rows the close-out converted, keeping every quantity name', () => {
+    /*
+     * P8 close-out B: the drink control and the shortfall line were template literals in
+     * copy.ts, so they were clinical under every skin. These two rows are the limelight words
+     * for them, and they obey rule 1 of copy.limelight.ts exactly: the VOLUMES are slots the
+     * domain filled, the quantity name "beverage intake" is the one the contract fixes (R11),
+     * and only the verb and the tag are the skin's.
+     */
+    expect(LIMELIGHT_COPY['button.logVolume']).toBe('hydrate {volume}');
+    expect(LIMELIGHT_COPY['advice.beverageShortfall']).toBe(
+      'beverage intake {logged} of {target} today. top it up.',
+    );
+  });
+
   it('shouts three keys carrying two words, and lowercases the rest', () => {
     // Round three, section 3.2: the uppercase list is closed at three, and the third is the
     // marquee, which is a component (Task 14) rather than a copy row. Three KEYS shout here and
@@ -518,6 +532,84 @@ describe('the converted frames render the clinical string they replaced', () => 
     for (const value of rendered) {
       expect({ value, slot: /\{[a-zA-Z]+\}/.test(value) }).toEqual({ value, slot: false });
     }
+  });
+
+  /**
+   * The nine frames P8 close-out B moved off a template literal and onto a copy key.
+   *
+   * Same check as the thirteen above, and the same reason: each expectation quotes the exact
+   * literal the frame held before the conversion, so a table edit that changes what the clinical
+   * skin renders fails here rather than on a screen. `setsBy` and `lastSessionSets` carry the
+   * MULTIPLICATION SIGN U+00D7 and `restRemaining` carries a zero-padded seconds field; both are
+   * part of the literal and are compared as written.
+   */
+  it('renders each of the nine close-out frames byte for byte', () => {
+    expect(FORMAT.setsBy('3\u20134', '6\u201310 reps')).toBe('3\u20134 \u00d7 6\u201310 reps');
+    expect(FORMAT.sessionEyebrow(1, 'Upper')).toBe('SESSION 1, Upper');
+    expect(FORMAT.setCounter(2, 3)).toBe('SET 2/3');
+    expect(FORMAT.lastSessionSets('2026-02-27', '60 kg', '8, 8, 8')).toBe(
+      'Last session 2026-02-27: 60 kg \u00d7 8, 8, 8',
+    );
+    expect(FORMAT.suggestedLoad('62.5 kg', 'add load')).toBe('Suggested 62.5 kg: add load');
+    expect(FORMAT.restRemaining(2, 0)).toBe('2:00');
+    expect(FORMAT.restRemaining(0, 5)).toBe('0:05');
+    expect(FORMAT.logVolume('250 mL')).toBe('Log 250 mL');
+    expect(FORMAT.beverageShortfall('900 mL', '2600 mL')).toBe(
+      'Beverage intake 900 mL of 2600 mL today.',
+    );
+    expect(FORMAT.fluidLossWhy('2.4', 2)).toBe(
+      'Loss of 2.4 % of pre-session mass, above the 2 % threshold (ACSM 2007).',
+    );
+  });
+
+  it('leaves no slot standing in any of the nine', () => {
+    const rendered = [
+      FORMAT.setsBy('3', '8 reps'),
+      FORMAT.sessionEyebrow(1, 'Upper'),
+      FORMAT.setCounter(2, 3),
+      FORMAT.lastSessionSets('2026-02-27', '60 kg', '8'),
+      FORMAT.suggestedLoad('60 kg', 'hold'),
+      FORMAT.restRemaining(1, 30),
+      FORMAT.logVolume('250 mL'),
+      FORMAT.beverageShortfall('900 mL', '2600 mL'),
+      FORMAT.fluidLossWhy('2.4', 2),
+    ];
+    for (const value of rendered) {
+      expect({ value, slot: /\{[a-zA-Z]+\}/.test(value) }).toEqual({ value, slot: false });
+    }
+  });
+
+  it('lets an overlay reach all nine, which is the point of the conversion', () => {
+    // A literal overlay, not a shipped skin, for the reason the thirteen's own overlay test
+    // gives: a row limelight does not carry today would make the assertion vacuous.
+    const overlay: Partial<Record<CopyKey, string>> = {
+      'status.setsBy': '{sets} by {prescription}',
+      'status.sessionEyebrow': 'ep. {ordinal}, {label}',
+      'status.setCounter': 'take {n} of {targetSets}',
+      'status.lastSessionSets': 'last time {date}: {load} for {reps}',
+      'label.suggestedLoad': 'try {load}: {kind}',
+      'status.restRemaining': '{minutes} m {seconds}',
+      'button.logVolume': 'sip {volume}',
+      'advice.beverageShortfall': '{logged} of {target} today. keep going.',
+      'why.fluidLoss': 'down {loss} % of pre-session mass, over the {threshold} % line.',
+    };
+    expect(FORMAT.setsBy('3', '8 reps', overlay)).toBe('3 by 8 reps');
+    expect(FORMAT.sessionEyebrow(1, 'Upper', overlay)).toBe('ep. 1, Upper');
+    expect(FORMAT.setCounter(2, 3, overlay)).toBe('take 2 of 3');
+    expect(FORMAT.lastSessionSets('2026-02-27', '60 kg', '8', overlay)).toBe(
+      'last time 2026-02-27: 60 kg for 8',
+    );
+    expect(FORMAT.suggestedLoad('60 kg', 'hold', overlay)).toBe('try 60 kg: hold');
+    // The zero padding belongs to the frame, not to the table: a skin rewords a clock, it does
+    // not decide how many digits a seconds field has.
+    expect(FORMAT.restRemaining(1, 5, overlay)).toBe('1 m 05');
+    expect(FORMAT.logVolume('250 mL', overlay)).toBe('sip 250 mL');
+    expect(FORMAT.beverageShortfall('900 mL', '2600 mL', overlay)).toBe(
+      '900 mL of 2600 mL today. keep going.',
+    );
+    expect(FORMAT.fluidLossWhy('2.4', 2, overlay)).toBe(
+      'down 2.4 % of pre-session mass, over the 2 % line.',
+    );
   });
 
   it('takes an overlay table, so a skin reaches the words beside the numbers', () => {

@@ -580,7 +580,14 @@ export type CopyKey =
   | 'status.weekMetStamp'
   // --- the WCAG 2.1 SC 2.1.4 off switch finally has a control to name (P8 close-out B) ---
   | 'label.settingsHotkeys'
-  | 'advice.hotkeysOff';
+  | 'advice.hotkeysOff'
+  // --- the nine Train and Plan frames that baked English (P8 close-out B) ---
+  | 'status.setsBy'
+  | 'status.sessionEyebrow'
+  | 'status.setCounter'
+  | 'status.lastSessionSets'
+  | 'status.restRemaining'
+  | 'button.logVolume';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -804,12 +811,22 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.searchInstance': 'Search instance',
   'advice.noClipRecorded': 'No clip recorded for this exercise.',
   'advice.drinkToThirst': 'Drink to thirst.',
-  'advice.beverageShortfall': 'Beverage intake 900 mL of 2600 mL today.', // formatted
+  // template; FORMAT.beverageShortfall. Both volumes arrive formatted by src/domain/units.ts, so
+  // the sentence cannot state a unit the profile does not use. It was the formatted EXAMPLE
+  // 'Beverage intake 900 mL of 2600 mL today.' that nothing resolved while the frame assembled
+  // the same sentence in English (P8 close-out B); the slots are the same two volumes.
+  'advice.beverageShortfall': 'Beverage intake {logged} of {target} today.',
   'advice.logPostSessionMass': 'Log your post-session body mass.',
   'why.postSessionMass':
     'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
   'advice.fluidLoss': 'Fluid loss above 2 %. Replace it over the next hours.',
-  'why.fluidLoss': 'Loss of 2.4 % of pre-session mass, above the 2 % threshold (ACSM 2007).', // formatted
+  // template; FORMAT.fluidLossWhy, R9's disclosure body behind 'advice.fluidLoss'. `{loss}` is
+  // already fixed to one decimal by the caller (a percentage of the pre-session mass) and
+  // `{threshold}` is DEHYDRATION_LOSS_FRACTION as a percentage, passed in rather than written
+  // here so the sentence and the comparison cannot drift apart. 2007 is the citation year and is
+  // the one literal number this row keeps.
+  'why.fluidLoss':
+    'Loss of {loss} % of pre-session mass, above the {threshold} % threshold (ACSM 2007).',
   // P4 review item 2: these ten were formatted EXAMPLES that nothing resolved, while
   // src/domain/training/coach.ts assembled the same sentences in English in the domain. They
   // are now the TEMPLATES that module's return value is rendered through
@@ -1038,7 +1055,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The row marker for a set logged beyond the prescribed count. Not "extra": a bonus set is
   // the term LoggedSet.isBonus records, and the progression engine excludes it by that name.
   'label.bonusSet': 'BONUS',
-  'label.suggestedLoad': 'Suggested',
+  // template; FORMAT.suggestedLoad. "Suggested 62.5 kg: add load". The load is what the user
+  // dials in, so it is inline (R9); how it was derived is not, and lives in the why? disclosure
+  // beside it. `{kind}` arrives already resolved from one of the `status.advice*` rows, so this
+  // row states no decision of its own. It held the bare word 'Suggested' and nothing resolved
+  // it, while the frame assembled the whole sentence in English (P8 close-out B).
+  'label.suggestedLoad': 'Suggested {load}: {kind}',
   // What the progression engine decided, one label per ProgressionAdvice.kind. These name the
   // ACTION, never the arithmetic behind it; that lives in the why? disclosure (contract R9).
   'status.adviceHold': 'Hold load',
@@ -1501,6 +1523,37 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Escape bound whatever this preference says. A user who turned the shortcuts off and then
   // found the palette still opening would read that as the switch not working.
   'advice.hotkeysOff': 'Off leaves Escape and the modifier shortcuts bound.',
+
+  // --- the nine frames that baked English (P8 close-out B) ---
+  // Six new rows and three specimens converted in place (label.suggestedLoad,
+  // advice.beverageShortfall, why.fluidLoss). Every one of the nine FORMAT frames below
+  // assembled its sentence from a template literal and took no overlay parameter, so the words
+  // it printed were clinical under every skin however the user had set `ui.skin`. This is the
+  // same conversion P8 Task 16 applied to thirteen other frames, and the same rule holds: the
+  // VALUES the caller passes are unchanged and stay the domain's, and only the words around
+  // them move into the table.
+  //
+  // template; FORMAT.setsBy. The MULTIPLICATION SIGN is the frame's whole contribution today
+  // and both operands arrive already formatted from src/ui/format/plan.ts. The en dashes a
+  // caller passes inside {sets} and {prescription} are numeric ranges, which R5 retains.
+  'status.setsBy': '{sets} × {prescription}',
+  // template; FORMAT.sessionEyebrow. "SESSION 1, Upper". A comma, not a middot or a dash (R5).
+  // Upper case is the console register the Train view's eyebrow is set in; a skin that is not a
+  // console rewrites the row rather than reaching into the component.
+  'status.sessionEyebrow': 'SESSION {ordinal}, {label}',
+  // template; FORMAT.setCounter. The set's position in the count the block prescribes.
+  'status.setCounter': 'SET {n}/{targetSets}',
+  // template; FORMAT.lastSessionSets. The date is the assignment's own LocalDate, never a
+  // wall-clock rendering, and the reps are that session's list in programme order.
+  'status.lastSessionSets': 'Last session {date}: {load} × {reps}',
+  // template; FORMAT.restRemaining. A clock readout rather than a sentence, and it is a row so
+  // a skin can reorder or reword the two fields. THE ZERO PADDING IS NOT HERE: the frame pads
+  // the seconds to two digits, because how many digits a seconds field has is a property of the
+  // readout and not a word a skin may change.
+  'status.restRemaining': '{minutes}:{seconds}',
+  // template; FORMAT.logVolume. The drink control, whose volume is the profile's own editable
+  // cup size, formatted by src/domain/units.ts. R1 counts one word: the slot is a number.
+  'button.logVolume': 'Log {volume}',
 };
 
 /**
@@ -1657,10 +1710,19 @@ export const FORMAT = {
 
   /**
    * "3–4 × 6–10 reps". Both operands arrive already formatted from src/ui/format/plan.ts, so
-   * this frame owns the multiplication sign and nothing else. The en dashes are numeric
-   * ranges, which R5 retains.
+   * this frame substitutes and nothing else. The en dashes are numeric ranges, which R5 retains.
+   *
+   * Reads `status.setsBy` (P8 close-out B). It owned the multiplication sign as a template
+   * literal, which made the row clinical under every skin.
    */
-  setsBy: (sets: string, prescription: string): string => `${sets} × ${prescription}`,
+  setsBy: (
+    sets: string,
+    prescription: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.setsBy', overrides)
+      .replace('{sets}', () => sets)
+      .replace('{prescription}', () => prescription),
 
   /** "Next: Wed 07:00 Push." The weekday abbreviation comes from a LocalDate, never a Date. */
   nextSession: (
@@ -1789,11 +1851,32 @@ export const FORMAT = {
 
   // --- Train view (P4 Task 10) ---
 
-  /** "SESSION 1, Upper". Commas, not middots or dashes (copy contract R5). */
-  sessionEyebrow: (ordinal: number, label: string): string => `SESSION ${ordinal}, ${label}`,
+  /**
+   * "SESSION 1, Upper". Commas, not middots or dashes (copy contract R5). Reads
+   * `status.sessionEyebrow` (P8 close-out B), so the console register is a row a skin can
+   * rewrite rather than a literal in this file.
+   */
+  sessionEyebrow: (
+    ordinal: number,
+    label: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.sessionEyebrow', overrides)
+      .replace('{ordinal}', () => String(ordinal))
+      .replace('{label}', () => label),
 
-  /** "SET 2/3": the set's position in the count this block prescribes, after the modifier. */
-  setCounter: (n: number, targetSets: number): string => `SET ${n}/${targetSets}`,
+  /**
+   * "SET 2/3": the set's position in the count this block prescribes, after the modifier. Reads
+   * `status.setCounter` (P8 close-out B).
+   */
+  setCounter: (
+    n: number,
+    targetSets: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.setCounter', overrides)
+      .replace('{n}', () => String(n))
+      .replace('{targetSets}', () => String(targetSets)),
 
   /**
    * "Set 2 load", the quantity name of one row's load field. It is per-row rather than a bare
@@ -1843,43 +1926,90 @@ export const FORMAT = {
   /**
    * "Last session 2026-02-27: 60 kg × 8, 8, 8". The date is the assignment's own LocalDate,
    * never a wall-clock rendering, and the reps are that session's list in programme order.
+   * Reads `status.lastSessionSets` (P8 close-out B).
    */
-  lastSessionSets: (date: string, load: string, reps: string): string =>
-    `Last session ${date}: ${load} × ${reps}`,
+  lastSessionSets: (
+    date: string,
+    load: string,
+    reps: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.lastSessionSets', overrides)
+      .replace('{date}', () => date)
+      .replace('{load}', () => load)
+      .replace('{reps}', () => reps),
 
   /**
    * "Suggested 62.5 kg: add load". The load is what the user dials in, so it is inline (R9);
-   * how it was derived is not, and lives in the why? disclosure beside it. `kind` is one of
-   * the `status.advice*` keys, so this frame states no decision of its own.
+   * how it was derived is not, and lives in the why? disclosure beside it. `kind` arrives
+   * already resolved from one of the `status.advice*` rows, so this frame states no decision of
+   * its own. Reads `label.suggestedLoad` (P8 close-out B), which held the bare word 'Suggested'
+   * that nothing resolved while this frame wrote the whole sentence.
    */
-  suggestedLoad: (load: string, kind: string): string => `Suggested ${load}: ${kind}`,
+  suggestedLoad: (
+    load: string,
+    kind: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('label.suggestedLoad', overrides)
+      .replace('{load}', () => load)
+      .replace('{kind}', () => kind),
 
   /**
    * "2:00" — a clock readout, not a sentence. Seconds are zero-padded to two digits so the
    * width does not jump as the count falls; minutes are not, because a rest interval is
    * single-digit minutes.
+   *
+   * Reads `status.restRemaining` (P8 close-out B) so a skin can reorder or reword the two
+   * fields. THE PADDING STAYS HERE: how many digits a seconds field carries is a property of
+   * the readout, not a word, and a skin that dropped it would make the width jump.
    */
-  restRemaining: (minutes: number, seconds: number): string =>
-    `${minutes}:${String(seconds).padStart(2, '0')}`,
+  restRemaining: (
+    minutes: number,
+    seconds: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('status.restRemaining', overrides)
+      .replace('{minutes}', () => String(minutes))
+      .replace('{seconds}', () => String(seconds).padStart(2, '0')),
 
-  /** "Log 250 mL": the drink control, whose volume is the profile's own editable cup size. */
-  logVolume: (volume: string): string => `Log ${volume}`,
+  /**
+   * "Log 250 mL": the drink control, whose volume is the profile's own editable cup size. Reads
+   * `button.logVolume` (P8 close-out B); it is the control a user meets most often on the Train
+   * screen, and it was the clinical word under every skin.
+   */
+  logVolume: (volume: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('button.logVolume', overrides).replace('{volume}', () => volume),
 
   /**
    * "Beverage intake 900 mL of 2600 mL today." Both volumes arrive formatted by
-   * src/domain/units.ts, so the sentence cannot state a unit the profile does not use.
+   * src/domain/units.ts, so the sentence cannot state a unit the profile does not use. Reads
+   * `advice.beverageShortfall` (P8 close-out B), which was a formatted example nothing resolved.
    */
-  beverageShortfall: (logged: string, target: string): string =>
-    `Beverage intake ${logged} of ${target} today.`,
+  beverageShortfall: (
+    logged: string,
+    target: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('advice.beverageShortfall', overrides)
+      .replace('{logged}', () => logged)
+      .replace('{target}', () => target),
 
   /**
    * R9's disclosure body behind `advice.fluidLoss`: the measured loss against the threshold it
    * exceeded. `lossPct` is already fixed to one decimal by the caller (a percentage of the
    * pre-session mass); `thresholdPct` is DEHYDRATION_LOSS_FRACTION as a percentage, passed in
-   * rather than written here so the sentence and the comparison cannot drift apart.
+   * rather than written here so the sentence and the comparison cannot drift apart. Reads
+   * `why.fluidLoss` (P8 close-out B), which was a formatted example nothing resolved.
    */
-  fluidLossWhy: (lossPct: string, thresholdPct: number): string =>
-    `Loss of ${lossPct} % of pre-session mass, above the ${thresholdPct} % threshold (ACSM 2007).`,
+  fluidLossWhy: (
+    lossPct: string,
+    thresholdPct: number,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('why.fluidLoss', overrides)
+      .replace('{loss}', () => lossPct)
+      .replace('{threshold}', () => String(thresholdPct)),
 
   // --- toast queue (P8 Task 3) ---
 

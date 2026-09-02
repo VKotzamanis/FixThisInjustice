@@ -404,10 +404,16 @@ export function TodayView(): JSX.Element {
          * paused on 2026-03-02"), which names nothing the user did and nothing they can act
          * on, and it is assembled outside src/content/copy.ts and so outside the skin system.
          * src/ui/format/refusal.ts maps it onto a copy key with the date as a slot.
+         *
+         * THE OVERLAY IS PASSED (P8 close-out B). The mapper has accepted one since it was
+         * written and this call site did not supply it, so the one sentence on this screen that
+         * reports a refusal rendered the clinical words while every control beside it followed
+         * the skin. The date inside it is the domain's either way: the mapper substitutes into a
+         * slot and no skin can reach the value.
          */
         <div className="today-banner" role="alert">
           <span className="banner-tag">{c('banner.actionRefused.tag')}</span>
-          <span>{refusalLine(actionError)}</span>
+          <span>{refusalLine(actionError, overrides)}</span>
           <button
             type="button"
             onClick={() => {
