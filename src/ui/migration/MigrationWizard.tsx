@@ -1,4 +1,4 @@
-import { useMemo, useState, type JSX } from 'react';
+import { useEffect, useMemo, useRef, useState, type JSX, type ReactNode } from 'react';
 
 import { FORMAT, copy } from '../../content/copy';
 import { applyMigration, migrateV2 } from '../../domain/migrations/v2';
@@ -6,6 +6,7 @@ import type { LegacyUnit, MigrateV2Result, MigrationSkip } from '../../domain/mi
 import type { PlanTemplate, Profile } from '../../domain/types';
 import { selectState, useAppStore } from '../../store';
 import { deleteLegacyV2 } from '../../store/persistence';
+import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import '../views/views.css';
 import './migration.css';
 
@@ -14,6 +15,20 @@ import './migration.css';
  * DELETE (src/app/RootErrorBoundary.tsx): capitals, one verb, matched exactly.
  */
 const CONFIRMATION_WORD = 'IMPORT';
+
+/**
+ * The word typed before the one step that destroys. Both words reach their labels through
+ * FORMAT.typeToConfirm, so no skin can name a word the control does not accept (finding 3).
+ */
+const DELETE_WORD = 'DELETE';
+
+/**
+ * The backup the delete step offers: the legacy document as it was read, byte for byte.
+ *
+ * Not the migrated document. What deleting the legacy keys destroys is precisely the records
+ * the migration refused, and those are in the old text and nowhere else.
+ */
+const LEGACY_EXPORT_FILENAME = 'fixthisinjustice-legacy-v2.json';
 
 /** The unit the wizard assumes for body mass unless the user overrules it (v2.ts). */
 const DEFAULT_BODY_MASS_UNIT: LegacyUnit = 'lb';
@@ -98,7 +113,7 @@ function SkipList(props: { summary: string; skips: MigrationSkip[] }): JSX.Eleme
 /**
  * The one-way import of the legacy console document.
  *
- * Three properties hold at every step, and each is a decision the review asked for:
+ * Five properties hold at every step, and each is a decision a review asked for:
  *
  *  1. The legacy key is never written or removed until the migrated document has been written
  *     AND that write has been read back as successful. Until then the legacy text is the only
@@ -110,6 +125,14 @@ function SkipList(props: { summary: string; skips: MigrationSkip[] }): JSX.Eleme
  *     with its evidence and can be overruled.
  *  3. Nothing is committed before the typed confirmation, and the preview the user confirms is
  *     the report of the migration that will be installed, not a second run of it.
+ *  4. The delete is a destructive action and takes both of the gates the master plan puts on
+ *     one (section 3): the untouched legacy text downloaded from this panel, then the word
+ *     typed exactly. It is ConfirmDestructive that holds them, not this component, so the
+ *     wipe controls in Settings inherit the same two gates rather than a second reading of
+ *     them (code review finding 1).
+ *  5. ui.legacyMigration = 'done' is written only after the write it describes has been read
+ *     back. The decision closes the offer permanently, so it must not survive a save that
+ *     failed and took the imported records with it (code review finding 7).
  *
  * The wizard adds no store action. It installs through `importJson`, which is the store's own
  * replace path and runs `parseState` on the way in, so a document this component could not
@@ -126,6 +149,24 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
   const [applyError, setApplyError] = useState<string | null>(null);
   const [stored, setStored] = useState(false);
   const [decision, setDecision] = useState<LegacyDecision | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  /**
+   * The panel, focused when it appears.
+   *
+   * The wizard is mounted beside the view switch over a screen the user was already reading,
+   * so without this the caret stays wherever it was, on a control the wizard now covers, and a
+   * keyboard or screen-reader user is given nothing to tab from. The same move the recovery
+   * screen makes (src/app/RootErrorBoundary.tsx), for the same reason.
+   *
+   * Mount only. Focusing on every phase change would be defensible, but focusing on every
+   * render would pull the caret out of the confirmation field on each keystroke, and the two
+   * are one edit apart.
+   */
+  const panelRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    panelRef.current?.focus();
+  }, []);
 
   /**
    * The legacy text is parsed here rather than in persistence.ts, which is forbidden to look
@@ -165,18 +206,32 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
     if (outcome === null || !outcome.ok) return;
     setApplyError(null);
 
-    const merged = applyMigration(selectState(useAppStore.getState()), outcome.state, profile.id);
+    const base = selectState(useAppStore.getState());
+    const merged = applyMigration(base, outcome.state, profile.id);
     if (!merged.ok) {
       setApplyError(merged.reason);
       return;
     }
+
+    /*
+     * Code review finding 7. applyMigration stamps ui.legacyMigration = 'done' into the
+     * document it returns, so installing that document records the decision before a single
+     * byte has been written. The decision means "the offer has been answered and will not be
+     * made again"; it must not outlive a write that never landed, or a failed save would take
+     * the import AND the offer with it. So it is staged back to whatever it already was, and
+     * set below, once the write has been read back.
+     */
+    const staged = {
+      ...merged.state,
+      ui: { ...merged.state.ui, legacyMigration: base.ui.legacyMigration },
+    };
 
     // Serialised here, before it is installed. save() would hit the same JSON.stringify a
     // moment later, and a document that cannot be serialised must not become the in-memory
     // state of an app that can then never write it.
     let text: string;
     try {
-      text = JSON.stringify(merged.state);
+      text = JSON.stringify(staged);
     } catch (e) {
       setApplyError(messageOf(e));
       return;
@@ -188,21 +243,31 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
       return;
     }
 
-    // applyMigration already writes ui.legacyMigration = 'done'. Checked rather than assumed,
-    // and patched only when it is absent: an unconditional setUi would mint a new `ui` object
-    // and cost a second write for nothing.
-    if (useAppStore.getState().ui.legacyMigration !== 'done') {
-      useAppStore.getState().setUi({ legacyMigration: 'done' });
-    }
-
     // The write goes now rather than on the persistence debounce, so its outcome can be read
-    // back before the legacy copy is offered for deletion.
+    // back before the decision is recorded and the legacy copy is offered for deletion.
     useAppStore.getState().retrySave();
-    const status = useAppStore.getState().status;
+    const afterData = useAppStore.getState().status;
     // retrySave() returns without writing when the store has not hydrated or is holding an
     // unreadable document, and reports nothing in that case. A null lastSaveError is therefore
     // not on its own evidence of a write; all three conditions are.
-    setStored(status.hydrated && status.lastLoadError === null && status.lastSaveError === null);
+    const written =
+      afterData.hydrated && afterData.lastLoadError === null && afterData.lastSaveError === null;
+
+    /*
+     * The second write is the price of the ordering, and it is worth it. The alternative is
+     * one write carrying data and decision together, which cannot be undone if it fails: the
+     * decision would already be in the document the next load reads. Here the data lands
+     * first, then the decision that describes it. A process killed between the two
+     * synchronous writes leaves a stored document holding the imported records with the offer
+     * still open, and the next run re-merges them by identity, reporting every one as
+     * "already present" rather than duplicating it (applyMigration).
+     */
+    if (written) {
+      useAppStore.getState().setUi({ legacyMigration: 'done' });
+      useAppStore.getState().retrySave();
+    }
+    const afterDecision = useAppStore.getState().status;
+    setStored(written && afterDecision.lastSaveError === null);
     setPhase('applied');
   };
 
@@ -217,6 +282,22 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
     </button>
   );
 
+  /**
+   * Every phase renders the same container, so the focus target and the heading association
+   * survive a phase change rather than being re-declared five times and drifting.
+   */
+  const panel = (heading: string, body: ReactNode): JSX.Element => (
+    <section
+      className="view migration"
+      tabIndex={-1}
+      ref={panelRef}
+      aria-labelledby="migration-hero"
+    >
+      <h2 id="migration-hero">{heading}</h2>
+      {body}
+    </section>
+  );
+
   const refusal: string | null = !parsed.ok
     ? parsed.reason
     : outcome !== null && !outcome.ok
@@ -224,25 +305,25 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
       : null;
 
   if (refusal !== null) {
-    return (
-      <section className="view migration" aria-labelledby="migration-hero">
-        <h2 id="migration-hero">{copy('hero.legacyImport')}</h2>
+    return panel(
+      copy('hero.legacyImport'),
+      <>
         <p role="alert">{copy('advice.legacyRefused')}</p>
         <p className="view-error">{FORMAT.legacyRefusedReason(refusal)}</p>
         <p>{copy('advice.legacyNothingDeleted')}</p>
         <div className="migration-actions">{dismissButton}</div>
-      </section>
+      </>,
     );
   }
 
   if (phase === 'explain') {
-    return (
-      <section className="view migration" aria-labelledby="migration-hero">
-        <h2 id="migration-hero">{copy('hero.legacyImport')}</h2>
+    return panel(
+      copy('hero.legacyImport'),
+      <>
         <p>{copy('advice.legacyFound')}</p>
         <details>
           <summary>{copy('disclosure.whatTransfers')}</summary>
-          <p>{copy('advice.legacyTransfers')}</p>
+          <p>{copy('disclosure.legacyTransfers')}</p>
         </details>
 
         <fieldset className="view-field">
@@ -267,7 +348,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
         <p>{FORMAT.legacyBodyMassAssumed(bodyMassUnit)}</p>
         <details>
           <summary>{copy('disclosure.why')}</summary>
-          <p>{copy('advice.legacyBodyMassEvidence')}</p>
+          <p>{copy('disclosure.legacyBodyMassEvidence')}</p>
           <fieldset className="view-field">
             <legend>{copy('label.legacyBodyMassUnit')}</legend>
             <UnitRadio
@@ -294,7 +375,7 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
           </button>
           {dismissButton}
         </div>
-      </section>
+      </>,
     );
   }
 
@@ -302,21 +383,21 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
     // Unreachable: `refusal` above covers the failed migration and `phase` only leaves
     // 'explain' through runPreview, which sets `outcome`. Rendered rather than thrown so a
     // future edit that breaks the invariant does not take the tree down.
-    return (
-      <section className="view migration" aria-labelledby="migration-hero">
-        <h2 id="migration-hero">{copy('hero.legacyImport')}</h2>
+    return panel(
+      copy('hero.legacyImport'),
+      <>
         <p role="alert">{copy('advice.legacyApplyFailed')}</p>
         <div className="migration-actions">{dismissButton}</div>
-      </section>
+      </>,
     );
   }
 
   const { report } = outcome;
 
   if (phase === 'preview') {
-    return (
-      <section className="view migration" aria-labelledby="migration-hero">
-        <h2 id="migration-hero">{copy('hero.legacyPreview')}</h2>
+    return panel(
+      copy('hero.legacyPreview'),
+      <>
         <ul className="migration-report">
           <li>{FORMAT.legacySets(report.setsMigrated)}</li>
           <li>{FORMAT.legacySessions(report.sessionsMigrated)}</li>
@@ -336,7 +417,8 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
         )}
 
         <div className="view-field">
-          <label htmlFor="migration-confirm">{copy('label.legacyConfirm')}</label>
+          {/* One frame, one word: the label cannot name what the check does not accept. */}
+          <label htmlFor="migration-confirm">{FORMAT.typeToConfirm(CONFIRMATION_WORD)}</label>
           <input
             id="migration-confirm"
             type="text"
@@ -362,26 +444,61 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
           </button>
           {dismissButton}
         </div>
-      </section>
+      </>,
     );
   }
 
-  return (
-    <section className="view migration" aria-labelledby="migration-hero">
-      <h2 id="migration-hero">{copy('hero.legacyDone')}</h2>
+  const offerDelete = decision === null && stored;
+
+  return panel(
+    copy('hero.legacyDone'),
+    <>
       <ul className="migration-report">
         <li>{FORMAT.legacySets(report.setsMigrated)}</li>
         <li>{FORMAT.legacySessions(report.sessionsMigrated)}</li>
         <li>{FORMAT.legacyDropped(report.setsSkipped.length)}</li>
       </ul>
-      <p>{stored ? copy('advice.legacyStored') : copy('advice.legacyStoreUnconfirmed')}</p>
-      {decision === 'deleted' && <p>{copy('advice.legacyOldDataDeleted')}</p>}
-      {decision === 'kept' && <p>{copy('advice.legacyOldDataKept')}</p>}
+
+      {/*
+        * The status line. Polite rather than assertive, and a region rather than one
+        * paragraph: what changes here is which sentences are present, and a live region has to
+        * be in the document before its content changes for the change to be announced at all.
+        */}
+      <div className="migration-status" aria-live="polite">
+        <p>{stored ? copy('advice.legacyStored') : copy('advice.legacyStoreUnconfirmed')}</p>
+        {decision === 'deleted' && <p>{copy('advice.legacyOldDataDeleted')}</p>}
+        {decision === 'kept' && <p>{copy('advice.legacyOldDataKept')}</p>}
+      </div>
+
+      {/*
+        * The delete, behind both gates the master plan requires of a destructive action
+        * (section 3): the untouched legacy text has to have been downloaded from this panel,
+        * and the word typed exactly. It replaced a single button that removed all three
+        * legacy keys on one click (code review finding 1).
+        */}
+      {offerDelete && deleteOpen && (
+        <ConfirmDestructive
+          word={DELETE_WORD}
+          exportLabelKey="button.downloadLegacyJson"
+          exportFilename={LEGACY_EXPORT_FILENAME}
+          exportText={() => legacyRaw}
+          confirmLabelKey="button.legacyDeleteOld"
+          onConfirm={removeLegacy}
+          onCancel={() => {
+            setDeleteOpen(false);
+          }}
+        />
+      )}
 
       <div className="migration-actions">
-        {decision === null && stored && (
+        {offerDelete && !deleteOpen && (
           <>
-            <button type="button" onClick={removeLegacy}>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteOpen(true);
+              }}
+            >
               {copy('button.legacyDeleteOld')}
             </button>
             <button
@@ -398,6 +515,6 @@ export function MigrationWizard(props: MigrationWizardProps): JSX.Element {
           {copy('button.legacyClose')}
         </button>
       </div>
-    </section>
+    </>,
   );
 }
