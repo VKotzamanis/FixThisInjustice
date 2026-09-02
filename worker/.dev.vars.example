@@ -1,0 +1,6 @@
+# Copy to worker/.dev.vars and fill in. NEVER commit worker/.dev.vars.
+# Produce the pair with:  npx @pushforge/builder vapid
+# The private key goes here (and, for production, into `npx wrangler secret put VAPID_PRIVATE_JWK`).
+# The public key goes into wrangler.toml [vars] VAPID_PUBLIC_KEY and the GitHub repository
+# variable VITE_VAPID_PUBLIC_KEY. The two must come from the same generated pair.
+VAPID_PRIVATE_JWK={"kty":"EC","crv":"P-256","x":"REPLACE","y":"REPLACE","d":"REPLACE"}

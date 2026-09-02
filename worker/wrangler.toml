@@ -1,0 +1,29 @@
+name = "fti-reminders"
+main = "src/index.ts"
+compatibility_date = "2026-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The id below is a placeholder. Replace it with the value printed by
+#   npx wrangler kv namespace create REMINDERS
+# as instructed in docs/RUNBOOK-reminders.md (created by Task 10). `wrangler deploy`
+# fails loudly on an invalid namespace id, so the placeholder cannot reach production
+# silently.
+[[kv_namespaces]]
+binding = "REMINDERS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Cloudflare's minimum cron granularity is one minute.
+[triggers]
+crons = ["* * * * *"]
+
+# Plain (non-secret) configuration only. The private VAPID key is a Worker secret,
+# set with `npx wrangler secret put <name>` and never written here; .dev.vars.example
+# names the variable and docs/RUNBOOK-reminders.md gives the full command. This file
+# is asserted free of that name by test/config.test.ts.
+[vars]
+VAPID_PUBLIC_KEY = "REPLACE_WITH_VAPID_PUBLIC_KEY"
+ADMIN_CONTACT = "mailto:REPLACE@example.com"
+ALLOWED_ORIGIN = "https://REPLACE-USERNAME.github.io"
+
+[observability]
+enabled = true
