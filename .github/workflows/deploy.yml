@@ -1,9 +1,16 @@
-# Publishes dist/ to GitHub Pages on every push to main. The build job repeats CI's
-# three asset and copy gates, the P7 legacy gate, its build and its grep gates, so
-# nothing un-gated can reach the live site; lint, types and the four-zone suite run
-# in parallel in ci.yml on the same push. The asset gates are repeated rather than left to ci.yml
-# because the two workflows are independent: a red ci.yml does not stop this one
-# from publishing, so a gate that runs only there does not guard the live site.
+# Publishes dist/ to GitHub Pages on every push to main. The build job repeats every gate
+# ci.yml's `verify` job runs, in the same order: the three asset and copy gates, the P7 legacy
+# gate, lint, types, the four-zone suite, the build and the two grep gates. The gates are
+# repeated rather than left to ci.yml because the two workflows are independent: a red ci.yml
+# does not stop this one from publishing, so a gate that runs only there does not guard the
+# live site. That argument covers lint, types and the tests exactly as it covers the asset
+# gates, which is why they are here too rather than trusted to the parallel run.
+#
+# ci.yml's second job, `worker`, is NOT repeated. It gates worker/, a separate npm package that
+# this workflow neither builds nor publishes: dist/ is the whole Pages artifact, and the Worker
+# is deployed by hand, by `npm --prefix worker run deploy` in docs/RUNBOOK-reminders.md section
+# 7. No workflow runs `wrangler deploy`, so a gate here could not stand between worker/ and
+# production the way these gates stand between dist/ and the live site.
 #
 # One-time manual step, documented in docs/DEPLOY-CUTOVER-NOTE.md:
 # Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
@@ -85,6 +92,17 @@ jobs:
       # npm ci installs the exact package-lock.json tree; a drifted lockfile fails here.
       - name: Install
         run: npm ci
+
+      # The five master plan section 3 lint gates are errors, so eslint failing fails the job.
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      # Civil dates are zone-sensitive: the suite runs under UTC, Europe/Athens, America/New_York, America/Los_Angeles.
+      - name: Test in four time zones
+        run: npm run test:tz
 
       - name: Build
         run: npm run build
