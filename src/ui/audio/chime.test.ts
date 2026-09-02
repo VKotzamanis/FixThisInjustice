@@ -62,6 +62,7 @@ class FakeAudioContext {
   readonly gains: FakeGainNode[] = [];
   closeCalls = 0;
   resumeCalls = 0;
+  suspendCalls = 0;
   constructor() {
     FakeAudioContext.instances.push(this);
   }
@@ -73,6 +74,11 @@ class FakeAudioContext {
   close(): Promise<void> {
     this.closeCalls += 1;
     this.state = 'closed';
+    return Promise.resolve();
+  }
+  suspend(): Promise<void> {
+    this.suspendCalls += 1;
+    this.state = 'suspended';
     return Promise.resolve();
   }
   createOscillator(): FakeOscillator {
@@ -189,10 +195,47 @@ describe('chime with a Web Audio implementation present', () => {
     expect(FakeAudioContext.instances).toHaveLength(2);
   });
 
+  it('closes the context when sounds are explicitly off, same as the no-argument call', async () => {
+    const { releaseAudio, unlockAudio } = await loadChime();
+    await unlockAudio();
+    releaseAudio({ sounds: false });
+    expect(onlyContext().closeCalls).toBe(1);
+    expect(onlyContext().suspendCalls).toBe(0);
+  });
+
+  /*
+   * P8 close-out defect: TrainView plays 'session_done' and then, in the same tick, calls
+   * releaseAudio(). A close() there tears down the hardware context immediately, cutting the
+   * sound that was just scheduled on it, and the following unlockAudio() has no gesture to
+   * resume from (the first-gesture listener already fired and removed itself), so every later
+   * sound (pr_stamp, intervention_open) is silent for the rest of the document's life. The P4
+   * hardware-release contract still holds when sounds are off: nothing is scheduled on the
+   * context in that case, so closing it costs nothing and frees the hardware claim as before.
+   */
+  it('suspends rather than closes the context when sounds are enabled, keeping the same object', async () => {
+    const { getAudioContext, releaseAudio, unlockAudio } = await loadChime();
+    await unlockAudio();
+    const before = getAudioContext();
+
+    releaseAudio({ sounds: true });
+
+    expect(onlyContext().suspendCalls).toBe(1);
+    expect(onlyContext().closeCalls).toBe(0);
+    expect(onlyContext().state).toBe('suspended');
+    // Same object: the sfx player's decodedFor identity check (src/skins/sfx.ts) must still
+    // hold after this cycle, or every decoded buffer would need re-decoding on the next unlock.
+    expect(getAudioContext()).toBe(before);
+    expect(FakeAudioContext.instances).toHaveLength(1);
+  });
+
   it('releases nothing when no context was ever built', async () => {
     const { releaseAudio } = await loadChime();
     expect(() => {
       releaseAudio();
+    }).not.toThrow();
+    expect(FakeAudioContext.instances).toHaveLength(0);
+    expect(() => {
+      releaseAudio({ sounds: true });
     }).not.toThrow();
     expect(FakeAudioContext.instances).toHaveLength(0);
   });

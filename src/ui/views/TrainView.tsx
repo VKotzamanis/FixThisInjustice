@@ -253,14 +253,22 @@ export function TrainView(): ReactElement {
      * status is read back rather than assumed. A sound for a completion that did not happen is
      * the audible version of a success banner over a refused write.
      *
-     * BEFORE releaseAudio(), and it must stay there: releaseAudio() closes the shared context,
-     * and a closed context stops everything scheduled on it.
+     * BEFORE releaseAudio(), and it should stay there even now that releaseAudio() only suspends
+     * the context while sounds are on (P8 close-out defect, src/ui/audio/chime.ts): called here,
+     * this sound is scheduled on a context that is still RUNNING, so it starts at once. Called
+     * after, it would land on a context releaseAudio() had just suspended, and the sfx player's
+     * play() would have to resume() and wait a round trip before scheduling it (src/skins/sfx.ts)
+     * - correct, but a needless detour for the one sound in the set that always fires from a
+     * still-open session rather than after one has ended.
+     *
+     * ui.sounds is read fresh here, not cached from a render prop, so a session finished with
+     * sounds toggled mid-run tells releaseAudio() the setting that is actually in effect.
      */
     const ended = (useAppStore.getState().assignments[profileId] ?? []).find(
       (a) => a.date === today,
     );
     if (ended?.status === 'completed') playSfx('session_done');
-    releaseAudio();
+    releaseAudio({ sounds: useAppStore.getState().ui.sounds });
     // A profile that opted in to pre/post weigh-ins stays here for the post-session mass; the
     // control below returns to Today once it is entered. Everyone else leaves at once.
     if (!profile.hydration.weighInOptIn) {
