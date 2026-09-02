@@ -80,8 +80,25 @@ export function Icon({
  * Partial<Record<CopyKey, ...>>, so each of them was a compile error rather than a silent miss
  * until its string existed.
  *
+ * RECONCILED AGAINST 4.4 AGAIN IN P8 CLOSE-OUT B, which added the two rows below the fold and
+ * settled the rest of the sixteen-icon table:
+ *
+ *   pause      4.4 says "pause control". The app has exactly one, the ticker's strip, and
+ *              `button.pauseTicker` did not exist when this map was written (P8 Task 14).
+ *   crown      4.4 says "pr_stamp MOTHER, settings skin row". The stamp position moved to
+ *              `status.weekMetStamp` in close-out B, so the crown is mapped at both keys: the
+ *              week stamp is the position the design drew, and `status.prStamp` keeps it for
+ *              the record toast that reads the same word.
+ *   lips       NO position in this app, and none is invented. 4.4 gives it the quote-tweet
+ *              attribution, which was never built (the plan's own "what this plan does not
+ *              do"), and "the reunion", which is `hero.weekReview` -- given to `fan` in the row
+ *              above it in the same table.
+ *   skip       already mapped at both of its 4.4 positions.
+ *
  * The marquee lead (megaphone), its separators (sparkle) and the setlist bullet (barbell) are
- * absent by design: they are placed by a component, not by a copy key.
+ * absent by design: they are placed by a component, not by a copy key. So is the pause glyph
+ * inside the Marquee itself; the row below names the STRIP's copy key, which is what a call
+ * site reaching SkinLabel would use.
  */
 export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>> = {
   'button.startSession': 'nails',
@@ -98,6 +115,9 @@ export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>
   'status.prStamp': 'crown',
   'advice.interventionBody': 'heart',
   'hero.weekReview': 'fan',
+  // --- reconciled against round three section 4.4 (P8 close-out B) ---
+  'button.pauseTicker': 'pause',
+  'status.weekMetStamp': 'crown',
 };
 
 /**

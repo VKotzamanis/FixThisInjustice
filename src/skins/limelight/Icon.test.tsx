@@ -146,4 +146,39 @@ describe('SkinLabel', () => {
       expect(Object.keys(LIMELIGHT_ICONS)).toContain(name);
     }
   });
+
+  it('maps the two positions whose keys arrived after the map was written', () => {
+    // Round three section 4.4 lists `pause` against "pause control"; the only pause control in
+    // the app is the ticker's strip, and `button.pauseTicker` did not exist when this map was
+    // written (P8 Task 14 added the key, P8 close-out B the mapping).
+    expect(ICON_FOR_KEY['button.pauseTicker']).toBe('pause');
+    // 4.4 lists `crown` against "pr_stamp MOTHER", which is the position the week stamp renders.
+    // That position moved to its own key in P8 close-out B, and the crown moved with it.
+    expect(ICON_FOR_KEY['status.weekMetStamp']).toBe('crown');
+    expect(ICON_FOR_KEY['status.prStamp']).toBe('crown');
+  });
+
+  it('leaves the five icons no copy key names out of the map', () => {
+    /*
+     * Round three section 4.4 is sixteen icons; eleven of them are reachable from a copy key and
+     * are asserted above. The other five are not absent by oversight:
+     *
+     *  - `barbell`, `sparkle` and `megaphone` are placed by components (the setlist, the stamp
+     *    fan, the marquee lead and its separators), which the map's own header records;
+     *  - `pause` and `skip` are also placed directly by the Marquee and the rest panel, and only
+     *    `pause`'s copy-key position exists, which the test above pins;
+     *  - `lips` has NO position in this app. 4.4 gives it "quote-tweet attribution" and "the
+     *    reunion". The quote-tweet inset was never built (the plan's own "what this plan does not
+     *    do": "the board skin's ... quote-tweet inset ... not built"), and "the reunion" is
+     *    `hero.weekReview`, which 4.4 gives to `fan` in the row above. Inventing a second home
+     *    for it would be putting art where the design put none.
+     */
+    const mapped = new Set(Object.values(ICON_FOR_KEY));
+    expect(mapped.has('lips')).toBe(false);
+    expect(mapped.has('barbell')).toBe(false);
+    expect(mapped.has('sparkle')).toBe(false);
+    expect(mapped.has('megaphone')).toBe(false);
+    // The art itself still ships: what is absent is a copy key pointing at it, not the file.
+    expect(LIMELIGHT_ICONS.lips.startsWith('data:image/png;base64,')).toBe(true);
+  });
 });

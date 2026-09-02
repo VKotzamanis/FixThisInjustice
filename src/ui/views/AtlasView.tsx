@@ -179,10 +179,18 @@ export function AtlasView(): ReactElement {
             {section.cards.map((card) => (
               <li className="atlas-slot" role="listitem" key={card.id}>
                 {holds(acquired, card.id) ? (
+                  /*
+                   * THE NAME IS THE TITLE. Without the label the button's name is computed from
+                   * its contents, and the two spans have no separator between them, so it
+                   * announced itself as "CommonThe crested newt". The rarity is not lost: it is
+                   * the section heading this grid sits under and the eyebrow inside the card,
+                   * both of which a screen reader reaches on the way here.
+                   */
                   <button
                     type="button"
                     className={`atlas-card atlas-owned atlas-${card.rarity}`}
                     data-testid={`atlas-card-${card.id}`}
+                    aria-label={card.title}
                     onClick={() => {
                       setOpenId(card.id);
                     }}
@@ -191,9 +199,23 @@ export function AtlasView(): ReactElement {
                     <span className="atlas-card-title">{card.title}</span>
                   </button>
                 ) : (
+                  /*
+                   * `role="img"` is what gives the label somewhere to attach. A locked slot is
+                   * not a control (see the header: it opens nothing, so it is not a button that
+                   * does nothing when pressed), and `aria-label` on a generic element is ignored
+                   * by the accessible-name computation, so the attribute alone would have been
+                   * decoration. The role is honest about what the slot is -- a drawn placeholder
+                   * standing in for a card -- and its label repeats exactly the two words it
+                   * prints, so nothing is withheld by the contents no longer being traversed.
+                   */
                   <div
                     className={`atlas-card atlas-locked atlas-${card.rarity}`}
                     data-testid={`atlas-card-${card.id}`}
+                    role="img"
+                    aria-label={FORMAT.atlasLockedName(
+                      t(RARITY_LABEL[card.rarity]),
+                      t('status.undiscovered'),
+                    )}
                   >
                     <span className="atlas-card-rarity">{t(RARITY_LABEL[card.rarity])}</span>
                     <span className="atlas-card-lock">{t('status.undiscovered')}</span>

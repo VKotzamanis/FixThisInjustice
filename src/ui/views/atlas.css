@@ -68,7 +68,10 @@
   flex-direction: column;
   gap: 0.35rem;
   width: 100%;
-  /* 44 px at the 16 px root: the minimum interactive target views.css fixes for every control. */
+  /* 4.5rem = 72 px at the 16 px root, comfortably over the 44 px (2.75rem) minimum interactive
+     target views.css fixes for every control. The comment here read "44 px at the 16 px root"
+     against a 4.5rem value until P8 close-out B, which was simply wrong arithmetic; the extra
+     28 px are the two stacked lines, not the target rule. */
   min-height: 4.5rem;
   padding: 0.5rem;
   text-align: left;
@@ -137,9 +140,18 @@
   }
 }
 
-/* --- the card dialog --- */
+/*
+ * --- the card dialog ---
+ *
+ * SCOPED UNDER `.atlas`, as every rule above it is. The dialog is rendered by AtlasCardDialog
+ * through ModalShell, which builds no portal (src/ui/components/ModalShell.tsx returns a plain
+ * <div>), so the whole dialog is a descendant of `<section className="view atlas">` and the
+ * scope costs nothing. Unscoped, `.atlas-modal`, `.atlas-modal-title` and the six rules beside
+ * them were global names in a sheet any view that imports atlas.css loads, and the next
+ * component to want a class called `.atlas-modal-body` would have inherited them silently.
+ */
 
-.atlas-modal-bg {
+.atlas .atlas-modal-bg {
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -150,7 +162,7 @@
   padding: 1rem;
 }
 
-.atlas-modal {
+.atlas .atlas-modal {
   background: var(--bg-2, #13161a);
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
   color: var(--text, #dde3ea);
@@ -160,32 +172,32 @@
   padding: 1rem;
 }
 
-.atlas-modal:focus-visible {
+.atlas .atlas-modal:focus-visible {
   outline: 1px solid var(--accent, #a3e635);
   outline-offset: -2px;
 }
 
-.atlas-modal-head {
+.atlas .atlas-modal-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 1rem;
 }
 
-.atlas-modal-rarity {
+.atlas .atlas-modal-rarity {
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-3, #5a6270);
 }
 
-.atlas-modal-title {
+.atlas .atlas-modal-title {
   font-size: 1rem;
   margin: 0.15rem 0 0;
   color: var(--accent, #a3e635);
 }
 
-.atlas-modal-close {
+.atlas .atlas-modal-close {
   font: inherit;
   min-height: 2.75rem;
   padding: 0 0.75rem;
@@ -195,17 +207,17 @@
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
 }
 
-.atlas-modal-close:focus-visible {
+.atlas .atlas-modal-close:focus-visible {
   outline: 1px solid var(--accent, #a3e635);
   outline-offset: -2px;
 }
 
-.atlas-modal-body {
+.atlas .atlas-modal-body {
   margin: 1rem 0 0;
   line-height: 1.6;
 }
 
-.atlas-modal-source {
+.atlas .atlas-modal-source {
   margin: 1rem 0 0;
   font-size: 0.8rem;
   line-height: 1.5;

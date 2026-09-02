@@ -8580,6 +8580,23 @@ Ten items: four from the original P8 scope and six from the skin system. None al
       no other task needs it as written. Any later step that quotes `s.exerciseNames` reads
       `exerciseName(id)` from `src/ui/format/plan.ts` instead.
 
+12. **The Atlas count test ids are `atlas-count-*`, not the draft's `atlas-owned-*`** (Task 5).
+    Recorded after execution, as item 11 was. This plan's Task 5 Step 1 literal (line ~2297)
+    renders `data-testid="atlas-owned-total"` and `` data-testid={`atlas-owned-${r}`} `` inside an
+    `.atlas-stats` block of `.atlas-stat` rows; the shipped `src/ui/views/AtlasView.tsx` renders
+    `data-testid="atlas-count-total"` on the whole-pool count and
+    `` data-testid={`atlas-count-${section.rarity}`} `` on each rarity section's own count, with
+    the classes `.atlas-total`, `.atlas-count-label` and `.atlas-count`.
+
+    The rename follows the structural deviation already recorded in that file's header: the
+    draft's two `<select>` filters were dropped and the pool was grouped into one section per
+    rarity, so the counts stopped being a stats strip beside a filter bar and became the heading
+    line of each section. `owned` also named only half of what the node prints -- the value is
+    `FORMAT.atlasCount(owned, total)`, "5 of 37", not an owned count on its own -- so `count` is
+    the honest word. `src/ui/views/AtlasView.test.tsx` reads the shipped ids throughout; no test
+    in the repository refers to `atlas-owned-*`, and any later step of this plan that quotes one
+    reads `atlas-count-*` instead.
+
 **Contract dependencies P8 asserts but does not own** (flagged so a reviewer can confirm them against P1 to P7 rather than discovering them mid-execution):
 
 - P3's `PlanView` must render each planned-exercise row with `id={planRowDomId(session.id, pe.exerciseId)}` and call `useScrollToPlanFocus()` once (Task 8, steps 9 and 10). If `PlanView` renders only the current session rather than every session, Task 8's deep-link assertion narrows accordingly and the narrowing is recorded here.

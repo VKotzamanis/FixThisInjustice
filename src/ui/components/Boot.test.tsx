@@ -143,12 +143,32 @@ describe('Boot', () => {
     expect(useAppStore.getState().ui.bootSeen).toBe(true);
   });
 
-  it('records the boot as seen when the sequence completes on its own', () => {
+  it('holds the last line for one interval before recording the boot as seen', () => {
+    /*
+     * READY. is the last line and it was on screen for one commit: the same effect that saw
+     * `shown === lines.length` called finish(), which set `bootSeen`, which unmounts the whole
+     * sequence through BootGate on the next render. The line the sequence exists to end on was
+     * therefore never read.
+     *
+     * One BOOT_LINE_INTERVAL_MS, not a number of its own: the dwell is the same beat the rest of
+     * the sequence prints at, which is what makes it read as the last step rather than as a
+     * pause. The total cost is 90 ms on a sequence already under the 1 s "the app started"
+     * threshold BOOT_LINE_INTERVAL_MS is chosen against.
+     */
     const total = buildBootLines(useAppStore.getState()).length;
     render(<Boot />);
     expect(useAppStore.getState().ui.bootSeen).toBe(false);
+
     act(() => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS * total);
+    });
+    // Every line is printed, READY. included, and the boot is NOT yet recorded.
+    expect(bootText().split('\n')).toHaveLength(total);
+    expect(bootText()).toContain(copy('status.bootReady'));
+    expect(useAppStore.getState().ui.bootSeen).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
     });
     expect(useAppStore.getState().ui.bootSeen).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
@@ -174,7 +194,10 @@ describe('Boot', () => {
     render(<Boot />);
     expect(bootText().split('\n')).toHaveLength(total);
     expect(bootText()).toContain(copy('status.bootReady'));
+    // No timer, the dwell included: with every line already printed at mount there is no last
+    // line to hold, and a 90 ms hold would turn a screen this user never sees into a flash.
     expect(vi.getTimerCount()).toBe(0);
+    expect(useAppStore.getState().ui.bootSeen).toBe(true);
   });
 
   it('leaves no timer behind when it is unmounted mid-sequence', () => {
@@ -208,6 +231,11 @@ describe('BootGate', () => {
     render(<BootGate />);
     act(() => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS * total);
+    });
+    // Two advances, not one: the hold is scheduled by the effect that sees the last line
+    // printed, so it does not exist until React has committed that render.
+    act(() => {
+      vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
     });
     expect(screen.queryByTestId('boot-text')).toBeNull();
     expect(vi.getTimerCount()).toBe(0);
