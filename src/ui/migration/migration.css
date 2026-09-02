@@ -1,0 +1,24 @@
+/*
+ * The migration panel borrows the whole of views.css: it is a `.view`, so its heading,
+ * disclosures, text field and buttons are the app's, not a second set. Only two things are
+ * local to it, and both are layout rather than appearance.
+ */
+
+/*
+ * `.view button` is full width and stacks, which is how every other screen renders its
+ * controls. The action rows here carry two or three buttons, so they need the gap the other
+ * views get from the fields between their controls.
+ */
+.view.migration .migration-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+/* The preview counts. One fact per line, no marker: they are a readout, not a list of items. */
+.view.migration .migration-report {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0.75rem;
+}

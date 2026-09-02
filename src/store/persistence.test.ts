@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  LEGACY_KEYS,
+  LEGACY_V2_KEY,
   STORAGE_KEY,
   clearStorage,
+  deleteLegacyV2,
   exportJson,
+  hasLegacyV2,
   importJson,
   load,
+  readLegacyV2Raw,
   readRaw,
   save,
 } from './persistence';
@@ -215,5 +220,48 @@ describe('exportJson and importJson', () => {
     expect(importJson('{"week":999}').ok).toBe(false);
     expect(setItem).not.toHaveBeenCalled();
     expect(data.get(STORAGE_KEY)).toBe('untouched');
+  });
+});
+
+describe('the legacy console keys', () => {
+  it('names the key the legacy console wrote', () => {
+    expect(LEGACY_V2_KEY).toBe('fti.console.v2');
+  });
+
+  it('reports no legacy document when the key is absent', () => {
+    installFakeStorage();
+    expect(hasLegacyV2()).toBe(false);
+    expect(readLegacyV2Raw()).toBeNull();
+  });
+
+  it('returns the raw legacy payload without parsing it', () => {
+    // Deliberately not a valid legacy document: this module must hand the text
+    // over untouched and leave every judgement about it to migrateV2.
+    installFakeStorage({ [LEGACY_V2_KEY]: '{"week":2,' });
+    expect(hasLegacyV2()).toBe(true);
+    expect(readLegacyV2Raw()).toBe('{"week":2,');
+  });
+
+  it('removes every key the legacy app owned and leaves the v3 document', () => {
+    const data = installFakeStorage({
+      'fti.console.v2': '{}',
+      'fti.plan.v1': '{}',
+      'fti.video.instance': 'https://yewtu.be',
+      [STORAGE_KEY]: '{"schemaVersion":3}',
+      'other.owner': 'keep me',
+    });
+    deleteLegacyV2();
+    for (const key of LEGACY_KEYS) expect(data.get(key)).toBeUndefined();
+    expect(data.get(STORAGE_KEY)).toBe('{"schemaVersion":3}');
+    expect(data.get('other.owner')).toBe('keep me');
+  });
+
+  it('treats unreachable storage as no legacy document and never throws', () => {
+    makeStorageUnavailable();
+    expect(readLegacyV2Raw()).toBeNull();
+    expect(hasLegacyV2()).toBe(false);
+    expect(() => {
+      deleteLegacyV2();
+    }).not.toThrow();
   });
 });
