@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsView } from './SettingsView';
+import { FORMAT, copy } from '../../content/copy';
 import { useAppStore } from '../../store';
 import type { Profile } from '../../domain/types';
 
@@ -156,5 +157,73 @@ describe('SettingsView numeric settings', () => {
     expect(updateProfile).toHaveBeenCalledTimes(1);
     // [kg] total on the bar; metric profile, so the display value is the stored value.
     expect(useAppStore.getState().profiles['p1']?.equipmentSteps.barbellKg).toBe(1.25);
+  });
+});
+
+/**
+ * The readiness row (P2 Task 9). It is a SETTINGS_ROWS entry, so it renders after every field
+ * above it and reaches the store through `recordReadiness`, which is the action master plan
+ * section 6.7 names for a screening that happens once a profile already exists. The wizard's
+ * path is the other one and is tested in SetupWizard.test.tsx.
+ */
+describe('readiness row in Settings', () => {
+  /** Replace the fixture with one whose screening state is the case under test. */
+  function seed(readiness: Profile['readiness']): void {
+    PRISTINE_STATE.wipeAll();
+    PRISTINE_STATE.createProfile({ ...PROFILE, readiness });
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-01T12:00:00Z')); // 2026-09-01 in Europe/Athens
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('offers the screen when the profile has never been screened', () => {
+    seed({ screenedAt: null, flagged: false });
+    render(<SettingsView />);
+    expect(screen.getByText(copy('status.notScreened'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy('button.startReadiness') })).toBeInTheDocument();
+  });
+
+  it('reports a clear screening and offers to redo it', () => {
+    seed({ screenedAt: '2026-08-01', flagged: false });
+    render(<SettingsView />);
+    expect(
+      screen.getByText(FORMAT.screenedOn('2026-08-01', copy('status.readinessNoFlags'))),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy('button.redoReadiness') })).toBeInTheDocument();
+  });
+
+  it('reports a flagged screening as a physician consult', () => {
+    seed({ screenedAt: '2026-08-01', flagged: true });
+    render(<SettingsView />);
+    expect(
+      screen.getByText(FORMAT.screenedOn('2026-08-01', copy('status.readinessConsult'))),
+    ).toBeInTheDocument();
+  });
+
+  it('records a redo that turns a clear profile into a flagged one', () => {
+    seed({ screenedAt: '2026-08-01', flagged: false });
+    render(<SettingsView />);
+    fireEvent.click(screen.getByRole('button', { name: copy('button.redoReadiness') }));
+
+    for (const id of [1, 2, 3, 4, 5, 6, 7]) {
+      const answer = id === 3 ? copy('label.yes') : copy('label.no');
+      fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText(answer));
+    }
+    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
+
+    expect(useAppStore.getState().profiles['p1']?.readiness).toEqual({
+      screenedAt: '2026-09-01', // today in the profile's zone, Europe/Athens
+      flagged: true,
+    });
+    expect(
+      screen.getByText(FORMAT.screenedOn('2026-09-01', copy('status.readinessConsult'))),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('readiness-screen')).toBeNull();
   });
 });

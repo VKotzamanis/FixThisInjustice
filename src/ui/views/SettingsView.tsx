@@ -7,6 +7,7 @@ import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '.
 import { displayLoad, formatVolume, toStoredLoad } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
+import { ReadinessScreen } from '../setup/ReadinessScreen';
 import './views.css';
 
 /**
@@ -47,8 +48,59 @@ interface SettingsRow {
 }
 
 const SETTINGS_ROWS: readonly SettingsRow[] = [
-  // P2 Task 9 appends the readiness row here.
+  { id: 'readiness', render: (profile) => <ReadinessRow profile={profile} /> },
 ];
+
+/**
+ * Redo the pre-participation screening (P2 Task 9, master plan section 10.4).
+ *
+ * A component rather than an inline fragment because the panel holds one piece of state: whether
+ * the screen is open. Calling a hook inside `SettingsRow.render`, which is a plain function
+ * invoked during another component's render, would break the rules of hooks.
+ *
+ * This is the call site master plan section 6.7 writes `recordReadiness` for: the profile
+ * already exists, so the result is written straight to it. The wizard's path is the other one,
+ * and it cannot use this action because during setup there is no profile id yet.
+ */
+function ReadinessRow(props: { profile: Profile }): JSX.Element {
+  const [screening, setScreening] = useState(false);
+  const { profile } = props;
+  const screenedAt = profile.readiness.screenedAt;
+
+  return (
+    <>
+      <h2>{copy('hero.readiness')}</h2>
+      <p className="view-note">
+        {screenedAt === null
+          ? copy('status.notScreened')
+          : FORMAT.screenedOn(
+              screenedAt,
+              profile.readiness.flagged
+                ? copy('status.readinessConsult')
+                : copy('status.readinessNoFlags'),
+            )}
+      </p>
+      {screening ? (
+        <ReadinessScreen
+          timezone={profile.timezone}
+          onComplete={(result) => {
+            useAppStore.getState().recordReadiness(profile.id, result.screenedAt, result.flagged);
+            setScreening(false);
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setScreening(true);
+          }}
+        >
+          {screenedAt === null ? copy('button.startReadiness') : copy('button.redoReadiness')}
+        </button>
+      )}
+    </>
+  );
+}
 
 /**
  * A numeric setting held as a local draft and written through to the store on BLUR or ENTER.
