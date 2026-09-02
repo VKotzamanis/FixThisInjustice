@@ -521,7 +521,13 @@ export type CopyKey =
   | 'status.capsuleWritten'
   | 'advice.capsuleNoteShort'
   | 'advice.capsuleNoteLong'
-  | 'advice.capsuleDateRange';
+  | 'advice.capsuleDateRange'
+  // --- Atlas view (P8 Task 5) ---
+  | 'label.rarityCommon'
+  | 'label.rarityUncommon'
+  | 'label.rarityRare'
+  | 'label.atlasCollected'
+  | 'label.atlasSource';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1261,6 +1267,23 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.capsuleNoteShort': 'Write at least {count} characters before sealing.', // formatted
   'advice.capsuleNoteLong': 'The note is longer than {count} characters.', // formatted
   'advice.capsuleDateRange': 'Pick a date between {from} and {to}.', // formatted
+
+  // --- Atlas view (P8 Task 5) ---
+  // The Atlas's own heading, its subtitle and its locked slot are the P8 block above
+  // ('hero.atlas', 'advice.atlas', 'status.undiscovered'), which this task renders rather than
+  // restates. Five keys are new, and they are the ones that block held no word for.
+  //
+  // The three rarity words, as a section heading and as the eyebrow on a card. They live here
+  // rather than being printed from the SpecimenRarity enum so a skin can rename a tier without
+  // renaming the enum the draw weights in src/domain/fun/specimens.ts are keyed by. The case is
+  // the word's own: unlike the toast eyebrow, no stylesheet shouts these.
+  'label.rarityCommon': 'Common',
+  'label.rarityUncommon': 'Uncommon',
+  'label.rarityRare': 'Rare',
+  // The label over the whole-pool count. The count itself is FORMAT.atlasCount.
+  'label.atlasCollected': 'Collected',
+  // The label over a card's citation in the detail dialog.
+  'label.atlasSource': 'Source',
 };
 
 /**
@@ -1859,4 +1882,27 @@ export const FORMAT = {
     copy('advice.capsuleDateRange', overrides)
       .replace('{from}', () => from)
       .replace('{to}', () => to),
+
+  // --- Atlas view (P8 Task 5) ---
+
+  /**
+   * "5 of 37": cards held against cards that exist. Both operands are counts of CARDS and both
+   * are derived from SPECIMEN_CARDS by the view, so adding a card to the pool moves the
+   * denominator without an edit here. Copy contract R9 is not engaged: the frame states a
+   * count and performs no arithmetic the user has to follow.
+   */
+  atlasCount: (owned: number, total: number): string => `${owned} of ${total}`,
+
+  /**
+   * "Nosaka K, Newton M, Sacco P (2002). Scand J Med Sci Sports 12(6):337-346.
+   * DOI 10.1034/j.1600-0838.2002.10178.x".
+   *
+   * The citation arrives verbatim from the card and is never rewritten here. The DOI is printed
+   * as a bare identifier and not as a resolver URL: the shipped Content-Security-Policy grants
+   * no connect-src for doi.org or Crossref, so a link would be a control the app cannot honour,
+   * and the copy contract keeps URLs out of the default skin. A card whose cited work predates
+   * the DOI system carries null (CARDS_WITHOUT_DOI) and prints its citation alone.
+   */
+  atlasSource: (citation: string, doi: string | null): string =>
+    doi === null ? citation : `${citation} DOI ${doi}`,
 } as const;

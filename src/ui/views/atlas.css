@@ -1,0 +1,215 @@
+/*
+ * The Atlas grid and its card dialog, phone first.
+ *
+ * Tokens only, each with the literal fallback src/ui/views/views.css uses, so a slot still
+ * reads if the P1 token sheet has not loaded.
+ *
+ * The grid tracks are auto-filled from a 9rem minimum rather than a fixed column count: the
+ * pool is 37 cards and the narrowest supported viewport fits two of them, which is the whole
+ * of the responsive requirement here.
+ *
+ * MOTION. One transition, on the owned card's border, and it is dropped wholesale under
+ * prefers-reduced-motion. Nothing in this view animates on mount, so there is no entrance to
+ * suppress and no JavaScript that needs to read the preference.
+ */
+.atlas .atlas-total {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+}
+
+.atlas .atlas-count-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2, #8e97a3);
+}
+
+.atlas .atlas-count {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--text, #dde3ea);
+}
+
+.atlas .atlas-section {
+  margin: 0 0 1.5rem;
+}
+
+.atlas .atlas-section h3 {
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-2, #8e97a3);
+  margin: 0 0 0.15rem;
+}
+
+.atlas .atlas-section .atlas-count {
+  font-size: 0.8rem;
+  color: var(--text-2, #8e97a3);
+  margin: 0 0 0.5rem;
+}
+
+.atlas .atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.atlas .atlas-slot {
+  display: flex;
+}
+
+.atlas .atlas-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  width: 100%;
+  /* 44 px at the 16 px root: the minimum interactive target views.css fixes for every control. */
+  min-height: 4.5rem;
+  padding: 0.5rem;
+  text-align: left;
+  font: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  border-left-width: 3px;
+}
+
+.atlas .atlas-card-rarity {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3, #5a6270);
+}
+
+.atlas .atlas-card-title {
+  color: var(--text, #dde3ea);
+  line-height: 1.3;
+}
+
+.atlas .atlas-card-lock {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-3, #5a6270);
+}
+
+/* The tier reads from the left edge, so the three tiers are distinguishable at a glance
+   without the card carrying a second copy of its own rarity word in a badge. */
+.atlas .atlas-common {
+  border-left-color: var(--text-3, #5a6270);
+}
+
+.atlas .atlas-uncommon {
+  border-left-color: var(--info, #67e8f9);
+}
+
+.atlas .atlas-rare {
+  border-left-color: var(--accent, #a3e635);
+}
+
+.atlas .atlas-locked {
+  background: transparent;
+  border-style: dashed;
+  border-left-style: dashed;
+}
+
+.atlas button.atlas-card {
+  cursor: pointer;
+  color: var(--text, #dde3ea);
+  transition: border-color 120ms ease;
+}
+
+.atlas button.atlas-card:hover {
+  border-color: var(--line-2, rgba(220, 230, 240, 0.16));
+}
+
+.atlas button.atlas-card:focus-visible {
+  outline: 1px solid var(--accent, #a3e635);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas button.atlas-card {
+    transition: none;
+  }
+}
+
+/* --- the card dialog --- */
+
+.atlas-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgb(0 0 0 / 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.atlas-modal {
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  color: var(--text, #dde3ea);
+  width: min(34rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 1rem;
+}
+
+.atlas-modal:focus-visible {
+  outline: 1px solid var(--accent, #a3e635);
+  outline-offset: -2px;
+}
+
+.atlas-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.atlas-modal-rarity {
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-3, #5a6270);
+}
+
+.atlas-modal-title {
+  font-size: 1rem;
+  margin: 0.15rem 0 0;
+  color: var(--accent, #a3e635);
+}
+
+.atlas-modal-close {
+  font: inherit;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  cursor: pointer;
+  color: var(--text, #dde3ea);
+  background: var(--bg-3, #1c2026);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+}
+
+.atlas-modal-close:focus-visible {
+  outline: 1px solid var(--accent, #a3e635);
+  outline-offset: -2px;
+}
+
+.atlas-modal-body {
+  margin: 1rem 0 0;
+  line-height: 1.6;
+}
+
+.atlas-modal-source {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-2, #8e97a3);
+  /* A citation carries a DOI, which has no spaces and overflows a 9rem phone column. */
+  overflow-wrap: anywhere;
+}
