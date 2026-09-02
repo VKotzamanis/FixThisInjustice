@@ -2,7 +2,8 @@ import type { ReactElement } from 'react';
 import { LIMELIGHT_ICONS } from './icons';
 import type { LimelightIconName } from './icons';
 import { useSkin } from '../skinContext';
-import { copy, type CopyKey } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 
 export type { LimelightIconName } from './icons';
 
@@ -112,11 +113,15 @@ export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>
  * button's name.
  */
 export function SkinLabel({ copyKey }: { copyKey: CopyKey }): ReactElement {
+  // The words follow the skin the same way the icon does: `Icon` renders nothing outside
+  // limelight, and reading the string through the default table alone would have put a
+  // clinical sentence beside a limelight glyph.
+  const t = useCopy();
   const icon = ICON_FOR_KEY[copyKey];
   return (
     <>
       {icon === undefined ? null : <Icon name={icon} />}
-      <span className="ll-label">{copy(copyKey)}</span>
+      <span className="ll-label">{t(copyKey)}</span>
     </>
   );
 }

@@ -6,6 +6,7 @@ import {
   VAPID_PUBLIC_KEY,
 } from '../../config/reminders';
 import { FORMAT, copy, type CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { localTimeOf } from '../../domain/dates';
 import {
   pushAvailability,
@@ -48,15 +49,18 @@ const STATUS_COPY: Readonly<Record<Exclude<ReminderStatus, 'active'>, CopyKey>> 
  * @param timezone   the PROFILE's zone, not the device's. The sync happened at one instant;
  *                   which wall clock it is reported as is a property of the profile, and
  *                   reporting it in the device zone would move the time when the user travels.
+ * @param overrides  the active skin's table. Pure and optional, so the suite can call this
+ *                   with no React tree and get the clinical sentence it always got.
  */
 export function statusLine(
   status: ReminderStatus,
   lastSyncAt: EpochMs | null,
   timezone: TimeZone,
+  overrides?: Partial<Record<CopyKey, string>>,
 ): string {
-  if (status !== 'active') return copy(STATUS_COPY[status]);
-  if (lastSyncAt === null) return copy('status.remindersPending');
-  return FORMAT.remindersActive(localTimeOf(lastSyncAt, timezone));
+  if (status !== 'active') return copy(STATUS_COPY[status], overrides);
+  if (lastSyncAt === null) return copy('status.remindersPending', overrides);
+  return FORMAT.remindersActive(localTimeOf(lastSyncAt, timezone), overrides);
 }
 
 /** The user-facing sentence for a refusal from subscribe(). The reason itself is never shown. */
@@ -116,6 +120,8 @@ export function ReminderSettingsPanel(): JSX.Element | null {
   );
   const pushDevice = useAppStore((s) => s.pushDevice);
 
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<CopyKey | null>(null);
 
@@ -229,32 +235,34 @@ export function ReminderSettingsPanel(): JSX.Element | null {
 
   return (
     <section className="fti-reminders" aria-labelledby="fti-reminders-heading">
-      <h2 id="fti-reminders-heading">{copy('hero.reminders')}</h2>
-      <p role="status">{statusLine(status, pushDevice?.lastSyncAt ?? null, profile.timezone)}</p>
-      {error === null ? null : <p className="view-note">{copy(error)}</p>}
+      <h2 id="fti-reminders-heading">{t('hero.reminders')}</h2>
+      <p role="status">
+        {statusLine(status, pushDevice?.lastSyncAt ?? null, profile.timezone, overrides)}
+      </p>
+      {error === null ? null : <p className="view-note">{t(error)}</p>}
 
       {offersToggle ? (
         <label className="view-inline">
           <input
             type="checkbox"
-            aria-label={copy('label.remindersEnable')}
+            aria-label={t('label.remindersEnable')}
             checked={settings.enabled}
             disabled={busy || status === 'not-configured'}
             onChange={(event) => {
               handleToggle(event.target.checked);
             }}
           />
-          {copy('label.remindersEnable')}
+          {t('label.remindersEnable')}
         </label>
       ) : null}
 
       {settings.enabled ? (
         <>
           <label className="view-inline">
-            {copy('label.reminderDayOfTime')}
+            {t('label.reminderDayOfTime')}
             <input
               type="time"
-              aria-label={copy('label.reminderDayOfTime')}
+              aria-label={t('label.reminderDayOfTime')}
               value={settings.dayOfTime}
               disabled={busy}
               onChange={(event) => {
@@ -264,19 +272,19 @@ export function ReminderSettingsPanel(): JSX.Element | null {
           </label>
 
           <fieldset>
-            <legend>{copy('label.reminderLeadTimes')}</legend>
+            <legend>{t('label.reminderLeadTimes')}</legend>
             {LEAD_MINUTE_CHOICES.map((minutes) => (
               <label className="view-inline" key={minutes}>
                 <input
                   type="checkbox"
-                  aria-label={FORMAT.reminderLead(minutes)}
+                  aria-label={FORMAT.reminderLead(minutes, overrides)}
                   checked={settings.leadMinutes.includes(minutes)}
                   disabled={busy}
                   onChange={(event) => {
                     handleLeadToggle(minutes, event.target.checked);
                   }}
                 />
-                {FORMAT.reminderLead(minutes)}
+                {FORMAT.reminderLead(minutes, overrides)}
               </label>
             ))}
           </fieldset>

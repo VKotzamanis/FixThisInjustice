@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { DEFAULT_COPY, FORMAT } from '../../content/copy';
+import { DEFAULT_COPY, FORMAT, SKIN_COPY, copyFor } from '../../content/copy';
 import { SPECIMEN_BY_ID } from '../../content/specimenCards';
 import { UNDO_WINDOW_MS } from '../../store/training';
 import {
@@ -14,6 +14,8 @@ import {
   useToasts,
 } from './ToastQueue';
 import type { Toast, ToastInput } from './ToastQueue';
+import { useAppStore } from '../../store';
+import type { SkinId } from '../../domain/types';
 
 function t(id: string, kind: Toast['kind']): Toast {
   if (kind === 'undo') {
@@ -68,6 +70,24 @@ function renderQueue(extra?: ReactElement): ReturnType<typeof render> {
 function onScreen(): HTMLElement[] {
   return screen.queryAllByTestId('toast');
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('selectVisible', () => {
   // G9
@@ -635,5 +655,41 @@ describe('useToasts', () => {
     });
     expect(document.body.textContent ?? '').not.toMatch(/[\u2014\u2013]/);
     expect(document.body.textContent ?? '').not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor` and through the frame's own overlay argument, never
+ * as a literal, so the expectation follows the table instead of being rewritten beside it.
+ *
+ * The queue reads the skin ONCE and hands it to the shell as a prop, so a queue holding many
+ * toasts still holds one subscription to `ui.skin`; that is a property of the source rather
+ * than of a render, and it is recorded here rather than asserted.
+ */
+describe('ToastQueue under a skin', () => {
+  it('renders the limelight milestone and dismissal, and the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = renderQueue();
+    act(() => {
+      api!.push({ kind: 'milestone', count: 250 });
+    });
+    expect(
+      screen.getByText(FORMAT.milestoneSets('250', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'milestone', count: 250 });
+    });
+    expect(screen.getByText(FORMAT.milestoneSets('250', SKIN_COPY.clinical))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.dismiss') }),
+    ).toBeInTheDocument();
   });
 });

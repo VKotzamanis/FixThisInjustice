@@ -22,7 +22,8 @@ import { createContext, useContext, useId, useState } from 'react';
 import type { ReactElement } from 'react';
 import { ModalShell } from './ModalShell';
 import { VIDEO_INSTANCES } from '../../config/videoInstances';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { useAppStore } from '../../store';
 import '../styles/train.css';
 
@@ -70,6 +71,8 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
   const [index, setIndex] = useState(() => startIndex(preferredHost));
   const [reloadKey, setReloadKey] = useState(0);
   const headingId = useId();
+  const t = useCopy();
+  const overrides = useCopyOverrides();
 
   const instance = VIDEO_INSTANCES[index];
   // Every hook above this line, so the guard cannot change the hook order. Unreachable while
@@ -119,14 +122,14 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
     >
       <div className="vmod-head">
         <div id={headingId}>
-          <div className="vmod-eyebrow">{copy('label.formReference')}</div>
+          <div className="vmod-eyebrow">{t('label.formReference')}</div>
           <h2 className="vmod-name">{props.request.title}</h2>
         </div>
         <button
           type="button"
           className="vmod-close"
           onClick={props.onClose}
-          aria-label={copy('button.closeModal')}
+          aria-label={t('button.closeModal')}
         >
           {/* Copy contract R6: a mark from the token set, not an emoji. */}
           {'✕'}
@@ -136,18 +139,18 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
       <div className="vmod-instance">
         <span className="vmod-inst-host">{instance.host}</span>
         <span className="vmod-inst-meta">
-          {FORMAT.videoInstanceOf(index + 1, VIDEO_INSTANCES.length)}
+          {FORMAT.videoInstanceOf(index + 1, VIDEO_INSTANCES.length, overrides)}
         </span>
         <button type="button" onClick={nextInstance}>
-          {copy('button.nextInstance')}
+          {t('button.nextInstance')}
         </button>
       </div>
 
       {videoId === null ? (
         <div className="vmod-search">
-          <h3 className="vmod-search-eyebrow">{copy('label.videoSearch')}</h3>
+          <h3 className="vmod-search-eyebrow">{t('label.videoSearch')}</h3>
           <p className="vmod-search-q">{searchTerm}</p>
-          <p className="vmod-search-note">{copy('advice.noClipRecorded')}</p>
+          <p className="vmod-search-note">{t('advice.noClipRecorded')}</p>
         </div>
       ) : (
         <div className="vmod-frame">
@@ -168,11 +171,11 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
       <div className="vmod-foot">
         {videoId !== null && (
           <a className="vmod-link" href={watchUrl} target="_blank" rel="noopener noreferrer">
-            {copy('button.openClip')}
+            {t('button.openClip')}
           </a>
         )}
         <a className="vmod-link" href={searchUrl} target="_blank" rel="noopener noreferrer">
-          {copy('button.searchInstance')}
+          {t('button.searchInstance')}
         </a>
       </div>
     </ModalShell>

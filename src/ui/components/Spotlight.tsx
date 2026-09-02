@@ -18,6 +18,8 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react';
 import { copy } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { PlanTemplate } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { useActivePlan } from '../../store/selectors';
@@ -60,6 +62,14 @@ export interface SpotlightItem {
  */
 export interface SpotlightArgs {
   plan: PlanTemplate | null;
+  /**
+   * The active skin's override table, for the view rows' labels.
+   *
+   * Optional, and omitting it gives the clinical label VIEWS already carries: this function
+   * is pure and is called directly by its own suite, which has no React tree to read a skin
+   * from. The component below passes `useCopyOverrides()`.
+   */
+  overrides?: Partial<Record<CopyKey, string>>;
   setView: (id: ViewId) => void;
   focusPlanRow: (target: PlanFocusTarget) => void;
   close: () => void;
@@ -73,14 +83,16 @@ export interface SpotlightArgs {
  * a result performs is asserted without rendering anything.
  */
 export function buildSpotlightItems(args: SpotlightArgs): SpotlightItem[] {
-  const { plan, setView, focusPlanRow, close } = args;
+  const { plan, setView, focusPlanRow, close, overrides } = args;
   const items: SpotlightItem[] = [];
 
   for (const view of VIEWS) {
     items.push({
       kind: 'view',
       key: `view-${view.id}`,
-      label: view.label,
+      // Through the key rather than the baked `view.label`, so the palette names a view the
+      // way the rest of the app names it under the active skin.
+      label: copy(view.copyKey, overrides),
       // A view is not inside anything, and the kind badge beside it already reads "View".
       hint: '',
       run: () => {
@@ -138,6 +150,8 @@ export function Spotlight({
   const emptyId = useId();
   const optionIdPrefix = useId();
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const t = useCopy();
+  const overrides = useCopyOverrides();
 
   const [query, setQuery] = useState('');
   /** Index into the FILTERED list, not the item list. */
@@ -169,8 +183,11 @@ export function Spotlight({
         },
         focusPlanRow: requestPlanFocus,
         close,
+        overrides,
       }),
-    [plan, close],
+    // `useCopyOverrides` returns the frozen table for the skin, so the reference is stable
+    // per skin and this memo re-runs only when the skin actually changes.
+    [plan, close, overrides],
   );
 
   const results = useMemo(() => filterSpotlightItems(items, query), [items, query]);
@@ -232,7 +249,7 @@ export function Spotlight({
       onClose={close}
     >
       <h2 id={titleId} className="spotlight-title">
-        {copy('hero.spotlight')}
+        {t('hero.spotlight')}
       </h2>
 
       <input
@@ -240,8 +257,8 @@ export function Spotlight({
         type="text"
         role="combobox"
         className="spotlight-query"
-        aria-label={copy('label.spotlightQuery')}
-        placeholder={copy('label.spotlightQuery')}
+        aria-label={t('label.spotlightQuery')}
+        placeholder={t('label.spotlightQuery')}
         /* Whether the popup HAS anything in it, not whether the dialog is open: hard-coded
            true, a screen reader announces an expanded listbox over a query that matched
            nothing. */
@@ -260,7 +277,7 @@ export function Spotlight({
         onKeyDown={onKeyDown}
       />
 
-      <ul id={listId} className="spotlight-list" role="listbox" aria-label={copy('label.spotlightResults')}>
+      <ul id={listId} className="spotlight-list" role="listbox" aria-label={t('label.spotlightResults')}>
         {results.map((item, i) => (
           <li
             key={item.key}
@@ -276,7 +293,7 @@ export function Spotlight({
             }}
           >
             <span className={`spotlight-kind is-${item.kind}`}>
-              {item.kind === 'view' ? copy('label.spotlightView') : copy('label.spotlightExercise')}
+              {item.kind === 'view' ? t('label.spotlightView') : t('label.spotlightExercise')}
             </span>
             <span className="spotlight-label">{item.label}</span>
             {item.hint !== '' && <span className="spotlight-hint">{item.hint}</span>}
@@ -290,7 +307,7 @@ export function Spotlight({
           combobox points at it with aria-describedby so the sentence is also reachable on
           demand and not only as an announcement. */}
       <p id={emptyId} role="status" className="spotlight-empty">
-        {results.length === 0 ? copy('advice.noSpotlightMatch') : ''}
+        {results.length === 0 ? t('advice.noSpotlightMatch') : ''}
       </p>
     </ModalShell>
   );

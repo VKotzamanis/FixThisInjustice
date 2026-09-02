@@ -11,13 +11,15 @@
 // otherwise reachable only by keyboard, which on a touch device means not at all.
 
 import type { ReactElement } from 'react';
-import { copy } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import './spotlight.css';
 
 export function SpotlightButton({ onOpen }: { onOpen: () => void }): ReactElement {
+  const t = useCopy();
+
   return (
     <button type="button" className="spotlight-open" onClick={onOpen}>
-      {copy('button.openSpotlight')}
+      {t('button.openSpotlight')}
     </button>
   );
 }

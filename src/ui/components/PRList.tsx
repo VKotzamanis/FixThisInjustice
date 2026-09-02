@@ -19,7 +19,8 @@
 // is never presented as a measured maximum.
 
 import type { ReactElement } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { compareLocalDate } from '../../domain/dates';
 import { computeRecords } from '../../domain/training/records';
 import type { ExerciseRecords } from '../../domain/training/records';
@@ -39,6 +40,9 @@ interface PRRow extends ExerciseRecords {
 
 export function PRList(props: PRListProps): ReactElement {
   const { sets, library, units } = props;
+  // Before the empty-list return: the hook count may not depend on whether a set was logged.
+  const t = useCopy();
+  const overrides = useCopyOverrides();
 
   const rows: PRRow[] = [...computeRecords(sets).values()]
     // An exercise whose every set carries no rep count (a timed hold) has no repetition
@@ -57,7 +61,7 @@ export function PRList(props: PRListProps): ReactElement {
     });
 
   if (rows.length === 0) {
-    return <p className="view-note">{copy('advice.noSetsLogged')}</p>;
+    return <p className="view-note">{t('advice.noSetsLogged')}</p>;
   }
 
   return (
@@ -88,8 +92,8 @@ export function PRList(props: PRListProps): ReactElement {
             style={{ fontVariantNumeric: 'tabular-nums' }}
           >
             {r.bestE1RM === null
-              ? copy('status.noEstimated1RM')
-              : FORMAT.estimated1RM(formatLoad(r.bestE1RM.e1RMKg, units))}
+              ? t('status.noEstimated1RM')
+              : FORMAT.estimated1RM(formatLoad(r.bestE1RM.e1RMKg, units), overrides)}
           </span>
           <span
             className="pr-date"

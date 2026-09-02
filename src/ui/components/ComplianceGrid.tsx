@@ -21,7 +21,8 @@
 // view. Today itself counts as not passed: a session assigned for today has not been missed.
 
 import type { ReactElement } from 'react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CopyKey } from '../../content/copy';
 import { addDays, compareLocalDate } from '../../domain/dates';
 import type {
@@ -128,9 +129,12 @@ function completedInWeek(
 
 export function ComplianceGrid(props: ComplianceGridProps): ReactElement {
   const { assignments, weekStarts, slotWeekdays, today, weeklySessionTarget } = props;
+  // Both hooks before the empty-grid return, so the hook count is the same on every path.
+  const t = useCopy();
+  const overrides = useCopyOverrides();
 
   if (weekStarts.length === 0) {
-    return <p className="view-note">{copy('advice.noWeeksYet')}</p>;
+    return <p className="view-note">{t('advice.noWeeksYet')}</p>;
   }
 
   const index = buildStatusIndex(assignments);
@@ -139,7 +143,7 @@ export function ComplianceGrid(props: ComplianceGridProps): ReactElement {
     <div
       className="compliance"
       role="grid"
-      aria-label={copy('label.complianceGrid')}
+      aria-label={t('label.complianceGrid')}
       style={{ display: 'grid', gap: '0.25rem', fontVariantNumeric: 'tabular-nums' }}
     >
       {weekStarts.map((monday) => (
@@ -150,7 +154,12 @@ export function ComplianceGrid(props: ComplianceGridProps): ReactElement {
           style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
         >
           <span className="compliance-week" role="rowheader">
-            {FORMAT.complianceWeek(monday, completedInWeek(assignments, monday), weeklySessionTarget)}
+            {FORMAT.complianceWeek(
+              monday,
+              completedInWeek(assignments, monday),
+              weeklySessionTarget,
+              overrides,
+            )}
           </span>
           {slotWeekdays.map((weekday) => {
             // ISO weekdays are Monday-first, and `monday` is day 1, so the offset is weekday - 1.
@@ -162,7 +171,7 @@ export function ComplianceGrid(props: ComplianceGridProps): ReactElement {
                 role="gridcell"
                 className={`compliance-cell ${mark}`}
                 data-mark={mark}
-                aria-label={FORMAT.complianceCell(date, copy(MARK_COPY[mark]))}
+                aria-label={FORMAT.complianceCell(date, t(MARK_COPY[mark]))}
                 style={{
                   display: 'inline-block',
                   width: '0.85rem',

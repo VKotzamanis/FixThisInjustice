@@ -17,7 +17,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { PhaseTransition, PhaseTransitionGate } from './PhaseTransition';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { addDays, todayLocal } from '../../domain/dates';
 import { probeBundledVideo, resolveVideoSrc } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
@@ -27,6 +27,7 @@ import { installFakeStorage } from '../../store/testStorage';
 import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../test/funFixtures';
 import { MotivationGate } from '../motivation/MotivationGate';
 import type { PlanCursor, WeeklyReview } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 /*
  * The clip is the motivation modal's business, never this file's: MotivationGate.test.tsx owns
@@ -55,6 +56,24 @@ function cursorAt(n: number): PlanCursor {
 function headingFor(from: number, to: number): string {
   return FORMAT.withSlots('status.blockTransition', { from, to });
 }
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
+});
 
 describe('PhaseTransition', () => {
   beforeEach(() => {
@@ -149,6 +168,8 @@ describe('PhaseTransitionGate', () => {
     // The session slice is NOT part of AppState, so makeAppState does not reset it and a test
     // that opened a session would leak an active assignment date into the next one.
     useAppStore.setState({ ...makeAppState(), session: { ...EMPTY_SESSION } });
+    // makeAppState replaces `ui`, which puts the shipped skin back over the pin above.
+    pinSkin();
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -175,7 +196,7 @@ describe('PhaseTransitionGate', () => {
   it('does not fire again for a block already seen', () => {
     useAppStore.setState({
       cursors: { p1: cursorAt(BLOCK_ONE_START) },
-      ui: makeUiPrefs({ lastBlockSeenByProfile: { p1: 1 } }),
+      ui: makeUiPrefs({ lastBlockSeenByProfile: { p1: 1 }, skin: 'clinical' }),
     });
     const { container } = render(<PhaseTransitionGate />);
     expect(container.firstChild).toBeNull();
@@ -203,7 +224,7 @@ describe('PhaseTransitionGate', () => {
   it('stays silent while the boot sequence is still running', () => {
     useAppStore.setState({
       cursors: { p1: cursorAt(BLOCK_ONE_START) },
-      ui: makeUiPrefs({ bootSeen: false }),
+      ui: makeUiPrefs({ bootSeen: false, skin: 'clinical' }),
     });
     const { container } = render(<PhaseTransitionGate />);
     expect(container.firstChild).toBeNull();
@@ -286,6 +307,7 @@ describe('PhaseTransitionGate against the missed-week popup', () => {
       }),
       session: { ...EMPTY_SESSION },
     });
+    pinSkin();
   }
 
   function renderShell(): ReturnType<typeof render> {
@@ -373,7 +395,7 @@ describe('PhaseTransitionGate against the legacy migration offer', () => {
     useAppStore.setState({
       ...makeAppState({
         cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
-        ui: makeUiPrefs({ legacyMigration: 'pending' }),
+        ui: makeUiPrefs({ legacyMigration: 'pending', skin: 'clinical' }),
       }),
       session: { ...EMPTY_SESSION },
     });
@@ -388,7 +410,7 @@ describe('PhaseTransitionGate against the legacy migration offer', () => {
     useAppStore.setState({
       ...makeAppState({
         cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
-        ui: makeUiPrefs({ legacyMigration: 'pending' }),
+        ui: makeUiPrefs({ legacyMigration: 'pending', skin: 'clinical' }),
       }),
       session: { ...EMPTY_SESSION },
     });
@@ -408,12 +430,53 @@ describe('PhaseTransitionGate against the legacy migration offer', () => {
     useAppStore.setState({
       ...makeAppState({
         cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
-        ui: makeUiPrefs({ legacyMigration: 'pending' }),
+        ui: makeUiPrefs({ legacyMigration: 'pending', skin: 'clinical' }),
       }),
       session: { ...EMPTY_SESSION },
     });
 
     render(<PhaseTransitionGate />);
     expect(screen.getByText(headingFor(1, 2))).toBeInTheDocument();
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('PhaseTransition under a skin', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('names the control in the limelight words, and in the default ones under clinical', () => {
+    const stats = { sessionsCompleted: 8, setsLogged: 96, tonnageKg: 41208, specimensOwned: 5 };
+
+    pinSkin('limelight');
+    const view = render(
+      <PhaseTransition fromIndex={0} toIndex={1} stats={stats} units="metric" onClose={vi.fn()} />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(6000); // [ms]
+    });
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(
+      <PhaseTransition fromIndex={0} toIndex={1} stats={stats} units="metric" onClose={vi.fn()} />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(6000); // [ms]
+    });
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.continue') }),
+    ).toBeInTheDocument();
   });
 });

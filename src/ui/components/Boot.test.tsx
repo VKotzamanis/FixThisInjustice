@@ -16,11 +16,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Boot, BootGate, BOOT_LINE_INTERVAL_MS, buildBootLines } from './Boot';
-import { copy } from '../../content/copy';
+import { copy, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { makeAppState, makePlan, makeProfile, makeUiPrefs } from '../../test/funFixtures';
 import type { AppState } from '../../domain/types';
+import type { SkinId } from '../../domain/types';
 
 const BANNED = new RegExp(
   ['vyvan' + 'se', 'lisdexamfetam' + 'ine', 'ym' + 'ca', 'amphetam' + 'ine'].join('|'),
@@ -47,6 +48,24 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('buildBootLines', () => {
@@ -198,5 +217,36 @@ describe('BootGate', () => {
     useAppStore.setState({ ui: makeUiPrefs({ bootSeen: true }) });
     const { container } = render(<BootGate />);
     expect(container.firstChild).toBeNull();
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('Boot under a skin', () => {
+  it('prints the limelight console line, and the default one under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<Boot />);
+    act(() => {
+      vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
+    });
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootConsole'));
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.skipBoot') }),
+    ).toBeInTheDocument();
+    view.unmount();
+
+    useAppStore.setState(unseenState());
+    pinSkin('clinical');
+    render(<Boot />);
+    act(() => {
+      vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
+    });
+    expect(bootText()).toContain(copyFor('clinical', 'status.bootConsole'));
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'button.skipBoot') }),
+    ).toBeInTheDocument();
   });
 });

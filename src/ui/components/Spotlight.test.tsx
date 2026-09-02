@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import type { AppState, PlanTemplate } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
@@ -39,6 +39,7 @@ import {
   buildSpotlightItems,
   filterSpotlightItems,
 } from './Spotlight';
+import type { SkinId } from '../../domain/types';
 
 const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
 /** Monday, Wednesday, Friday: ISO weekdays, Monday-first. */
@@ -127,6 +128,24 @@ beforeEach(() => {
 afterEach(() => {
   requestPlanFocus(null);
   vi.restoreAllMocks();
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('buildSpotlightItems', () => {
@@ -443,5 +462,27 @@ describe('plan deep link', () => {
     // Re-mounting the Plan view must not re-focus: the request was consumed.
     render(<PlanView />);
     expect(document.activeElement).toBe(document.body);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('Spotlight under a skin', () => {
+  it('heads the palette in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = renderPalette();
+    expect(screen.getByText(copyFor('limelight', 'hero.spotlight'))).toBeInTheDocument();
+    // The view rows are named through their copy key too, not through the label VIEWS baked at
+    // import: `nav.plan` is one of the rows the palette lists with an empty query.
+    expect(optionLabels()).toContain(copyFor('limelight', 'nav.plan'));
+    view.unmount();
+
+    pinSkin('clinical');
+    renderPalette();
+    expect(screen.getByText(copyFor('clinical', 'hero.spotlight'))).toBeInTheDocument();
+    expect(optionLabels()).toContain(copyFor('clinical', 'nav.plan'));
   });
 });

@@ -7,11 +7,13 @@
 // made that condition constant. The hook is called unconditionally by the shell now, so the
 // test that matters is that it is inert until the sequence arrives.
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { copy } from '../../content/copy';
+import { copy, copyFor } from '../../content/copy';
 import { KONAMI_OVERLAY_MS, KonamiOverlay, useKonamiCode } from './KonamiOverlay';
+import { useAppStore } from '../../store';
+import type { SkinId } from '../../domain/types';
 
 const CODE = [
   'ArrowUp',
@@ -37,6 +39,24 @@ function press(keys: readonly string[]): void {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+/*
+ * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
+ * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * each of them; what a skin changes has its own test.
+ *
+ * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
+ * so it is a named function rather than an inline hook body: a test that reseeds calls it
+ * again, after the seed.
+ */
+function pinSkin(skin: SkinId = 'clinical'): void {
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
+}
+
+beforeEach(() => {
+  pinSkin();
 });
 
 describe('useKonamiCode', () => {
@@ -128,5 +148,23 @@ describe('KonamiOverlay', () => {
       vi.advanceTimersByTime(KONAMI_OVERLAY_MS); // [ms]
     });
     expect(close).toHaveBeenCalledTimes(1);
+  });
+});
+
+/*
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
+ * table instead of having to be rewritten beside it.
+ */
+describe('KonamiOverlay under a skin', () => {
+  it('refuses in the limelight words, and in the default ones under clinical', () => {
+    pinSkin('limelight');
+    const view = render(<KonamiOverlay onClose={() => {}} />);
+    expect(screen.getByText(copyFor('limelight', 'status.konami'))).toBeInTheDocument();
+    view.unmount();
+
+    pinSkin('clinical');
+    render(<KonamiOverlay onClose={() => {}} />);
+    expect(screen.getByText(copyFor('clinical', 'status.konami'))).toBeInTheDocument();
   });
 });

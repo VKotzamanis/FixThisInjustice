@@ -16,6 +16,7 @@
 
 import type { ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
+import { useCopyOverrides } from '../../content/useCopy';
 import { weeklyAmrapMax } from '../../domain/training/records';
 import type { Exercise, LoggedSet } from '../../domain/types';
 
@@ -40,6 +41,8 @@ function coord(n: number): string {
 
 export function AmrapSpark(props: AmrapSparkProps): ReactElement {
   const { sets, exercise } = props;
+  // Before the empty-series return, so the hook count does not depend on the data.
+  const overrides = useCopyOverrides();
   const height = props.height ?? DEFAULT_HEIGHT;
   const series = weeklyAmrapMax(sets, exercise.id);
 
@@ -135,7 +138,7 @@ export function AmrapSpark(props: AmrapSparkProps): ReactElement {
           </circle>
         ))}
       </svg>
-      <figcaption>{FORMAT.amrapBest(exercise.name, best)}</figcaption>
+      <figcaption>{FORMAT.amrapBest(exercise.name, best, overrides)}</figcaption>
     </figure>
   );
 }

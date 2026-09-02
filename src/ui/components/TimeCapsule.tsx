@@ -23,7 +23,8 @@
 import { useCallback, useId, useState } from 'react';
 import type { ReactElement } from 'react';
 import { ModalShell } from './ModalShell';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT } from '../../content/copy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import {
   addDays,
   compareLocalDate,
@@ -112,6 +113,10 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
   // flagged invalid (code review item 1).
   const [touched, setTouched] = useState(false);
 
+  // Above every early return this component takes, so the hook count never depends on
+  // whether a capsule is stored.
+  const t = useCopy();
+  const overrides = useCopyOverrides();
   const headingId = useId();
   const dialogHeadingId = useId();
   const noteId = useId();
@@ -166,11 +171,11 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
           : null;
   const refusalLine =
     refusal === 'noteLong'
-      ? FORMAT.capsuleNoteLong(CAPSULE_MAX_CHARS)
+      ? FORMAT.capsuleNoteLong(CAPSULE_MAX_CHARS, overrides)
       : refusal === 'noteShort'
-        ? FORMAT.capsuleNoteShort(CAPSULE_MIN_CHARS)
+        ? FORMAT.capsuleNoteShort(CAPSULE_MIN_CHARS, overrides)
         : refusal === 'dateRange'
-          ? FORMAT.capsuleDateRange(earliest, latest)
+          ? FORMAT.capsuleDateRange(earliest, latest, overrides)
           : null;
   // Gates both the refusal <p> and the aria-describedby that points at it: rendering one
   // without the other leaves aria-describedby dangling on a nonexistent id (code review item 1).
@@ -206,7 +211,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
 
   const heading = (
     <h3 className="capsule-h" id={headingId}>
-      {copy('hero.timeCapsule')}
+      {t('hero.timeCapsule')}
     </h3>
   );
 
@@ -215,7 +220,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
     return (
       <section className="capsule" aria-labelledby={headingId}>
         {heading}
-        <p className="capsule-advice">{copy('advice.timeCapsule')}</p>
+        <p className="capsule-advice">{t('advice.timeCapsule')}</p>
         <button
           type="button"
           className="capsule-action"
@@ -223,7 +228,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
             setDialog('write');
           }}
         >
-          {copy('button.writeCapsule')}
+          {t('button.writeCapsule')}
         </button>
 
         {dialog === 'write' && (
@@ -235,11 +240,11 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
             onClose={closeDialog}
           >
             <h2 className="capsule-panel-h" id={dialogHeadingId}>
-              {copy('hero.timeCapsule')}
+              {t('hero.timeCapsule')}
             </h2>
 
             <label className="capsule-label" htmlFor={noteId}>
-              {copy('label.capsuleNote')}
+              {t('label.capsuleNote')}
             </label>
             <textarea
               id={noteId}
@@ -262,7 +267,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
             </span>
 
             <label className="capsule-label" htmlFor={dateId}>
-              {copy('label.capsuleOpensOn')}
+              {t('label.capsuleOpensOn')}
             </label>
             <input
               id={dateId}
@@ -285,7 +290,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
             {/* Informational, not a refusal: the seal control is not blocked by this. Shown
                 only while the field still carries the computed default, so it disappears the
                 moment the writer picks their own date. */}
-            {defaultWasMoved && <p className="capsule-advice">{copy('advice.capsuleDefaultMoved')}</p>}
+            {defaultWasMoved && <p className="capsule-advice">{t('advice.capsuleDefaultMoved')}</p>}
 
             {/* One line, whichever bound is unmet. role="status" so it is announced when it
                 appears rather than only when the field is next read. */}
@@ -297,7 +302,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
 
             <div className="capsule-panel-actions">
               <button type="button" className="capsule-action" onClick={closeDialog}>
-                {copy('button.closeModal')}
+                {t('button.closeModal')}
               </button>
               <button
                 type="button"
@@ -305,7 +310,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
                 disabled={refusal !== null}
                 onClick={seal}
               >
-                {copy('button.sealCapsule')}
+                {t('button.sealCapsule')}
               </button>
             </div>
           </ModalShell>
@@ -324,7 +329,11 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
         {/* The open date and the wait, and nothing else. The note is not rendered, not hidden
             with CSS: a sealed capsule whose text sits in the DOM is not sealed. */}
         <p className="capsule-status">
-          {FORMAT.capsuleSealed(capsule.opensOn, daysBetween(today, capsule.opensOn) /* [d] */)}
+          {FORMAT.capsuleSealed(
+            capsule.opensOn,
+            daysBetween(today, capsule.opensOn), // [d]
+            overrides,
+          )}
         </p>
       </section>
     );
@@ -335,9 +344,9 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
     return (
       <section className="capsule capsule-openable" aria-labelledby={headingId}>
         {heading}
-        <p className="capsule-status">{copy('advice.capsuleOpenDatePassed')}</p>
+        <p className="capsule-status">{t('advice.capsuleOpenDatePassed')}</p>
         <button type="button" className="capsule-action" onClick={open}>
-          {copy('button.openCapsule')}
+          {t('button.openCapsule')}
         </button>
       </section>
     );
@@ -355,7 +364,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
           setDialog('read');
         }}
       >
-        {copy('button.readCapsule')}
+        {t('button.readCapsule')}
       </button>
 
       {dialog === 'read' && (
@@ -367,15 +376,15 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
           onClose={closeDialog}
         >
           <h2 className="capsule-panel-h" id={dialogHeadingId}>
-            {copy('hero.timeCapsule')}
+            {t('hero.timeCapsule')}
           </h2>
-          <p className="capsule-status">{FORMAT.capsuleWritten(sealedOn)}</p>
+          <p className="capsule-status">{FORMAT.capsuleWritten(sealedOn, overrides)}</p>
           {/* The note keeps the writer's own line breaks (white-space: pre-wrap in the sheet)
               rather than being re-flowed into one paragraph. */}
           <p className="capsule-note">{capsule.note}</p>
           <div className="capsule-panel-actions">
             <button type="button" className="capsule-action" onClick={closeDialog}>
-              {copy('button.closeModal')}
+              {t('button.closeModal')}
             </button>
           </div>
         </ModalShell>
