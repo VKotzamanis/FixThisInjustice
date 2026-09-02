@@ -48,7 +48,13 @@ function profile(id: string): Profile {
 beforeEach(() => {
   useAppStore.setState({
     ...defaultState(),
-    status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: false },
+    status: {
+      lastSaveError: null,
+      lastLoadError: null,
+      lastLoadRaw: null,
+      hydrated: false,
+      lastActionError: null,
+    },
   });
 });
 
@@ -575,6 +581,7 @@ describe('selectors', () => {
         lastLoadError: 'bad document',
         lastLoadRaw: '{"week":999}',
         hydrated: true,
+        lastActionError: null,
       },
     });
     expect(renderHook(() => useHydrated()).result.current).toBe(true);

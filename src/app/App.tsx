@@ -16,6 +16,7 @@ import { SetupWizard } from '../ui/setup/SetupWizard';
 import { SettingsView } from '../ui/views/SettingsView';
 import { TargetsView } from '../ui/views/TargetsView';
 import { downloadText } from './download';
+import { useWeeklyClose } from './useWeeklyClose';
 import { UpdatePrompt } from './UpdatePrompt';
 import './appShell.css';
 
@@ -263,6 +264,14 @@ function ReadinessGate(props: { profile: Profile }): ReactElement {
 
 export function App(): ReactElement {
   useHydrateOnce();
+  /*
+   * After useHydrateOnce, which reads the document during render, so the first run of the
+   * closure sees the stored profile rather than the default one. Both orders would in fact
+   * work — the closure is an effect and effects run after the commit — but the reading order
+   * is the one that has to be obvious. Before any conditional return, so the hook order is
+   * stable, and it is a no-op until a profile exists.
+   */
+  useWeeklyClose();
   const hydrated = useHydrated();
   const profile = useActiveProfile();
 

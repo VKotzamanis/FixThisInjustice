@@ -27,6 +27,7 @@ function seedSaveError(): void {
       lastLoadError: null,
       lastLoadRaw: null,
       hydrated: true,
+      lastActionError: null,
     },
   });
 }
@@ -34,7 +35,13 @@ function seedSaveError(): void {
 beforeEach(() => {
   useAppStore.setState({
     ...defaultState(),
-    status: { lastSaveError: null, lastLoadError: null, lastLoadRaw: null, hydrated: false },
+    status: {
+      lastSaveError: null,
+      lastLoadError: null,
+      lastLoadRaw: null,
+      hydrated: false,
+      lastActionError: null,
+    },
   });
 });
 
@@ -91,6 +98,7 @@ describe('SaveErrorBanner', () => {
         lastLoadError: null,
         lastLoadRaw: null,
         hydrated: true,
+        lastActionError: null,
       },
     });
 
