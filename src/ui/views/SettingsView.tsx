@@ -9,6 +9,7 @@ import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
 import { MotivationSettings } from '../motivation/MotivationSettings';
+import { DataSection } from '../settings/DataSection';
 import { ReadinessScreen } from '../setup/ReadinessScreen';
 import './views.css';
 
@@ -53,6 +54,13 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
   { id: 'readiness', render: (profile) => <ReadinessRow profile={profile} /> },
   { id: 'reminders', render: () => <ReminderSettingsPanel /> },
   { id: 'motivation-clip', render: () => <MotivationSettings /> },
+  /*
+   * Last, and deliberately: the section holds the two destructive controls (P7 Task 6),
+   * and a wipe belongs at the bottom of the screen rather than above the fields a user
+   * came here to edit. It also mounts ExportView, which is written to be one row and had
+   * no mount point until now, so the backup is reachable from the same place.
+   */
+  { id: 'data', render: () => <DataSection /> },
 ];
 
 /**
