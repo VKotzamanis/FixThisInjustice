@@ -177,6 +177,24 @@ describe('useToasts', () => {
     expect(api!.queue).toHaveLength(0);
   });
 
+  it('does not restart the visible toast when another is pushed behind it', () => {
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'telemetry', message: 'first line' });
+    });
+    act(() => {
+      vi.advanceTimersByTime(3_000);
+      // A push re-renders the region. The deadline belongs to the toast, not to the render, so
+      // the arrival of a second one must not hand the first a fresh interval.
+      api!.push({ kind: 'telemetry', message: 'second line' });
+    });
+    act(() => {
+      vi.advanceTimersByTime(TOAST_DURATION_MS.telemetry - 3_000);
+    });
+    expect(screen.queryByText('first line')).toBeNull();
+    expect(screen.getByText('second line')).toBeInTheDocument();
+  });
+
   it('clears a toast whose deadline passed while the tab was hidden', () => {
     renderQueue();
     act(() => {
