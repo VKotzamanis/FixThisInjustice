@@ -841,7 +841,7 @@ describe('the converted frames render the clinical string they replaced', () => 
  * assertion is the real gate for those rows; this one keeps them from being swept.
  */
 describe('the call-site gate over DEFAULT_COPY', () => {
-  /** Every `.ts`/`.tsx` file under `src`, as raw text, keyed by its root-relative path. */
+  /** Every non-suite `.ts`/`.tsx` under `src`, as raw text, keyed by its root-relative path. */
   const SOURCES: Record<string, string> = import.meta.glob(
     ['/src/**/*.{ts,tsx}', '!/src/**/*.test.{ts,tsx}'],
     { query: '?raw', import: 'default', eager: true },
