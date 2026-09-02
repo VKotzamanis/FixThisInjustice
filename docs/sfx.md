@@ -32,10 +32,10 @@ never played.
 
 | Name | Fires when | Character | Length |
 | --- | --- | --- | --- |
-| `session_done` | the last set of the session is logged | the one celebratory sound; a short rising figure | 1.2 to 2.0 s |
-| `pr_stamp` | a logged set beats the previous best for that exercise | a hard percussive stamp with a bright tail, timed to the 700 ms landing | 0.8 to 1.2 s |
-| `rest_over` | the rest countdown reaches 0 | the only functional sound of the four; audible in a gym, and not like a notification | 1.0 to 1.5 s |
-| `intervention_open` | the missed-week modal opens | soft and low, never a sting; it plays over a line about a missed week | 1.0 to 1.5 s |
+| `session_done` | the session ends with status `completed`; a last set logged without finishing plays nothing (`src/ui/views/TrainView.tsx` line 284) | the one celebratory sound; a short rising figure | 1.2 to 2.0 s |
+| `pr_stamp` | the week stamp appears, which is a met or beaten week with no missed-week popup pending (`src/ui/components/WeekStamp.tsx` line 79) | a hard percussive stamp with a bright tail, timed to the 700 ms landing | 0.8 to 1.2 s |
+| `rest_over` | the rest countdown reaches 0 (`src/ui/views/train/RestTimerPanel.tsx` line 121) | the only functional sound of the four; audible in a gym, and not like a notification | 1.0 to 1.5 s |
+| `intervention_open` | the missed-week modal opens (`src/ui/components/Intervention.tsx` line 60) | soft and low, never a sting; it plays over a line about a missed week | 1.0 to 1.5 s |
 
 A skin with no directory is silent. A skin with two of the four files plays those two. The skins are
 independent: sounds under `limelight/` never play under `board/`. The player enforces that rather
@@ -44,7 +44,8 @@ unlock` in `src/skins/sfx.test.ts`.
 
 ## The toggle
 
-Sounds are off by default. Settings turns them on, in the row headed "the look".
+Sounds are off by default. Settings turns them on, in the skin row (`label.settingsSkin`), which
+reads "Skin" in the default table and "the look" under the limelight skin.
 
 That toggle is the only thing that silences a skin. `prefers-reduced-motion` is not consulted, and
 that is deliberate: it governs motion, and a user who suppresses animation has said nothing about
@@ -114,7 +115,7 @@ no gate checks it and no number here has been verified.
 
 `.github/workflows/ci.yml` runs the gate on every push and pull request, before the install, and
 `.github/workflows/deploy.yml` runs it again before it publishes. Both are needed: the two workflows
-are independent, so a red `ci.yml` does not stop a deploy. With the directory empty the gate prints
+are independent, so a red `.github/workflows/ci.yml` does not stop a deploy. With the directory empty the gate prints
 `check-sfx-size: no audio under public/sfx.` and passes, which is the state this repository is in
 today.
 
