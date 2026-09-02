@@ -20,6 +20,10 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, copy } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
+import { SPECIMEN_CARDS } from '../../content/specimenCards';
+import type { SpecimenCard } from '../../content/specimenCards';
+import { crossedMilestones } from '../../domain/fun/blocks';
+import { SPECIMEN_DROP_CHANCE, drawSpecimenForLoggedSet } from '../../domain/fun/specimens';
 import { EXERCISE_BY_ID, EXERCISES } from '../../domain/plan/library';
 import { EXERCISE_NAME_MAX_CHARS, defaultState } from '../../domain/schema';
 import { suggestedProgression } from '../../domain/training/progression';
@@ -40,6 +44,7 @@ import { installFakeStorage } from '../../store/testStorage';
 import { UNDO_WINDOW_MS } from '../../store/training';
 import { makeBlock, makePlannedExercise, makeProfile, makeSet } from '../../test/fixtures';
 import { playChime, vibrate } from '../audio/chime';
+import { ToastProvider, ToastQueue } from '../components/ToastQueue';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
 import { TrainView } from './TrainView';
 
@@ -90,6 +95,8 @@ interface SeedOptions {
   flagged?: boolean;
   startedAt?: number; // [ms] epoch UTC
   deload?: boolean;
+  /** The profile's set ordinal before this render. [sets] */
+  totalSetsLogged?: number;
 }
 
 function seed(opts: SeedOptions = {}): AppState {
@@ -141,6 +148,16 @@ function seed(opts: SeedOptions = {}): AppState {
   for (const s of opts.sets ?? []) sets[s.id] = s;
   return {
     ...defaultState(),
+    // The ordinal the specimen draw is keyed by, and the counter the milestones are read from
+    // (master plan section 10.8). Seeded so a test can stand one set short of the number it is
+    // about to assert on rather than logging fifty.
+    specimens: {
+      [profile.id]: {
+        profileId: profile.id,
+        acquired: {},
+        totalSetsLogged: opts.totalSetsLogged ?? 0, // [sets]
+      },
+    },
     activeProfileId: profile.id,
     profiles: { [profile.id]: profile },
     plans: { 'plan-1': plan },
@@ -174,12 +191,38 @@ function seedStore(state: AppState): void {
   useAppStore.getState().replaceState(state);
 }
 
+/**
+ * The view under the two providers the app shell gives it.
+ *
+ * `ToastQueue` is mounted as well as `ToastProvider`: the provider holds the queue and the
+ * component renders it, so a test that mounted only the provider would assert against a screen
+ * the user never sees. P8 Task 10 moved every toast this view raises onto that queue, so the
+ * coach line, the undo offer, the milestone and the specimen card are all rendered by it.
+ */
 function renderTrain(): ReturnType<typeof render> {
   return render(
-    <TrainingModalsProvider>
-      <TrainView />
-    </TrainingModalsProvider>,
+    <ToastProvider>
+      <TrainingModalsProvider>
+        <TrainView />
+      </TrainingModalsProvider>
+      <ToastQueue />
+    </ToastProvider>,
   );
+}
+
+/**
+ * Clears the toast queue by pressing its Dismiss control until nothing is on screen.
+ *
+ * One toast is visible at a time (src/ui/components/ToastQueue.tsx), so a test that wants to
+ * see what the NEXT push puts on screen has to spend the standing ones first.
+ */
+function dismissAllToasts(): void {
+  for (let i = 0; i < 8; i += 1) {
+    const control = screen.queryByRole('button', { name: copy('button.dismiss') });
+    if (control === null) return;
+    fireEvent.click(control);
+  }
+  throw new Error('the toast queue did not drain');
 }
 
 /** Enters a load and a rep count into set row `n` and submits with Enter. */
@@ -452,6 +495,95 @@ describe('TrainView set logging feedback', () => {
 
     fireEvent.click(screen.getByRole('button', { name: copy('button.undo') }));
     expect(useAppStore.getState().sets['set-1']?.loadKg).toBe(60); // [kg]
+  });
+
+  it('carries the store undo buffer deadline, not a second clock read', () => {
+    /*
+     * The offer must die with the buffer it acts on. deleteSet stamps
+     * `session.undo.expiresAt = Date.now() + UNDO_WINDOW_MS` (src/store/training.ts), and the
+     * toast is pushed with that instant as its `deadlineAt`, so the control is withdrawn at the
+     * millisecond the store stops honouring it rather than one sweep period later.
+     */
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    const set = makeSet({ id: 'set-1', exerciseId: UPPER.id, loadKg: 60, reps: 8 });
+    seedStore(seed({ sets: [set] }));
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    const deadline = useAppStore.getState().session.undo?.expiresAt ?? 0; // [ms] epoch UTC
+    expect(deadline).toBe(NOW + UNDO_WINDOW_MS);
+
+    act(() => {
+      vi.advanceTimersByTime(UNDO_WINDOW_MS - 1); // [ms]
+    });
+    expect(screen.getByRole('button', { name: copy('button.undo') })).toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(2); // [ms] one past the buffer
+    });
+    expect(screen.queryByRole('button', { name: copy('button.undo') })).toBeNull();
+  });
+
+  it('announces a set-count milestone once, and not again after a delete and relog', () => {
+    // One set short of the first milestone, so the set logged below is the fiftieth.
+    seedStore(seed({ totalSetsLogged: 49 }));
+    renderTrain();
+
+    logRow(1, '60', '8');
+    // The milestone outranks the coach line in the queue, so it is the toast on screen.
+    expect(screen.getByText(FORMAT.milestoneSets('50'))).toBeInTheDocument();
+    expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(50); // [sets]
+
+    dismissAllToasts();
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    // The counter comes back down with the record (applyDeleteSet), which is exactly the farm
+    // a `count === milestone` check would reopen.
+    expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(49); // [sets]
+    dismissAllToasts();
+
+    logRow(1, '60', '8');
+
+    // The fiftieth set again, and no second announcement: a milestone already crossed is not
+    // re-crossed. The coach line is what is on screen, and it would be behind a milestone if
+    // one had been pushed.
+    expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(50); // [sets]
+    expect(screen.queryByText(FORMAT.milestoneSets('50'))).toBeNull();
+    expect(screen.getByText(FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 }))).toBeInTheDocument();
+  });
+
+  it('shows the card a drawn specimen carries', () => {
+    /*
+     * Not a mock. The draw is seeded from (profileId, ordinal), both stored state, so the
+     * ordinal that drops for this profile is a fact about the shipped card pool and the shipped
+     * drop chance, computed here the way src/domain/fun/specimens.test.ts computes it. An
+     * ordinal that also crosses a milestone is skipped, so the specimen is the only toast
+     * queued behind the coach line.
+     */
+    let ordinal = 0; // [sets]
+    let card: SpecimenCard | null = null;
+    for (let n = 1; n <= 1000 && card === null; n += 1) {
+      if (crossedMilestones(n - 1, n).length > 0) continue;
+      card = drawSpecimenForLoggedSet(
+        { profileId: 'profile-1', acquired: {}, totalSetsLogged: 0 },
+        SPECIMEN_CARDS,
+        'profile-1',
+        n,
+        SPECIMEN_DROP_CHANCE,
+      );
+      ordinal = n;
+    }
+    if (card === null) throw new Error('no specimen drops in the first 1000 ordinals');
+
+    seedStore(seed({ totalSetsLogged: ordinal - 1 }));
+    renderTrain();
+
+    logRow(1, '60', '8');
+
+    // The coach line has the higher priority of the two, so the card is the toast behind it.
+    fireEvent.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    expect(screen.getByText(card.title)).toBeInTheDocument();
+    expect(useAppStore.getState().specimens['profile-1']?.acquired[card.id]).toBeDefined();
   });
 
   it('adds a bonus row beyond the prescribed set count', () => {

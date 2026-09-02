@@ -7,16 +7,22 @@
 // (src/domain/units.ts); rest is seconds; every instant is epoch ms UTC and is read from
 // Date.now() at the call site rather than held in state.
 //
+// Every toast this view raises - the coach line, the undo offer, a milestone and a specimen -
+// goes through the ONE global queue (src/ui/components/ToastQueue.tsx). That is master plan
+// amendment 13 (P4 item 13) discharged: the local toast list this file used to keep was a fifth
+// independent toast slot, with its own sweep timer, its own stacking rule and no priority
+// between classes, and it is retired with this task along with the component that rendered it.
+//
 // Three master-plan section 6.5 obligations are discharged here rather than in a component:
 // the screen wake lock is held for as long as this view is mounted; the audio context is
 // unlocked on the first pointer event that reaches this view, because a user who navigated
 // straight to Train never passed through Today's Start tap (code review A29); and the session
 // slice is cleared when the session ends, so a reload cannot revive a finished session.
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { FORMAT, copy } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
 import { todayLocal } from '../../domain/dates';
-import { newId } from '../../domain/ids';
+import { crossedMilestones } from '../../domain/fun/blocks';
 import { EXERCISES } from '../../domain/plan/library';
 import type { CoachLine } from '../../domain/training/coach';
 import { preSessionMass } from '../../domain/training/hydration';
@@ -26,20 +32,15 @@ import { useAppStore } from '../../store';
 import { useActiveProfile, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
 import { ReadinessNotice } from '../components/ReadinessNotice';
+import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { AddCustomExercise } from './train/AddCustomExercise';
 import { BodyMassQuickLog } from './train/BodyMassQuickLog';
 import { ExerciseCard } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
 import { RestTimerPanel } from './train/RestTimerPanel';
-import { SessionToast, type ToastItem } from './train/SessionToast';
 import '../styles/train.css';
 import './views.css';
-
-/** [ms] How long a coach line stays on screen. Long enough to read, short enough to ignore. */
-const COACH_TOAST_MS = 5_000;
-/** The most toasts on screen at once; older ones are dropped rather than stacked. */
-const MAX_TOASTS = 3;
 
 /**
  * A planned slot synthesised for an exercise the plan does not contain.
@@ -67,9 +68,23 @@ export function TrainView(): ReactElement {
   const bodyMass = useAppStore((s) => s.bodyMass);
   const bonusExerciseIds = useAppStore((s) => s.session.bonusExerciseIds);
   const todaysSets = useTodaysSets();
+  const profileId = profile?.id ?? null;
+  const { push } = useToasts();
 
   const [openId, setOpenId] = useState<string | null>(null);
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
+
+  /*
+   * The highest set count this view has already announced a milestone for. [sets]
+   *
+   * A high-water MARK, not the store's live count, and tied to the profile it was taken for.
+   * Deleting a set decrements `totalSetsLogged` (src/store/training.ts applyDeleteSet), so a
+   * check against the live count would announce the same milestone again the moment the set was
+   * relogged. The floor never goes down, so a delete and relog crosses nothing.
+   *
+   * null means "nothing announced yet in this mount", and the baseline is then `after - 1`:
+   * applyLogSet increments by exactly one and this handler runs once for that increment.
+   */
+  const milestoneFloor = useRef<{ profileId: string; count: number } | null>(null);
 
   // Held for as long as this view is mounted; released on unmount by the hook. Absence and
   // refusal are ordinary states (jsdom, Safari < 16.4, a battery saver) and are not surfaced:
@@ -86,66 +101,51 @@ export function TrainView(): ReactElement {
     };
   }, []);
 
-  /*
-   * Toasts are withdrawn AT their own expiry, by a timeout scheduled for the earliest one,
-   * rather than by a fixed sweep interval (P4 polish item 8). The Undo offer is the reason:
-   * its deadline is the store's undo buffer, so a sweep on its own cadence left a live Undo
-   * control the store would refuse for up to one sweep period. Rescheduling on every change of
-   * `toasts` is cheap; there are at most three.
-   *
-   * The instant is read ONCE, when the timer fires, and closed over by the updater. React
-   * evaluates a functional update at render time, so a `Date.now()` inside the updater would
-   * be a different, later instant than the one the timer was scheduled against. A timer that
-   * fired a hair early is rescheduled rather than dropped: an unchanged list re-runs no
-   * effect, so a sweep that removed nothing would be the last one this list ever got.
-   */
-  useEffect(() => {
-    if (toasts.length === 0) return;
-    let id: number | undefined;
-    const schedule = (): void => {
-      const soonest = Math.min(...toasts.map((t) => t.expiresAt)); // [ms] epoch UTC
-      id = window.setTimeout(
-        () => {
-          const firedAt = Date.now(); // [ms] epoch UTC
-          if (toasts.every((t) => t.expiresAt > firedAt)) {
-            schedule();
-            return;
-          }
-          setToasts((items) => items.filter((t) => t.expiresAt > firedAt));
-        },
-        Math.max(0, soonest - Date.now()),
-      );
-    };
-    schedule();
-    return () => {
-      if (id !== undefined) window.clearTimeout(id);
-    };
-  }, [toasts]);
-
-  const pushToast = useCallback((item: Omit<ToastItem, 'id'>) => {
-    setToasts((items) => [...items.slice(-(MAX_TOASTS - 1)), { ...item, id: newId() }]);
-  }, []);
-
-  const onCoach = useCallback(
+  const onSetLogged = useCallback(
     (line: CoachLine) => {
-      pushToast({
-        /*
-         * P4 review item 2: the coach line arrives as a copy KEY and its values, and is
-         * resolved here, at the boundary. The domain names which sentence to say; this file
-         * says it in the words src/content/copy.ts holds, so P8's skin overlay reaches it.
-         * Resolution happens at push time rather than inside SessionToast because that is
-         * already where `coach.setDeleted` and `button.undo` below are resolved: a ToastItem
-         * carries a rendered string, and one kind of toast that carried a key instead would
-         * make the component answer two shapes.
-         */
-        text: FORMAT.withSlots(line.key, line.params),
-        tone: line.tone,
-        expiresAt: Date.now() + COACH_TOAST_MS, // [ms] epoch UTC
-        actionLabel: null,
-        onAction: null,
-      });
+      /*
+       * P4 review item 2: the coach line arrives as a copy KEY and its values, and is resolved
+       * here, at the boundary. The domain names which sentence to say; this file says it in the
+       * words src/content/copy.ts holds, so P8's skin overlay reaches it.
+       */
+      push({ kind: line.tone, message: FORMAT.withSlots(line.key, line.params) });
+      if (profileId === null) return;
+
+      /*
+       * ExerciseCard calls this handler synchronously, in the same click handler and on the
+       * line after `logSet` returns, which is what makes both reads below belong to the set
+       * that was just stored (master plan section 10.8).
+       */
+      const after = useAppStore.getState().specimens[profileId]?.totalSetsLogged ?? 0; // [sets]
+      const floor = milestoneFloor.current;
+      const before =
+        floor !== null && floor.profileId === profileId ? floor.count : after - 1; // [sets]
+      milestoneFloor.current = { profileId, count: Math.max(before, after) };
+      // The half-open interval, never `MILESTONES.includes(count)`: a counter that advanced by
+      // more than one between two reads must not step over a milestone (code review A46).
+      for (const m of crossedMilestones(before, after)) push({ kind: 'milestone', count: m });
+
+      /*
+       * The specimen roll, in this handler rather than after a later render.
+       *
+       * The draw is keyed to `totalSetsLogged`, so it has to be asked for while that count is
+       * still the just-logged set's own ordinal: a call deferred past a second logged set would
+       * report the SECOND set's roll and the first card would never be shown. Asking twice for
+       * one ordinal is safe by construction - the store returns the card that ordinal already
+       * produced and writes nothing (src/store/funActions.ts) - which is exactly why logSet's
+       * own call can record the card and this one can be the thing that shows it.
+       *
+       * `exerciseId` is null, and that is not a shortcut. logSet has already called this action
+       * with the set's real exercise id and recorded the acquisition against it; recordSpecimen
+       * is idempotent on the ordinal AND on the card, so this second call writes nothing at all
+       * and the argument is never stored. Passing an id derived here - by searching the store
+       * for the newest set, say - would be a guess dressed as a fact, for a value the store
+       * provably ignores on this path.
+       */
+      const card = useAppStore.getState().attemptSpecimenDraw(profileId, null, Date.now());
+      if (card !== null) push({ kind: 'specimen', cardId: card.id });
     },
-    [pushToast],
+    [push, profileId],
   );
 
   const onDeleted = useCallback(() => {
@@ -155,12 +155,12 @@ export function TrainView(): ReactElement {
     // that buffered nothing (an unknown id) makes no offer.
     const pending = useAppStore.getState().session.undo;
     if (pending === null) return;
-    pushToast({
-      text: copy('coach.setDeleted'),
-      tone: 'undo',
-      expiresAt: pending.expiresAt, // [ms] epoch UTC, the buffer's own deadline
-      actionLabel: copy('button.undo'),
-      onAction: () => {
+    push({
+      kind: 'undo',
+      message: copy('coach.setDeleted'),
+      // [ms] epoch UTC. The buffer's own deadline, which is deletedAt + UNDO_WINDOW_MS.
+      deadlineAt: pending.expiresAt,
+      onUndo: () => {
         // Through getState(), like every other action call in this codebase: the store's
         // actions are created once and never replace themselves, so subscribing to one buys
         // nothing and hands the component an unbound method.
@@ -168,9 +168,8 @@ export function TrainView(): ReactElement {
         useAppStore.getState().undoDelete();
       },
     });
-  }, [pushToast]);
+  }, [push]);
 
-  const profileId = profile?.id ?? null;
   const library = useMemo<Record<string, Exercise>>(() => {
     const map: Record<string, Exercise> = {};
     for (const e of EXERCISES) map[e.id] = e;
@@ -296,7 +295,7 @@ export function TrainView(): ReactElement {
               onToggle={() => {
                 toggleCard(planned.exerciseId);
               }}
-              onCoach={onCoach}
+              onCoach={onSetLogged}
               onDeleted={onDeleted}
             />
           );
@@ -319,7 +318,7 @@ export function TrainView(): ReactElement {
               onToggle={() => {
                 toggleCard(id);
               }}
-              onCoach={onCoach}
+              onCoach={onSetLogged}
               onDeleted={onDeleted}
             />
           );
@@ -376,8 +375,6 @@ export function TrainView(): ReactElement {
           </button>
         </div>
       )}
-
-      <SessionToast items={toasts} />
     </div>
   );
 }

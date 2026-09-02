@@ -628,8 +628,9 @@ describe('spotlight palette', () => {
  * at the moment its content arrives is announced unreliably, and politeness is a property of
  * the region, not of the moment, which is why there are two rather than one that flips.
  *
- * `SessionToast` in TrainView is deliberately left standing; retiring it belongs to the task
- * that moves its callers onto `push`, and until then the two coexist.
+ * The Train view's own toast list is gone with P8 Task 10: every toast it raises now goes
+ * through this queue, which is why the provider being above the app is load-bearing rather
+ * than decorative.
  */
 describe('toast queue', () => {
   const LABELS = ['Push', 'Legs', 'Pull'];
@@ -648,6 +649,126 @@ describe('toast queue', () => {
 
     expect(within(stack).getByRole('status')).toBeInTheDocument();
     expect(within(stack).getByRole('alert')).toBeInTheDocument();
+  });
+});
+
+/**
+ * The skin attribute (P8 Task 12, mounted here).
+ *
+ * `useApplySkin` is unit-tested where it lives. What is asserted here is the one thing it
+ * cannot assert for itself: that the app shell calls it, so <html> carries the skin the store
+ * holds from the first commit, and that unmounting the app leaves no attribute behind for the
+ * next test to inherit.
+ */
+describe('skin attribute', () => {
+  const LABELS = ['Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+  });
+
+  it('mirrors the stored skin onto the document root and removes it on unmount', () => {
+    // The schema default, so this is what a document that never chose a skin renders under.
+    expect(useAppStore.getState().ui.skin).toBe('limelight');
+
+    const view = render(<App />);
+    expect(document.documentElement.dataset.skin).toBe('limelight');
+
+    view.unmount();
+    expect(document.documentElement.dataset.skin).toBeUndefined();
+  });
+});
+
+/**
+ * The two P8 shell mounts this task adds (Task 10).
+ *
+ * Both components decide for themselves whether they are on screen, and both are unit-tested
+ * where they live. What is asserted here is the one thing neither can assert for itself: that
+ * the shell mounts it at all, and that a document in which it must NOT appear leaves the app
+ * untouched.
+ */
+describe('boot sequence and block transition mounts', () => {
+  const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
+
+  /** Two three-session blocks, so a cursor at session 3 has just crossed into the second. */
+  const TWO_BLOCKS = [
+    {
+      index: 0,
+      firstSessionIndex: 0, // [sessions] offset
+      sessionCount: 3, // [sessions]
+      setModifier: 1, // dimensionless
+      loadModifier: 1, // dimensionless
+      isDeload: false,
+    },
+    {
+      index: 1,
+      firstSessionIndex: 3, // [sessions] offset
+      sessionCount: 3, // [sessions]
+      setModifier: 1, // dimensionless
+      loadModifier: 1, // dimensionless
+      isDeload: false,
+    },
+  ];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+    // The session slice is not part of AppState, so a test that opened a session elsewhere
+    // would leave an active assignment date behind and suppress the cutscene here.
+    useAppStore.setState({ session: { ...EMPTY_SESSION } });
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+  });
+
+  it('mounts the boot sequence for a document that has not seen it', () => {
+    const base = seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY });
+    useAppStore.setState({ ...base, ui: { ...base.ui, bootSeen: false } });
+
+    render(<App />);
+
+    expect(screen.getByTestId('boot-text')).toBeInTheDocument();
+  });
+
+  it('mounts nothing for a document that has already booted', () => {
+    render(<App />);
+
+    expect(screen.queryByTestId('boot-text')).toBeNull();
+  });
+
+  it('mounts the block transition when the cursor has crossed into a new block', () => {
+    useAppStore.setState(
+      seedState({
+        labels: LABELS,
+        weekdays: [1, 3, 5],
+        startedOn: MONDAY,
+        blocks: TWO_BLOCKS,
+        nextSessionIndex: 3, // [sessions] offset: the first session of block 1
+      }),
+    );
+
+    render(<App />);
+
+    expect(screen.getByTestId('phase-transition')).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.withSlots('status.blockTransition', { from: 1, to: 2 })),
+    ).toBeInTheDocument();
+  });
+
+  it('mounts no block transition while the cursor is inside the block already seen', () => {
+    useAppStore.setState(
+      seedState({
+        labels: LABELS,
+        weekdays: [1, 3, 5],
+        startedOn: MONDAY,
+        blocks: TWO_BLOCKS,
+        nextSessionIndex: 2, // [sessions] offset: still inside block 0
+      }),
+    );
+
+    render(<App />);
+
+    expect(screen.queryByTestId('phase-transition')).toBeNull();
   });
 });
 

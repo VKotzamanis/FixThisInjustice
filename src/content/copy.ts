@@ -554,7 +554,13 @@ export type CopyKey =
   | 'option.skinLimelight'
   | 'option.skinBoard'
   | 'advice.skinChanges'
-  | 'label.settingsSounds';
+  | 'label.settingsSounds'
+  // --- block transition cutscene (P8 Task 10; appended by that task) ---
+  | 'status.blockTransition'
+  | 'label.blockSessionsCompleted'
+  | 'label.blockSetsLogged'
+  | 'label.blockMassMoved'
+  | 'label.blockSpecimens';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1380,6 +1386,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.skinChanges': 'A skin changes wording and colour. Numbers and units stay the same.',
   // The sound toggle's label. One word, like the legend above it.
   'label.settingsSounds': 'Sounds',
+
+  // --- block transition cutscene (P8 Task 10; appended by that task) ---
+  // The heading, as a template rather than a sentence assembled at the call site: both numbers
+  // are 1-based block positions the component derives from PlanBlock.index, and the words
+  // between them belong to this table, so a skin rewords the line without touching the
+  // component.
+  'status.blockTransition': 'Block {from} to Block {to}', // template; FORMAT.withSlots
+  // The four statistics the cutscene reads out, each naming what was counted rather than how
+  // it felt (R11). 'mass moved' rather than 'tonnage': the number beside it carries the
+  // profile's own mass unit, and tonnage names a unit the app never shows.
+  'label.blockSessionsCompleted': 'sessions completed',
+  'label.blockSetsLogged': 'sets logged',
+  'label.blockMassMoved': 'mass moved',
+  'label.blockSpecimens': 'specimens collected',
 };
 
 /**
