@@ -109,12 +109,16 @@ export async function saveCustomVideo(file: File, now: EpochMs): Promise<string>
   // MAX_VIDEO_BYTES of data that nothing in state names any more, and the quota it consumes is
   // what makes the NEXT save fail.
   const tx = db.transaction(VIDEO_STORE, 'readwrite');
-  await tx.store.put(
+  const written = tx.store.put(
     { id, name: file.name, type, size: file.size, data, createdAt: now },
     id,
   );
-  const stale = (await tx.store.getAllKeys()).filter((key) => key !== id);
-  await Promise.all([...stale.map((key) => tx.store.delete(key)), tx.done]);
+  // Issued in the same turn as the put and never awaited before it, so no event-loop turn
+  // passes with the transaction idle: an IndexedDB transaction auto-commits as soon as one
+  // does. Requests are served in order, so this already sees the record just written.
+  const keys = await tx.store.getAllKeys();
+  const stale = keys.filter((key) => key !== id);
+  await Promise.all([written, ...stale.map((key) => tx.store.delete(key)), tx.done]);
   return id;
 }
 
