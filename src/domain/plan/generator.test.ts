@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { EXERCISE_BY_ID, EXERCISES, MUSCLE_GROUPS } from './library';
-import { SPLIT_TEMPLATES, WEEKLY_SET_BAND, type SessionsPerWeek } from './templates';
+import { EXERCISE_BY_ID, EXERCISES, INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
+import {
+  bandMusclesFor,
+  resolveSlot,
+  restSFor,
+  SPLIT_TEMPLATES,
+  WEEKLY_SET_BAND,
+  type SessionsPerWeek,
+} from './templates';
 import {
   BLOCK_WEEKS,
   DELOAD_SET_MODIFIER,
@@ -10,11 +17,26 @@ import {
   type PlanInput,
 } from './generator';
 import { PlanTemplateSchema } from '../schema';
-import type { Equipment, Experience, PlanTemplate } from '../types';
+import type { Equipment, Experience, GoalKind, PlanTemplate } from '../types';
 
 const DAY_COUNTS: SessionsPerWeek[] = [2, 3, 4, 5, 6];
 const EXPERIENCES: Experience[] = ['novice', 'intermediate', 'advanced'];
 const EQUIPMENT: Equipment[] = ['full-gym', 'dumbbells-only', 'bodyweight'];
+const GOALS: GoalKind[] = ['fat-loss', 'muscle-gain', 'recomposition', 'maintenance'];
+/**
+ * [weeks] The three programme lengths the gate sweeps: the minimum, the wizard default, and the
+ * maximum. 8 and 24 are whole multiples of BLOCK_WEEKS and 12 is the default; 10 and 11, which
+ * exercise the trailing partial block, are covered by the block tests above rather than repeated
+ * across all 270 gate cells.
+ */
+const GATE_WEEKS = [8, 12, 24];
+/**
+ * sets/muscle/week. Top of the ACSM 2026 deceleration range (Currier BS et al. 2026, Med Sci
+ * Sports Exerc 58(4):851-872, DOI 10.1249/mss.0000000000003897) and the citable ceiling for the
+ * TOP of a prescribed set interval. templates.test.ts bounds the same figure from the template
+ * side; this file bounds what the generator actually emitted.
+ */
+const EVIDENCE_CEILING = 20;
 
 const input = (over: Partial<PlanInput> = {}): PlanInput => ({
   sessionsPerWeek: 4, // [sessions/week]
@@ -119,6 +141,46 @@ describe('plan shape', () => {
     expect(plan.name).not.toMatch(/[–—]/);
   });
 
+  it('keeps plan.name inside the copy contract R2 limit of 8 words, at every day count and goal', () => {
+    /*
+     * R2 is 8 words, and the copy contract states its own counting rule at the head of the file:
+     * "Word counts exclude numerals and units (`60 kg x 8` counts as one word)". `countWords`
+     * below is that rule, applied literally: a whitespace token counts as a word when it carries a
+     * letter and is neither a bare multiplier ("x2") nor the unit of the numeral before it
+     * ("12 weeks" is one word). The punctuation glyphs the split names use as separators ("/",
+     * "+") carry no letter and are not words.
+     *
+     * The strictest possible reading -- every whitespace-separated glyph is a word -- gives 7, 7,
+     * 8, 10 and 10 at two through six days, so the five- and six-day names would exceed 8. That
+     * reading is not the contract's: it counts "/" and "+" as words and splits "12 weeks" in two.
+     * The figures are recorded here so a reader can see which measure this assertion uses.
+     */
+    const countWords = (s: string): number => {
+      const tokens = s.split(/\s+/).map((t) => t.replace(/[,.]$/, ''));
+      let words = 0;
+      tokens.forEach((t, i) => {
+        if (!/[A-Za-z]/.test(t)) return; // "/", "+", and bare numerals such as "12"
+        if (/^x\d+$/.test(t)) return; // "x2": a numeral multiplier, not a word
+        if (i > 0 && /^\d+$/.test(tokens[i - 1] ?? '')) return; // unit of the numeral before it
+        words += 1;
+      });
+      return words;
+    };
+    // The rule reproduces the contract's own worked example.
+    expect(countWords('60 kg x 8')).toBe(1);
+
+    for (const d of DAY_COUNTS) {
+      for (const goal of GOALS) {
+        for (const weeks of [8, 12, 24]) {
+          const plan = generatePlan(input({ sessionsPerWeek: d, goal, weeks }), EXERCISES);
+          expect(countWords(plan.name), `${d} days, ${goal}, ${weeks} weeks: "${plan.name}"`)
+            .toBeLessThanOrEqual(8);
+          expect(plan.name).not.toMatch(/[–—]/); // R5: no dash connector
+        }
+      }
+    }
+  });
+
   it('rejects out-of-range programme lengths', () => {
     expect(() => generatePlan(input({ weeks: 7 }), EXERCISES)).toThrow(RangeError);
     expect(() => generatePlan(input({ weeks: 25 }), EXERCISES)).toThrow(RangeError);
@@ -213,13 +275,30 @@ describe('blocks and deloads', () => {
 });
 
 describe('prescriptions, rest and cardio', () => {
-  it('gives every planned exercise a rest interval of at least 90 s and a set range', () => {
-    const plan = generatePlan(input({ sessionsPerWeek: 5 }), EXERCISES);
-    for (const s of plan.sessions) {
-      for (const pe of s.exercises) {
-        expect(pe.restS).toBeGreaterThanOrEqual(90); // [s]
-        expect(pe.setsHi).toBeGreaterThanOrEqual(pe.setsLo);
-        expect(pe.setsLo).toBeGreaterThan(0);
+  it('gives every planned exercise, conditioning included, a rest interval from restSFor', () => {
+    // Master plan section 6.3: the rest table has ONE home, library.ts, and restSFor is it. Every
+    // entry the generator writes must equal what that table returns, the conditioning entry
+    // included -- P4 reads `restS > 0 ? restS : defaultRestS(...)`, so an entry of 0 does not mean
+    // "no rest", it means "unset". The three conditioning exercises carry loadClass "isolation",
+    // so restSFor returns 90 s: the same figure P4's fallback would have produced.
+    for (const d of DAY_COUNTS) {
+      for (const equipment of EQUIPMENT) {
+        const plan = generatePlan(
+          input({ sessionsPerWeek: d, equipment, includeCardio: true, weeks: 8 }),
+          EXERCISES,
+        );
+        for (const s of plan.sessions) {
+          for (const pe of s.exercises) {
+            const ex = EXERCISE_BY_ID[pe.exerciseId];
+            expect(ex).toBeDefined();
+            expect(pe.restS, `${d} days, ${equipment}, ${pe.exerciseId}`).toBe(
+              restSFor(ex!, pe.prescription),
+            );
+            expect(pe.restS).toBeGreaterThanOrEqual(90); // [s]
+            expect(pe.setsHi).toBeGreaterThanOrEqual(pe.setsLo);
+            expect(pe.setsLo).toBeGreaterThan(0);
+          }
+        }
       }
     }
   });
@@ -237,14 +316,19 @@ describe('prescriptions, rest and cardio', () => {
     ).toBe(false);
   });
 
-  it('prescribes the conditioning bout as one timed effort with no inter-set rest', () => {
+  it('prescribes the conditioning bout as one timed effort resting from the shared table', () => {
     const plan = generatePlan(input({ includeCardio: true, weeks: 8 }), EXERCISES);
     const last = plan.sessions[3]?.exercises.at(-1);
     expect(last?.exerciseId).toBe('rower-intervals');
     expect(last?.setsLo).toBe(1); // [sets]
     expect(last?.setsHi).toBe(1); // [sets]
     expect(last?.prescription).toEqual({ kind: 'duration', targetS: 1200 }); // [s] = 20 min
-    expect(last?.restS).toBe(0); // [s]: a single continuous bout has no inter-set rest
+    // [s] The one bout has no inter-set interval to run, but the field is not a way to say so:
+    // P4 reads 0 as "unset, use defaultRestS", which returns this same 90 s. Master plan section
+    // 6.3 keeps one rest table, so the entry states what that table says rather than a 0 the
+    // consumer reinterprets.
+    expect(last?.restS).toBe(90);
+    expect(last?.restS).toBe(restSFor(EXERCISE_BY_ID['rower-intervals']!, last!.prescription));
   });
 
   it('emits no session of kind cardio, because no split template declares one', () => {
@@ -298,42 +382,136 @@ describe('weekly set volume, the P2 generator gate', () => {
     });
   });
 
-  it('places every declared band muscle inside the content review section 7 band, at every experience level', () => {
+  /**
+   * THE MASTER PLAN SECTION 7 P2 GENERATOR GATE, over the whole input space.
+   *
+   * 5 sessionsPerWeek x 3 Experience x 3 Equipment x 3 weeks x 2 cardio = 270 cells. Every
+   * criterion the gate names is checked in each cell, and every violation is collected rather
+   * than thrown at the first one, so a failure prints the full census instead of one example.
+   *
+   * The band claim is read PER TIER, from `bandMusclesFor(days, equipment)` (master plan section
+   * 5), NOT from the flat `bandMuscles` list. That distinction is the whole point of the sweep:
+   * `bandMuscles` is the full-gym row, and asserting it against the sub-gym tiers produces 107
+   * violations across the 45 day x experience x tier cells -- the dumbbells-only tier has no
+   * barbell row to put the mid-back in band, the bodyweight tier has no curl for the biceps. Those
+   * are honest consequences of the equipment, declared per tier by the templates and reported to
+   * the user as maintenance-only, not defects to assert away.
+   *
+   * Two set statistics, because they answer two questions. The MIDPOINT of each prescribed set
+   * interval is the prescribed weekly volume and is what the section 7 band describes. The TOP of
+   * the interval is what a user who takes every exercise to its top set performs, and it is bounded
+   * by the separate 20 sets/muscle/week evidence ceiling.
+   */
+  it('holds the section 7 gate in all 270 day x experience x equipment x weeks x cardio cells', () => {
+    const violations: string[] = [];
+    let cells = 0;
     for (const d of DAY_COUNTS) {
       const [lo, hi] = WEEKLY_SET_BAND[d];
+      const plannedLabels = SPLIT_TEMPLATES[d].sessions.map((s) => s.label);
       for (const experience of EXPERIENCES) {
-        const plan = generatePlan(input({ sessionsPerWeek: d, experience }), EXERCISES);
-        const week = weeklySetsByMuscle(plan.sessions.slice(0, d), EXERCISES);
-        for (const muscle of SPLIT_TEMPLATES[d].bandMuscles) {
-          const sets = week[muscle] ?? 0; // sets/muscle/week
-          expect(
-            sets >= lo && sets <= hi,
-            `${d} days, ${experience}, ${muscle}: ${sets} sets outside [${lo}, ${hi}]`,
-          ).toBe(true);
+        for (const equipment of EQUIPMENT) {
+          for (const weeks of GATE_WEEKS) {
+            for (const includeCardio of [false, true]) {
+              cells += 1;
+              const cell = `${d}d ${experience} ${equipment} ${weeks}w cardio=${includeCardio}`;
+              const plan = generatePlan(
+                input({ sessionsPerWeek: d, experience, equipment, weeks, includeCardio }),
+                EXERCISES,
+              );
+              const fail = (msg: string): number => violations.push(`${cell}: ${msg}`);
+
+              // Session count and 1-based contiguous ordinals.
+              if (plan.sessions.length !== weeks * d) {
+                fail(`${plan.sessions.length} sessions, expected ${weeks * d}`);
+              }
+              plan.sessions.forEach((s, i) => {
+                if (s.ordinal !== i + 1) fail(`session ${i} has ordinal ${s.ordinal}`);
+                if (s.exercises.length === 0) fail(`session ${i} is empty`);
+              });
+
+              // Label balance: every week-sized group carries the template's label multiset.
+              for (let w = 0; w < weeks; w += 1) {
+                const week = plan.sessions.slice(w * d, (w + 1) * d).map((s) => s.label);
+                if (JSON.stringify(week) !== JSON.stringify(plannedLabels)) {
+                  fail(`week ${w + 1} labels ${JSON.stringify(week)}`);
+                }
+              }
+
+              // Deload invariants: volume cut inside Bosquet 2007's 41-60 %, load untouched, one
+              // week long, and none in a trailing partial block.
+              const deloads = plan.blocks.filter((b) => b.isDeload);
+              if (deloads.length !== Math.floor(weeks / BLOCK_WEEKS)) {
+                fail(`${deloads.length} deload blocks for ${weeks} weeks`);
+              }
+              for (const b of deloads) {
+                if (b.setModifier !== DELOAD_SET_MODIFIER) fail(`setModifier ${b.setModifier}`);
+                if (b.setModifier < 0.4 || b.setModifier > 0.6) {
+                  fail(`setModifier ${b.setModifier} outside [0.4, 0.6]`);
+                }
+                if (b.loadModifier !== 1) fail(`loadModifier ${b.loadModifier}`);
+                if (b.sessionCount !== d) fail(`deload block spans ${b.sessionCount} sessions`);
+              }
+              let cursor = 0; // [sessions]
+              for (const b of plan.blocks) {
+                if (b.firstSessionIndex !== cursor) fail(`block ${b.index} starts at ${cursor}`);
+                cursor += b.sessionCount;
+              }
+              if (cursor !== plan.sessions.length) fail(`blocks cover ${cursor} sessions`);
+
+              // Schema validity of the persisted shape.
+              const parsed = PlanTemplateSchema.safeParse(plan);
+              if (!parsed.success) fail(`schema: ${JSON.stringify(parsed.error.issues)}`);
+
+              // Weekly fractional sets, sets/muscle/week, from the first week of the plan.
+              const week = weeklySetsByMuscle(plan.sessions.slice(0, d), EXERCISES);
+              for (const muscle of bandMusclesFor(d, equipment)) {
+                const sets = week[muscle] ?? 0;
+                if (sets < lo || sets > hi) {
+                  fail(`declared band muscle ${muscle} at ${sets} outside [${lo}, ${hi}]`);
+                }
+              }
+              for (const m of MUSCLE_GROUPS) {
+                const sets = week[m] ?? 0;
+                if (sets > hi) fail(`${m} midpoint ${sets} above the band top ${hi}`);
+              }
+              // Interval TOP: setsHi credited 1.0 direct, INDIRECT_SET_FRACTION indirect.
+              const tops: Record<string, number> = {};
+              for (const s of plan.sessions.slice(0, d)) {
+                for (const pe of s.exercises) {
+                  const ex = EXERCISE_BY_ID[pe.exerciseId];
+                  if (!ex) continue;
+                  for (const m of ex.muscleGroups) tops[m] = (tops[m] ?? 0) + pe.setsHi;
+                  for (const m of ex.secondaryMuscles) {
+                    tops[m] = (tops[m] ?? 0) + pe.setsHi * INDIRECT_SET_FRACTION;
+                  }
+                }
+              }
+              for (const [m, top] of Object.entries(tops)) {
+                if (top > EVIDENCE_CEILING) {
+                  fail(`${m} interval top ${top} above the ${EVIDENCE_CEILING}-set ceiling`);
+                }
+              }
+            }
+          }
         }
       }
     }
+    expect(cells).toBe(DAY_COUNTS.length * EXPERIENCES.length * EQUIPMENT.length * GATE_WEEKS.length * 2);
+    expect(cells).toBe(270);
+    expect(violations).toEqual([]);
   });
 
-  it('never overshoots the band top for any muscle, at any day count or experience level', () => {
+  it('trains every muscle group in the vocabulary at every day count, in every tier', () => {
+    // Including the bodyweight tier, where the rear and side delts have no DIRECT exercise
+    // (master plan section 5) and are reached as secondary movers only. "Trained" here means
+    // "receives some stimulus", which is a weaker claim than "in band" and is stated as such.
     for (const d of DAY_COUNTS) {
-      const hi = WEEKLY_SET_BAND[d][1];
-      for (const experience of EXPERIENCES) {
-        const plan = generatePlan(input({ sessionsPerWeek: d, experience }), EXERCISES);
+      for (const equipment of EQUIPMENT) {
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment }), EXERCISES);
         const week = weeklySetsByMuscle(plan.sessions.slice(0, d), EXERCISES);
-        for (const [muscle, sets] of Object.entries(week)) {
-          expect(sets, `${d} days, ${experience}, ${muscle}`).toBeLessThanOrEqual(hi);
+        for (const m of MUSCLE_GROUPS) {
+          expect(week[m] ?? 0, `${d} days, ${equipment}: ${m} is untrained`).toBeGreaterThan(0);
         }
-      }
-    }
-  });
-
-  it('trains every muscle group in the vocabulary at every day count', () => {
-    for (const d of DAY_COUNTS) {
-      const plan = generatePlan(input({ sessionsPerWeek: d }), EXERCISES);
-      const week = weeklySetsByMuscle(plan.sessions.slice(0, d), EXERCISES);
-      for (const m of MUSCLE_GROUPS) {
-        expect(week[m] ?? 0, `${d} days: ${m} is untrained`).toBeGreaterThan(0);
       }
     }
   });
@@ -364,9 +542,38 @@ describe('weekly set volume, the P2 generator gate', () => {
       'abs',
     ]);
   });
+
+  it('calls an untrained muscle maintenance-only under the open band, never in band', () => {
+    // generatePlan cannot produce a day count no template covers; an IMPORTED plan can, and
+    // bandFor then returns the open band [0, +Infinity] rather than fabricating a range. Its
+    // bottom is 0 because no lower bound is known, not because zero sets is enough: `0 >= 0`
+    // used to report every untrained muscle as in band, which is the one claim this report makes.
+    const base = generatePlan(input({ sessionsPerWeek: 4 }), EXERCISES);
+    const imported: PlanTemplate = {
+      ...base,
+      sessionsPerWeek: 7,
+      sessions: base.sessions.map((s) => ({ ...s, exercises: [] })),
+    };
+    const report = volumeReport(imported, EXERCISES);
+    expect(report.band).toEqual([0, Number.POSITIVE_INFINITY]);
+    expect(report.inBand).toEqual([]);
+    expect(report.over).toEqual([]);
+    expect(report.maintenance).toEqual([...MUSCLE_GROUPS]);
+
+    // A plan that trains something under the open band still reports what it trains.
+    const partial: PlanTemplate = {
+      ...base,
+      sessionsPerWeek: 7,
+      sessions: base.sessions.map((s, i) => (i === 0 ? s : { ...s, exercises: [] })),
+    };
+    const partialReport = volumeReport(partial, EXERCISES);
+    expect(partialReport.inBand).toContain('chest');
+    expect(partialReport.maintenance).toContain('calves'); // 0 sets in Upper A
+    expect(partialReport.inBand).not.toContain('calves');
+  });
 });
 
-describe('equipment filtering', () => {
+describe('equipment substitution', () => {
   it('never plans an exercise the equipment cannot perform', () => {
     for (const equipment of EQUIPMENT) {
       for (const d of DAY_COUNTS) {
@@ -381,6 +588,225 @@ describe('equipment filtering', () => {
         }
       }
     }
+  });
+
+  it('emits exactly what the templates resolve, slot for slot, in every tier', () => {
+    // SUBSTITUTE, NEVER DROP. The generator holds no substitution table and applies no equipment
+    // filter of its own: it calls the templates' resolveSlot with the user's equipment, so the
+    // sub-gym tiers get the candidate list's substitution (barbell bench press -> incline dumbbell
+    // press -> push-up) rather than a shorter session. Any generator-side omission shows up here
+    // as an id sequence shorter than the template's own resolution.
+    for (const d of DAY_COUNTS) {
+      for (const equipment of EQUIPMENT) {
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, weeks: 8 }), EXERCISES);
+        SPLIT_TEMPLATES[d].sessions.forEach((sessionTemplate, i) => {
+          const used = new Set<string>();
+          const expected: string[] = [];
+          for (const slot of sessionTemplate.slots) {
+            const ex = resolveSlot(slot, equipment, used);
+            if (!ex) continue;
+            used.add(ex.id);
+            expected.push(ex.id);
+          }
+          const got = plan.sessions[i]?.exercises.map((pe) => pe.exerciseId);
+          expect(got, `${d} days, ${equipment}, ${sessionTemplate.label}`).toEqual(expected);
+        });
+      }
+    }
+  });
+
+  it('keeps the exact per-tier session length the templates resolve to', () => {
+    /*
+     * [exercises] per session, first week, by day count and equipment tier. Asserted as a table
+     * rather than a loose floor so that a candidate-list edit which thins a session shows up here
+     * as a number, not as an inequality that still passes.
+     *
+     * WHAT THE TABLE SAYS, stated rather than smoothed over: the full-gym tier loses nothing. The
+     * dumbbells-only tier loses at most one slot a session, always to a collision (the deadlift
+     * slot has already taken the Bulgarian split squat when the split-squat slot asks for it; the
+     * second curl slot has already taken the hammer curl). The bodyweight tier is thin, and the
+     * thinnest session in the whole matrix is the 6-day Pull A at TWO exercises: three of its five
+     * slots are a rear-delt isolation and two elbow-flexion isolations, and the bodyweight tier
+     * has no direct rear-delt exercise and no curl at all (master plan section 5). That is a limit
+     * of the equipment, declared by the templates and reported through volumeReport as
+     * maintenance-only, not something the generator can substitute its way out of.
+     */
+    const sizes: Record<string, Record<string, number[]>> = {};
+    for (const d of DAY_COUNTS) {
+      for (const equipment of EQUIPMENT) {
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, weeks: 8 }), EXERCISES);
+        sizes[String(d)] = {
+          ...sizes[String(d)],
+          [equipment]: plan.sessions.slice(0, d).map((s) => s.exercises.length),
+        };
+        // Whatever the tier, a session is never emptied, and every week repeats the first.
+        for (const s of plan.sessions) expect(s.exercises.length).toBeGreaterThan(0);
+      }
+    }
+    expect(sizes).toEqual({
+      '2': { 'full-gym': [7, 7], 'dumbbells-only': [7, 7], bodyweight: [6, 5] },
+      '3': { 'full-gym': [6, 7, 6], 'dumbbells-only': [6, 7, 6], bodyweight: [4, 6, 3] },
+      '4': {
+        'full-gym': [6, 6, 6, 6],
+        'dumbbells-only': [6, 6, 6, 5],
+        bodyweight: [3, 4, 4, 4],
+      },
+      '5': {
+        'full-gym': [6, 6, 6, 5, 6],
+        'dumbbells-only': [6, 6, 6, 4, 6],
+        bodyweight: [3, 4, 4, 3, 4],
+      },
+      '6': {
+        'full-gym': [5, 5, 5, 5, 5, 5],
+        'dumbbells-only': [5, 4, 5, 5, 5, 4],
+        bodyweight: [3, 2, 3, 4, 4, 3],
+      },
+    });
+  });
+
+  it('omits a slot only when the templates themselves resolve nothing for it', () => {
+    // The census of omitted slots, declared here so a candidate-list edit that silently drops more
+    // of the week fails this test rather than shipping. Two causes, both the templates':
+    //   - no candidate available in the tier (a curl with no dumbbell, a machine leg curl);
+    //   - every available candidate already used earlier in the SAME session, which is what stops
+    //     an exercise being prescribed twice in one session (templates.ts resolveSlot).
+    // Full-gym omits nothing, which is why it has no entry.
+    const census: Record<string, Record<string, string[]>> = {};
+    for (const d of DAY_COUNTS) {
+      for (const equipment of EQUIPMENT) {
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, weeks: 8 }), EXERCISES);
+        const omitted: string[] = [];
+        SPLIT_TEMPLATES[d].sessions.forEach((sessionTemplate, i) => {
+          const planned = plan.sessions[i]?.exercises.length ?? 0;
+          const used = new Set<string>();
+          for (const slot of sessionTemplate.slots) {
+            const ex = resolveSlot(slot, equipment, used);
+            if (!ex) {
+              omitted.push(`${sessionTemplate.label}/${slot.role}`);
+              continue;
+            }
+            used.add(ex.id);
+          }
+          // The generator dropped nothing the templates did not: slots minus omissions.
+          expect(planned + omitted.length, `${d} days, ${equipment}`).toBeGreaterThanOrEqual(
+            planned,
+          );
+        });
+        if (omitted.length > 0) {
+          census[String(d)] = { ...census[String(d)], [equipment]: omitted };
+        }
+      }
+    }
+    expect(census).toEqual({
+      '2': {
+        bodyweight: [
+          'Full body A/lateral raise',
+          'Full body B/rear delt',
+          'Full body B/elbow flexion',
+        ],
+      },
+      '3': {
+        bodyweight: [
+          'Full body A/lateral raise',
+          'Full body A/elbow flexion',
+          'Full body B/knee flexion',
+          'Full body C/push-up',
+          'Full body C/rear delt',
+          'Full body C/elbow flexion',
+        ],
+      },
+      '4': {
+        'dumbbells-only': ['Lower B/split squat'],
+        bodyweight: [
+          'Upper A/incline press',
+          'Upper A/lateral raise',
+          'Upper A/elbow flexion',
+          'Lower A/leg press',
+          'Lower A/knee flexion',
+          'Upper B/rear delt',
+          'Upper B/elbow flexion',
+          'Lower B/split squat',
+          'Lower B/lateral raise',
+        ],
+      },
+      '5': {
+        'dumbbells-only': ['Lower B/split squat'],
+        bodyweight: [
+          'Upper A/incline press',
+          'Upper A/lateral raise',
+          'Upper A/elbow flexion',
+          'Lower A/leg press',
+          'Lower A/knee flexion',
+          'Upper B/rear delt',
+          'Upper B/elbow flexion',
+          'Lower B/split squat',
+          'Lower B/lateral raise',
+          'Accessory/rear delt',
+          'Accessory/lateral raise',
+        ],
+      },
+      '6': {
+        'dumbbells-only': ['Pull A/elbow flexion', 'Legs B/split squat'],
+        bodyweight: [
+          'Push A/incline press',
+          'Push A/lateral raise',
+          'Pull A/rear delt',
+          'Pull A/elbow flexion',
+          'Pull A/elbow flexion',
+          'Legs A/leg press',
+          'Legs A/knee flexion',
+          'Push B/lateral raise',
+          'Pull B/rear delt',
+          'Legs B/split squat',
+          'Legs B/lateral raise',
+        ],
+      },
+    });
+  });
+});
+
+describe('the library argument is the plan vocabulary', () => {
+  it('names no exercise outside the library it was handed', () => {
+    // The generator used to resolve slots against the module-level EXERCISE_BY_ID and so could
+    // prescribe an exercise the caller had withheld. Withholding the barbell bench press must
+    // move the full-gym horizontal-press slot down its candidate list, not re-import the barbell.
+    const withheld = new Set(['barbell-bench-press', 'lat-pulldown', 'leg-curl-machine']);
+    const reduced = EXERCISES.filter((e) => !withheld.has(e.id));
+    const allowed = new Set(reduced.map((e) => e.id));
+    for (const d of DAY_COUNTS) {
+      for (const equipment of EQUIPMENT) {
+        const plan = generatePlan(
+          input({ sessionsPerWeek: d, equipment, includeCardio: true, weeks: 8 }),
+          reduced,
+        );
+        for (const s of plan.sessions) {
+          for (const pe of s.exercises) {
+            expect(allowed.has(pe.exerciseId), `${d} days, ${equipment}: ${pe.exerciseId}`).toBe(
+              true,
+            );
+          }
+        }
+      }
+    }
+    // And the substitution actually happened rather than the slot being dropped.
+    const plan = generatePlan(input({ sessionsPerWeek: 4 }), reduced);
+    expect(plan.sessions[0]?.exercises[0]?.exerciseId).toBe('incline-db-press');
+  });
+
+  it('throws a RangeError on an empty library instead of emitting exercises', () => {
+    expect(() => generatePlan(input(), [])).toThrow(RangeError);
+    expect(() => generatePlan(input(), [])).toThrow(/library is empty/);
+  });
+
+  it('throws a RangeError when the library fills no slot of a session', () => {
+    // A non-empty library that holds only conditioning entries: every lifting slot resolves to
+    // nothing, and an empty session is not a plan.
+    const cardioOnly = EXERCISES.filter((e) =>
+      ['rower-intervals', 'stair-climber', 'walk'].includes(e.id),
+    );
+    expect(cardioOnly.length).toBe(3);
+    expect(() => generatePlan(input({ includeCardio: true }), cardioOnly)).toThrow(RangeError);
+    expect(() => generatePlan(input({ includeCardio: true }), cardioOnly)).toThrow(/fills no slot/);
   });
 });
 
