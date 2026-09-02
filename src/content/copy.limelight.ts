@@ -44,6 +44,13 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'status.weekDeltaZero': '{completed} of {target}. she delivered.',
   'status.weekDeltaPositive': '{completed} of {target}. no crumbs.',
   'advice.drinkToThirst': 'hydrate or diedrate',
+  // The two hydration rows P8 close-out B converted from template literals in copy.ts, in the
+  // voice the row above already set. The VOLUMES stay slots the domain filled, and "beverage
+  // intake" is the quantity name the contract fixes (R11) rather than a word this skin may
+  // reword: only the verb and the tag are the skin's. `button.logVolume` is one word plus a
+  // number, so R1 is met.
+  'button.logVolume': 'hydrate {volume}',
+  'advice.beverageShortfall': 'beverage intake {logged} of {target} today. top it up.',
   'status.prReached': 'new best. mother.',
   'hero.weeklyTargetMissed': 'the intervention',
   'status.sessionCursor': 'ep. {shown} of {total}',
@@ -89,6 +96,12 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // uppercase list round three closed is untouched.
   'button.pauseTicker': 'pause the ticker',
   'button.continueTransition': 'go on',
+  // The one refusal the schedule mints that this skin has a word for. `button.pausePlan` is
+  // "on hiatus" here, so the sentence that reports a day the pause covers uses the same word;
+  // the DATE stays the slot the domain filled, and the refusal still says the plan is stopped,
+  // which is the fact the user has to act on (P8 close-out B).
+  'status.refusalPaused': 'the plan is on hiatus on {date}.',
+
   // The missed-week screen. `dismiss` closes the clip; it is not a commit, so it may be camp.
   // The clip plays itself, muted, which is the only autoplay an engine allows, so there is no
   // play control here to name (P8 close-out B retired the unused `button.play`).

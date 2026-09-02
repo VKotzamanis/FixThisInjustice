@@ -525,6 +525,36 @@ describe('TodayView: a refused action', () => {
     expect(banner.textContent).toContain(refusalLine(raw ?? ''));
   });
 
+  it('renders the refusal in the active skin, not always in the clinical words', () => {
+    /*
+     * `refusalLine` has taken an overlay since it was written, and TodayView called it without
+     * one, so the one sentence on this screen that reports a domain refusal was clinical under
+     * every skin while the controls beside it were not.
+     *
+     * `status.refusalPaused` is the row limelight carries, and it is asserted BY KEY through
+     * `copyFor`, so the expectation follows the table rather than a literal beside it.
+     */
+    setState({
+      ...useAppStore.getState(),
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
+    });
+    useAppStore.getState().startSession(PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
+    withSkin('limelight');
+    render(<TodayView />);
+
+    const banner = screen.getByRole('alert');
+    expect(banner.textContent).toContain(
+      FORMAT.withSlots('status.refusalPaused', { date: MONDAY }, SKIN_COPY.limelight),
+    );
+    // Not vacuous: the two skins render different words for the same refusal.
+    expect(copyFor('limelight', 'status.refusalPaused')).not.toBe(copy('status.refusalPaused'));
+    expect(banner.textContent).not.toContain(
+      FORMAT.withSlots('status.refusalPaused', { date: MONDAY }),
+    );
+    // The date is still the domain's, whatever the skin does to the words around it.
+    expect(banner.textContent).toContain(MONDAY);
+  });
+
   it('dismisses the banner without making another attempt', () => {
     openDayLastFriday();
     render(<TodayView />);

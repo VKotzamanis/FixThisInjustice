@@ -144,6 +144,13 @@ export interface HydrationCue {
  * The copy key each cue kind maps to. Exported so the view and its tests bind
  * to a constant rather than to a repeated string literal. The default wording
  * lives in src/content/copy.ts (P4 Task 10).
+ *
+ * ONE OF THE THREE IS A TEMPLATE AND MUST NOT BE RESOLVED BARE. Since P8 close-out B,
+ * `advice.beverageShortfall` carries `{logged}` and `{target}`, because the frame that printed
+ * that sentence baked its English into a template literal and was clinical under every skin.
+ * A caller that resolves it through `copy()` alone renders the braces; the two volumes are
+ * filled by `FORMAT.beverageShortfall`, which is what src/ui/views/train/HydrationBanner.tsx
+ * branches to for this kind. The other two rows are complete sentences and resolve directly.
  */
 export const HYDRATION_COPY_KEY = {
   'session-check': 'advice.drinkToThirst',
