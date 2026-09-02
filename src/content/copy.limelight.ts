@@ -265,18 +265,22 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   /*
    * WHAT STAYS CLINICAL ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
    *
-   * 128 default keys reach Today, Train, Plan or Settings with no row in this table. Twenty took
-   * one above. The other 108 are named below, grouped so each reason is written once rather than
+   * 130 default keys reach Today, Train, Plan or Settings with no row in this table. Twenty took
+   * one above. The other 110 are named below, grouped so each reason is written once rather than
    * once per key. Recount the list against the tree with the sweep in
-   * docs/plans/2026-09-02-09-prose-and-docs-pass.md, Task 12 step 1.
+   * docs/plans/2026-09-02-09-prose-and-docs-pass.md, Task 12 step 1, WITH ONE CORRECTION: that
+   * sweep greps for a single-quoted key and a view that hands a key to a component as a JSX prop
+   * writes it in double quotes (`titleKey="label.confirmWipe"`, `copyKey="button.skipToday"`).
+   * Match both quotes or the count comes back two short, which is how it first came back 128.
    *
-   * RULE 4, a control whose misreading costs data (16). The wipe, the two legacy paths, the
-   * backup download and the clip failure say what they destroy or fail to destroy, and a set
-   * delete is not recoverable:
+   * RULE 4, a control whose misreading costs data (18). The wipe, the two legacy paths, the
+   * backup download and the clip failure say what they destroy or fail to destroy, a set delete
+   * is not recoverable, and the two confirm titles name the act the dialog is about to do:
    *   advice.clipClearFailed, advice.dataOnDevice, advice.deleteLegacy, advice.legacyOldDataKept,
    *   advice.storedUnitsUnchanged, advice.wipeRemoves, button.deleteLegacy, button.downloadBackup,
    *   button.downloadLegacyJson, button.legacyDeleteOld, button.legacyReopen, button.wipeAll,
-   *   button.wipeConfirm, button.deleteSet, hero.dataOnDevice, hero.exportImport
+   *   button.wipeConfirm, button.deleteSet, hero.dataOnDevice, hero.exportImport,
+   *   label.confirmDeleteLegacy, label.confirmWipe
    *
    * THE INSTALL GUIDE (12). Every string quotes a label the operating system draws: Share, Add to
    * Home Screen, Install app, the three dots. A skin that rewrites them makes the instruction
