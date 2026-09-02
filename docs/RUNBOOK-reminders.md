@@ -343,7 +343,7 @@ falling back to the older `navigator.standalone` flag.
 | `needs-install` | service workers present, `PushManager` absent, and the page is not an installed app | the status line and the install guide, and no toggle: subscribing cannot succeed, so a switch would lead nowhere |
 | `unsupported` | anything else | the status line alone |
 
-The status line carries exactly one of seven strings. They are the `status.reminders*` keys in
+The status line carries exactly one of eight strings. They are the `status.reminders*` keys in
 `src/content/copy.ts`:
 
 - `Reminders are not set up on this deployment.`
@@ -352,15 +352,24 @@ The status line carries exactly one of seven strings. They are the `status.remin
 - `Notifications are blocked. Allow them in your browser site settings.`
 - `Reminders are off.`
 - `Reminders are on. Schedule not sent yet.`
+- `Reminders need enabling again on this device.`
 - `Reminders are on. Schedule last sent at {time}.`
 
 The last is a template. `{time}` is a wall clock in the PROFILE's timezone, never UTC and
 never the phone's zone, so the reported time does not move when the user travels.
 
-**iPhone and iPad, iOS 18.4 or later.** Install first, then enable. These four steps are the
-ones the in-app install guide gives (`src/ui/components/InstallGuide.tsx`).
+The seventh string belongs to a restore. The reminder preference travels with an exported
+document and the push subscription does not, because it is a bearer credential the export
+withholds. On the restoring device the panel names the device and the action, because nothing
+recovers on its own. The key is `status.remindersNeedReenable`, and
+`src/ui/components/ReminderSettingsPanel.tsx` line 44 maps it.
 
-1. Open `https://vkotzamanis.github.io/FixThisInjustice/` in Safari.
+**iPhone and iPad, iOS 18.4 or later.** Install first, then enable. The page to open is
+`https://vkotzamanis.github.io/FixThisInjustice/`. Steps 1 to 4 are the ones the in-app install
+guide gives (`src/ui/components/InstallGuide.tsx`), quoted here as it renders them. Steps 5 and 6
+are not in the guide.
+
+1. Open this page in Safari.
 2. Tap Share, the square with an upward arrow.
 3. Scroll down, tap **Add to Home Screen**, then tap **Add**.
 4. Open the app from the Home Screen icon.
@@ -414,7 +423,7 @@ Record the outcome in section 16, so a later regression has a baseline to compar
 | --- | --- | --- | --- |
 | `wrangler deploy` fails on an invalid namespace id | step 3 not applied | `grep -n REPLACE worker/wrangler.toml` | paste the real id from `npx wrangler kv namespace create REMINDERS` |
 | `/v1/health` returns a key you do not recognise | `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_JWK` came from different runs of step 4 | compare the two | regenerate the pair, redo steps 5, 6 and 9; every device must enable again |
-| Settings shows `Reminders are not configured in this build.` | the Pages build had no `VITE_REMINDER_API` or no `VITE_VAPID_PUBLIC_KEY` | `curl` the page and grep `connect-src` | add the repository variables (step 9) and re-run the deploy workflow |
+| Settings shows `Reminders are not set up on this deployment.` | the Pages build had no `VITE_REMINDER_API` or no `VITE_VAPID_PUBLIC_KEY` | `curl` the page and grep `connect-src` | add the repository variables (step 9) and re-run the deploy workflow |
 | Settings shows `Add this app to the Home Screen first.` on iPhone | running in a Safari tab | look for the browser chrome | install to the Home Screen and reopen from the icon |
 | Settings shows `This browser cannot receive push notifications.` | no service worker or no Push API | open the same page in another browser | use Safari on iOS 18.4 or later, or Chrome on Android |
 | Enabling does nothing and the status stays `Reminders are off.` | the permission prompt was dismissed, not granted | the site's notification permission in browser or system settings | reset that permission and try again |
