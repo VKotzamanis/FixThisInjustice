@@ -131,7 +131,7 @@ src/domain/fun/blocks.test.ts             Task 10
 src/ui/components/PhaseTransition.tsx     Task 10  cutscene keyed to PlanBlock.index
 src/ui/components/MilestoneToast.tsx      Task 10  50/100/250/500/1000
 src/ui/components/PhaseTransition.test.tsx Task 10
-src/content/copy.ts                       Task 11  CopyKey union, DEFAULT_COPY, LIMELIGHT_COPY, BOARD_COPY, copy()
+src/content/copy.ts                       Task 11  (modify; P2 Task 7 created it) +13 keys, LIMELIGHT_COPY, BOARD_COPY, copy(key, skin)
 src/content/copy.test.ts                  Task 11
 src/skins/skinContext.tsx                 Task 11  SkinContext, useSkin(), useCopy()
 src/domain/types.ts                       Task 11  (modify) SkinId; Task 12 (modify) UiPrefs.skin, UiPrefs.sounds
@@ -4842,10 +4842,28 @@ Expected: lint silent; every suite passes; the build succeeds; the personal-data
 
 Master plan §3 makes the clinical copy the default and a skin "a token set, a copy table
 (`Record<CopyKey, string>` merged over the default), an optional icon set, and optional sound
-effects, selected by `UiPrefs.skin`". Nothing in P1 to P7 has a copy module yet: every view holds
-string literals. This task creates the module, pastes the binding default table from
-`docs/design/2026-09-01-copy-contract.md`, adds the two skin overrides, and makes the rules
-mechanically enforced rather than asserted in prose.
+effects, selected by `UiPrefs.skin`". This task adds the two skin overrides to the module, selects
+between them by `SkinId`, and makes the copy rules mechanically enforced rather than asserted in
+prose.
+
+**The state of `src/content/copy.ts` when this task starts, measured on 2026-09-01.** P2 Task 7
+already created it. Do not overwrite it. It carries:
+
+- the contract's block pasted verbatim, extended by the keys P2 Task 7 is the first to render:
+  **266 union members and 266 table rows, and the two sets are equal**;
+- `export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string`, whose
+  doc comment says the overlay is a parameter "because no skin table ships yet". This task is what
+  makes a selection exist, so the parameter becomes a `SkinId`. `git grep` finds **no call site
+  passing a second argument**, so the change breaks nothing;
+- a `FORMAT` object holding the frames for every string that carries a value, so a number is never
+  assembled at a call site. That object is better than this plan's first assumption and is left
+  exactly as it is: the `// formatted` example beside a table row documents the shape `FORMAT`
+  produces, and a skin overriding such a row overrides the example, not the frame.
+
+Everything below is therefore an **append**, plus one signature change. Verified before writing: none
+of P8's thirteen new keys collides with the 266 already present; all ten keys the two skin tables
+override are present; and the live table already satisfies the em-dash, exclamation-mark and
+button-length checks in step 1, with the single exception the test allowlists.
 
 **Three decisions, stated before the code so a reviewer can reject them here rather than in the diff.**
 
@@ -4912,7 +4930,7 @@ default table and overridden by no skin.
   forbids in every skin. A colon is R5's own prescribed replacement.
 
 **Files:**
-- Create: `src/content/copy.ts`
+- Modify: `src/content/copy.ts` (append 13 keys and 13 rows, add the two skin tables, change one signature)
 - Create: `src/skins/skinContext.tsx`
 - Modify: `src/domain/types.ts` (add `SkinId`, master plan §5 verbatim)
 - Test: `src/content/copy.test.ts`
@@ -4924,21 +4942,23 @@ default table and overridden by no skin.
 - Consumes: `SkinId` from `src/domain/types.ts` (added by step 3 of this task).
 - Produces:
   ```ts
-  // src/content/copy.ts
-  export type CopyKey = /* 193 members; the contract's 180 plus P8's 13 */ string & {};
-  export const DEFAULT_COPY: Readonly<Record<CopyKey, string>>;
-  export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>>;   // 21 entries
-  export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>>;       // 16 entries
-  export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey, string>>>>>;
-  export function copy(key: CopyKey, skin?: SkinId): string;                 // skin defaults to "clinical"
+  // src/content/copy.ts (existing; this task appends to it)
+  export type CopyKey = /* 266 existing members + P8's 13 */;
+  export const DEFAULT_COPY: Readonly<Record<CopyKey, string>>;              // gains 13 rows
+  export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>>;   // new, 21 entries
+  export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>>;       // new, 16 entries
+  export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey, string>>>>>;   // new
+  export function copy(key: CopyKey, skin?: SkinId): string;                 // was (key, overrides?)
+  export const FORMAT: { /* unchanged by this task */ };
 
   // src/skins/skinContext.tsx
   export const SkinContext: React.Context<SkinId>;                           // default "clinical"
   export function useSkin(): SkinId;
   export function useCopy(): (key: CopyKey) => string;
   ```
-  (`CopyKey` is a literal union, written out in full in step 3. The `string & {}` above is a stand-in
-  for this interface block only, so the block stays readable; the module declares every member.)
+  (`CopyKey` is a literal union. Step 4 prints the thirteen members this task adds; the other 266 are
+  already in the file and are not restated here, because restating them is how a paste overwrites
+  work that is already merged.)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -5005,9 +5025,31 @@ describe("copy tables", () => {
   });
 
   it("declares the sizes the design documents specify", () => {
-    expect(Object.keys(DEFAULT_COPY)).toHaveLength(193);
+    // The default table has no fixed size: P2 to P8 append to it, and P2 is still doing so. What is
+    // fixed is the two override tables, whose row counts come straight from the design documents.
     expect(Object.keys(LIMELIGHT_COPY)).toHaveLength(21);
     expect(Object.keys(BOARD_COPY)).toHaveLength(16);
+  });
+
+  it("gives each of P8's thirteen keys a clinical default", () => {
+    const p8Keys: readonly CopyKey[] = [
+      "status.weekDeltaNegative",
+      "status.weekDeltaZero",
+      "status.weekDeltaPositive",
+      "status.prReached",
+      "status.prStamp",
+      "status.sessionCursor",
+      "status.planProgress",
+      "button.add30s",
+      "hero.weekReview",
+      "why.progression",
+      "advice.interventionBody",
+      "label.settingsSkin",
+      "label.settingsSounds",
+    ];
+    for (const key of p8Keys) {
+      expect({ key, hasDefault: typeof DEFAULT_COPY[key] === "string" }).toEqual({ key, hasDefault: true });
+    }
   });
 
   for (const [name, table] of TABLES) {
@@ -5104,212 +5146,12 @@ grep -c 'export type SkinId' src/domain/types.ts
 
 Expected: `1`.
 
-- [ ] **Step 4: Write the copy module**
+- [ ] **Step 4: Append P8's keys, the two skin tables, and the skin selector**
 
-Create `src/content/copy.ts`. Everything from the file-level comment down to `status.setsLogged` is
-`docs/design/2026-09-01-copy-contract.md` pasted verbatim; the thirteen P8 keys, the two skin tables
-and `copy()` are new.
+**4a.** In `src/content/copy.ts`, append the thirteen keys to the `CopyKey` union. The union's last
+member currently ends with a semicolon; move that semicolon to the last line below.
 
 ```ts
-/**
- * User-facing copy, default (clinical) skin.
- *
- * Contract: docs/design/2026-09-01-copy-contract.md. Every string here obeys R1-R11.
- * Numbers, units and quantity names are part of the contract, not of the skin: a skin may
- * rewrite the sentence around `60 kg`, never `60 kg` itself.
- */
-
-import type { SkinId } from '../domain/types';
-
-export type CopyKey =
-  // --- shell, save/load banners, recovery (P1) ---
-  | 'shell.status.loading'
-  | 'shell.status.loaded'
-  | 'banner.update.tag'
-  | 'banner.update.body'
-  | 'button.reload'
-  | 'banner.saveQuota.tag'
-  | 'banner.saveQuota.body'
-  | 'banner.saveUnavailable.tag'
-  | 'banner.saveUnavailable.body'
-  | 'banner.saveFailed.tag'
-  | 'banner.saveFailed.body'
-  | 'banner.loadInvalid.tag'
-  | 'banner.loadInvalid.body'
-  | 'button.exportData'
-  | 'button.retrySave'
-  | 'button.exportStoredCopy'
-  | 'button.exportStoredData'
-  | 'recovery.hero'
-  | 'recovery.advice'
-  | 'recovery.exported'
-  | 'recovery.confirm'
-  | 'button.clearData'
-  | 'recovery.cleared.hero'
-  | 'recovery.cleared.advice'
-  | 'hero.noProfile'
-  | 'advice.noProfile'
-  // --- setup wizard, targets, check-in (P2) ---
-  | 'setup.hero'
-  | 'button.continue'
-  | 'button.back'
-  | 'button.confirmStart'
-  | 'advice.unitsOnce'
-  | 'advice.timezoneDetected'
-  | 'advice.timezoneInvalid'
-  | 'advice.sexUsedFor'
-  | 'advice.bodyFatOptional'
-  | 'advice.tapeMethod'
-  | 'advice.tapeNeedFemale'
-  | 'advice.tapeNeedMale'
-  | 'advice.loadSteps'
-  | 'advice.creatineOnly'
-  | 'advice.deloadEveryFourth'
-  | 'hero.dailyTargets'
-  | 'status.rateUnknown'
-  | 'button.recordIntake'
-  | 'why.targetsBasis'
-  | 'advice.storedUnitsUnchanged'
-  | 'advice.noProfileSetupFirst'
-  // --- today and plan (P3) ---
-  | 'hero.noPlan'
-  | 'advice.completeSetup'
-  | 'hero.programmeComplete'
-  | 'hero.sessionCompleted'
-  | 'hero.sessionSkipped'
-  | 'hero.sessionInProgress'
-  | 'hero.noSessionToday'
-  | 'advice.nextSession'
-  | 'advice.noSessionIn14Days'
-  | 'advice.noSessionsLeftThisWeek'
-  | 'status.planPaused'
-  | 'status.skipReason'
-  | 'button.startSession'
-  | 'button.returnToSession'
-  | 'button.markCompleted'
-  | 'button.skipToday'
-  | 'button.confirmSkip'
-  | 'button.cancel'
-  | 'button.trainSomethingElse'
-  | 'button.trainLabelToday'
-  | 'button.pausePlan'
-  | 'button.resumePlan'
-  | 'status.deloadNote'
-  // --- training session (P4) ---
-  | 'hero.train'
-  | 'advice.noProfileTrain'
-  | 'advice.deloadBlock'
-  | 'status.rest'
-  | 'button.skipRest'
-  | 'button.logSet'
-  | 'button.deleteSet'
-  | 'button.undo'
-  | 'button.addSet'
-  | 'button.addExercise'
-  | 'button.saveExercise'
-  | 'button.finishSession'
-  | 'button.logBodyMass'
-  | 'button.formReference'
-  | 'button.formCues'
-  | 'button.nextInstance'
-  | 'button.openClip'
-  | 'button.searchInstance'
-  | 'advice.noClipRecorded'
-  | 'advice.drinkToThirst'
-  | 'advice.beverageShortfall'
-  | 'advice.logPostSessionMass'
-  | 'why.postSessionMass'
-  | 'advice.fluidLoss'
-  | 'why.fluidLoss'
-  | 'coach.setLogged'
-  | 'coach.durationLogged'
-  | 'coach.loadPr'
-  | 'coach.repPr'
-  | 'coach.overSuggested'
-  | 'coach.underSuggested'
-  | 'coach.aboveRange'
-  | 'coach.belowRange'
-  | 'coach.topOfRange'
-  | 'coach.insideRange'
-  // --- reminders (P5) ---
-  | 'status.remindersUnconfigured'
-  | 'status.remindersUnsupported'
-  | 'status.remindersNeedInstall'
-  | 'status.remindersDenied'
-  | 'status.remindersOff'
-  | 'status.remindersPending'
-  | 'status.remindersActive'
-  | 'hero.installFirst'
-  | 'advice.installIos'
-  | 'advice.iosVersion'
-  | 'push.body'
-  // --- motivation video (P6) ---
-  | 'hero.weeklyTargetMissed'
-  | 'hero.motivationPreview'
-  | 'advice.motivationPreview'
-  | 'advice.weekMissed'
-  | 'advice.weekMissedNone'
-  | 'button.play'
-  | 'button.dismiss'
-  | 'button.muteThisWeek'
-  | 'button.preview'
-  | 'button.removeCustomClip'
-  | 'status.bundledClipChecking'
-  | 'status.bundledClipPresent'
-  | 'status.bundledClipAbsent'
-  | 'status.customClipNone'
-  | 'status.customClipStored'
-  | 'advice.videoWrongType'
-  | 'advice.videoTooLarge'
-  | 'advice.videoStoreFailed'
-  // --- log, export, migration, settings (P7) ---
-  | 'hero.importFromOldApp'
-  | 'advice.importIntro'
-  | 'advice.importNothingDeleted'
-  | 'advice.importUnitsNeeded'
-  | 'advice.importUnreadable'
-  | 'advice.importNoResult'
-  | 'advice.importDownloadFirst'
-  | 'why.importRejections'
-  | 'button.runImport'
-  | 'button.keepImport'
-  | 'button.startClean'
-  | 'button.downloadLegacyJson'
-  | 'button.setUpProfile'
-  | 'advice.noWeeksYet'
-  | 'advice.noSetsLogged'
-  | 'hero.exportImport'
-  | 'button.downloadJson'
-  | 'button.downloadSummary'
-  | 'button.downloadCalendar'
-  | 'advice.jsonIsBackup'
-  | 'advice.calendarAlarms'
-  | 'advice.importReplaces'
-  | 'status.importOk'
-  | 'advice.importParseFailed'
-  | 'advice.fileUnreadable'
-  | 'hero.dataOnDevice'
-  | 'advice.dataOnDevice'
-  | 'button.wipeAll'
-  | 'advice.wipeAll'
-  | 'button.deleteLegacy'
-  | 'advice.deleteLegacy'
-  | 'confirm.typeToConfirm'
-  // --- boot, atlas, capsule, spotlight, transitions (P8) ---
-  | 'hero.atlas'
-  | 'advice.atlas'
-  | 'advice.noCardsMatch'
-  | 'status.undiscovered'
-  | 'hero.timeCapsule'
-  | 'advice.timeCapsule'
-  | 'advice.capsuleOpenDatePassed'
-  | 'button.sealCapsule'
-  | 'button.openCapsule'
-  | 'button.skipBoot'
-  | 'button.continueTransition'
-  | 'advice.noMatches'
-  | 'toast.setDeleted'
-  | 'status.setsLogged'
   // --- skinned keys the round-three and departures-board copy tables need (P8) ---
   | 'status.weekDeltaNegative'
   | 'status.weekDeltaZero'
@@ -5324,204 +5166,12 @@ export type CopyKey =
   | 'advice.interventionBody'
   | 'label.settingsSkin'
   | 'label.settingsSounds';
+```
 
-export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
-  // --- shell, save/load banners, recovery (P1) ---
-  'shell.status.loading': 'reading local data',
-  'shell.status.loaded': 'local data loaded',
-  'banner.update.tag': 'UPDATE READY',
-  'banner.update.body': 'A new version is ready.',
-  'button.reload': 'Reload',
-  'banner.saveQuota.tag': 'STORAGE FULL',
-  'banner.saveQuota.body': 'Storage is full. Export now.',
-  'banner.saveUnavailable.tag': 'NO STORAGE',
-  'banner.saveUnavailable.body': 'Storage is unavailable here. Export now.',
-  'banner.saveFailed.tag': 'SAVE FAILED',
-  'banner.saveFailed.body': 'The change could not be saved. The stored copy is unchanged.',
-  'banner.loadInvalid.tag': 'INVALID DATA',
-  'banner.loadInvalid.body': 'Stored data did not validate: unrecognized key. Nothing was overwritten.', // formatted
-  'button.exportData': 'Export data',
-  'button.retrySave': 'Retry save',
-  'button.exportStoredCopy': 'Export stored copy',
-  'button.exportStoredData': 'Export stored data',
-  'recovery.hero': 'The app could not start',
-  'recovery.advice': 'Your data is unchanged. Export it before clearing.',
-  'recovery.exported': 'Export downloaded.',
-  'recovery.confirm': 'Export first, then type DELETE.',
-  'button.clearData': 'Clear stored data',
-  'recovery.cleared.hero': 'Stored data cleared',
-  'recovery.cleared.advice': 'Reload to start empty.',
-  'hero.noProfile': 'No profile yet',
-  'advice.noProfile': 'Setup is not built yet.',
+**4b.** Append the matching thirteen rows to `DEFAULT_COPY`, before its closing `};`. Leaving one
+out is a compile error, because the table is a total `Record<CopyKey, string>`.
 
-  // --- setup wizard, targets, check-in (P2) ---
-  'setup.hero': 'Setup',
-  'button.continue': 'Continue',
-  'button.back': 'Back',
-  'button.confirmStart': 'Confirm and start',
-  'advice.unitsOnce': 'Chosen once. Values are stored in kg and mL either way.',
-  'advice.timezoneDetected': 'Detected from this device. Dates and reminders use this zone.',
-  'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
-  'advice.sexUsedFor': 'Used by the RMR, body-fat and fluid equations.',
-  'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham fat-free-mass equation.',
-  'advice.tapeMethod': 'US Navy circumference method. All girths in cm, tape level and snug.',
-  'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
-  'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
-  'advice.loadSteps': 'The smallest increment a suggested load may use.',
-  'advice.creatineOnly': 'The only supplement tracked. Dose scales with body mass.',
-  'advice.deloadEveryFourth': 'Every fourth week halves set counts. Load is unchanged.',
-  'hero.dailyTargets': 'Daily targets',
-  'status.rateUnknown': 'Not established by the evidence base',
-  'button.recordIntake': 'Record intake',
-  'why.targetsBasis': 'How these numbers were derived',
-  'advice.storedUnitsUnchanged': 'Stored values never change. Mass is always held in kg.',
-  'advice.noProfileSetupFirst': 'No profile. Complete setup first.',
-
-  // --- today and plan (P3) ---
-  'hero.noPlan': 'No plan configured.',
-  'advice.completeSetup': 'Complete setup to generate a plan.',
-  'hero.programmeComplete': 'Programme complete.',
-  'hero.sessionCompleted': 'Session completed.',
-  'hero.sessionSkipped': 'Session skipped.',
-  'hero.sessionInProgress': 'Session in progress.',
-  'hero.noSessionToday': 'No session scheduled today.',
-  'advice.nextSession': 'Next: Wed 07:00 Push.', // formatted; weekday, start time, label
-  'advice.noSessionIn14Days': 'No sessions in the next 14 days.',
-  'advice.noSessionsLeftThisWeek': 'No sessions remain this week.',
-  'status.planPaused': 'Plan paused since 2026-09-07.', // formatted; pause start date
-  'status.skipReason': 'Reason: illness', // formatted; the reason the user typed
-  'button.startSession': 'Start session',
-  'button.returnToSession': 'Return to session',
-  'button.markCompleted': 'Mark completed',
-  'button.skipToday': 'Skip today',
-  'button.confirmSkip': 'Confirm skip',
-  'button.cancel': 'Cancel',
-  'button.trainSomethingElse': 'Train something else',
-  'button.trainLabelToday': 'Train Legs today', // formatted; the chosen label
-  'button.pausePlan': 'Pause plan',
-  'button.resumePlan': 'Resume plan',
-  'status.deloadNote': 'volume −50 %, load unchanged', // formatted; the actual set modifier
-
-  // --- training session (P4) ---
-  'hero.train': 'TRAIN',
-  'advice.noProfileTrain': 'No profile. Complete setup first.',
-  'advice.deloadBlock': 'Deload block: set count reduced, load held.',
-  'status.rest': 'REST',
-  'button.skipRest': 'Skip',
-  'button.logSet': 'Log',
-  'button.deleteSet': 'Delete',
-  'button.undo': 'Undo',
-  'button.addSet': 'Add set',
-  'button.addExercise': 'Add exercise',
-  'button.saveExercise': 'Add',
-  'button.finishSession': 'Finish session',
-  'button.logBodyMass': 'Log body mass',
-  'button.formReference': 'Form reference',
-  'button.formCues': 'Form cues',
-  'button.nextInstance': 'Try next instance',
-  'button.openClip': 'Open clip',
-  'button.searchInstance': 'Search instance',
-  'advice.noClipRecorded': 'No clip recorded for this exercise.',
-  'advice.drinkToThirst': 'Drink to thirst.',
-  'advice.beverageShortfall': 'Beverage intake 900 mL of 2600 mL today.', // formatted
-  'advice.logPostSessionMass': 'Log your post-session body mass.',
-  'why.postSessionMass': 'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
-  'advice.fluidLoss': 'Fluid loss above 2 %. Replace it over the next hours.',
-  'why.fluidLoss': 'Loss of 2.4 % of pre-session mass, above the 2 % threshold (ACSM 2007).', // formatted
-  'coach.setLogged': 'Set logged.',
-  'coach.durationLogged': '45 s logged.', // formatted
-  'coach.loadPr': 'Load PR. Previous best 60 kg × 8.', // formatted
-  'coach.repPr': 'Rep PR at 60 kg. Previous best 8 reps.', // formatted
-  'coach.overSuggested': '2.5 kg over the suggested load.', // formatted
-  'coach.underSuggested': '5 kg under the suggested load.', // formatted
-  'coach.aboveRange': '2 reps above range. Add load next session.', // formatted
-  'coach.belowRange': '4 reps, below the prescribed 6-8.', // formatted
-  'coach.topOfRange': 'Top of range at 60 kg × 8.', // formatted
-  'coach.insideRange': '60 kg × 7, inside the prescribed 6-8.', // formatted
-
-  // --- reminders (P5) ---
-  'status.remindersUnconfigured': 'Reminders are not configured in this build.',
-  'status.remindersUnsupported': 'This browser cannot receive push notifications.',
-  'status.remindersNeedInstall': 'Add this app to the Home Screen first.',
-  'status.remindersDenied': 'Notifications are blocked. Re-enable them in settings.',
-  'status.remindersOff': 'Reminders are off.',
-  'status.remindersPending': 'Reminders are on. Schedule not sent yet.',
-  'status.remindersActive': 'Reminders are active. Schedule last sent at 17:00.', // formatted
-  'hero.installFirst': 'Install to the Home Screen first',
-  'advice.installIos': 'On iPhone and iPad, only an installed app receives notifications.',
-  'advice.iosVersion': 'Requires iOS 18.4 or later.',
-  'push.body': 'Upper A at 18:00, session 3 of 24', // formatted
-
-  // --- motivation video (P6) ---
-  'hero.weeklyTargetMissed': 'Weekly target missed',
-  'hero.motivationPreview': 'Motivation video: preview',
-  'advice.motivationPreview': 'Preview. No week is being reported.',
-  'advice.weekMissed': 'Week of 2026-08-24: 1 of 4 sessions completed.', // formatted
-  'advice.weekMissedNone': 'Week of 2026-08-24: no sessions completed.', // formatted
-  'button.play': 'Play',
-  'button.dismiss': 'Dismiss',
-  'button.muteThisWeek': 'Mute this week',
-  'button.preview': 'Preview',
-  'button.removeCustomClip': 'Remove custom clip',
-  'status.bundledClipChecking': 'Bundled clip: checking.',
-  'status.bundledClipPresent': 'Bundled clip: present.',
-  'status.bundledClipAbsent': 'Bundled clip: absent. Choose a file below.',
-  'status.customClipNone': 'Custom clip: none.',
-  'status.customClipStored': 'Custom clip: stored on this device.',
-  'advice.videoWrongType': 'Not a video file.',
-  'advice.videoTooLarge': 'File is too large. The limit is 150 MiB.',
-  'advice.videoStoreFailed': 'The file could not be stored.',
-
-  // --- log, export, migration, settings (P7) ---
-  'hero.importFromOldApp': 'Import from the old app',
-  'advice.importIntro': 'Old data was found. Set up a profile first.',
-  'advice.importNothingDeleted': 'Nothing is deleted from the old app.',
-  'advice.importUnitsNeeded': 'The old app stored no units. Two questions follow.',
-  'advice.importUnreadable': 'The old data is not JSON. Nothing has been changed.',
-  'advice.importNoResult': 'The import produced no result. Nothing has been changed.',
-  'advice.importDownloadFirst': 'Download the untouched copy before keeping this import.',
-  'why.importRejections': 'What could not be imported, and why',
-  'button.runImport': 'Run the import',
-  'button.keepImport': 'Keep this import',
-  'button.startClean': 'Start clean',
-  'button.downloadLegacyJson': 'Download legacy JSON',
-  'button.setUpProfile': 'Set up your profile',
-  'advice.noWeeksYet': 'No weeks to show yet.',
-  'advice.noSetsLogged': 'No sets logged yet.',
-  'hero.exportImport': 'Export and import',
-  'button.downloadJson': 'Download JSON',
-  'button.downloadSummary': 'Download summary .txt',
-  'button.downloadCalendar': 'Download calendar .ics',
-  'advice.jsonIsBackup': 'The JSON file is the complete backup.',
-  'advice.calendarAlarms': 'Whether an imported alarm fires is not guaranteed.',
-  'advice.importReplaces': 'Importing replaces everything on this device.',
-  'status.importOk': 'Imported. The current state has been replaced.',
-  'advice.importParseFailed': 'That text is not JSON. Nothing has been changed.',
-  'advice.fileUnreadable': 'The file could not be read.',
-  'hero.dataOnDevice': 'Data on this device',
-  'advice.dataOnDevice': 'Everything stays on this device. There is no account.',
-  'button.wipeAll': 'Wipe all data',
-  'advice.wipeAll': 'Everything on this device is removed. A JSON backup downloads first.',
-  'button.deleteLegacy': 'Delete legacy data',
-  'advice.deleteLegacy': "The old app's three keys are removed. Anything not imported is lost.",
-  'confirm.typeToConfirm': 'Type DELETE to confirm',
-
-  // --- boot, atlas, capsule, spotlight, transitions (P8) ---
-  'hero.atlas': 'Atlas',
-  'advice.atlas': 'A field journal. Every logged set may add a card.',
-  'advice.noCardsMatch': 'No cards match this filter.',
-  'status.undiscovered': 'UNDISCOVERED',
-  'hero.timeCapsule': 'Time capsule',
-  'advice.timeCapsule': 'A note to your future self, sealed until a date you pick.',
-  'advice.capsuleOpenDatePassed': 'The open date has passed.',
-  'button.sealCapsule': 'Seal capsule',
-  'button.openCapsule': 'Open capsule',
-  'button.skipBoot': 'Skip',
-  'button.continueTransition': 'Continue',
-  'advice.noMatches': 'No matches.',
-  'toast.setDeleted': 'Set deleted.',
-  'status.setsLogged': '250 sets recorded.', // formatted
-
+```ts
   // --- skinned keys (P8) ---
   'status.weekDeltaNegative': '2 sessions below target', // formatted; the shortfall count
   'status.weekDeltaZero': 'Target met',
@@ -5539,7 +5189,32 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.interventionBody': 'You missed 2 sessions this week.', // formatted; the miss count
   'label.settingsSkin': 'Skin',
   'label.settingsSounds': 'Sounds',
-};
+```
+
+**4c.** Add the import at the top of the file, beside the existing ones:
+
+```ts
+import type { SkinId } from '../domain/types';
+```
+
+**4d.** Replace the existing `copy()` and its doc comment:
+
+```ts
+/**
+ * One string from the default table, with an optional skin overlay merged over it.
+ *
+ * The overlay is a parameter rather than a read of `UiPrefs.skin` because no skin table ships
+ * yet: this keeps the signature the contract asks for without pretending a selection exists.
+ */
+export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string {
+  return overrides?.[key] ?? DEFAULT_COPY[key];
+}
+```
+
+with the two skin tables, the skin map and the new selector. Place them immediately after
+`DEFAULT_COPY` and before `FORMAT`, which this task does not touch:
+
+```ts
 /**
  * limelight (docs/design/round3/2026-09-01-round3-plan.md §3.4). Twenty-one rows.
  *
@@ -5625,6 +5300,19 @@ export function copy(key: CopyKey, skin: SkinId = 'clinical'): string {
 }
 ```
 
+**4e.** Confirm the append landed and broke nothing:
+
+```bash
+grep -c "'label.settingsSounds'" src/content/copy.ts
+grep -c 'overrides?: Partial<Record<CopyKey, string>>' src/content/copy.ts
+grep -c 'export const FORMAT' src/content/copy.ts
+npx tsc --noEmit
+```
+
+Expected: `2` (one union member, one table row); `0` (the old signature is gone); `1` (`FORMAT` is
+untouched); and `tsc` silent, which is what proves the table is still total over the union and that
+no existing call site passed the second argument that was just retyped.
+
 - [ ] **Step 5: Write the skin context and the `useCopy` hook**
 
 Create `src/skins/skinContext.tsx`:
@@ -5665,7 +5353,7 @@ export function useCopy(): (key: CopyKey) => string {
 npx vitest run src/content/copy.test.ts
 ```
 
-Expected: PASS, `Tests  14 passed (14)`.
+Expected: PASS, `Tests  15 passed (15)`.
 
 - [ ] **Step 7: Type-check, lint and commit**
 
@@ -6422,7 +6110,7 @@ npx vitest run src/skins src/ui/settings src/content
 ```
 
 Expected: PASS. `src/skins/tokens.test.ts` 6 passed, `src/skins/SkinRoot.test.tsx` 5 passed,
-`src/ui/settings/SkinSettings.test.tsx` 3 passed, `src/content/copy.test.ts` 14 passed.
+`src/ui/settings/SkinSettings.test.tsx` 3 passed, `src/content/copy.test.ts` 15 passed.
 
 - [ ] **Step 15: Type-check, lint and commit**
 
@@ -8702,7 +8390,7 @@ git commit -m "chore: fail the build on an emoji in the copy tables or the skin 
 | `PhaseTransition` keyed to `PlanBlock.index` from the cursor, once per block | 10 | `ui.lastBlockSeenByProfile` |
 | milestones at 50/100/250/500/1000 from `totalSetsLogged` | 10 | interval-based, so a jump cannot skip one |
 | tone: clinical, no emoji, cards are facts with sources | 1, 10 | ASCII test; milestone copy asserts no filler |
-| **skin system** (master plan §3 Skins, §4, §10.3): copy module with the default table and two overrides | 11 | 193 keys; 21 limelight rows, 16 board rows; the design tables' keys mapped onto `CopyKey` in a table |
+| **skin system** (master plan §3 Skins, §4, §10.3): copy module with the default table and two overrides | 11 | additive to P2's existing module: +13 keys, 21 limelight rows, 16 board rows; the design tables' keys mapped onto `CopyKey` in a table |
 | copy contract enforced mechanically, not asserted | 11 | G14; one allowlisted four-word button, named with its reason |
 | `UiPrefs.skin` and `UiPrefs.sounds` with Zod defaults `"clinical"` and `false` | 12 | additive, so `CURRENT_SCHEMA_VERSION` stays 3 |
 | per-skin CSS tokens, selected by one root attribute | 12 | G15, G16; `#8ACE00` ground, `#000` type, `#FF5FCB` as fill and outline only |
@@ -8748,7 +8436,16 @@ in the modal exists only for the Settings preview, which omits the prop. `SfxCon
 structural subset of the DOM `AudioContext`, which is what lets `getAudioContext()`'s
 `AudioContext | null` satisfy `SfxDeps.context` and lets the test supply a double with no `as` cast.
 
-**3b. One defect found in an earlier task while checking the above, not fixed here.** Task 4 step 4
+**3b. One collision with work already merged, found while checking the above, and fixed here.** The
+first draft of Task 11 created `src/content/copy.ts` and pasted the contract block into it. A P2
+agent had already created that file, with 266 keys, a `FORMAT` object of value frames, and
+`copy(key, overrides?)`. Executing the draft would have deleted all of it. Task 11 is now written as
+an append plus one signature change, its state-of-the-file paragraph records the measured facts, and
+its step 4e greps for `FORMAT` to prove the append did not clobber it. The count assertion that
+would have pinned the table at 193 rows is gone: P2 is still appending, so only the two override
+tables have fixed sizes.
+
+**3c. One defect found in an earlier task while checking the above, not fixed here.** Task 4 step 4
 replaces the whole `UiPrefs` interface with a six-member version, and Task 4 step 1's `makeUiPrefs`
 returns the same six members. The shipped `src/domain/types.ts` already carries nine members: those
 six plus `videoInstanceHost`, `legacyMigration` and `lastBlockSeenByProfile`, the first two added by
@@ -8791,7 +8488,11 @@ Ten items: four from the original P8 scope and six from the skin system. None al
    `src/domain/types.ts` yet. This is therefore an implementation of §5 rather than an amendment to
    it, recorded here only so a reviewer knows which task lands it.
 
-6. **The copy module's `CopyKey` union gains thirteen keys** (Task 11). Twelve carry the round-three
+6. **The copy module's `CopyKey` union gains thirteen keys, and `copy()` changes signature** (Task 11).
+   `src/content/copy.ts` already exists: P2 Task 7 created it with 266 keys and
+   `copy(key, overrides?)`, whose comment says the overlay is a parameter "because no skin table
+   ships yet". P8 is what makes a selection exist, so the second parameter becomes a `SkinId`; no
+   call site passes one today, so nothing breaks. Twelve carry the round-three
    and departures-board design rows that the contract's 180 keys had no home for
    (`status.weekDeltaNegative`, `status.weekDeltaZero`, `status.weekDeltaPositive`,
    `status.prReached`, `status.prStamp`, `status.sessionCursor`, `status.planProgress`,
@@ -8851,7 +8552,7 @@ Ten items: four from the original P8 scope and six from the skin system. None al
 - It does not re-verify any DOI against Crossref. Every citation is taken from the content peer review's verified evidence column; a claim the review did not verify was dropped rather than softened, and no title was reproduced that the review did not state.
 - It does not touch the five dropped legacy cards anywhere but in `DROPPED_CARD_IDS`, and it does not audit `legacy/` for the §7 medication lines - that scrub is P1's, and P7 deletes the tree.
 - It leaves the accessibility of the cutscene unverified beyond `role="dialog"`: focus trapping and restore are not implemented or tested.
-- It does not retrofit P1 to P7's string literals into the copy module. `src/content/copy.ts` holds all 193 keys, and exactly one call site is converted (the Today start control, Tasks 12 and 13). Every other view still renders a literal that happens to equal its default-table entry, so switching to limelight or board changes that one control and nothing else. Converting the rest is a per-view sweep, and it is the single largest piece of work this plan defers.
+- It does not retrofit P1's, P3's to P7's string literals into the copy module. P2's setup wizard already reads from it, and P8 converts exactly one further call site (the Today start control, Tasks 12 and 13). Every other view still renders a literal that happens to equal its default-table entry, so switching to limelight or board changes the setup wizard, that one control, the toasts and the modals this plan touches, and nothing else. Converting the rest is a per-view sweep, and it is the single largest piece of work this plan defers.
 - It does not enforce the "a skin never restates a number" rule mechanically. The rule is real and it is stated in the module, but the design documents' specimens use different example scenarios per skin (`2 sessions below target` against `2 of 4. flop era.`), so no assertion over the specimen strings can express it. Enforcement belongs where the formatter runs, which is at call sites this plan does not convert.
 - It does not skin the motivation modal's heading. Task 14 adds a body slot only, so the `<h2>` renders the clinical `Weekly target missed` under every skin and `hero.weeklyTargetMissed`'s limelight override (`the intervention`) is defined but not yet rendered. A title slot is a one-line follow-up on P6's component.
 - It does not measure a single rendered pixel. Every contrast figure in `src/skins/limelight/tokens.css` is quoted from the round-three plan's computed table; the icons are asserted by decoded bytes and dimensions, not by appearance; and `vitest.config.ts` stubs CSS for every sheet but `crt.css`, so the token tests read files rather than computed styles. Nothing here verifies that the limelight screens look right, and the round-three checker (44 px tap targets, no horizontal scroll at 390 px, per-node contrast) is not run against the built app by any task in this plan.
