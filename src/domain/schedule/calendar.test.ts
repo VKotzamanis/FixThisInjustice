@@ -14,6 +14,11 @@
 //   2. remainingLabelsThisWeek returns [] on a day whose assignment is already terminal,
 //      because assignToday can honour nothing there. The plan reported the week's labels and
 //      then refused them.
+//   3. assignToday carries the cursor's materialisation gates (paused day, day already
+//      started, another day still open) and accepts only the day the projection serves the
+//      cursor's next session on. remainingLabelsThisWeek is empty for exactly those days, so
+//      the plan's "a non-slot day is always offered a choice" test is replaced by its dual:
+//      a day the plan does not serve offers nothing.
 //
 // Retained from the plan against the launching brief's paraphrase: the reorder is a
 // transposition ("a swap is not a rotation", P3 "Contract decisions this plan pins down"
@@ -22,14 +27,17 @@
 import { describe, expect, it } from 'vitest';
 import { assignToday, projectedCalendar, remainingLabelsThisWeek } from './calendar';
 import { completeSession, pausePlan, resumePlan, skipSession, startSession } from './cursor';
+import { daysBetween, weekEnd } from '../dates';
 import {
   assignmentOn,
+  assignmentsOf,
   cursorOf,
   FRIDAY,
   labelMultiset,
   labelsOf,
   MONDAY,
   NOW_MS,
+  PLAN_ID,
   planOf,
   PROFILE_ID,
   SATURDAY,
@@ -40,7 +48,7 @@ import {
   WEDNESDAY,
 } from '../../test/scheduleFixtures';
 import { parseState } from '../schema';
-import type { AppState } from '../types';
+import type { AppState, LocalDate } from '../types';
 
 // Availability: Monday, Wednesday, Friday at 07:00. Plan labels run Push / Legs / Pull twice.
 const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
@@ -58,6 +66,34 @@ function expectValid(state: AppState): void {
   const parsed = parseState(state);
   if (!parsed.ok) throw new Error(`parseState rejected the transition result: ${parsed.error}`);
   expect(parsed.state).toEqual(state);
+}
+
+/** A RangeError whose message contains `fragment`; both halves of the contract are asserted. */
+function expectRangeError(fn: () => unknown, fragment: string): void {
+  expect(fn).toThrow(RangeError);
+  expect(fn).toThrow(fragment);
+}
+
+/**
+ * The labels the rest of this ISO week actually delivers, sorted — one per day the projection
+ * gives a session to. This is the multiset master §6.4 says assignToday must never change.
+ */
+function deliveredRestOfWeek(state: AppState, from: LocalDate): string[] {
+  const daysLeft = daysBetween(from, weekEnd(from)) + 1; // [d] from .. Sunday inclusive
+  return projectedCalendar(state, PROFILE_ID, from, daysLeft)
+    .map((d) => d.projectedSession?.label)
+    .filter((label): label is string => label !== undefined)
+    .sort();
+}
+
+/** The state a pick produced, or null when the domain refused it. */
+function tryAssign(state: AppState, date: LocalDate, label: string): AppState | null {
+  try {
+    return assignToday(state, PROFILE_ID, date, label);
+  } catch (e) {
+    if (e instanceof RangeError) return null;
+    throw e;
+  }
 }
 
 /** plan.sessions[i].ordinal === i + 1 for every i (master §5, P3 contract decision 4). */
@@ -260,13 +296,34 @@ describe('remainingLabelsThisWeek', () => {
     expect(remainingLabelsThisWeek(seed(0), 'nobody', MONDAY)).toEqual([]);
   });
 
-  it('counts a non-slot day as trainable, so today is always offered a choice', () => {
-    expect(remainingLabelsThisWeek(seed(0), PROFILE_ID, TUESDAY)).toEqual(['Push', 'Legs', 'Pull']);
+  it('is empty on a day the projection does not serve next', () => {
+    // Availability is Mon/Wed/Fri, so from Tuesday the cursor's next session lands on
+    // Wednesday. Tuesday can still be trained — startSession never consults the slots — but
+    // it cannot be reshuffled, so it is offered nothing.
+    expect(remainingLabelsThisWeek(seed(0), PROFILE_ID, TUESDAY)).toEqual([]);
+    expect(remainingLabelsThisWeek(seed(0), PROFILE_ID, THURSDAY)).toEqual([]);
+    expect(remainingLabelsThisWeek(seed(0), PROFILE_ID, SATURDAY)).toEqual([]);
   });
 
   it('offers fewer labels than the plan holds when the week has fewer slots left', () => {
-    // Thursday: the window is Thursday itself plus Friday, so the third label is out of reach.
-    expect(remainingLabelsThisWeek(seed(0), PROFILE_ID, THURSDAY)).toEqual(['Push', 'Legs']);
+    // Wednesday: the window is Wednesday itself plus Friday, so the third label is out of
+    // reach. (Wednesday, not Thursday: only a day the plan serves is offered anything.)
+    expect(remainingLabelsThisWeek(seed(0), PROFILE_ID, WEDNESDAY)).toEqual(['Push', 'Legs']);
+  });
+
+  it('is empty on a paused day, which holds no session at all', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, MONDAY, 'flu');
+    expect(remainingLabelsThisWeek(paused, PROFILE_ID, MONDAY)).toEqual([]);
+  });
+
+  it("is empty once the day's session has started", () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
+    expect(remainingLabelsThisWeek(started, PROFILE_ID, MONDAY)).toEqual([]);
+  });
+
+  it('is empty while another day is still open (at most one open assignment)', () => {
+    const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
+    expect(remainingLabelsThisWeek(started, PROFILE_ID, WEDNESDAY)).toEqual([]);
   });
 
   it('drops the labels a mid-week pause makes unreachable', () => {
@@ -375,11 +432,89 @@ describe('assignToday', () => {
     expectOrdinalInvariant(twice);
   });
 
-  it('keeps an in-progress day in progress', () => {
+  it('refuses a day whose session has already started', () => {
+    // Swapping the session out from under a session the user is logging would rewrite the
+    // exercises mid-set. The UI offers "train other" before Start, never after.
     const started = startSession(seed(0), PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
-    const next = assignToday(started, PROFILE_ID, MONDAY, 'Legs');
-    expect(assignmentOn(next, MONDAY)?.status).toBe('in-progress');
-    expect(assignmentOn(next, MONDAY)?.startedAt).toBe(NOW_MS); // [ms] epoch, UTC
+    expectRangeError(
+      () => assignToday(started, PROFILE_ID, MONDAY, 'Legs'),
+      `assignToday: session already started on ${MONDAY}`,
+    );
+    expect(assignmentOn(started, MONDAY)?.status).toBe('in-progress');
+  });
+
+  it('refuses a paused day', () => {
+    const paused = pausePlan(seed(0), PROFILE_ID, MONDAY, 'flu');
+    expectRangeError(
+      () => assignToday(paused, PROFILE_ID, MONDAY, 'Push'),
+      `assignToday: the plan is paused on ${MONDAY}`,
+    );
+  });
+
+  it('refuses a pick while another day is still open (Friday, then Monday)', () => {
+    const s = seed(0);
+    const friday = assignToday(s, PROFILE_ID, FRIDAY, 'Push'); // Friday's window holds only Push
+    // Ungated, this second pick swapped the plan around index 0 while Friday's assignment
+    // still claimed index 0. Both days were then drawn from the same index, so completing both
+    // advanced the cursor twice for one session and the week delivered a label twice.
+    expectRangeError(
+      () => assignToday(friday, PROFILE_ID, MONDAY, 'Legs'),
+      `assignToday: a session is already open on ${FRIDAY}`,
+    );
+    // The week keeps exactly what the plan put in it, and one day stays open, not two.
+    expect(deliveredRestOfWeek(friday, FRIDAY)).toEqual(['Push']);
+    expect(assignmentsOf(friday)).toHaveLength(1);
+    expect(assignmentOn(friday, FRIDAY)?.sourceIndex).toBe(0);
+    expect(labelsOf(planOf(friday))).toEqual(LABELS);
+  });
+
+  it('refuses a day the projection does not serve next', () => {
+    // Thursday has no slot: from Thursday the cursor's next session lands on Friday.
+    const s = seed(0);
+    expectRangeError(
+      () => assignToday(s, PROFILE_ID, THURSDAY, 'Push'),
+      `assignToday: ${THURSDAY} is not the next session day`,
+    );
+    expect(deliveredRestOfWeek(s, THURSDAY)).toEqual(['Push']); // Friday alone, as planned
+  });
+
+  it('accepts the served day itself, whichever day of the week it is', () => {
+    const s = seed(0);
+    expect(() => assignToday(s, PROFILE_ID, MONDAY, 'Push')).not.toThrow();
+    expect(() => assignToday(s, PROFILE_ID, WEDNESDAY, 'Push')).not.toThrow();
+    expect(() => assignToday(s, PROFILE_ID, FRIDAY, 'Push')).not.toThrow();
+  });
+
+  it('never changes the labels the rest of the week delivers (master §6.4)', () => {
+    // Every day of the week crossed with every label in the plan: a pick the domain accepts
+    // leaves the week's delivered multiset exactly as the plan wrote it.
+    const week = [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY];
+    for (const date of week) {
+      const s = seed(0);
+      const before = deliveredRestOfWeek(s, date);
+      for (const label of ['Push', 'Legs', 'Pull']) {
+        const next = tryAssign(s, date, label);
+        if (next === null) continue; // refused: nothing to compare
+        expect(deliveredRestOfWeek(next, date)).toEqual(before);
+      }
+    }
+  });
+
+  it("writes the reshuffled plan under the cursor's planId", () => {
+    // A document whose plans key and plan.id disagree is schema-valid: only the key is read,
+    // by cursor.planId. Writing under plan.id would strand the reorder where nothing looks.
+    const s = seed(0);
+    const stale: AppState = { ...s, plans: { [PLAN_ID]: { ...planOf(s), id: 'stale-plan-id' } } };
+    expectValid(stale);
+    const next = assignToday(stale, PROFILE_ID, MONDAY, 'Legs');
+    expect(Object.keys(next.plans)).toEqual([PLAN_ID]);
+    expect(labelsOf(planOf(next))).toEqual(['Legs', 'Push', 'Pull', 'Push', 'Legs', 'Pull']);
+  });
+
+  it('returns the same state reference when the pick changes nothing', () => {
+    const once = assignToday(seed(0), PROFILE_ID, MONDAY, 'Push');
+    // Identity, not deep equality: a caller may detect a no-op the way it does with cursor.ts.
+    expect(assignToday(once, PROFILE_ID, MONDAY, 'Push')).toBe(once);
   });
 
   it('refuses a completed day, which is a record rather than a choice', () => {
