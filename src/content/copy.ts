@@ -13,7 +13,9 @@
  * at the bottom of this file, so a skin can reorder a sentence without touching a view, and so
  * no number or unit is duplicated between a view and this table. Where the contract prints an
  * example value in the table (`// formatted`), the example stays: it documents the shape the
- * matching `FORMAT` member produces.
+ * matching `FORMAT` member produces. Where the frame instead READS its key rather than
+ * restating its words, the value carries a `{token}` slot in place of the example, so a skin
+ * override reaches the rendered string (`status.milestoneSets`, `status.specimenAcquired`).
  */
 export type CopyKey =
   // --- shell, save/load banners, recovery (P1) ---
@@ -889,10 +891,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.coachNote': 'Coach',
   'label.telemetry': 'Telemetry',
   // The milestone line. "recorded", not "logged", and no exclamation mark (R8); P8 Task 10
-  // owns the thresholds that decide when this is shown.
-  'status.milestoneSets': '250 sets recorded.', // formatted; FORMAT.milestoneSets builds it
-  // The eyebrow over a drawn specimen card. The rarity word is the card's own enum.
-  'status.specimenAcquired': 'common specimen acquired', // formatted; FORMAT.specimenAcquired
+  // owns the thresholds that decide when this is shown. A `{count}` slot, not an example
+  // value: FORMAT.milestoneSets reads this key, so the words live here alone and a skin that
+  // rewrites the sentence - including moving the count inside it - is honoured.
+  'status.milestoneSets': '{count} sets recorded.', // template; FORMAT.milestoneSets fills it
+  // The eyebrow over a drawn specimen card. The rarity word is the card's own enum, so it is
+  // a slot rather than a literal; the sentence around it is this key's to rewrite.
+  'status.specimenAcquired': '{rarity} specimen acquired', // template; FORMAT.specimenAcquired
 
   // --- spotlight palette (P8 Task 8) ---
   // The dialog's own heading, which is also what names it to a screen reader.
@@ -1226,17 +1231,26 @@ export const FORMAT = {
   // --- toast queue (P8 Task 3) ---
 
   /**
-   * "250 sets recorded." The count arrives already rendered as a string, so no grouping or
-   * locale decision is taken in this file; P8 Task 10 owns the milestone thresholds and the
-   * grouped form of the count.
+   * "250 sets recorded." The words are `status.milestoneSets`, read rather than restated, so a
+   * skin overriding that key changes what is rendered; this frame owns the substitution and
+   * nothing else. The count arrives already rendered as a string, so no grouping or locale
+   * decision is taken in this file; P8 Task 10 owns the milestone thresholds and the grouped
+   * form of the count.
+   *
+   * The replacement is a FUNCTION, not a string: `String.replace` expands `$&` and friends in
+   * a string replacement, and a value that happened to contain one would be rewritten by the
+   * frame that is supposed to be inserting it verbatim.
    */
-  milestoneSets: (count: string): string => `${count} sets recorded.`,
+  milestoneSets: (count: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.milestoneSets', overrides).replace('{count}', () => count),
 
   /**
    * "common specimen acquired": the eyebrow over a drawn specimen card. The rarity is the
    * card's own `SpecimenRarity`, passed in rather than written here, so the word the user
-   * reads and the draw weight behind it cannot drift apart. The capitals are a
+   * reads and the draw weight behind it cannot drift apart; the sentence around it is
+   * `status.specimenAcquired`, so a skin override applies to it. The capitals are a
    * text-transform in toastQueue.css.
    */
-  specimenAcquired: (rarity: string): string => `${rarity} specimen acquired`,
+  specimenAcquired: (rarity: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.specimenAcquired', overrides).replace('{rarity}', () => rarity),
 } as const;
