@@ -5,7 +5,12 @@ import { App } from '../../app/App';
 import { FORMAT, copy } from '../../content/copy';
 import { formatRest, planRowDomId } from '../format/plan';
 import { requestPlanFocus, usePendingPlanFocus } from '../planFocus';
-import { PlanView, blockOfSession, deloadNote, modifiedSets, weekOfIndex } from './PlanView';
+import { PlanView, blockOfSession, deloadNote, modifiedSets } from './PlanView';
+// weekOfIndex MOVED to src/ui/planBrowse.tsx in P8 Task 9, with the plan-week arithmetic the
+// keyboard scrub needs, and its two cases moved with it to src/ui/planBrowse.test.tsx. What is
+// imported here is the browse RESET, because the scrub position is now module state and a week
+// left browsed by one test would be the week the next one opens on.
+import { resetPlanBrowse } from '../planBrowse';
 import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
 import type { AppState, PlanBlock } from '../../domain/types';
@@ -88,12 +93,15 @@ beforeEach(() => {
   // Monday 2026-09-07, 09:30 in Europe/Athens (the profile's zone).
   vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
   useAppStore.setState(seed());
-  // Module state: a target left pending by one test would be delivered inside the next one.
+  // Module state: a target left pending by one test would be delivered inside the next one,
+  // and a week left browsed would be the week the next test opens on.
   requestPlanFocus(null);
+  resetPlanBrowse();
 });
 
 afterEach(() => {
   requestPlanFocus(null);
+  resetPlanBrowse();
   vi.restoreAllMocks();
 });
 
@@ -107,20 +115,6 @@ describe('deloadNote', () => {
   it("reports the block's actual modifier rather than a fixed number", () => {
     expect(deloadNote(0.6)).toBe(FORMAT.deloadNote(40)); // [%] of planned sets removed
     expect(deloadNote(0.4)).toBe(FORMAT.deloadNote(60)); // [%]
-  });
-});
-
-describe('weekOfIndex', () => {
-  it('chunks session indices into zero-based weeks', () => {
-    expect(weekOfIndex(0, SPW)).toBe(0);
-    expect(weekOfIndex(2, SPW)).toBe(0);
-    expect(weekOfIndex(3, SPW)).toBe(1);
-  });
-
-  it('guards against a zero sessions-per-week', () => {
-    // A plan with no weekly rate cannot be chunked; week 0 is the only honest answer, and
-    // dividing by it would put Infinity into the scrubber.
-    expect(weekOfIndex(4, 0)).toBe(0);
   });
 });
 

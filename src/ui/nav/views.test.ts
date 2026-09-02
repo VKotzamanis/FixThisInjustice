@@ -1,16 +1,18 @@
 // src/ui/nav/views.test.ts
 //
-// The registry exists to stop a view being named in one place and missing from another. Until
-// P8 Task 9 switches src/app/App.tsx over to it, App.tsx still owns its own `ViewId` union and
-// its own `NAV` array, so THIS suite is the thing holding the two in step: it reads App.tsx as
-// text and asserts the registry names the same ids in the same order.
+// The registry exists to stop a view being named in one place and missing from another.
 //
-// Read as text rather than imported because App.tsx exports neither `NAV` nor the array behind
-// it, and exporting a value purely to let a test see it would be a change to App.tsx that this
-// task is not permitted to make (another agent holds that file). The regexes are anchored on
-// the two declarations' exact shapes and every one of them is asserted to have matched, so a
-// refactor that renames or reshapes them fails here loudly instead of silently asserting
-// nothing.
+// WHAT CHANGED IN P8 TASK 9, AND WHY THE OLD ASSERTIONS ARE GONE. Until that task, App.tsx
+// owned its own `ViewId` union and its own `NAV` array, and this suite read App.tsx as text to
+// hold the two lists in step. Task 9 switched the shell over: App.tsx now imports `VIEWS`,
+// `VIEW_IDS`, `ViewId` and `isViewId` from this file and declares no list of its own, so the
+// old ids-and-order assertions would compare the registry against itself and pass whatever
+// happened. They are RETIRED, and replaced by the two things the cutover can still get wrong:
+// a list growing back inside App.tsx, and a view that is in the registry but routed nowhere.
+//
+// App.tsx is still read as text rather than imported, because what is asserted about it is the
+// absence of a declaration and the presence of a switch arm, neither of which is a value a
+// module can export.
 
 import { describe, expect, it } from 'vitest';
 import { copy } from '../../content/copy';
@@ -20,29 +22,6 @@ import { copy } from '../../content/copy';
 import APP_SOURCE from '../../app/App.tsx?raw';
 import { VIEWS, VIEW_IDS } from './views';
 import type { ViewId } from './views';
-
-/*
- * The id character class is `[a-z0-9-]`, not `[a-z]`: a view named `time-capsule` or `week2`
- * would be INVISIBLE to a letters-only pattern, so both lists could gain it and this suite
- * would go on comparing the same six ids and passing. Verified by mutation: adding
- * `'time-capsule'` to the union and to NAV in a scratch copy of App.tsx leaves the letters-only
- * pattern reporting 6 ids and makes this one report 7, which is what fails the length
- * assertions below.
- */
-
-/** The ids in `export type ViewId = 'today' | ... ;` as written in App.tsx, in source order. */
-function unionIdsFromApp(): string[] {
-  const union = /export type ViewId =([^;]+);/.exec(APP_SOURCE);
-  expect(union, 'App.tsx no longer declares `export type ViewId = ...;`').not.toBeNull();
-  return Array.from((union?.[1] ?? '').matchAll(/'([a-z0-9-]+)'/g), (m) => m[1] ?? '');
-}
-
-/** The ids in App.tsx's `NAV` array literal, in the order the tab strip renders them. */
-function navIdsFromApp(): string[] {
-  const nav = /const NAV[^=]*=\s*\[([\s\S]*?)\];/.exec(APP_SOURCE);
-  expect(nav, 'App.tsx no longer declares `const NAV ... = [ ... ];`').not.toBeNull();
-  return Array.from((nav?.[1] ?? '').matchAll(/\{\s*id:\s*'([a-z0-9-]+)'/g), (m) => m[1] ?? '');
-}
 
 /**
  * The label each id must carry. Quoted from the copy table rather than written out, so a
@@ -55,18 +34,30 @@ const EXPECTED_LABEL: Record<ViewId, string> = {
   train: copy('nav.train'),
   targets: copy('nav.targets'),
   log: copy('nav.log'),
+  atlas: copy('nav.atlas'),
   settings: copy('nav.settings'),
 };
 
 describe('the view registry', () => {
-  it('names the same ids, in the same order, as the ViewId union in App.tsx', () => {
-    expect(unionIdsFromApp()).toHaveLength(VIEW_IDS.length);
-    expect(VIEW_IDS).toEqual(unionIdsFromApp());
+  it('is the only place the view list is written: App.tsx declares none of its own', () => {
+    // The two declarations Task 9 removed. A regrown list is exactly the drift the earlier
+    // parity assertions existed to catch, and the only way it can come back.
+    expect(APP_SOURCE).not.toMatch(/export type ViewId\s*=\s*'/);
+    expect(APP_SOURCE).not.toMatch(/const NAV\b/);
+    expect(APP_SOURCE).toMatch(/from '\.\.\/ui\/nav\/views'/);
   });
 
-  it('names the same ids, in the same order, as the NAV array in App.tsx', () => {
-    expect(navIdsFromApp()).toHaveLength(VIEW_IDS.length);
-    expect(VIEW_IDS).toEqual(navIdsFromApp());
+  it('has a switch arm in App.tsx for every view it names', () => {
+    // A view in the registry with no arm is a tab, a digit and a palette row that all lead to
+    // an empty screen. The arm is matched as source text because App.tsx exports no routing
+    // table to read.
+    for (const id of VIEW_IDS) {
+      expect(APP_SOURCE, `App.tsx routes no view '${id}'`).toContain(`view === '${id}'`);
+    }
+  });
+
+  it('names the Atlas, which P8 Task 9 added', () => {
+    expect(VIEW_IDS).toContain('atlas');
   });
 
   it('labels every view from the copy table', () => {
