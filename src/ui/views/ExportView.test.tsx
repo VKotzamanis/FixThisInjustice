@@ -120,6 +120,9 @@ describe('ExportView', () => {
 
     click(copy('button.downloadJson'));
     expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeEnabled();
+    // The instruction goes once it has been followed: standing advice the user has already
+    // acted on reads as a second, unmet requirement.
+    expect(screen.queryByText(copy('advice.downloadBackupFirst'))).toBeNull();
   });
 
   it('keeps the replace control disabled until the confirmation word is typed exactly', () => {

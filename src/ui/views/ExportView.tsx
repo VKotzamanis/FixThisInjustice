@@ -239,7 +239,7 @@ export function ExportView(): JSX.Element {
 
       {checked && (
         <div className="view-field">
-          <p className="view-note">{copy('advice.downloadBackupFirst')}</p>
+          {!backedUp && <p className="view-note">{copy('advice.downloadBackupFirst')}</p>}
           <label htmlFor={confirmId}>{copy('confirm.typeToConfirm')}</label>
           <input
             id={confirmId}
