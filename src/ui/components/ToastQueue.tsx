@@ -14,9 +14,9 @@
 // tab throttles timeouts, so a toast holding a remaining duration comes back with time still on
 // it. The deadline is re-armed on visibilitychange, which clears anything already expired.
 //
-// `SessionToast` (src/ui/views/TrainView.tsx:371) is a fifth such slot and is retired by P8
-// Task 10, the task that mounts `ToastProvider` and moves its callers onto `push`; until then
-// the two coexist and this module is mounted nowhere.
+// The Train view kept a fifth such slot of its own, with its own sweep timer and no priority
+// between classes. P8 Task 10 retired it: `ToastProvider` and `ToastQueue` are mounted by the
+// app shell, and every caller in that view now pushes here.
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactElement, ReactNode } from 'react';

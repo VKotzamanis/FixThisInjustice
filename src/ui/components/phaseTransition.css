@@ -1,0 +1,104 @@
+/*
+ * The block transition cutscene (P8 Task 10).
+ *
+ * z-index 54: above the two CRT presentation layers (50 and 51 in src/ui/styles/crt.css) and
+ * below the boot sequence (55, boot.css) and the toast stack (60, toastQueue.css). The gate
+ * never mounts this while the boot is running, so the ordering is belt and braces rather than
+ * the mechanism; a save-failure toast must stay readable over it either way.
+ *
+ * Every custom property carries a literal fallback, as boot.css and readinessNotice.css do, so
+ * the cutscene renders whether or not the P1 token sheet has loaded.
+ */
+.phase-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 54;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 78%);
+}
+
+.phase {
+  width: min(34rem, 100%);
+  max-height: 100%;
+  overflow: auto;
+  padding: 1.25rem;
+  color: var(--text, #dde3ea);
+  background: var(--bg-2, #101315);
+  border: 1px solid var(--line-2, #2a3138);
+  font-family: var(--mono, ui-monospace, monospace);
+}
+
+.pt-head {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/*
+ * The picture. `overflow-x: auto` rather than a wrap: the art is a fixed-width ASCII figure and
+ * a wrapped line of it is not the same figure.
+ */
+.pt-art {
+  margin: 0 0 1rem;
+  overflow-x: auto;
+  color: var(--accent, #6fe3c4);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.pt-stats {
+  margin: 0;
+  /* Four rows plus the control, so the panel does not resize under each reveal. */
+  min-height: 7.5rem;
+}
+
+.pt-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--line-1, #1c2227);
+  /* The reveal's only motion, suppressed below. It is an opacity fade on one row, not a move:
+     nothing changes position, so nothing can be lost by removing it. */
+  animation: pt-fade 220ms ease-out both;
+}
+
+.pt-row dt {
+  color: var(--text-3, #8d99a5);
+  font-size: 0.8rem;
+}
+
+.pt-row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.pt-continue {
+  margin-top: 1rem;
+}
+
+@keyframes pt-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * The component ALSO prints every statistic at once under this setting, so the reveal itself is
+ * gone before this rule matters. The rule is still here because the two answer different
+ * questions: the component decides whether the sequence runs, and this decides whether anything
+ * on screen animates at all.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .pt-row {
+    animation: none;
+  }
+}

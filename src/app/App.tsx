@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
 import { copy } from '../content/copy';
 import { useAppStore } from '../store';
+import { useApplySkin } from '../skins/skinContext';
 import type { SaveErrorReason } from '../store';
 import type { Profile } from '../domain/types';
 import {
@@ -15,7 +16,9 @@ import { HotkeyProvider, useHotkeys } from '../ui/hotkeys';
 import { SPOTLIGHT_COMBO, VIEWS, isViewId } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { stepBrowseBlock, stepBrowseWeek } from '../ui/planBrowse';
+import { BootGate } from '../ui/components/Boot';
 import { KonamiOverlay, useKonamiCode } from '../ui/components/KonamiOverlay';
+import { PhaseTransitionGate } from '../ui/components/PhaseTransition';
 import { SessionIndicator } from '../ui/components/SessionIndicator';
 import { Spotlight } from '../ui/components/Spotlight';
 import { SpotlightButton } from '../ui/components/SpotlightButton';
@@ -372,6 +375,13 @@ function ReadinessGate(props: { profile: Profile }): ReactElement {
 }
 
 export function App(): ReactElement {
+  /*
+   * The skin, mirrored onto <html data-skin> for the two attribute-scoped token blocks in
+   * src/ui/styles/tokens.css (P8 Task 12). First, and before useHydrateOnce: it is an effect,
+   * so it runs after the commit either way, and the reading order is the one that has to be
+   * obvious. Unconditional, like every hook in this component.
+   */
+  useApplySkin();
   useHydrateOnce();
   /*
    * After useHydrateOnce, which reads the document during render, so the first run of the
@@ -440,6 +450,16 @@ export function App(): ReactElement {
              */}
             <MigrationGate />
 
+            {/*
+             * The boot sequence (P8 Task 6). A FIXED overlay covering the whole screen while it
+             * runs, so its position in the tree carries no layout and the app behind it does not
+             * reflow when it unmounts. It gates itself on `ui.bootSeen` and renders null once the
+             * sequence has recorded itself as seen, which is why it is mounted unconditionally.
+             * Inside <main> so setup, which is the whole screen before a profile exists, boots
+             * behind the same sequence as everything else.
+             */}
+            <BootGate />
+
             {profile === null ? (
               // No profile means setup has not run. The wizard is the whole screen until it has:
               // every other view needs a profile to read units, time zone and targets from.
@@ -463,6 +483,16 @@ export function App(): ReactElement {
            * offer, and renders null otherwise.
            */}
           <MotivationGate />
+
+          {/*
+           * The block transition cutscene (P8 Task 10). A modal over the whole app, beside the
+           * weekly-miss popup rather than inside <main>, and last because it is the lowest
+           * priority interruption of the two: it reports work already done, while the popup
+           * asks for a decision about a week that was missed. It gates itself on the plan
+           * CURSOR's block, an idle session, a finished boot and the migration offer, and
+           * renders null otherwise.
+           */}
+          <PhaseTransitionGate />
         </div>
       </TrainingModalsProvider>
 

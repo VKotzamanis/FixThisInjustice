@@ -6,6 +6,16 @@ import { registerSW } from 'virtual:pwa-register';
 import '@fontsource-variable/jetbrains-mono';
 import '@fontsource-variable/geist';
 
+// The four faces the two non-clinical skins name in src/ui/styles/tokens.css (P8 Task 12).
+// Self-hosted for the same reason and under the same CSP `font-src 'self'`: a skin that reached
+// for a Google-hosted face would be blocked at runtime rather than at build time. Only the
+// weights the tokens actually use are imported, so a skin nobody selects still costs its faces
+// and nothing more.
+import '@fontsource-variable/archivo/standard.css';
+import '@fontsource/dm-mono/400.css';
+import '@fontsource/space-mono/400.css';
+import '@fontsource/space-mono/700.css';
+
 import './ui/styles/tokens.css';
 import './ui/styles/crt.css';
 import { App } from './app/App';
