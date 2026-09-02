@@ -587,7 +587,14 @@ export type CopyKey =
   | 'status.setCounter'
   | 'status.lastSessionSets'
   | 'status.restRemaining'
-  | 'button.logVolume';
+  | 'button.logVolume'
+  // --- the custom-exercise form's last two literals (P8 close-out D) ---
+  | 'label.modality.barbell'
+  | 'label.modality.dumbbell'
+  | 'label.modality.machine'
+  | 'label.modality.cable'
+  | 'label.modality.bodyweight'
+  | 'unit.characters';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1554,6 +1561,27 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // template; FORMAT.logVolume. The drink control, whose volume is the profile's own editable
   // cup size, formatted by src/domain/units.ts. R1 counts one word: the slot is a number.
   'button.logVolume': 'Log {volume}',
+
+  // --- the custom-exercise form's last two literals (P8 close-out D) ---
+  // One row per `Modality` member (src/domain/types.ts). The <option> labels were the union
+  // MEMBERS themselves, so the select read 'barbell', 'dumbbell', ... in the model's own
+  // lower-case identifiers under every skin, and no table could reach them. The VALUE the
+  // option carries is still the enum: it is what `Exercise.modality` persists, and a label is
+  // not an identifier.
+  //
+  // Sentence case, matching every other `label.*` row. `bodyweight` is one word here because it
+  // is one word in the model and in the gym; it is the same quantity `label.bonusSet` and the
+  // set-row toggle already name that way.
+  'label.modality.barbell': 'Barbell',
+  'label.modality.dumbbell': 'Dumbbell',
+  'label.modality.machine': 'Machine',
+  'label.modality.cable': 'Cable',
+  'label.modality.bodyweight': 'Bodyweight',
+  // The unit `FORMAT.outOfRange` names beside a name-length bound, passed from
+  // AddCustomExercise as a bare word until now. It is a key and `cm`, `%` and `s` are not,
+  // because those are SYMBOLS and this is an English word: a symbol reads the same in every
+  // register, a word does not.
+  'unit.characters': 'characters',
 };
 
 /**
