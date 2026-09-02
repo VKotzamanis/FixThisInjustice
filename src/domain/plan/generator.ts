@@ -24,9 +24,17 @@ import {
  * Plan generator: a split template plus a programme length becomes a calendar-free PlanTemplate.
  *
  * The generator invents no training variable. Split, slot order and set counts come from
- * templates.ts (content review section 7); rep ranges from prescriptionFor; rest intervals from
- * restSFor in library.ts (master plan section 6.3: one rest table for the whole app). What this
- * module adds is repetition across weeks, the block/deload layout, and the volume report.
+ * templates.ts (content review section 7); equipment substitution from the same file's resolveSlot
+ * (master plan section 5: the weekly-band claim is PER EQUIPMENT TIER, and the template owns it);
+ * rep ranges from prescriptionFor; rest intervals from restSFor in library.ts (master plan section
+ * 6.3: one rest table for the whole app, cardio entries included). What this module adds is
+ * repetition across weeks, the block/deload layout, and the volume report.
+ *
+ * Every exercise it names comes from the `library` argument, never from a module-level import, so
+ * a caller holding a reduced library gets a plan confined to it. The master plan section 7 P2
+ * generator gate is asserted in generator.test.ts over every sessionsPerWeek x experience x
+ * equipment x weeks x cardio cell, against bandMusclesFor(days, equipment) rather than the
+ * full-gym list, because the band claim differs by tier.
  */
 
 export const PLAN_WEEKS_MIN = 8; // [weeks]
@@ -88,16 +96,32 @@ const GOAL_LABEL: Record<GoalKind, string> = {
  */
 const CARDIO_PREFERENCE = ['rower-intervals', 'stair-climber', 'walk'];
 
+/**
+ * SUBSTITUTE, NEVER DROP. Every slot is resolved by the templates' own `resolveSlot`, with the
+ * user's equipment and the library the caller passed, so a `dumbbells-only` or `bodyweight` user
+ * gets the substitution the candidate list declares (barbell bench press -> incline dumbbell press
+ * -> push-up) rather than a shorter session. The generator applies no equipment filter of its own
+ * and holds no substitution table: master plan section 5 puts the per-tier claim in the templates,
+ * and generator.test.ts asserts that the emitted id sequence equals the templates' resolution slot
+ * for slot, so a generator-side drop is a test failure.
+ *
+ * The one omission is a slot no candidate can fill in this tier and library, which is the omission
+ * the templates declare and templates.test.ts enumerates (no curl without a dumbbell; no machine
+ * leg curl without a machine; a candidate already used earlier in the same session, which is what
+ * keeps an exercise from being prescribed twice in one session). It is reported to the user as
+ * reduced volume through volumeReport, never hidden.
+ */
 function buildSessionExercises(
   template: SessionTemplate,
   sets: { compound: { lo: number; hi: number }; isolation: { lo: number; hi: number } },
   equipment: Equipment,
+  library: Readonly<Record<string, Exercise>>,
 ): PlannedExercise[] {
   const used = new Set<string>();
   const planned: PlannedExercise[] = [];
   for (const slot of template.slots) {
-    const ex = resolveSlot(slot, equipment, used);
-    if (!ex) continue; // no candidate fits this equipment; the slot is dropped, not substituted
+    const ex = resolveSlot(slot, equipment, used, library);
+    if (!ex) continue; // the templates' declared omission: no candidate fits this tier and library
     used.add(ex.id);
     const prescription = prescriptionFor(ex, slot.intensity);
     const count = sets[slot.slotClass];
@@ -136,7 +160,17 @@ function cardioExercise(
         setsLo: 1, // [sets]: one continuous bout
         setsHi: 1, // [sets]
         prescription,
-        restS: 0, // [s]: a single bout has no inter-set rest interval to prescribe
+        /*
+         * [s] from restSFor, like every other entry. It used to be 0, meaning "a single bout has
+         * no inter-set rest to prescribe", but 0 is not free: P4's training screen reads
+         * `planned.restS > 0 ? planned.restS : defaultRestS(...)`, so 0 means "unset, fall back to
+         * the table" rather than "none", and the entry said the opposite of what the consumer did
+         * with it. Master plan section 6.3 gives the rest table ONE home, library.ts; restSFor is
+         * that table. The three conditioning entries carry loadClass "isolation", so restSFor
+         * returns 90 s -- the identical figure P4's defaultRestS would have fallen back to. The
+         * number downstream is unchanged; only the fiction goes.
+         */
+        restS: restSFor(ex, prescription),
       };
     }
   }
@@ -205,9 +239,16 @@ type SplitTemplateOrMissing = (typeof SPLIT_TEMPLATES)[SessionsPerWeek] | undefi
  * Build a plan. Deterministic apart from the generated ids: the same input yields the same
  * sessions, prescriptions and blocks, so a plan can be regenerated and compared.
  *
- * @throws RangeError when `weeks` is not a whole number in [PLAN_WEEKS_MIN, PLAN_WEEKS_MAX], or
- * when no split template covers `sessionsPerWeek` (the type admits 2..6; a value from a runtime
- * source such as an import can be anything).
+ * `library` IS THE ONLY EXERCISE VOCABULARY THE PLAN MAY USE. Slot resolution, the conditioning
+ * entry and the volume report all read it, so a caller that hands over a reduced library gets a
+ * plan naming only ids that library holds. It is not decoration on the signature: resolving
+ * against the module-level EXERCISE_BY_ID instead would prescribe exercises the caller withheld.
+ *
+ * @throws RangeError when `weeks` is not a whole number in [PLAN_WEEKS_MIN, PLAN_WEEKS_MAX], when
+ * no split template covers `sessionsPerWeek` (the type admits 2..6; a value from a runtime source
+ * such as an import can be anything), or when `library` cannot fill a single slot of some session
+ * -- an empty library being the limiting case. An empty session is not a plan, so the generator
+ * fails loudly rather than emitting one.
  */
 export function generatePlan(input: PlanInput, library: readonly Exercise[]): PlanTemplate {
   if (
@@ -223,13 +264,27 @@ export function generatePlan(input: PlanInput, library: readonly Exercise[]): Pl
   if (!template) {
     throw new RangeError(`generatePlan: no split template for ${input.sessionsPerWeek} days/week`);
   }
+  if (library.length === 0) {
+    throw new RangeError('generatePlan: the exercise library is empty, so no plan can be built');
+  }
+  const byId: Readonly<Record<string, Exercise>> = Object.fromEntries(
+    library.map((e) => [e.id, e]),
+  );
   const sets = template.sets[input.experience];
   const cardio = input.includeCardio ? cardioExercise(input.equipment, library) : null;
 
   const sessions: PlannedSession[] = [];
   for (let week = 1; week <= input.weeks; week += 1) {
     template.sessions.forEach((sessionTemplate, i) => {
-      const exercises = buildSessionExercises(sessionTemplate, sets, input.equipment);
+      const exercises = buildSessionExercises(sessionTemplate, sets, input.equipment, byId);
+      if (exercises.length === 0) {
+        // A non-empty library can still fill no slot of a session (every candidate withheld, or
+        // none available in this equipment tier). Conditioning is not lifting content, so this is
+        // checked before the cardio entry is appended.
+        throw new RangeError(
+          `generatePlan: the library fills no slot of "${sessionTemplate.label}" for ${input.equipment}`,
+        );
+      }
       const isLastOfWeek = i === template.sessions.length - 1;
       if (cardio && isLastOfWeek) exercises.push(cardio);
       sessions.push({
@@ -303,6 +358,10 @@ export interface VolumeReport {
  * The band for a day count, or an open band for a plan whose day count no template covers.
  * generatePlan cannot produce one; an imported plan can, and an open band reports it as such
  * rather than fabricating a range.
+ *
+ * The open band's bottom is 0 because no lower bound is known, NOT because zero sets is enough.
+ * volumeReport therefore classifies a muscle at 0 sets as maintenance-only before it consults the
+ * band; see the comment there.
  */
 function bandFor(sessionsPerWeek: number): readonly [number, number] {
   const band = (WEEKLY_SET_BAND as Record<number, readonly [number, number] | undefined>)[
@@ -326,7 +385,16 @@ export function volumeReport(plan: PlanTemplate, library: readonly Exercise[]): 
   const over: string[] = [];
   for (const m of MUSCLE_GROUPS) {
     const sets = perMuscle[m] ?? 0; // sets/muscle/week
-    if (sets > band[1]) over.push(m);
+    /*
+     * A muscle receiving NO sets is maintenance-only, whatever the band. The test matters only on
+     * the open-band path (`bandFor` returns [0, +Infinity] for a day count no template covers, as
+     * an imported plan can carry): there `sets >= band[0]` is `0 >= 0`, which reported an
+     * untrained muscle as in band. Zero stimulus is not a volume claim, and "in band" is the one
+     * claim this report makes to the user. On every closed band the bottom is at least 6
+     * sets/muscle/week, so the branch changes nothing there.
+     */
+    if (sets === 0) maintenance.push(m);
+    else if (sets > band[1]) over.push(m);
     else if (sets >= band[0]) inBand.push(m);
     else maintenance.push(m);
   }

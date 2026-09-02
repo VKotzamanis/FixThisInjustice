@@ -675,14 +675,26 @@ export function prescriptionFor(ex: Exercise, intensity: SlotIntensity): Prescri
  */
 export { restSFor } from './library';
 
-/** First candidate that the equipment supports and the session has not already used. */
+/**
+ * First candidate that the LIBRARY holds, the equipment supports, and the session has not already
+ * used. Returns null only when no candidate clears all three, which is the sole omission a split
+ * template declares: a slot is dropped rather than filled with something it does not train.
+ *
+ * `library` is the id-keyed exercise table to resolve against. It defaults to EXERCISE_BY_ID, so
+ * every existing call site keeps its behaviour verbatim. The parameter exists because the plan
+ * generator is handed a library by its caller and must not silently prescribe an exercise that
+ * library does not contain (a reduced library is what an import or a future per-profile exercise
+ * filter supplies); resolving against the module-level table instead would emit ids the caller
+ * never offered.
+ */
 export function resolveSlot(
   slot: ExerciseSlot,
   equipment: Equipment,
   used: ReadonlySet<string>,
+  library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
 ): Exercise | null {
   for (const id of slot.candidates) {
-    const ex = EXERCISE_BY_ID[id];
+    const ex = library[id];
     if (!ex) continue;
     if (used.has(ex.id)) continue;
     if (!ex.equipment.includes(equipment)) continue;
