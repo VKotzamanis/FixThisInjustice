@@ -72,12 +72,12 @@ export function Icon({
  * Every position where the stan-twitter parent carried an emoji, mapped to the icon that
  * replaced it (round-three plan section 4.4, the "where it is used" column).
  *
- * NINE of the thirteen positions the design named are here. The four it also names --
- * status.weekDeltaNegative (skull), status.prStamp (crown), advice.interventionBody (heart) and
- * hero.weekReview (fan) -- have no CopyKey yet, because the tasks that render those strings have
- * not written them. Adding the key here before the string exists is not possible: the value type
- * is Partial<Record<CopyKey, ...>>, so an unknown key is a compile error rather than a silent
- * miss. Each of those four is added by the task that adds its string.
+ * ALL THIRTEEN positions the design named are now here. Nine landed when this file was written;
+ * the four that could not -- status.weekDeltaNegative (skull), status.prStamp (crown),
+ * advice.interventionBody (heart) and hero.weekReview (fan) -- had no CopyKey until P8 Task 11
+ * added those four strings to the copy table, and the value type is
+ * Partial<Record<CopyKey, ...>>, so each of them was a compile error rather than a silent miss
+ * until its string existed.
  *
  * The marquee lead (megaphone), its separators (sparkle) and the setlist bullet (barbell) are
  * absent by design: they are placed by a component, not by a copy key.
@@ -92,6 +92,11 @@ export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>
   'hero.weeklyTargetMissed': 'alert',
   'status.rest': 'stopwatchPanel',
   'label.settingsSkin': 'crown',
+  // --- added with their strings (P8 Task 11) ---
+  'status.weekDeltaNegative': 'skull',
+  'status.prStamp': 'crown',
+  'advice.interventionBody': 'heart',
+  'hero.weekReview': 'fan',
 };
 
 /**
