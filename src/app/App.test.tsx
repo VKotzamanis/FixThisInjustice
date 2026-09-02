@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../ui/styles/crt.css';
 import { App } from './App';
@@ -8,6 +8,8 @@ import { STORAGE_KEY } from '../store/persistence';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
 import { FORMAT, copy } from '../content/copy';
+import { WARMUP_NOTICE } from '../content/formCues';
+import { unlockAudio } from '../ui/audio/chime';
 import type { Profile } from '../domain/types';
 import { MONDAY, NOW_MS, seedState } from '../test/scheduleFixtures';
 
@@ -17,6 +19,17 @@ import { MONDAY, NOW_MS, seedState } from '../test/scheduleFixtures';
  * here is *which text* each banner hands it, not that jsdom can download.
  */
 vi.mock('./download', () => ({ downloadText: vi.fn() }));
+
+/**
+ * Web Audio does not exist in jsdom, so the real unlockAudio would return false whether or not
+ * the Start handler reached it. The double is the only way to assert that it did.
+ */
+vi.mock('../ui/audio/chime', () => ({
+  playChime: vi.fn(() => true),
+  unlockAudio: vi.fn(() => Promise.resolve(true)),
+  releaseAudio: vi.fn(),
+  vibrate: vi.fn(() => true),
+}));
 
 /** A save failure as the store records it: the reason plus the thrown message. */
 const SERIALIZE_FAILURE = { reason: 'serialize' as const, error: 'BigInt' };
@@ -281,5 +294,73 @@ describe('top bar', () => {
     render(<App />);
 
     expect(screen.queryByTestId('session-indicator')).toBeNull();
+  });
+});
+
+/**
+ * The view shell subscribes to `ui.lastView` (P3 close-out, master plan section 10: "the app
+ * shell seeds its view from ui.lastView once and does not subscribe, so Today's Start does not
+ * switch to Train until the shell subscribes").
+ *
+ * Both halves are asserted here, because either one alone is a broken shell: a nav tap must
+ * still change the view, and a store write from another view must reach it too.
+ */
+describe('view shell', () => {
+  const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
+
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+  });
+
+  it('switches view on a nav tap and records it', async () => {
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: copy('nav.plan') }));
+
+    expect(useAppStore.getState().ui.lastView).toBe('plan');
+    expect(screen.getByRole('button', { name: copy('nav.plan') })).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
+
+  it('follows a lastView written by another view', () => {
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+
+    render(<App />);
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'train' });
+    });
+
+    // No assignment has been opened on this day, so Train renders its "nothing assigned"
+    // branch. That is still the Train view: what is asserted here is that the shell followed
+    // the write, not what the view had to say once it was mounted.
+    expect(screen.getByText(copy('advice.noSessionToday'))).toBeInTheDocument();
+  });
+
+  it("lands on Train from Today's Start, with the training day recorded", async () => {
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: copy('button.startSession') }));
+
+    // The session slice carries the day the sets are logged against, so a reload mid-session
+    // resumes the same training day rather than re-deriving it from the clock.
+    expect(useAppStore.getState().session.activeAssignmentDate).toBe(MONDAY);
+    expect(useAppStore.getState().ui.lastView).toBe('train');
+    expect(screen.getByText(WARMUP_NOTICE)).toBeInTheDocument();
+  });
+
+  it('unlocks the audio context on the Start tap, inside the gesture', async () => {
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+
+    render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: copy('button.startSession') }));
+
+    // Code review A29: resume() outside a user gesture is refused by every browser, so the
+    // call has to be made from the handler the tap runs, not from the Train view's mount.
+    expect(unlockAudio).toHaveBeenCalled();
   });
 });

@@ -378,7 +378,21 @@ export type CopyKey =
   | 'label.cueMistakes'
   | 'label.cueTip'
   | 'label.caution'
-  | 'advice.noFormCues';
+  | 'advice.noFormCues'
+  // --- Train view (P4 Task 10; appended by that task) ---
+  | 'button.extendRest'
+  | 'button.backToToday'
+  | 'label.bonusSet'
+  | 'label.suggestedLoad'
+  | 'status.adviceHold'
+  | 'status.adviceAddLoad'
+  | 'status.adviceExtendReps'
+  | 'status.adviceDeload'
+  | 'quantity.exerciseName'
+  | 'quantity.postSessionBodyMass'
+  | 'advice.noSessionToday'
+  | 'coach.setDeleted'
+  | 'notification.restOver';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -815,6 +829,36 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Security constraint 30: a control the user pressed never renders an empty dialog. The nine
   // equipment-tier exercises carry `formCueId: null` and reach this line.
   'advice.noFormCues': 'No form cues recorded for this exercise.',
+
+  // --- Train view (P4 Task 10; appended by that task) ---
+  // The rest control adds a fixed 30 s. The value is part of the control, not of the skin: a
+  // skin that renamed it "+1 min" would state an extension the timer does not make.
+  'button.extendRest': '+30 s',
+  // Leaves the finished session. Named for the destination, because after the post-session
+  // weigh-in there is nothing left to do here.
+  'button.backToToday': 'Back to Today',
+  // The row marker for a set logged beyond the prescribed count. Not "extra": a bonus set is
+  // the term LoggedSet.isBonus records, and the progression engine excludes it by that name.
+  'label.bonusSet': 'BONUS',
+  'label.suggestedLoad': 'Suggested',
+  // What the progression engine decided, one label per ProgressionAdvice.kind. These name the
+  // ACTION, never the arithmetic behind it; that lives in the why? disclosure (contract R9).
+  'status.adviceHold': 'Hold load',
+  'status.adviceAddLoad': 'Add load',
+  // "repetitions", not "reps", in a label the user reads as an instruction (contract R11).
+  'status.adviceExtendReps': 'Extend repetitions',
+  'status.adviceDeload': 'Deload',
+  'quantity.exerciseName': 'Exercise name',
+  // Distinct from `quantity.bodyMass`: the post-session entry is the second half of a PAIR,
+  // and the > 2 % comparison is meaningless if the two are confused.
+  'quantity.postSessionBodyMass': 'Post-session body mass',
+  'advice.noSessionToday': 'No session is assigned today. Pick one on Today.',
+  // Reports the deletion; the Undo control beside it is `button.undo`. Stated, not apologised
+  // for: the record is recoverable for six seconds and the control says so.
+  'coach.setDeleted': 'Set deleted.',
+  // The title of the local notification posted while the page is hidden (master plan section
+  // 6.5). It is copy, not a literal in the panel, because it is user-facing text.
+  'notification.restOver': 'Rest over',
 };
 
 /**
@@ -1031,4 +1075,84 @@ export const FORMAT = {
    * so the count the user reads and the count the browser enforces cannot differ.
    */
   videoInstanceOf: (shown: number, total: number): string => `instance ${shown} of ${total}`,
+
+  // --- Train view (P4 Task 10) ---
+
+  /** "SESSION 1, Upper". Commas, not middots or dashes (copy contract R5). */
+  sessionEyebrow: (ordinal: number, label: string): string => `SESSION ${ordinal}, ${label}`,
+
+  /** "SET 2/3": the set's position in the count this block prescribes, after the modifier. */
+  setCounter: (n: number, targetSets: number): string => `SET ${n}/${targetSets}`,
+
+  /**
+   * "Set 2 load", the quantity name of one row's load field. It is per-row rather than a bare
+   * "Load" because every row on the card carries one, and a label repeated three times names
+   * nothing (the field's accessible name is this string plus the unit).
+   */
+  setLoadQuantity: (n: number): string => `Set ${n} load`,
+
+  /** "Set 2 reps". Repetitions are a dimensionless count, so no unit is composed onto it. */
+  setRepsQuantity: (n: number): string => `Set ${n} reps`,
+
+  /** "Set 2 bodyweight": the toggle that stores loadKg 0 rather than an entered load. */
+  setBodyweightQuantity: (n: number): string => `Set ${n} bodyweight`,
+
+  /** The accessible name of one row's log control; the visible word is `button.logSet`. */
+  logSetLabel: (n: number): string => `Log set ${n}`,
+
+  /** The accessible name of one row's delete control; the visible word is `button.deleteSet`. */
+  deleteSetLabel: (n: number): string => `Delete set ${n}`,
+
+  /**
+   * "60 kg × 8", one logged set. The load arrives already formatted by src/domain/units.ts, so
+   * a logged value is never re-rounded here, and "BW" reaches this frame unchanged.
+   */
+  loggedSet: (load: string, reps: string): string => `${load} × ${reps}`,
+
+  /** "2/3": sets logged today against the count this block prescribes. */
+  exerciseProgress: (done: number, targetSets: number): string => `${done}/${targetSets}`,
+
+  /** "Cable crunch (bonus)": an exercise added to the session beyond the plan. */
+  bonusExerciseName: (name: string): string => `${name} (bonus)`,
+
+  /**
+   * "Last session 2026-02-27: 60 kg × 8, 8, 8". The date is the assignment's own LocalDate,
+   * never a wall-clock rendering, and the reps are that session's list in programme order.
+   */
+  lastSessionSets: (date: string, load: string, reps: string): string =>
+    `Last session ${date}: ${load} × ${reps}`,
+
+  /**
+   * "Suggested 62.5 kg: add load". The load is what the user dials in, so it is inline (R9);
+   * how it was derived is not, and lives in the why? disclosure beside it. `kind` is one of
+   * the `status.advice*` keys, so this frame states no decision of its own.
+   */
+  suggestedLoad: (load: string, kind: string): string => `Suggested ${load}: ${kind}`,
+
+  /**
+   * "2:00" — a clock readout, not a sentence. Seconds are zero-padded to two digits so the
+   * width does not jump as the count falls; minutes are not, because a rest interval is
+   * single-digit minutes.
+   */
+  restRemaining: (minutes: number, seconds: number): string =>
+    `${minutes}:${String(seconds).padStart(2, '0')}`,
+
+  /** "Log 250 mL": the drink control, whose volume is the profile's own editable cup size. */
+  logVolume: (volume: string): string => `Log ${volume}`,
+
+  /**
+   * "Beverage intake 900 mL of 2600 mL today." Both volumes arrive formatted by
+   * src/domain/units.ts, so the sentence cannot state a unit the profile does not use.
+   */
+  beverageShortfall: (logged: string, target: string): string =>
+    `Beverage intake ${logged} of ${target} today.`,
+
+  /**
+   * R9's disclosure body behind `advice.fluidLoss`: the measured loss against the threshold it
+   * exceeded. `lossPct` is already fixed to one decimal by the caller (a percentage of the
+   * pre-session mass); `thresholdPct` is DEHYDRATION_LOSS_FRACTION as a percentage, passed in
+   * rather than written here so the sentence and the comparison cannot drift apart.
+   */
+  fluidLossWhy: (lossPct: string, thresholdPct: number): string =>
+    `Loss of ${lossPct} % of pre-session mass, above the ${thresholdPct} % threshold (ACSM 2007).`,
 } as const;

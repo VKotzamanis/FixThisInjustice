@@ -341,3 +341,126 @@
 .session-toast .telemetry {
   color: var(--accent);
 }
+
+/* --- Train view, the classes P4 Task 10's markup adds beyond the block above --- */
+
+.train-eyebrow {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+}
+
+.train-deload {
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-top: 0.25rem;
+}
+
+.ex-stack {
+  margin: 0.75rem 0;
+}
+
+.ex-title {
+  flex: 1 1 auto;
+}
+
+.ex-sub,
+.ex-prog {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  white-space: nowrap;
+}
+
+.ex-suggested {
+  color: var(--text-2);
+}
+
+.ex-reason {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.ex-why,
+.hydration-why,
+.fcm-why {
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+
+.ex-why summary,
+.hydration-why summary,
+.fcm-why summary {
+  cursor: pointer;
+}
+
+.ex-links {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.set-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.set-marker {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.set-row.bonus .set-marker {
+  color: var(--accent);
+}
+
+.set-done-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.set-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+}
+
+.rest-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rest-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  color: var(--text-3);
+}
+
+.add-custom {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}
+
+.mass-quick-log,
+.post-session {
+  display: flex;
+  gap: 0.5rem;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 0.75rem 0;
+}
+
+.session-toast .coach {
+  border-color: var(--accent);
+}
+
+.session-toast .undo {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
