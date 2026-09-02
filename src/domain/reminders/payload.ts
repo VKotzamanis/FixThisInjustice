@@ -2,14 +2,15 @@
  * Push payload parsing and notification click targets, shared by the service
  * worker and its tests.
  *
- * No imports: this is the only application module `src/sw.ts` pulls in, so it
- * adds these functions and nothing else to the worker bundle.
+ * No imports: `src/sw.ts` reaches these functions through `swHandlers.ts`, and
+ * nothing else follows them into the worker bundle.
  *
  * Why the decisions live here and not in `sw.ts`: a service worker cannot be
  * instantiated under jsdom (no `ServiceWorkerGlobalScope`, no `PushEvent`, no
  * `registration.showNotification`), so `sw.ts` is left with two event
- * registrations and every judgement it makes is a pure function tested in
- * `payload.test.ts`.
+ * registrations that forward to `swHandlers.ts`, and every judgement either of
+ * them makes is a pure function tested in `payload.test.ts` or
+ * `swHandlers.test.ts`.
  */
 
 /**
@@ -35,12 +36,24 @@ export const FALLBACK_TAG = 'fti-reminder';
  * platform measures notification text the same way. A field over its bound is
  * replaced by its fallback rather than truncated, because a truncated title is
  * a claim the Worker did not make, and mid-surrogate or mid-sentence cuts read
- * as corruption. The numbers are display budgets, not protocol limits: a
- * notification title is elided past roughly one line on both platforms.
+ * as corruption.
+ *
+ * The numbers are the Worker's, not a display budget of this module's own:
+ * worker/src/schedule.ts accepts a title of 100 and a body of 300, and rejects
+ * the whole upload otherwise. A tighter bound here does not shorten anything,
+ * it discards a payload the Worker already accepted, replacing a real title
+ * with the generic fallback and a real body with nothing. A title elided past
+ * one line by the platform is the lesser failure. payload.test.ts asserts these
+ * three numbers against the Worker's source text so the pair cannot drift.
  */
-export const MAX_TITLE_LENGTH = 80;
-export const MAX_BODY_LENGTH = 200;
-export const MAX_TAG_LENGTH = 64;
+export const MAX_TITLE_LENGTH = 100;
+export const MAX_BODY_LENGTH = 300;
+/**
+ * Pinned to the Worker's MAX_KEY_LENGTH, because worker/src/push.ts sends
+ * `tag: instant.key`: a key at the Worker's limit must survive as a tag, or two
+ * distinct reminders collapse into one notification.
+ */
+export const MAX_TAG_LENGTH = 120;
 /** Generous for `/FixThisInjustice/<view>`; anything longer is not ours. */
 export const MAX_URL_LENGTH = 512;
 
@@ -95,9 +108,16 @@ function safePath(candidate: unknown): string | null {
 /**
  * Narrow a decrypted push payload into something showable.
  *
- * Total by design: every push event must produce a visible notification or iOS
- * Safari drops the subscription, so there is no failure return. Each field
- * falls back independently, so one bad field does not discard the rest.
+ * Total for any JSON-derived value: every push event must produce a visible
+ * notification or iOS Safari drops the subscription, so there is no failure
+ * return. Each field falls back independently, so one bad field does not
+ * discard the rest.
+ *
+ * The qualifier is load-bearing. The spread below invokes any getter it copies,
+ * so a hand-built object with a throwing accessor would make this function
+ * throw. JSON.parse cannot produce one (JSON carries no accessors), and the
+ * only caller feeds it `PushMessageData.json()`, so the guarantee holds
+ * everywhere it is relied on.
  *
  * Postconditions: `title` is non-blank and at most MAX_TITLE_LENGTH; `tag` is
  * non-blank and at most MAX_TAG_LENGTH; `url` starts with APP_SCOPE_PATH.
@@ -111,7 +131,10 @@ export function parsePushPayload(raw: unknown): PushPayload {
   // The tag is the ReminderInstant key, so a re-sent reminder replaces the
   // previous notification instead of stacking. Falling back to the title keeps
   // that collapsing behaviour for a tagless payload, but only while the title
-  // itself fits the tag bound.
+  // itself fits the tag bound. With both bounds pinned to the Worker the title
+  // bound sits inside the tag bound, so the guard never fires today; it stays
+  // because it, and not the pair of numbers, is what makes the tag
+  // postcondition above true.
   const tagFallback = title.length <= MAX_TAG_LENGTH ? title : FALLBACK_TAG;
   return {
     title,

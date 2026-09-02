@@ -10,6 +10,15 @@ import {
   parsePushPayload,
   resolveClickUrl,
 } from './payload';
+/*
+ * Two source files read as text through vite's ?raw loader, so that a rename in
+ * either one fails this suite instead of silently breaking the service worker.
+ * ?raw rather than node:fs because tsconfig.app.json pins `types` to the vite
+ * client typings, under which node:fs has no declaration (the same reason
+ * v2plan.test.ts and cursor.test.ts give).
+ */
+import scheduleSource from '../../../worker/src/schedule.ts?raw';
+import viteConfigSource from '../../../vite.config.ts?raw';
 
 /*
  * The service worker itself is not tested here and cannot be: jsdom has no
@@ -86,12 +95,23 @@ describe('parsePushPayload', () => {
     );
   });
 
-  it('holds every bound it advertises, including a title too long to reuse as a tag', () => {
-    const title = 'e'.repeat(MAX_TITLE_LENGTH); // 80 > MAX_TAG_LENGTH 64
+  it('holds every bound it advertises for a maximum-length title', () => {
+    const title = 'e'.repeat(MAX_TITLE_LENGTH);
     const parsed = parsePushPayload({ title });
     expect(parsed.title).toBe(title);
-    expect(parsed.tag).toBe(FALLBACK_TAG);
     expect(parsed.tag.length).toBeLessThanOrEqual(MAX_TAG_LENGTH);
+    // With both bounds pinned to the Worker, the title bound sits inside the tag
+    // bound, so a title that fits is always reusable as a tag.
+    expect(MAX_TITLE_LENGTH).toBeLessThanOrEqual(MAX_TAG_LENGTH);
+    expect(parsed.tag).toBe(title);
+  });
+
+  it('keeps a constant tag fallback for a title that could not serve as one', () => {
+    // Unreachable through parsePushPayload while MAX_TITLE_LENGTH stays inside
+    // MAX_TAG_LENGTH. The guard is kept because it, not the pair of numbers, is
+    // what makes the tag postcondition true.
+    expect(FALLBACK_TAG.trim()).not.toBe('');
+    expect(FALLBACK_TAG.length).toBeLessThanOrEqual(MAX_TAG_LENGTH);
   });
 
   it('replaces a cross-origin url with the app base', () => {
@@ -170,5 +190,47 @@ describe('notificationClickTarget', () => {
 
   it('is stable under a trailing slash on the origin', () => {
     expect(notificationClickTarget('/FixThisInjustice/', `${ORIGIN}/`)).toBe(BASE_HREF);
+  });
+});
+
+describe('bounds and paths pinned to files outside this module', () => {
+  /*
+   * The service worker is the second half of a contract whose first half is
+   * worker/src/schedule.ts. Whatever the Worker accepts, the worker must be able
+   * to render: a bound tighter here is not caution, it is silent data loss. A
+   * Worker-legal 90-character title would fall back to FALLBACK_TITLE, a
+   * Worker-legal 250-character body to '', and a 120-character key to the title,
+   * which merges two distinct reminders into one notification because the tag is
+   * what keeps them apart.
+   *
+   * The tag pairs with the Worker's key bound, not a bound of its own:
+   * worker/src/push.ts sends `tag: instant.key`.
+   *
+   * These assert the numbers in the Worker's source text, so the pairing cannot
+   * drift silently. They do not import the Worker module: worker/ is a separate
+   * TypeScript project with its own tsconfig and is not part of this build.
+   */
+  it('matches the Worker title bound', () => {
+    expect(scheduleSource).toMatch(new RegExp(`MAX_TITLE_LENGTH\\s*=\\s*${MAX_TITLE_LENGTH};`));
+  });
+
+  it('matches the Worker body bound', () => {
+    expect(scheduleSource).toMatch(new RegExp(`MAX_BODY_LENGTH\\s*=\\s*${MAX_BODY_LENGTH};`));
+  });
+
+  it('matches the Worker key bound, which is what the tag carries', () => {
+    expect(scheduleSource).toMatch(new RegExp(`MAX_KEY_LENGTH\\s*=\\s*${MAX_TAG_LENGTH};`));
+  });
+
+  /*
+   * APP_SCOPE_PATH is the same string three times over: vite's `base`, the
+   * generated manifest's `scope`, and the fallback click target here. sw.ts
+   * builds its icon and badge URLs from import.meta.env.BASE_URL, which vite
+   * fills in from `base`, so a rename of one and not the other leaves the
+   * notification pointing at icons that 404 and the click guard rejecting the
+   * app's own paths.
+   */
+  it('matches the vite base path', () => {
+    expect(viteConfigSource).toContain(`base: '${APP_SCOPE_PATH}'`);
   });
 });
