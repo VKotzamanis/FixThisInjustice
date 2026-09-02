@@ -3,7 +3,7 @@ import { AsciiBar } from '../components/AsciiBar';
 import { massUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT, copy } from '../../content/copy';
 import { todayLocal } from '../../domain/dates';
-import type { NutritionTargets } from '../../domain/nutrition';
+import { dailyBeverageTargetML, type NutritionTargets } from '../../domain/nutrition';
 import { volumeReport } from '../../domain/plan/generator';
 import { EXERCISES } from '../../domain/plan/library';
 import { IntakeEntrySchema } from '../../domain/schema';
@@ -28,6 +28,13 @@ const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
   'mifflin-st-jeor': 'Mifflin-St Jeor',
   cunningham: 'Cunningham',
 };
+
+/**
+ * DOM id of the intake refusal message. Both fields point at it with aria-describedby: the
+ * check-in is refused as a PAIR (an entry needs both totals), so a message owned by one field
+ * would leave the other looking acceptable to a screen reader.
+ */
+const INTAKE_ERROR_ID = 'intake-error';
 
 /** "-0.6 kg/week", or the honest statement that the evidence base gives no rate. */
 function rateText(targets: NutritionTargets, profile: Profile): string {
@@ -75,10 +82,31 @@ export function TargetsView(): JSX.Element {
 
   if (profile === null || targets === null) return <p>{copy('advice.noProfileSetupFirst')}</p>;
 
-  const kcal = parseDecimal(kcalText) ?? 0; // [kcal/day]
-  const proteinG = parseDecimal(proteinText) ?? 0; // [g/day]
+  /*
+   * What the bars and the read-outs report is the STORED entry for today, never the draft in
+   * the fields. A draft is not a record: drawing it moved the bars under every keystroke and,
+   * worse, collapsed them to empty the moment the user cleared a field to correct a total
+   * that is still recorded. Zero here means "nothing recorded today", which is what an empty
+   * bar states.
+   */
+  const loggedKcal = existing?.kcal ?? 0; // [kcal/day]
+  const loggedProteinG = existing?.proteinG ?? 0; // [g/day]
 
   const record = (): void => {
+    /*
+     * BOTH fields must hold a finite number before an entry exists at all. parseDecimal
+     * returns null for an empty or non-numeric field, and reading that null as 0 wrote a
+     * total the user never typed: 0 kcal is inside IntakeEntrySchema's bounds, so the
+     * refusal never fired, and logIntake upserts by date, so the zero REPLACED whatever was
+     * already recorded for today. A missing total and a zero total are different facts.
+     */
+    const kcal = parseDecimal(kcalText); // [kcal/day], or null when absent or non-numeric
+    const proteinG = parseDecimal(proteinText); // [g/day], same
+    if (kcal === null || proteinG === null) {
+      setRejected(true);
+      return;
+    }
+
     const entry: IntakeEntry = {
       profileId: profile.id,
       date: today,
@@ -138,7 +166,11 @@ export function TargetsView(): JSX.Element {
           <p>{targets.basis.proteinRule}</p>
           <p>{targets.basis.deficitRule}</p>
           <p>{targets.basis.rateRule}</p>
-          <p>{copy('why.beverageDefault')}</p>
+          {/* Litres derived from the engine's mL/day constant, not restated in the copy
+              table where they could drift from what the app actually prescribes. */}
+          <p>
+            {FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female'))}
+          </p>
         </div>
       </details>
 
@@ -154,6 +186,8 @@ export function TargetsView(): JSX.Element {
           inputMode="numeric"
           step="1"
           min="0"
+          aria-invalid={rejected}
+          aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
           value={kcalText}
           onChange={(e) => {
             setKcalText(e.target.value);
@@ -170,6 +204,8 @@ export function TargetsView(): JSX.Element {
           inputMode="numeric"
           step="1"
           min="0"
+          aria-invalid={rejected}
+          aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
           value={proteinText}
           onChange={(e) => {
             setProteinText(e.target.value);
@@ -177,7 +213,9 @@ export function TargetsView(): JSX.Element {
         />
       </div>
       {rejected && (
-        <p className="view-error" data-testid="intake-error">
+        /* role="alert" so the refusal is announced when it appears; the button that caused
+           it does not move focus, so nothing else would say it. */
+        <p className="view-error" id={INTAKE_ERROR_ID} role="alert" data-testid="intake-error">
           {copy('advice.intakeRejected')}
         </p>
       )}
@@ -187,13 +225,13 @@ export function TargetsView(): JSX.Element {
 
       <p className="view-progress">
         <AsciiBar
-          value={kcal}
+          value={loggedKcal}
           target={targets.targetKcal}
           label={copy('label.energyProgress')}
           testId="kcal-bar"
         />{' '}
         <span data-testid="kcal-progress">
-          {FORMAT.valueOfTarget(String(kcal), FORMAT.kcal(targets.targetKcal))}
+          {FORMAT.valueOfTarget(String(loggedKcal), FORMAT.kcal(targets.targetKcal))}
         </span>
       </p>
       <p className="view-progress">
@@ -203,14 +241,14 @@ export function TargetsView(): JSX.Element {
          * met", and the read-out beside it carries the whole range.
          */}
         <AsciiBar
-          value={proteinG}
+          value={loggedProteinG}
           target={targets.proteinG.lo}
           label={copy('label.proteinProgress')}
           testId="protein-bar"
         />{' '}
         <span data-testid="protein-progress">
           {FORMAT.valueOfTarget(
-            String(proteinG),
+            String(loggedProteinG),
             FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi),
           )}
         </span>

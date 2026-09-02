@@ -64,7 +64,7 @@ function ViewShell(): ReactElement {
 
   return (
     <>
-      <nav className="viewnav">
+      <nav className="viewnav" aria-label={copy('nav.label')}>
         {NAV.map((n) => (
           <button
             key={n.id}

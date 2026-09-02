@@ -108,6 +108,22 @@
   margin: 0.25rem 0 0.75rem;
 }
 
+/*
+ * A setting whose field comes from UnitInput. UnitInput brings its own wrapper and label, so
+ * the two label rules .view-field gives are restated for it here; the refusal message beside
+ * such a field is rendered by the view and carries .view-error below, never the wizard's
+ * .wiz-error, which this stylesheet does not define and no view loads.
+ */
+.view .view-setting {
+  margin: 0 0 0.75rem;
+}
+
+.view .view-setting label {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
 .view .view-error {
   font-size: 0.8rem;
   color: var(--bad, #f87171);

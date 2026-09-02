@@ -1,0 +1,160 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { SettingsView } from './SettingsView';
+import { useAppStore } from '../../store';
+import type { Profile } from '../../domain/types';
+
+/**
+ * The same fixture the targets view is tested against. Nothing here depends on the clock:
+ * every assertion is about what a keystroke does or does not write to the profile.
+ */
+const PROFILE: Profile = {
+  id: 'p1',
+  displayName: 'Test subject',
+  timezone: 'Europe/Athens',
+  units: 'metric',
+  createdAt: 1_756_684_800_000, // [ms]
+  body: {
+    sex: 'male',
+    birthYear: 1996,
+    heightCm: 180, // [cm]
+    baselineMassKg: 80, // [kg]
+    baselineAt: '2026-09-01',
+    baselineBodyFatPct: null,
+  },
+  activity: 'moderate',
+  experience: 'intermediate',
+  equipment: 'full-gym',
+  equipmentSteps: {
+    barbellKg: 2.5, // [kg] total on the bar
+    dumbbellPairKg: 5, // [kg] per pair
+    stackKg: 5, // [kg] per pin
+    hasMicroPlates: false,
+    microPlateKg: 0.5, // [kg] total on the bar
+  },
+  goal: { kind: 'fat-loss', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
+  supplements: { creatine: true },
+  hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL]
+  readiness: { screenedAt: null, flagged: false },
+};
+
+/** The stored beverage target, in mL/day. The number every test below guards. */
+const STORED_FLUID_ML = 3000; // [mL/day]
+
+/**
+ * The store's own action, reached through the state object as it was BEFORE any test put a
+ * counter in front of it. Called through that object rather than captured off it: the method
+ * is invoked, never passed around detached, so nothing here depends on how `this` is bound —
+ * and going through `getState()` instead would call whichever mock is currently installed and
+ * recurse when this is reinstalled in afterEach.
+ */
+const PRISTINE_STATE = useAppStore.getState();
+
+const REAL_UPDATE_PROFILE = (id: string, patch: Partial<Profile>): void => {
+  PRISTINE_STATE.updateProfile(id, patch);
+};
+
+/**
+ * Counts the writes the view makes, and forwards each one to the real action so the tests
+ * still assert against the document rather than against a stub.
+ *
+ * Reinstalled per test rather than left to `restoreMocks`: zustand builds each next state by
+ * copying the previous one, so a spy installed on the object `getState()` returned is carried
+ * forward onto every later state object, and restoring the original on the object it was
+ * installed on removes nothing. The previous test's counter would still be in the store.
+ */
+let updateProfile: ReturnType<typeof vi.fn<typeof REAL_UPDATE_PROFILE>>;
+
+beforeEach(() => {
+  useAppStore.getState().wipeAll();
+  useAppStore.getState().createProfile(PROFILE);
+  updateProfile = vi.fn(REAL_UPDATE_PROFILE);
+  useAppStore.setState({ updateProfile });
+});
+
+afterEach(() => {
+  useAppStore.setState({ updateProfile: REAL_UPDATE_PROFILE });
+});
+
+function fluidField(): HTMLElement {
+  return screen.getByLabelText('Daily beverage target (mL)');
+}
+
+describe('SettingsView numeric settings', () => {
+  /*
+   * Commit-on-keystroke wrote every PREFIX of what the user was typing. Typing "2500" into
+   * the beverage target stored 2, then 25, then 250, then 2500: four writes, three of them
+   * values the user never meant, each one a debounced save and each one a target other
+   * screens would have read had the user stopped typing there.
+   */
+  it('commits a typed setting once, on blur, and never an intermediate value', async () => {
+    render(<SettingsView />);
+
+    await userEvent.clear(fluidField());
+    await userEvent.type(fluidField(), '2500');
+
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(useAppStore.getState().profiles['p1']?.hydration.dailyTargetML).toBe(STORED_FLUID_ML);
+
+    await userEvent.tab();
+
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+    expect(updateProfile).toHaveBeenCalledWith('p1', {
+      hydration: { dailyTargetML: 2500, cupSizeML: 250, weighInOptIn: false }, // [mL]
+    });
+    expect(useAppStore.getState().profiles['p1']?.hydration.dailyTargetML).toBe(2500);
+  });
+
+  it('commits on Enter, and the blur that follows does not write the same value again', async () => {
+    render(<SettingsView />);
+
+    await userEvent.clear(fluidField());
+    await userEvent.type(fluidField(), '2800{Enter}');
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+
+    await userEvent.tab();
+
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+    expect(useAppStore.getState().profiles['p1']?.hydration.dailyTargetML).toBe(2800);
+  });
+
+  /*
+   * The refusal is a view message, so it carries the view's class. .wiz-error is scoped to
+   * the setup wizard's stylesheet and is not loaded here, which made the refusal unstyled
+   * text the same colour as the note above it.
+   */
+  it('shows an invalid draft as a view error and leaves the stored value alone', async () => {
+    const { container } = render(<SettingsView />);
+
+    await userEvent.clear(fluidField());
+    // Above MAX_ML (20 000 mL/day), so ProfileSchema.shape.hydration refuses it.
+    await userEvent.type(fluidField(), '99999');
+    await userEvent.tab();
+
+    expect(updateProfile).not.toHaveBeenCalled();
+    expect(useAppStore.getState().profiles['p1']?.hydration.dailyTargetML).toBe(STORED_FLUID_ML);
+
+    const message = container.querySelector('.view-error');
+    expect(message).toHaveTextContent('Outside the accepted range.');
+    expect(container.querySelector('.wiz-error')).toBeNull();
+    expect(fluidField()).toHaveAttribute('aria-invalid', 'true');
+    expect(fluidField().getAttribute('aria-describedby')?.split(' ')).toContain(message?.id);
+  });
+
+  it('holds the same commit contract for the equipment step field', async () => {
+    render(<SettingsView />);
+    const step = screen.getByLabelText('Barbell step (kg)');
+
+    await userEvent.clear(step);
+    await userEvent.type(step, '1.25');
+
+    expect(updateProfile).not.toHaveBeenCalled();
+
+    await userEvent.tab();
+
+    expect(updateProfile).toHaveBeenCalledTimes(1);
+    // [kg] total on the bar; metric profile, so the display value is the stored value.
+    expect(useAppStore.getState().profiles['p1']?.equipmentSteps.barbellKg).toBe(1.25);
+  });
+});

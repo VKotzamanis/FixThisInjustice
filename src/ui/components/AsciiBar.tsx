@@ -27,9 +27,17 @@ export function asciiBar(value: number, target: number, width: number): string {
 }
 
 /**
- * The bar as a labelled element. The label is the accessible name, because the glyphs
- * themselves are read out character by character by a screen reader and say nothing; the
- * numeric read-out that accompanies every use of this component carries the actual values.
+ * The bar as a labelled element.
+ *
+ * `role="img"` is what makes `label` the accessible NAME. A bare aria-label on a `<span>` is
+ * ignored: a generic element takes no accessible name, so a screen reader fell back to the
+ * text content and read the glyphs out one character at a time. The role both names the
+ * element and makes its content inert.
+ *
+ * Chosen over `aria-hidden`, and applied to EVERY use rather than case by case: the label is
+ * the only place that says which quantity the bar is about and against which bound (a target
+ * or the lower end of a range), which the numeric read-out beside it does not state. That
+ * read-out carries the values, so the name is deliberately not a number.
  */
 export function AsciiBar(props: {
   value: number;
@@ -41,6 +49,7 @@ export function AsciiBar(props: {
   return (
     <span
       className="ascii-bar"
+      role="img"
       aria-label={props.label}
       data-testid={props.testId}
       style={{ whiteSpace: 'pre' }}

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
+import { FORMAT, copy } from '../../content/copy';
+import { dailyBeverageTargetML } from '../../domain/nutrition';
 import { asciiBar } from '../components/AsciiBar';
 import { TargetsView } from './TargetsView';
 import { useAppStore } from '../../store';
@@ -116,13 +118,26 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function kcalField(): HTMLElement {
+  return screen.getByLabelText(/energy consumed today \(kcal\)/i);
+}
+
+function proteinField(): HTMLElement {
+  return screen.getByLabelText(/protein consumed today \(g\)/i);
+}
+
 function typeIntake(kcal: string, proteinG: string): void {
-  fireEvent.change(screen.getByLabelText(/energy consumed today \(kcal\)/i), {
-    target: { value: kcal },
-  });
-  fireEvent.change(screen.getByLabelText(/protein consumed today \(g\)/i), {
-    target: { value: proteinG },
-  });
+  fireEvent.change(kcalField(), { target: { value: kcal } });
+  fireEvent.change(proteinField(), { target: { value: proteinG } });
+}
+
+function recordIntake(): void {
+  fireEvent.click(screen.getByRole('button', { name: 'Record intake' }));
+}
+
+/** Today's stored entry for the fixture profile, or null when nothing is recorded. */
+function storedToday(): unknown {
+  return (useAppStore.getState().intake['p1'] ?? []).find((e) => e.date === '2026-09-01') ?? null;
 }
 
 describe('asciiBar', () => {
@@ -179,6 +194,124 @@ describe('TargetsView', () => {
 
     expect(useAppStore.getState().intake['p1']).toEqual([]);
     expect(screen.getByTestId('intake-error')).toBeInTheDocument();
+  });
+
+  /*
+   * Zero-coercion. `parseDecimal(text) ?? 0` reads an empty or non-numeric field as a
+   * recorded zero, and a zero passes IntakeEntrySchema (kcal and proteinG are min(0)), so the
+   * refusal never fires and the zero is UPSERTED over the entry already stored for today. A
+   * missing total and a zero total are different facts; only one of them may be written.
+   */
+  it('leaves the stored entry untouched when both fields are cleared', () => {
+    useAppStore
+      .getState()
+      .logIntake('p1', { profileId: 'p1', date: '2026-09-01', kcal: 2000, proteinG: 140 });
+    render(<TargetsView />);
+
+    typeIntake('', '');
+    recordIntake();
+
+    expect(storedToday()).toEqual({
+      profileId: 'p1',
+      date: '2026-09-01',
+      kcal: 2000,
+      proteinG: 140,
+    });
+    expect(screen.getByTestId('intake-error')).toBeInTheDocument();
+  });
+
+  it('refuses a non-numeric entry rather than reading it as zero', () => {
+    render(<TargetsView />);
+
+    typeIntake('abc', '150');
+    recordIntake();
+
+    expect(useAppStore.getState().intake['p1']).toEqual([]);
+    expect(screen.getByTestId('intake-error')).toBeInTheDocument();
+  });
+
+  it('refuses a check-in with one field left empty', () => {
+    render(<TargetsView />);
+
+    typeIntake('2100', '');
+    recordIntake();
+
+    expect(useAppStore.getState().intake['p1']).toEqual([]);
+    expect(screen.getByTestId('intake-error')).toBeInTheDocument();
+  });
+
+  /*
+   * A refusal that is only a colour and a paragraph somewhere on the page is invisible to a
+   * screen reader. The message is announced, and both fields point at it, because the entry
+   * is refused as a pair rather than field by field.
+   */
+  it('wires the refusal to both intake fields and announces it', () => {
+    render(<TargetsView />);
+
+    typeIntake('999999', '150');
+    recordIntake();
+
+    const message = screen.getByTestId('intake-error');
+    expect(message).toHaveAttribute('role', 'alert');
+    expect(message.id).not.toBe('');
+    for (const field of [kcalField(), proteinField()]) {
+      expect(field).toHaveAttribute('aria-invalid', 'true');
+      expect(field.getAttribute('aria-describedby')?.split(' ')).toContain(message.id);
+    }
+  });
+
+  /*
+   * The bar glyphs read out as punctuation, one character at a time. A bare aria-label on a
+   * generic span does not stop that, because a generic element takes no accessible name;
+   * role="img" is what makes the label the name and the glyphs inert.
+   */
+  it('names each bar as an image instead of leaving the glyphs to be read out', () => {
+    render(<TargetsView />);
+
+    expect(screen.getByRole('img', { name: copy('label.energyProgress') })).toBe(
+      screen.getByTestId('kcal-bar'),
+    );
+    expect(screen.getByRole('img', { name: copy('label.proteinProgress') })).toBe(
+      screen.getByTestId('protein-bar'),
+    );
+  });
+
+  /*
+   * A bar is a report on the record, not on the form. Drawing the draft made the bar move
+   * under every keystroke and, worse, collapse to empty the moment the user cleared a field
+   * to correct a total that is still recorded.
+   */
+  it('draws the bars from the stored entry, not from an unrecorded draft', () => {
+    useAppStore.getState().logIntake('p1', {
+      profileId: 'p1',
+      date: '2026-09-01',
+      kcal: LOGGED_KCAL,
+      proteinG: LOGGED_PROTEIN_G,
+    });
+    render(<TargetsView />);
+    expect(screen.getByTestId('kcal-bar')).toHaveTextContent(KCAL_BAR);
+
+    // Typed and deliberately not recorded.
+    typeIntake('500', '10');
+
+    expect(screen.getByTestId('kcal-bar')).toHaveTextContent(KCAL_BAR);
+    expect(screen.getByTestId('protein-bar')).toHaveTextContent(PROTEIN_BAR);
+    expect(screen.getByTestId('kcal-progress')).toHaveTextContent(
+      `${String(LOGGED_KCAL)} / ${String(TARGET_KCAL)} kcal`,
+    );
+  });
+
+  /*
+   * The litres in the basis sentence are the engine's beverage constant, divided, not a pair
+   * of numbers restated in the copy table where they could drift from what is prescribed.
+   */
+  it('derives the beverage-basis litres from the engine constant', () => {
+    render(<TargetsView />);
+    fireEvent.click(screen.getByText('why?'));
+
+    expect(screen.getByTestId('basis').textContent ?? '').toContain(
+      FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female')),
+    );
   });
 
   it("reloads today's entry into the form so a correction replaces it", () => {
@@ -259,6 +392,17 @@ describe('App wiring', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Targets' }));
     expect(screen.getByTestId('target-fluid')).toHaveTextContent('101 fl oz'); // 3000 mL
+  });
+
+  it('gives the view navigation an accessible name', () => {
+    render(<App />);
+    // Without a name the landmark is announced as an unlabelled "navigation", which tells a
+    // screen-reader user nothing about what the six buttons inside it switch between. The
+    // name is asserted to EXIST before it is matched: getByRole ignores an undefined name,
+    // so a missing copy key would otherwise make this test pass against a nameless landmark.
+    const name = copy('nav.label');
+    expect(typeof name).toBe('string');
+    expect(screen.getByRole('navigation', { name })).toBeInTheDocument();
   });
 
   it('offers no profile switcher while only one profile exists', () => {

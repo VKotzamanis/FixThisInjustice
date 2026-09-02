@@ -317,7 +317,9 @@ export type CopyKey =
   | 'toast.setDeleted'
   | 'status.setsLogged'
   // --- setup wizard, review fixes (P2 Task 7) ---
-  | 'status.targetsNotEstimated';
+  | 'status.targetsNotEstimated'
+  // --- targets and settings, review fixes (P2 Task 8) ---
+  | 'nav.label';
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- shell, save/load banners, recovery (P1) ---
@@ -643,6 +645,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- setup wizard, review fixes (P2 Task 7) ---
   'status.targetsNotEstimated':
     'Targets are not estimated for these entries. Go back and check the body screen.',
+
+  // --- targets and settings, review fixes (P2 Task 8) ---
+  // Accessible name of the view-switching landmark. The word "navigation" is deliberately
+  // absent: a screen reader appends the landmark role itself, so including it here would be
+  // announced as "navigation navigation".
+  'nav.label': 'Views',
 };
 
 /**
@@ -734,4 +742,22 @@ export const FORMAT = {
   daysForSessions: (days: number, sessionsPerWeek: number): string =>
     `${days} days selected for ${sessionsPerWeek} sessions per week. ` +
     `Select at least ${sessionsPerWeek} days.`,
+
+  // --- targets and settings, review fixes (P2 Task 8) ---
+
+  /**
+   * The why? text behind the daily beverage target. `why.beverageDefault` in the table above
+   * is the formatted EXAMPLE of what this produces, in the same way as `advice.beverageDefault`.
+   *
+   * The two beverage figures arrive as the mL/day the engine actually prescribes
+   * (`dailyBeverageTargetML`, itself BEVERAGE_TARGET_ML) and are converted to litres here, so
+   * the sentence cannot state a share the app does not give. The 3.7 / 2.7 L figures stay
+   * literal: they are the IOM TOTAL-water adequate intake, which this app neither stores nor
+   * prescribes, and which is named only to say what the beverage share is a share of.
+   */
+  beverageBasis: (maleML: number, femaleML: number): string =>
+    'IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. ' +
+    'The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of ' +
+    `which beverages supply ${(maleML / 1000).toFixed(1)} L and ${(femaleML / 1000).toFixed(1)} L. ` +
+    'Water in food supplies the rest and is not counted here, because an app cannot measure it.',
 } as const;
