@@ -25,6 +25,16 @@
       "input_tokens": 892693,
       "output_tokens": 0,
       "files": 89
+    },
+    {
+      "date": "2026-09-02T12:08:43.332336+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 252,
+      "note": "P7 cutover, PARTIAL incremental update. detect_incremental reported 298 changed and 19 deleted files; 251 code files went through AST (free, no LLM) and exactly one document, docs/plans/2026-09-01-00-master-plan.md, went through semantic extraction so the 2026-09-02 decision headers become nodes. The other 16 changed documents and 30 changed images were NOT re-extracted: a full semantic pass over them exceeds the 20-minute local compute cap this task was given. The manifest was deliberately NOT saved, so the next --update still sees those 46 files as changed.",
+      "subagent_tokens_observed": {
+        "master_plan": 136429
+      }
     }
   ],
   "total_input_tokens": 1259287,
