@@ -28,7 +28,7 @@ Copied verbatim from master plan §3. Every task implicitly includes them.
 `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; connect-src 'self' https://*.workers.dev; frame-src https://yewtu.be https://inv.nadeko.net https://invidious.nerdvpn.de https://iv.duti.dev https://invidious.f5.si https://id.420129.xyz; worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'`.
 (`connect-src` is tightened to the exact Worker hostname in P5 once it exists; the `frame-src` host list is generated from `src/config/videoInstances.ts` at build time by a Vite HTML transform so the two never drift.) No inline `<script>`, no `eval`, no runtime JSX. `<meta name="referrer" content="no-referrer">`.
 
-**Personal data:** no medication, biometric, or location strings in tracked source. CI gate: `git grep -nEi 'vyvanse|lisdexamfetamine|ymca|amphetamine' -- ':!docs/review/*' ':!REFERENCES.md'` must return nothing after P7's cutover; during P1–P6 the legacy tree under `legacy/` is scrubbed of the lines listed in the content review §7 and security H1 before the baseline commit.
+**Personal data:** no medication, biometric, or location strings in tracked source. CI gate: `git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- . ':!docs/review/' ':!docs/plans/' ':!REFERENCES.md' ':!graphify-out/'` must return nothing after P7's cutover. This is the form master plan section 3 and both workflows carry, and every character of it is load-bearing: the one-character classes stop the pattern matching its own definition, and `\b` stops it matching the same letters inside a base64 data URI, which `src/skins/limelight/icons.ts` contains. During P1 to P6 the legacy tree under `legacy/` is scrubbed of the lines listed in the content review §7 and security H1 before the baseline commit.
 
 **Storage:** single key `fti.v3`, owned by `src/store/persistence.ts`; payload carries `schemaVersion`; every load, import, and paste passes `AppStateSchema.safeParse`; on failure keep last known-good state in memory, show the error, offer export; `QuotaExceededError` shows a blocking banner. No derived values persisted.
 
@@ -830,7 +830,7 @@ Expected: PASS — 11 passed.
 - [ ] **Step 5: Confirm the CI personal-data gate is clean for this file**
 
 ```bash
-git grep -nEi 'vyvanse|lisdexamfetamine|ymca|amphetamine' -- src/content/
+git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- 'src/content/'
 ```
 
 Expected: no output, exit status 1.
@@ -2043,20 +2043,43 @@ Add the action implementations inside the store creator:
     set((s) => ({ ...s, ui: { ...s.ui, ...patch } }));
   },
 
-  /**
-   * Roll for a specimen drop and record the result.
-   *
-   * The roll happens here, outside any state updater, because React may invoke an updater more
-   * than once for a single dispatch and a non-idempotent updater then yields different state
-   * (code review A57). Recording goes through recordSpecimen, which is pure.
-   */
-  attemptSpecimenDraw(profileId, exerciseId, now, rng = systemRng) {
-    const inventory = get().specimens[profileId];
-    const card = drawSpecimen(inventory, SPECIMEN_CARDS, rng, SPECIMEN_DROP_CHANCE);
-    if (!card) return null;
-    get().recordSpecimen(profileId, card.id, exerciseId, now);
+  // attemptSpecimenDraw did NOT ship here. It ships in src/store/funActions.ts, quoted below,
+  // because master plan decisions 10.7 and 10.8 moved the roll off ambient randomness and onto
+  // the logged set's own ordinal.
+```
+
+**The draw as it shipped** (`src/store/funActions.ts`, lines 164 to 184). Superseded by master plan
+decisions 10.7 (`prng-splitmix32`) and 10.8 (`specimen-ordinal-keyed-draw`). The draft above took a
+fourth argument, `rng = systemRng`, and rolled ambient randomness. The shipped action takes three
+arguments and reads the just-logged set's ordinal out of the stored inventory, then goes through
+`drawSpecimenForLoggedSet`, which returns the card already recorded against that ordinal when there
+is one and otherwise seeds `seededRng` from the profile id and that ordinal. A delete and relog
+therefore returns the card the ordinal already produced instead of rolling again. The reason the
+roll still sits outside every state updater is the draft's: code review A57, React may invoke an
+updater more than once for one dispatch.
+
+```ts
+  const attemptSpecimenDraw: FunActions['attemptSpecimenDraw'] = (profileId, exerciseId, now) => {
+    const state = deps.get();
+    requireProfile(state, 'attemptSpecimenDraw', profileId);
+    const inventory = state.specimens[profileId];
+    // The ordinal of the set just logged, master plan section 10.8 rule 1. Zero means this
+    // profile has logged nothing, so there is no set for a card to be credited to.
+    const ordinal = inventory?.totalSetsLogged ?? 0; // [sets]
+    if (ordinal < 1) return null;
+    const card = drawSpecimenForLoggedSet(
+      inventory,
+      SPECIMEN_CARDS,
+      profileId,
+      ordinal,
+      SPECIMEN_DROP_CHANCE,
+    );
+    if (card === null) return null;
+    // Recording is idempotent on the ordinal, so this is safe to reach on every call: the
+    // second caller for one set gets the same card back and writes nothing.
+    recordSpecimen(profileId, ordinal, card.id, exerciseId, now);
     return card;
-  },
+  };
 ```
 
 - [ ] **Step 7: Hook the set counter into `logSet` and `deleteSet`**
@@ -4831,7 +4854,7 @@ Expected: eslint silent; `npm test` all suites pass.
 npm run lint
 npm test
 npm run build
-git grep -nEi 'vyvanse|lisdexamfetamine|ymca|amphetamine' -- src/ worker/
+git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- 'src/' 'worker/'
 ```
 
 Expected: lint silent; every suite passes; the build succeeds; the personal-data grep returns nothing and exits with status 1.
@@ -8303,7 +8326,7 @@ npm run lint
 npm test
 npm run build
 ./scripts/check-sfx-size.sh
-git grep -nEi 'vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e]' -- 'src/' 'worker/' 'public/' 'index.html'
+git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- 'src/' 'worker/' 'public/' 'index.html'
 node scripts/check-no-emoji.mjs
 ```
 
@@ -8478,6 +8501,12 @@ Ten items: four from the original P8 scope and six from the skin system. None al
    ```
    Reason: code review A57 requires the drop roll to happen outside any React state updater. The three §6.7 P8 actions are all pure state writes, so something must read state, roll, and dispatch `recordSpecimen`. Doing that in the view instead would oblige every future `logSet` call site to remember it. The `rng` parameter defaults to `systemRng`, so production callers pass three arguments and tests pass a seeded generator.
 
+   **Corrected 2026-09-02 (P9):** the shipped action takes three parameters and no `rng`
+   (`src/store/funActions.ts:104` to `:108`). Master plan decisions 10.7 and 10.8 replaced the
+   ambient roll with one seeded from the profile id and the logged set's ordinal, so there is
+   no `rng` parameter left to default. `systemRng` still exists in `src/domain/fun/rng.ts:69`;
+   no draw reaches it, which `src/store/funActions.ts:15` states as the file's invariant.
+
 3. **Toast priority classes are five, not four** (Task 3). The brief specifies `undo > coach > telemetry > specimen`; the implementation inserts `milestone` between `undo` and `coach`, giving `undo > milestone > coach > telemetry > specimen`, with the brief's ordering preserved as a subsequence. Reason: master plan §7 and the brief both require milestone toasts, they belong to none of the four named classes, and `undo` must stay first because it is the only class with a deadline the user can miss irreversibly. §5 and §6.7 say nothing about toast classes, so this is a P8 design note rather than a contract change; it is recorded here so a reviewer comparing the brief against the code does not read it as drift.
 
 4. **`src/store/index.ts` exposes one derived, non-persisted field** (Task 8): `exerciseNames: Readonly<Record<string, string>>`, computed once from `EXERCISE_LIBRARY` at module load. Reason: the spotlight must name exercises rather than list ids. Master plan §3 forbids persisting derived values; this one is computed, never written, and never part of `AppState`, so it cannot reach `persistence.ts`.
@@ -8487,6 +8516,11 @@ Ten items: four from the original P8 scope and six from the skin system. None al
    "clinical"; sounds default false (Zod defaults, no version bump)`), and neither is in the shipped
    `src/domain/types.ts` yet. This is therefore an implementation of §5 rather than an amendment to
    it, recorded here only so a reviewer knows which task lands it.
+
+   **Corrected 2026-09-02 (P9):** `skin` ships defaulting to `limelight`, not to `clinical`.
+   `src/domain/schema.ts:511` is the Zod default and `src/domain/types.ts:111` is the field on
+   `UiPrefs`. The default is the look the app ships with, so a document written before the field
+   existed opens on it rather than on a set it never chose.
 
 6. **The copy module's `CopyKey` union gains thirteen keys, and `copy()` changes signature** (Task 11).
    `src/content/copy.ts` already exists: P2 Task 7 created it with 266 keys and
@@ -8596,6 +8630,40 @@ Ten items: four from the original P8 scope and six from the skin system. None al
     the honest word. `src/ui/views/AtlasView.test.tsx` reads the shipped ids throughout; no test
     in the repository refers to `atlas-owned-*`, and any later step of this plan that quotes one
     reads `atlas-count-*` instead.
+
+13. **Task 6's boot sequence prints no personal fact** (close-out, 2026-09-02). It carries no
+    display name, no time zone and no `session n of N`. It prints the plan's name, the week the
+    cursor stands in and the weekly session count, through `status.bootPlanName`, `status.bootWeek`
+    and `status.bootSchedule` (`src/ui/components/Boot.tsx:76` to `:86`). Generic by design: the
+    personal-data constraint at the head of this plan governs a boot log like any other tracked
+    source.
+
+14. **Task 9's hotkeys shipped with week-based plan browsing and a smaller global map** (close-out,
+    2026-09-02). `src/ui/planBrowse.tsx` exports module functions, `browseWeek`, `stepBrowseWeek`,
+    `stepBrowseBlock` and `usePlanBrowseWeek`. There is no `PlanBrowseProvider` and no context; the
+    name survives only in this plan's draft. The draft's global map bound `escape` and `t`, and
+    neither shipped: Escape is left to `ModalShell` and `ToastQueue`, which already own it
+    (`src/ui/hotkeys.tsx:16` to `:18`), and `j` and `k` moved out of the global scope into the
+    `plan` scope (`src/app/App.tsx:177`), which is what stopped `j` advancing the programme week
+    from inside Train (code review A54). The digits were renumbered with the view list: `targets`
+    took 4, `log` moved from 4 to 5, and the draft's `protocols` and `export` views are gone,
+    leaving 1 to 7 (`src/ui/nav/views.ts:53` to `:62`).
+
+15. **G12 holds as written; what it omits is the listener** (close-out, 2026-09-02). The gate row
+    says that registering the same combo twice in one scope throws, and it does
+    (`src/ui/hotkeys.tsx:143`). The row does not state the other half of the invariant: one
+    `keydown` listener holds every binding for the life of the app and reads the active scope
+    through a ref, so a scope change re-registers nothing and no listener can be leaked.
+
+16. **Task 12 places the skin row above the data row** (close-out, 2026-09-02). `SETTINGS_ROWS` runs
+    `readiness`, `reminders`, `motivation-clip`, `skin`, `data` (`src/ui/views/SettingsView.tsx:60`
+    to `:78`), so the destructive section stays last and nothing may be appended after it.
+
+17. **`logSet` returns a result object, not a bare id string** (close-out, 2026-09-02). It returns
+    `LogSetResult { id: string; specimen: string | null }` (`src/store/index.ts:113` to `:127`),
+    where `specimen` is the card this call added to the collection, or null. Added is the whole
+    contract: it is true at most once per card for the life of a profile, which is what a toast may
+    announce.
 
 **Contract dependencies P8 asserts but does not own** (flagged so a reviewer can confirm them against P1 to P7 rather than discovering them mid-execution):
 
