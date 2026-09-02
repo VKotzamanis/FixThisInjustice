@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MockInstance } from 'vitest';
 import type { ComponentProps } from 'react';
-import { MotivationModal, POSTER_DATA_URI } from './MotivationModal';
+import { MotivationModal, POSTER_DATA_URI, TAP_TO_MUTE_LABEL } from './MotivationModal';
 import {
   BUNDLED_VIDEO_SRC,
   probeBundledVideo,
@@ -135,10 +135,64 @@ describe('MotivationModal', () => {
   });
 
   it('carries exactly one control, and focus lands on it', async () => {
-    renderModal();
+    const { container } = renderModal();
     await screen.findByTestId('motivation-video');
-    expect(screen.getAllByRole('button')).toHaveLength(1);
+    // Counted by class, not by role: the clip is itself a control (role="button", below), so
+    // "one control" is the claim that one thing in the dialog closes it, not that one thing
+    // in the dialog can be operated.
+    expect(container.querySelectorAll('.mmod-dismiss')).toHaveLength(1);
     expect(document.activeElement).toBe(dismissButton());
+  });
+
+  it('exposes the clip as a control whose name follows the muted state', async () => {
+    const user = userEvent.setup();
+    renderModal();
+    const video = await screen.findByTestId('motivation-video');
+    // aria-label alone does not name a <video> to JAWS; the role is what makes the name
+    // reach the user, and the tap target is a button in every sense but its tag.
+    expect(video.getAttribute('role')).toBe('button');
+    expect(screen.getByRole('button', { name: copy('advice.tapForSound') })).toBe(video);
+
+    await user.click(video);
+    expect(screen.getByRole('button', { name: TAP_TO_MUTE_LABEL })).toBe(video);
+  });
+
+  it('follows a mute change made outside the tap handler', async () => {
+    renderModal();
+    const video = await screen.findByTestId('motivation-video');
+    expect(screen.getByText(copy('advice.tapForSound'))).toBeDefined();
+
+    // The element is the source of truth for mute. An engine that refuses the unmute, an OS
+    // mute, or a hardware media key moves it with no click for the component to observe, and
+    // a hint reading "tap for sound" over a clip that is already audible states the opposite
+    // of the truth.
+    if (video instanceof HTMLVideoElement) video.muted = false;
+    fireEvent(video, new Event('volumechange'));
+    await waitFor(() => {
+      expect(screen.queryByText(copy('advice.tapForSound'))).toBeNull();
+    });
+    expect(video.getAttribute('aria-label')).toBe(TAP_TO_MUTE_LABEL);
+
+    if (video instanceof HTMLVideoElement) video.muted = true;
+    fireEvent(video, new Event('volumechange'));
+    await waitFor(() => {
+      expect(screen.getByText(copy('advice.tapForSound'))).toBeDefined();
+    });
+  });
+
+  it('records one dismissal when Escape is followed by Dismiss', async () => {
+    const user = userEvent.setup();
+    const mark = vi.spyOn(useAppStore.getState(), 'markMotivationShown');
+    const { props } = renderModal();
+
+    // Both routes are live at once: ModalShell's Escape handler and the button. The caller
+    // owns the unmount, so nothing here stops the second route from firing before the mount
+    // is gone, and the week must be recorded once whatever order they arrive in.
+    await user.keyboard('{Escape}');
+    await user.click(dismissButton());
+
+    expect(mark).toHaveBeenCalledTimes(1);
+    expect(props.onDismiss).toHaveBeenCalledTimes(1);
   });
 
   it('records the dismissal against the reviewed week and closes', async () => {

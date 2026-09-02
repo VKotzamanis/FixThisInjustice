@@ -145,8 +145,10 @@ describe('markMotivationShown', () => {
       missOn(RECENT_WEEK, '2026-08-30'),
     ]);
 
-    // Dismissing the older of the two (the Settings preview can show one out of order) must
-    // not answer a week the user has not been shown yet.
+    // Dismissing the older of the two must not answer the later one. A miss from a later week
+    // is a separate event, and nothing has asked the user about it: the popup reports one week
+    // at a time, so an answer covers the week shown and the history behind it, never a week
+    // still ahead of it.
     useAppStore.getState().markMotivationShown('p1', '2026-08-17', NOW);
 
     const handled = new Map(
@@ -176,6 +178,57 @@ describe('markMotivationShown', () => {
     useAppStore.getState().markMotivationShown('p1', RECENT_WEEK, NOW + 1000);
     expect(useAppStore.getState().weeklyReviews.p1).toBe(after);
     expect(useAppStore.getState().weeklyReviews).toBe(map);
+  });
+
+  it('marks the named week handled even though it was not a miss', () => {
+    // delta >= 0: the week met its target. It is not in the backlog rule's "older misses"
+    // set, but it is the week the user was shown and answered, so its flag is written.
+    seed([review({ completed: 4, delta: 0 })]);
+
+    useAppStore.getState().markMotivationShown('p1', RECENT_WEEK, NOW);
+
+    expect(useAppStore.getState().weeklyReviews.p1?.[0]?.missHandled).toBe(true);
+  });
+
+  it('marks the named week handled even though it was paused', () => {
+    // The same boundary from the other side: a paused week is never a miss, and is left alone
+    // when it is older than the week dismissed, but not when it IS the week dismissed.
+    seed([review({ paused: true, completed: 0, delta: -4 })]);
+
+    useAppStore.getState().markMotivationShown('p1', RECENT_WEEK, NOW);
+
+    expect(useAppStore.getState().weeklyReviews.p1?.[0]?.missHandled).toBe(true);
+  });
+
+  it('writes the record for a profile that has no reviews at all, touching weeklyReviews', () => {
+    // A profile whose plan has never closed a week has no array under its id. There is
+    // nothing to back-fill, and the map must not be minted again to say so.
+    seed([]);
+    useAppStore.setState({ weeklyReviews: {} });
+    const before = useAppStore.getState().weeklyReviews;
+
+    useAppStore.getState().markMotivationShown('p1', RECENT_WEEK, NOW);
+
+    const state = useAppStore.getState();
+    expect(state.motivation.p1?.lastShownForWeek).toBe(RECENT_WEEK);
+    expect(state.motivation.p1?.lastShownAt).toBe(NOW);
+    expect(state.weeklyReviews).toBe(before);
+  });
+
+  it('returns the state itself when the same week is dismissed twice', () => {
+    useAppStore.getState().markMotivationShown('p1', RECENT_WEEK, NOW);
+    const after = useAppStore.getState();
+
+    // Nothing is left to record: the week named is already the week last shown, and every
+    // older miss is already handled. The transition therefore returns its own argument, which
+    // is the only thing zustand treats as a no-op -- a rebuilt `motivation` record would cost
+    // a persistence write and re-render every subscriber of the slice.
+    useAppStore.getState().markMotivationShown('p1', RECENT_WEEK, NOW + 1000);
+
+    expect(useAppStore.getState()).toBe(after);
+    expect(useAppStore.getState().motivation).toBe(after.motivation);
+    // The instant kept is the FIRST dismissal's: that is when the week was answered.
+    expect(useAppStore.getState().motivation.p1?.lastShownAt).toBe(NOW);
   });
 
   it('survives the export/parse round trip', () => {

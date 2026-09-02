@@ -50,15 +50,26 @@ export interface MotivationActions {
    * motivation.
    *
    * Two boundaries on that sweep:
-   *   - Only OLDER weeks. A miss from a week LATER than the one dismissed has not been shown
-   *     to the user yet (the Settings preview can show a week out of order), so it stays
-   *     pending.
+   *   - Only OLDER weeks. A miss from a LATER week is a separate event, and nothing has asked
+   *     the user about it: the popup reports one week at a time, so an answer covers the week
+   *     shown and the history behind it, never a week still ahead of it. No caller shows a
+   *     week out of order today: the Settings preview passes `review={null}` and records
+   *     nothing at all. The boundary states what one answer can close, and does not depend on
+   *     which callers exist.
    *   - Only MISSES. A week that met its target, and a week overlapping a PlanPause, are not
    *     misses at all; nothing was ever asked about them, so their flag is left where
    *     `closeWeeks` put it rather than being rewritten to say a question was answered.
    *
    * The week named by `weekStart` is marked handled whatever its delta, because it is the one
-   * the user actually answered.
+   * the user actually answered. That covers a week that met its target and a week that was
+   * paused: neither is a miss, but either can be the week on screen.
+   *
+   * Dismissing the same week twice is a no-op down to object identity: the transition returns
+   * the state it was given, which is the only thing zustand treats as no change at all (it
+   * compares with Object.is before notifying, so no subscriber runs and no write is queued).
+   * `lastShownAt` therefore records the FIRST dismissal of a week rather than the last, which
+   * is the instant the question was answered. Nothing reads it: `pendingMotivation` gates on
+   * `lastShownForWeek` and `missHandled`, and the field exists to be exported.
    *
    * @param now [ms] epoch UTC. The caller owns the clock, as everywhere else in this contract.
    */
@@ -105,6 +116,19 @@ export function createMotivationActions(deps: MotivationActionDeps): MotivationA
       deps.set((s) => {
         requireProfile(s, 'markMotivationShown', profileId);
         const prev = s.motivation[profileId];
+        // undefined === undefined when the profile has no reviews at all: nothing to back-fill
+        // is the same answer as nothing left to back-fill.
+        const reviews = s.weeklyReviews[profileId];
+        const handled = reviews === undefined ? undefined : handleBacklog(reviews, weekStart);
+        const backlogSettled = handled === reviews;
+        // A repeat dismissal of the week already recorded changes nothing that is stored, so
+        // it returns the state itself rather than a copy that happens to hold equal values.
+        // index.ts's persistedChanged compares the top-level fields by identity, so a rebuilt
+        // `motivation` record IS a persistence write and a re-render of every subscriber; and
+        // zustand skips the notification entirely when the updater returns its own argument.
+        if (backlogSettled && prev !== undefined && prev.lastShownForWeek === weekStart) {
+          return s;
+        }
         const next: MotivationState = {
           profileId,
           lastShownForWeek: weekStart,
@@ -112,17 +136,15 @@ export function createMotivationActions(deps: MotivationActionDeps): MotivationA
           // The clip the user chose is not part of what a dismissal answers.
           customVideoAssetId: prev?.customVideoAssetId ?? null,
         };
-        // The outer record is rebuilt only when the array under it actually changed, so a
-        // second dismissal of the same week leaves `weeklyReviews` identical by reference and
-        // costs no persistence write (index.ts's persistedChanged compares the top-level
-        // fields, not their contents).
-        const reviews = s.weeklyReviews[profileId];
-        const handled = reviews === undefined ? undefined : handleBacklog(reviews, weekStart);
+        // The outer record is rebuilt only when the array under it actually changed: the
+        // guard above has already returned for the case where nothing changed at all, and
+        // this keeps `weeklyReviews` untouched when only `motivation` moved. The undefined
+        // arm is redundant with `backlogSettled` and is what narrows the type of `handled`.
         return {
           ...s,
           motivation: { ...s.motivation, [profileId]: next },
           weeklyReviews:
-            handled === undefined || handled === reviews
+            handled === undefined || backlogSettled
               ? s.weeklyReviews
               : { ...s.weeklyReviews, [profileId]: handled },
         };
