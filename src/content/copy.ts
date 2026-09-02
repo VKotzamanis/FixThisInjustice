@@ -612,8 +612,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'banner.saveFailed.tag': 'SAVE FAILED',
   'banner.saveFailed.body': 'The change could not be saved. The stored copy is unchanged.',
   'banner.loadInvalid.tag': 'INVALID DATA',
+  // The validation reason is the only value in it, so the row carries the slot rather than an
+  // example of one: FORMAT.loadInvalid READS this key (P9 Task 15), which is what lets a skin
+  // rewrite the sentence around a reason no skin may rewrite.
   'banner.loadInvalid.body':
-    'Stored data did not validate: unrecognized key. Nothing was overwritten.', // formatted
+    'Stored data did not validate: {reason}. Nothing was overwritten.', // template; FORMAT.loadInvalid
   'button.exportData': 'Export data',
   'button.retrySave': 'Retry save',
   'button.exportStoredCopy': 'Export stored copy',
@@ -2258,6 +2261,19 @@ export const FORMAT = {
    */
   remindersActive: (time: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.remindersActive', overrides).replace('{time}', () => time),
+
+  // --- the shell's save and load banners (P9 Task 15) ---
+
+  /**
+   * "Stored data did not validate: unrecognized key. Nothing was overwritten."
+   *
+   * `reason` is the validator's own message (src/store/persistence.ts), passed through
+   * verbatim: it names the field that failed, and a frame that reworded it would report a
+   * different failure from the one the store found. The replacement is a FUNCTION for the
+   * reason `milestoneSets` records.
+   */
+  loadInvalid: (reason: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('banner.loadInvalid.body', overrides).replace('{reason}', () => reason),
 
   // --- P4 final review fixes ---
 

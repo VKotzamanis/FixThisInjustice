@@ -46,7 +46,7 @@ export type MigrateResult =
  * Walks raw from fromVersion up to targetVersion, one step at a time.
  * A gap in the chain is an error, never a silent pass-through: an unmigrated
  * document reaching the validator would be reported as a schema failure and the
- * real cause — a missing migration — would be invisible.
+ * real cause, a missing migration, would be invisible.
  */
 export function migrate(raw: unknown, fromVersion: number, targetVersion: number): MigrateResult {
   if (fromVersion === targetVersion) {

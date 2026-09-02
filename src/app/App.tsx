@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
-import { useCopy } from '../content/useCopy';
+import { FORMAT } from '../content/copy';
+import type { CopyKey } from '../content/copy';
+import { useCopy, useCopyOverrides } from '../content/useCopy';
 import { useAppStore } from '../store';
 import { useFirstGestureUnlock } from '../skins/sfx';
 import { useApplySkin } from '../skins/skinContext';
@@ -267,8 +269,8 @@ function useHydrateOnce(): void {
  *    trying is the write again.
  */
 interface SaveErrorCopy {
-  tag: string;
-  message: string;
+  tag: CopyKey;
+  message: CopyKey;
   recovery: 'export-memory' | 'retry-and-export-stored';
 }
 
@@ -281,20 +283,20 @@ function saveErrorCopy(reason: SaveErrorReason): SaveErrorCopy {
   switch (reason) {
     case 'quota':
       return {
-        tag: 'STORAGE FULL',
-        message: 'Storage is full. Export now.',
+        tag: 'banner.saveQuota.tag',
+        message: 'banner.saveQuota.body',
         recovery: 'export-memory',
       };
     case 'unavailable':
       return {
-        tag: 'NO STORAGE',
-        message: 'Storage is unavailable here. Export now.',
+        tag: 'banner.saveUnavailable.tag',
+        message: 'banner.saveUnavailable.body',
         recovery: 'export-memory',
       };
     case 'serialize':
       return {
-        tag: 'SAVE FAILED',
-        message: 'The change could not be saved. The stored copy is unchanged.',
+        tag: 'banner.saveFailed.tag',
+        message: 'banner.saveFailed.body',
         recovery: 'retry-and-export-stored',
       };
     default: {
@@ -312,14 +314,15 @@ function saveErrorCopy(reason: SaveErrorReason): SaveErrorCopy {
 function SaveErrorBanner(): ReactElement | null {
   const saveError = useSaveError();
   const lastLoadRaw = useLastLoadRaw();
+  const t = useCopy();
   if (saveError === null) return null;
 
   const { tag, message, recovery } = saveErrorCopy(saveError.reason);
 
   return (
     <div className="banner" role="alert">
-      <span className="banner-tag">{tag}</span>
-      <span>{message}</span>
+      <span className="banner-tag">{t(tag)}</span>
+      <span>{t(message)}</span>
       {recovery === 'export-memory' ? (
         <button
           type="button"
@@ -327,7 +330,7 @@ function SaveErrorBanner(): ReactElement | null {
             downloadText('fixthisinjustice-export.json', useAppStore.getState().exportJson());
           }}
         >
-          Export data
+          {t('button.exportData')}
         </button>
       ) : (
         <>
@@ -337,7 +340,7 @@ function SaveErrorBanner(): ReactElement | null {
               useAppStore.getState().retrySave();
             }}
           >
-            Retry save
+            {t('button.retrySave')}
           </button>
           <button
             type="button"
@@ -348,7 +351,7 @@ function SaveErrorBanner(): ReactElement | null {
               downloadText('fixthisinjustice-recovery.json', lastLoadRaw ?? '{}');
             }}
           >
-            Export stored copy
+            {t('button.exportStoredCopy')}
           </button>
         </>
       )}
@@ -365,19 +368,24 @@ function SaveErrorBanner(): ReactElement | null {
 function LoadErrorBanner(): ReactElement | null {
   const loadError = useLoadError();
   const lastLoadRaw = useLastLoadRaw();
+  const t = useCopy();
+  // The reason is the only value in the sentence, so the frame takes the skin's table with it:
+  // a skin that rewrites the row around `{reason}` reaches the rendered string, and the reason
+  // itself is never rewritten.
+  const overrides = useCopyOverrides();
   if (loadError === null) return null;
 
   return (
     <div className="banner" role="alert">
-      <span className="banner-tag">INVALID DATA</span>
-      <span>Stored data did not validate: {loadError}. Nothing was overwritten.</span>
+      <span className="banner-tag">{t('banner.loadInvalid.tag')}</span>
+      <span>{FORMAT.loadInvalid(loadError, overrides)}</span>
       <button
         type="button"
         onClick={() => {
           downloadText('fixthisinjustice-recovery.json', lastLoadRaw ?? '{}');
         }}
       >
-        Export stored data
+        {t('button.exportStoredData')}
       </button>
     </div>
   );
@@ -423,6 +431,12 @@ export function App(): ReactElement {
    * sounds off the player fetches nothing at all (src/skins/sfx.ts).
    */
   useFirstGestureUnlock();
+  /*
+   * The header's own two words. Unconditional and above every early return in the tree below,
+   * like the hooks around it; the two rows read here were literals byte-identical to their
+   * table entries until P9 Task 15.
+   */
+  const t = useCopy();
   useHydrateOnce();
   /*
    * After useHydrateOnce, which reads the document during render, so the first run of the
@@ -476,7 +490,7 @@ export function App(): ReactElement {
              * two-element layout through setup.
              */}
             <SessionIndicator />
-            <span>{hydrated ? 'local data loaded' : 'reading local data'}</span>
+            <span>{t(hydrated ? 'shell.status.loaded' : 'shell.status.loading')}</span>
           </header>
 
           <main>

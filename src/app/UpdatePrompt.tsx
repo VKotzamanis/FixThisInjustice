@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
+import { useCopy } from '../content/useCopy';
 
 /**
  * The service-worker update prompt.
@@ -39,14 +40,18 @@ function getSnapshot(): (() => void) | null {
 
 export function UpdatePrompt(): ReactElement | null {
   const apply = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
+  // Before the early return, as the rules of hooks require. The three strings were literals
+  // byte-identical to their table rows until P9 Task 15; reading them here is what lets a skin
+  // reach the prompt, and master plan section 3 forbids the literal either way.
+  const t = useCopy();
   if (apply === null) return null;
 
   return (
     <div className="banner update" role="status">
-      <span className="banner-tag">UPDATE READY</span>
-      <span>A new version is ready.</span>
+      <span className="banner-tag">{t('banner.update.tag')}</span>
+      <span>{t('banner.update.body')}</span>
       <button type="button" onClick={apply}>
-        Reload
+        {t('button.reload')}
       </button>
     </div>
   );
