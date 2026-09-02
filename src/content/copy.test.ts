@@ -121,6 +121,25 @@ const COMMIT_KEYS: readonly CopyKey[] = [
 const COMMIT_WORDS = /\b(confirm|start|keep|delete|replace|wipe|yes|ok)\b/i;
 const ABORT_WORDS = /\b(cancel|dismiss|back|never mind|not now|stop)\b/i;
 
+/**
+ * The controls that close something FOR GOOD, and the words that would promise otherwise.
+ *
+ * `button.dismiss` is the only control on the missed-week popup, and pressing it writes
+ * `missHandled` for that week (src/ui/motivation/MotivationModal.tsx): the screen does not come
+ * back. "not now", "later", "soon" and "next" all state a postponement, so an override built
+ * from one of them tells the user the wrong thing about their own record -- which is a control
+ * semantic, not a register, and master plan section 3 puts that outside what a skin may change.
+ *
+ * `button.close` has no CopyKey yet. It is listed so the guard is already standing the day one
+ * is added, which is why the list is `string[]` and the lookup is by string.
+ */
+const NO_RETURN_PROMISE_KEYS: readonly string[] = [
+  'button.dismiss',
+  'button.cancel',
+  'button.close',
+];
+const RETURN_PROMISE_WORDS = /\b(now|later|soon|next)\b/i;
+
 const OVERRIDE_TABLES: ReadonlyArray<
   readonly [string, Readonly<Partial<Record<CopyKey, string>>>]
 > = [
@@ -273,6 +292,21 @@ describe('skin overrides', () => {
           name,
           key,
           abortWord: false,
+        });
+      }
+    }
+  });
+
+  it('never promises a return on a control that closes for good', () => {
+    for (const [name, table] of OVERRIDE_TABLES) {
+      for (const key of NO_RETURN_PROMISE_KEYS) {
+        // By string, not by CopyKey: the list names one key the union does not have yet.
+        const value = (table as Readonly<Record<string, string | undefined>>)[key];
+        if (value === undefined) continue;
+        expect({ name, key, promise: RETURN_PROMISE_WORDS.test(value) }).toEqual({
+          name,
+          key,
+          promise: false,
         });
       }
     }

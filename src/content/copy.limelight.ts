@@ -124,7 +124,16 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // The missed-week screen. `dismiss` closes the clip; it is not a commit, so it may be camp.
   // The clip plays itself, muted, which is the only autoplay an engine allows, so there is no
   // play control here to name (P8 close-out B retired the unused `button.play`).
-  'button.dismiss': 'not now',
+  //
+  // IT WAS "not now" UNTIL THE P8 REVIEW, and that was a promise the control cannot keep. It is
+  // the ONLY control on the popup and pressing it writes `missHandled` for the week
+  // (src/ui/motivation/MotivationModal.tsx): the screen does not come back, so a word meaning
+  // "later" states the opposite of what the tap does. `noted.` acknowledges and promises
+  // nothing, and it is the register `hero.sessionCompleted` ("ate.") already set for this table:
+  // one word, lower case, full stop. The rejected candidates were `fine.`, which reads as a
+  // verdict on the user rather than on the week, and `bye.`, which announces a departure the
+  // user is not making -- the app is still on screen behind the popup.
+  'button.dismiss': 'noted.',
   'button.motivationClipPreview': 'sneak peek',
   'button.retrySave': 'try again',
 
