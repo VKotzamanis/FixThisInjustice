@@ -77,12 +77,19 @@ export interface AppActions {
   // P2
   /**
    * Inserts the profile, seeds its per-profile log arrays, and makes it active
-   * when nothing else is.
+   * when nothing else is. Throws on an id that already exists.
    */
   createProfile(p: Profile): void;
-  /** Shallow patch of one profile. An unknown id is a no-op. */
+  /**
+   * Shallow patch of one profile. An unknown id is a no-op. Throws when the
+   * patch carries a non-positive `hydration.dailyTargetML`.
+   */
   updateProfile(id: string, patch: Partial<Profile>): void;
-  /** Stores a plan for one profile and starts its cursor at session 0. */
+  /**
+   * Stores a plan for one profile and starts its cursor at session 0. Throws
+   * while a session is in progress; otherwise clears that profile's stale
+   * schedule (assignments and pauses). The replaced plan is kept.
+   */
   setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void;
   /** One intake entry per civil date; a second entry for a date replaces the first. */
   logIntake(profileId: string, entry: IntakeEntry): void;
@@ -90,6 +97,8 @@ export interface AppActions {
   setAvailability(profileId: string, a: Availability): void;
   /** Result of the pre-participation screen (master plan section 10, P2 item 20). */
   recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void;
+  /** Points the app at another stored profile. Throws on an unknown id. */
+  setActiveProfile(id: string): void;
 }
 
 /**
@@ -316,6 +325,15 @@ export const useAppStore = create<AppStore>()((set, get) => ({
 
   createProfile(p: Profile): void {
     const s = get();
+    // Create, not upsert. Reusing an existing id would silently replace that
+    // profile's record while every log keyed by the id stayed put, leaving a
+    // history that belongs to nobody now stored under someone else's name.
+    // updateProfile is the way to change a profile that exists; a caller that
+    // reaches here with a live id has a bug, and losing a person's identity is
+    // not an acceptable way to report it.
+    if (s.profiles[p.id] !== undefined) {
+      throw new Error(`createProfile: "${p.id}" already exists`);
+    }
     // The hydration target is a stored preference, not a derived value, so it
     // has to hold a number from the moment the profile exists. A caller that
     // left it at 0 gets the IOM 2005 beverage figure for the profile's sex
@@ -332,9 +350,35 @@ export const useAppStore = create<AppStore>()((set, get) => ({
       // refinement checks: profiles[id].id === id.
       profiles: { ...s.profiles, [stored.id]: stored },
       activeProfileId: s.activeProfileId ?? stored.id,
-      // Seed the profile-keyed log arrays so no later action has to guard
-      // against undefined. Existing arrays are kept: this must not be a way to
-      // erase a profile's history.
+      /*
+       * Seeded here: the six ARRAY-valued per-profile logs. Every later action
+       * that appends to one of them (logIntake, P3's assignments and pauses,
+       * P4's body mass and hydration, P6's weekly reviews) can then read the key
+       * without a guard, and an empty array is the truthful value for a profile
+       * that has logged nothing.
+       *
+       * Deliberately NOT seeded, and each for the same reason — no key is the
+       * honest representation of "not collected yet", and any value written here
+       * would be one the user never supplied:
+       *   availability      no weekday slots collected until the wizard asks
+       *   cursors           no plan; seeding one would need a planId to point at,
+       *                     and useActivePlan could no longer tell "no plan" from
+       *                     "a plan"
+       *   reminderSettings  P5; absent means never configured, not "disabled"
+       *   motivation        P6; absent means nothing has been shown yet
+       *   specimens         P8; absent means nothing drawn
+       *   capsules          P8; absent means no capsule, which is not the same as
+       *                     the null a written-and-opened capsule leaves behind
+       *   customExercises   P4; absent and empty read identically through `?? []`
+       *   notes             P7 migration; same, through `?? {}`
+       * Both of the last two carry Zod defaults at the root, so an absent key
+       * survives a save/load round trip as an empty collection either way.
+       *
+       * `?? []` rather than a bare []: belt and braces behind the duplicate-id
+       * guard above, which already makes a pre-existing array for this id
+       * unreachable. It costs nothing and it must never become a way to erase a
+       * profile's history.
+       */
       pauses: { ...s.pauses, [stored.id]: s.pauses[stored.id] ?? [] },
       assignments: { ...s.assignments, [stored.id]: s.assignments[stored.id] ?? [] },
       bodyMass: { ...s.bodyMass, [stored.id]: s.bodyMass[stored.id] ?? [] },
@@ -348,6 +392,18 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const s = get();
     const current = s.profiles[id];
     if (current === undefined) return;
+    // A zero or negative daily fluid target is not a preference, it is a broken
+    // one: it is a DENOMINATOR, and P4 renders hydration progress as
+    // volume/target, so 0 gives Infinity and a negative target runs the bar
+    // backwards. createProfile already refuses to store one (it substitutes the
+    // IOM beverage figure); the patch path has to refuse it too, or the guard
+    // only ever covers the first write. Written as !(x > 0) rather than x <= 0
+    // so NaN — which compares false against everything — is refused as well.
+    if (patch.hydration !== undefined && !(patch.hydration.dailyTargetML > 0)) {
+      throw new Error(
+        `updateProfile: hydration.dailyTargetML must be > 0 mL/day; received ${String(patch.hydration.dailyTargetML)}`,
+      );
+    }
     // Shallow by contract: a caller patching `body` or `goal` supplies the whole
     // sub-object. `id` is not re-derived from the patch, so a patch carrying a
     // different id cannot move the record away from its key.
@@ -357,29 +413,70 @@ export const useAppStore = create<AppStore>()((set, get) => ({
   setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void {
     const s = get();
     requireProfile(s, 'setPlan', profileId);
+    /*
+     * Refuse rather than discard. An in-progress assignment means the user is
+     * mid-session: sets are being logged against `assignment.date` and
+     * `session.id`, and a rest timer may be running. Clearing that row would
+     * strand those sets on a schedule entry that no longer exists and leave the
+     * timer counting for a session the app has forgotten, so re-planning is not
+     * something the store may decide to do quietly. The caller finishes or skips
+     * the session first (P3's completeSession / skipSession) and then re-plans.
+     */
+    const schedule = s.assignments[profileId] ?? [];
+    if (schedule.some((a) => a.status === 'in-progress')) {
+      throw new Error('setPlan: a session is in progress');
+    }
     // A PlanTemplate belongs to exactly one profile (master plan section 5), so
     // the stored copy always gets a fresh id. Without it, handing the same
     // generated template to two profiles would leave one record that either
     // profile's later edits would rewrite under the other.
     const stored: PlanTemplate = { ...plan, id: newId() };
-    const replaced = s.cursors[profileId]?.planId ?? null;
-    const plans: Record<string, PlanTemplate> = { ...s.plans, [stored.id]: stored };
-    // Re-planning replaces the plan rather than accumulating plans: the cursor
-    // about to be overwritten was the only reference to the old one, so keeping
-    // it would leave a record no code path ever reads or deletes. The check is
-    // cheap insurance in case a later plan does share a plan between cursors —
-    // deleting a plan another cursor still points at would strand that profile.
-    const stillReferenced = Object.entries(s.cursors).some(
-      ([id, cursor]) => id !== profileId && cursor.planId === replaced,
-    );
-    if (replaced !== null && !stillReferenced) delete plans[replaced];
     set({
-      plans,
+      /*
+       * The replaced plan is KEPT (master plan section 6.7). Every LoggedSet
+       * carries the `sessionId` of the session it was logged under, and `plans`
+       * is the only place that id resolves to a name, an ordinal or an exercise
+       * list. Deleting the plan on re-planning severed every set logged before
+       * the change from its session — the sets survived, but nothing could say
+       * what they were sets OF. The cursor, not the contents of this map, is
+       * what identifies the active plan, so an unreferenced plan here is history
+       * rather than an orphan. It is bounded by how often a user re-plans.
+       */
+      plans: { ...s.plans, [stored.id]: stored },
       cursors: {
         ...s.cursors,
         [profileId]: { planId: stored.id, nextSessionIndex: 0, startedOn, completedOn: null },
       },
+      /*
+       * The schedule is cleared in the SAME set() as the cursor, so no reader
+       * ever observes the new plan beside the old plan's calendar. Both records
+       * point into the plan that has just stopped being current:
+       *
+       *   assignments  each row names a `sessionId` and a `sourceIndex` into the
+       *                REPLACED plan's session list. Left in place, P3's
+       *                projectedCalendar would resolve today's row against the
+       *                new plan and show whichever session happens to sit at
+       *                that index. Terminal rows (completed, skipped) go too:
+       *                they are the old plan's calendar, and the logged sets —
+       *                which is what the user actually did — are in `sets` and
+       *                are not touched.
+       *   pauses       a pause is a suspension OF a plan. An open pause (to ===
+       *                null) carried across would silently suspend the plan the
+       *                user just asked to start.
+       */
+      assignments: { ...s.assignments, [profileId]: [] },
+      pauses: { ...s.pauses, [profileId]: [] },
     });
+    /*
+     * Non-persisted session slice: nothing to reset yet. P4 adds
+     * `session: { restTimer: RestTimer | null; activeAssignmentDate: LocalDate |
+     * null }` to this store (master plan section 6.7, mirrored to
+     * sessionStorage). Both fields point at the schedule that was just cleared,
+     * so P4 clears them HERE, inside the set() above, at the same time as
+     * `assignments`. The in-progress guard makes that a formality rather than a
+     * data loss: a running timer implies an in-progress assignment, which has
+     * already thrown by this line.
+     */
   },
 
   logIntake(profileId: string, entry: IntakeEntry): void {
@@ -404,6 +501,19 @@ export const useAppStore = create<AppStore>()((set, get) => ({
     const s = get();
     requireProfile(s, 'setAvailability', profileId);
     set({ availability: { ...s.availability, [profileId]: a } });
+  },
+
+  setActiveProfile(id: string): void {
+    const s = get();
+    // Throws for the same reason the schema's root refinement rejects the
+    // document: activeProfileId must name a profile that exists. Pointing it at
+    // an unknown id makes every active-profile selector return null, which the
+    // UI reads as "no profile yet" and answers with the setup wizard — a stored
+    // profile silently replaced by a first-run screen.
+    requireProfile(s, 'setActiveProfile', id);
+    // No early return when the id is already active: the field is a string, and
+    // persistedChanged compares it by value, so a no-op costs no write anyway.
+    set({ activeProfileId: id });
   },
 
   recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void {

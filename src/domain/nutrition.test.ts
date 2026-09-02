@@ -8,6 +8,7 @@ import {
   computeTargets,
   dailyBeverageTargetML,
   fatFreeMassKg,
+  isInDomain,
   type NutritionInput,
 } from './nutrition';
 import type { ActivityLevel, GoalKind, Sex } from './types';
@@ -413,6 +414,104 @@ describe('adult domain gate', () => {
     for (const sessionsPerWeek of [0, 14]) {
       expect(() => computeTargets({ ...base, sessionsPerWeek })).not.toThrow();
     }
+  });
+});
+
+describe('isInDomain', () => {
+  /**
+   * The predicate exists so a caller that cannot handle an exception can ask first
+   * (master plan section 6.3). It is only useful if it answers exactly the question
+   * computeTargets answers by throwing, so both directions are asserted: every boundary
+   * value is accepted, every value one step outside is refused, and over generated inputs
+   * the predicate agrees with the throw.
+   */
+  it('accepts every inclusive boundary value', () => {
+    for (const ageYears of [18, 80]) expect(isInDomain({ ...base, ageYears })).toBe(true); // years
+    for (const heightCm of [120, 230]) expect(isInDomain({ ...base, heightCm })).toBe(true); // cm
+    for (const massKg of [30, 300]) expect(isInDomain({ ...base, massKg })).toBe(true); // kg
+    for (const bodyFatPct of [3, 60]) expect(isInDomain({ ...base, bodyFatPct })).toBe(true); // %
+    for (const sessionsPerWeek of [0, 14]) {
+      expect(isInDomain({ ...base, sessionsPerWeek })).toBe(true); // sessions/week
+    }
+  });
+
+  it('refuses the value one step outside each boundary', () => {
+    for (const ageYears of [17, 81]) expect(isInDomain({ ...base, ageYears })).toBe(false); // years
+    for (const heightCm of [119.9, 230.1]) expect(isInDomain({ ...base, heightCm })).toBe(false); // cm
+    for (const massKg of [29.9, 300.1]) expect(isInDomain({ ...base, massKg })).toBe(false); // kg
+    for (const bodyFatPct of [2.9, 60.1]) expect(isInDomain({ ...base, bodyFatPct })).toBe(false); // %
+    for (const sessionsPerWeek of [-1, 15]) {
+      expect(isInDomain({ ...base, sessionsPerWeek })).toBe(false); // sessions/week
+    }
+  });
+
+  it('treats an unmeasured body fat as in-domain and a fractional session count as out', () => {
+    // null is "not measured", which selects Mifflin-St Jeor; it is not a bound violation.
+    expect(isInDomain({ ...base, bodyFatPct: null })).toBe(true);
+    // sessionsPerWeek changes no number (NOTE-FREQ) but reaches a basis string the UI shows,
+    // so a fraction or a NaN is refused here exactly as computeTargets refuses it.
+    expect(isInDomain({ ...base, sessionsPerWeek: 3.5 })).toBe(false);
+    expect(isInDomain({ ...base, sessionsPerWeek: Number.NaN })).toBe(false);
+    expect(isInDomain({ ...base, massKg: Number.POSITIVE_INFINITY })).toBe(false);
+    expect(isInDomain({ ...base, heightCm: Number.NaN })).toBe(false);
+  });
+
+  it('never throws, whatever it is handed', () => {
+    expect(() => isInDomain({ ...base, ageYears: Number.NaN, massKg: -1, heightCm: 0 })).not.toThrow();
+    expect(isInDomain({ ...base, ageYears: Number.NaN, massKg: -1, heightCm: 0 })).toBe(false);
+  });
+
+  it('answers exactly the question computeTargets answers by throwing', () => {
+    // Each range straddles its bound, so roughly a quarter of the generated inputs are
+    // in-domain and both verdicts get exercised. The enums are always valid members: an
+    // unknown one is a type error, not a domain violation, and is not this gate's job.
+    // The oddballs are mixed in explicitly because a ranged fc.double never produces them
+    // and they are exactly what a corrupted stored document would carry.
+    const oddball = fc.constantFrom(
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      Number.NEGATIVE_INFINITY,
+    );
+    const straddling = (min: number, max: number): fc.Arbitrary<number> =>
+      fc.oneof(
+        { weight: 9, arbitrary: fc.double({ min, max, noNaN: true }) },
+        { weight: 1, arbitrary: oddball },
+      );
+    fc.assert(
+      fc.property(
+        fc.record({
+          sex: fc.constantFrom('male' as const, 'female' as const),
+          ageYears: straddling(10, 90), // years, domain 18-80
+          heightCm: straddling(100, 250), // cm, domain 120-230
+          massKg: straddling(20, 320), // kg, domain 30-300
+          bodyFatPct: fc.option(straddling(0, 70), { nil: null }), // %, domain 3-60 or null
+          activity: fc.constantFrom('sedentary' as const, 'moderate' as const, 'vigorous' as const),
+          goal: fc.constantFrom(
+            'fat-loss' as const,
+            'muscle-gain' as const,
+            'recomposition' as const,
+            'maintenance' as const,
+          ),
+          // Mostly integers, so the integer requirement is not the only thing under test.
+          sessionsPerWeek: fc.oneof(
+            { weight: 7, arbitrary: fc.integer({ min: -2, max: 16 }) },
+            { weight: 2, arbitrary: fc.double({ min: -2, max: 16, noNaN: true }) },
+            { weight: 1, arbitrary: oddball },
+          ), // sessions/week, domain integer 0-14
+          creatine: fc.boolean(),
+        }),
+        (input: NutritionInput) => {
+          let threw = false;
+          try {
+            computeTargets(input);
+          } catch {
+            threw = true;
+          }
+          return isInDomain(input) === !threw;
+        },
+      ),
+      { numRuns: 5000 },
+    );
   });
 });
 
