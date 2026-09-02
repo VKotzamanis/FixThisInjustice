@@ -208,7 +208,7 @@ reach the network and must not be used.
 `TOTAL        keys= 522 words= 2175`. Any other total means the word-count rule has drifted from
 `wordCount` in `src/content/copy.test.ts:46-52`, and the script is wrong, not the table.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```js
 // scripts/copy-wordcount.mjs
@@ -272,7 +272,7 @@ report('LIMELIGHT_COPY', copy.LIMELIGHT_COPY);
 report('BOARD_COPY', copy.BOARD_COPY);
 ```
 
-- [ ] **Step 2: Run it and confirm the baseline**
+- [x] **Step 2: Run it and confirm the baseline**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -289,7 +289,7 @@ TOTAL        keys= 522 words= 2175
 A dependency-scan warning about `virtual:pwa-register` goes to stderr and is expected. `2>/dev/null`
 drops it.
 
-- [ ] **Step 3: Confirm lint accepts the new script**
+- [x] **Step 3: Confirm lint accepts the new script**
 
 ```bash
 npx eslint scripts/copy-wordcount.mjs
@@ -299,7 +299,7 @@ Expected: no output. If ESLint reports `'console' is not defined`, `eslint.confi
 `scripts/**`; add the Node-globals block for `scripts/**/*.mjs` in this same commit, using
 `globals` 17, which is already installed.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/copy-wordcount.mjs eslint.config.js
@@ -320,7 +320,7 @@ git commit -m "chore(P9): a word-count harness for the copy tables"
 and `npx vitest run` reports the same test count as before the edit. A hero row that loses a word
 must lose it from a test assertion in the same commit, which is why the full suite runs.
 
-- [ ] **Step 1: List the family and its current lengths**
+- [x] **Step 1: List the family and its current lengths**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -330,7 +330,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | grep '^hero'
 
 Expected: 37 rows listed, and `hero         keys=  37 words=   90`.
 
-- [ ] **Step 2: Rewrite each row against the four questions**
+- [x] **Step 2: Rewrite each row against the four questions**
 
 For every row, in order, answer in a code comment only where the answer is not obvious:
 
@@ -354,7 +354,7 @@ Worked example, from the current table:
 Do not touch `hero.weeklyTargetMissed`, whose limelight row `the intervention` and board row
 `IRREGULAR OPERATIONS` are both asserted by name in `copy.test.ts`.
 
-- [ ] **Step 3: Run the contract test**
+- [x] **Step 3: Run the contract test**
 
 ```bash
 npx vitest run src/content/copy.test.ts
@@ -362,7 +362,7 @@ npx vitest run src/content/copy.test.ts
 
 Expected: PASS, 0 failed.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 ```bash
 npx vitest run 2>&1 | tail -5
@@ -371,7 +371,7 @@ npx vitest run 2>&1 | tail -5
 Expected: `Tests  <N> passed`, with `<N>` unchanged from the pre-edit run and 0 failed. A failure
 here is a test that quotes the old string: fix the assertion in this commit, never the string.
 
-- [ ] **Step 5: Record the delta**
+- [x] **Step 5: Record the delta**
 
 ```bash
 node scripts/copy-wordcount.mjs 2>/dev/null | grep '^hero'
@@ -380,7 +380,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | grep '^hero'
 Expected: `keys=  37` and a word count at or below 90. Paste the before and after lines into the
 commit body.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 # Sanity: the deleted lines must be exactly the rows you rewrote. Read the list.
@@ -408,7 +408,7 @@ git commit -m "docs(P9): tighten the hero family, 90 words to <N>"
 only the test file's import until the test is updated and then returns nothing, and the full suite
 count is unchanged.
 
-- [ ] **Step 1: List the family, longest first**
+- [x] **Step 1: List the family, longest first**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -417,7 +417,7 @@ grep -nP "^  'advice\.[a-zA-Z0-9_.]+':" src/content/copy.ts | awk '{ print lengt
 
 Expected: 92 rows, the longest at the top. The top of that list is where the words are.
 
-- [ ] **Step 2: Apply R3 and the R9 criterion, row by row**
+- [x] **Step 2: Apply R3 and the R9 criterion, row by row**
 
 R3 caps an advice line at 12 words. R9's criterion decides what moves out rather than what gets
 cut: *show it inline only if the user must act differently because of it.* That is governing
@@ -429,7 +429,7 @@ is exempt at `copy.test.ts:104-109` because `MotivationSettings.tsx` renders it 
 `<details><summary>why?</summary>`. Adding a row to `LENGTH_EXEMPT` requires naming the call site
 in the map entry, exactly as that one does.
 
-- [ ] **Step 3: Move the tap-to-mute literal into the table**
+- [x] **Step 3: Move the tap-to-mute literal into the table**
 
 ```bash
 sed -n '45,55p' src/ui/motivation/MotivationModal.tsx
@@ -443,7 +443,7 @@ line 212 as the `aria-label` when sound is on. Its own comment says it "belongs 
 `advice.tapForSound` at `copy.ts:1262`, change line 212 to `t('advice.tapToMute')`, delete the
 export, and update `MotivationModal.test.tsx` lines 6, 176 and 193 to read the key.
 
-- [ ] **Step 4: Name the file when the MIME type is empty**
+- [x] **Step 4: Name the file when the MIME type is empty**
 
 ```bash
 sed -n '100,115p' src/domain/motivation/assets.ts
@@ -461,7 +461,7 @@ type produces `Not a video file: .`, which names nothing. Replace with:
 Add a test in `src/domain/motivation/assets.test.ts` that constructs a `File` with `type: ''` and
 asserts the message contains the file name.
 
-- [ ] **Step 5: Run the contract test and the two touched suites**
+- [x] **Step 5: Run the contract test and the two touched suites**
 
 ```bash
 npx vitest run src/content/copy.test.ts src/ui/motivation/MotivationModal.test.tsx src/domain/motivation/assets.test.ts
@@ -469,7 +469,7 @@ npx vitest run src/content/copy.test.ts src/ui/motivation/MotivationModal.test.t
 
 Expected: PASS, 0 failed, and the assets suite one test larger than before.
 
-- [ ] **Step 6: Run the full suite and record the delta**
+- [x] **Step 6: Run the full suite and record the delta**
 
 ```bash
 npx vitest run 2>&1 | tail -5
@@ -478,7 +478,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | grep '^advice'
 
 Expected: 0 failed; `advice       keys=  92 words=<at most 550>`.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/content/copy.ts src/ui/motivation/MotivationModal.tsx src/ui/motivation/MotivationModal.test.tsx src/domain/motivation/assets.ts src/domain/motivation/assets.test.ts
@@ -499,7 +499,7 @@ check is mechanical: `copy.test.ts:231` asserts each override table carries exac
 slots, so renaming a slot in the default breaks the limelight and board rows. Run the contract test
 after every few rows rather than at the end.
 
-- [ ] **Step 1: Capture the slot inventory before the edit**
+- [x] **Step 1: Capture the slot inventory before the edit**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -507,7 +507,7 @@ grep -oP "^  'status\.[a-zA-Z0-9_.]+': '\K[^']*" src/content/copy.ts | grep -oP 
 cat /tmp/status-slots-before.txt
 ```
 
-- [ ] **Step 2: Rewrite the rows**
+- [x] **Step 2: Rewrite the rows**
 
 A status line states what happened or what holds now. Cut every word that restates the label beside
 it. Never cut a slot, a number, a unit or a quantity name. Where a status line explains why the fact
@@ -520,7 +520,7 @@ Leave these alone: `status.prStamp`, `status.weekMetStamp`, `status.weekDeltaNeg
 `status.konami` and the nine `status.boot*` rows. Each is asserted by name or by slot in
 `copy.test.ts` or carries a limelight or board row that would drift.
 
-- [ ] **Step 3: Confirm the slot inventory is unchanged**
+- [x] **Step 3: Confirm the slot inventory is unchanged**
 
 ```bash
 grep -oP "^  'status\.[a-zA-Z0-9_.]+': '\K[^']*" src/content/copy.ts | grep -oP '\{[a-zA-Z]+\}' | sort | uniq -c | sort -rn > /tmp/status-slots-after.txt
@@ -529,7 +529,7 @@ diff /tmp/status-slots-before.txt /tmp/status-slots-after.txt && echo "slots unc
 
 Expected: `slots unchanged`.
 
-- [ ] **Step 4: Run the contract test and the full suite**
+- [x] **Step 4: Run the contract test and the full suite**
 
 ```bash
 npx vitest run src/content/copy.test.ts
@@ -539,7 +539,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | grep '^status'
 
 Expected: PASS; 0 failed; `status       keys=  92` with a word total at or below 336.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/content/copy.ts
@@ -565,7 +565,7 @@ test that no skin swaps an abort for a commit. The abort keys are `button.cancel
 `button.dismiss`; the commit keys are `button.confirmSkip`, `button.confirmStart` and
 `button.wipeConfirm`.
 
-- [ ] **Step 1: Find duplicate strings**
+- [x] **Step 1: Find duplicate strings**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -576,7 +576,7 @@ Expected: a short list. For each duplicate, decide whether the two keys front th
 they do, retire one in Task 16 and repoint its call site. If they do not, the two strings must
 differ, because a screen reader announces nothing else.
 
-- [ ] **Step 2: Check the word cap by hand before the test does**
+- [x] **Step 2: Check the word cap by hand before the test does**
 
 ```bash
 node scripts/copy-wordcount.mjs 2>/dev/null | grep '^button'
@@ -585,12 +585,12 @@ node scripts/copy-wordcount.mjs 2>/dev/null | grep '^button'
 Expected: `button       keys=  71 words= 146`, an average of 2.06 words. A rewrite that raises the
 total is going the wrong way.
 
-- [ ] **Step 3: Rewrite the rows**
+- [x] **Step 3: Rewrite the rows**
 
 Cut the object where the screen already names it. `Download JSON` beats `Download the JSON file`.
 Keep the verb first. Never rename an abort into a commit or a commit into an abort.
 
-- [ ] **Step 4: Run the contract test and the full suite**
+- [x] **Step 4: Run the contract test and the full suite**
 
 ```bash
 npx vitest run src/content/copy.test.ts
@@ -599,7 +599,7 @@ npx vitest run 2>&1 | tail -5
 
 Expected: PASS; 0 failed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/content/copy.ts
@@ -623,7 +623,7 @@ names a choice. Neither is a sentence.
 section heading above it, and every `label.modality.*` row still matches its `Modality` member so
 `MODALITY_KEY` in `AddCustomExercise.tsx` stays exhaustive. `npx tsc -b` catches the last one.
 
-- [ ] **Step 1: Find labels carrying punctuation or a repeated heading**
+- [x] **Step 1: Find labels carrying punctuation or a repeated heading**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -633,7 +633,7 @@ grep -nP "^  'option\.[a-zA-Z0-9_.]+':" src/content/copy.ts | wc -l
 
 Expected: a list of labels ending in a colon or a full stop, and `16`.
 
-- [ ] **Step 2: Rewrite the rows**
+- [x] **Step 2: Rewrite the rows**
 
 Strip trailing punctuation. Where the label duplicates its heading, cut the duplication from the
 label, not from the heading, because the heading is the landmark a screen reader announces first.
@@ -641,7 +641,7 @@ Leave `label.settingsSkin`, `label.settingsSounds` and `label.settingsHotkeys` a
 carry a limelight row and the last one is quoted in a WCAG 2.1 SC 2.1.4 comment at
 `copy.ts:1520-1527`.
 
-- [ ] **Step 3: Typecheck, then test**
+- [x] **Step 3: Typecheck, then test**
 
 ```bash
 npx tsc -b
@@ -651,7 +651,7 @@ npx vitest run 2>&1 | tail -5
 
 Expected: `tsc -b` silent; contract test PASS; 0 failed.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/content/copy.ts
@@ -675,6 +675,10 @@ limelight row asserted by slot in `copy.test.ts:521`.
 `copy.test.ts:231` ("keeps every slot the default uses, and adds none") and `copy.test.ts:243`
 ("carries exactly the numbers the default carries") both pass unchanged. A slot removed here fails
 in the limelight table, not here, which is why the check runs the whole contract file.
+
+Not ticked (Task 30, 2026-09-02). No commit in `c7549b8..HEAD` touches a `coach.*` row, and
+the 13 rows are byte-identical to the baseline. A clean pass would look the same as an
+unrun one, so this task is left open rather than claimed.
 
 - [ ] **Step 1: Print the family with its slots**
 
@@ -733,6 +737,10 @@ the names R11 governs. This task changes almost nothing, and proves it.
 against is master plan section 3: mass in kg, volume in mL, duration in s, energy in kcal, protein
 in g, load on a bar, body mass, beverage intake, RPE, RIR, 1RM, e1RM. A colloquial stand-in is a
 defect; a correct name that reads oddly is not.
+
+Not ticked (Task 30, 2026-09-02). The Step 2 grep is clean today and the four families are
+byte-identical to the baseline, which Step 5 allows. No commit records the verdict, so the
+task cannot be verified as run.
 
 - [ ] **Step 1: Print the four families**
 
@@ -799,7 +807,7 @@ every `disclosure.*` summary is either the literal `why?` or a noun phrase of at
 The reachability check is a grep against the call sites, not a test, because no test asserts the
 DOM ancestor.
 
-- [ ] **Step 1: Prove each `why.*` key renders inside a disclosure**
+- [x] **Step 1: Prove each `why.*` key renders inside a disclosure**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -813,7 +821,7 @@ Expected: each key has a call site, or none. `why.deloadSets` has none and is Ta
 For each key that does render, open the component and confirm a `<details>` ancestor. Record the
 file and line per key in the commit body.
 
-- [ ] **Step 2: Check every disclosure summary against R9**
+- [x] **Step 2: Check every disclosure summary against R9**
 
 ```bash
 grep -nP "^  'disclosure\.[a-zA-Z0-9_.]+':" src/content/copy.ts
@@ -822,13 +830,13 @@ grep -nP "^  'disclosure\.[a-zA-Z0-9_.]+':" src/content/copy.ts
 Expected: 6 rows. `disclosure.why` must be exactly `why?`. The other five are noun phrases; count
 their words and cut any above 5.
 
-- [ ] **Step 3: Rewrite the `why.*` bodies**
+- [x] **Step 3: Rewrite the `why.*` bodies**
 
 A disclosure body is exempt from R1 to R4 and may be long. It is not exempt from R5, R6 or R7, and
 it is not licensed to ramble. Cut the sentence that explains why the app was built a certain way.
 Keep the sentence that lets the user reproduce the number. Keep every citation.
 
-- [ ] **Step 4: Run the contract test and the full suite**
+- [x] **Step 4: Run the contract test and the full suite**
 
 ```bash
 npx vitest run src/content/copy.test.ts
@@ -838,7 +846,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | grep -E '^(why|disclosure)'
 
 Expected: PASS; 0 failed; both families with their key counts intact.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/content/copy.ts
@@ -864,7 +872,7 @@ for the body and 120 for the tag. `src/domain/reminders/payload.test.ts` asserts
 against the Worker's source, so the full suite is the check. `push.body` also has no call site
 today: confirm that before editing it.
 
-- [ ] **Step 1: Establish where the push text actually comes from**
+- [x] **Step 1: Establish where the push text actually comes from**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -876,7 +884,7 @@ grep -n "title\|body" src/domain/reminders/instants.ts | head -20
 Expected: `push.body` has no reference outside `copy.ts`. `instants.ts` builds the title and body
 directly. Record that finding; it decides whether Task 16 retires `push.body` or this task wires it.
 
-- [ ] **Step 2: Decide, and write the decision down**
+- [x] **Step 2: Decide, and write the decision down**
 
 Two outcomes, both acceptable, and the choice belongs in the commit body:
 
@@ -887,7 +895,7 @@ Two outcomes, both acceptable, and the choice belongs in the commit body:
 
 The second is the smaller change and matches what shipped. Prefer it unless the user asks otherwise.
 
-- [ ] **Step 3: Run the reminder suites**
+- [x] **Step 3: Run the reminder suites**
 
 ```bash
 npx vitest run src/domain/reminders/ worker/test 2>&1 | tail -5
@@ -895,7 +903,7 @@ npx vitest run src/domain/reminders/ worker/test 2>&1 | tail -5
 
 Expected: 0 failed. The client suites run 46 tests and the Worker 148 as of `628da00`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/content/copy.ts src/domain/reminders/instants.ts
@@ -919,7 +927,7 @@ conditions master plan section 10.4 lists, and the screen still states that it i
 and names the PAR-Q+ as its model. Cutting either sentence changes a legal claim, not a word count.
 `banner.*`, `recovery.*` and `shell.*` are Task 15's and Task 16's; leave their strings alone here.
 
-- [ ] **Step 1: Read section 10.4 before touching the readiness rows**
+- [x] **Step 1: Read section 10.4 before touching the readiness rows**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -929,17 +937,17 @@ grep -nP "^  'readiness\.[a-zA-Z0-9_.]+':" src/content/copy.ts
 
 Expected: the decision text naming seven domains, and 9 readiness rows.
 
-- [ ] **Step 2: Rewrite `nav`, `setup`, `error` only**
+- [x] **Step 2: Rewrite `nav`, `setup`, `error` only**
 
 `nav` is 8 words across 8 keys and needs nothing. `error` is 22 words across 5 keys: check each
 reads as a fact the user can act on, with no HTTP status, no endpoint and no stack text.
 
-- [ ] **Step 3: Leave the readiness wording unless a word is wrong**
+- [x] **Step 3: Leave the readiness wording unless a word is wrong**
 
 If a readiness row hedges (R7) without changing the claim, cut the hedge. If cutting a word would
 narrow or widen a screening question, stop and record why the row stands.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 ```bash
 npx vitest run 2>&1 | tail -5
@@ -949,7 +957,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | sed -n '/^== DEFAULT_COPY/,/^TOTAL
 Expected: 0 failed, and a `TOTAL` line whose word count is below 2175. Paste that line and the
 2175 baseline into the commit body: this is the number governing sentence 1 asked for.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/content/copy.ts
@@ -981,7 +989,7 @@ at the week or at the app, never at the person reading it.
 4. `copy.test.ts:258` asserts no skin swaps an abort for a commit.
 5. The register itself is the user's call, not the model's. Task 13 produces the page they mark up.
 
-- [ ] **Step 1: Derive the keys still clinical, per screen**
+- [x] **Step 1: Derive the keys still clinical, per screen**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -997,7 +1005,7 @@ done
 Expected counts, measured 2026-09-02: Today 12 keys with no limelight row, Train 26, Plan 6,
 Settings 81. That is 125 decisions, and every one of them gets a verdict in Step 2.
 
-- [ ] **Step 2: Write one verdict per key, as a comment or a row**
+- [x] **Step 2: Write one verdict per key, as a comment or a row**
 
 Three verdicts are allowed, and each has a form:
 
@@ -1014,13 +1022,13 @@ import, a legacy delete, an export or a save failure stays clinical in every ski
 keys include the data section: most of them fall to rule 4, and the verdict comment should say so
 once at the head of a block rather than 30 times.
 
-- [ ] **Step 3: Vulgarity, where it lands**
+- [x] **Step 3: Vulgarity, where it lands**
 
 Governing sentence 4 licenses it. Master plan section 3 bounds it: no slurs, no body-shaming, no
 food morality. The bound is not negotiable and is not a matter of taste. A vulgar row that fronts a
 destructive control also fails rule 4, so the two rules stack rather than compete.
 
-- [ ] **Step 4: Run the contract test**
+- [x] **Step 4: Run the contract test**
 
 ```bash
 npx vitest run src/content/copy.test.ts
@@ -1030,7 +1038,7 @@ Expected: PASS. Read the failure name if it fails. `shouts three keys` means a n
 case. `keeps every slot` means a slot was dropped or invented. `carries exactly the numbers` means a
 digit appeared that the default does not have.
 
-- [ ] **Step 5: Run the full suite**
+- [x] **Step 5: Run the full suite**
 
 ```bash
 npx vitest run 2>&1 | tail -5
@@ -1039,7 +1047,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | sed -n '/^== LIMELIGHT_COPY/,/^TOT
 
 Expected: 0 failed, and a limelight key count above 105.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/content/copy.limelight.ts src/content/copy.test.ts
@@ -1060,7 +1068,7 @@ up in the repository.
 limelight string are quoted byte for byte from the two tables (not retyped), the verdict column is
 empty, and the row count equals the limelight table's key count.
 
-- [ ] **Step 1: Generate the table body from the tables themselves**
+- [x] **Step 1: Generate the table body from the tables themselves**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1083,7 +1091,7 @@ wc -l /tmp/sbs-body.md
 
 Expected: the line count equals the limelight key count plus 2 for the header rows.
 
-- [ ] **Step 2: Write the page around that body**
+- [x] **Step 2: Write the page around that body**
 
 ```markdown
 # Limelight, beside the clinical default
@@ -1107,7 +1115,7 @@ the save-failure lines have no rows here and will not get any.
 <the generated table>
 ```
 
-- [ ] **Step 3: Verify the row count and that nothing was retyped**
+- [x] **Step 3: Verify the row count and that nothing was retyped**
 
 ```bash
 grep -c '^| `' docs/design/2026-09-02-limelight-side-by-side.md
@@ -1116,14 +1124,14 @@ node scripts/copy-wordcount.mjs 2>/dev/null | sed -n '/^== LIMELIGHT_COPY/,/^TOT
 
 Expected: the two counts agree.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/design/2026-09-02-limelight-side-by-side.md
 git commit -m "docs(P9): a side-by-side of the limelight table for the user to mark up"
 ```
 
-- [ ] **Step 5: Stop and hand it over**
+- [x] **Step 5: Stop and hand it over**
 
 Tell the user the file path and that the register decision is theirs. Do not proceed to a second
 limelight pass without their marks. Everything after this task is independent of their answer.
@@ -1143,7 +1151,7 @@ brief was written about. This task keeps it sparse and writes the reason down.
 the design's em-dash became the colon R5 prescribes, and `:474` asserts the met-week stamp reads
 `ALL DEPARTED`. Slot and digit parity apply here exactly as they do to limelight.
 
-- [ ] **Step 1: Produce the decision list**
+- [x] **Step 1: Produce the decision list**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1155,7 +1163,7 @@ echo "=== board has a row, limelight does not:"; comm -13 /tmp/lime.txt /tmp/boa
 
 Expected: 76 keys in the first list and 0 in the second, given the 105 and 29 counts.
 
-- [ ] **Step 2: Write the decision, once, at the head of the file**
+- [x] **Step 2: Write the decision, once, at the head of the file**
 
 Add a block comment stating the rule this task adopts and the alternative it rejects. The rule:
 a board row exists only where a real airport term names the thing. The rejected alternative:
@@ -1167,14 +1175,14 @@ Then list, in that comment, the families that fall through to clinical on purpos
 the nutrition targets, the readiness screen, the migration wizard, the export view and the data
 section. Name the count beside each so a later reviewer can check the comment against the file.
 
-- [ ] **Step 3: Add rows only where the term already exists**
+- [x] **Step 3: Add rows only where the term already exists**
 
 Candidates worth a row, each because round two's design or ordinary airport usage supplies the word:
 `button.cancel` (`CANCEL`), `button.continue` (`PROCEED`), `status.rest` already exists,
 `hero.train` (`DEPARTURES`), `advice.noSessionToday` (`NO SERVICE TODAY`). Do not add a row you have
 to invent a term for.
 
-- [ ] **Step 4: Run the contract test and the full suite**
+- [x] **Step 4: Run the contract test and the full suite**
 
 ```bash
 npx vitest run src/content/copy.test.ts
@@ -1183,7 +1191,7 @@ npx vitest run 2>&1 | tail -5
 
 Expected: PASS; 0 failed. If `is upper case throughout` fails, a new row carries lower case.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/content/copy.board.ts
@@ -1212,7 +1220,7 @@ component and cannot call a hook, so it reads `copy(key)` directly, which return
 string. That is correct: the recovery screen renders when the store failed to hydrate, so no skin
 preference is loadable.
 
-- [ ] **Step 1: Confirm the twins are byte-identical before converting**
+- [x] **Step 1: Confirm the twins are byte-identical before converting**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1226,7 +1234,7 @@ Expected: every literal in the three components appears verbatim in the table bl
 not is a rewrite, not a conversion: fix the table row to match the shipped string first, in this
 same commit, and say so in the commit body.
 
-- [ ] **Step 2: Convert `UpdatePrompt.tsx`, the smallest case**
+- [x] **Step 2: Convert `UpdatePrompt.tsx`, the smallest case**
 
 ```tsx
 import { useCopy } from '../skins/skinContext';
@@ -1250,7 +1258,7 @@ export function UpdatePrompt(): ReactElement | null {
 
 Confirm the hook's real name and path first: `git grep -n "export function useCopy" -- src`.
 
-- [ ] **Step 3: Run that one suite**
+- [x] **Step 3: Run that one suite**
 
 ```bash
 npx vitest run src/app/UpdatePrompt.test.tsx
@@ -1258,7 +1266,7 @@ npx vitest run src/app/UpdatePrompt.test.tsx
 
 Expected: PASS. The suite has 1 test as of `671382a`; the count must not change.
 
-- [ ] **Step 4: Convert `App.tsx`'s two banners**
+- [x] **Step 4: Convert `App.tsx`'s two banners**
 
 `saveErrorCopy` returns `{ tag, message, recovery }` with literals. Change `tag` and `message` to
 `CopyKey` values and resolve them at the render site, so the exhaustive switch keeps its `never`
@@ -1278,7 +1286,7 @@ frame to `FORMAT` if it does not exist; the table row is
 `'Stored data did not validate: unrecognized key. Nothing was overwritten.'` and the slot replaces
 `unrecognized key`.
 
-- [ ] **Step 5: Convert `RootErrorBoundary.tsx`**
+- [x] **Step 5: Convert `RootErrorBoundary.tsx`**
 
 Six keys: `recovery.hero`, `recovery.advice`, `recovery.exported`, `recovery.confirm`,
 `button.exportStoredData`, `button.clearData`, plus `recovery.cleared.hero` and
@@ -1286,7 +1294,7 @@ Six keys: `recovery.hero`, `recovery.advice`, `recovery.exported`, `recovery.con
 component interpolates `CONFIRMATION_WORD`. Add a `FORMAT.recoveryConfirm(word)` frame so the word
 and the string cannot disagree, in the pattern `ConfirmDestructive` already uses.
 
-- [ ] **Step 6: Fix the two em-dashes in the migration comment**
+- [x] **Step 6: Fix the two em-dashes in the migration comment**
 
 ```bash
 sed -n '45,51p' src/domain/migrations/index.ts
@@ -1297,7 +1305,7 @@ Line 49 reads `real cause — a missing migration — would be invisible.` Repla
 touches, and it is here because the residual list assigned it to P9 by name. Every other em-dash in
 a code comment is out of scope and is recorded in Task 30.
 
-- [ ] **Step 7: Run the three suites, then the full suite**
+- [x] **Step 7: Run the three suites, then the full suite**
 
 ```bash
 npx vitest run src/app/
@@ -1307,7 +1315,7 @@ git grep -n "Storage is full\|A new version is ready\|The app could not start" -
 
 Expected: 0 failed; the last command returns nothing.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add src/app/App.tsx src/app/UpdatePrompt.tsx src/app/RootErrorBoundary.tsx src/app/App.test.tsx src/app/UpdatePrompt.test.tsx src/app/RootErrorBoundary.test.tsx src/content/copy.ts src/domain/migrations/index.ts
@@ -1332,7 +1340,7 @@ returns 0 before the deletion, `npx tsc -b` is silent after it, and `npx vitest 
 failed. The `tsc -b` step is load-bearing: `CopyKey` is a union, so a deleted member that something
 still names is a compile error rather than a runtime blank.
 
-- [ ] **Step 1: Re-run the sweep after Task 15 has landed**
+- [x] **Step 1: Re-run the sweep after Task 15 has landed**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1365,7 +1373,7 @@ Expected: 26, or 25 if Task 10 wired `push.body`. The 2026-09-02 list of 48 was:
   `hero.noProfile`, `push.body`, `shell.status.loaded`, `shell.status.loading`,
   `status.setsLogged`, `why.deloadSets`, `why.targetsBasis`.
 
-- [ ] **Step 2: Retire the 11 migration keys and 8 of the 12 orphans**
+- [x] **Step 2: Retire the 11 migration keys and 8 of the 12 orphans**
 
 Delete the union member and the table row for each. Do not delete `status.planProgress`,
 `status.prReached` or `toast.setDeleted` in this step: they are Step 3's.
@@ -1379,7 +1387,7 @@ git grep -n "noProfile\|viewNotBuilt" -- src ':!src/content/copy.ts'
 If that returns nothing, they go. If a component renders an equivalent literal, they are twins and
 belong to Task 15's pattern rather than here.
 
-- [ ] **Step 3: Decide the three design rows explicitly**
+- [x] **Step 3: Decide the three design rows explicitly**
 
 `status.planProgress`, `status.prReached` and `toast.setDeleted` each carry a limelight row, and the
 first two carry a board row. All three sit in the REQUIRED list at `copy.test.ts:384`. They came from
@@ -1394,7 +1402,7 @@ round two and round three design tables and no component renders them. Two verdi
 Prefer keeping, and record the missing call sites. The rows cost 3 keys and the alternative deletes
 work the design asked for.
 
-- [ ] **Step 4: Confirm the sweep is clean and the union compiles**
+- [x] **Step 4: Confirm the sweep is clean and the union compiles**
 
 ```bash
 npx tsc -b
@@ -1406,7 +1414,7 @@ node scripts/copy-wordcount.mjs 2>/dev/null | sed -n '/^== DEFAULT_COPY/,/^TOTAL
 Expected: `tsc -b` silent; ESLint silent; 0 failed; a key count of about 503 and a word total below
 the Task 11 figure.
 
-- [ ] **Step 5: Verify the commit deletes nothing it should not**
+- [x] **Step 5: Verify the commit deletes nothing it should not**
 
 ```bash
 git diff -- src/content/copy.ts | grep '^-' | grep -oP "^-  '\K[a-zA-Z0-9_.]+(?=':)" | sort > /tmp/deleted.txt
@@ -1416,7 +1424,7 @@ comm -23 /tmp/deleted.txt <(sort /tmp/dead-keys.txt)
 Expected: no output. Any key printed here is a live key the diff is about to delete, which is
 incident 2 happening again.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/content/copy.ts src/content/copy.test.ts src/content/copy.limelight.ts src/content/copy.board.ts
@@ -1441,7 +1449,7 @@ call site, provable with `git grep -n SkinLabel -- src`, or carries a comment na
 that will place it. The file already carries that discipline for `lips` and `pause` at lines 86 to
 99: `lips` has no position in the app and none is invented.
 
-- [ ] **Step 1: List the unreachable entries**
+- [x] **Step 1: List the unreachable entries**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1454,7 +1462,7 @@ Expected, measured 2026-09-02: `advice.interventionBody`, `button.pausePlan`, `b
 `button.skipToday`, `button.trainSomethingElse`, `hero.weekReview`, `hero.weeklyTargetMissed`,
 `label.settingsSkin`, `status.prStamp`, `status.weekDeltaNegative`, `status.weekMetStamp`. Eleven.
 
-- [ ] **Step 2: For each, choose a call site or a comment**
+- [x] **Step 2: For each, choose a call site or a comment**
 
 Round three section 4.4 places the sixteen icons. Read it before deciding:
 
@@ -1466,7 +1474,7 @@ Where the design draws a glyph at a position the app renders, wrap that string i
 Where the component places the icon itself rather than through a copy key (the stamp and the marquee
 do), the map entry is dead and comes out, with the reason recorded in the comment block.
 
-- [ ] **Step 3: Run the icon and view suites**
+- [x] **Step 3: Run the icon and view suites**
 
 ```bash
 npx vitest run src/skins/limelight/ src/ui/views/ src/ui/components/ 2>&1 | tail -5
@@ -1475,7 +1483,7 @@ npx vitest run src/skins/limelight/ src/ui/views/ src/ui/components/ 2>&1 | tail
 Expected: 0 failed. `Icon.test.tsx:125` asserts `ICON_FOR_KEY['button.back']` is undefined, and
 `:136` asserts two entries by name; both must still hold.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 ```bash
 npx vitest run 2>&1 | tail -5
@@ -1483,7 +1491,7 @@ npx vitest run 2>&1 | tail -5
 
 Expected: 0 failed.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/skins/limelight/Icon.tsx src/skins/limelight/Icon.test.tsx
@@ -1508,7 +1516,7 @@ string that changed, and rule R10 names a file that does not exist.
 and `grep -nP "[\x{2013}\x{2014}]" docs/design/2026-09-01-copy-contract.md` returns only the R5 rule
 text and the numeric ranges it licenses. The first of those three is a loop, written below.
 
-- [ ] **Step 1: Fix the five stale lines first, because they are exact**
+- [x] **Step 1: Fix the five stale lines first, because they are exact**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1531,7 +1539,7 @@ Five edits, each exact:
    append to that row's After cell `(retired in 1500997; decision 10.2)`, because the row is a
    record of a change that happened and deleting it would falsify the history.
 
-- [ ] **Step 2: Delete the other 15 retired keys from the body**
+- [x] **Step 2: Delete the other 15 retired keys from the body**
 
 ```bash
 for k in advice.installIos advice.iosVersion advice.videoStoreFailed advice.videoTooLarge \
@@ -1546,7 +1554,7 @@ Expected before the edit: `2 in contract, 0 in copy.ts` for every one. Delete bo
 each. Leave the appended "Retired and added keys" section alone: it is the record of the deletion
 and must survive the deletion it records.
 
-- [ ] **Step 3: Add the keys the body is missing**
+- [x] **Step 3: Add the keys the body is missing**
 
 ```bash
 grep -oP "^  '\K[a-zA-Z0-9_.]+(?=':)" src/content/copy.ts | sort > /tmp/shipped.txt
@@ -1579,7 +1587,7 @@ Counts on 2026-09-02, from `node scripts/copy-wordcount.mjs`:
 
 Update those three counts to the post-Task-16 figures before committing.
 
-- [ ] **Step 4: Add the missing `advice.tapForSound` row and the limelight column**
+- [x] **Step 4: Add the missing `advice.tapForSound` row and the limelight column**
 
 Add to the contract body, in the motivation block:
 
@@ -1595,7 +1603,7 @@ falls through to the clinical string by design, and that the four rules at the h
 `copy.limelight.ts` bind both. State the limelight rule set in one line each rather than restating
 the file.
 
-- [ ] **Step 5: Add a decision header for every rule that changed**
+- [x] **Step 5: Add a decision header for every rule that changed**
 
 The convention is one line immediately above the section, per the global instruction file:
 
@@ -1610,7 +1618,7 @@ change counts as a rule change, and it does, it gets one too:
 <!-- decision: r10-runbook-path | status: adopted | supersedes: none -->
 ```
 
-- [ ] **Step 6: Run the three checks**
+- [x] **Step 6: Run the three checks**
 
 ```bash
 grep -oP "^  \| '\K[a-zA-Z0-9_.]+(?=')" docs/design/2026-09-01-copy-contract.md | sort > /tmp/contract.txt
@@ -1623,7 +1631,7 @@ for p in $(grep -oP '`\K[a-z][a-zA-Z0-9_./-]*\.(ts|tsx|md|sh|mjs|json)(?=`)' doc
 Expected: the first returns nothing; the second returns only R5's own rule text and numeric ranges
 such as `6–8`; the third returns nothing; the fourth returns nothing.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add docs/design/2026-09-01-copy-contract.md
@@ -1645,7 +1653,7 @@ contracts, so entries replace.
 shipped export byte for byte, checked one by one with the greps below. A signature that cannot be
 matched is a signature that changed after the plan was written, and the plan text is what moves.
 
-- [ ] **Step 1: Section 3 gains the no-user-agent-sniffing rule**
+- [x] **Step 1: Section 3 gains the no-user-agent-sniffing rule**
 
 The rule exists in code and in section 10's P5 item 5 correction, and nowhere in section 3. Add to
 the section 3 copy paragraph, as its own line:
@@ -1668,7 +1676,7 @@ git grep -n "userAgent" -- src worker
 Expected: no output outside a comment. If a hit appears, the rule is aspirational and must be
 written as such.
 
-- [ ] **Step 2: Section 4 file map**
+- [x] **Step 2: Section 4 file map**
 
 Two edits. Delete the `legacy/` line: `git ls-files legacy` is empty as of `1311f84`, and section
 10.11 records the deletion. Replace the `motivation/MotivationModal.tsx   P6` line with the six
@@ -1689,7 +1697,7 @@ for p in src/ui/motivation/MotivationModal.tsx src/ui/motivation/MotivationGate.
 done
 ```
 
-- [ ] **Step 3: Section 5 `UiPrefs`**
+- [x] **Step 3: Section 5 `UiPrefs`**
 
 ```bash
 grep -n "interface UiPrefs" src/domain/types.ts
@@ -1702,7 +1710,7 @@ The shipped interface at `types.ts:111` has `milestoneFloorByProfile: Record<str
 with the shipped interface, and rewrite the comment to:
 `skin default "limelight" (the user's choice, P8 Task 12); sounds default false; hotkeys default true; all Zod defaults, no version bump`.
 
-- [ ] **Step 4: Section 6.5**
+- [x] **Step 4: Section 6.5**
 
 ```bash
 grep -n "interface ProgressionAdvice" -A 3 src/domain/training/progression.ts
@@ -1716,7 +1724,7 @@ three hydration exports the plan does not name. Also correct the progression rul
 mechanism is floor-then-floor-at-one-step, and 3.57 per cent is what a 5 lb step applies at 140 lb;
 the plan text says "round up".
 
-- [ ] **Step 5: Section 6.7**
+- [x] **Step 5: Section 6.7**
 
 ```bash
 sed -n '104,109p' src/store/funActions.ts
@@ -1730,7 +1738,7 @@ signatures those greps print. Add one sentence: `addBonusExercise` and `addCusto
 a colliding id, and `AddCustomExercise.tsx` does not catch, which is unreachable through the UI
 because the form mints the id.
 
-- [ ] **Step 6: Section 6.8**
+- [x] **Step 6: Section 6.8**
 
 ```bash
 sed -n '450p' docs/plans/2026-09-01-00-master-plan.md
@@ -1740,7 +1748,7 @@ grep -n "export function pendingMotivation" -A 4 src/domain/motivation/trigger.t
 Replace the two-argument `pendingMotivation` with the shipped four-argument form and append the
 sentence `Superseded by section 10.5, which bounds the window at MOTIVATION_MISS_WINDOW_DAYS = 14.`
 
-- [ ] **Step 7: Section 7 gains a P9 row**
+- [x] **Step 7: Section 7 gains a P9 row**
 
 Append one row to the gates table:
 
@@ -1748,7 +1756,7 @@ Append one row to the gates table:
 | P9 | copy | `npx vitest run src/content/copy.test.ts` passes; `node scripts/copy-wordcount.mjs` reports a default-table word total below the 2175 measured on 2026-09-02; `git grep` finds a call site for every key in `DEFAULT_COPY`; every path and command quoted in `docs/` resolves |
 ```
 
-- [ ] **Step 8: Verify every edited signature against the tree**
+- [x] **Step 8: Verify every edited signature against the tree**
 
 ```bash
 npx tsc -b
@@ -1760,7 +1768,7 @@ done
 Expected: `tsc -b` silent, and each symbol found once. Compare each printed signature against the
 plan line you wrote.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add docs/plans/2026-09-01-00-master-plan.md
@@ -1779,7 +1787,7 @@ git commit -m "docs(P9): the master plan's contracts match the shipped signature
 claims something the tree contradicts. The verification is a targeted diff, not a re-read of 4300
 lines.
 
-- [ ] **Step 1: Line 1883, the API base**
+- [x] **Step 1: Line 1883, the API base**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1801,7 +1809,7 @@ with:
     `DEFAULT_REMINDER_SETTINGS: ReminderSettings`
 ```
 
-- [ ] **Step 2: Line 4292, the env block**
+- [x] **Step 2: Line 4292, the env block**
 
 ```bash
 sed -n '4290,4300p' docs/plans/2026-09-01-05-reminders.md
@@ -1819,7 +1827,7 @@ grep -n "VITE_REMINDER_API" .github/workflows/ci.yml .github/workflows/deploy.ym
 Expected: the variable appears under a job-level `env:` in both files. If it appears under a step,
 the plan is right and the workflow is wrong; stop and report rather than editing either.
 
-- [ ] **Step 3: Add an amendment note rather than rewriting history**
+- [x] **Step 3: Add an amendment note rather than rewriting history**
 
 This plan document has no amendment log section. Append one at the end:
 
@@ -1832,7 +1840,7 @@ have implemented from the plan. Line 1883 understated the API base validation; t
 master plan section 10, P5 item 11, puts it at job level, and both workflows do.
 ```
 
-- [ ] **Step 4: Check the prose**
+- [x] **Step 4: Check the prose**
 
 ```bash
 grep -nP "[\x{2013}\x{2014}]" docs/plans/2026-09-01-05-reminders.md | grep -v '[0-9]–[0-9]' | head
@@ -1841,7 +1849,7 @@ grep -nP "[\x{2013}\x{2014}]" docs/plans/2026-09-01-05-reminders.md | grep -v '[
 Expected: no new hits from the lines this task wrote. Pre-existing hits elsewhere in a 4300-line
 plan document are out of scope and are recorded in Task 30.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/plans/2026-09-01-05-reminders.md
@@ -1859,7 +1867,7 @@ git commit -m "docs(P9): correct the API base validation and the env-block place
 modal, and the file cites decision 10.9 for what replaced them. Amendment 8 is marked landed and
 names the six files, all of which resolve on disk.
 
-- [ ] **Step 1: Line 811, the autoplay paragraph**
+- [x] **Step 1: Line 811, the autoplay paragraph**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1886,7 +1894,7 @@ Verify the props claim first:
 grep -n "interface MotivationModalProps" -A 12 src/ui/motivation/MotivationModal.tsx
 ```
 
-- [ ] **Step 2: Mark amendment 8 landed**
+- [x] **Step 2: Mark amendment 8 landed**
 
 ```bash
 sed -n '1905p' docs/plans/2026-09-01-06-motivation-video.md
@@ -1895,7 +1903,7 @@ sed -n '1905p' docs/plans/2026-09-01-06-motivation-video.md
 Append to that item: `Landed in the P9 pass; master plan section 4 now lists all six.` Do this only
 after Task 19 Step 2 has committed, so the claim is true when it is written.
 
-- [ ] **Step 3: Record the Task 4 draft supersession as an amendment**
+- [x] **Step 3: Record the Task 4 draft supersession as an amendment**
 
 Append to the file's own amendments section:
 
@@ -1906,7 +1914,7 @@ Append to the file's own amendments section:
     it as a decision rather than as drift.
 ```
 
-- [ ] **Step 4: Check the six paths and the prose**
+- [x] **Step 4: Check the six paths and the prose**
 
 ```bash
 for p in src/ui/motivation/MotivationModal.tsx src/ui/motivation/MotivationGate.tsx \
@@ -1918,7 +1926,7 @@ done
 
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/plans/2026-09-01-06-motivation-video.md
@@ -1935,7 +1943,7 @@ git commit -m "docs(P9): P6's Task 4 draft is superseded by decision 10.9"
 **Check, stated first:** the four interface fragments this task rewrites match the shipped exports,
 verified one by one. The plan is 4900 lines and only these four fragments are in scope.
 
-- [ ] **Step 1: The `MigrateV2Result` shape, lines 1451 and 2427**
+- [x] **Step 1: The `MigrateV2Result` shape, lines 1451 and 2427**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1959,7 +1967,7 @@ export type ApplyMigrationResult =
 Replace both fragments with that block. The reason it changed: `migrateV2` must never throw, and an
 unknown IANA zone has to arrive as a value rather than as an exception.
 
-- [ ] **Step 2: `MigrateV2Options`, line 2465 and around**
+- [x] **Step 2: `MigrateV2Options`, line 2465 and around**
 
 ```bash
 sed -n '71,84p' src/domain/migrations/v2.ts
@@ -1968,7 +1976,7 @@ sed -n '71,84p' src/domain/migrations/v2.ts
 The plan's Task 3 interface omits `opts.units` and `opts.bodyMassUnits`. Paste the shipped
 `MigrateV2Options` block in place of the plan's, keeping the plan's surrounding prose.
 
-- [ ] **Step 3: The `ConfirmDestructive` shape, Task 6**
+- [x] **Step 3: The `ConfirmDestructive` shape, Task 6**
 
 ```bash
 grep -n "ConfirmDestructive" docs/plans/2026-09-01-07-log-export-migration-cutover.md | head
@@ -1980,7 +1988,7 @@ The plan's draft has no `titleKey`. The shipped props are
 and `titleKey` is required because two panels can be on screen at once. Replace the draft and add one
 sentence naming that reason.
 
-- [ ] **Step 4: The persistence names**
+- [x] **Step 4: The persistence names**
 
 ```bash
 sed -n '103p;2111p' docs/plans/2026-09-01-07-log-export-migration-cutover.md
@@ -1992,7 +2000,7 @@ The plan names `readLegacyV2`, `hasLegacyV2`, `deleteLegacyData`. The exports ar
 `readLegacyBundle()` returns a JSON envelope of all three legacy keys, which is what the wipe and
 the wizard both export.
 
-- [ ] **Step 5: The download filename, line 4962**
+- [x] **Step 5: The download filename, line 4962**
 
 ```bash
 sed -n '4960,4964p' docs/plans/2026-09-01-07-log-export-migration-cutover.md
@@ -2004,7 +2012,7 @@ the plan line, and add a sentence: the stamped form is the convention, and `App.
 `RootErrorBoundary.tsx` still write `fixthisinjustice-export.json` and
 `fixthisinjustice-recovery.json`, which are the crash-path names and stay distinct on purpose.
 
-- [ ] **Step 6: Append a corrections note**
+- [x] **Step 6: Append a corrections note**
 
 ```markdown
 ## P9 corrections (2026-09-02)
@@ -2016,7 +2024,7 @@ three legacy persistence exports (`readLegacyV2Raw`, `readLegacyBundle`, `delete
 wipe's download filename is the stamped form.
 ```
 
-- [ ] **Step 7: Verify every fragment against the tree**
+- [x] **Step 7: Verify every fragment against the tree**
 
 ```bash
 npx tsc -b
@@ -2026,7 +2034,7 @@ grep -c "deleteLegacyData" docs/plans/2026-09-01-07-log-export-migration-cutover
 
 Expected: `tsc -b` silent, and `deleteLegacyData` at 0.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add docs/plans/2026-09-01-07-log-export-migration-cutover.md
@@ -2045,7 +2053,7 @@ so the pattern no longer matches its own definition; the draw pseudocode matches
 and the amendments section carries the six items the close-outs produced. The grep form is checkable
 by running it.
 
-- [ ] **Step 1: The self-matching greps, lines 31, 833 and 4834**
+- [x] **Step 1: The self-matching greps, lines 31, 833 and 4834**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2067,7 +2075,7 @@ git grep -nEi 'vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e]' -- 'src/' 'wor
 
 Expected: no output.
 
-- [ ] **Step 2: The draw pseudocode, lines 2053 to 2058**
+- [x] **Step 2: The draw pseudocode, lines 2053 to 2058**
 
 ```bash
 sed -n '2050,2060p' docs/plans/2026-09-01-08-fun-mechanics.md
@@ -2079,7 +2087,7 @@ The plan calls `drawSpecimen(inventory, SPECIMEN_CARDS, rng, SPECIMEN_DROP_CHANC
 `drawSpecimenForLoggedSet`, seeded from stored state, so a replay returns the card that ordinal
 already produced. Replace the block with the shipped body and cite decisions 10.7 and 10.8.
 
-- [ ] **Step 3: Amendments 2 and 5**
+- [x] **Step 3: Amendments 2 and 5**
 
 ```bash
 sed -n '8477,8496p' docs/plans/2026-09-01-08-fun-mechanics.md
@@ -2100,7 +2108,7 @@ of what was asked:
    choice, not `clinical`. `schema.ts:511` and `types.ts:111` are the record.
 ```
 
-- [ ] **Step 4: Add the six close-out amendments**
+- [x] **Step 4: Add the six close-out amendments**
 
 Append items 11 to 16 to the same section, each one sentence, each verified before it is written:
 
@@ -2122,7 +2130,7 @@ grep -n "id: '" src/ui/views/SettingsView.tsx
 grep -n "LogSetResult" src/store/training.ts src/domain/types.ts | head
 ```
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/plans/2026-09-01-08-fun-mechanics.md
@@ -2142,7 +2150,7 @@ git commit -m "docs(P9): P8's greps, draw pseudocode and amendments match what s
 `src/content/copy.ts`, and the count it claims matches the number of `status.reminders*` keys. Both
 are greps.
 
-- [ ] **Step 1: Compare the quoted strings against the table**
+- [x] **Step 1: Compare the quoted strings against the table**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2154,7 +2162,7 @@ sed -n '415,420p' docs/RUNBOOK-reminders.md
 Expected: 8 keys in the table against 7 strings listed in section 12, and one quoted string at line
 417 that no key carries.
 
-- [ ] **Step 2: Fix the count and add the eighth string**
+- [x] **Step 2: Fix the count and add the eighth string**
 
 Change "exactly one of seven strings" to "exactly one of eight strings" and add:
 
@@ -2167,12 +2175,12 @@ push subscription does not, because it is a bearer credential the export withhol
 device the panel names the device and the action, because nothing recovers on its own. The key is
 `status.remindersNeedReenable` and `ReminderSettingsPanel.tsx:44` maps it.
 
-- [ ] **Step 3: Fix the troubleshooting quote at line 417**
+- [x] **Step 3: Fix the troubleshooting quote at line 417**
 
 `Reminders are not configured in this build.` is not a shipped string. Replace it with
 `Reminders are not set up on this deployment.`, which is what `copy.ts:862` holds.
 
-- [ ] **Step 4: Fix the install-steps claim at line 362**
+- [x] **Step 4: Fix the install-steps claim at line 362**
 
 The runbook says "These four steps are the ones the in-app install guide gives" and then gives six,
 the first quoting a URL the guide does not carry. `InstallGuide.tsx` renders four iOS steps:
@@ -2181,7 +2189,7 @@ the first quoting a URL the guide does not carry. `InstallGuide.tsx` renders fou
 Rewrite the lead-in to say that steps 1 to 4 are the guide's, quote the guide's step 1 verbatim, and
 put the deployment URL in the sentence before the list where it belongs.
 
-- [ ] **Step 5: Sweep every quoted string in the file against the table**
+- [x] **Step 5: Sweep every quoted string in the file against the table**
 
 ```bash
 grep -oP '^\s*[-|].*`\K[A-Z][^`]{10,}(?=`)' docs/RUNBOOK-reminders.md | sort -u | while read -r s; do
@@ -2192,7 +2200,7 @@ done
 Expected: no output, or output naming strings that are Worker log lines rather than app copy. Check
 each hit before dismissing it.
 
-- [ ] **Step 6: Check the prose**
+- [x] **Step 6: Check the prose**
 
 ```bash
 grep -nP "[\x{2013}\x{2014}]" docs/RUNBOOK-reminders.md
@@ -2201,7 +2209,7 @@ awk 'BEGIN{RS="[.!?]"} { n=split($0, w, /[ \n]+/); if (n > 26) print n" words: "
 
 Expected: no dashes; no sentence over 25 words in the sections this task wrote.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add docs/RUNBOOK-reminders.md
@@ -2221,7 +2229,7 @@ the default.
 **Check, stated first:** the "Fires when" column matches the four `playSfx` call sites, and the
 toggle's location names the default string. Both are greps.
 
-- [ ] **Step 1: Read the four call sites**
+- [x] **Step 1: Read the four call sites**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2234,20 +2242,20 @@ Expected: `session_done` at `TrainView.tsx:284` behind `if (ended?.status === 'c
 `pr_stamp` at `WeekStamp.tsx:79` when the stamp appears; `rest_over` at `RestTimerPanel.tsx:121`;
 `intervention_open` at `Intervention.tsx:60`.
 
-- [ ] **Step 2: Correct the table's two wrong rows**
+- [x] **Step 2: Correct the table's two wrong rows**
 
 `session_done` fires when the session is completed, not when the last set is logged. A user can log
 the last set and leave without completing. `pr_stamp` fires when the week stamp appears, which is a
 met or beaten week, not a set that beats a record. Rewrite both cells and add the call site to each
 so the next reader can check it in one grep.
 
-- [ ] **Step 3: Correct the toggle's location, line 47**
+- [x] **Step 3: Correct the toggle's location, line 47**
 
 The row is `label.settingsSkin`, whose default string is `Skin` and whose limelight string is
 `the look`. Rewrite: `Settings turns them on, in the skin row (`label.settingsSkin`), which the
 limelight skin titles "the look".`
 
-- [ ] **Step 4: Verify the three-unlock claim**
+- [x] **Step 4: Verify the three-unlock claim**
 
 ```bash
 git grep -n "useFirstGestureUnlock\|unlock(" -- src/skins/sfx.ts src/ui/settings/SkinSettings.tsx | head
@@ -2256,7 +2264,7 @@ git grep -n "useFirstGestureUnlock\|unlock(" -- src/skins/sfx.ts src/ui/settings
 Expected: the first-gesture hook, the sounds checkbox and the skin picker. If a fourth appears, add
 it; if one is missing, remove the claim.
 
-- [ ] **Step 5: Check the prose and the paths**
+- [x] **Step 5: Check the prose and the paths**
 
 ```bash
 grep -nP "[\x{2013}\x{2014}]" docs/sfx.md
@@ -2267,7 +2275,7 @@ done
 
 Expected: no dashes; no missing paths. `.m4a` paths are examples and are skipped.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/sfx.md
@@ -2287,7 +2295,7 @@ cite a tree that was deleted.
 **Check, stated first:** no finding cites a path that neither exists nor says where it is reachable,
 and the addendum's residual matches what `ReminderSettingsPanel.tsx` does today.
 
-- [ ] **Step 1: Close the addendum's residual**
+- [x] **Step 1: Close the addendum's residual**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2305,7 +2313,7 @@ with no device now reads `Reminders need enabling again on this device.` The pan
 and the action, because no subscription exists and nothing is queued.
 ```
 
-- [ ] **Step 2: Annotate H2 and M5, which cite a deleted tree**
+- [x] **Step 2: Annotate H2 and M5, which cite a deleted tree**
 
 ```bash
 sed -n '162,166p;468,472p' docs/review/2026-09-01-security-review.md
@@ -2324,7 +2332,7 @@ Expected: 0 tracked files under `legacy/`. Both findings quote `console-app.jsx`
 Do not rewrite the findings. A security review is a record of what was found on a date, and its
 citations are evidence.
 
-- [ ] **Step 3: Sweep every legacy path in the file**
+- [x] **Step 3: Sweep every legacy path in the file**
 
 ```bash
 grep -oP '`\K(console-[a-z]+\.jsx|core\.jsx|data\.js|legacy/[a-zA-Z0-9_./-]+)(?=`)' docs/review/2026-09-01-security-review.md | sort -u
@@ -2333,7 +2341,7 @@ grep -oP '`\K(console-[a-z]+\.jsx|core\.jsx|data\.js|legacy/[a-zA-Z0-9_./-]+)(?=
 For each name, confirm the file has a reachability note somewhere in the section that cites it. Add
 one where it does not, using the same `git show 1311f84^:<path>` form.
 
-- [ ] **Step 4: Check the prose of the lines this task wrote**
+- [x] **Step 4: Check the prose of the lines this task wrote**
 
 ```bash
 git diff -- docs/review/2026-09-01-security-review.md | grep '^+' | grep -P "[\x{2013}\x{2014}]"
@@ -2341,7 +2349,7 @@ git diff -- docs/review/2026-09-01-security-review.md | grep '^+' | grep -P "[\x
 
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/review/2026-09-01-security-review.md
@@ -2365,7 +2373,7 @@ about a default matches the schema; no sentence exceeds 25 words; no dash appear
 range. The P7 close-out measured the longest README sentence at 24 words, so that gate already held
 once and must still hold.
 
-- [ ] **Step 1: Resolve every path**
+- [x] **Step 1: Resolve every path**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2379,7 +2387,7 @@ done
 
 Expected: no output.
 
-- [ ] **Step 2: Run every command the README lists**
+- [x] **Step 2: Run every command the README lists**
 
 ```bash
 npm run typecheck && npm run lint && npm test 2>&1 | tail -3
@@ -2388,7 +2396,7 @@ npm run typecheck && npm run lint && npm test 2>&1 | tail -3
 Expected: all three succeed. Do not run `npm run test:tz`, which is four full suites and approaches
 the 20-minute cap; the README's claim about it is checked by CI.
 
-- [ ] **Step 3: Check the defaults the README asserts**
+- [x] **Step 3: Check the defaults the README asserts**
 
 ```bash
 grep -n "limelight" README.md
@@ -2399,7 +2407,7 @@ grep -n "sounds:" src/domain/schema.ts | head -2
 The README says limelight is the default. Confirm against `schema.ts:511`. If the README says
 anything about sounds being on, it is wrong: the default is false.
 
-- [ ] **Step 4: Check the prose of both files**
+- [x] **Step 4: Check the prose of both files**
 
 ```bash
 for f in README.md docs/motivation-video.md; do
@@ -2412,7 +2420,7 @@ done
 Expected: no dashes and no sentence over 25 words. Fix any hit by splitting the sentence, not by
 deleting a fact.
 
-- [ ] **Step 5: Cut what the reader does not need**
+- [x] **Step 5: Cut what the reader does not need**
 
 Governing sentence 1 applies to documentation as well as to the app. Cut any paragraph that
 describes how the app was built rather than how it is used or run. Keep every paragraph a user or a
@@ -2420,7 +2428,7 @@ maintainer would need. `docs/motivation-video.md` cites the P8 plan by line numb
 format; replace those citations with a citation of master plan decision 10.10, which is stable and
 does not move when a plan document is edited.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add README.md docs/motivation-video.md
@@ -2441,6 +2449,9 @@ never been seen on a device by any agent. This task is the user's own, and it ca
 
 **Check, stated first:** one pass on an iPhone and one on an Android phone, both from the installed
 app rather than a browser tab, with the limelight skin selected. Each row below gets a verdict.
+
+Not ticked (Task 30, 2026-09-02). `00c1fe3` wrote the checklist; the three steps below are the
+user's pass and no verdict has come back. Master plan section 10.14 records it.
 
 - [ ] **Step 1: Install and open**
 
@@ -2484,7 +2495,7 @@ sees 46 documents and images as changed.
 header this pass added, and no node is sourced from a path that no longer exists. Both are greps
 over the JSON. The run must not exceed 20 minutes; time it and stop it if it does.
 
-- [ ] **Step 1: Count the decision headers before the run**
+- [x] **Step 1: Count the decision headers before the run**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2493,7 +2504,7 @@ grep -rhoP '<!-- decision: \K[a-z0-9-]+' docs/ | sort -u | tee /tmp/headers.txt 
 
 Expected: the ten headers 10.1 to 10.10 plus the ones Task 18 added.
 
-- [ ] **Step 2: Run the update, timed**
+- [x] **Step 2: Run the update, timed**
 
 ```bash
 time graphify . --update 2>&1 | tail -20
@@ -2503,7 +2514,7 @@ Expected: completion inside 20 minutes. If the semantic pass over the changed do
 longer, interrupt it, run `graphify docs/design/2026-09-01-copy-contract.md --update` alone, and
 record the partial state in `graphify-out/cost.json` exactly as section 10.11 did.
 
-- [ ] **Step 3: Verify every header reached the graph**
+- [x] **Step 3: Verify every header reached the graph**
 
 ```bash
 while read -r h; do
@@ -2513,7 +2524,7 @@ done < /tmp/headers.txt
 
 Expected: no output.
 
-- [ ] **Step 4: Verify no node cites a deleted path**
+- [x] **Step 4: Verify no node cites a deleted path**
 
 ```bash
 grep -oP '"source":\s*"\K[^"]+' graphify-out/graph.json | sort -u | while read -r p; do
@@ -2523,7 +2534,7 @@ done | head -20
 
 Expected: no output. A hit under `legacy/` means the prune in `68870ca` did not reach it.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add graphify-out/graph.json graphify-out/graph.html graphify-out/GRAPH_REPORT.md graphify-out/cost.json graphify-out/manifest.json
@@ -2543,7 +2554,7 @@ git commit -m "chore(P9): regenerate the tracked graph after the contract's deci
 "what was not done" list names every item this plan knowingly left open. Every number in it comes
 from a command run in this task, not from a memory of an earlier task.
 
-- [ ] **Step 1: Measure everything the close-out will claim**
+- [x] **Step 1: Measure everything the close-out will claim**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -2559,7 +2570,7 @@ git log --oneline e107036..HEAD | wc -l
 Record every figure. The baseline to compare against is 522 keys and 2175 words, measured
 2026-09-02 before this pass began.
 
-- [ ] **Step 2: Append the P9 close-out to section 10**
+- [x] **Step 2: Append the P9 close-out to section 10**
 
 Append only. Do not edit an existing entry and do not reorder the section.
 
@@ -2613,7 +2624,7 @@ Commits, in order: <list>.
   checklist.
 ```
 
-- [ ] **Step 3: Fill every angle bracket with a measured number**
+- [x] **Step 3: Fill every angle bracket with a measured number**
 
 ```bash
 grep -n "<N>\|<M>\|<K>\|<T>\|<F>\|<list>" docs/plans/2026-09-01-00-master-plan.md
@@ -2621,7 +2632,7 @@ grep -n "<N>\|<M>\|<K>\|<T>\|<F>\|<list>" docs/plans/2026-09-01-00-master-plan.m
 
 Expected: no output. A placeholder left in a close-out is a false record.
 
-- [ ] **Step 4: Check the prose**
+- [x] **Step 4: Check the prose**
 
 ```bash
 git diff -- docs/plans/2026-09-01-00-master-plan.md | grep '^+' | grep -P "[\x{2013}\x{2014}]"
@@ -2629,7 +2640,7 @@ git diff -- docs/plans/2026-09-01-00-master-plan.md | grep '^+' | grep -P "[\x{2
 
 Expected: no output.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add docs/plans/2026-09-01-00-master-plan.md
