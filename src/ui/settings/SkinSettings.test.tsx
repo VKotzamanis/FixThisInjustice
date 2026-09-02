@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SkinSettings } from './SkinSettings';
-import { copy } from '../../content/copy';
+import { copy, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
 import type { SkinId } from '../../domain/types';
@@ -37,7 +37,7 @@ describe('SkinSettings', () => {
     useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'limelight' }) }));
     render(<SkinSettings />);
 
-    const group = screen.getByRole('group', { name: copy('label.settingsSkin') });
+    const group = screen.getByRole('group', { name: copyFor('limelight', 'label.settingsSkin') });
     expect(group).toBeInTheDocument();
     // The names are proper nouns, not the stored ids: a skin is a thing with a name.
     expect(screen.getByRole('radio', { name: 'Clinical' })).not.toBeChecked();
@@ -70,7 +70,9 @@ describe('SkinSettings', () => {
 
   it('keeps sounds off until the user turns them on', async () => {
     const user = userEvent.setup();
-    useAppStore.setState(makeAppState({ ui: makeUiPrefs() }));
+    // Pinned, because the assertions below quote the DEFAULT table and the SHIPPED skin is
+    // limelight (src/domain/schema.ts). What a skin changes is asserted in its own suite.
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
     render(<SkinSettings />);
 
     const toggle = screen.getByRole('checkbox', { name: copy('label.settingsSounds') });
@@ -87,7 +89,7 @@ describe('SkinSettings', () => {
 
   it('unlocks audio inside the gesture that turns sounds on, and only then', async () => {
     const user = userEvent.setup();
-    useAppStore.setState(makeAppState({ ui: makeUiPrefs() }));
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
     render(<SkinSettings />);
 
     const toggle = screen.getByRole('checkbox', { name: copy('label.settingsSounds') });
@@ -110,7 +112,7 @@ describe('SkinSettings', () => {
      * it, so the criterion was met on paper and not in the product.
      */
     const user = userEvent.setup();
-    useAppStore.setState(makeAppState({ ui: makeUiPrefs() }));
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
     render(<SkinSettings />);
 
     const toggle = screen.getByRole('checkbox', { name: copy('label.settingsHotkeys') });
@@ -132,7 +134,11 @@ describe('SkinSettings', () => {
     );
     render(<SkinSettings />);
 
-    await user.click(screen.getByRole('checkbox', { name: copy('label.settingsHotkeys') }));
+    // BOARD_COPY names no toggle, so this key falls through to the default. Quoted through
+    // `copyFor` rather than `copy` so the expectation states which table it expects.
+    await user.click(
+      screen.getByRole('checkbox', { name: copyFor('board', 'label.settingsHotkeys') }),
+    );
     const ui = useAppStore.getState().ui;
     expect(ui.hotkeys).toBe(false);
     expect(ui.skin).toBe('board');
@@ -166,5 +172,104 @@ describe('SkinSettings', () => {
     await user.click(screen.getByRole('radio', { name: 'Board' }));
     expect(sfx.unlock).toHaveBeenCalledTimes(1);
     expect(seen).toEqual(['board']);
+  });
+});
+
+/**
+ * THE PICKER UNDER A SKIN (P8 review).
+ *
+ * Every string in this component came from a bare `copy()` call, so the one row whose whole
+ * subject is the skin rendered the clinical words under all three of them: "Skin" where the
+ * design says "the look", and no crown, on the position round three section 4.4 draws the crown
+ * at (src/skins/limelight/Icon.tsx, ICON_FOR_KEY['label.settingsSkin']).
+ *
+ * Asserted by KEY through `copyFor`, never as a literal. The three SKIN NAMES are the deliberate
+ * exception and are asserted as literals, because a proper noun is what they are.
+ */
+describe('SkinSettings under a skin', () => {
+  it('names the picker and the toggles in the limelight words', () => {
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'limelight' }) }));
+    render(<SkinSettings />);
+
+    expect(
+      screen.getByRole('group', { name: copyFor('limelight', 'label.settingsSkin') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: copyFor('limelight', 'label.settingsSounds') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: copyFor('limelight', 'label.settingsHotkeys') }),
+    ).toBeInTheDocument();
+    // The clinical word is gone, not merely joined.
+    expect(
+      screen.queryByRole('group', { name: copyFor('clinical', 'label.settingsSkin') }),
+    ).toBeNull();
+  });
+
+  it('draws the crown at the position the design gives it, and only under limelight', () => {
+    /*
+     * The icon is DECORATIVE (empty alt, aria-hidden), so it is asserted through the DOM rather
+     * than through an accessible name: an icon that announced itself would double the group's
+     * name. Its absence off limelight is Icon's own skin gate, asserted here because this is the
+     * call site that has to survive it.
+     */
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'limelight' }) }));
+    const limelight = render(<SkinSettings />);
+    expect(limelight.container.querySelector('legend img.ll-icon')).not.toBeNull();
+    limelight.unmount();
+
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
+    const clinical = render(<SkinSettings />);
+    expect(clinical.container.querySelector('legend img.ll-icon')).toBeNull();
+  });
+
+  it('shouts the picker in the board words, and still writes the id the radio names', async () => {
+    const user = userEvent.setup();
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'board' }) }));
+    render(<SkinSettings />);
+
+    expect(
+      screen.getByRole('group', { name: copyFor('board', 'label.settingsSkin') }),
+    ).toBeInTheDocument();
+    // BOARD_COPY names neither toggle, so both fall through to the default: the fall-through is
+    // per KEY, which is what makes a partial override table safe.
+    expect(
+      screen.getByRole('checkbox', { name: copyFor('board', 'label.settingsHotkeys') }),
+    ).toBeInTheDocument();
+
+    // A skin renames the row and never the control: the radios still write `ui.skin`.
+    await user.click(screen.getByRole('radio', { name: 'Clinical' }));
+    expect(useAppStore.getState().ui.skin).toBe('clinical');
+  });
+
+  it('leaves the three skin names as proper nouns under every skin', () => {
+    /*
+     * The one row this component may NOT skin. A skin that renamed the other two would be a skin
+     * a user could not reliably leave, and the name also matches the id an exported document
+     * carries, so the screen and the file agree.
+     */
+    for (const skin of ['clinical', 'limelight', 'board'] as const) {
+      useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin }) }));
+      const view = render(<SkinSettings />);
+      for (const name of ['Clinical', 'Limelight', 'Board']) {
+        expect(screen.getByRole('radio', { name })).toBeInTheDocument();
+      }
+      view.unmount();
+    }
+  });
+
+  it('renders the default table under clinical', () => {
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
+    render(<SkinSettings />);
+
+    expect(
+      screen.getByRole('group', { name: copyFor('clinical', 'label.settingsSkin') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: copyFor('clinical', 'hero.skin') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('checkbox', { name: copyFor('clinical', 'label.settingsSounds') }),
+    ).toBeInTheDocument();
   });
 });

@@ -2,7 +2,9 @@ import type { ChangeEvent, JSX } from 'react';
 
 import { SKIN_IDS, useSkin } from '../../skins/skinContext';
 import { sfxPlayer } from '../../skins/sfx';
+import { SkinLabel } from '../../skins/limelight/Icon';
 import { copy, type CopyKey } from '../../content/copy';
+import { useCopy } from '../../content/useCopy';
 import { useAppStore } from '../../store';
 import type { SkinId } from '../../domain/types';
 
@@ -32,6 +34,14 @@ const SKIN_LABEL: Readonly<Record<SkinId, CopyKey>> = {
  */
 export function SkinSettings(): JSX.Element {
   const skin = useSkin();
+  /*
+   * The row's own words, resolved at RENDER against the active skin.
+   *
+   * Every string here was a bare `copy()` call until the P8 review, which is the DEFAULT table
+   * whatever `ui.skin` says: the one screen whose whole subject is the skin was the one screen
+   * that did not follow it. `SKIN_LABEL` above is the deliberate exception and stays on `copy()`.
+   */
+  const c = useCopy();
   const sounds = useAppStore((state) => state.ui.sounds);
   const hotkeys = useAppStore((state) => state.ui.hotkeys);
 
@@ -85,8 +95,8 @@ export function SkinSettings(): JSX.Element {
 
   return (
     <>
-      <h2>{copy('hero.skin')}</h2>
-      <p className="view-note">{copy('advice.skinChanges')}</p>
+      <h2>{c('hero.skin')}</h2>
+      <p className="view-note">{c('advice.skinChanges')}</p>
       {/*
         * THE CLASS NAMES ARE THE SHEET'S, NOT THIS COMPONENT'S. `skin-picker`, `skin-option` and
         * `settings-toggle` named no rule in any stylesheet this app loads, so the picker
@@ -98,7 +108,18 @@ export function SkinSettings(): JSX.Element {
         * already gives `min-height: 2.75rem` (44 px at the 16 px root) and a token palette.
         */}
       <fieldset>
-        <legend>{copy('label.settingsSkin')}</legend>
+        {/*
+          * Through SkinLabel rather than `c('label.settingsSkin')` alone, because round three
+          * section 4.4 draws the CROWN at this position and ICON_FOR_KEY carries it. SkinLabel
+          * is the one call-site shape that replaces an emoji position: it reads the string
+          * through `useCopy()` and renders the icon only on limelight, where Icon is the only
+          * skin that has art. The icon is decorative, so the legend's text is still the whole
+          * accessible name of the fieldset.
+          */}
+        <legend>
+          <SkinLabel copyKey="label.settingsSkin" />
+        </legend>
+        {/* The three names stay `copy()`: see SKIN_LABEL above. */}
         {SKIN_IDS.map((id) => (
           <label key={id} className="view-inline">
             <input
@@ -114,13 +135,13 @@ export function SkinSettings(): JSX.Element {
       </fieldset>
       <label className="view-inline">
         <input type="checkbox" checked={sounds} onChange={onSoundsChange} />
-        {copy('label.settingsSounds')}
+        {c('label.settingsSounds')}
       </label>
       <label className="view-inline">
         <input type="checkbox" checked={hotkeys} onChange={onHotkeysChange} />
-        {copy('label.settingsHotkeys')}
+        {c('label.settingsHotkeys')}
       </label>
-      <p className="view-note">{copy('advice.hotkeysOff')}</p>
+      <p className="view-note">{c('advice.hotkeysOff')}</p>
     </>
   );
 }
