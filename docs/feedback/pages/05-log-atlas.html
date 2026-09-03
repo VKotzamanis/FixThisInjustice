@@ -1,0 +1,373 @@
+<title>Log And Atlas Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 2px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.part{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.pid{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.what{margin:0 0 10px;font-size:14px;color:var(--text-2)}
+.states{font-family:var(--mono);font-size:12px;margin:0 0 12px;color:var(--text-2)}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha round 1</p>
+  <h1>Log and Atlas</h1>
+  <p class="lede">Open <a href="https://vkotzamanis.github.io/FixThisInjustice/">the live app</a> on your phone beside this page. The skin is limelight by default. Walk the screen, come back, write in the box under the part you mean.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+<h2>log (5)</h2>
+
+<section class="part" id="log.body-mass-chart">
+  <p class="pid"><code>log.body-mass-chart</code></p>
+  <h3>Body mass chart</h3>
+  <p class="what">The body mass series and its axes.</p>
+  <p class="states">states: empty, plotted</p>
+  <ol class="strings">
+<li>
+<code>advice.noBodyMassLogged</code>
+<p class="lime-str">No body mass logged.</p>
+</li>
+<li>
+<code>hero.bodyMass</code>
+<p class="lime-str">Body mass</p>
+</li>
+</ol>
+  <label class="box" for="c-log.body-mass-chart">What needs to change here?</label>
+  <textarea id="c-log.body-mass-chart" data-part="log.body-mass-chart" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="log.compliance-grid">
+  <p class="pid"><code>log.compliance-grid</code></p>
+  <h3>Compliance grid</h3>
+  <p class="what">The grid of sessions met and missed by week.</p>
+  <p class="states">states: empty, plotted</p>
+  <ol class="strings">
+<li>
+<code>advice.noWeeksYet</code>
+<p class="lime-str">No weeks to show.</p>
+</li>
+<li>
+<code>hero.compliance</code>
+<p class="lime-str">the attendance</p>
+</li>
+<li>
+<code>label.complianceGrid</code>
+<p class="lime-str">Session compliance by week</p>
+</li>
+<li>
+<code>status.complianceWeek</code>
+<p class="lime-str">Week of {monday}: {completed} of {target} completed</p>
+</li>
+<li>
+<code>status.markCompleted</code>
+<p class="lime-str">Completed</p>
+</li>
+<li>
+<code>status.markMissed</code>
+<p class="lime-str">Missed</p>
+</li>
+<li>
+<code>status.markNotPlanned</code>
+<p class="lime-str">Not planned</p>
+</li>
+<li>
+<code>status.markPlanned</code>
+<p class="lime-str">Planned</p>
+</li>
+<li>
+<code>status.markSkipped</code>
+<p class="lime-str">Skipped</p>
+</li>
+</ol>
+  <label class="box" for="c-log.compliance-grid">What needs to change here?</label>
+  <textarea id="c-log.compliance-grid" data-part="log.compliance-grid" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="log.amrap-spark">
+  <p class="pid"><code>log.amrap-spark</code></p>
+  <h3>AMRAP spark</h3>
+  <p class="what">The reps-per-week spark line.</p>
+  <p class="states">states: empty, plotted</p>
+  <ol class="strings">
+<li>
+<code>hero.repsPerWeek</code>
+<p class="lime-str">Best reps per week</p>
+</li>
+<li>
+<code>status.amrapBest</code>
+<p class="lime-str">{name}: best {reps} reps in one set</p>
+</li>
+</ol>
+  <label class="box" for="c-log.amrap-spark">What needs to change here?</label>
+  <textarea id="c-log.amrap-spark" data-part="log.amrap-spark" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="log.records">
+  <p class="pid"><code>log.records</code></p>
+  <h3>Personal records</h3>
+  <p class="what">The record list and what counts as a record.</p>
+  <p class="states">states: empty, listed</p>
+  <ol class="strings">
+<li>
+<code>advice.noSetsLogged</code>
+<p class="lime-str">no sets yet. start something.</p>
+</li>
+<li>
+<code>hero.personalRecords</code>
+<p class="lime-str">the highlight reel</p>
+</li>
+<li>
+<code>status.estimated1RM</code>
+<p class="lime-str">{load} estimated 1RM</p>
+</li>
+<li>
+<code>status.noEstimated1RM</code>
+<p class="lime-str">No estimated 1RM</p>
+</li>
+</ol>
+  <label class="box" for="c-log.records">What needs to change here?</label>
+  <textarea id="c-log.records" data-part="log.records" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="log.empty">
+  <p class="pid"><code>log.empty</code></p>
+  <h3>Log empty state</h3>
+  <p class="what">What Log says before anything has been logged.</p>
+  <p class="states">states: no-profile, no-data</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-log.empty">What needs to change here?</label>
+  <textarea id="c-log.empty" data-part="log.empty" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>atlas (6)</h2>
+
+<section class="part" id="atlas.count">
+  <p class="pid"><code>atlas.count</code></p>
+  <h3>Collected count</h3>
+  <p class="what">The count line above the grid.</p>
+  <p class="states">states: none, partial, complete</p>
+  <ol class="strings">
+<li>
+<code>advice.atlas</code>
+<p class="lime-str">a field journal. every logged set might drop a card.</p>
+</li>
+<li>
+<code>hero.atlas</code>
+<p class="lime-str">Atlas</p>
+</li>
+<li>
+<code>label.atlasCollected</code>
+<p class="lime-str">Collected</p>
+</li>
+</ol>
+  <label class="box" for="c-atlas.count">What needs to change here?</label>
+  <textarea id="c-atlas.count" data-part="atlas.count" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="atlas.rarity.common">
+  <p class="pid"><code>atlas.rarity.common</code></p>
+  <h3>Common section</h3>
+  <p class="what">The common rarity heading, count and grid.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>label.rarityCommon</code>
+<p class="lime-str">Common</p>
+</li>
+</ol>
+  <label class="box" for="c-atlas.rarity.common">What needs to change here?</label>
+  <textarea id="c-atlas.rarity.common" data-part="atlas.rarity.common" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="atlas.rarity.uncommon">
+  <p class="pid"><code>atlas.rarity.uncommon</code></p>
+  <h3>Uncommon section</h3>
+  <p class="what">The uncommon rarity heading, count and grid.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>label.rarityUncommon</code>
+<p class="lime-str">Uncommon</p>
+</li>
+</ol>
+  <label class="box" for="c-atlas.rarity.uncommon">What needs to change here?</label>
+  <textarea id="c-atlas.rarity.uncommon" data-part="atlas.rarity.uncommon" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="atlas.rarity.rare">
+  <p class="pid"><code>atlas.rarity.rare</code></p>
+  <h3>Rare section</h3>
+  <p class="what">The rare rarity heading, count and grid.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>label.rarityRare</code>
+<p class="lime-str">Rare</p>
+</li>
+</ol>
+  <label class="box" for="c-atlas.rarity.rare">What needs to change here?</label>
+  <textarea id="c-atlas.rarity.rare" data-part="atlas.rarity.rare" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="atlas.locked-slot">
+  <p class="pid"><code>atlas.locked-slot</code></p>
+  <h3>Locked slot</h3>
+  <p class="what">An undiscovered card, and the name a screen reader hears.</p>
+  <p class="states">states: locked</p>
+  <ol class="strings">
+<li>
+<code>status.undiscovered</code>
+<p class="lime-str">still a mystery</p>
+</li>
+</ol>
+  <label class="box" for="c-atlas.locked-slot">What needs to change here?</label>
+  <textarea id="c-atlas.locked-slot" data-part="atlas.locked-slot" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="atlas.detail-dialog">
+  <p class="pid"><code>atlas.detail-dialog</code></p>
+  <h3>Card dialog</h3>
+  <p class="what">The card body, its citation and the close control.</p>
+  <p class="states">states: open</p>
+  <ol class="strings">
+<li>
+<code>button.closeModal</code>
+<p class="lime-str">Close</p>
+</li>
+<li>
+<code>label.atlasSource</code>
+<p class="lime-str">Source</p>
+</li>
+</ol>
+  <label class="box" for="c-atlas.detail-dialog">What needs to change here?</label>
+  <textarea id="c-atlas.detail-dialog" data-part="atlas.detail-dialog" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="part" id="05-log-atlas.general">
+  <p class="pid"><code>05-log-atlas.general</code></p>
+  <h3>Anything else on this page</h3>
+  <p class="what">A comment that belongs to the whole screen rather than to one part.</p>
+  <p class="states">states: none</p>
+  <label class="box" for="c-05-log-atlas.general">What needs to change?</label>
+  <textarea id="c-05-log-atlas.general" data-part="05-log-atlas.general" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, in the form the round document reads. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page, or say it in the session and name the part id.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<nav class="pager"><a href="#">back: Plan and Targets</a><a href="#">next: Settings</a></nav>
+<script>
+(function(){
+  var KEY='fti-alpha-r1-05-log-atlas';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-part]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-part')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-part');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-part');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>

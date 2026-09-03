@@ -1,0 +1,359 @@
+<title>Plan And Targets Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 2px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.part{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.pid{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.what{margin:0 0 10px;font-size:14px;color:var(--text-2)}
+.states{font-family:var(--mono);font-size:12px;margin:0 0 12px;color:var(--text-2)}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha round 1</p>
+  <h1>Plan and Targets</h1>
+  <p class="lede">Open <a href="https://vkotzamanis.github.io/FixThisInjustice/">the live app</a> on your phone beside this page. The skin is limelight by default. Walk the screen, come back, write in the box under the part you mean.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+<h2>plan (4)</h2>
+
+<section class="part" id="plan.block-strip">
+  <p class="pid"><code>plan.block-strip</code></p>
+  <h3>Block strip</h3>
+  <p class="what">The training and deload blocks, with their session ranges.</p>
+  <p class="states">states: training, deload</p>
+  <ol class="strings">
+<li>
+<code>label.block</code>
+<p class="lime-str">Block {number}</p>
+</li>
+<li>
+<code>label.blockStrip</code>
+<p class="lime-str">Training blocks</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE TWO TRAINING TERMS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.blockSessions</code>
+<p class="lime-str">sessions {from}–{to}</p>
+</li>
+<li>
+<code>status.deloadNote</code>
+<p class="lime-str">volume −{cutPct} %, load unchanged</p>
+</li>
+<li>
+<code>status.deloadTag</code>
+<p class="lime-str">DELOAD</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE TWO TRAINING TERMS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>why.deloadSets</code>
+<p class="lime-str">Each set count is the planned count times this block's set modifier of 0.5, rounded to the nearest whole set, minimum 1. The load is unchanged.</p>
+</li>
+</ol>
+  <label class="box" for="c-plan.block-strip">What needs to change here?</label>
+  <textarea id="c-plan.block-strip" data-part="plan.block-strip" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="plan.week-scrubber">
+  <p class="pid"><code>plan.week-scrubber</code></p>
+  <h3>Week scrubber</h3>
+  <p class="what">The control that moves the view a week at a time.</p>
+  <p class="states">states: first-week, middle, last-week</p>
+  <ol class="strings">
+<li>
+<code>label.week</code>
+<p class="lime-str">Week</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.weekOfCount</code>
+<p class="lime-str">Week {shown} of {total}</p>
+</li>
+</ol>
+  <label class="box" for="c-plan.week-scrubber">What needs to change here?</label>
+  <textarea id="c-plan.week-scrubber" data-part="plan.week-scrubber" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="plan.session-cards">
+  <p class="pid"><code>plan.session-cards</code></p>
+  <h3>Session cards</h3>
+  <p class="what">One card per session, with its exercises and rest.</p>
+  <p class="states">states: past, next, future</p>
+  <ol class="strings">
+<li>
+<code>status.nextSession</code>
+<p class="lime-str">next</p>
+<p class="refusal">This string keeps its plain wording on every skin: CASE ALONE, OR THE LIMELIGHT WORD ALREADY. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+</ol>
+  <label class="box" for="c-plan.session-cards">What needs to change here?</label>
+  <textarea id="c-plan.session-cards" data-part="plan.session-cards" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="plan.deep-link">
+  <p class="pid"><code>plan.deep-link</code></p>
+  <h3>Deep link to a session</h3>
+  <p class="what">The control that opens a session from a plan card.</p>
+  <p class="states">states: enabled, no-plan</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-plan.deep-link">What needs to change here?</label>
+  <textarea id="c-plan.deep-link" data-part="plan.deep-link" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>targets (8)</h2>
+
+<section class="part" id="targets.energy">
+  <p class="pid"><code>targets.energy</code></p>
+  <h3>Energy target</h3>
+  <p class="what">The daily energy figure and its unit.</p>
+  <p class="states">states: default</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-targets.energy">What needs to change here?</label>
+  <textarea id="c-targets.energy" data-part="targets.energy" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.protein">
+  <p class="pid"><code>targets.protein</code></p>
+  <h3>Protein target</h3>
+  <p class="what">The daily protein figure and its unit.</p>
+  <p class="states">states: default</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-targets.protein">What needs to change here?</label>
+  <textarea id="c-targets.protein" data-part="targets.protein" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.fluid">
+  <p class="pid"><code>targets.fluid</code></p>
+  <h3>Fluid target</h3>
+  <p class="what">The daily beverage intake target.</p>
+  <p class="states">states: default</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-targets.fluid">What needs to change here?</label>
+  <textarea id="c-targets.fluid" data-part="targets.fluid" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.expected-rate">
+  <p class="pid"><code>targets.expected-rate</code></p>
+  <h3>Expected rate</h3>
+  <p class="what">The expected rate of body mass change.</p>
+  <p class="states">states: default, maintenance</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-targets.expected-rate">What needs to change here?</label>
+  <textarea id="c-targets.expected-rate" data-part="targets.expected-rate" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.creatine-dose">
+  <p class="pid"><code>targets.creatine-dose</code></p>
+  <h3>Creatine dose</h3>
+  <p class="what">The daily dose and the sentence that defines it.</p>
+  <p class="states">states: default</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-targets.creatine-dose">What needs to change here?</label>
+  <textarea id="c-targets.creatine-dose" data-part="targets.creatine-dose" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.why">
+  <p class="pid"><code>targets.why</code></p>
+  <h3>The why disclosure</h3>
+  <p class="what">RMR and TDEE behind the &quot;why?&quot; summary, under contract R9.</p>
+  <p class="states">states: closed, open</p>
+  <ol class="strings">
+<li>
+<code>label.rmr</code>
+<p class="lime-str">Resting metabolic rate</p>
+</li>
+<li>
+<code>label.tdee</code>
+<p class="lime-str">Total daily energy expenditure</p>
+</li>
+<li>
+<code>why.beverageDefault</code>
+<p class="lime-str">IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of which beverages supply 3.0 L and 2.2 L. Water in food supplies the rest and is not counted here, because an app cannot measure it.</p>
+</li>
+</ol>
+  <label class="box" for="c-targets.why">What needs to change here?</label>
+  <textarea id="c-targets.why" data-part="targets.why" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.intake-check-in">
+  <p class="pid"><code>targets.intake-check-in</code></p>
+  <h3>Intake check-in</h3>
+  <p class="what">The daily energy and beverage entry, and its progress lines.</p>
+  <p class="states">states: empty, partial, met, error</p>
+  <ol class="strings">
+<li>
+<code>advice.intakeRejected</code>
+<p class="lime-str">Daily total outside the accepted range.</p>
+</li>
+<li>
+<code>button.recordIntake</code>
+<p class="lime-str">Record intake</p>
+</li>
+<li>
+<code>hero.intakeCheckIn</code>
+<p class="lime-str">Intake check-in</p>
+</li>
+<li>
+<code>label.energyProgress</code>
+<p class="lime-str">Energy against target</p>
+</li>
+<li>
+<code>label.proteinProgress</code>
+<p class="lime-str">Protein against the lower bound</p>
+</li>
+<li>
+<code>quantity.energyIntake</code>
+<p class="lime-str">Energy consumed today</p>
+</li>
+<li>
+<code>quantity.proteinIntake</code>
+<p class="lime-str">Protein consumed today</p>
+</li>
+</ol>
+  <label class="box" for="c-targets.intake-check-in">What needs to change here?</label>
+  <textarea id="c-targets.intake-check-in" data-part="targets.intake-check-in" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="targets.empty">
+  <p class="pid"><code>targets.empty</code></p>
+  <h3>Targets empty state</h3>
+  <p class="what">What Targets says before a profile exists.</p>
+  <p class="states">states: no-profile</p>
+  <ol class="strings">
+<li>
+<code>advice.noProfileSetupFirst</code>
+<p class="lime-str">no profile. setup first, babes.</p>
+</li>
+</ol>
+  <label class="box" for="c-targets.empty">What needs to change here?</label>
+  <textarea id="c-targets.empty" data-part="targets.empty" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="part" id="04-plan-targets.general">
+  <p class="pid"><code>04-plan-targets.general</code></p>
+  <h3>Anything else on this page</h3>
+  <p class="what">A comment that belongs to the whole screen rather than to one part.</p>
+  <p class="states">states: none</p>
+  <label class="box" for="c-04-plan-targets.general">What needs to change?</label>
+  <textarea id="c-04-plan-targets.general" data-part="04-plan-targets.general" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, in the form the round document reads. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page, or say it in the session and name the part id.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<nav class="pager"><a href="#">back: Train</a><a href="#">next: Log and Atlas</a></nav>
+<script>
+(function(){
+  var KEY='fti-alpha-r1-04-plan-targets';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-part]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-part')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-part');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-part');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>

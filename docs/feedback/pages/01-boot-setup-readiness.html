@@ -1,0 +1,1061 @@
+<title>Boot And Setup Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 2px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.part{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.pid{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.what{margin:0 0 10px;font-size:14px;color:var(--text-2)}
+.states{font-family:var(--mono);font-size:12px;margin:0 0 12px;color:var(--text-2)}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha round 1</p>
+  <h1>Boot and setup</h1>
+  <p class="lede">Open <a href="https://vkotzamanis.github.io/FixThisInjustice/">the live app</a> on your phone beside this page. The skin is limelight by default. Walk the screen, come back, write in the box under the part you mean.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+<h2>boot (2)</h2>
+
+<section class="part" id="boot.sequence">
+  <p class="pid"><code>boot.sequence</code></p>
+  <h3>Boot sequence</h3>
+  <p class="what">The dotted step lines that print on the first open.</p>
+  <p class="states">states: running, finished</p>
+  <ol class="strings">
+<li>
+<code>hero.boot</code>
+<p class="lime-str">warming up</p>
+</li>
+<li>
+<code>status.bootConsole</code>
+<p class="lime-str">limelight console v3</p>
+</li>
+<li>
+<code>status.bootOk</code>
+<p class="lime-str">yes</p>
+</li>
+<li>
+<code>status.bootPlan</code>
+<p class="lime-str">cueing the plan</p>
+</li>
+<li>
+<code>status.bootPlanName</code>
+<p class="lime-str">the {name} era</p>
+</li>
+<li>
+<code>status.bootReady</code>
+<p class="lime-str">she's ready.</p>
+</li>
+<li>
+<code>status.bootSchedule</code>
+<p class="lime-str">{count} shows per week</p>
+</li>
+<li>
+<code>status.bootStore</code>
+<p class="lime-str">unpacking the archive</p>
+</li>
+<li>
+<code>status.bootWeek</code>
+<p class="lime-str">week {week} of {weeks}</p>
+</li>
+</ol>
+  <label class="box" for="c-boot.sequence">What needs to change here?</label>
+  <textarea id="c-boot.sequence" data-part="boot.sequence" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="boot.skip">
+  <p class="pid"><code>boot.skip</code></p>
+  <h3>Skip control</h3>
+  <p class="what">The control that ends the sequence, and the any-key skip.</p>
+  <p class="states">states: visible</p>
+  <ol class="strings">
+<li>
+<code>button.skipBoot</code>
+<p class="lime-str">skip it</p>
+</li>
+</ol>
+  <label class="box" for="c-boot.skip">What needs to change here?</label>
+  <textarea id="c-boot.skip" data-part="boot.skip" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>shell (7)</h2>
+
+<section class="part" id="shell.topbar">
+  <p class="pid"><code>shell.topbar</code></p>
+  <h3>Top bar</h3>
+  <p class="what">The brand line and the loading or loaded status word.</p>
+  <p class="states">states: loading, loaded</p>
+  <ol class="strings">
+<li>
+<code>shell.status.loaded</code>
+<p class="lime-str">local data loaded</p>
+</li>
+<li>
+<code>shell.status.loading</code>
+<p class="lime-str">reading local data</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.topbar">What needs to change here?</label>
+  <textarea id="c-shell.topbar" data-part="shell.topbar" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="shell.session-indicator">
+  <p class="pid"><code>shell.session-indicator</code></p>
+  <h3>Session indicator</h3>
+  <p class="what">The plan position shown in the header from every view.</p>
+  <p class="states">states: no-plan, idle, in-progress</p>
+  <ol class="strings">
+<li>
+<code>hero.programmeComplete</code>
+<p class="lime-str">the whole run. done.</p>
+</li>
+<li>
+<code>label.planPosition</code>
+<p class="lime-str">Plan position</p>
+</li>
+<li>
+<code>status.planComplete</code>
+<p class="lime-str">wrapped</p>
+</li>
+<li>
+<code>status.sessionCursor</code>
+<p class="lime-str">ep. {shown} of {total}</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.session-indicator">What needs to change here?</label>
+  <textarea id="c-shell.session-indicator" data-part="shell.session-indicator" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="shell.tab-strip">
+  <p class="pid"><code>shell.tab-strip</code></p>
+  <h3>Tab strip</h3>
+  <p class="what">The seven tabs, in the order src/ui/nav/views.ts sets.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>nav.atlas</code>
+<p class="lime-str">the collection</p>
+</li>
+<li>
+<code>nav.label</code>
+<p class="lime-str">the views</p>
+</li>
+<li>
+<code>nav.log</code>
+<p class="lime-str">the archive</p>
+</li>
+<li>
+<code>nav.plan</code>
+<p class="lime-str">the run</p>
+</li>
+<li>
+<code>nav.settings</code>
+<p class="lime-str">backstage</p>
+</li>
+<li>
+<code>nav.targets</code>
+<p class="lime-str">the numbers</p>
+</li>
+<li>
+<code>nav.today</code>
+<p class="lime-str">today</p>
+</li>
+<li>
+<code>nav.train</code>
+<p class="lime-str">showtime</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.tab-strip">What needs to change here?</label>
+  <textarea id="c-shell.tab-strip" data-part="shell.tab-strip" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="shell.spotlight-button">
+  <p class="pid"><code>shell.spotlight-button</code></p>
+  <h3>Spotlight button</h3>
+  <p class="what">The control that opens the command palette.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>button.openSpotlight</code>
+<p class="lime-str">find it</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.spotlight-button">What needs to change here?</label>
+  <textarea id="c-shell.spotlight-button" data-part="shell.spotlight-button" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="shell.update-prompt">
+  <p class="pid"><code>shell.update-prompt</code></p>
+  <h3>Update prompt</h3>
+  <p class="what">The banner offering a reload when a new build is waiting.</p>
+  <p class="states">states: hidden, offered</p>
+  <ol class="strings">
+<li>
+<code>banner.update.body</code>
+<p class="lime-str">A new version is ready.</p>
+</li>
+<li>
+<code>banner.update.tag</code>
+<p class="lime-str">UPDATE READY</p>
+</li>
+<li>
+<code>button.reload</code>
+<p class="lime-str">Reload</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.update-prompt">What needs to change here?</label>
+  <textarea id="c-shell.update-prompt" data-part="shell.update-prompt" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="shell.save-error">
+  <p class="pid"><code>shell.save-error</code></p>
+  <h3>Save error banner</h3>
+  <p class="what">The banner shown when the document could not be written.</p>
+  <p class="states">states: hidden, raised</p>
+  <ol class="strings">
+<li>
+<code>banner.saveFailed.body</code>
+<p class="lime-str">The change could not be saved. The stored copy is unchanged.</p>
+</li>
+<li>
+<code>banner.saveFailed.tag</code>
+<p class="lime-str">SAVE FAILED</p>
+</li>
+<li>
+<code>banner.saveQuota.body</code>
+<p class="lime-str">Storage is full. Export now.</p>
+</li>
+<li>
+<code>banner.saveQuota.tag</code>
+<p class="lime-str">STORAGE FULL</p>
+</li>
+<li>
+<code>banner.saveUnavailable.body</code>
+<p class="lime-str">Storage is unavailable here. Export now.</p>
+</li>
+<li>
+<code>banner.saveUnavailable.tag</code>
+<p class="lime-str">NO STORAGE</p>
+</li>
+<li>
+<code>button.exportData</code>
+<p class="lime-str">Export data</p>
+</li>
+<li>
+<code>button.exportStoredCopy</code>
+<p class="lime-str">Export stored copy</p>
+</li>
+<li>
+<code>button.retrySave</code>
+<p class="lime-str">try again</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.save-error">What needs to change here?</label>
+  <textarea id="c-shell.save-error" data-part="shell.save-error" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="shell.load-error">
+  <p class="pid"><code>shell.load-error</code></p>
+  <h3>Load error banner</h3>
+  <p class="what">The banner shown when the stored document could not be read.</p>
+  <p class="states">states: hidden, raised</p>
+  <ol class="strings">
+<li>
+<code>banner.loadInvalid.body</code>
+<p class="lime-str">Stored data did not validate: {reason}. Nothing was overwritten.</p>
+</li>
+<li>
+<code>banner.loadInvalid.tag</code>
+<p class="lime-str">INVALID DATA</p>
+</li>
+<li>
+<code>button.exportStoredData</code>
+<p class="lime-str">Export stored data</p>
+</li>
+</ol>
+  <label class="box" for="c-shell.load-error">What needs to change here?</label>
+  <textarea id="c-shell.load-error" data-part="shell.load-error" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>setup (11)</h2>
+
+<section class="part" id="setup.progress">
+  <p class="pid"><code>setup.progress</code></p>
+  <h3>Step counter</h3>
+  <p class="what">The &quot;step N of 9&quot; line and the step title above every screen.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>setup.hero</code>
+<p class="lime-str">Setup</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.progress">What needs to change here?</label>
+  <textarea id="c-setup.progress" data-part="setup.progress" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.units">
+  <p class="pid"><code>setup.units</code></p>
+  <h3>Step 1, Units</h3>
+  <p class="what">Metric or imperial, and what the choice does to stored values.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>advice.unitsOnce</code>
+<p class="lime-str">Chosen once. Values are stored in kg and mL.</p>
+</li>
+<li>
+<code>label.unitsImperial</code>
+<p class="lime-str">Pounds (lb)</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.unitsMetric</code>
+<p class="lime-str">Kilograms (kg)</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>step.units</code>
+<p class="lime-str">Units</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.units">What needs to change here?</label>
+  <textarea id="c-setup.units" data-part="setup.units" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.timezone">
+  <p class="pid"><code>setup.timezone</code></p>
+  <h3>Step 2, Time zone</h3>
+  <p class="what">The zone every civil date in the app is computed in.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>advice.timezoneDetected</code>
+<p class="lime-str">From this device. Dates and reminders use it.</p>
+</li>
+<li>
+<code>advice.timezoneInvalid</code>
+<p class="lime-str">Not a recognised IANA time zone.</p>
+</li>
+<li>
+<code>label.timezone</code>
+<p class="lime-str">Time zone</p>
+</li>
+<li>
+<code>step.timezone</code>
+<p class="lime-str">Time zone</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.timezone">What needs to change here?</label>
+  <textarea id="c-setup.timezone" data-part="setup.timezone" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.body">
+  <p class="pid"><code>setup.body</code></p>
+  <h3>Step 3, Body</h3>
+  <p class="what">Body mass, height, age, sex, and the optional tape estimate.</p>
+  <p class="states">states: default, blocked</p>
+  <ol class="strings">
+<li>
+<code>advice.bodyFatEstimate</code>
+<p class="lime-str">21.9 % body fat, ± 3.52 percentage points.</p>
+</li>
+<li>
+<code>advice.bodyFatOptional</code>
+<p class="lime-str">Optional. With it, RMR uses the Cunningham equation.</p>
+</li>
+<li>
+<code>advice.sexUsedFor</code>
+<p class="lime-str">Used by the RMR, body-fat and fluid equations.</p>
+</li>
+<li>
+<code>advice.tapeMethod</code>
+<p class="lime-str">US Navy circumference method. Girths in cm, tape level and snug.</p>
+</li>
+<li>
+<code>advice.tapeNeedFemale</code>
+<p class="lime-str">Enter neck, abdomen I and hip girths.</p>
+</li>
+<li>
+<code>advice.tapeNeedMale</code>
+<p class="lime-str">Enter neck and abdomen II girths.</p>
+</li>
+<li>
+<code>advice.tapeOutOfDomain</code>
+<p class="lime-str">Girths outside the equation's domain. No estimate is shown.</p>
+</li>
+<li>
+<code>disclosure.why</code>
+<p class="lime-str">why?</p>
+<p class="refusal">This string keeps its plain wording on every skin: CASE ALONE, OR THE LIMELIGHT WORD ALREADY. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>error.positive</code>
+<p class="lime-str">Enter a number above zero.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE NUMBER-ENTRY ERRORS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>error.valueRequired</code>
+<p class="lime-str">Enter a number.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE NUMBER-ENTRY ERRORS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>error.wholeNumber</code>
+<p class="lime-str">Enter a whole number.</p>
+</li>
+<li>
+<code>label.birthYear</code>
+<p class="lime-str">Birth year</p>
+</li>
+<li>
+<code>label.bodyFatKnown</code>
+<p class="lime-str">Known percentage</p>
+</li>
+<li>
+<code>label.bodyFatNone</code>
+<p class="lime-str">Not measured</p>
+</li>
+<li>
+<code>label.bodyFatTape</code>
+<p class="lime-str">Estimate from tape measurements</p>
+</li>
+<li>
+<code>label.feet</code>
+<p class="lime-str">Feet</p>
+</li>
+<li>
+<code>label.inches</code>
+<p class="lime-str">Inches</p>
+</li>
+<li>
+<code>label.name</code>
+<p class="lime-str">Name</p>
+</li>
+<li>
+<code>label.sexFemale</code>
+<p class="lime-str">Female</p>
+</li>
+<li>
+<code>label.sexMale</code>
+<p class="lime-str">Male</p>
+</li>
+<li>
+<code>quantity.abdomenI</code>
+<p class="lime-str">Abdomen I</p>
+</li>
+<li>
+<code>quantity.abdomenII</code>
+<p class="lime-str">Abdomen II</p>
+</li>
+<li>
+<code>quantity.age</code>
+<p class="lime-str">Age</p>
+</li>
+<li>
+<code>quantity.bodyFat</code>
+<p class="lime-str">Body fat</p>
+</li>
+<li>
+<code>quantity.bodyMass</code>
+<p class="lime-str">Body mass</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>quantity.height</code>
+<p class="lime-str">Height</p>
+</li>
+<li>
+<code>quantity.hip</code>
+<p class="lime-str">Hip</p>
+</li>
+<li>
+<code>quantity.neck</code>
+<p class="lime-str">Neck</p>
+</li>
+<li>
+<code>step.body</code>
+<p class="lime-str">Body</p>
+</li>
+<li>
+<code>why.bodyFatEstimate</code>
+<p class="lime-str">The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number.</p>
+</li>
+<li>
+<code>why.bodyFatOptional</code>
+<p class="lime-str">With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.body">What needs to change here?</label>
+  <textarea id="c-setup.body" data-part="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.training">
+  <p class="pid"><code>setup.training</code></p>
+  <h3>Step 4, Training context</h3>
+  <p class="what">Experience and activity, which drive the energy target.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>advice.loadSteps</code>
+<p class="lime-str">The smallest increment a suggested load uses.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.activity</code>
+<p class="lime-str">Activity level</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.equipment</code>
+<p class="lime-str">the gear</p>
+</li>
+<li>
+<code>label.experience</code>
+<p class="lime-str">Experience</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.microPlates</code>
+<p class="lime-str">Micro-plates available</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.activityModerate</code>
+<p class="lime-str">Moderate: regular walking, active job or training</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.activitySedentary</code>
+<p class="lime-str">Sedentary: desk work, little walking</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.activityVigorous</code>
+<p class="lime-str">Vigorous: heavy physical work, daily hard training</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.equipmentBodyweight</code>
+<p class="lime-str">Bodyweight only</p>
+</li>
+<li>
+<code>option.equipmentDumbbells</code>
+<p class="lime-str">Dumbbells only</p>
+</li>
+<li>
+<code>option.equipmentFullGym</code>
+<p class="lime-str">Full gym</p>
+</li>
+<li>
+<code>option.experienceAdvanced</code>
+<p class="lime-str">Advanced: over three years</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.experienceIntermediate</code>
+<p class="lime-str">Intermediate: one to three years</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.experienceNovice</code>
+<p class="lime-str">Novice: under one year of consistent training</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>quantity.barbellStep</code>
+<p class="lime-str">Barbell step</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>quantity.dumbbellStep</code>
+<p class="lime-str">Dumbbell step, per pair</p>
+</li>
+<li>
+<code>quantity.microPlateStep</code>
+<p class="lime-str">Micro-plate step</p>
+</li>
+<li>
+<code>quantity.stackStep</code>
+<p class="lime-str">Weight-stack step</p>
+</li>
+<li>
+<code>step.training</code>
+<p class="lime-str">Training context</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.training">What needs to change here?</label>
+  <textarea id="c-setup.training" data-part="setup.training" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.goal">
+  <p class="pid"><code>setup.goal</code></p>
+  <h3>Step 5, Goal</h3>
+  <p class="what">Fat loss, maintenance, muscle gain or recomposition.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>advice.creatineOnly</code>
+<p class="lime-str">Dose scales with body mass.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>advice.weighIn</code>
+<p class="lime-str">Optional. Compares body mass before and after.</p>
+</li>
+<li>
+<code>label.creatine</code>
+<p class="lime-str">Creatine monohydrate</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.goal</code>
+<p class="lime-str">Goal</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>label.targetDate</code>
+<p class="lime-str">Target date (optional)</p>
+</li>
+<li>
+<code>label.weighIn</code>
+<p class="lime-str">Weigh in</p>
+</li>
+<li>
+<code>option.goalFatLoss</code>
+<p class="lime-str">Fat loss</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.goalMaintenance</code>
+<p class="lime-str">Maintenance</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.goalMuscleGain</code>
+<p class="lime-str">Muscle gain</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>option.goalRecomposition</code>
+<p class="lime-str">Recomposition</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>quantity.targetBodyMass</code>
+<p class="lime-str">Target body mass</p>
+</li>
+<li>
+<code>step.goal</code>
+<p class="lime-str">Goal</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.goal">What needs to change here?</label>
+  <textarea id="c-setup.goal" data-part="setup.goal" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.availability">
+  <p class="pid"><code>setup.availability</code></p>
+  <h3>Step 6, Availability</h3>
+  <p class="what">The days and the equipment the plan may use.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>error.pickOneDay</code>
+<p class="lime-str">Select at least one weekday.</p>
+</li>
+<li>
+<code>label.duration</code>
+<p class="lime-str">duration</p>
+</li>
+<li>
+<code>label.sessionsPerWeek</code>
+<p class="lime-str">Sessions per week</p>
+</li>
+<li>
+<code>label.startTime</code>
+<p class="lime-str">start time</p>
+</li>
+<li>
+<code>quantity.weeklySessionTarget</code>
+<p class="lime-str">Weekly session target</p>
+</li>
+<li>
+<code>step.availability</code>
+<p class="lime-str">Availability</p>
+</li>
+<li>
+<code>weekday.friday</code>
+<p class="lime-str">Friday</p>
+</li>
+<li>
+<code>weekday.monday</code>
+<p class="lime-str">Monday</p>
+</li>
+<li>
+<code>weekday.saturday</code>
+<p class="lime-str">Saturday</p>
+</li>
+<li>
+<code>weekday.sunday</code>
+<p class="lime-str">Sunday</p>
+</li>
+<li>
+<code>weekday.thursday</code>
+<p class="lime-str">Thursday</p>
+</li>
+<li>
+<code>weekday.tuesday</code>
+<p class="lime-str">Tuesday</p>
+</li>
+<li>
+<code>weekday.wednesday</code>
+<p class="lime-str">Wednesday</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.availability">What needs to change here?</label>
+  <textarea id="c-setup.availability" data-part="setup.availability" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.programme">
+  <p class="pid"><code>setup.programme</code></p>
+  <h3>Step 7, Programme length</h3>
+  <p class="what">How many weeks the generated plan runs for.</p>
+  <p class="states">states: default</p>
+  <ol class="strings">
+<li>
+<code>advice.deloadEveryFourth</code>
+<p class="lime-str">Every fourth week halves set counts, load unchanged.</p>
+</li>
+<li>
+<code>label.includeCardio</code>
+<p class="lime-str">One conditioning block per week</p>
+</li>
+<li>
+<code>quantity.programmeWeeks</code>
+<p class="lime-str">Programme length</p>
+</li>
+<li>
+<code>step.programme</code>
+<p class="lime-str">Programme length</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.programme">What needs to change here?</label>
+  <textarea id="c-setup.programme" data-part="setup.programme" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.readiness">
+  <p class="pid"><code>setup.readiness</code></p>
+  <h3>Step 8, Readiness</h3>
+  <p class="what">The pre-participation screening, inside the wizard.</p>
+  <p class="states">states: unanswered, answered</p>
+  <ol class="strings">
+<li>
+<code>step.readiness</code>
+<p class="lime-str">Readiness</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.readiness">What needs to change here?</label>
+  <textarea id="c-setup.readiness" data-part="setup.readiness" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.review">
+  <p class="pid"><code>setup.review</code></p>
+  <h3>Step 9, Review</h3>
+  <p class="what">The summary, and the control that writes the profile.</p>
+  <p class="states">states: ready, blocked</p>
+  <ol class="strings">
+<li>
+<code>button.confirmStart</code>
+<p class="lime-str">lock it in</p>
+</li>
+<li>
+<code>hero.dailyTargets</code>
+<p class="lime-str">the numbers</p>
+</li>
+<li>
+<code>hero.programme</code>
+<p class="lime-str">Programme</p>
+</li>
+<li>
+<code>label.creatineDose</code>
+<p class="lime-str">Creatine</p>
+</li>
+<li>
+<code>label.energy</code>
+<p class="lime-str">Energy</p>
+</li>
+<li>
+<code>label.expectedRate</code>
+<p class="lime-str">Expected rate</p>
+</li>
+<li>
+<code>label.fluid</code>
+<p class="lime-str">Fluid (beverages)</p>
+</li>
+<li>
+<code>label.inTargetRange</code>
+<p class="lime-str">In the target set range</p>
+</li>
+<li>
+<code>label.maintenanceOnly</code>
+<p class="lime-str">Maintenance only</p>
+</li>
+<li>
+<code>label.none</code>
+<p class="lime-str">none</p>
+</li>
+<li>
+<code>label.protein</code>
+<p class="lime-str">Protein</p>
+</li>
+<li>
+<code>status.rateUnknown</code>
+<p class="lime-str">Not established by the evidence base</p>
+</li>
+<li>
+<code>status.targetsNotEstimated</code>
+<p class="lime-str">Targets are not estimated for these entries. Check the body screen.</p>
+</li>
+<li>
+<code>step.review</code>
+<p class="lime-str">Review</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.review">What needs to change here?</label>
+  <textarea id="c-setup.review" data-part="setup.review" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="setup.nav">
+  <p class="pid"><code>setup.nav</code></p>
+  <h3>Wizard navigation</h3>
+  <p class="what">Back and Continue, and what a blocked step does to them.</p>
+  <p class="states">states: default, blocked</p>
+  <ol class="strings">
+<li>
+<code>button.back</code>
+<p class="lime-str">Back</p>
+</li>
+<li>
+<code>button.continue</code>
+<p class="lime-str">go on</p>
+</li>
+</ol>
+  <label class="box" for="c-setup.nav">What needs to change here?</label>
+  <textarea id="c-setup.nav" data-part="setup.nav" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>readiness (2)</h2>
+
+<section class="part" id="readiness.screen">
+  <p class="pid"><code>readiness.screen</code></p>
+  <h3>Readiness screening</h3>
+  <p class="what">The health questions and the physician-consult flag.</p>
+  <p class="states">states: unanswered, no-flags, consult</p>
+  <ol class="strings">
+<li>
+<code>advice.notMedicalAdvice</code>
+<p class="lime-str">This is not medical advice.</p>
+</li>
+<li>
+<code>advice.readinessAnyYes</code>
+<p class="lime-str">Answer yes to any question: consult a physician before training.</p>
+</li>
+<li>
+<code>label.no</code>
+<p class="lime-str">No</p>
+</li>
+<li>
+<code>label.yes</code>
+<p class="lime-str">Yes</p>
+</li>
+<li>
+<code>readiness.q1</code>
+<p class="lime-str">Has a doctor diagnosed you with a heart condition?</p>
+</li>
+<li>
+<code>readiness.q2</code>
+<p class="lime-str">Do you get chest pain at rest or during physical activity?</p>
+</li>
+<li>
+<code>readiness.q3</code>
+<p class="lime-str">In the last 12 months, have you lost consciousness or lost balance from dizziness?</p>
+</li>
+<li>
+<code>readiness.q3Note</code>
+<p class="lime-str">Answer no if the dizziness came only from over-breathing during exercise.</p>
+</li>
+<li>
+<code>readiness.q4</code>
+<p class="lime-str">Has a doctor diagnosed you with another chronic condition?</p>
+</li>
+<li>
+<code>readiness.q5</code>
+<p class="lime-str">Do you take prescribed medication for a chronic condition?</p>
+</li>
+<li>
+<code>readiness.q6</code>
+<p class="lime-str">Do you have a bone, joint or soft tissue problem that activity could worsen?</p>
+</li>
+<li>
+<code>readiness.q6Note</code>
+<p class="lime-str">Answer no if the problem no longer limits your physical activity.</p>
+</li>
+<li>
+<code>readiness.q7</code>
+<p class="lime-str">Has a doctor told you to exercise only under medical supervision?</p>
+</li>
+<li>
+<code>why.readiness</code>
+<p class="lime-str">These seven questions are this app's wording of the seven PAR-Q+ screening domains. No answer is stored, only the screening date and whether any was yes. A yes is not a diagnosis and this app is not a clearance instrument.</p>
+</li>
+</ol>
+  <label class="box" for="c-readiness.screen">What needs to change here?</label>
+  <textarea id="c-readiness.screen" data-part="readiness.screen" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="part" id="readiness.notice">
+  <p class="pid"><code>readiness.notice</code></p>
+  <h3>Consult notice</h3>
+  <p class="what">The per-tab notice a flagged screening raises.</p>
+  <p class="states">states: shown, dismissed</p>
+  <ol class="strings">
+<li>
+<code>advice.readinessConsult</code>
+<p class="lime-str">You answered yes on the readiness screen. Consult a physician before training.</p>
+</li>
+<li>
+<code>button.dismiss</code>
+<p class="lime-str">noted.</p>
+</li>
+</ol>
+  <label class="box" for="c-readiness.notice">What needs to change here?</label>
+  <textarea id="c-readiness.notice" data-part="readiness.notice" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="part" id="01-boot-setup-readiness.general">
+  <p class="pid"><code>01-boot-setup-readiness.general</code></p>
+  <h3>Anything else on this page</h3>
+  <p class="what">A comment that belongs to the whole screen rather than to one part.</p>
+  <p class="states">states: none</p>
+  <label class="box" for="c-01-boot-setup-readiness.general">What needs to change?</label>
+  <textarea id="c-01-boot-setup-readiness.general" data-part="01-boot-setup-readiness.general" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, in the form the round document reads. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page, or say it in the session and name the part id.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<nav class="pager"><a href="#">back: How to test</a><a href="#">next: Today</a></nav>
+<script>
+(function(){
+  var KEY='fti-alpha-r1-01-boot-setup-readiness';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-part]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-part')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-part');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-part');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>
