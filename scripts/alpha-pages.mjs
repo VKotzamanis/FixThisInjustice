@@ -29,6 +29,18 @@ const LIVE = catalogue.parts.filter((p) => p.status === 'live');
 
 const LIVE_URL = 'https://vkotzamanis.github.io/FixThisInjustice/';
 
+/**
+ * The published Artifact URL of each page, filled in by the coordinator after the first publish.
+ * A page cannot know its own URL at generation time, so the pager falls back to '#' and the index
+ * carries the list. Regenerate and republish after filling this in.
+ */
+let URLS = {};
+try {
+  URLS = JSON.parse(readFileSync(`${ROOT}docs/feedback/pages/urls.json`, 'utf8'));
+} catch {
+  URLS = {};
+}
+
 /** The eight pages, in the order the owner walks them. */
 export const PAGES = [
   { file: '00-how-to-test.html', id: '00-how-to-test', title: 'How To Test', short: 'How to test', screens: [] },
@@ -215,8 +227,8 @@ export function page(def, body, index) {
   const next = PAGES[index + 1];
   const prev = PAGES[index - 1];
   const pager = [
-    prev === undefined ? '' : `<a href="#">back: ${esc(prev.short)}</a>`,
-    next === undefined ? '' : `<a href="#">next: ${esc(next.short)}</a>`,
+    prev === undefined ? '' : `<a href="${esc(URLS[prev.id] || '#')}">back: ${esc(prev.short)}</a>`,
+    next === undefined ? '' : `<a href="${esc(URLS[next.id] || '#')}">next: ${esc(next.short)}</a>`,
   ]
     .filter(Boolean)
     .join('');
