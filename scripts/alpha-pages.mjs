@@ -255,19 +255,40 @@ ${body}
 `;
 }
 
-/** The screen pages. Page 0 is written by Task 5 and joins this loop there. */
+const HOW_TO_TEST = `
+<h2>the pass</h2>
+<p>Install the app on your phone first. Add it to the Home Screen and open it from the icon, because a browser tab has different safe-area insets and a tab pass does not substitute for an installed one.</p>
+<p>The skin is <strong>limelight</strong> when you arrive: it is the shipped default. Leave it there. This round reviews one design. Every string on these pages is the one the limelight app shows, and every comment is read as a comment on that app: its words, its layout, and what it does. The other skins are adapted from the finished app afterwards.</p>
+<p>Work one page at a time. Open the screen in the app, look at it, come back here, and write in the box under the part you mean. Each part carries its id in a box at the top; that id is how your comment reaches a task.</p>
+<h2>what a comment should say</h2>
+<p>Two things, in any order. <strong>What you saw.</strong> <strong>What you expected instead.</strong></p>
+<p class="small">Good: "the day glyphs on the strip are too small to tap and I could not tell served from no-show. I expected a colour difference." Weak: "strip is bad."</p>
+<h2>the three channels</h2>
+<p><strong>The box.</strong> Type into the box under a part. It saves in this browser. Press <strong>Assemble</strong> at the top and the page builds a block of lines, one per box, and copies it. Paste that block back into Claude.</p>
+<p><strong>The thread.</strong> These pages are published, so you can leave a comment thread on any part of one. Send the thread to Claude and it is read and answered in the thread.</p>
+<p><strong>The session.</strong> Say it in the conversation and name the part id. That is the fastest channel for one comment and the worst for twenty.</p>
+<h2>what cannot change</h2>
+<p>A skin changes words. It never changes a number, a unit, a slot the app fills, or what a control does. A skin also never jokes on a control whose misreading costs data: the wipe, the import, the legacy delete, the export, the reminder states and the install steps carry the same plain sentence on every skin. Where that applies, the part says so under the string.</p>
+<p>Ask for those changes anyway if you want them. They come back as a question rather than as a silent refusal.</p>
+<h2>what to do when something is broken</h2>
+<p>Say so in the box. A crash, a control that does nothing, a number that looks wrong: those are worth more than a wording note, and they get their own task with a test.</p>
+`;
+
+/** The screen pages. Page 0 still gets its own general box from page(). */
 mkdirSync(OUT, { recursive: true });
 let written = 0;
 let sections = 0;
 PAGES.forEach((def, index) => {
-  if (def.screens.length === 0) return;
+  const body =
+    def.screens.length === 0
+      ? HOW_TO_TEST
+      : def.screens
+          .map((screen) => {
+            const inScreen = LIVE.filter((p) => p.screen === screen);
+            return `<h2>${esc(screen)} (${inScreen.length})</h2>\n${inScreen.map(partSection).join('\n')}`;
+          })
+          .join('\n');
   const parts = def.screens.flatMap((screen) => LIVE.filter((p) => p.screen === screen));
-  const body = def.screens
-    .map((screen) => {
-      const inScreen = LIVE.filter((p) => p.screen === screen);
-      return `<h2>${esc(screen)} (${inScreen.length})</h2>\n${inScreen.map(partSection).join('\n')}`;
-    })
-    .join('\n');
   writeFileSync(OUT + def.file, page(def, body, index));
   written += 1;
   sections += parts.length;
