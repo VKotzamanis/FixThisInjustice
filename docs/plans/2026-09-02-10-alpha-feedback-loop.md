@@ -72,7 +72,49 @@ React 19, Vitest 4, git, graphify, the Artifact tool.
 
 ## Decisions
 
-<!-- decision: alpha-feedback-review-pages | status: adopted | supersedes: none -->
+<!-- decision: alpha-guided-walkthrough | status: adopted | supersedes: alpha-feedback-review-pages -->
+### `alpha-guided-walkthrough` (adopted, 2026-09-02)
+
+The owner's third instruction, quoted verbatim:
+
+> "I see. However the "Form cues / The technique reference for one exercise. / states: open /
+> advice.noFormCues ... label.formCues" questions here are very different in context. They might
+> be similar in the coding but it would be much easier for me to give he feedback 'as i go through
+> the app'. The feedback I will give will be on the text as well, so it would be better it it was
+> a guided alpha test."
+
+**Rule.** The review pages follow the tester's PATH, not the code's structure. One page per stage
+of that path, in the order a first-time user meets the app; one section per STEP, where a step is
+one thing the tester can see at once, carrying the action that reaches it. A popup, a toast or a
+sub-state sits in the step that opens it: Form cues is a step inside the training session, right
+after the exercise card whose control opens it; the undo toast follows the delete; the destructive
+confirm follows the wipe. Every copy key appears in exactly one step, the first place the tester
+meets it, so a shared control is reviewed once. Part ids are unchanged and remain the ledger key:
+every step names the part ids it covers and every assembled comment carries them.
+
+**Reason.** The owner named the failure directly. `popup.form-cues` and `popup.spotlight` sit
+beside each other on `07-popups-toasts.html` because both are modals, which is a fact about the
+component tree and about nothing the owner does. In the app they are a hundred taps and two
+screens apart. Grouping by code forces the reviewer to hold the app's structure in their head
+while walking its surface, and a comment about a string is worth less when the reviewer cannot see
+what surrounds it. Ordering by the walk puts each string in the context that produced it, which is
+the context the feedback is about.
+
+**What it does not change.** The catalogue, the part ids, the copy contract, the Limelight-only
+rule, the three feedback channels and the design rules on the page. Task 17 reuses
+`scripts/alpha-pages.mjs` wholesale for the CSS, the four theme blocks, the reduced-motion rule,
+the 44 px targets, the storage script, the Assemble block and the pager.
+
+**Rejected: keeping the per-screen grouping.** It is `alpha-feedback-review-pages`, now superseded.
+Its pages stay in the tree and stay published, because their part ids are the same ids the walk
+carries and a comment already written against one is not orphaned. They are no longer the input to
+a round.
+
+**Rejected: one page per part.** 102 pages, 102 publishes, and a pager the owner would walk 102
+times. It also loses the only thing the walk adds, which is the neighbour: a step is worth reading
+because the step before it is what the tester just did.
+
+<!-- decision: alpha-feedback-review-pages | status: superseded | supersedes: none -->
 ### `alpha-feedback-review-pages` (adopted, 2026-09-02)
 
 **Rule.** The owner reviews the app through static HTML pages under `docs/feedback/pages/`, one
@@ -3057,6 +3099,188 @@ the next pass. Then run `node scripts/alpha-pages.mjs --round 2` when the owner 
 gives round 2 its own storage keys and leaves round 1's boxes intact in the browser.
 
 Push nothing. The coordinator pushes.
+
+---
+
+## Task 17: The guided walkthrough
+
+Decision `alpha-guided-walkthrough` in force. The eight per-screen pages are superseded as the
+input to a round; this task builds the pages that replace them.
+
+**Files:**
+- Add: `scripts/alpha-walk.mjs`, `scripts/alpha-walk-pages.mjs`
+- Add: `docs/feedback/walk/w0-how-to-test.html` through `w6-extras.html`,
+  `docs/feedback/walk/urls.json`, `docs/feedback/walk/README.md`
+- Modify: this plan
+- Touch nothing under `src/`, nothing in `scripts/alpha-parts.mjs`, `scripts/alpha-catalogue.mjs`,
+  `docs/feedback/catalogue.*` or `docs/feedback/pages/`.
+
+**Check, stated first:** `node scripts/alpha-walk-pages.mjs --check` passes on all nine gates, two
+runs write byte-identical files, the pages reach only the allowed hosts, and
+`npx eslint scripts/alpha-walk.mjs scripts/alpha-walk-pages.mjs` is silent.
+
+### What was built
+
+`scripts/alpha-walk.mjs` is the walk table and nothing else: data, no I/O. It holds seven stages,
+each with an ordered list of steps. A step record carries `id` (`w<stage>.<nn>`), `title`, `do`
+(the action, naming the control by the words the Limelight app puts on it), `see` (one sentence),
+`keys` (the copy keys in the order the app paints them top to bottom), `parts` (the catalogue part
+ids the step covers) and an optional `only` (the state the step needs).
+
+`scripts/alpha-walk-pages.mjs` reads `docs/feedback/catalogue.json` and that table and writes one
+page per stage to `docs/feedback/walk/`. The CSS, the four theme blocks, the reduced-motion rule,
+the 44 px targets, the storage script, the Assemble block and the pager are `scripts/alpha-pages.mjs`
+unchanged. The body is not: each step is a `<section class="step">` with its id and number, the Do
+line, the You see line, the skippable note where one applies, the part ids in small type, the
+strings in order, and one comment box. A string whose `limelightRowPermitted` is false carries the
+same one-line note the per-screen pages give it. The assembled line is
+`- [<step id> | <part ids comma separated>] <comment>`. The pager reads
+`docs/feedback/walk/urls.json`, which holds the seven page ids with empty strings until the
+coordinator publishes.
+
+Page 0 is rewritten for the guided flow: install the app, keep the Limelight skin, how a stage and
+a step work, what a comment should say, what to do with a step you cannot reach, the three channels,
+what a skin may not change, and what to do when something is broken.
+
+### The stages, and the steps in each
+
+| Page | Stage | Steps | Keys | Skippable steps |
+| --- | --- | --- | --- | --- |
+| `w0-how-to-test.html` | 0, how to run the walkthrough | 0 | 0 | 0 |
+| `w1-first-open.html` | 1, first open and setup | 15 | 133 | 1 |
+| `w2-today.html` | 2, Today, first look | 16 | 74 | 4 |
+| `w3-session.html` | 3, a training session | 15 | 79 | 2 |
+| `w4-after.html` | 4, after the session | 16 | 45 | 3 |
+| `w5-settings.html` | 5, settings and data | 16 | 91 | 2 |
+| `w6-extras.html` | 6, extras and rare states | 11 | 69 | 10 |
+
+89 steps over six walked stages. 491 keys placed, each in exactly one step. 102 live parts, each
+covered by at least one step.
+
+### The gates, with their real output
+
+- [x] **Step 1: The generator's own check**
+
+```bash
+node scripts/alpha-walk-pages.mjs --check
+```
+
+```
+  ok   keys 491 placed of 491 in the catalogue, each in one step
+  ok   parts 102 covered of 102 live
+  ok   steps 89 in 7 stages
+  ok   no emoji on any page
+  ok   hosts https://fonts.googleapis.com https://fonts.gstatic.com https://vkotzamanis.github.io
+  ok   ascii except 4 characters the shipped strings carry
+  ok   two builds byte-identical
+  ok   four theme blocks, reduced motion, two 44 px targets, no sideways scroll, pink is never type
+PASS alpha walk pages
+```
+
+The table gates run before a page is rendered, because `stringBlock` throws on a key the catalogue
+does not hold and a build over a broken table would report one key rather than the whole list. On
+the first run the check named ten keys placed nowhere: `advice.bodyFatEstimate`, and the nine
+reminder-panel state and failure keys. Both were placed and the check re-run.
+
+The four non-ASCII characters are all quoted from shipped strings and none was typed here: `+/-`
+in `advice.bodyFatEstimate` and `why.bodyFatEstimate`, the multiplication sign in `status.setsBy`,
+`status.lastSessionSets` and four `coach.*` templates, the en dash in `status.blockSessions`, and
+the minus sign in `status.deloadNote`.
+
+- [x] **Step 2: Two runs write byte-identical files**
+
+```bash
+node scripts/alpha-walk-pages.mjs && md5sum docs/feedback/walk/*.html > /tmp/run1
+node scripts/alpha-walk-pages.mjs && md5sum docs/feedback/walk/*.html > /tmp/run2
+diff /tmp/run1 /tmp/run2 && echo "PASS two runs byte-identical on disk"
+```
+
+Expected and measured: `PASS two runs byte-identical on disk`.
+
+- [x] **Step 3: No emoji, and only the allowed hosts**
+
+```bash
+node -e "
+const {readdirSync,readFileSync}=require('fs');
+const re=/\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}]|\uFE0F/u;
+let bad=0;
+for(const f of readdirSync('docs/feedback/walk')){
+  if(!f.endsWith('.html'))continue;
+  readFileSync('docs/feedback/walk/'+f,'utf8').split('\n').forEach((l,i)=>{if(re.test(l)){console.log('FAIL',f+':'+(i+1));bad++;}});
+}
+console.log(bad===0?'PASS no emoji':'FAIL '+bad+' lines');
+"
+grep -ohE 'https://[a-z.]+' docs/feedback/walk/*.html | sort -u
+```
+
+Measured: `PASS no emoji`, then exactly three hosts, `https://fonts.googleapis.com`,
+`https://fonts.gstatic.com` and `https://vkotzamanis.github.io`. A fourth, `https://claude.ai`,
+appears once `urls.json` is filled in and the pager points at the sibling pages; the generator's
+check allows it already.
+
+`scripts/check-no-emoji.mjs` scans `src/content/copy*.ts` and `src/**/*.tsx` and does not reach
+`docs/`, which is why the gate is restated here, the same way P10 Task 6 restates it for the
+per-screen pages.
+
+- [x] **Step 4: Lint**
+
+```bash
+npx eslint scripts/alpha-walk.mjs scripts/alpha-walk-pages.mjs
+```
+
+Measured: no output.
+
+- [x] **Step 5: The design rules, on these pages too**
+
+Carried inside `--check`: four theme blocks per page, one reduced-motion rule, two 44 px targets
+(the buttons and the pager links), `overflow-x:hidden`, no table, and pink never used as type. The
+theme count matches the four block OPENERS as whole lines, so the `textarea` rule that names two of
+the same selectors on one line is not counted as a fifth block. P10 Task 6 Step 3 says "expected 4"
+from a line count that returns 5 on the per-screen pages for exactly that reason; the gate here
+counts blocks instead.
+
+- [x] **Step 6: Commit**
+
+```bash
+git add scripts/alpha-walk.mjs scripts/alpha-walk-pages.mjs docs/feedback/walk/
+git commit -m "feat(P10): the guided walkthrough, 89 steps in 7 stages" -- \
+  scripts/alpha-walk.mjs scripts/alpha-walk-pages.mjs \
+  docs/feedback/walk/w0-how-to-test.html docs/feedback/walk/w1-first-open.html \
+  docs/feedback/walk/w2-today.html docs/feedback/walk/w3-session.html \
+  docs/feedback/walk/w4-after.html docs/feedback/walk/w5-settings.html \
+  docs/feedback/walk/w6-extras.html docs/feedback/walk/urls.json \
+  docs/feedback/walk/README.md docs/plans/2026-09-02-10-alpha-feedback-loop.md
+```
+
+Explicit pathspec, because the tree is shared.
+
+### Keys placed by judgment
+
+Four keys are met in more than one place, or only in a state the tester may not reach. Each is
+placed once, and the choice is recorded here rather than left to be rediscovered.
+
+| Key | Owning part | Placed at | Why |
+| --- | --- | --- | --- |
+| `button.dismiss` | `readiness.notice` | `w1.15` | Shared by the consult notice, the refusal banner, the Konami overlay, the missed-week popup and the toast queue. The consult notice is the earliest of the five on the walk. A tester with no flagged answer meets it later; the step is marked skippable and the string is still reviewed once. |
+| `button.closeModal` | `atlas.detail-dialog` | `w2.14` | The capsule write dialog is the first modal on the walk that carries a close control, and it is reachable on day one. The Atlas dialog needs a card the tester may not hold. `w4.16` still covers `atlas.detail-dialog` through `label.atlasSource`. |
+| `advice.clipClearFailed` | `settings.motivation-clip` | `w5.08` | Rendered by `src/ui/settings/DataSection.tsx`, but it reports the clip clear and belongs beside the clip controls the tester is looking at. |
+| `button.legacyDeleteOld` | `settings.data.legacy-delete` | `w5.16` | Rendered by both `DataSection.tsx` and `MigrationWizard.tsx`. Placed with its owning part in Settings, where the tester can reach it deliberately rather than only during a migration. |
+
+Two further placements follow the same rule without ambiguity: `disclosure.why` is placed at
+`w1.08`, the body-fat block, which is the first disclosure in the wizard; and `button.cancel` at
+`w2.07`, the skip panel on Today, which is the first cancel the walk reaches.
+
+### What this task did not do
+
+- It did not publish. The seven pages are generated and committed; `urls.json` holds empty strings
+  and the pager falls back to `#`. Publishing is a coordinator action and needs `artifact-design`
+  loaded first.
+- It did not delete or edit the eight per-screen pages, `docs/feedback/pages/README.md`, the
+  catalogue, the part table or anything under `src/`.
+- It did not add a test to the suite. The gates live in `--check` and are not run by `npm test`.
+- It did not verify a single pixel. No agent has a browser, so the phone reading of these pages is
+  the owner's to give.
+
 
 ---
 

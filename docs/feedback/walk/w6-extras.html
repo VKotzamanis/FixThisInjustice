@@ -1,0 +1,576 @@
+<title>Extras And Rare States</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 8px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.step{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.stepno{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.do,.see{margin:0 0 8px;padding:0 0 0 10px;border-left:3px solid var(--line-2)}
+.do b,.see b{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:block}
+.only{font-size:13px;margin:0 0 10px;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+.pids{font-family:var(--mono);font-size:12px;color:var(--text-2);margin:0 0 10px;word-break:break-all}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha walkthrough, round 1, stage 6 of 6</p>
+  <h1>Extras and rare states</h1>
+  <p class="lede">Open <a href="https://vkotzamanis.github.io/FixThisInjustice/">the live app</a> on your phone beside this page. The skin is limelight by default. Work the steps in order. Do what the step says, look at the app, then write in the box under that step.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+
+<section class="step" id="w6.01">
+  <p class="stepno"><code>w6.01</code> step 1</p>
+  <h3>The palette</h3>
+  <p class="do"><b>Do</b>Tap &quot;find it&quot; at the end of the tab row, then type a letter. On a keyboard, press Ctrl and K together.</p>
+  <p class="see"><b>You see</b>A search field, a list of views and exercises, and a line when nothing matches.</p>
+  <p class="pids">covers popup.spotlight</p>
+  <ol class="strings">
+<li>
+<code>hero.spotlight</code>
+<p class="lime-str">find it</p>
+</li>
+<li>
+<code>label.spotlightQuery</code>
+<p class="lime-str">Search views and exercises</p>
+</li>
+<li>
+<code>label.spotlightResults</code>
+<p class="lime-str">Search results</p>
+</li>
+<li>
+<code>label.spotlightView</code>
+<p class="lime-str">View</p>
+</li>
+<li>
+<code>label.spotlightExercise</code>
+<p class="lime-str">Exercise</p>
+</li>
+<li>
+<code>advice.noSpotlightMatch</code>
+<p class="lime-str">nothing.</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.01">What needs to change here?</label>
+  <textarea id="c-w6.01" data-step="w6.01" data-parts="popup.spotlight" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.02">
+  <p class="stepno"><code>w6.02</code> step 2</p>
+  <h3>The Konami overlay</h3>
+  <p class="do"><b>Do</b>On a keyboard, press up, up, down, down, left, right, left, right, B, A.</p>
+  <p class="see"><b>You see</b>An overlay with one line on it and a way out.</p>
+  <p class="only">Skippable: only on a device with a keyboard. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.konami</p>
+  <ol class="strings">
+<li>
+<code>status.konami</code>
+<p class="lime-str">no cheat code. nobody skips a squat.</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.02">What needs to change here?</label>
+  <textarea id="c-w6.02" data-step="w6.02" data-parts="popup.konami" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.03">
+  <p class="stepno"><code>w6.03</code> step 3</p>
+  <h3>The block change</h3>
+  <p class="do"><b>Do</b>Finish the last session of a block and open today.</p>
+  <p class="see"><b>You see</b>A cutscene counting what the block held, with a control to move on.</p>
+  <p class="only">Skippable: only when a training block ends. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.phase-transition</p>
+  <ol class="strings">
+<li>
+<code>status.blockTransition</code>
+<p class="lime-str">Block {from} to Block {to}</p>
+</li>
+<li>
+<code>label.blockSessionsCompleted</code>
+<p class="lime-str">sessions completed</p>
+</li>
+<li>
+<code>label.blockSetsLogged</code>
+<p class="lime-str">sets logged</p>
+</li>
+<li>
+<code>label.blockMassMoved</code>
+<p class="lime-str">mass moved</p>
+</li>
+<li>
+<code>label.blockSpecimens</code>
+<p class="lime-str">specimens collected</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.03">What needs to change here?</label>
+  <textarea id="c-w6.03" data-step="w6.03" data-parts="popup.phase-transition" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.04">
+  <p class="stepno"><code>w6.04</code> step 4</p>
+  <h3>The missed-week popup</h3>
+  <p class="do"><b>Do</b>Open the app on the first day after a week that missed its target. Tap the clip once to unmute it.</p>
+  <p class="see"><b>You see</b>Your clip if you stored one, two lines about the week, and a single dismiss control.</p>
+  <p class="only">Skippable: only after a missed week, or from &quot;sneak peek&quot; in settings. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.missed-week</p>
+  <ol class="strings">
+<li>
+<code>hero.motivationPreview</code>
+<p class="lime-str">Video preview</p>
+</li>
+<li>
+<code>advice.motivationPreview</code>
+<p class="lime-str">Preview. No week is reported.</p>
+</li>
+<li>
+<code>advice.weekMissed</code>
+<p class="lime-str">Week of {monday}: {completed} of {target} sessions completed.</p>
+</li>
+<li>
+<code>advice.weekMissedNone</code>
+<p class="lime-str">Week of {monday}: no sessions completed.</p>
+</li>
+<li>
+<code>advice.tapForSound</code>
+<p class="lime-str">Tap the video for sound.</p>
+</li>
+<li>
+<code>advice.tapToMute</code>
+<p class="lime-str">Tap the video to mute.</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.04">What needs to change here?</label>
+  <textarea id="c-w6.04" data-step="w6.04" data-parts="popup.missed-week" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.05">
+  <p class="stepno"><code>w6.05</code> step 5</p>
+  <h3>The update prompt</h3>
+  <p class="do"><b>Do</b>Leave the app open while a new build is published, then look at the top of the screen.</p>
+  <p class="see"><b>You see</b>A banner offering a reload.</p>
+  <p class="only">Skippable: only when a new build is waiting. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers shell.update-prompt</p>
+  <ol class="strings">
+<li>
+<code>banner.update.tag</code>
+<p class="lime-str">UPDATE READY</p>
+</li>
+<li>
+<code>banner.update.body</code>
+<p class="lime-str">A new version is ready.</p>
+</li>
+<li>
+<code>button.reload</code>
+<p class="lime-str">Reload</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.05">What needs to change here?</label>
+  <textarea id="c-w6.05" data-step="w6.05" data-parts="shell.update-prompt" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.06">
+  <p class="stepno"><code>w6.06</code> step 6</p>
+  <h3>The save error banner</h3>
+  <p class="do"><b>Do</b>Read the three states below. They appear when the browser refuses to write the document.</p>
+  <p class="see"><b>You see</b>A banner naming which failure it is, with an export and a retry.</p>
+  <p class="only">Skippable: only when a save fails, so read the strings here rather than reaching them. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers shell.save-error</p>
+  <ol class="strings">
+<li>
+<code>banner.saveQuota.tag</code>
+<p class="lime-str">STORAGE FULL</p>
+</li>
+<li>
+<code>banner.saveQuota.body</code>
+<p class="lime-str">Storage is full. Export now.</p>
+</li>
+<li>
+<code>banner.saveUnavailable.tag</code>
+<p class="lime-str">NO STORAGE</p>
+</li>
+<li>
+<code>banner.saveUnavailable.body</code>
+<p class="lime-str">Storage is unavailable here. Export now.</p>
+</li>
+<li>
+<code>banner.saveFailed.tag</code>
+<p class="lime-str">SAVE FAILED</p>
+</li>
+<li>
+<code>banner.saveFailed.body</code>
+<p class="lime-str">The change could not be saved. The stored copy is unchanged.</p>
+</li>
+<li>
+<code>button.exportData</code>
+<p class="lime-str">Export data</p>
+</li>
+<li>
+<code>button.retrySave</code>
+<p class="lime-str">try again</p>
+</li>
+<li>
+<code>button.exportStoredCopy</code>
+<p class="lime-str">Export stored copy</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.06">What needs to change here?</label>
+  <textarea id="c-w6.06" data-step="w6.06" data-parts="shell.save-error" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.07">
+  <p class="stepno"><code>w6.07</code> step 7</p>
+  <h3>The load error banner</h3>
+  <p class="do"><b>Do</b>Read the state below. It appears when the stored document cannot be read.</p>
+  <p class="see"><b>You see</b>A banner with one control that downloads whatever was on disk.</p>
+  <p class="only">Skippable: only when the stored document cannot be read. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers shell.load-error</p>
+  <ol class="strings">
+<li>
+<code>banner.loadInvalid.tag</code>
+<p class="lime-str">INVALID DATA</p>
+</li>
+<li>
+<code>banner.loadInvalid.body</code>
+<p class="lime-str">Stored data did not validate: {reason}. Nothing was overwritten.</p>
+</li>
+<li>
+<code>button.exportStoredData</code>
+<p class="lime-str">Export stored data</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.07">What needs to change here?</label>
+  <textarea id="c-w6.07" data-step="w6.07" data-parts="shell.load-error" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.08">
+  <p class="stepno"><code>w6.08</code> step 8</p>
+  <h3>The old data offer</h3>
+  <p class="do"><b>Do</b>Open the app in a browser that still holds the old app data.</p>
+  <p class="see"><b>You see</b>A panel saying what was found, the units it must be told, and two controls.</p>
+  <p class="only">Skippable: only if the old app left data in this browser. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.migration.explain</p>
+  <ol class="strings">
+<li>
+<code>hero.legacyImport</code>
+<p class="lime-str">Import from the old app</p>
+</li>
+<li>
+<code>advice.legacyFound</code>
+<p class="lime-str">The old app has data on this device.</p>
+</li>
+<li>
+<code>disclosure.whatTransfers</code>
+<p class="lime-str">What transfers</p>
+</li>
+<li>
+<code>disclosure.legacyTransfers</code>
+<p class="lime-str">Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, collected specimen cards, and a sealed time capsule. Anything the import cannot read is listed with its reason first.</p>
+</li>
+<li>
+<code>label.legacyLoadUnit</code>
+<p class="lime-str">Load unit in the old app</p>
+</li>
+<li>
+<code>advice.legacyUnitRequired</code>
+<p class="lime-str">Choose a unit. A wrong unit rescales every load.</p>
+</li>
+<li>
+<code>label.legacyUnitKg</code>
+<p class="lime-str">Kilograms (kg)</p>
+</li>
+<li>
+<code>label.legacyUnitLb</code>
+<p class="lime-str">Pounds (lb)</p>
+</li>
+<li>
+<code>disclosure.legacyBodyMassEvidence</code>
+<p class="lime-str">The old body-mass field was labelled lb, refused values outside the pound range, and its text export reported pounds. The load field carried no such evidence, so that unit is asked for.</p>
+</li>
+<li>
+<code>label.legacyBodyMassUnit</code>
+<p class="lime-str">Body mass unit in the old app</p>
+</li>
+<li>
+<code>label.legacyMassUnitKg</code>
+<p class="lime-str">Kilograms (kg), body mass</p>
+</li>
+<li>
+<code>label.legacyMassUnitLb</code>
+<p class="lime-str">Pounds (lb), body mass</p>
+</li>
+<li>
+<code>advice.legacyNothingDeleted</code>
+<p class="lime-str">Nothing is deleted until you ask.</p>
+</li>
+<li>
+<code>button.legacyPreview</code>
+<p class="lime-str">Preview import</p>
+</li>
+<li>
+<code>button.legacyDismiss</code>
+<p class="lime-str">Start clean</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.08">What needs to change here?</label>
+  <textarea id="c-w6.08" data-step="w6.08" data-parts="popup.migration.explain" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.09">
+  <p class="stepno"><code>w6.09</code> step 9</p>
+  <h3>The old data preview</h3>
+  <p class="do"><b>Do</b>Tap &quot;Preview import&quot;.</p>
+  <p class="see"><b>You see</b>What the import found, what it refused, and what it could not match, before anything is written.</p>
+  <p class="only">Skippable: only if the old app left data in this browser. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.migration.preview</p>
+  <ol class="strings">
+<li>
+<code>hero.legacyPreview</code>
+<p class="lime-str">What the import writes</p>
+</li>
+<li>
+<code>disclosure.whatWasRefused</code>
+<p class="lime-str">What was refused, and why</p>
+</li>
+<li>
+<code>disclosure.whatWasNotMatched</code>
+<p class="lime-str">Days with no session match</p>
+</li>
+<li>
+<code>advice.legacyRefused</code>
+<p class="lime-str">The old data could not be read. Nothing changed.</p>
+</li>
+<li>
+<code>advice.legacyApplyFailed</code>
+<p class="lime-str">The import was refused. Nothing changed.</p>
+</li>
+<li>
+<code>button.legacyApply</code>
+<p class="lime-str">Keep import</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.09">What needs to change here?</label>
+  <textarea id="c-w6.09" data-step="w6.09" data-parts="popup.migration.preview" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.10">
+  <p class="stepno"><code>w6.10</code> step 10</p>
+  <h3>The old data result</h3>
+  <p class="do"><b>Do</b>Tap &quot;Keep import&quot;, then choose whether to keep the old keys.</p>
+  <p class="see"><b>You see</b>What was written, and what happens to the old data now.</p>
+  <p class="only">Skippable: only if the old app left data in this browser. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.migration.applied</p>
+  <ol class="strings">
+<li>
+<code>hero.legacyDone</code>
+<p class="lime-str">Import complete</p>
+</li>
+<li>
+<code>advice.legacyStored</code>
+<p class="lime-str">The import is stored. The old data is untouched.</p>
+</li>
+<li>
+<code>advice.legacyStoreUnconfirmed</code>
+<p class="lime-str">The write was not confirmed. The old data stays.</p>
+</li>
+<li>
+<code>advice.legacyOldDataDeleted</code>
+<p class="lime-str">The old app data is deleted.</p>
+</li>
+<li>
+<code>button.legacyKeepOld</code>
+<p class="lime-str">Keep old data</p>
+</li>
+<li>
+<code>button.legacyClose</code>
+<p class="lime-str">Close</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.10">What needs to change here?</label>
+  <textarea id="c-w6.10" data-step="w6.10" data-parts="popup.migration.applied" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w6.11">
+  <p class="stepno"><code>w6.11</code> step 11</p>
+  <h3>The reminders panel, the other states</h3>
+  <p class="do"><b>Do</b>Read the state lines below. The panel shows one of them, and which one depends on the browser, the permission and whether push has synced.</p>
+  <p class="see"><b>You see</b>One line in the reminders block saying what push is doing right now, and an error line when a subscribe or a sync fails.</p>
+  <p class="only">Skippable: only one of these shows at a time, so read the rest here rather than reaching them. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers settings.reminders</p>
+  <ol class="strings">
+<li>
+<code>status.remindersUnsupported</code>
+<p class="lime-str">This browser cannot receive push notifications.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.remindersNeedInstall</code>
+<p class="lime-str">Add this app to the Home Screen first.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.remindersDenied</code>
+<p class="lime-str">Notifications are blocked. Allow them in browser site settings.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.remindersOff</code>
+<p class="lime-str">Reminders are off.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.remindersNeedReenable</code>
+<p class="lime-str">Reminders need enabling again on this device.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.remindersPending</code>
+<p class="lime-str">Reminders are on. Schedule not sent yet.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.remindersActive</code>
+<p class="lime-str">Reminders are on. Schedule last sent at {time}.</p>
+</li>
+<li>
+<code>advice.reminderSubscribeFailed</code>
+<p class="lime-str">The browser refused to register this device.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>advice.reminderSyncFailed</code>
+<p class="lime-str">The schedule did not reach the server.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE REMINDER STATE AND ITS CONTROLS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+</ol>
+  <label class="box" for="c-w6.11">What needs to change here?</label>
+  <textarea id="c-w6.11" data-step="w6.11" data-parts="settings.reminders" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="step" id="w6-extras.general">
+  <p class="stepno"><code>w6-extras.general</code> the whole stage</p>
+  <h3>Anything else in this stage</h3>
+  <p class="do"><b>Do</b>Think back over the stage you just walked.</p>
+  <p class="see"><b>You see</b>Something that belongs to the stage rather than to one step.</p>
+  <p class="pids">covers w6-extras</p>
+  <label class="box" for="c-w6-extras.general">What needs to change?</label>
+  <textarea id="c-w6-extras.general" data-step="w6-extras.general" data-parts="w6-extras" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, each carrying its step id and the part ids that step covers. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page, or say it in the session and name the step id.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<nav class="pager"><a href="#">back: Settings and data</a></nav>
+<script>
+(function(){
+  var KEY='fti-walk-r1-w6-extras';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-step]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-step')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-step');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-step');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+' | '+b.getAttribute('data-parts')+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>
