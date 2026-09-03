@@ -1,10 +1,10 @@
 {
-  "00-how-to-test": "",
-  "01-boot-setup-readiness": "",
-  "02-today": "",
-  "03-train": "",
-  "04-plan-targets": "",
-  "05-log-atlas": "",
-  "06-settings": "",
-  "07-popups-toasts": ""
+  "00-how-to-test": "https://claude.ai/code/artifact/473aeeed-2dfc-4e91-9306-924a79d5ae2e",
+  "01-boot-setup-readiness": "https://claude.ai/code/artifact/e38217b5-2be4-4c4d-835b-bc105ab306f4",
+  "02-today": "https://claude.ai/code/artifact/3b7251c3-6108-452a-9bcc-5d91b0f5f6e4",
+  "03-train": "https://claude.ai/code/artifact/7a860268-608b-4935-8846-60606ff9b626",
+  "04-plan-targets": "https://claude.ai/code/artifact/09729435-7a5d-4a79-95bd-8a3f3b4d62b4",
+  "05-log-atlas": "https://claude.ai/code/artifact/091325a8-4c8b-4f31-8bc6-da03d72e2608",
+  "06-settings": "https://claude.ai/code/artifact/9a46670c-9fd0-4c0f-9edd-ed7589beb488",
+  "07-popups-toasts": "https://claude.ai/code/artifact/e9832e9c-dc19-44f6-9c88-5ba1c0ec8627"
 }

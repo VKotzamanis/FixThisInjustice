@@ -388,7 +388,7 @@ counts, and each one equals the value in the Baseline table above: 7 views, 9 se
 settings rows, 5 toast kinds, 7 reminder states, 3 migration phases, 3 atlas rarities, 110 refused
 Limelight keys across 16 groups.
 
-- [ ] **Step 1: Write the script**
+- [x] **Step 1: Write the script**
 
 ```javascript
 // scripts/alpha-catalogue.mjs
@@ -675,7 +675,7 @@ if (argv[0] === '--probe') {
 }
 ```
 
-- [ ] **Step 2: Run the probe**
+- [x] **Step 2: Run the probe**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -699,7 +699,7 @@ unplaced         40
 A different number is a drift in the tree, not a bug in the script. Read the file the reader names
 and fix the plan's Baseline table in the same commit.
 
-- [ ] **Step 3: Check one screen's key list**
+- [x] **Step 3: Check one screen's key list**
 
 ```bash
 node scripts/alpha-catalogue.mjs --keys atlas 2>/dev/null | head -5
@@ -710,7 +710,7 @@ Expected: five tab-separated lines of `<line>\t<key>\t<default string>`, and a c
 The count is the number of key MENTIONS, not of distinct keys, so a key rendered twice appears
 twice. That is what the author needs in order to see where a key is used.
 
-- [ ] **Step 4: Lint the script**
+- [x] **Step 4: Lint the script**
 
 ```bash
 npx eslint scripts/alpha-catalogue.mjs
@@ -719,7 +719,7 @@ npx eslint scripts/alpha-catalogue.mjs
 Expected: no output. `eslint.config.js` lints `scripts/**/*.mjs` with the recommended JavaScript
 rules and Node globals.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/alpha-catalogue.mjs
@@ -783,7 +783,7 @@ number into this plan's Self-review section.
 refusal beside the control, so the owner sees which words are not on offer before writing a
 comment about them.
 
-- [ ] **Step 1: Write the part table**
+- [x] **Step 1: Write the part table**
 
 Every record below carries `id`, `title`, `what`, `screen`, `components` and `states`. `keys` is
 filled in Step 3, one screen at a time. A part with no `keys` field takes every key its
@@ -951,7 +951,7 @@ grep -c "^  { id: '" scripts/alpha-parts.mjs
 Expected: `102`. The catalogue adds one synthetic `<screen>.unassigned` part per screen, which must
 end up empty, so `--count` prints 102 and `--check` proves the fourteen leftovers are empty.
 
-- [ ] **Step 2: Append the join and the writers to `scripts/alpha-catalogue.mjs`**
+- [x] **Step 2: Append the join and the writers to `scripts/alpha-catalogue.mjs`**
 
 Two edits to the head of the file. Widen the `node:fs` import, because the writers need it:
 
@@ -1240,7 +1240,7 @@ Then replace the `argv` dispatch block's closing `}` with these three further br
 }
 ```
 
-- [ ] **Step 3: Distribute the keys, one screen at a time**
+- [x] **Step 3: Distribute the keys, one screen at a time**
 
 Twelve of the fourteen screens draw more than one part out of one file, so those parts need an
 explicit `keys` array. Only `boot` and `readiness` fill themselves, because each of their parts
@@ -1306,7 +1306,7 @@ node scripts/alpha-catalogue.mjs --check 2>&1 | grep "^FAIL today" || echo "toda
 
 Expected once the screen is done: `today clean`.
 
-- [ ] **Step 4: Run the whole gate**
+- [x] **Step 4: Run the whole gate**
 
 ```bash
 node scripts/alpha-catalogue.mjs --check
@@ -1321,7 +1321,7 @@ twice anywhere in the tree, every screen's leftovers are empty, every key in `DE
 claimed once or excused in `NOT_RENDERED` and never both, the three union-backed part sets match
 their unions in the tree, and every wizard step, settings row and view has a part.
 
-- [ ] **Step 5: Generate the catalogue, twice, and prove it is deterministic**
+- [x] **Step 5: Generate the catalogue, twice, and prove it is deterministic**
 
 ```bash
 node scripts/alpha-catalogue.mjs
@@ -1333,7 +1333,7 @@ sha256sum -c /tmp/alpha-cat-1.sha
 Expected: the summary line twice, then two `OK` lines. A mismatch means something in the build
 reads a clock or an unsorted set, and it must be fixed before the pages are generated.
 
-- [ ] **Step 6: Lint and commit**
+- [x] **Step 6: Lint and commit**
 
 ```bash
 npx eslint scripts/alpha-catalogue.mjs scripts/alpha-parts.mjs
@@ -1362,7 +1362,7 @@ The file is read with `?raw` rather than `node:fs`. `tsconfig.app.json` pins `ty
 `node:fs` import fails `tsc -b`. `src/domain/schedule/cursor.test.ts` and
 `src/domain/migrations/v2plan.test.ts` already read source text this way, for the same reason.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```typescript
 // src/content/alphaCatalogue.test.ts
@@ -1500,7 +1500,7 @@ describe('the alpha catalogue', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it pass**
+- [x] **Step 2: Run it and watch it pass**
 
 ```bash
 npx vitest run src/content/alphaCatalogue.test.ts
@@ -1511,7 +1511,7 @@ Expected: `Test Files  1 passed (1)` and `Tests  7 passed (7)`.
 If the third or fourth test fails, the part table is wrong, not the test. Fix
 `scripts/alpha-parts.mjs`, regenerate with `node scripts/alpha-catalogue.mjs`, and run again.
 
-- [ ] **Step 3: Prove it fails when the catalogue drifts**
+- [x] **Step 3: Prove it fails when the catalogue drifts**
 
 ```bash
 node -e "const f='docs/feedback/catalogue.json';const c=JSON.parse(require('fs').readFileSync(f,'utf8'));c.counts.parts=1;require('fs').writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
@@ -1523,7 +1523,7 @@ npx vitest run src/content/alphaCatalogue.test.ts 2>&1 | tail -3
 Expected: the first run reports `1 failed`, and the second reports `7 passed` once the generator
 has put the file back. A test that cannot fail is not a gate.
 
-- [ ] **Step 4: Typecheck and lint**
+- [x] **Step 4: Typecheck and lint**
 
 ```bash
 npx tsc -b
@@ -1532,7 +1532,7 @@ npx eslint src/content/alphaCatalogue.test.ts
 
 Expected: no output from either.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/content/alphaCatalogue.test.ts docs/feedback/catalogue.json
@@ -1572,7 +1572,7 @@ part of its screens and none of any other screen, the section count across the s
 | 44 px targets | Every button and the theme control carry `min-height: 44px`. |
 | No emoji | Asserted in Task 6 with a command. The favicon is the one exception, and Task 8 states why. |
 
-- [ ] **Step 1: Write the generator**
+- [x] **Step 1: Write the generator**
 
 ```javascript
 // scripts/alpha-pages.mjs
@@ -1852,7 +1852,7 @@ PAGES.forEach((def, index) => {
 process.stdout.write(`pages ${written} sections ${sections} round ${ROUND}\n`);
 ```
 
-- [ ] **Step 2: Generate and count**
+- [x] **Step 2: Generate and count**
 
 ```bash
 cd /home/vx/Desktop/Claude/FixThisInjustice
@@ -1861,7 +1861,7 @@ node scripts/alpha-pages.mjs
 
 Expected: `pages 7 sections 102 round 1`.
 
-- [ ] **Step 3: Prove one section per part, and no cross-page leakage**
+- [x] **Step 3: Prove one section per part, and no cross-page leakage**
 
 ```bash
 grep -ho 'section class="part" id="[^"]*"' docs/feedback/pages/*.html | sed 's/.*id="//;s/"//' | grep -v '\.general$' | sort > /tmp/alpha-page-ids.txt
@@ -1872,7 +1872,7 @@ grep -c 'id="today\.' docs/feedback/pages/03-train.html || echo "no today parts 
 
 Expected: `ids match`, then `no today parts on the train page`.
 
-- [ ] **Step 4: Prove the generator is deterministic**
+- [x] **Step 4: Prove the generator is deterministic**
 
 ```bash
 sha256sum docs/feedback/pages/*.html > /tmp/alpha-pages-1.sha
@@ -1882,7 +1882,7 @@ sha256sum -c /tmp/alpha-pages-1.sha
 
 Expected: seven `OK` lines.
 
-- [ ] **Step 5: Lint and commit**
+- [x] **Step 5: Lint and commit**
 
 ```bash
 npx eslint scripts/alpha-pages.mjs
@@ -1902,7 +1902,7 @@ git commit -m "feat(P10): one review page per screen group, generated from the c
 comment should say, and holds no part section. `node scripts/alpha-pages.mjs` reports
 `pages 8 sections 102`.
 
-- [ ] **Step 1: Add the page 0 body, above the generation loop**
+- [x] **Step 1: Add the page 0 body, above the generation loop**
 
 ```javascript
 const HOW_TO_TEST = `
@@ -1925,7 +1925,7 @@ const HOW_TO_TEST = `
 `;
 ```
 
-- [ ] **Step 2: Let the loop write page 0**
+- [x] **Step 2: Let the loop write page 0**
 
 Replace the early return in the generation loop:
 
@@ -1950,7 +1950,7 @@ PAGES.forEach((def, index) => {
 Page 0 still gets its own `00-how-to-test.general` box from `page()`, which is where a comment
 about the procedure itself belongs.
 
-- [ ] **Step 3: Generate and check**
+- [x] **Step 3: Generate and check**
 
 ```bash
 node scripts/alpha-pages.mjs
@@ -1962,7 +1962,7 @@ grep -o 'next: [a-zA-Z ]*' docs/feedback/pages/00-how-to-test.html
 Expected: `pages 8 sections 102 round 1`, then `1` (the general box alone), then a count of at least
 `1`, then `next: Boot and setup`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/alpha-pages.mjs docs/feedback/pages/00-how-to-test.html
@@ -1981,7 +1981,7 @@ Nobody can measure a pixel here, so every rule that can be checked as text is ch
 **Check, stated first:** the eight commands below all pass, and each one names the rule it stands
 for.
 
-- [ ] **Step 1: No emoji anywhere in the pages**
+- [x] **Step 1: No emoji anywhere in the pages**
 
 ```bash
 node -e "
@@ -2000,7 +2000,7 @@ console.log(bad===0?'PASS no emoji':'FAIL '+bad+' lines');
 Expected: `PASS no emoji`. The gate mirrors `scripts/check-no-emoji.mjs`, which scans
 `src/content/copy*.ts` and `src/**/*.tsx` and does not reach `docs/`.
 
-- [ ] **Step 2: Pink is never type on lime**
+- [x] **Step 2: Pink is never type on lime**
 
 ```bash
 grep -n 'color:var(--pink)\|color:#ff5fcb' docs/feedback/pages/*.html && echo "FAIL pink used as type" || echo "PASS pink is fill and border only"
@@ -2010,7 +2010,7 @@ Expected: `PASS pink is fill and border only`. `#ff5fcb` on `#8ace00` measures 1
 `src/ui/styles/tokens.css` bans it at every size. The dark theme reaches pink type only through
 `--chip-text` on a pink fill, which is `#000000` on `#ff5fcb` at 7.75:1.
 
-- [ ] **Step 3: All four theme blocks are present on every page**
+- [x] **Step 3: All four theme blocks are present on every page**
 
 ```bash
 for f in docs/feedback/pages/*.html; do
@@ -2024,7 +2024,7 @@ the `:root:not([data-theme="light"])` selector inside it, `:root[data-theme="dar
 `:root[data-theme="light"]`. The bare `:root` block above them carries the complete light palette,
 so no colour has its only definition inside a media or attribute block.
 
-- [ ] **Step 4: Reduced motion, and 44 px targets**
+- [x] **Step 4: Reduced motion, and 44 px targets**
 
 ```bash
 grep -c 'prefers-reduced-motion: reduce' docs/feedback/pages/*.html
@@ -2034,7 +2034,7 @@ grep -c 'min-height:44px' docs/feedback/pages/*.html
 Expected: `1` and `2` on every page. The two 44 px targets are the buttons and the pager links.
 The comment box is a textarea at 88 px, which clears the floor by construction.
 
-- [ ] **Step 5: Only allowed external hosts**
+- [x] **Step 5: Only allowed external hosts**
 
 ```bash
 grep -ohE 'https://[a-z.]+' docs/feedback/pages/*.html | sort -u
@@ -2047,7 +2047,7 @@ from anywhere but `fonts.googleapis.com` fails silently.
 After Task 8 has filled in `urls.json` this command returns a fourth host, `https://claude.ai`,
 which is the pager pointing at the sibling pages. Re-run it then and expect four.
 
-- [ ] **Step 6: The body never scrolls sideways**
+- [x] **Step 6: The body never scrolls sideways**
 
 ```bash
 grep -c 'overflow-x:hidden' docs/feedback/pages/*.html
@@ -2056,7 +2056,7 @@ grep -n '<table' docs/feedback/pages/*.html && echo "FAIL a table would need its
 
 Expected: `1` per page, then `PASS no table`.
 
-- [ ] **Step 7: Every string on a page came from the catalogue**
+- [x] **Step 7: Every string on a page came from the catalogue**
 
 ```bash
 node -e "
@@ -2071,7 +2071,7 @@ console.log(missing.length===0?'PASS today.strip keys all present':'FAIL '+missi
 
 Expected: `PASS today.strip keys all present`.
 
-- [ ] **Step 8: Commit any fix**
+- [x] **Step 8: Commit any fix**
 
 If a check failed, fix `scripts/alpha-pages.mjs`, regenerate, and re-run every check in this task
 before committing.
@@ -2100,7 +2100,7 @@ the index that holds them.
 **Check, stated first:** with an empty `urls.json` the pager still renders and every `href` is `#`.
 With a URL in it, the matching `href` is that URL, and `grep -c 'href="#"'` drops by one per URL.
 
-- [ ] **Step 1: Read the URLs in the generator**
+- [x] **Step 1: Read the URLs in the generator**
 
 Add, below the `catalogue` load:
 
@@ -2130,7 +2130,7 @@ is recorded as an empty string and `??` falls back only on `null` and `undefined
     .join('');
 ```
 
-- [ ] **Step 2: Create the empty URL file**
+- [x] **Step 2: Create the empty URL file**
 
 ```bash
 cat > docs/feedback/pages/urls.json <<'JSON'
@@ -2152,7 +2152,7 @@ grep -c 'href="#"' docs/feedback/pages/00-how-to-test.html
 Expected: `pages 8 sections 102 round 1`, then `1`. Page 0 has one pager link, forward, and it is
 `#` until Task 8 fills in a URL.
 
-- [ ] **Step 3: Write the index**
+- [x] **Step 3: Write the index**
 
 ````bash
 cat > docs/feedback/pages/README.md <<'MD'
@@ -2206,7 +2206,7 @@ git add docs/feedback/pages/README.md docs/feedback/pages/urls.json scripts/alph
 git commit -m "docs(P10): the review page index, and pager links driven by urls.json"
 ````
 
-- [ ] **Step 4: Check the part counts in the index against the catalogue**
+- [x] **Step 4: Check the part counts in the index against the catalogue**
 
 ```bash
 node -e "
@@ -2234,12 +2234,12 @@ This task is the coordinator's, not an implementer's: only the coordinator holds
 **Check, stated first:** eight URLs exist, `urls.json` holds all eight, the regenerated pages carry
 no `href="#"` except on page 0's back link and page 7's next link, and each published page opens.
 
-- [ ] **Step 1: Load the design skill**
+- [x] **Step 1: Load the design skill**
 
 Load `artifact-design` before the first publish. It is required before writing or republishing any
 artifact and it is not optional here, because these pages are the owner's whole view of the round.
 
-- [ ] **Step 2: Publish the eight pages**
+- [x] **Step 2: Publish the eight pages**
 
 One `Artifact` call per file, in page order, each with `file_path` set to the page, a one-sentence
 `description`, and a `favicon` on this first publish only.
@@ -2260,12 +2260,12 @@ first publish and accepts nothing but emoji, so the no-emoji rule cannot be met 
 single magnifying-glass character on all eight, so the eight tabs read as one set, and never pass
 `favicon` again on a redeploy.
 
-- [ ] **Step 3: Record the URLs**
+- [x] **Step 3: Record the URLs**
 
 Write each returned URL into `docs/feedback/pages/urls.json` under its page id, and replace each
 `not yet` in the index table with the URL.
 
-- [ ] **Step 4: Regenerate and republish**
+- [x] **Step 4: Regenerate and republish**
 
 ```bash
 node scripts/alpha-pages.mjs
@@ -2283,14 +2283,14 @@ A publish arms the live-update subscription. Confirm the publish result's status
 watch connected. If it did not, call the Artifact tool's `watch` action on each page URL, so a
 comment the owner sends to Claude wakes this session.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add docs/feedback/pages/
 git commit -m "docs(P10): publish the eight review pages and record their URLs"
 ```
 
-- [ ] **Step 7: Hand it over**
+- [x] **Step 7: Hand it over**
 
 Send the owner one message: the eight links in order, the sentence that the skin is limelight by
 default and the live app is at `https://vkotzamanis.github.io/FixThisInjustice/`, and the
