@@ -1,0 +1,165 @@
+<title>How To Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 2px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.part{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.pid{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.what{margin:0 0 10px;font-size:14px;color:var(--text-2)}
+.states{font-family:var(--mono);font-size:12px;margin:0 0 12px;color:var(--text-2)}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha round 1</p>
+  <h1>How to test</h1>
+  <p class="lede">Open <a href="https://vkotzamanis.github.io/FixThisInjustice/">the live app</a> on your phone beside this page. The skin is limelight by default. Walk the screen, come back, write in the box under the part you mean.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+
+<h2>the pass</h2>
+<p>Install the app on your phone first. Add it to the Home Screen and open it from the icon, because a browser tab has different safe-area insets and a tab pass does not substitute for an installed one.</p>
+<p>The skin is <strong>limelight</strong> when you arrive: it is the shipped default. Leave it there. This round reviews one design. Every string on these pages is the one the limelight app shows, and every comment is read as a comment on that app: its words, its layout, and what it does. The other skins are adapted from the finished app afterwards.</p>
+<p>Work one page at a time. Open the screen in the app, look at it, come back here, and write in the box under the part you mean. Each part carries its id in a box at the top; that id is how your comment reaches a task.</p>
+<h2>what a comment should say</h2>
+<p>Two things, in any order. <strong>What you saw.</strong> <strong>What you expected instead.</strong></p>
+<p class="small">Good: "the day glyphs on the strip are too small to tap and I could not tell served from no-show. I expected a colour difference." Weak: "strip is bad."</p>
+<h2>the three channels</h2>
+<p><strong>The box.</strong> Type into the box under a part. It saves in this browser. Press <strong>Assemble</strong> at the top and the page builds a block of lines, one per box, and copies it. Paste that block back into Claude.</p>
+<p><strong>The thread.</strong> These pages are published, so you can leave a comment thread on any part of one. Send the thread to Claude and it is read and answered in the thread.</p>
+<p><strong>The session.</strong> Say it in the conversation and name the part id. That is the fastest channel for one comment and the worst for twenty.</p>
+<h2>what cannot change</h2>
+<p>A skin changes words. It never changes a number, a unit, a slot the app fills, or what a control does. A skin also never jokes on a control whose misreading costs data: the wipe, the import, the legacy delete, the export, the reminder states and the install steps carry the same plain sentence on every skin. Where that applies, the part says so under the string.</p>
+<p>Ask for those changes anyway if you want them. They come back as a question rather than as a silent refusal.</p>
+<h2>what to do when something is broken</h2>
+<p>Say so in the box. A crash, a control that does nothing, a number that looks wrong: those are worth more than a wording note, and they get their own task with a test.</p>
+
+<section class="part" id="00-how-to-test.general">
+  <p class="pid"><code>00-how-to-test.general</code></p>
+  <h3>Anything else on this page</h3>
+  <p class="what">A comment that belongs to the whole screen rather than to one part.</p>
+  <p class="states">states: none</p>
+  <label class="box" for="c-00-how-to-test.general">What needs to change?</label>
+  <textarea id="c-00-how-to-test.general" data-part="00-how-to-test.general" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, in the form the round document reads. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page, or say it in the session and name the part id.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<nav class="pager"><a href="#">next: Boot and setup</a></nav>
+<script>
+(function(){
+  var KEY='fti-alpha-r1-00-how-to-test';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-part]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-part')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-part');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-part');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>
