@@ -1,0 +1,642 @@
+<title>Today, First Look</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 8px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.step{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.stepno{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.do,.see{margin:0 0 8px;padding:0 0 0 10px;border-left:3px solid var(--line-2)}
+.do b,.see b{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:block}
+.only{font-size:13px;margin:0 0 10px;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+.pids{font-family:var(--mono);font-size:12px;color:var(--text-2);margin:0 0 10px;word-break:break-all}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha walkthrough, round 1, stage 2 of 6</p>
+  <h1>Today</h1>
+  <p class="lede">Open <a href="https://vkotzamanis.github.io/FixThisInjustice/">the live app</a> on your phone beside this page. The skin is limelight by default. Work the steps in order. Do what the step says, look at the app, then write in the box under that step.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+
+<section class="step" id="w2.01">
+  <p class="stepno"><code>w2.01</code> step 1</p>
+  <h3>The plan position in the header</h3>
+  <p class="do"><b>Do</b>Look at the middle of the top bar, then switch tabs and look again.</p>
+  <p class="see"><b>You see</b>The session the cursor stands at, on every screen.</p>
+  <p class="pids">covers shell.session-indicator</p>
+  <ol class="strings">
+<li>
+<code>label.planPosition</code>
+<p class="lime-str">Plan position</p>
+</li>
+<li>
+<code>status.sessionCursor</code>
+<p class="lime-str">ep. {shown} of {total}</p>
+</li>
+<li>
+<code>status.planComplete</code>
+<p class="lime-str">wrapped</p>
+</li>
+<li>
+<code>hero.programmeComplete</code>
+<p class="lime-str">the whole run. done.</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.01">What needs to change here?</label>
+  <textarea id="c-w2.01" data-step="w2.01" data-parts="shell.session-indicator" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.02">
+  <p class="stepno"><code>w2.02</code> step 2</p>
+  <h3>The tab strip</h3>
+  <p class="do"><b>Do</b>Look at the row of tabs, then tap each one and come back to &quot;today&quot;.</p>
+  <p class="see"><b>You see</b>Seven tabs and the palette control at the end of the row.</p>
+  <p class="pids">covers shell.tab-strip, shell.spotlight-button</p>
+  <ol class="strings">
+<li>
+<code>nav.label</code>
+<p class="lime-str">the views</p>
+</li>
+<li>
+<code>nav.today</code>
+<p class="lime-str">today</p>
+</li>
+<li>
+<code>nav.plan</code>
+<p class="lime-str">the run</p>
+</li>
+<li>
+<code>nav.train</code>
+<p class="lime-str">showtime</p>
+</li>
+<li>
+<code>nav.targets</code>
+<p class="lime-str">the numbers</p>
+</li>
+<li>
+<code>nav.log</code>
+<p class="lime-str">the archive</p>
+</li>
+<li>
+<code>nav.atlas</code>
+<p class="lime-str">the collection</p>
+</li>
+<li>
+<code>nav.settings</code>
+<p class="lime-str">backstage</p>
+</li>
+<li>
+<code>button.openSpotlight</code>
+<p class="lime-str">find it</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.02">What needs to change here?</label>
+  <textarea id="c-w2.02" data-step="w2.02" data-parts="shell.tab-strip, shell.spotlight-button" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.03">
+  <p class="stepno"><code>w2.03</code> step 3</p>
+  <h3>The marquee</h3>
+  <p class="do"><b>Do</b>Watch the ticker at the top of today, then tap it to stop it.</p>
+  <p class="see"><b>You see</b>A scrolling strip carrying this week against last week.</p>
+  <p class="pids">covers today.marquee</p>
+  <ol class="strings">
+<li>
+<code>button.pauseTicker</code>
+<p class="lime-str">pause the ticker</p>
+</li>
+<li>
+<code>status.weekDeltaPositive</code>
+<p class="lime-str">{completed} of {target}. no crumbs.</p>
+</li>
+<li>
+<code>status.weekDeltaZero</code>
+<p class="lime-str">{completed} of {target}. she delivered.</p>
+</li>
+<li>
+<code>status.weekDeltaNegative</code>
+<p class="lime-str">{completed} of {target}. flop era.</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.03">What needs to change here?</label>
+  <textarea id="c-w2.03" data-step="w2.03" data-parts="today.marquee" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.04">
+  <p class="stepno"><code>w2.04</code> step 4</p>
+  <h3>The day, and the session card</h3>
+  <p class="do"><b>Do</b>Read the block under the marquee, from the small line at the top down through the exercise list.</p>
+  <p class="see"><b>You see</b>An eyebrow, one headline for the day, and the exercises with their sets, reps and rest.</p>
+  <p class="pids">covers today.hero, today.session-card</p>
+  <ol class="strings">
+<li>
+<code>hero.noPlan</code>
+<p class="lime-str">no plan. tragic.</p>
+</li>
+<li>
+<code>advice.completeSetup</code>
+<p class="lime-str">no setup, no plan. sort it out.</p>
+</li>
+<li>
+<code>hero.sessionInProgress</code>
+<p class="lime-str">the show is running.</p>
+</li>
+<li>
+<code>hero.sessionCompleted</code>
+<p class="lime-str">ate.</p>
+</li>
+<li>
+<code>hero.sessionSkipped</code>
+<p class="lime-str">skipped. next.</p>
+</li>
+<li>
+<code>hero.noSessionToday</code>
+<p class="lime-str">day off, apparently.</p>
+</li>
+<li>
+<code>advice.nextSession</code>
+<p class="lime-str">Next: {weekday} {startTime} {label}.</p>
+</li>
+<li>
+<code>advice.noSessionIn14Days</code>
+<p class="lime-str">nothing booked for 14 days. dry spell.</p>
+</li>
+<li>
+<code>status.setsBy</code>
+<p class="lime-str">{sets} × {prescription}</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.04">What needs to change here?</label>
+  <textarea id="c-w2.04" data-step="w2.04" data-parts="today.hero, today.session-card" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.05">
+  <p class="stepno"><code>w2.05</code> step 5</p>
+  <h3>The start control</h3>
+  <p class="do"><b>Do</b>Find the control under the session card. Do not press it yet.</p>
+  <p class="see"><b>You see</b>One control that opens the session, or one that returns to a session already open.</p>
+  <p class="pids">covers today.start</p>
+  <ol class="strings">
+<li>
+<code>button.startSession</code>
+<p class="lime-str">LET'S GO BABES</p>
+</li>
+<li>
+<code>button.returnToSession</code>
+<p class="lime-str">back on stage</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.05">What needs to change here?</label>
+  <textarea id="c-w2.05" data-step="w2.05" data-parts="today.start" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.06">
+  <p class="stepno"><code>w2.06</code> step 6</p>
+  <h3>Mark the day done without training</h3>
+  <p class="do"><b>Do</b>Read &quot;mark it done&quot; beside the start control.</p>
+  <p class="see"><b>You see</b>A control that closes today without opening the session.</p>
+  <p class="pids">covers today.mark-completed</p>
+  <ol class="strings">
+<li>
+<code>button.markCompleted</code>
+<p class="lime-str">mark it done</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.06">What needs to change here?</label>
+  <textarea id="c-w2.06" data-step="w2.06" data-parts="today.mark-completed" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.07">
+  <p class="stepno"><code>w2.07</code> step 7</p>
+  <h3>Skip today</h3>
+  <p class="do"><b>Do</b>Tap &quot;not today satan&quot;, type a reason, then tap &quot;never mind&quot; to back out.</p>
+  <p class="see"><b>You see</b>A reason field with a confirm and a cancel under it.</p>
+  <p class="pids">covers today.skip</p>
+  <ol class="strings">
+<li>
+<code>button.skipToday</code>
+<p class="lime-str">not today satan</p>
+</li>
+<li>
+<code>label.skipReason</code>
+<p class="lime-str">the story (optional)</p>
+</li>
+<li>
+<code>button.confirmSkip</code>
+<p class="lime-str">yes skip it</p>
+</li>
+<li>
+<code>button.cancel</code>
+<p class="lime-str">never mind</p>
+</li>
+<li>
+<code>status.skipReason</code>
+<p class="lime-str">Reason: {reason}</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.07">What needs to change here?</label>
+  <textarea id="c-w2.07" data-step="w2.07" data-parts="today.skip" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.08">
+  <p class="stepno"><code>w2.08</code> step 8</p>
+  <h3>Train something else</h3>
+  <p class="do"><b>Do</b>Tap &quot;plot twist&quot;.</p>
+  <p class="see"><b>You see</b>A short list of the labels this week still owes, one control each.</p>
+  <p class="only">Skippable: only while the week still owes a label this day can take. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers today.label-picker</p>
+  <ol class="strings">
+<li>
+<code>button.trainSomethingElse</code>
+<p class="lime-str">plot twist</p>
+</li>
+<li>
+<code>status.remainingThisWeek</code>
+<p class="lime-str">still to come this week</p>
+</li>
+<li>
+<code>button.trainLabelToday</code>
+<p class="lime-str">Train {label} today</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.08">What needs to change here?</label>
+  <textarea id="c-w2.08" data-step="w2.08" data-parts="today.label-picker" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.09">
+  <p class="stepno"><code>w2.09</code> step 9</p>
+  <h3>Pause the plan</h3>
+  <p class="do"><b>Do</b>Tap &quot;on hiatus&quot;, read the day again, then tap &quot;comeback tour&quot;.</p>
+  <p class="see"><b>You see</b>The headline changes to a paused line, and the control becomes the one that lifts it.</p>
+  <p class="pids">covers today.pause</p>
+  <ol class="strings">
+<li>
+<code>button.pausePlan</code>
+<p class="lime-str">on hiatus</p>
+</li>
+<li>
+<code>status.planPaused</code>
+<p class="lime-str">Plan paused since {date}.</p>
+</li>
+<li>
+<code>advice.pauseHoldsCursor</code>
+<p class="lime-str">a hiatus costs you nothing.</p>
+</li>
+<li>
+<code>button.resumePlan</code>
+<p class="lime-str">comeback tour</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.09">What needs to change here?</label>
+  <textarea id="c-w2.09" data-step="w2.09" data-parts="today.pause" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.10">
+  <p class="stepno"><code>w2.10</code> step 10</p>
+  <h3>A refused control</h3>
+  <p class="do"><b>Do</b>Tap &quot;on hiatus&quot;, then tap &quot;LET'S GO BABES&quot; while the plan is paused.</p>
+  <p class="see"><b>You see</b>A line above the day saying why the app refused, with a dismiss control.</p>
+  <p class="pids">covers today.refusal-banner</p>
+  <ol class="strings">
+<li>
+<code>banner.actionRefused.tag</code>
+<p class="lime-str">NOT APPLIED</p>
+<p class="refusal">This string keeps its plain wording on every skin: CASE ALONE, OR THE LIMELIGHT WORD ALREADY. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>status.refusalPaused</code>
+<p class="lime-str">the plan is on hiatus on {date}.</p>
+</li>
+<li>
+<code>status.refusalAlreadyStarted</code>
+<p class="lime-str">This session already started on {date}.</p>
+</li>
+<li>
+<code>status.refusalSessionOpen</code>
+<p class="lime-str">A session is already in progress on {date}.</p>
+</li>
+<li>
+<code>status.refusalNotNextDay</code>
+<p class="lime-str">{date} is not the next session day.</p>
+</li>
+<li>
+<code>status.refusalLabelNotOffered</code>
+<p class="lime-str">{label} is not offered on {date}.</p>
+</li>
+<li>
+<code>status.refusalUnrecognised</code>
+<p class="lime-str">That change was refused.</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.10">What needs to change here?</label>
+  <textarea id="c-w2.10" data-step="w2.10" data-parts="today.refusal-banner" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.11">
+  <p class="stepno"><code>w2.11</code> step 11</p>
+  <h3>The week stamp</h3>
+  <p class="do"><b>Do</b>Scroll below the controls at the end of a week that met its session target.</p>
+  <p class="see"><b>You see</b>One stamp marking the week.</p>
+  <p class="only">Skippable: only after a week that met its target. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers today.week-stamp</p>
+  <ol class="strings">
+<li>
+<code>status.weekMetStamp</code>
+<p class="lime-str">MOTHER</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.11">What needs to change here?</label>
+  <textarea id="c-w2.11" data-step="w2.11" data-parts="today.week-stamp" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.12">
+  <p class="stepno"><code>w2.12</code> step 12</p>
+  <h3>The missed-week panel</h3>
+  <p class="do"><b>Do</b>Scroll to the same place after a week that missed its target, once the popup has been dismissed.</p>
+  <p class="see"><b>You see</b>A headline and a short paragraph about the week just gone.</p>
+  <p class="only">Skippable: only after a missed week, and after the popup has been answered. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers today.intervention</p>
+  <ol class="strings">
+<li>
+<code>hero.weeklyTargetMissed</code>
+<p class="lime-str">the intervention</p>
+</li>
+<li>
+<code>advice.interventionBody</code>
+<p class="lime-str">the week flopped, not you. the next slot still stands.</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.12">What needs to change here?</label>
+  <textarea id="c-w2.12" data-step="w2.12" data-parts="today.intervention" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.13">
+  <p class="stepno"><code>w2.13</code> step 13</p>
+  <h3>The time capsule</h3>
+  <p class="do"><b>Do</b>Keep scrolling to the capsule panel.</p>
+  <p class="see"><b>You see</b>A heading, one line about what a capsule is, and one control.</p>
+  <p class="pids">covers today.time-capsule</p>
+  <ol class="strings">
+<li>
+<code>hero.timeCapsule</code>
+<p class="lime-str">a note for later</p>
+</li>
+<li>
+<code>advice.timeCapsule</code>
+<p class="lime-str">a note to future you, sealed until a date you pick.</p>
+</li>
+<li>
+<code>button.writeCapsule</code>
+<p class="lime-str">write it</p>
+</li>
+<li>
+<code>status.capsuleWritten</code>
+<p class="lime-str">Sealed {date}.</p>
+</li>
+<li>
+<code>advice.capsuleOpenDatePassed</code>
+<p class="lime-str">The open date has passed.</p>
+</li>
+<li>
+<code>button.openCapsule</code>
+<p class="lime-str">open it</p>
+</li>
+<li>
+<code>button.readCapsule</code>
+<p class="lime-str">read it</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.13">What needs to change here?</label>
+  <textarea id="c-w2.13" data-step="w2.13" data-parts="today.time-capsule" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.14">
+  <p class="stepno"><code>w2.14</code> step 14</p>
+  <h3>Write a capsule</h3>
+  <p class="do"><b>Do</b>Tap &quot;write it&quot;, type two words, set an open date, then tap &quot;seal it&quot;.</p>
+  <p class="see"><b>You see</b>A dialog with a note field, an open date, and a seal control. Close is at its top right.</p>
+  <p class="pids">covers popup.capsule-write, popup.modal-shell</p>
+  <ol class="strings">
+<li>
+<code>label.capsuleNote</code>
+<p class="lime-str">Note to your future self</p>
+</li>
+<li>
+<code>advice.capsuleNoteShort</code>
+<p class="lime-str">Write at least {count} characters.</p>
+</li>
+<li>
+<code>advice.capsuleNoteLong</code>
+<p class="lime-str">Longer than {count} characters.</p>
+</li>
+<li>
+<code>label.capsuleOpensOn</code>
+<p class="lime-str">Opens on</p>
+</li>
+<li>
+<code>advice.capsuleDateRange</code>
+<p class="lime-str">Pick a date between {from} and {to}.</p>
+</li>
+<li>
+<code>advice.capsuleDefaultMoved</code>
+<p class="lime-str">The suggested date moved into the allowed range.</p>
+</li>
+<li>
+<code>status.capsuleSealed</code>
+<p class="lime-str">Opens {date}, in {days}.</p>
+</li>
+<li>
+<code>button.sealCapsule</code>
+<p class="lime-str">seal it</p>
+</li>
+<li>
+<code>button.closeModal</code>
+<p class="lime-str">Close</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.14">What needs to change here?</label>
+  <textarea id="c-w2.14" data-step="w2.14" data-parts="popup.capsule-write, popup.modal-shell" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.15">
+  <p class="stepno"><code>w2.15</code> step 15</p>
+  <h3>Read a capsule</h3>
+  <p class="do"><b>Do</b>Tap &quot;read it&quot; on a capsule whose open date has passed.</p>
+  <p class="see"><b>You see</b>The note as you wrote it, on the date you chose.</p>
+  <p class="only">Skippable: only once a sealed capsule has reached its open date. If you cannot reach it, comment on the strings as written.</p>
+  <p class="pids">covers popup.capsule-read</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <label class="box" for="c-w2.15">What needs to change here?</label>
+  <textarea id="c-w2.15" data-step="w2.15" data-parts="popup.capsule-read" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w2.16">
+  <p class="stepno"><code>w2.16</code> step 16</p>
+  <h3>The fourteen-day strip</h3>
+  <p class="do"><b>Do</b>Scroll to the bottom of today and read the fourteen rows.</p>
+  <p class="see"><b>You see</b>One row per day: weekday, date, time, label and a status glyph.</p>
+  <p class="pids">covers today.strip</p>
+  <ol class="strings">
+<li>
+<code>hero.nextFourteenDays</code>
+<p class="lime-str">the next 14 dates</p>
+</li>
+<li>
+<code>status.dayRest</code>
+<p class="lime-str">day off</p>
+</li>
+<li>
+<code>status.dayPlanned</code>
+<p class="lime-str">booked</p>
+</li>
+<li>
+<code>status.dayInProgress</code>
+<p class="lime-str">live</p>
+</li>
+<li>
+<code>status.dayCompleted</code>
+<p class="lime-str">served</p>
+</li>
+<li>
+<code>status.daySkipped</code>
+<p class="lime-str">no show</p>
+</li>
+<li>
+<code>status.dayPaused</code>
+<p class="lime-str">on hiatus</p>
+</li>
+</ol>
+  <label class="box" for="c-w2.16">What needs to change here?</label>
+  <textarea id="c-w2.16" data-step="w2.16" data-parts="today.strip" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="step" id="w2-today.general">
+  <p class="stepno"><code>w2-today.general</code> the whole stage</p>
+  <h3>Anything else in this stage</h3>
+  <p class="do"><b>Do</b>Think back over the stage you just walked.</p>
+  <p class="see"><b>You see</b>Something that belongs to the stage rather than to one step.</p>
+  <p class="pids">covers w2-today</p>
+  <label class="box" for="c-w2-today.general">What needs to change?</label>
+  <textarea id="c-w2-today.general" data-step="w2-today.general" data-parts="w2-today" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, each carrying its step id and the part ids that step covers. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page, or say it in the session and name the step id.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<nav class="pager"><a href="#">back: First open and setup</a><a href="#">next: A session</a></nav>
+<script>
+(function(){
+  var KEY='fti-walk-r1-w2-today';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-step]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-step')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-step');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-step');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+' | '+b.getAttribute('data-parts')+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>
