@@ -1,5 +1,10 @@
 # Alpha review pages
 
+> Superseded on 2026-09-02 by the guided walkthrough under `docs/feedback/walk/` (decision
+> `alpha-guided-walkthrough`). The owner asked to review the app in the order they meet it, with
+> each popup inside the step that opens it. These eight per-screen pages stay committed as the
+> reference grouping; their published URLs now point at the walkthrough.
+
 Eight static pages, generated from `docs/feedback/catalogue.json`. They are the input the owner's
 alpha pass writes into. Regenerate after any change to a copy table or a component:
 

@@ -24,13 +24,13 @@ The generator is deterministic: two runs on one tree produce byte-identical file
 
 | Page | Stage | Steps | Published |
 | --- | --- | --- | --- |
-| `w0-how-to-test.html` | 0, how to run the walkthrough | 0 | not yet |
-| `w1-first-open.html` | 1, first open and setup | 15 | not yet |
-| `w2-today.html` | 2, Today, first look | 16 | not yet |
-| `w3-session.html` | 3, a training session | 15 | not yet |
-| `w4-after.html` | 4, after the session | 16 | not yet |
-| `w5-settings.html` | 5, settings and data | 16 | not yet |
-| `w6-extras.html` | 6, extras and rare states | 11 | not yet |
+| `w0-how-to-test.html` | 0, how to run the walkthrough | 0 | https://claude.ai/code/artifact/689fcd9e-b9cc-47bb-bf4e-4a97513aaf86 |
+| `w1-first-open.html` | 1, first open and setup | 15 | https://claude.ai/code/artifact/d36b9b36-1d1e-4d9d-8127-ca34dd90354a |
+| `w2-today.html` | 2, Today, first look | 16 | https://claude.ai/code/artifact/dacce295-70d9-4b01-b5f4-d1429c61c821 |
+| `w3-session.html` | 3, a training session | 15 | https://claude.ai/code/artifact/d8f1afba-e66e-41f4-aa47-96a5b3405407 |
+| `w4-after.html` | 4, after the session | 16 | https://claude.ai/code/artifact/cc1d3d0a-526e-4908-bcf6-fba51a8e6361 |
+| `w5-settings.html` | 5, settings and data | 16 | https://claude.ai/code/artifact/2bbc42f4-3606-4d1c-9935-45ab35eb223f |
+| `w6-extras.html` | 6, extras and rare states | 11 | https://claude.ai/code/artifact/e9f5b735-5b02-43bf-9d2c-24837bbee94d |
 
 89 steps over six walked stages. Every one of the 491 copy keys the catalogue places appears in
 exactly one step, and all 102 live parts are covered.
