@@ -312,7 +312,7 @@ The grammar, enforced by `src/content/alphaCatalogue.test.ts`:
   it then names either a sub-section or a state. The containers are the five `SETTINGS_ROWS` ids
   (`settings.data.export`, `settings.skin.sounds`), the three atlas rarities
   (`atlas.rarity.rare`), and the migration wizard's three phases (`popup.migration.preview`).
-  Fourteen of the 93 parts carry three segments.
+  Fifteen of the 102 parts carry three segments.
 - A part with several states that share one section lists them in its `states` array rather than
   splitting into one part per state. The reminders panel is the case that decides this: it has
   seven states and one control, so it is one part with seven states, not seven parts.
@@ -942,14 +942,14 @@ export const NOT_RENDERED = {
 };
 ```
 
-That table holds **93 live parts** across the fourteen screens, counted with:
+That table held 93 parts as drafted; the executor added nine on 2026-09-02 for sections no drafted part rendered (`today.refusal-banner`, `today.mark-completed`, `today.label-picker`, `targets.empty`, `settings.profile`, `settings.equipment-steps`, `settings.hydration`, `settings.data.on-device`, `install.intro`), so it holds **102 live parts** across the fourteen screens, counted with:
 
 ```bash
 grep -c "^  { id: '" scripts/alpha-parts.mjs
 ```
 
-Expected: `93`. The catalogue adds one synthetic `<screen>.unassigned` part per screen, which must
-end up empty, so `--count` prints 93 and `--check` proves the fourteen leftovers are empty.
+Expected: `102`. The catalogue adds one synthetic `<screen>.unassigned` part per screen, which must
+end up empty, so `--count` prints 102 and `--check` proves the fourteen leftovers are empty.
 
 - [ ] **Step 2: Append the join and the writers to `scripts/alpha-catalogue.mjs`**
 
@@ -1313,7 +1313,7 @@ node scripts/alpha-catalogue.mjs --check
 node scripts/alpha-catalogue.mjs --count
 ```
 
-Expected: `PASS alpha catalogue`, then `93`.
+Expected: `PASS alpha catalogue`, then `102`.
 
 `--check` proves nine things at once: every id matches the grammar and starts with its screen, no
 id repeats, every component path exists, every key exists in `DEFAULT_COPY`, no key is claimed
@@ -1338,7 +1338,7 @@ reads a clock or an unsorted set, and it must be fixed before the pages are gene
 ```bash
 npx eslint scripts/alpha-catalogue.mjs scripts/alpha-parts.mjs
 git add scripts/alpha-catalogue.mjs scripts/alpha-parts.mjs docs/feedback/catalogue.json docs/feedback/catalogue.md
-git commit -m "feat(P10): the alpha catalogue, 93 parts keyed by a stable id"
+git commit -m "feat(P10): the alpha catalogue, 102 parts keyed by a stable id"
 ```
 
 ---
@@ -1354,7 +1354,7 @@ there.
 **Interfaces:**
 - Consumes: `docs/feedback/catalogue.json`, read through Vite's `?raw` loader.
 
-**Check, stated first:** `npx vitest run src/content/alphaCatalogue.test.ts` passes with six tests,
+**Check, stated first:** `npx vitest run src/content/alphaCatalogue.test.ts` passes with seven tests,
 and `npx tsc -b` stays clean.
 
 The file is read with `?raw` rather than `node:fs`. `tsconfig.app.json` pins `types` to
@@ -1432,8 +1432,8 @@ const SCREENS = [
 
 describe('the alpha catalogue', () => {
   it('states its part count, and holds it', () => {
-    expect(catalogue.counts.parts).toBe(93);
-    expect(live).toHaveLength(93);
+    expect(catalogue.counts.parts).toBe(102);
+    expect(live).toHaveLength(102);
   });
 
   it('gives every part an id in the grammar, under a known screen', () => {
@@ -1506,7 +1506,7 @@ describe('the alpha catalogue', () => {
 npx vitest run src/content/alphaCatalogue.test.ts
 ```
 
-Expected: `Test Files  1 passed (1)` and `Tests  6 passed (6)`.
+Expected: `Test Files  1 passed (1)` and `Tests  7 passed (7)`.
 
 If the third or fourth test fails, the part table is wrong, not the test. Fix
 `scripts/alpha-parts.mjs`, regenerate with `node scripts/alpha-catalogue.mjs`, and run again.
@@ -1520,7 +1520,7 @@ node scripts/alpha-catalogue.mjs
 npx vitest run src/content/alphaCatalogue.test.ts 2>&1 | tail -3
 ```
 
-Expected: the first run reports `1 failed`, and the second reports `6 passed` once the generator
+Expected: the first run reports `1 failed`, and the second reports `7 passed` once the generator
 has put the file back. A test that cannot fail is not a gate.
 
 - [ ] **Step 4: Typecheck and lint**
@@ -1554,7 +1554,7 @@ git commit -m "test(P10): the alpha catalogue describes the tree, or the suite s
 
 **Check, stated first:** the generator writes seven pages, each page holds one `<section>` per live
 part of its screens and none of any other screen, the section count across the seven pages equals
-93, and two runs produce byte-identical files.
+102, and two runs produce byte-identical files.
 
 ### The design rules this page obeys
 
@@ -1859,7 +1859,7 @@ cd /home/vx/Desktop/Claude/FixThisInjustice
 node scripts/alpha-pages.mjs
 ```
 
-Expected: `pages 7 sections 93 round 1`.
+Expected: `pages 7 sections 102 round 1`.
 
 - [ ] **Step 3: Prove one section per part, and no cross-page leakage**
 
@@ -1900,7 +1900,7 @@ git commit -m "feat(P10): one review page per screen group, generated from the c
 
 **Check, stated first:** page 0 exists, names the live URL, names the three channels, states what a
 comment should say, and holds no part section. `node scripts/alpha-pages.mjs` reports
-`pages 8 sections 93`.
+`pages 8 sections 102`.
 
 - [ ] **Step 1: Add the page 0 body, above the generation loop**
 
@@ -1959,7 +1959,7 @@ grep -c 'vkotzamanis.github.io/FixThisInjustice' docs/feedback/pages/00-how-to-t
 grep -o 'next: [a-zA-Z ]*' docs/feedback/pages/00-how-to-test.html
 ```
 
-Expected: `pages 8 sections 93 round 1`, then `1` (the general box alone), then a count of at least
+Expected: `pages 8 sections 102 round 1`, then `1` (the general box alone), then a count of at least
 `1`, then `next: Boot and setup`.
 
 - [ ] **Step 4: Commit**
@@ -2149,7 +2149,7 @@ node scripts/alpha-pages.mjs
 grep -c 'href="#"' docs/feedback/pages/00-how-to-test.html
 ```
 
-Expected: `pages 8 sections 93 round 1`, then `1`. Page 0 has one pager link, forward, and it is
+Expected: `pages 8 sections 102 round 1`, then `1`. Page 0 has one pager link, forward, and it is
 `#` until Task 8 fills in a URL.
 
 - [ ] **Step 3: Write the index**
@@ -2174,14 +2174,14 @@ The generator is deterministic: two runs on one tree produce byte-identical file
 | --- | --- | --- | --- |
 | `00-how-to-test.html` | none | 0 | not yet |
 | `01-boot-setup-readiness.html` | boot, shell, setup, readiness | 22 | not yet |
-| `02-today.html` | today | 10 | not yet |
+| `02-today.html` | today | 13 | not yet |
 | `03-train.html` | train | 8 | not yet |
-| `04-plan-targets.html` | plan, targets | 11 | not yet |
+| `04-plan-targets.html` | plan, targets | 12 | not yet |
 | `05-log-atlas.html` | log, atlas | 11 | not yet |
-| `06-settings.html` | settings, install | 13 | not yet |
+| `06-settings.html` | settings, install | 18 | not yet |
 | `07-popups-toasts.html` | popup, toast | 18 | not yet |
 
-93 parts in total. `node scripts/alpha-catalogue.mjs --count` prints that number from the tree.
+102 parts in total. `node scripts/alpha-catalogue.mjs --count` prints that number from the tree.
 
 ## Publishing
 
@@ -2218,7 +2218,7 @@ for(const [n,s] of pages)console.log(n, s.reduce((t,k)=>t+(g[k]||0),0));
 "
 ```
 
-Expected: `01 22`, `02 10`, `03 8`, `04 11`, `05 11`, `06 13`, `07 18`. Those sum to 93. If a
+Expected: `01 22`, `02 13`, `03 8`, `04 12`, `05 11`, `06 18`, `07 18`. Those sum to 102. If a
 number differs, correct the table in `docs/feedback/pages/README.md` and commit the correction.
 
 ---
@@ -2374,7 +2374,7 @@ The session channel is already in the transcript.
 ```markdown
 # Alpha round 1
 
-Date: 2026-09-XX. Catalogue: `docs/feedback/catalogue.json`, built from `<short hash>`, 93 parts.
+Date: 2026-09-XX. Catalogue: `docs/feedback/catalogue.json`, built from `<short hash>`, 102 parts.
 Pages: `docs/feedback/pages/README.md`.
 
 Every comment below is the owner's own text. Nothing is paraphrased. Where one comment covered two
@@ -2401,7 +2401,7 @@ parts it appears once per part, with the split noted.
 - Accepted: 0
 - Questions: 0
 - Rejected: 0
-- Parts commented on, out of 93: 0
+- Parts commented on, out of 102: 0
 ```
 
 The single example row is a shape, not data. Delete it when the real rows go in.
@@ -2609,7 +2609,7 @@ node scripts/alpha-catalogue.mjs
 node scripts/copy-wordcount.mjs 2>/dev/null | grep -A1 '^== LIMELIGHT_COPY' | tail -1
 ```
 
-Expected: the catalogue reports 93 parts, and the word count line shows the family the row belongs
+Expected: the catalogue reports 102 parts, and the word count line shows the family the row belongs
 to. Record the before and after word counts in the commit message when the change moves them.
 
 - [ ] **Step 7: Commit**
@@ -2930,7 +2930,7 @@ node scripts/alpha-catalogue.mjs
 node scripts/alpha-catalogue.mjs --check
 ```
 
-Expected: the catalogue reports 93 parts and `PASS alpha catalogue`. A new key that no part claims
+Expected: the catalogue reports 102 parts and `PASS alpha catalogue`. A new key that no part claims
 lands in `<screen>.unassigned` and fails the check, which is the reminder to put it in a part.
 
 - [ ] **Step 7: Commit**
@@ -2965,8 +2965,8 @@ node scripts/alpha-pages.mjs
 npx vitest run src/content/alphaCatalogue.test.ts
 ```
 
-Expected: the summary line, `PASS alpha catalogue`, `pages 8 sections 93 round 1`, and
-`Tests  6 passed (6)`. A different part count means round 1 added or removed a part, and the count
+Expected: the summary line, `PASS alpha catalogue`, `pages 8 sections 102 round 1`, and
+`Tests  7 passed (7)`. A different part count means round 1 added or removed a part, and the count
 in `src/content/alphaCatalogue.test.ts`, in `docs/feedback/pages/README.md` and in this plan's
 Self-review all move together.
 
@@ -3003,7 +3003,7 @@ Append to `docs/feedback/2026-09-XX-round-1.md`:
 ```
 
 One row for each of: every comment triaged `question` that got no answer; every comment triaged
-`reject` where the owner has not yet chosen an alternative; every part of the 93 that received no
+`reject` where the owner has not yet chosen an alternative; every part of the 102 that received no
 comment, stated as a count rather than a list; every check that could not run on this machine; and
 every layout change whose phone verdict is still owed.
 
@@ -3071,7 +3071,7 @@ Run before the plan is handed to an implementer, and again at Task 16.
 | review each step and page | 4 to 8, one page per screen group in app order |
 | leave comments on each section | 4, a box per part; 8, comment threads |
 | function as an alpha tester | 5, page 0 is the procedure |
-| catalogue feedback on each possible part | 1 to 3, 93 parts with stable ids and a gate |
+| catalogue feedback on each possible part | 1 to 3, 102 parts with stable ids and a gate |
 | use an agentic approach to implement | 11 to 15, one template per feedback kind |
 | focus on the gay and brat theme | decision `alpha-focus-limelight`, and Limelight first in every string block |
 | the minimal theme is the same, any interesting language | Task 12, the default table changes for verbosity or accuracy only |
@@ -3091,7 +3091,7 @@ owner's own comments. Each is a measurement with a stated method, not a gap.
   `docs/feedback/pages/00-how-to-test.html` through `07-popups-toasts.html`,
   `docs/feedback/pages/urls.json`, `docs/feedback/pages/README.md`,
   `docs/feedback/2026-09-XX-round-1.md`, `src/content/alphaCatalogue.test.ts`.
-- Part count: 93, stated in Task 2, asserted in Task 3, counted in Tasks 4, 7 and 16.
+- Part count: 102, stated in Task 2, asserted in Task 3, counted in Tasks 4, 7 and 16.
 - Screen ids: the same fourteen in `SCREEN_FILES`, in `scripts/alpha-parts.mjs`, in the `PAGES`
   array and in the test's `SCREENS` constant.
 - Function names: `loadCopy`, `keysIn`, `keyLinesIn`, `readConstArray`, `readUnion`,
@@ -3101,7 +3101,7 @@ owner's own comments. Each is a measurement with a stated method, not a gap.
 
 **4. What the executor must report on completion.**
 
-- The measured part count from `node scripts/alpha-catalogue.mjs --count`, and whether it is 93.
+- The measured part count from `node scripts/alpha-catalogue.mjs --count`, and whether it is 102.
 - The eight published Artifact URLs.
 - The number of comments received, accepted, questioned and rejected.
 - Every check that failed, with its output.
