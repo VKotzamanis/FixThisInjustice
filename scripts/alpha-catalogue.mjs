@@ -32,9 +32,11 @@
 // contains. A MISSING path used to return an empty set, so a renamed view quietly emptied its
 // screen; it now throws. What is left is a key a reviewer can find on the screen.
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
+
+import { NOT_RENDERED, PARTS } from './alpha-parts.mjs';
 
 // fileURLToPath, not URL.pathname: pathname is percent-encoded, so a checkout under a path with
 // a space resolves to a directory that does not exist.
@@ -332,6 +334,254 @@ export function probe() {
   };
 }
 
+/** The part id grammar: two or three hyphen-lower-case segments. */
+const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*){1,2}$/;
+
+/** One key, resolved on all three skins, with its limelight verdict. */
+function keyRecord(key, tables, refusals) {
+  const refusal = refusals.get(key) ?? null;
+  return {
+    key,
+    default: tables.DEFAULT_COPY[key],
+    limelight: tables.LIMELIGHT_COPY[key] ?? 'same',
+    board: tables.BOARD_COPY[key] ?? 'same',
+    isControl: key.startsWith('button.'),
+    limelightRowPermitted: refusal === null,
+    refusalGroup: refusal === null ? null : refusal.group,
+  };
+}
+
+/**
+ * The catalogue, and every problem found while building it.
+ *
+ * A part with an explicit `keys` array takes exactly those keys. A part without one takes every
+ * key its own files mention that no earlier part has claimed, which is how a part that owns a
+ * whole component file fills itself. Whatever a screen mentions and no part claims lands in
+ * `<screen>.unassigned`, and whatever the table holds and no part claims must be excused by name
+ * in NOT_RENDERED, so a key can never fall out of the catalogue silently.
+ */
+export async function buildCatalogue() {
+  const tables = await loadCopy();
+  const { refusals } = readLimelightRefusals();
+  const head = execFileSync('git', ['rev-parse', '--short', 'HEAD'], {
+    encoding: 'utf8',
+    cwd: ROOT,
+  }).trim();
+
+  const problems = [];
+  const parts = [];
+  const seen = new Set();
+
+  /*
+   * ONE CLAIM MAP FOR THE WHOLE TREE, key to part id. A key is filed once, under the first screen
+   * in app order that claims or mentions it, the way scripts/limelight-side-by-side.mjs files a
+   * key once through one `placed` Map. A set per screen would let today and shell both demand
+   * hero.programmeComplete and leave it unassigned on whichever screen has no part for it.
+   */
+  const claimed = new Map();
+
+  for (const [screen, files] of SCREEN_FILES) {
+    const inScreen = PARTS.filter((p) => p.screen === screen);
+    const assigned = new Map();
+
+    /*
+     * TWO PASSES, and the order matters. Every explicit `keys` array claims first, across the
+     * whole screen. Only then does a part without one sweep up what its own files still mention.
+     * One pass in authored order would let boot.sequence, which owns Boot.tsx and declares no
+     * keys, swallow button.skipBoot before boot.skip could claim it.
+     */
+    for (const part of inScreen) {
+      if (part.keys === undefined) continue;
+      const keys = [...part.keys].sort();
+      for (const k of keys) {
+        if (!(k in tables.DEFAULT_COPY)) problems.push(`${part.id}: key not in DEFAULT_COPY: ${k}`);
+        if (claimed.has(k)) problems.push(`${part.id}: key already claimed by ${claimed.get(k)}: ${k}`);
+        claimed.set(k, part.id);
+      }
+      assigned.set(part.id, keys);
+    }
+    for (const part of inScreen) {
+      if (part.keys !== undefined) continue;
+      const keys = [...keysIn(part.components)]
+        .filter((k) => k in tables.DEFAULT_COPY && !claimed.has(k))
+        .sort();
+      for (const k of keys) claimed.set(k, part.id);
+      assigned.set(part.id, keys);
+    }
+
+    let order = 0;
+    for (const part of inScreen) {
+      if (!ID_RE.test(part.id)) problems.push(`bad id: ${part.id}`);
+      if (!part.id.startsWith(`${screen}.`)) problems.push(`id does not start with its screen: ${part.id}`);
+      if (seen.has(part.id)) problems.push(`duplicate id: ${part.id}`);
+      seen.add(part.id);
+      for (const rel of part.components) {
+        if (!existsSync(ROOT + rel)) problems.push(`${part.id}: no such component: ${rel}`);
+      }
+      order += 1;
+      parts.push({
+        id: part.id,
+        screen,
+        order,
+        title: part.title,
+        what: part.what,
+        components: part.components,
+        states: part.states,
+        keys: (assigned.get(part.id) ?? []).map((k) => keyRecord(k, tables, refusals)),
+        status: part.status ?? 'live',
+      });
+    }
+    const left = [...keysIn(files)]
+      .filter((k) => k in tables.DEFAULT_COPY && !claimed.has(k))
+      .sort();
+    if (left.length > 0) problems.push(`${screen}.unassigned holds ${left.length} keys: ${left.join(', ')}`);
+    parts.push({
+      id: `${screen}.unassigned`,
+      screen,
+      order: order + 1,
+      title: 'Unassigned',
+      what: 'Keys this screen renders that no part claims. Must be empty.',
+      components: files,
+      states: [],
+      keys: left.map((k) => keyRecord(k, tables, refusals)),
+      status: 'synthetic',
+    });
+  }
+
+  /*
+   * THE STATES THE TREE ENUMERATES, checked against the tree rather than trusted.
+   *
+   * Three parts take their states from a union type, two screens take their sections from a
+   * runtime list, and each is compared here. A member added to any of them without a matching
+   * part fails --check, which is the whole reason the catalogue is generated instead of written.
+   */
+  const secondSegments = (screen) =>
+    new Set(PARTS.filter((p) => p.screen === screen).map((p) => p.id.split('.')[1]));
+  const sameSet = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
+
+  const reminders = PARTS.find((p) => p.id === 'settings.reminders');
+  const reminderStates = readUnion('src/ui/components/ReminderSettingsPanel.tsx', 'ReminderStatus');
+  if (!sameSet(reminders.states, reminderStates)) {
+    problems.push(`settings.reminders states differ from ReminderStatus: ${reminders.states.join(', ')} vs ${reminderStates.join(', ')}`);
+  }
+
+  const toastIds = PARTS.filter((p) => p.screen === 'toast').map((p) => p.id.split('.')[1]);
+  const toastKinds = readUnion('src/ui/components/ToastQueue.tsx', 'ToastKind');
+  if (!sameSet(toastIds, toastKinds)) {
+    problems.push(`toast parts differ from ToastKind: ${toastIds.join(', ')} vs ${toastKinds.join(', ')}`);
+  }
+
+  const migrationIds = PARTS.filter((p) => p.id.startsWith('popup.migration.')).map((p) => p.id.split('.')[2]);
+  const phases = readUnion('src/ui/migration/MigrationWizard.tsx', 'Phase');
+  if (!sameSet(migrationIds, phases)) {
+    problems.push(`popup.migration parts differ from Phase: ${migrationIds.join(', ')} vs ${phases.join(', ')}`);
+  }
+
+  const setupSections = secondSegments('setup');
+  for (const step of readConstArray('src/ui/setup/SetupWizard.tsx', 'STEPS')) {
+    if (!setupSections.has(step)) problems.push(`no setup part for wizard step: ${step}`);
+  }
+
+  const settingsSections = secondSegments('settings');
+  for (const row of readSettingsRowIds()) {
+    if (!settingsSections.has(row)) problems.push(`no settings part for SETTINGS_ROWS id: ${row}`);
+  }
+
+  for (const view of tables.VIEWS) {
+    if (!SCREEN_IDS.includes(view.id)) problems.push(`no screen for view: ${view.id}`);
+  }
+
+  /*
+   * EVERY KEY IN THE TABLE, placed once or excused by name. A key the app can show and no part
+   * claims is a part of the app the owner cannot comment on, which is the one failure this
+   * catalogue exists to prevent. NOT_RENDERED is checked both ways, so an excuse cannot outlive
+   * the surface it excuses.
+   */
+  const allKeys = Object.keys(tables.DEFAULT_COPY).sort();
+  for (const key of allKeys) {
+    if (claimed.has(key) && key in NOT_RENDERED) {
+      problems.push(`${claimed.get(key)} claims a key NOT_RENDERED excuses: ${key}`);
+    }
+    if (!claimed.has(key) && !(key in NOT_RENDERED)) {
+      problems.push(`no part claims and NOT_RENDERED does not excuse: ${key}`);
+    }
+  }
+  for (const key of Object.keys(NOT_RENDERED)) {
+    if (!(key in tables.DEFAULT_COPY)) problems.push(`NOT_RENDERED names a key not in DEFAULT_COPY: ${key}`);
+  }
+  const notRendered = Object.keys(NOT_RENDERED)
+    .sort()
+    .map((key) => ({ key, reason: NOT_RENDERED[key] }));
+
+  const live = parts.filter((p) => p.status === 'live');
+  return {
+    catalogue: {
+      generatedFrom: head,
+      counts: {
+        screens: SCREEN_IDS.length,
+        parts: live.length,
+        keys: live.reduce((n, p) => n + p.keys.length, 0),
+        notRendered: notRendered.length,
+        table: allKeys.length,
+      },
+      parts,
+      notRendered,
+    },
+    problems,
+  };
+}
+
+/** The same catalogue as a page a person can read. */
+function toMarkdown(cat) {
+  const out = [];
+  out.push('# Alpha review catalogue');
+  out.push('');
+  out.push('Generated by `scripts/alpha-catalogue.mjs` from the tree. Nothing here is retyped.');
+  out.push('Regenerate after any change to a copy table or a component:');
+  out.push('');
+  out.push('```bash');
+  out.push('node scripts/alpha-catalogue.mjs');
+  out.push('```');
+  out.push('');
+  out.push(`Built from \`${cat.generatedFrom}\`. ${cat.counts.parts} parts across ${cat.counts.screens} screens, holding ${cat.counts.keys} of the table's ${cat.counts.table} copy keys; ${cat.counts.notRendered} have no surface and are excused by name at the foot.`);
+  out.push('');
+  for (const screen of SCREEN_IDS) {
+    const inScreen = cat.parts.filter((p) => p.screen === screen && p.status === 'live');
+    out.push(`## ${screen} (${inScreen.length})`);
+    out.push('');
+    for (const part of inScreen) {
+      out.push(`### \`${part.id}\``);
+      out.push('');
+      out.push(`${part.title}. ${part.what}`);
+      out.push('');
+      out.push(`Renders: ${part.components.map((c) => `\`${c}\``).join(', ')}`);
+      out.push('');
+      out.push(`States: ${part.states.map((s) => `\`${s}\``).join(', ')}`);
+      out.push('');
+      if (part.keys.length === 0) {
+        out.push('No copy key. Review its layout and behaviour only.');
+        out.push('');
+        continue;
+      }
+      out.push('| Key | Clinical | Limelight | Board | Limelight row allowed |');
+      out.push('| --- | --- | --- | --- | --- |');
+      for (const k of part.keys) {
+        const allowed = k.limelightRowPermitted ? 'yes' : `no: ${k.refusalGroup}`;
+        const cell = (v) => v.replace(/\|/g, '\\|');
+        out.push(`| \`${k.key}\` | ${cell(k.default)} | ${cell(k.limelight)} | ${cell(k.board)} | ${cell(allowed)} |`);
+      }
+      out.push('');
+    }
+  }
+  out.push('## not rendered');
+  out.push('');
+  out.push('| Key | Why it has no surface |');
+  out.push('| --- | --- |');
+  for (const n of cat.notRendered) out.push(`| \`${n.key}\` | ${n.reason.replace(/\|/g, '\\|')} |`);
+  out.push('');
+  return out.join('\n');
+}
+
 const argv = process.argv.slice(2);
 
 if (argv[0] === '--probe') {
@@ -372,4 +622,21 @@ if (argv[0] === '--probe') {
   for (const key of unplacedKeys(DEFAULT_COPY)) {
     process.stdout.write(`${key}\t${firstSourceFile(key) ?? '-'}\n`);
   }
+} else if (argv[0] === '--count') {
+  const { catalogue } = await buildCatalogue();
+  process.stdout.write(`${catalogue.counts.parts}\n`);
+} else if (argv[0] === '--check') {
+  const { problems } = await buildCatalogue();
+  if (problems.length > 0) {
+    for (const p of problems) process.stderr.write(`FAIL ${p}\n`);
+    process.exitCode = 1;
+  } else {
+    process.stdout.write('PASS alpha catalogue\n');
+  }
+} else {
+  const { catalogue, problems } = await buildCatalogue();
+  mkdirSync(`${ROOT}docs/feedback`, { recursive: true });
+  writeFileSync(`${ROOT}docs/feedback/catalogue.json`, `${JSON.stringify(catalogue, null, 2)}\n`);
+  writeFileSync(`${ROOT}docs/feedback/catalogue.md`, `${toMarkdown(catalogue)}\n`);
+  process.stdout.write(`parts ${catalogue.counts.parts} keys ${catalogue.counts.keys} problems ${problems.length}\n`);
 }
