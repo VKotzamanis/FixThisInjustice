@@ -84,10 +84,19 @@ string and never concatenates it into the message.
 
 **R10. Exempt content.** Two halves, and only one of them is mechanical.
 
-Exercise form cues, exercise notes and tips, Atlas card bodies and citations, and the reminders
-runbook (`docs/RUNBOOK-reminders.md`) are exempt from R1 to R4 and R9. They are reference text a
-user chooses to open. They are not exempt from R5, R6 or R11. None of them lives in a copy table:
-they are `src/content/formCues.ts`, `src/content/specimenCards.ts` and that runbook.
+Exercise form cues, exercise notes and tips, Atlas card bodies and citations, the body-step
+equation list, and the reminders runbook (`docs/RUNBOOK-reminders.md`) are exempt from R1 to R4
+and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
+None of them lives in a copy table: they are `src/content/formCues.ts`,
+`src/content/specimenCards.ts`, `src/content/bodyEquations.ts` and that runbook.
+
+<!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
+`src/content/bodyEquations.ts` was added to that list on 2026-09-04, for alpha round 1 claim
+C1.07.5: the owner asked for a citation list under the body box, naming the methods the page's
+numbers feed. A citation carrying a DOI cannot pass R3's twelve words and should not try. The
+module carries its own suite, `src/content/bodyEquations.test.ts`, asserting R5, R6 and R11 and
+that every DOI it prints also appears in the engine that uses it, so a citation cannot drift from
+the code it describes.
 
 Inside the tables the exemption list is one key long, and the suite holds it as `LENGTH_EXEMPT`:
 

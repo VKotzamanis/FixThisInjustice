@@ -62,7 +62,6 @@ export type CopyKey =
   | 'advice.timezoneDetected'
   | 'advice.timezonePick'
   | 'advice.timezoneInvalid'
-  | 'advice.sexUsedFor'
   | 'advice.bodyFatOptional'
   | 'advice.tapeMethod'
   | 'advice.tapeNeedFemale'
@@ -89,9 +88,11 @@ export type CopyKey =
   | 'label.unitsImperial'
   | 'label.timezone'
   | 'label.name'
+  | 'label.sex'
+  | 'label.metres'
+  | 'label.centimetres'
   | 'label.sexMale'
   | 'label.sexFemale'
-  | 'label.birthYear'
   | 'label.feet'
   | 'label.inches'
   | 'label.bodyFatNone'
@@ -618,7 +619,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.timezoneDetected': 'Necessary for the notification bot and the week planner.',
   'advice.timezonePick': 'Select from the drop down menu:',
   'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
-  'advice.sexUsedFor': 'Used by the RMR, body-fat and fluid equations.',
   'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham equation.',
   'advice.tapeMethod': 'US Navy circumference method. Keep the tape level and snug.',
   'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
@@ -647,9 +647,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.unitsImperial': 'Pounds (lb)',
   'label.timezone': 'Time zone',
   'label.name': 'How should I refer to you?',
+  /*
+   * Round 1 claim C1.07.8 proposed "Biological Sex for RMR". The label names the quantity and
+   * the footnote names what reads it, because RMR is not the only consumer: the tape body-fat
+   * equations differ by sex in FORM, not only in coefficient, and the beverage target is
+   * sex-specific too. A label naming one of three would be wrong in the direction that matters.
+   */
+  'label.sex': 'Biological sex',
+  'label.metres': 'Metres',
+  'label.centimetres': 'Centimetres',
   'label.sexMale': 'Male',
   'label.sexFemale': 'Female',
-  'label.birthYear': 'Birth year',
   'label.feet': 'Feet',
   'label.inches': 'Inches',
   'label.bodyFatNone': 'Not measured',

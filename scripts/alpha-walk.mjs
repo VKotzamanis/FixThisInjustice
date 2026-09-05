@@ -132,10 +132,11 @@ export const STAGES = [
         keys: [
           'step.body',
           'label.name',
-          'advice.sexUsedFor',
+          'label.sex',
+          'label.metres',
+          'label.centimetres',
           'label.sexMale',
           'label.sexFemale',
-          'label.birthYear',
           'quantity.age',
           'quantity.height',
           'label.feet',
