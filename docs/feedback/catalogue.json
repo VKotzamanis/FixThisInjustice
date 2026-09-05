@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "29e63ed",
+  "generatedFrom": "8536108",
   "counts": {
-    "screens": 14,
-    "parts": 102,
-    "keys": 497,
+    "screens": 13,
+    "parts": 99,
+    "keys": 477,
     "notRendered": 3,
-    "table": 500
+    "table": 480
   },
   "parts": [
     {
@@ -1526,22 +1526,31 @@
       "status": "live"
     },
     {
-      "id": "setup.readiness",
+      "id": "setup.guidance",
       "screen": "setup",
       "order": 9,
-      "title": "Step 8, Readiness",
-      "what": "The pre-participation screening, inside the wizard.",
+      "title": "Step 8, Guidance",
+      "what": "Supplement and kit guidance, inside the wizard.",
       "components": [
-        "src/ui/setup/SetupWizard.tsx"
+        "src/ui/setup/SetupWizard.tsx",
+        "src/ui/setup/GuidanceScreen.tsx"
       ],
       "states": [
-        "unanswered",
-        "answered"
+        "default"
       ],
       "keys": [
         {
-          "key": "step.readiness",
-          "default": "Readiness",
+          "key": "hero.guidance",
+          "default": "A few things worth knowing",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "step.guidance",
+          "default": "Getting started",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1736,202 +1745,8 @@
       "title": "Unassigned",
       "what": "Keys this screen renders that no part claims. Must be empty.",
       "components": [
-        "src/ui/setup/SetupWizard.tsx"
-      ],
-      "states": [],
-      "keys": [],
-      "status": "synthetic"
-    },
-    {
-      "id": "readiness.screen",
-      "screen": "readiness",
-      "order": 1,
-      "title": "Readiness screening",
-      "what": "The health questions and the physician-consult flag.",
-      "components": [
-        "src/ui/setup/ReadinessScreen.tsx",
-        "src/content/readinessQuestions.ts"
-      ],
-      "states": [
-        "unanswered",
-        "no-flags",
-        "consult"
-      ],
-      "keys": [
-        {
-          "key": "advice.notMedicalAdvice",
-          "default": "This is not medical advice.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "advice.readinessAnyYes",
-          "default": "Answer yes to any question: consult a physician before training.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "label.no",
-          "default": "No",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "label.yes",
-          "default": "Yes",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q1",
-          "default": "Has a doctor diagnosed you with a heart condition?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q2",
-          "default": "Do you get chest pain at rest or during physical activity?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q3",
-          "default": "In the last 12 months, have you lost consciousness or lost balance from dizziness?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q3Note",
-          "default": "Answer no if the dizziness came only from over-breathing during exercise.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q4",
-          "default": "Has a doctor diagnosed you with another chronic condition?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q5",
-          "default": "Do you take prescribed medication for a chronic condition?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q6",
-          "default": "Do you have a bone, joint or soft tissue problem that activity could worsen?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q6Note",
-          "default": "Answer no if the problem no longer limits your physical activity.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "readiness.q7",
-          "default": "Has a doctor told you to exercise only under medical supervision?",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "why.readiness",
-          "default": "These seven questions are this app's wording of the seven PAR-Q+ screening domains. No answer is stored, only the screening date and whether any was yes. A yes is not a diagnosis and this app is not a clearance instrument.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        }
-      ],
-      "status": "live"
-    },
-    {
-      "id": "readiness.notice",
-      "screen": "readiness",
-      "order": 2,
-      "title": "Consult notice",
-      "what": "The per-tab notice a flagged screening raises.",
-      "components": [
-        "src/ui/components/ReadinessNotice.tsx"
-      ],
-      "states": [
-        "shown",
-        "dismissed"
-      ],
-      "keys": [
-        {
-          "key": "advice.readinessConsult",
-          "default": "You answered yes on the readiness screen. Consult a physician before training.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "button.dismiss",
-          "default": "Dismiss",
-          "limelight": "noted.",
-          "board": "same",
-          "isControl": true,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        }
-      ],
-      "status": "live"
-    },
-    {
-      "id": "readiness.unassigned",
-      "screen": "readiness",
-      "order": 3,
-      "title": "Unassigned",
-      "what": "Keys this screen renders that no part claims. Must be empty.",
-      "components": [
-        "src/ui/setup/ReadinessScreen.tsx",
-        "src/ui/components/ReadinessNotice.tsx",
-        "src/content/readinessQuestions.ts"
+        "src/ui/setup/SetupWizard.tsx",
+        "src/ui/setup/GuidanceScreen.tsx"
       ],
       "states": [],
       "keys": [],
@@ -2014,6 +1829,15 @@
           "isControl": false,
           "limelightRowPermitted": false,
           "refusalGroup": "CASE ALONE, OR THE LIMELIGHT WORD ALREADY"
+        },
+        {
+          "key": "button.dismiss",
+          "default": "Dismiss",
+          "limelight": "noted.",
+          "board": "same",
+          "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
         },
         {
           "key": "status.refusalAlreadyStarted",
@@ -4109,82 +3933,9 @@
       "status": "synthetic"
     },
     {
-      "id": "settings.readiness",
-      "screen": "settings",
-      "order": 1,
-      "title": "Readiness row",
-      "what": "The screening date, the flag, and the redo control.",
-      "components": [
-        "src/ui/views/SettingsView.tsx"
-      ],
-      "states": [
-        "not-screened",
-        "no-flags",
-        "consult",
-        "screening"
-      ],
-      "keys": [
-        {
-          "key": "button.redoReadiness",
-          "default": "Redo readiness screening",
-          "limelight": "same",
-          "board": "same",
-          "isControl": true,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE READINESS SCREENING"
-        },
-        {
-          "key": "button.startReadiness",
-          "default": "Start readiness screening",
-          "limelight": "same",
-          "board": "same",
-          "isControl": true,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE READINESS SCREENING"
-        },
-        {
-          "key": "hero.readiness",
-          "default": "Readiness",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE READINESS SCREENING"
-        },
-        {
-          "key": "status.notScreened",
-          "default": "Not screened.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE READINESS SCREENING"
-        },
-        {
-          "key": "status.readinessConsult",
-          "default": "Physician consult advised.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE READINESS SCREENING"
-        },
-        {
-          "key": "status.readinessNoFlags",
-          "default": "No flags.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE READINESS SCREENING"
-        }
-      ],
-      "status": "live"
-    },
-    {
       "id": "settings.profile",
       "screen": "settings",
-      "order": 2,
+      "order": 1,
       "title": "Profile fields",
       "what": "The active profile, the display unit and the editable profile values.",
       "components": [
@@ -4246,7 +3997,7 @@
     {
       "id": "settings.equipment-steps",
       "screen": "settings",
-      "order": 3,
+      "order": 2,
       "title": "Equipment steps",
       "what": "The load increments the suggested load is rounded to.",
       "components": [
@@ -4271,7 +4022,7 @@
     {
       "id": "settings.hydration",
       "screen": "settings",
-      "order": 4,
+      "order": 3,
       "title": "Hydration row",
       "what": "The daily beverage target and the default it starts from.",
       "components": [
@@ -4314,7 +4065,7 @@
     {
       "id": "settings.reminders",
       "screen": "settings",
-      "order": 5,
+      "order": 4,
       "title": "Reminders panel",
       "what": "The push state line and the enable control.",
       "components": [
@@ -4444,7 +4195,7 @@
     {
       "id": "settings.reminders.lead-times",
       "screen": "settings",
-      "order": 6,
+      "order": 5,
       "title": "Reminder lead times",
       "what": "The day-of time and the lead times before a session.",
       "components": [
@@ -4487,7 +4238,7 @@
     {
       "id": "settings.motivation-clip",
       "screen": "settings",
-      "order": 7,
+      "order": 6,
       "title": "Motivation clip",
       "what": "The clip picker, its size limit and the clear control.",
       "components": [
@@ -4624,7 +4375,7 @@
     {
       "id": "settings.skin.picker",
       "screen": "settings",
-      "order": 8,
+      "order": 7,
       "title": "Skin picker",
       "what": "Clinical, Limelight and Board, and what a skin may change.",
       "components": [
@@ -4696,7 +4447,7 @@
     {
       "id": "settings.skin.sounds",
       "screen": "settings",
-      "order": 9,
+      "order": 8,
       "title": "Sounds toggle",
       "what": "The switch for the app sounds.",
       "components": [
@@ -4722,7 +4473,7 @@
     {
       "id": "settings.skin.hotkeys",
       "screen": "settings",
-      "order": 10,
+      "order": 9,
       "title": "Hotkeys toggle",
       "what": "The switch for the single-character shortcuts.",
       "components": [
@@ -4757,7 +4508,7 @@
     {
       "id": "settings.data.export",
       "screen": "settings",
-      "order": 11,
+      "order": 10,
       "title": "Export",
       "what": "The JSON backup, the text summary and the calendar file.",
       "components": [
@@ -4856,7 +4607,7 @@
     {
       "id": "settings.data.import",
       "screen": "settings",
-      "order": 12,
+      "order": 11,
       "title": "Import",
       "what": "The file picker, and what an invalid file does.",
       "components": [
@@ -4982,7 +4733,7 @@
     {
       "id": "settings.data.on-device",
       "screen": "settings",
-      "order": 13,
+      "order": 12,
       "title": "Data on device",
       "what": "The heading and the sentence saying where the document is held.",
       "components": [
@@ -5016,7 +4767,7 @@
     {
       "id": "settings.data.wipe",
       "screen": "settings",
-      "order": 14,
+      "order": 13,
       "title": "Wipe",
       "what": "The control that destroys the document, and its confirm.",
       "components": [
@@ -5069,7 +4820,7 @@
     {
       "id": "settings.data.legacy-delete",
       "screen": "settings",
-      "order": 15,
+      "order": 14,
       "title": "Legacy delete",
       "what": "The old app keys, the download that must precede the delete.",
       "components": [
@@ -5150,7 +4901,7 @@
     {
       "id": "settings.unassigned",
       "screen": "settings",
-      "order": 16,
+      "order": 15,
       "title": "Unassigned",
       "what": "Keys this screen renders that no part claims. Must be empty.",
       "components": [

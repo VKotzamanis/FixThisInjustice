@@ -18,7 +18,6 @@ import { useActiveProfile } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
 import { Intervention } from '../components/Intervention';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
-import { ReadinessNotice } from '../components/ReadinessNotice';
 import { TimeCapsule } from '../components/TimeCapsule';
 import { WeekStamp } from '../components/WeekStamp';
 import {
@@ -425,15 +424,6 @@ export function TodayView(): JSX.Element {
           </button>
         </div>
       )}
-
-      {/*
-       * Master plan section 10.4: a flagged screening shows the physician-consult notice at
-       * every session start. It is rendered on the days a session can be started or is under
-       * way, and not on a rest day: the notice is dismissable for the browser session, so
-       * showing it where there is nothing to start would let a rest-day dismissal silence it
-       * on the day it is actually owed.
-       */}
-      {canRun && <ReadinessNotice flagged={profile.readiness.flagged} />}
 
       {hero}
 

@@ -22,3 +22,6 @@ graphify-out/cache/
 # working directories that are not part of the deployed artifact
 uploads/
 screenshots/
+
+# Local agy (Gemini CLI) permissions, scoped to this repo. Tool config, not project source.
+.gemini/

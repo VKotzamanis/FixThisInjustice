@@ -259,6 +259,14 @@ export const FAT_LOSS_RATE_BOUND = { loFraction: 0.005, hiFraction: 0.01 }; // 0
  * Morton caution carried into the basis string: the 1.62 g/kg/day break point is reported as
  * a segmental regression that was NOT statistically significant (p=0.079), and 2.2 is the
  * confidence-interval upper bound, not a second measurement.
+ *
+ * Protein powder guidance sources (see src/content/supplementGuidance.ts):
+ *   Whey forms (concentrate, isolate, hydrolysate) produce no clinically meaningful difference in
+ *   hypertrophy: Castro LHA et al. (2019), Nutrients 11(9):2047, DOI 10.3390/nu11092047.
+ *   Per-meal dosing ~0.4 g/kg body mass across at least four meals: Schoenfeld BJ, Aragon AA (2018),
+ *   J Int Soc Sports Nutr 15:10, DOI 10.1186/s12970-018-0215-1.
+ *   Third-party testing caution: Geyer H et al. (2004), Int J Sports Med 25(2):124-129,
+ *   DOI 10.1055/s-2004-819955 (14.8 % of 634 supplements held undeclared anabolic steroids).
  */
 const PROTEIN_BODY_MASS_MAINTENANCE = { lo: 1.4, hi: 2.0 }; // g/kg body mass per day
 const PROTEIN_BODY_MASS_GAIN = { lo: 1.6, hi: 2.2 }; // g/kg body mass per day
@@ -307,9 +315,49 @@ const CREATINE_FLOOR_G = 3; // g/day
 const CREATINE_PER_KG = 0.1; // g/day per kg body mass
 const CREATINE_CAP_G = 10; // g/day, top of Kreider's 5-10 g/day for larger athletes
 
-function creatineDoseG(massKg: Kg): number {
+export function creatineDoseG(massKg: Kg): number {
+  // Guarded like caffeineDoseMg beside it. computeTargets only reaches this with a
+  // domain-validated mass, so the throw is a contract statement rather than a live path.
+  if (!Number.isFinite(massKg) || massKg <= 0) {
+    throw new RangeError('creatineDoseG: massKg must be a finite number > 0');
+  }
   const dose = Math.min(CREATINE_CAP_G, Math.max(CREATINE_FLOOR_G, CREATINE_PER_KG * massKg));
   return Math.round(dose * 10) / 10; // g/day at 0.1 g resolution
+}
+
+/* ------------------------------------------------------------------ *
+ * Caffeine
+ * ------------------------------------------------------------------ */
+
+/**
+ * Caffeine, as an ergogenic dose for RESISTANCE training.
+ *
+ * Grgic J (2022), Nutrition 103-104:111604, DOI 10.1016/j.nut.2022.111604: 0.9-2 mg/kg is
+ * sufficient for strength, muscular endurance and movement velocity. The wider 3-6 mg/kg band in
+ * the ISSN position stand (Guest NS et al. 2021, J Int Soc Sports Nutr 18:1,
+ * DOI 10.1186/s12970-020-00383-4) is evidenced mostly in ENDURANCE work, and at 70 kg its floor
+ * already exceeds EFSA's safe single dose. This app prescribes lifting, so it prescribes the
+ * resistance band and states the wider one as context rather than as a target.
+ *
+ * EFSA (2015), EFSA Journal 13(5):4102, DOI 10.2903/j.efsa.2015.4102: 200 mg is a safe single
+ * dose and 400 mg a safe daily total for healthy adults. The returned range is CAPPED at the
+ * single-dose figure, and the cap is disclosed on screen rather than applied silently.
+ */
+export const CAFFEINE_RESISTANCE_MG_PER_KG = { lo: 0.9, hi: 2 }; // mg/kg body mass
+export const CAFFEINE_EFSA_SINGLE_MG = 200; // mg, one dose, healthy adults
+export const CAFFEINE_EFSA_DAILY_MG = 400; // mg/day, healthy adults
+
+export function caffeineDoseMg(massKg: Kg): { lo: number; hi: number; capped: boolean } {
+  if (!Number.isFinite(massKg) || massKg <= 0) {
+    throw new RangeError('caffeineDoseMg: massKg must be a finite number > 0');
+  }
+  const rawLo = CAFFEINE_RESISTANCE_MG_PER_KG.lo * massKg; // mg
+  const rawHi = CAFFEINE_RESISTANCE_MG_PER_KG.hi * massKg; // mg
+  return {
+    lo: Math.round(Math.min(rawLo, CAFFEINE_EFSA_SINGLE_MG)),
+    hi: Math.round(Math.min(rawHi, CAFFEINE_EFSA_SINGLE_MG)),
+    capped: rawHi > CAFFEINE_EFSA_SINGLE_MG,
+  };
 }
 
 /* ------------------------------------------------------------------ *

@@ -402,24 +402,6 @@ describe('setActiveProfile', () => {
   });
 });
 
-describe('recordReadiness', () => {
-  it('writes the screening date and the flag onto the profile', () => {
-    useAppStore.getState().createProfile(profile());
-    useAppStore.getState().recordReadiness('p1', '2026-09-01', true);
-    expect(useAppStore.getState().profiles['p1']?.readiness).toEqual({
-      screenedAt: '2026-09-01',
-      flagged: true,
-    });
-    expectDocumentConsistent();
-  });
-
-  it('refuses an unknown profile rather than dropping the screen', () => {
-    expect(() => {
-      useAppStore.getState().recordReadiness('nope', '2026-09-01', true);
-    }).toThrow(/not a known profile/);
-  });
-});
-
 describe('setPlan', () => {
   it('stores the plan under a fresh id and starts a cursor at session zero', () => {
     useAppStore.getState().createProfile(profile());

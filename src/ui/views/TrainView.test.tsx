@@ -1181,12 +1181,6 @@ describe('TrainView session frame', () => {
     expect(screen.getByText(WARMUP_NOTICE)).toBeInTheDocument();
   });
 
-  it('shows the physician-consult notice for a flagged profile', () => {
-    seedStore(seed({ flagged: true }));
-    renderTrain();
-    expect(screen.getByText(copy('advice.readinessConsult'))).toBeInTheDocument();
-  });
-
   it('says so when no session is assigned to today', () => {
     const state = seed();
     seedStore({ ...state, assignments: { 'profile-1': [] } });

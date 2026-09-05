@@ -5,9 +5,8 @@
 // sessionStorage, not localStorage: this state is scoped to one tab and one browsing session
 // and must not outlive it. A rest timer restored a week later would count down against a
 // session the user finished long ago, and `fti.v3` is the persisted document's key, owned by
-// src/store/persistence.ts (master plan section 3: one key, one owner). This module and the
-// readiness-notice dismissal (src/ui/components/ReadinessNotice.tsx) are the only sanctioned
-// sessionStorage writers in the app.
+// src/store/persistence.ts (master plan section 3: one key, one owner). This module is the
+// only sanctioned sessionStorage writer in the app.
 //
 // What is mirrored is what a reload must not lose: the running timer, the day the user is
 // training, and the exercises added beyond the plan. The undo buffer is deliberately excluded;

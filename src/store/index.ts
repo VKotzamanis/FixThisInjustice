@@ -164,8 +164,6 @@ export interface AppActions {
   logIntake(profileId: string, entry: IntakeEntry): void;
   /** The weekday slots and weekly session target the wizard collects; P3 consumes them. */
   setAvailability(profileId: string, a: Availability): void;
-  /** Result of the pre-participation screen (master plan section 10, P2 item 20). */
-  recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void;
   /** Points the app at another stored profile. Throws on an unknown id. */
   setActiveProfile(id: string): void;
 
@@ -761,18 +759,6 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // No early return when the id is already active: the field is a string, and
     // persistedChanged compares it by value, so a no-op costs no write anyway.
     set({ activeProfileId: id });
-  },
-
-  recordReadiness(profileId: string, screenedAt: LocalDate, flagged: boolean): void {
-    const s = get();
-    // Unlike updateProfile, an unknown id throws here: a discarded screen is
-    // the one case where losing the write changes what the app tells the user
-    // about their health (a flagged screen shows the physician-consult notice
-    // at every session start), so it must not fail silently.
-    const current = requireProfile(s, 'recordReadiness', profileId);
-    set({
-      profiles: { ...s.profiles, [profileId]: { ...current, readiness: { screenedAt, flagged } } },
-    });
   },
 
   /*

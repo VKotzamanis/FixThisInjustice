@@ -50,7 +50,6 @@ const SCREENS = [
   'boot',
   'shell',
   'setup',
-  'readiness',
   'today',
   'train',
   'plan',
@@ -65,8 +64,8 @@ const SCREENS = [
 
 describe('the alpha catalogue', () => {
   it('states its part count, and holds it', () => {
-    expect(catalogue.counts.parts).toBe(102);
-    expect(live).toHaveLength(102);
+    expect(catalogue.counts.parts).toBe(99);
+    expect(live).toHaveLength(99);
   });
 
   it('gives every part an id in the grammar, under a known screen', () => {

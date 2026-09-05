@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { READINESS_INSERT_INDEX, STEPS, SetupWizard } from './SetupWizard';
+import { STEPS, SetupWizard } from './SetupWizard';
 import { useAppStore } from '../../store';
 import { parseState } from '../../domain/schema';
 import { EXERCISES } from '../../domain/plan/library';
@@ -10,7 +10,7 @@ import { KG_PER_LB } from '../../domain/types';
 import { toStoredMass } from '../../domain/units';
 import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import type { SkinId } from '../../domain/types';
 
 /**
@@ -63,18 +63,6 @@ function setValue(label: RegExp | string, value: string): void {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
-/**
- * Answer all seven readiness questions, with a Yes for the ids named and a No for the rest.
- * The screen blocks its own Next until every question carries an answer, so this is what
- * every fixture below has to do to reach Review.
- */
-function answerReadiness(yesFor: readonly number[] = []): void {
-  for (const id of [1, 2, 3, 4, 5, 6, 7]) {
-    const answer = yesFor.includes(id) ? copy('label.yes') : copy('label.no');
-    fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText(answer));
-  }
-}
-
 /** Drive screens 1-5 with an imperial profile, leaving the goal screen on show. */
 function fillImperialWizardToGoal(): void {
   render(<SetupWizard />);
@@ -119,8 +107,7 @@ function fillImperialWizard(): void {
   // 7 - programme length
   setValue(/programme length/i, '12');
   next();
-  // 8 - readiness: every screening question answered no
-  answerReadiness();
+  // 8 - guidance
   next();
 }
 
@@ -143,7 +130,7 @@ beforeEach(() => {
 });
 
 describe('step order', () => {
-  it('exposes an ordered STEPS array with the readiness step before Review', () => {
+  it('exposes an ordered STEPS array with the guidance step before Review', () => {
     expect([...STEPS]).toEqual([
       'units',
       'timezone',
@@ -152,13 +139,10 @@ describe('step order', () => {
       'goal',
       'availability',
       'programme',
-      'readiness',
+      'guidance',
       'review',
     ]);
-    // P2 Task 9 spliced its readiness step in at that index, and Review stays last: Review is
-    // the screen that writes the profile the screening result is a member of.
-    expect(STEPS[READINESS_INSERT_INDEX]).toBe('readiness');
-    expect(READINESS_INSERT_INDEX).toBe(STEPS.length - 2);
+    expect(STEPS[STEPS.length - 2]).toBe('guidance');
     expect(STEPS[STEPS.length - 1]).toBe('review');
   });
 
@@ -319,7 +303,6 @@ describe('review screen', () => {
     setValue(/sessions per week/i, '2');
     next();
     next();
-    answerReadiness();
     next();
     expect(screen.getByTestId('target-rate')).toHaveTextContent(
       'Not established by the evidence base',
@@ -361,9 +344,8 @@ describe('submission', () => {
     expect(p.hydration.dailyTargetML).toBe(3000);
     expect(p.hydration.weighInOptIn).toBe(false);
     expect(p.supplements).toEqual({ creatine: false });
-    // The readiness step ran inside this fixture and every answer was no. The date is the
-    // local date in the PROFILE's zone: 12:00 UTC is 08:00 in America/New_York.
-    expect(p.readiness).toEqual({ screenedAt: '2026-09-01', flagged: false });
+    // Readiness screening is retired (Brief A); the schema retains the default readiness object.
+    expect(p.readiness).toEqual({ screenedAt: null, flagged: false });
 
     const availability = state.availability[id];
     expect(availability?.slots.map((s) => s.weekday)).toEqual([1, 2, 4, 5]);
@@ -407,7 +389,6 @@ describe('submission', () => {
     }
     next();
     next();
-    answerReadiness();
     next();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
@@ -475,7 +456,6 @@ describe('no free-text medical field exists', () => {
       fireEvent.click(screen.getByLabelText('Tuesday'));
       setValue(/weekly session target/i, '2');
     }
-    if (STEPS[stepIndex] === 'readiness') answerReadiness();
   }
 
   it('renders no textarea and no text input outside name and time zone', () => {
@@ -507,22 +487,12 @@ describe('no free-text medical field exists', () => {
       ]) {
         expect(field.getAttribute('aria-label') ?? '').not.toMatch(MEDICAL_PATTERN);
       }
-      /*
-       * The readiness step asks whether the user takes prescribed medication for a chronic
-       * condition, so the word is on that screen by design and the copy sweep would fail on it.
-       * The constraint being protected is that no medication or condition value is ever
-       * COLLECTED or stored, which on that screen is checked structurally instead: every input
-       * is a radio, so there is nothing a user could type and nothing but a boolean to store.
-       * Do not sweep around it by unmounting the screen: its own Continue is the control this
-       * loop needs to reach Review.
-       */
-      const readiness = screen.queryByTestId('readiness-screen');
-      if (readiness) {
-        expect(readiness.querySelectorAll('textarea')).toHaveLength(0);
-        expect(readiness.querySelectorAll('input:not([type="radio"])')).toHaveLength(0);
-      } else {
-        expect(document.body.textContent ?? '').not.toMatch(MEDICAL_PATTERN);
+      const guidance = screen.queryByTestId('guidance-screen');
+      if (guidance) {
+        expect(guidance.querySelectorAll('textarea')).toHaveLength(0);
+        expect(guidance.querySelectorAll('input')).toHaveLength(0);
       }
+      expect(document.body.textContent ?? '').not.toMatch(MEDICAL_PATTERN);
       const continueButton = screen.queryByRole('button', { name: 'Next' });
       if (!continueButton) break;
       fireEvent.click(continueButton);
@@ -870,47 +840,36 @@ describe('entry aids and idempotency', () => {
 });
 
 /**
- * The screening result reaches storage in the SAME document write as the rest of the profile.
+/**
+ * The guidance step (replaces the readiness screening in SetupWizard).
  *
- * `recordReadiness` is not called here and cannot be: it takes a profile id, and during setup no
- * profile exists until Confirm runs. A create-then-patch would leave an unscreened profile on
- * disk if the user abandoned Review, so the wizard carries the result in its draft and Confirm
- * writes it into the Profile literal it is already building.
+ * It is a reference step: Next is immediately enabled without user input,
+ * and Confirm writes the profile with default readiness state.
  */
-describe('readiness screening', () => {
-  it('writes flagged false when every answer is no', () => {
+describe('guidance step in wizard', () => {
+  it('renders the guidance screen and advances without user input', () => {
+    fillImperialWizardToAvailability();
+    next();
+    setValue(/programme length/i, '12');
+    next();
+
+    // On guidance step
+    expect(screen.getByTestId('guidance-screen')).toBeInTheDocument();
+    const nextButton = screen.getByRole('button', { name: 'Next' });
+    expect(nextButton).toBeEnabled();
+
+    // Advance to Review
+    next();
+    expect(screen.getByTestId('review')).toBeInTheDocument();
+  });
+
+  it('writes profile with default readiness on confirm', () => {
     fillImperialWizard();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
     const state = useAppStore.getState();
     const profile = state.profiles[state.activeProfileId ?? ''];
-    expect(profile?.readiness).toEqual({ screenedAt: '2026-09-01', flagged: false });
-  });
-
-  it('writes flagged true when one answer is yes', () => {
-    fillImperialWizardToAvailability();
-    next();
-    setValue(/programme length/i, '12');
-    next();
-    answerReadiness([1]);
-    next();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
-
-    const state = useAppStore.getState();
-    const profile = state.profiles[state.activeProfileId ?? ''];
-    expect(profile?.readiness).toEqual({ screenedAt: '2026-09-01', flagged: true });
-  });
-
-  it('refuses Confirm while the screening has not been answered', () => {
-    fillImperialWizardToAvailability();
-    next();
-    setValue(/programme length/i, '12');
-    // Continue is the readiness screen's own control and is disabled until all seven carry an
-    // answer, so Review is unreachable and no profile can be written unscreened.
-    next();
-    expect(screen.getByTestId('readiness-screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Confirm and start' })).toBeNull();
+    expect(profile?.readiness).toEqual({ screenedAt: null, flagged: false });
   });
 });
 

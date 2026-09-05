@@ -5,7 +5,9 @@ import {
   ACTIVITY_FACTOR,
   FAT_LOSS_RATE_BOUND,
   NUTRITION_DOMAIN,
+  caffeineDoseMg,
   computeTargets,
+  creatineDoseG,
   dailyBeverageTargetML,
   fatFreeMassKg,
   isInDomain,
@@ -291,6 +293,34 @@ describe('fluid and creatine', () => {
     const m = computeTargets({ ...base, creatine: true, sex: 'male', massKg: 70 }).creatineG;
     const f = computeTargets({ ...base, creatine: true, sex: 'female', massKg: 70 }).creatineG;
     expect(m).toBe(f); // g/day; neither source gives a sex-specific dose
+  });
+
+  it('creatineDoseG delegates to the verified engine creatine logic', () => {
+    expect(creatineDoseG(70)).toBe(7);
+    expect(creatineDoseG(30)).toBe(3);
+    expect(creatineDoseG(140)).toBe(10);
+    expect(() => creatineDoseG(0)).toThrow(RangeError);
+  });
+});
+
+describe('caffeineDoseMg', () => {
+  it('doses caffeine in 0.9-2.0 mg/kg range for a 70 kg adult without hitting the EFSA cap', () => {
+    const dose = caffeineDoseMg(70);
+    expect(dose.lo).toBe(63); // 70 x 0.9 = 63 mg
+    expect(dose.hi).toBe(140); // 70 x 2.0 = 140 mg
+    expect(dose.capped).toBe(false);
+  });
+
+  it('caps the upper dose at 200 mg for a 120 kg adult per the EFSA single-dose guidance', () => {
+    const dose = caffeineDoseMg(120);
+    expect(dose.lo).toBe(108); // 120 x 0.9 = 108 mg
+    expect(dose.hi).toBe(200); // 120 x 2.0 = 240 mg -> capped at 200 mg
+    expect(dose.capped).toBe(true);
+  });
+
+  it('rejects a non-positive body mass', () => {
+    expect(() => caffeineDoseMg(0)).toThrow(RangeError);
+    expect(() => caffeineDoseMg(-10)).toThrow(RangeError);
   });
 });
 

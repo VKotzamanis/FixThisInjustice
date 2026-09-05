@@ -33,7 +33,6 @@ import { playSfx } from '../../skins/sfx';
 import { useAppStore } from '../../store';
 import { useActiveProfile, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
-import { ReadinessNotice } from '../components/ReadinessNotice';
 import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { AddCustomExercise } from './train/AddCustomExercise';
@@ -314,8 +313,6 @@ export function TrainView(): ReactElement {
         <RestTimerPanel />
       </div>
 
-      {/* Master plan section 10.4: a flagged screening shows the notice at every session. */}
-      <ReadinessNotice flagged={profile.readiness.flagged} />
       <p className="train-warmup">{WARMUP_NOTICE}</p>
       <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
 

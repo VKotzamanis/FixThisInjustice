@@ -13,7 +13,6 @@ import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { SkinSettings } from '../settings/SkinSettings';
-import { ReadinessScreen } from '../setup/ReadinessScreen';
 import './views.css';
 
 /**
@@ -58,7 +57,6 @@ interface SettingsRow {
 }
 
 const SETTINGS_ROWS: readonly SettingsRow[] = [
-  { id: 'readiness', render: (profile) => <ReadinessRow profile={profile} /> },
   { id: 'reminders', render: () => <ReminderSettingsPanel /> },
   { id: 'motivation-clip', render: () => <MotivationSettings /> },
   { id: 'skin', render: () => <SkinSettings /> },
@@ -77,57 +75,6 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
   { id: 'data', render: () => <DataSection /> },
 ];
 
-/**
- * Redo the pre-participation screening (P2 Task 9, master plan section 10.4).
- *
- * A component rather than an inline fragment because the panel holds one piece of state: whether
- * the screen is open. Calling a hook inside `SettingsRow.render`, which is a plain function
- * invoked during another component's render, would break the rules of hooks.
- *
- * This is the call site master plan section 6.7 writes `recordReadiness` for: the profile
- * already exists, so the result is written straight to it. The wizard's path is the other one,
- * and it cannot use this action because during setup there is no profile id yet.
- */
-function ReadinessRow(props: { profile: Profile }): JSX.Element {
-  const t = useCopy();
-  const [screening, setScreening] = useState(false);
-  const { profile } = props;
-  const screenedAt = profile.readiness.screenedAt;
-
-  return (
-    <>
-      <h2>{t('hero.readiness')}</h2>
-      <p className="view-note">
-        {screenedAt === null
-          ? t('status.notScreened')
-          : FORMAT.screenedOn(
-              screenedAt,
-              profile.readiness.flagged
-                ? t('status.readinessConsult')
-                : t('status.readinessNoFlags'),
-            )}
-      </p>
-      {screening ? (
-        <ReadinessScreen
-          timezone={profile.timezone}
-          onComplete={(result) => {
-            useAppStore.getState().recordReadiness(profile.id, result.screenedAt, result.flagged);
-            setScreening(false);
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            setScreening(true);
-          }}
-        >
-          {screenedAt === null ? t('button.startReadiness') : t('button.redoReadiness')}
-        </button>
-      )}
-    </>
-  );
-}
 
 /**
  * A numeric setting held as a local draft and written through to the store on BLUR or ENTER.

@@ -69,8 +69,7 @@ export interface FormCue {
  * protocol and a pre-participation screen but supplies no sourced protocol, and the global
  * constraints forbid shipping an unsourced number. This notice therefore states the requirement
  * without prescribing sets, loads or durations; `formCues.test.ts` asserts it carries no digit.
- * A sourced protocol is requested as a P2 amendment. The screen itself already exists
- * (`src/content/readinessQuestions.ts`, P2).
+ * A sourced protocol is requested as a P2 amendment.
  */
 export const WARMUP_NOTICE =
   'Warm up before the first working set of each compound lift: general aerobic work, then progressively loaded ramp-up sets. Seek medical clearance before training if you have a cardiovascular, metabolic or renal condition, or symptoms that suggest one.';
