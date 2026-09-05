@@ -34,6 +34,19 @@ export default defineConfig({
      * rule in the injected stylesheet text, which requires the sheet to be processed rather than
      * stubbed.
      */
-    css: { include: [/crt\.css$/, /tokens\.css(\?|$)/, /limelight\.css(\?|$)/] },
+    /*
+     * appShell.css joins tokens.css for the same reason (alpha round 1 Task 2): the top bar's
+     * w1.03 defect was a colour LITERAL in this sheet, so src/app/topbar.test.ts reads it as
+     * text through ?raw and asserts the rules name tokens instead. Unanchored for the query,
+     * exactly as the tokens.css entry above.
+     */
+    css: {
+      include: [
+        /crt\.css$/,
+        /tokens\.css(\?|$)/,
+        /limelight\.css(\?|$)/,
+        /appShell\.css(\?|$)/,
+      ],
+    },
   },
 });

@@ -31,7 +31,10 @@ describe('the skin attribute blocks', () => {
   it('carries the clinical set on the bare :root, so a missing attribute is clinical', () => {
     expect(BASE).toContain('--bg');
     expect(BASE).toContain('--accent-rgb');
-    expect(BASE.length).toBe(22);
+    // 22 through P8; 25 from alpha round 1 Task 2, which added the three --topbar-* tokens
+    // after the w1.03 defect showed a hard-coded bar colour surviving into every skin.
+    expect(BASE).toContain('--topbar-bg');
+    expect(BASE.length).toBe(25);
     expect(tokens).toContain('--accent: #a3e635');
   });
 
