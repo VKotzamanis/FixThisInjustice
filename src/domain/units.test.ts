@@ -9,6 +9,7 @@ import {
   formatMass,
   formatVolume,
   stepFor,
+  toStoredGirthCm,
   toStoredLoad,
   toStoredMass,
 } from './units';
@@ -142,8 +143,13 @@ describe('formatting', () => {
   });
 
   it('labels both unit systems', () => {
-    expect(UNIT_LABEL.metric).toEqual({ load: 'kg', mass: 'kg', volume: 'mL' });
-    expect(UNIT_LABEL.imperial).toEqual({ load: 'lb', mass: 'lb', volume: 'fl oz' });
+    expect(UNIT_LABEL.metric).toEqual({ load: 'kg', mass: 'kg', volume: 'mL', girth: 'cm' });
+    expect(UNIT_LABEL.imperial).toEqual({
+      load: 'lb',
+      mass: 'lb',
+      volume: 'fl oz',
+      girth: 'in',
+    });
   });
 });
 
@@ -177,5 +183,30 @@ describe('properties', () => {
       }),
       { numRuns: 10_000 },
     );
+  });
+});
+
+/*
+ * Girth entry, added by alpha round 1 Task 3. The three tape girths were held as cm regardless
+ * of the profile's unit system (SetupWizard.tsx Draft.neck/waist/hip, all commented "[cm], as
+ * typed"), so an imperial user typed inches into a field the Navy equation read as centimetres
+ * and got a plausible, wrong body-fat estimate. These tests fix the conversion at the boundary.
+ *
+ * 1 in = 2.54 cm is exact by definition (international inch, 1959), so equality here is exact
+ * and no epsilon is specified: 15 * 2.54 = 38.1 and 34 * 2.54 = 86.36 are both bit-exact.
+ */
+describe('girth entry converts at the storage boundary', () => {
+  it('passes a metric girth through unchanged', () => {
+    expect(toStoredGirthCm(38.1, 'metric')).toBe(38.1); // [cm]
+  });
+
+  it('converts an imperial girth from inches to centimetres, exactly', () => {
+    expect(toStoredGirthCm(15, 'imperial')).toBe(38.1); // [cm], 15 in
+    expect(toStoredGirthCm(34, 'imperial')).toBe(86.36); // [cm], 34 in
+  });
+
+  it('labels the girth unit by the unit system, which is the defect this fixes', () => {
+    expect(UNIT_LABEL.metric.girth).toBe('cm');
+    expect(UNIT_LABEL.imperial.girth).toBe('in');
   });
 });

@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `e4aa638`. 102 parts across 14 screens, holding 491 of the table's 494 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `dc06a5e`. 102 parts across 14 screens, holding 491 of the table's 494 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## boot (2)
 
@@ -209,7 +209,7 @@ States: `default`, `blocked`
 | `advice.bodyFatEstimate` | 21.9 % body fat, ± 3.52 percentage points. | same | same | yes |
 | `advice.bodyFatOptional` | Optional. With it, RMR uses the Cunningham equation. | same | same | yes |
 | `advice.sexUsedFor` | Used by the RMR, body-fat and fluid equations. | same | same | yes |
-| `advice.tapeMethod` | US Navy circumference method. Girths in cm, tape level and snug. | same | same | yes |
+| `advice.tapeMethod` | US Navy circumference method. Keep the tape level and snug. | same | same | yes |
 | `advice.tapeNeedFemale` | Enter neck, abdomen I and hip girths. | same | same | yes |
 | `advice.tapeNeedMale` | Enter neck and abdomen II girths. | same | same | yes |
 | `advice.tapeOutOfDomain` | Girths outside the equation's domain. No estimate is shown. | same | same | yes |
