@@ -29,6 +29,7 @@
 // https://vkotzamanis.github.io/FixThisInjustice/ , where limelight is the shipped default skin
 // (src/domain/schema.ts, the `skin` default).
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import { ALL_STEPS, STAGES } from './alpha-walk.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -76,7 +77,7 @@ const esc = (s) =>
  * measures 1.41:1. The four theme blocks and the reduced-motion rule are the same ones
  * scripts/alpha-pages.mjs carries, and P10 Task 6 checks both files the same way.
  */
-const CSS = `
+export const CSS = `
 :root{
   --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
   --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
@@ -151,7 +152,7 @@ a{color:var(--text)}
 `;
 
 /** One string, as the Limelight app renders it: the override where one exists, else the default. */
-function stringBlock(key) {
+export function stringBlock(key) {
   const k = KEY_RECORD.get(key);
   if (k === undefined) throw new Error(`step names a key the catalogue does not place: ${key}`);
   const lines = [
@@ -169,7 +170,7 @@ function stringBlock(key) {
 }
 
 /** One step: what to do, what appears, the strings in order, and the box the owner writes in. */
-function stepSection(step, index) {
+export function stepSection(step, index) {
   const strings =
     step.keys.length === 0
       ? '<p class="small">No copy key. Review its layout and behaviour.</p>'
@@ -192,7 +193,7 @@ function stepSection(step, index) {
 }
 
 /** The per-page script: persistence, the counter and the Assemble block. */
-function pageScript(stageId) {
+export function pageScript(stageId) {
   return `
 (function(){
   var KEY='fti-walk-r${ROUND}-${stageId}';
@@ -464,7 +465,16 @@ function runChecks() {
 
 /* ------------------------------------------------------------------ run */
 
-if (CHECK) {
+/*
+ * Only when run as the entry point. scripts/alpha-retest.mjs imports CSS, stepSection and
+ * pageScript from this module to build the round-2 page in the same instrument; without this
+ * guard that import would silently rewrite all seven round-1 pages as a side effect.
+ */
+const IS_MAIN = process.argv[1] !== undefined && import.meta.url.endsWith(basename(process.argv[1]));
+
+if (!IS_MAIN) {
+  // Imported for its renderers. Nothing to build.
+} else if (CHECK) {
   process.exit(runChecks() === 0 ? 0 : 1);
 } else {
   const files = build();

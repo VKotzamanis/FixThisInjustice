@@ -1,0 +1,291 @@
+<title>Retest: What Changed</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 8px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.step{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.stepno{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.do,.see{margin:0 0 8px;padding:0 0 0 10px;border-left:3px solid var(--line-2)}
+.do b,.see b{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:block}
+.only{font-size:13px;margin:0 0 10px;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+.pids{font-family:var(--mono);font-size:12px;color:var(--text-2);margin:0 0 10px;word-break:break-all}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha retest, round 2, the corrected parts only</p>
+  <h1>Retest: what changed</h1>
+  <p class="lede">Three defects from round 1 are fixed, and a test document now reaches the states a fresh install could not. Walk these eleven steps with the app open and write in the box under each one, exactly as you did in round 1. Steps 1 to 5 come before step 6, which replaces everything on the device.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+
+<section class="step" id="r2.01">
+  <p class="stepno"><code>r2.01</code> step 1</p>
+  <h3>The top bar is legible now</h3>
+  <p class="do"><b>Do</b>Open the app on the limelight skin, which is the default, and look at the bar across the top.</p>
+  <p class="see"><b>You see</b>A black bar. The app name in white on the left, the accent letter in pink, the save state in white on the right.</p>
+  <p class="pids">covers shell.topbar</p>
+  <ol class="strings">
+<li>
+<code>shell.status.loaded</code>
+<p class="lime-str">local data loaded</p>
+</li>
+</ol>
+  <p class="only">Why it is here: You reported this as invisible. Measured: the name was at 1.19:1 against its own bar and the status line at 1.84:1, where 4.5:1 is the readable floor. Both are 21:1 now. Tell me whether it reads as a bar you would keep, not just whether you can see it.</p>
+  <label class="box" for="c-r2.01">What needs to change here?</label>
+  <textarea id="c-r2.01" data-step="r2.01" data-parts="shell.topbar" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.02">
+  <p class="stepno"><code>r2.02</code> step 2</p>
+  <h3>The other two skins did not move</h3>
+  <p class="do"><b>Do</b>Settings, then the skin picker. Switch to clinical, look at the bar, then to board, look again, then back to limelight.</p>
+  <p class="see"><b>You see</b>Both bars look as they did before. Nothing else on the page changes with them.</p>
+  <p class="pids">covers shell.topbar, settings.skin.picker</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: The fix tokened the bar per skin. Clinical and board were meant to be untouched: 6.67:1 and 15.50:1 before and after. If either looks different from what you remember, that is a regression and I want to know.</p>
+  <label class="box" for="c-r2.02">What needs to change here?</label>
+  <textarea id="c-r2.02" data-step="r2.02" data-parts="shell.topbar, settings.skin.picker" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.03">
+  <p class="stepno"><code>r2.03</code> step 3</p>
+  <h3>Setup in imperial</h3>
+  <p class="do"><b>Do</b>Start a fresh setup. On step 1 choose imperial, then walk to the body step. If you already have a profile, use a private tab so you do not lose it.</p>
+  <p class="see"><b>You see</b>The step counter, and every later field labelled in pounds and inches rather than kilograms and centimetres.</p>
+  <p class="pids">covers setup.units, setup.progress</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: Nothing about this step was fixed. It is here because steps 4 and 5 need imperial selected, and because you asked for the units wording to change, which has NOT happened yet.</p>
+  <label class="box" for="c-r2.03">What needs to change here?</label>
+  <textarea id="c-r2.03" data-step="r2.03" data-parts="setup.units, setup.progress" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.04">
+  <p class="stepno"><code>r2.04</code> step 4</p>
+  <h3>The girth fields say inches</h3>
+  <p class="do"><b>Do</b>On the body step choose the option that estimates body fat from body measurements. Read the field labels and the line above them.</p>
+  <p class="see"><b>You see</b>Neck and abdomen labelled in inches. The line above no longer names a unit at all.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>advice.tapeMethod</code>
+<p class="lime-str">US Navy circumference method. Keep the tape level and snug.</p>
+</li>
+</ol>
+  <p class="only">Why it is here: This is the defect you found. The three fields were held as centimetres whatever unit system you chose, so an imperial user typed inches into a field the equation read as centimetres and got a wrong number with no error anywhere.</p>
+  <label class="box" for="c-r2.04">What needs to change here?</label>
+  <textarea id="c-r2.04" data-step="r2.04" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.05">
+  <p class="stepno"><code>r2.05</code> step 5</p>
+  <h3>The estimate is a believable number</h3>
+  <p class="do"><b>Do</b>With imperial still selected, enter a neck of 15 and an abdomen of 34, against a height of 5 ft 10 in. Look at the figure underneath.</p>
+  <p class="see"><b>You see</b>A body-fat percentage in the high teens or low twenties, with an error band beside it.</p>
+  <p class="pids">covers setup.body</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: Before the fix those same numbers were read as 15 cm and 34 cm and the estimate was either withheld or nonsense. Say whether the number and its error band read as trustworthy, and whether the wording around them is right. The wall of measurement-site prose has NOT been removed yet.</p>
+  <label class="box" for="c-r2.05">What needs to change here?</label>
+  <textarea id="c-r2.05" data-step="r2.05" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.06">
+  <p class="stepno"><code>r2.06</code> step 6</p>
+  <h3>Load the test data</h3>
+  <p class="do"><b>Do</b>Settings, then Data, then the export and import screen. Export a backup first if this device holds anything you want. Then load alpha-fixture.json and confirm the import.</p>
+  <p class="see"><b>You see</b>The import is accepted and the app comes back holding nine weeks of history.</p>
+  <p class="pids">covers settings.data.import, settings.data.export</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: THIS REPLACES EVERYTHING ON THE DEVICE. It is the last destructive step, deliberately: steps 3 to 5 need a setup that has not run. Comment on the import screen itself as well, since you are on it.</p>
+  <label class="box" for="c-r2.06">What needs to change here?</label>
+  <textarea id="c-r2.06" data-step="r2.06" data-parts="settings.data.import, settings.data.export" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.07">
+  <p class="stepno"><code>r2.07</code> step 7</p>
+  <h3>A missed week, on Today</h3>
+  <p class="do"><b>Do</b>Open Today.</p>
+  <p class="see"><b>You see</b>A week that closed under its target, and whatever the app says about it.</p>
+  <p class="pids">covers today.week-stamp, today.intervention, popup.missed-week</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: You could not reach this state in round 1, so four walkthrough steps went unreviewed. The fixture carries three missed weeks.</p>
+  <label class="box" for="c-r2.07">What needs to change here?</label>
+  <textarea id="c-r2.07" data-step="r2.07" data-parts="today.week-stamp, today.intervention, popup.missed-week" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.08">
+  <p class="stepno"><code>r2.08</code> step 8</p>
+  <h3>Blocks and deloads, on Plan</h3>
+  <p class="do"><b>Do</b>Open Plan and scrub through the weeks.</p>
+  <p class="see"><b>You see</b>Twelve weeks, three deload blocks, and the cursor standing part-way through.</p>
+  <p class="pids">covers plan.block-strip, plan.week-scrubber, plan.session-cards</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: A block that has ended and a deload under way were both unreachable on a fresh install. This is also the screen your w1.12 feedback is about, so anything you notice here feeds that rebuild.</p>
+  <label class="box" for="c-r2.08">What needs to change here?</label>
+  <textarea id="c-r2.08" data-step="r2.08" data-parts="plan.block-strip, plan.week-scrubber, plan.session-cards" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.09">
+  <p class="stepno"><code>r2.09</code> step 9</p>
+  <h3>The body-mass chart, on Log</h3>
+  <p class="do"><b>Do</b>Open Log.</p>
+  <p class="see"><b>You see</b>Nine body-mass points against a projection, and a compliance grid with gaps in it.</p>
+  <p class="pids">covers log.body-mass-chart, log.compliance-grid</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: The chart had one point and nothing to project in round 1.</p>
+  <label class="box" for="c-r2.09">What needs to change here?</label>
+  <textarea id="c-r2.09" data-step="r2.09" data-parts="log.body-mass-chart, log.compliance-grid" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.10">
+  <p class="stepno"><code>r2.10</code> step 10</p>
+  <h3>The Atlas, with cards in it</h3>
+  <p class="do"><b>Do</b>Open Atlas. Tap one card, then close it. Look at a slot that is still locked.</p>
+  <p class="see"><b>You see</b>One card of each rarity unlocked, the rest locked.</p>
+  <p class="pids">covers atlas.rarity.common, atlas.rarity.uncommon, atlas.rarity.rare, atlas.locked-slot, atlas.detail-dialog</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: Every Atlas step was skippable in round 1 because a fresh install has no cards.</p>
+  <label class="box" for="c-r2.10">What needs to change here?</label>
+  <textarea id="c-r2.10" data-step="r2.10" data-parts="atlas.rarity.common, atlas.rarity.uncommon, atlas.rarity.rare, atlas.locked-slot, atlas.detail-dialog" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.11">
+  <p class="stepno"><code>r2.11</code> step 11</p>
+  <h3>The numbers that depend on body fat</h3>
+  <p class="do"><b>Do</b>Open Targets and read the energy and protein figures, then open the why disclosure under them.</p>
+  <p class="see"><b>You see</b>A calorie target, a protein range, and the name of the equation each came from.</p>
+  <p class="pids">covers targets.energy, targets.protein, targets.why</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: The fixture carries no body-fat estimate on purpose, so this shows the fallback path: Mifflin-St Jeor rather than Cunningham, and protein per kilogram of body mass rather than per kilogram of fat-free mass. It is the branch the round-1 walk never showed. Tell me whether the disclosure explains itself.</p>
+  <label class="box" for="c-r2.11">What needs to change here?</label>
+  <textarea id="c-r2.11" data-step="r2.11" data-parts="targets.energy, targets.protein, targets.why" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="step" id="r2-retest.general">
+  <p class="stepno"><code>r2-retest.general</code> the whole retest</p>
+  <h3>Anything else about the fixes</h3>
+  <p class="do"><b>Do</b>Think back over the eleven steps.</p>
+  <p class="see"><b>You see</b>Something that belongs to the round rather than to one step: a fix that did not go far enough, or something that broke on the way.</p>
+  <p class="pids">covers r2-retest</p>
+  <label class="box" for="c-r2-retest.general">What needs to change?</label>
+  <textarea id="c-r2-retest.general" data-step="r2-retest.general" data-parts="r2-retest" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, each carrying its step id and the part ids that step covers. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<script>
+(function(){
+  var KEY='fti-walk-r1-r2-retest';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-step]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-step')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-step');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-step');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+' | '+b.getAttribute('data-parts')+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>
