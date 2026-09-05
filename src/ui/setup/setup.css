@@ -329,3 +329,135 @@
   font-weight: 600;
   color: var(--text);
 }
+
+/*
+ * The body step's two bordered boxes and their two-column rows. Round 1 claims C1.07.1, C1.07.2,
+ * C1.07.18 and C1.07.19: the page needed a scroll, and the fix is to pair the fields that are
+ * read together and give each pair its own outline. Single column under 560 px, because two
+ * number fields side by side on a phone are two fields nobody can hit.
+ */
+.wiz-box {
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin: 0 0 14px;
+}
+
+.wiz-row-tight {
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .wiz-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  /* Feet and inches stay paired: they are one quantity in two boxes, not two quantities. */
+  .wiz-row-tight {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/*
+ * The sex choice as selectable glyphs. Round 1 claim C1.07.9 asked for bold male and female
+ * characters. They are drawn as CSS marks rather than typed as U+2642 and U+2640: both
+ * characters satisfy Extended_Pictographic and sit inside U+2600 to U+27BF, so both the R6 check
+ * in copy.test.ts and scripts/check-no-emoji.mjs reject them as emoji.
+ *
+ * Selection is a FILL INVERSION and a border, never a brightness shift: the limelight ground is
+ * lime and the board ground is near-black, so "darker when selected" is invisible on one of the
+ * three shipped skins.
+ */
+.wiz-choice {
+  display: flex;
+  gap: 10px;
+}
+
+.wiz-glyph {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 2px solid var(--line-2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.wiz-glyph:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.wiz-glyph:has(input:focus-visible) {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* The mark itself: a ring with a tail, rotated for male and dropped for female. */
+.wiz-glyph-mark {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.wiz-glyph-mark::after {
+  content: '';
+  position: absolute;
+  background: currentColor;
+}
+
+.wiz-glyph-mark[data-sex='male']::after {
+  width: 2.5px;
+  height: 9px;
+  left: 12px;
+  bottom: 12px;
+  transform: rotate(-45deg);
+  transform-origin: bottom left;
+  box-shadow: 0 0 0 0 currentColor;
+}
+
+.wiz-glyph-mark[data-sex='female']::after {
+  width: 9px;
+  height: 2.5px;
+  left: 1.5px;
+  top: 16px;
+  box-shadow: 3.25px -3.5px 0 0 currentColor;
+}
+
+.wiz-glyph-mark[data-sex='female'] {
+  margin-bottom: 8px;
+}
+
+/* The methods, at the foot of the step. Reference text: quieter, and it may run long. */
+.wiz-cites {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.wiz-cite-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.wiz-cite-list li {
+  margin-bottom: 8px;
+}
+
+.wiz-cite-src {
+  display: block;
+  font-family: var(--mono, monospace);
+  font-size: 12px;
+  color: var(--text-3);
+  overflow-wrap: anywhere;
+}

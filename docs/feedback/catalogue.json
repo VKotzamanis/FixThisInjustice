@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "4109e8f",
+  "generatedFrom": "29e63ed",
   "counts": {
     "screens": 14,
     "parts": 102,
-    "keys": 496,
+    "keys": 497,
     "notRendered": 3,
-    "table": 499
+    "table": 500
   },
   "parts": [
     {
@@ -729,7 +729,7 @@
       "screen": "setup",
       "order": 4,
       "title": "Step 3, Body",
-      "what": "Body mass, height, age, sex, and the optional tape estimate.",
+      "what": "Body mass, stature, age, sex, the methods list, and the optional tape estimate.",
       "components": [
         "src/ui/setup/SetupWizard.tsx"
       ],
@@ -750,15 +750,6 @@
         {
           "key": "advice.bodyFatOptional",
           "default": "Optional. With it, RMR uses the Cunningham equation.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "advice.sexUsedFor",
-          "default": "Used by the RMR, body-fat and fluid equations.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -838,15 +829,6 @@
           "refusalGroup": null
         },
         {
-          "key": "label.birthYear",
-          "default": "Birth year",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
           "key": "label.bodyFatKnown",
           "default": "Known percentage",
           "limelight": "same",
@@ -874,6 +856,15 @@
           "refusalGroup": null
         },
         {
+          "key": "label.centimetres",
+          "default": "Centimetres",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.feet",
           "default": "Feet",
           "limelight": "same",
@@ -892,8 +883,26 @@
           "refusalGroup": null
         },
         {
+          "key": "label.metres",
+          "default": "Metres",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.name",
           "default": "How should I refer to you?",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.sex",
+          "default": "Biological sex",
           "limelight": "same",
           "board": "same",
           "isControl": false,

@@ -50,6 +50,7 @@ import {
   storedMassKg,
 } from '../components/UnitInput';
 import { useAppStore } from '../../store';
+import { BODY_EQUATIONS, BODY_EQUATIONS_LEAD } from '../../content/bodyEquations';
 import { ReadinessScreen, type ReadinessResult } from './ReadinessScreen';
 
 /**
@@ -158,6 +159,7 @@ const STEP_GROUP: Record<StepId, SetupGroup | null> = {
 const UNIT = { years: 'years', weeks: 'weeks', minutes: 'min', cm: 'cm', inch: 'in', pct: '%' };
 
 const CM_PER_INCH = 2.54; // [cm/in] exact by definition
+const CM_PER_METRE = 100; // [cm/m]
 const INCHES_PER_FOOT = 12; // [in/ft]
 const SECONDS_PER_MINUTE = 60; // [s/min]
 const DEFAULT_SESSION_DURATION_MIN = 60; // [min]
@@ -279,8 +281,19 @@ interface Draft {
   timezone: string;
   displayName: string;
   sex: Sex;
-  birthYear: string; // [year], as typed
-  heightCm: string; // [cm], metric entry, as typed
+  /*
+   * Round 1 claim C1.07.17: "remove the birth year and replace it with age. Then in the
+   * equations you can backcalculate the birth year -> use that." Age is what the field ASKS
+   * for; `Profile.body.birthYear` is still what gets STORED, derived at Confirm, because age is
+   * a decaying value. A profile that stored 30 would still compute 30 two years later and every
+   * energy target would drift with it. The derived year is uncertain by one, since whether the
+   * birthday has passed is unknowable from an age alone; Mifflin-St Jeor's age term is
+   * -5 kcal/day per year, which is far inside the equation's own error, and selectors.ts already
+   * records the same bias for the same reason.
+   */
+  ageYears: string; // [years], as typed
+  heightM: string; // [m], metric entry, whole metres, as typed
+  heightCm: string; // [cm], metric entry, the remainder under a metre, as typed
   heightFt: string; // [ft], imperial entry, as typed
   heightIn: string; // [in], imperial entry, as typed
   mass: string; // [kg] or [lb], as typed
@@ -329,7 +342,8 @@ function initialDraft(): Draft {
     timezone: deviceTimeZone(),
     displayName: '',
     sex: 'male',
-    birthYear: '',
+    ageYears: '',
+    heightM: '',
     heightCm: '',
     heightFt: '',
     heightIn: '',
@@ -577,21 +591,33 @@ export function SetupWizard(): JSX.Element {
   const zone = isValidTimeZone(draft.timezone) ? draft.timezone : deviceTimeZone();
   const today = todayLocal(zone);
 
+  /*
+   * Stature from two whole-number fields, in both unit systems. Round 1 claims C1.07.20 and
+   * C1.07.21: metres and centimetres, or feet and inches, and "ONLY integers. Not 5' or
+   * 5 inches or 5.45". Either field may be blank and counts as zero, so 1 m 78 and 5 ft 0 both
+   * work; both blank is null, which is a missing entry rather than a zero one.
+   */
   const heightCm = useMemo((): number | null => {
-    if (draft.units === 'metric') return parseDecimal(draft.heightCm); // [cm]
+    if (draft.units === 'metric') {
+      const metres = parseDecimal(draft.heightM);
+      const centimetres = parseDecimal(draft.heightCm);
+      if (metres === null && centimetres === null) return null;
+      return (metres ?? 0) * CM_PER_METRE + (centimetres ?? 0); // [cm]
+    }
     const feet = parseDecimal(draft.heightFt);
     const inches = parseDecimal(draft.heightIn);
     if (feet === null && inches === null) return null;
     return ((feet ?? 0) * INCHES_PER_FOOT + (inches ?? 0)) * CM_PER_INCH; // [cm] exact
-  }, [draft.units, draft.heightCm, draft.heightFt, draft.heightIn]);
+  }, [draft.units, draft.heightM, draft.heightCm, draft.heightFt, draft.heightIn]);
 
   const massKg = useMemo(
     () => storedMassKg(draft.mass, draft.units), // [kg] exact
     [draft.mass, draft.units],
   );
 
-  const birthYear = parseDecimal(draft.birthYear); // [year]
-  const ageYears = birthYear === null ? null : Number(today.slice(0, 4)) - birthYear; // [years]
+  const ageYears = parseDecimal(draft.ageYears); // [years], as typed
+  // Back-calculated for storage, never for display: see the Draft.ageYears comment.
+  const birthYear = ageYears === null ? null : Number(today.slice(0, 4)) - ageYears; // [year]
 
   /** The US Navy estimate for the girths entered so far, or null while it is unavailable. */
   const tapeEstimate = useMemo((): number | null => {
@@ -620,13 +646,12 @@ export function SetupWizard(): JSX.Element {
 
   const timezoneError = isValidTimeZone(draft.timezone) ? null : t('advice.timezoneInvalid');
 
-  const birthYearError =
-    birthYear === null
+  const ageError =
+    ageYears === null
       ? t('error.valueRequired')
-      : !Number.isInteger(birthYear)
+      : !Number.isInteger(ageYears)
         ? t('error.wholeNumber')
-        : ageYears === null ||
-            ageYears < NUTRITION_DOMAIN.ageYears.lo ||
+        : ageYears < NUTRITION_DOMAIN.ageYears.lo ||
             ageYears > NUTRITION_DOMAIN.ageYears.hi
           ? FORMAT.outOfRange(
               t('quantity.age'),
@@ -790,7 +815,7 @@ export function SetupWizard(): JSX.Element {
     units: false,
     timezone: timezoneError !== null,
     body:
-      birthYearError !== null ||
+      ageError !== null ||
       heightError !== null ||
       massError !== null ||
       knownBodyFatError !== null ||
@@ -1139,98 +1164,109 @@ export function SetupWizard(): JSX.Element {
             />
           </div>
 
-          <p className="wiz-note">{t('advice.sexUsedFor')}</p>
-          <label className="wiz-inline">
-            <input
-              type="radio"
-              name="sex"
-              checked={draft.sex === 'male'}
-              onChange={() => {
-                patch({ sex: 'male' });
-              }}
-            />
-            {t('label.sexMale')}
-          </label>
-          <label className="wiz-inline">
-            <input
-              type="radio"
-              name="sex"
-              checked={draft.sex === 'female'}
-              onChange={() => {
-                patch({ sex: 'female' });
-              }}
-            />
-            {t('label.sexFemale')}
-          </label>
-
-          <UnitInput
-            id="f-birth-year"
-            quantity={t('label.birthYear')}
-            unit={null}
-            step="1"
-            value={draft.birthYear}
-            error={birthYearError}
-            onChange={(v) => {
-              patch({ birthYear: v });
-            }}
-          />
-
-          {draft.units === 'metric' ? (
-            <UnitInput
-              id="f-height-cm"
-              quantity={t('quantity.height')}
-              unit={UNIT.cm}
-              value={draft.heightCm}
-              error={heightError}
-              onChange={(v) => {
-                patch({ heightCm: v });
-              }}
-            />
-          ) : (
-            <>
-              <div className="wiz-row">
-                <UnitInput
-                  id="f-height-ft"
-                  quantity={t('label.feet')}
-                  unit={null}
-                  value={draft.heightFt}
-                  error={null}
-                  sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
-                  onChange={(v) => {
-                    patch({ heightFt: v });
-                  }}
-                />
-                <UnitInput
-                  id="f-height-in"
-                  quantity={t('label.inches')}
-                  unit={null}
-                  value={draft.heightIn}
-                  error={null}
-                  sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
-                  onChange={(v) => {
-                    patch({ heightIn: v });
-                  }}
-                />
-              </div>
-              {/* One stature, two fields: the message is rendered once and described by both. */}
-              {heightError !== null && (
-                <p className="wiz-error" id={HEIGHT_ERROR_ID}>
-                  {heightError}
+          {/*
+           * Round 1 claims C1.07.2, C1.07.18 and C1.07.19: two-column rows inside their own
+           * bordered boxes, so the step stops needing a scroll. Age sits with sex because the
+           * two are read together by the RMR equation; stature sits with body mass for the same
+           * reason. The name stays outside both: it reaches no equation at all.
+           */}
+          <div className="wiz-box">
+            <div className="wiz-row">
+              <UnitInput
+                id="f-age"
+                quantity={t('quantity.age')}
+                unit={UNIT.years}
+                step="1"
+                inputMode="numeric"
+                value={draft.ageYears}
+                error={ageError}
+                onChange={(v) => {
+                  patch({ ageYears: v });
+                }}
+              />
+              <div className="wiz-field">
+                <p className="wiz-label" id="sex-label">
+                  {t('label.sex')}
+                  <sup>1</sup>
                 </p>
-              )}
-            </>
-          )}
+                <div className="wiz-choice" role="radiogroup" aria-labelledby="sex-label">
+                  {(['male', 'female'] as const).map((value) => (
+                    <label key={value} className="wiz-glyph">
+                      <input
+                        type="radio"
+                        name="sex"
+                        checked={draft.sex === value}
+                        onChange={() => {
+                          patch({ sex: value });
+                        }}
+                      />
+                      <span aria-hidden="true" className="wiz-glyph-mark" data-sex={value} />
+                      {t(value === 'male' ? 'label.sexMale' : 'label.sexFemale')}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <UnitInput
-            id="f-mass"
-            quantity={t('quantity.bodyMass')}
-            unit={massLabelUnit}
-            value={draft.mass}
-            error={massError}
-            onChange={(v) => {
-              patch({ mass: v });
-            }}
-          />
+          <div className="wiz-box">
+            <div className="wiz-row">
+              <UnitInput
+                id="f-mass"
+                quantity={t('quantity.bodyMass')}
+                unit={massLabelUnit}
+                step="0.1"
+                value={draft.mass}
+                error={massError}
+                onChange={(v) => {
+                  patch({ mass: v });
+                }}
+              />
+              {/*
+               * Stature is two whole-number fields in both systems, which is C1.07.20 and
+               * C1.07.21. One message serves both, described by each.
+               */}
+              <div className="wiz-field">
+                <p className="wiz-label" id="height-label">
+                  {t('quantity.height')}
+                  <sup>2</sup>
+                </p>
+                <div className="wiz-row wiz-row-tight">
+                  <UnitInput
+                    id={draft.units === 'metric' ? 'f-height-m' : 'f-height-ft'}
+                    quantity={t(draft.units === 'metric' ? 'label.metres' : 'label.feet')}
+                    unit={null}
+                    step="1"
+                    inputMode="numeric"
+                    value={draft.units === 'metric' ? draft.heightM : draft.heightFt}
+                    error={null}
+                    sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
+                    onChange={(v) => {
+                      patch(draft.units === 'metric' ? { heightM: v } : { heightFt: v });
+                    }}
+                  />
+                  <UnitInput
+                    id={draft.units === 'metric' ? 'f-height-cm' : 'f-height-in'}
+                    quantity={t(draft.units === 'metric' ? 'label.centimetres' : 'label.inches')}
+                    unit={null}
+                    step="1"
+                    inputMode="numeric"
+                    value={draft.units === 'metric' ? draft.heightCm : draft.heightIn}
+                    error={null}
+                    sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
+                    onChange={(v) => {
+                      patch(draft.units === 'metric' ? { heightCm: v } : { heightIn: v });
+                    }}
+                  />
+                </div>
+                {heightError !== null && (
+                  <p className="wiz-error" id={HEIGHT_ERROR_ID}>
+                    {heightError}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
 
           <p className="wiz-note">{t('advice.bodyFatOptional')}</p>
           <details>
@@ -1356,6 +1392,23 @@ export function SetupWizard(): JSX.Element {
               )}
             </>
           )}
+          {/*
+           * Round 1 claim C1.07.5: the methods, at the foot of the box, "do not be expansive -
+           * just transparent". The markers are superscripts beside the two fields whose purpose
+           * is least obvious; a row with marker 0 carries no marker and is listed for
+           * completeness, because it reads this page's numbers too.
+           */}
+          <div className="wiz-cites">
+            <p className="wiz-note">{BODY_EQUATIONS_LEAD}</p>
+            <ol className="wiz-cite-list">
+              {BODY_EQUATIONS.map((eq, n) => (
+                <li key={`${String(eq.marker)}-${String(n)}`}>
+                  {eq.marker > 0 && <sup>{eq.marker}</sup>} {eq.computes}{' '}
+                  <span className="wiz-cite-src">{eq.source}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
         </fieldset>
       )}
 

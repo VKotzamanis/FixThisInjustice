@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `4109e8f`. 102 parts across 14 screens, holding 496 of the table's 499 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `29e63ed`. 102 parts across 14 screens, holding 497 of the table's 500 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## boot (2)
 
@@ -203,7 +203,7 @@ States: `default`
 
 ### `setup.body`
 
-Step 3, Body. Body mass, height, age, sex, and the optional tape estimate.
+Step 3, Body. Body mass, stature, age, sex, the methods list, and the optional tape estimate.
 
 Renders: `src/ui/setup/SetupWizard.tsx`
 
@@ -213,7 +213,6 @@ States: `default`, `blocked`
 | --- | --- | --- | --- | --- |
 | `advice.bodyFatEstimate` | 21.9 % body fat, ± 3.52 percentage points. | same | same | yes |
 | `advice.bodyFatOptional` | Optional. With it, RMR uses the Cunningham equation. | same | same | yes |
-| `advice.sexUsedFor` | Used by the RMR, body-fat and fluid equations. | same | same | yes |
 | `advice.tapeMethod` | US Navy circumference method. Keep the tape level and snug. | same | same | yes |
 | `advice.tapeNeedFemale` | Enter neck, abdomen I and hip girths. | same | same | yes |
 | `advice.tapeNeedMale` | Enter neck and abdomen II girths. | same | same | yes |
@@ -222,13 +221,15 @@ States: `default`, `blocked`
 | `error.positive` | Enter a number above zero. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.valueRequired` | Enter a number. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.wholeNumber` | Enter a whole number. | same | same | yes |
-| `label.birthYear` | Birth year | same | same | yes |
 | `label.bodyFatKnown` | Known percentage | same | same | yes |
 | `label.bodyFatNone` | Not measured | same | same | yes |
 | `label.bodyFatTape` | Estimate from tape measurements | same | same | yes |
+| `label.centimetres` | Centimetres | same | same | yes |
 | `label.feet` | Feet | same | same | yes |
 | `label.inches` | Inches | same | same | yes |
+| `label.metres` | Metres | same | same | yes |
 | `label.name` | How should I refer to you? | same | same | yes |
+| `label.sex` | Biological sex | same | same | yes |
 | `label.sexFemale` | Female | same | same | yes |
 | `label.sexMale` | Male | same | same | yes |
 | `quantity.abdomenI` | Abdomen I | same | same | yes |

@@ -31,8 +31,9 @@ const MEDICAL_PATTERN = new RegExp(
 );
 
 /**
- * The clock is pinned because two numbers under test are read off it: the age derived from the
- * birth year, and `todayLocal`, which becomes the plan's start date. 12:00 UTC lands on
+ * The clock is pinned because two numbers under test are read off it: the birth year DERIVED
+ * from the age the field now asks for (round 1 claim C1.07.17), and `todayLocal`, which becomes
+ * the plan's start date. 12:00 UTC lands on
  * 2026-09-01 in every zone the suite runs in (`npm run test:tz`), so no assertion here depends
  * on the host zone.
  */
@@ -86,7 +87,7 @@ function fillImperialWizardToGoal(): void {
   // 3 - body
   setValue(/^How should I refer to you\?$/i, 'Test subject');
   fireEvent.click(screen.getByLabelText('Male'));
-  setValue(/birth year/i, '1996');
+  setValue(/^age \(years\)$/i, '30');
   setValue(/^feet$/i, '5');
   setValue(/^inches$/i, '11');
   setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
@@ -176,7 +177,8 @@ describe('unit labelling', () => {
     next();
     next(); // accept the detected time zone
     expect(screen.getByLabelText(/body mass \(kg\)/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/height \(cm\)/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^metres$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^centimetres$/i)).toBeInTheDocument();
     unmount();
 
     render(<SetupWizard />);
@@ -193,7 +195,7 @@ describe('unit labelling', () => {
     fireEvent.click(screen.getByLabelText('Pounds (lb)'));
     next();
     next();
-    setValue(/birth year/i, '1996');
+    setValue(/^age \(years\)$/i, '30');
     setValue(/^feet$/i, '5');
     setValue(/^inches$/i, '11');
     setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
@@ -204,13 +206,14 @@ describe('unit labelling', () => {
 });
 
 describe('domain guards', () => {
-  it('blocks progression and names the bound when the birth year puts age outside 18 to 80', () => {
+  it('blocks progression and names the bound when the age is outside 18 to 80', () => {
     render(<SetupWizard />);
     next();
     next();
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
-    setValue(/birth year/i, '2020'); // age 6 at the pinned clock
+    setValue(/^age \(years\)$/i, '6'); // under the 18 to 80 domain
 
     expect(screen.getByText('Age must be 18 to 80 years.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
@@ -218,7 +221,7 @@ describe('domain guards', () => {
     // Still on the body screen: the guard held.
     expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
 
-    setValue(/birth year/i, '1996');
+    setValue(/^age \(years\)$/i, '30');
     expect(screen.queryByText('Age must be 18 to 80 years.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
@@ -227,8 +230,9 @@ describe('domain guards', () => {
     render(<SetupWizard />);
     next();
     next();
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '12');
     expect(screen.getByText('Body mass must be 30 to 300 kg.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
@@ -238,8 +242,9 @@ describe('domain guards', () => {
     render(<SetupWizard />);
     next();
     next();
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next(); // training
     next(); // goal
@@ -301,8 +306,9 @@ describe('review screen', () => {
     render(<SetupWizard />);
     next();
     next();
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next();
     next();
@@ -388,8 +394,9 @@ describe('submission', () => {
     next();
     setValue(/^How should I refer to you\?$/i, 'Metric subject');
     fireEvent.click(screen.getByLabelText('Female'));
-    setValue(/birth year/i, '2000');
-    setValue(/height \(cm\)/i, '165');
+    setValue(/^age \(years\)$/i, '26');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
     next();
     next();
@@ -419,8 +426,9 @@ describe('body fat by tape measure', () => {
     fireEvent.click(screen.getByLabelText('Kilograms (kg)'));
     next();
     next();
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '95.3');
     fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
     setValue(/^neck \(cm\)$/i, '40');
@@ -437,8 +445,9 @@ describe('body fat by tape measure', () => {
     next();
     next();
     fireEvent.click(screen.getByLabelText('Female'));
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '165');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
     fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
     setValue(/^neck \(cm\)$/i, '32');
@@ -453,8 +462,9 @@ describe('no free-text medical field exists', () => {
   /** Minimum entry needed to pass each screen's Continue guard. */
   function unblock(stepIndex: number): void {
     if (STEPS[stepIndex] === 'body') {
-      setValue(/birth year/i, '1996');
-      setValue(/height \(cm\)/i, '180');
+      setValue(/^age \(years\)$/i, '30');
+      setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
       setValue(/body mass \(kg\)/i, '80');
     }
     if (STEPS[stepIndex] === 'availability') {
@@ -524,8 +534,9 @@ describe('no free-text medical field exists', () => {
     render(<SetupWizard />);
     next();
     next();
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next();
     next();
@@ -540,8 +551,9 @@ describe('copy rules', () => {
     render(<SetupWizard />);
     for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
       if (STEPS[stepIndex] === 'body') {
-        setValue(/birth year/i, '1996');
-        setValue(/height \(cm\)/i, '180');
+        setValue(/^age \(years\)$/i, '30');
+        setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
         setValue(/body mass \(kg\)/i, '80');
       }
       if (STEPS[stepIndex] === 'availability') {
@@ -581,7 +593,7 @@ describe('the converted value is what the domain gate tests', () => {
     next();
     next();
     fireEvent.click(screen.getByLabelText('Male'));
-    setValue(/birth year/i, '1996');
+    setValue(/^age \(years\)$/i, '30');
     setValue(/^feet$/i, '5');
     setValue(/^inches$/i, '11');
     setValue(/body mass \(lb\)/i, massLb);
@@ -643,7 +655,7 @@ describe('the converted value is what the domain gate tests', () => {
     fireEvent.click(screen.getByLabelText('Pounds (lb)'));
     next();
     next();
-    setValue(/birth year/i, '1996');
+    setValue(/^age \(years\)$/i, '30');
     setValue(/^feet$/i, '3');
     setValue(/^inches$/i, '11'); // 47 in = 119.38 cm, under the 120 cm floor
     setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
@@ -659,16 +671,17 @@ describe('the converted value is what the domain gate tests', () => {
  * is refused where it is typed rather than rounded into the document behind the user's back.
  */
 describe('whole-number counts', () => {
-  it('refuses a fractional birth year instead of rounding it', () => {
+  it('refuses a fractional age instead of rounding it', () => {
     render(<SetupWizard />);
     next();
     next();
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
-    setValue(/birth year/i, '1996.5');
+    setValue(/^age \(years\)$/i, '30.5');
     expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
-    setValue(/birth year/i, '1996');
+    setValue(/^age \(years\)$/i, '30');
     expect(screen.queryByText('Enter a whole number.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
@@ -739,7 +752,7 @@ describe('focus, announcement and message binding', () => {
     fireEvent.click(screen.getByLabelText('Pounds (lb)'));
     next();
     next();
-    setValue(/birth year/i, '1996');
+    setValue(/^age \(years\)$/i, '30');
     setValue(/^feet$/i, '3');
     setValue(/^inches$/i, '11');
     setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
@@ -755,8 +768,9 @@ describe('focus, announcement and message binding', () => {
     fireEvent.click(screen.getByLabelText('Kilograms (kg)'));
     next();
     next();
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '180');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '95.3');
     fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
     setValue(/^neck \(cm\)$/i, '40');
@@ -844,8 +858,9 @@ describe('entry aids and idempotency', () => {
     next();
     next();
     fireEvent.click(screen.getByLabelText('Female'));
-    setValue(/birth year/i, '1996');
-    setValue(/height \(cm\)/i, '165');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
     fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
     for (const label of [/^neck \(cm\)$/i, /^abdomen i \(cm\)$/i, /^hip \(cm\)$/i]) {
