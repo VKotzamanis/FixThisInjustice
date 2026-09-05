@@ -1019,3 +1019,30 @@ New gate `src/domain/alphaFixture.test.ts`, 8 tests, asserting the committed doc
 **2026-09-04, the closure artifact.** Published at https://claude.ai/code/artifact/0058cdef-4798-4516-a337-5142b6d81877
 
 All 127 claim rows are generated from this document's Part A ledger rather than retyped, so the page cannot drift from the plan. Regenerate it from `docs/plans/` and republish to the same URL whenever the ledger changes.
+
+
+**2026-09-05, brief A: the readiness screen removed, guidance in its place.** Commit `54c573e`.
+
+Claims C1.13.2 to C1.13.6, C1.13.8 and C1.15 are closed. The questionnaire, its notice, its
+questions module, the Settings redo panel, the route gate and `recordReadiness` are gone.
+`Profile.readiness` stays in the schema for the reason B24 gives, corrected: Zod strips rather
+than throws, so deleting it would have destroyed stored screening data silently.
+
+Step 8 is now `Getting started`, carrying creatine, caffeine, protein and kit, each with a dose
+computed from the user's own body mass. `caffeineDoseMg` prescribes the resistance-training range
+0.9 to 2 mg/kg rather than the 3 to 6 mg/kg usually quoted, whose floor at 70 kg already exceeds
+EFSA's safe single dose, and the range is capped at that figure with the cap disclosed.
+
+Two defects surfaced while wiring it, both now fixed: `GuidanceScreen` guarded its caution block
+on `!== undefined` while kit's caution is `null`, so it rendered an empty note; and
+`creatineDoseG` carried no domain guard where `caffeineDoseMg` beside it does.
+
+**How the delegation actually works, after four failed attempts.** `agy` in headless print mode
+auto-denies every tool call, and the error names a permission problem, which is misleading: the
+real cause is that the PROMPT invited tool use. A prompt that mentions a file path makes agy reach
+for a file tool, get denied, and return nothing. The recipe that works is a neutral working
+directory, no file paths in the prompt, an explicit "do not read, write or run anything", and the
+output redirected to a file that Claude then applies and verifies. agy drafts; it never runs a
+gate, so it can never report a passing test it did not run.
+
+**2026-09-05, MIT licence and the icon register.** Commit `ff39400`. Claims C1.01.13 and C1.09.9.
