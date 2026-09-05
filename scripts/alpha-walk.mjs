@@ -87,11 +87,15 @@ export const STAGES = [
       {
         id: 'w1.04',
         title: 'Setup, step 1: units',
-        do: 'Read the two lines above the choice, then pick metric or imperial.',
-        see: 'A step counter, a title, one note and two options.',
+        do: 'Read the heading and the line above the choice, then pick metric or imperial.',
+        see: 'A heading naming the group this step belongs to, a step counter, a title, a lead-in line, two options, and a note under them.',
         keys: [
           'setup.hero',
+          'group.settings',
+          'group.personal',
+          'group.goal',
           'step.units',
+          'label.units',
           'advice.unitsOnce',
           'label.unitsMetric',
           'label.unitsImperial',
@@ -114,6 +118,7 @@ export const STAGES = [
         keys: [
           'step.timezone',
           'advice.timezoneDetected',
+          'advice.timezonePick',
           'label.timezone',
           'advice.timezoneInvalid',
         ],

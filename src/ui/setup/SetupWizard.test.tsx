@@ -53,9 +53,9 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Click the primary Continue control. */
+/** Click the primary forward control. Round 1 claim C1.05.2 renamed it to Next. */
 function next(): void {
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
 function setValue(label: RegExp | string, value: string): void {
@@ -64,7 +64,7 @@ function setValue(label: RegExp | string, value: string): void {
 
 /**
  * Answer all seven readiness questions, with a Yes for the ids named and a No for the rest.
- * The screen blocks its own Continue until every question carries an answer, so this is what
+ * The screen blocks its own Next until every question carries an answer, so this is what
  * every fixture below has to do to reach Review.
  */
 function answerReadiness(yesFor: readonly number[] = []): void {
@@ -84,7 +84,7 @@ function fillImperialWizardToGoal(): void {
   setValue(/^time zone$/i, 'America/New_York');
   next();
   // 3 - body
-  setValue(/^name$/i, 'Test subject');
+  setValue(/^How should I refer to you\?$/i, 'Test subject');
   fireEvent.click(screen.getByLabelText('Male'));
   setValue(/birth year/i, '1996');
   setValue(/^feet$/i, '5');
@@ -100,7 +100,7 @@ function fillImperialWizardToGoal(): void {
   setValue(/^goal$/i, 'fat-loss');
 }
 
-/** Continue to availability, with four weekdays checked for the four-session split. */
+/** Advance to availability, with four weekdays checked for the four-session split. */
 function fillImperialWizardToAvailability(): void {
   fillImperialWizardToGoal();
   next();
@@ -213,14 +213,14 @@ describe('domain guards', () => {
     setValue(/birth year/i, '2020'); // age 6 at the pinned clock
 
     expect(screen.getByText('Age must be 18 to 80 years.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     next();
     // Still on the body screen: the guard held.
     expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
 
     setValue(/birth year/i, '1996');
     expect(screen.queryByText('Age must be 18 to 80 years.')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('blocks a body mass outside the validated adult domain', () => {
@@ -231,7 +231,7 @@ describe('domain guards', () => {
     setValue(/height \(cm\)/i, '180');
     setValue(/body mass \(kg\)/i, '12');
     expect(screen.getByText('Body mass must be 30 to 300 kg.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
   it('blocks an empty weekday selection', () => {
@@ -245,7 +245,7 @@ describe('domain guards', () => {
     next(); // goal
     next(); // availability
     expect(screen.getByText('Select at least one weekday.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 });
 
@@ -386,7 +386,7 @@ describe('submission', () => {
     fireEvent.click(screen.getByLabelText('Kilograms (kg)'));
     next();
     next();
-    setValue(/^name$/i, 'Metric subject');
+    setValue(/^How should I refer to you\?$/i, 'Metric subject');
     fireEvent.click(screen.getByLabelText('Female'));
     setValue(/birth year/i, '2000');
     setValue(/height \(cm\)/i, '165');
@@ -479,7 +479,7 @@ describe('no free-text medical field exists', () => {
       expect(freeText.map((i) => i.id).sort()).toEqual(
         STEPS[stepIndex] === 'timezone' ? ['f-timezone'] : STEPS[stepIndex] === 'body' ? ['f-name'] : [],
       );
-      const continueButton = screen.queryByRole('button', { name: 'Continue' });
+      const continueButton = screen.queryByRole('button', { name: 'Next' });
       if (!continueButton) break;
       fireEvent.click(continueButton);
     }
@@ -513,7 +513,7 @@ describe('no free-text medical field exists', () => {
       } else {
         expect(document.body.textContent ?? '').not.toMatch(MEDICAL_PATTERN);
       }
-      const continueButton = screen.queryByRole('button', { name: 'Continue' });
+      const continueButton = screen.queryByRole('button', { name: 'Next' });
       if (!continueButton) break;
       fireEvent.click(continueButton);
     }
@@ -554,7 +554,7 @@ describe('copy rules', () => {
         expect((button.textContent ?? '').trim().split(/\s+/).length).toBeLessThanOrEqual(3);
       }
       expect(document.body.textContent ?? '').not.toMatch(/[—–]/);
-      const continueButton = screen.queryByRole('button', { name: 'Continue' });
+      const continueButton = screen.queryByRole('button', { name: 'Next' });
       if (!continueButton) break;
       fireEvent.click(continueButton);
     }
@@ -609,7 +609,7 @@ describe('the converted value is what the domain gate tests', () => {
 
     imperialBodyStep(FLOOR_LB);
     expect(screen.getByText('Body mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     next();
     expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
   });
@@ -618,7 +618,7 @@ describe('the converted value is what the domain gate tests', () => {
     const kg = toStoredMass(Number(CEILING_LB), 'imperial'); // [kg] 300.008 kg
     expect(kg).toBeGreaterThan(NUTRITION_DOMAIN.massKg.hi);
     imperialBodyStep(CEILING_LB);
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
   it('accepts the bound the message quotes, and that bound is inside the domain', () => {
@@ -626,16 +626,16 @@ describe('the converted value is what the domain gate tests', () => {
     expect(isInDomain(inputAt(kg))).toBe(true);
     imperialBodyStep(INSIDE_LB);
     expect(screen.queryByText(/body mass must be/i)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('holds an optional target body mass to the same kg bound', () => {
     fillImperialWizardToGoal();
     setValue(/target body mass \(lb\)/i, FLOOR_LB);
     expect(screen.getByText('Target body mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     setValue(/target body mass \(lb\)/i, '120');
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('quotes an imperial stature bound that is itself inside the cm domain', () => {
@@ -667,31 +667,31 @@ describe('whole-number counts', () => {
     setValue(/body mass \(kg\)/i, '80');
     setValue(/birth year/i, '1996.5');
     expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     setValue(/birth year/i, '1996');
     expect(screen.queryByText('Enter a whole number.')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('refuses a fractional programme length', () => {
     fillImperialWizard();
     // Review, then back through Readiness to Programme.
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
     setValue(/programme length/i, '12.4');
     expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     setValue(/programme length/i, String(PLAN_WEEKS_MIN));
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('refuses a fractional weekly session target', () => {
     fillImperialWizardToAvailability();
     setValue(/weekly session target/i, '3.5');
     expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     setValue(/weekly session target/i, '3');
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('writes a document that passes parseState once the fractions are corrected', () => {
@@ -766,7 +766,7 @@ describe('focus, announcement and message binding', () => {
       expect(control).toHaveAttribute('aria-invalid', 'true');
       expect(describedText(control)).toContain('Body fat must be 3 to 60 %.');
     }
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
   it('binds the target-date message to its control', () => {
@@ -779,7 +779,7 @@ describe('focus, announcement and message binding', () => {
     fireEvent.change(control, { target: { value: '2026-02-30' } });
     expect(control).toHaveAttribute('aria-invalid', 'true');
     expect(describedText(control)).not.toBe('');
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
 
   it('binds the weekday message to every weekday control', () => {
@@ -803,12 +803,12 @@ describe('availability against sessions per week', () => {
     expect(
       screen.getByText('2 days selected for 4 sessions per week. Select at least 4 days.'),
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
 
     fireEvent.click(screen.getByLabelText('Thursday'));
     fireEvent.click(screen.getByLabelText('Friday'));
     expect(screen.queryByText(/days selected for/i)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 });
 
@@ -894,7 +894,7 @@ describe('readiness screening', () => {
     // answer, so Review is unreachable and no profile can be written unscreened.
     next();
     expect(screen.getByTestId('readiness-screen')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Confirm and start' })).toBeNull();
   });
 });

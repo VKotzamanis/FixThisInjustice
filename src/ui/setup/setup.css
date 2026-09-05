@@ -318,3 +318,14 @@
   opacity: 0.45;
   cursor: default;
 }
+
+/*
+ * A lead-in above a control: the words that name what the control sets, where a <label> cannot
+ * be used because the control is a radio group rather than one field. Round 1 claims C1.04.2
+ * and C1.06.3 both asked for one. Louder than .wiz-note, quieter than the step heading.
+ */
+.wiz-label {
+  margin: 0 0 6px;
+  font-weight: 600;
+  color: var(--text);
+}

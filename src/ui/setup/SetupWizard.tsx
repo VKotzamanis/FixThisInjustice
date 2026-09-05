@@ -118,6 +118,37 @@ const STEP_TITLE_KEY: Record<StepId, CopyKey> = {
   review: 'step.review',
 };
 
+/**
+ * The three groups the nine steps fall into, and which group each step belongs to.
+ *
+ * Round 1 claims C1.02.5 and C1.02.6: "the Steps 1:9 need to be broken down into one of these
+ * three categories and the title of Setup would change to Setup: Personal Information".
+ *
+ * Derived from STEPS rather than restated as a list, so a step added above without a group is a
+ * COMPILE ERROR rather than a step that silently renders the bare hero. Review is deliberately
+ * null: it is the screen that writes the profile and reviews all three groups, so prefixing it
+ * with one of them would misdescribe it.
+ */
+export type SetupGroup = 'settings' | 'personal' | 'goal';
+
+const GROUP_TITLE_KEY: Record<SetupGroup, CopyKey> = {
+  settings: 'group.settings',
+  personal: 'group.personal',
+  goal: 'group.goal',
+};
+
+const STEP_GROUP: Record<StepId, SetupGroup | null> = {
+  units: 'settings',
+  timezone: 'settings',
+  body: 'personal',
+  training: 'goal',
+  goal: 'goal',
+  availability: 'goal',
+  programme: 'goal',
+  readiness: 'personal',
+  review: null,
+};
+
 /*
  * Units, not copy: a unit label is part of the contract and never changes with a skin
  * (copy contract, "Numbers, units and quantity names are part of the contract"). The mass and
@@ -1005,7 +1036,12 @@ export function SetupWizard(): JSX.Element {
 
   return (
     <div className="wiz">
-      <h1>{t('setup.hero')}</h1>
+      <h1>
+        {FORMAT.setupGroup(
+          t('setup.hero'),
+          STEP_GROUP[step] === null ? null : t(GROUP_TITLE_KEY[STEP_GROUP[step]]),
+        )}
+      </h1>
       {/*
        * The step counter is the live region: it is the one line that changes on every step, so
        * a polite announcement of it names both the position and the screen without the heading
@@ -1018,7 +1054,7 @@ export function SetupWizard(): JSX.Element {
       {step === 'units' && (
         <fieldset>
           <StepHeading title={t(STEP_TITLE_KEY.units)} headingRef={headingRef} />
-          <p className="wiz-note">{t('advice.unitsOnce')}</p>
+          <p className="wiz-label">{t('label.units')}</p>
           <label className="wiz-inline">
             <input
               type="radio"
@@ -1041,6 +1077,8 @@ export function SetupWizard(): JSX.Element {
             />
             {t('label.unitsImperial')}
           </label>
+          {/* Below the control, not above it: round 1 claim C1.08.1, stated as a principle. */}
+          <p className="wiz-note">{t('advice.unitsOnce')}</p>
         </fieldset>
       )}
 
@@ -1049,6 +1087,7 @@ export function SetupWizard(): JSX.Element {
           <StepHeading title={t(STEP_TITLE_KEY.timezone)} headingRef={headingRef} />
           <p className="wiz-note">{t('advice.timezoneDetected')}</p>
           <div className="wiz-field">
+            <p className="wiz-label">{t('advice.timezonePick')}</p>
             <label htmlFor="f-timezone">{t('label.timezone')}</label>
             {/*
              * An IANA identifier is case-sensitive and contains no words: autocapitalising,

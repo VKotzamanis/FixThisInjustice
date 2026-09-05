@@ -51,11 +51,16 @@ export type CopyKey =
   | 'button.exportStoredData'
   // --- setup wizard, targets, check-in (P2) ---
   | 'setup.hero'
+  | 'group.settings'
+  | 'group.personal'
+  | 'group.goal'
   | 'button.continue'
   | 'button.back'
   | 'button.confirmStart'
+  | 'label.units'
   | 'advice.unitsOnce'
   | 'advice.timezoneDetected'
+  | 'advice.timezonePick'
   | 'advice.timezoneInvalid'
   | 'advice.sexUsedFor'
   | 'advice.bodyFatOptional'
@@ -596,11 +601,22 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- setup wizard, targets, check-in (P2) ---
   'setup.hero': 'Setup',
-  'button.continue': 'Continue',
-  'button.back': 'Back',
+  /*
+   * The three groups the nine steps fall into. Round 1 claim C1.02.5: the owner asked for the
+   * steps to be "broken down into one of these three categories and the title of Setup would
+   * change to Setup: Personal Information". FORMAT.setupGroup composes the heading, so a skin
+   * can reorder the two halves without a view knowing.
+   */
+  'group.settings': 'Preferred Settings',
+  'group.personal': 'Personal Information',
+  'group.goal': 'Fitness Goal & Schedule',
+  'button.continue': 'Next',
+  'button.back': 'Previous',
   'button.confirmStart': 'Confirm and start',
-  'advice.unitsOnce': 'Chosen once. Values are stored in kg and mL.',
-  'advice.timezoneDetected': 'From this device. Dates and reminders use it.',
+  'label.units': 'Units on the weight plates',
+  'advice.unitsOnce': 'Makes logging stuff easier. Change at any point in Settings.',
+  'advice.timezoneDetected': 'Necessary for the notification bot and the week planner.',
+  'advice.timezonePick': 'Select from the drop down menu:',
   'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
   'advice.sexUsedFor': 'Used by the RMR, body-fat and fluid equations.',
   'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham equation.',
@@ -630,7 +646,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.unitsMetric': 'Kilograms (kg)',
   'label.unitsImperial': 'Pounds (lb)',
   'label.timezone': 'Time zone',
-  'label.name': 'Name',
+  'label.name': 'How should I refer to you?',
   'label.sexMale': 'Male',
   'label.sexFemale': 'Female',
   'label.birthYear': 'Birth year',
@@ -1599,6 +1615,14 @@ export const FORMAT = {
   /** "Step 1 of 8: Units". Contract R5: a colon, not a dash. */
   stepOf: (index: number, total: number, title: string): string =>
     `Step ${index} of ${total}: ${title}`,
+
+  /**
+   * "Setup: Personal Information". Round 1 claim C1.02.6. A frame rather than a literal at the
+   * call site, so a skin can reorder or drop the prefix; contract R5 puts a colon here, never
+   * a dash. A step outside the three groups renders the bare hero.
+   */
+  setupGroup: (hero: string, group: string | null): string =>
+    group === null ? hero : `${hero}: ${group}`,
 
   /** "Body mass (kg)". The unit comes from UNIT_LABEL; the quantity from a copy key. */
   quantityWithUnit: (quantity: string, unit: string): string => `${quantity} (${unit})`,

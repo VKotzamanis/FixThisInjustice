@@ -106,7 +106,17 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'label.settingsSkin': 'the look',
 
   // --- the controls a user meets in the training and plan flow ---
-  'button.continue': 'go on',
+  /*
+   * `button.continue` carried 'go on' here. Round 1 claim C1.05.2 asked for "Previous" and
+   * "Next" by name, and the owner tests on this skin, so renaming only the default table would
+   * have changed nothing they can see. The override is DROPPED rather than lower-cased to
+   * 'next': a named request outranks the register convention. `button.back` never had one and
+   * now inherits "Previous" for the same reason.
+   *
+   * The board keeps PROCEED. That skin is a departures concourse and PROCEED is the sign at
+   * every gate, which is a documented voice rather than an unconsidered default, and it is not
+   * the skin this round is being tested on.
+   */
   'button.confirmStart': 'lock it in',
   'button.returnToSession': 'back on stage',
   'button.markCompleted': 'mark it done',
