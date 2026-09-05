@@ -2,8 +2,11 @@
   "name": "fixthisinjustice",
   "private": true,
   "version": "3.0.0",
+  "license": "MIT",
   "type": "module",
-  "engines": { "node": ">=22.12" },
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

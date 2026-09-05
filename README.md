@@ -131,8 +131,11 @@ delete it, from **Settings**, then **Delete legacy data**.
 
 ## Licences
 
-The icons and the mascot illustrations originate with this project, and `npm run icons:build`
-inlines them. `src/skins/limelight/icons.ts` and `src/skins/limelight/illustrations.ts` carry
+This project is released under the MIT licence; `LICENSE` at the repository root carries the
+text. The icons and the mascot illustrations originate with this project, and
+`npm run icons:build` inlines them.
+
+`src/skins/limelight/icons.ts` and `src/skins/limelight/illustrations.ts` carry
 the provenance, and no third-party licence applies to them. The typefaces are Google Fonts
 families installed as `@fontsource` packages. Each package declares `OFL-1.1` and ships its
 licence text, and `REFERENCES.md` records the primary licence files. You supply the motivation
