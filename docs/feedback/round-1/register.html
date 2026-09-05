@@ -1,0 +1,574 @@
+<title>Round One Register</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  --ground: #f1f2ee;
+  --panel: #ffffff;
+  --panel-2: #e9ebe4;
+  --rule: #d9dcd2;
+  --rule-2: #c2c6b8;
+  --ink: #161811;
+  --ink-2: #5a5f52;
+  --ink-3: #888d7e;
+  --accent: #7a5200;
+  --accent-soft: rgba(122, 82, 0, 0.10);
+  --ok: #2c6b3d;
+  --ok-soft: rgba(44, 107, 61, 0.11);
+  --push: #a33a1f;
+  --push-soft: rgba(163, 58, 31, 0.11);
+  --open: #8a5a00;
+  --open-soft: rgba(138, 90, 0, 0.12);
+  --mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #0f110e;
+    --panel: #171a15;
+    --panel-2: #1e221b;
+    --rule: #2b2f27;
+    --rule-2: #3b4036;
+    --ink: #e7e9e0;
+    --ink-2: #9ba192;
+    --ink-3: #737a6b;
+    --accent: #ffb000;
+    --accent-soft: rgba(255, 176, 0, 0.13);
+    --ok: #79c48a;
+    --ok-soft: rgba(121, 196, 138, 0.13);
+    --push: #ff8f6b;
+    --push-soft: rgba(255, 143, 107, 0.13);
+    --open: #ffb000;
+    --open-soft: rgba(255, 176, 0, 0.13);
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #0f110e;
+  --panel: #171a15;
+  --panel-2: #1e221b;
+  --rule: #2b2f27;
+  --rule-2: #3b4036;
+  --ink: #e7e9e0;
+  --ink-2: #9ba192;
+  --ink-3: #737a6b;
+  --accent: #ffb000;
+  --accent-soft: rgba(255, 176, 0, 0.13);
+  --ok: #79c48a;
+  --ok-soft: rgba(121, 196, 138, 0.13);
+  --push: #ff8f6b;
+  --push-soft: rgba(255, 143, 107, 0.13);
+  --open: #ffb000;
+  --open-soft: rgba(255, 176, 0, 0.13);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+.narrow { max-width: 68ch; }
+
+/* ---- masthead ---- */
+.mast { padding: 56px 0 32px; border-bottom: 2px solid var(--ink); }
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--accent); margin: 0 0 18px;
+}
+h1 {
+  font-family: var(--mono); font-weight: 700;
+  font-size: clamp(32px, 6vw, 54px); line-height: 1.04;
+  letter-spacing: -0.02em; margin: 0 0 20px; text-wrap: balance;
+}
+.stand { font-size: 19px; line-height: 1.55; color: var(--ink-2); margin: 0; max-width: 62ch; }
+.stand strong { color: var(--ink); font-weight: 600; }
+
+.strip {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+  margin: 36px 0 0;
+}
+.cell { background: var(--panel); padding: 14px 16px; }
+.cell .v {
+  font-family: var(--mono); font-weight: 700; font-size: 26px;
+  font-variant-numeric: tabular-nums; line-height: 1.1; display: block;
+}
+.cell .k {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.11em;
+  text-transform: uppercase; color: var(--ink-3); display: block; margin-top: 5px;
+}
+.cell.is-ok .v { color: var(--ok); }
+.cell.is-push .v { color: var(--push); }
+.cell.is-open .v { color: var(--open); }
+
+/* ---- sections ---- */
+section.band { padding: 52px 0 0; }
+h2 {
+  font-family: var(--mono); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent);
+  margin: 0 0 6px; padding-bottom: 10px; border-bottom: 1px solid var(--rule-2);
+}
+.lede { font-size: 17px; color: var(--ink-2); margin: 18px 0 26px; max-width: 66ch; }
+p { margin: 0 0 16px; }
+code {
+  font-family: var(--mono); font-size: 0.86em;
+  background: var(--panel-2); padding: 1px 5px; border-radius: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* ---- shipped ---- */
+.shipped { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
+.fix { background: var(--panel); border: 1px solid var(--rule); border-top: 3px solid var(--ok); padding: 22px; }
+.fix h3 { font-family: var(--mono); font-size: 15px; font-weight: 700; margin: 0 0 4px; }
+.fix .where { font-family: var(--mono); font-size: 11px; color: var(--ink-3); margin: 0 0 14px; overflow-wrap: anywhere; }
+.fix p { font-size: 15px; color: var(--ink-2); margin: 0 0 14px; }
+.ba { display: flex; align-items: baseline; gap: 10px; font-family: var(--mono); font-variant-numeric: tabular-nums; border-top: 1px solid var(--rule); padding-top: 12px; flex-wrap: wrap; }
+.ba .was { color: var(--push); font-size: 20px; font-weight: 700; text-decoration: line-through; text-decoration-thickness: 1px; }
+.ba .arrow { color: var(--ink-3); }
+.ba .now { color: var(--ok); font-size: 20px; font-weight: 700; }
+.ba .unit { font-size: 11px; color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase; width: 100%; }
+
+/* ---- register ---- */
+.stage { margin: 0 0 30px; }
+.stage h3 {
+  display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap;
+  font-family: var(--mono); font-size: 15px; font-weight: 700;
+  margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+}
+.stage h3 .step {
+  background: var(--ink); color: var(--ground); padding: 3px 8px;
+  font-size: 11px; letter-spacing: 0.06em;
+}
+.stage h3 .n {
+  margin-left: auto; font-weight: 400; font-size: 11px;
+  color: var(--ink-3); letter-spacing: 0.08em; text-transform: uppercase;
+}
+.scroll { overflow-x: auto; }
+table.reg { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 640px; }
+table.reg th[scope="col"] {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.11em;
+  text-transform: uppercase; color: var(--ink-3); text-align: left;
+  font-weight: 400; padding: 0 12px 8px 0; border-bottom: 1px solid var(--rule);
+}
+table.reg tbody tr { border-bottom: 1px solid var(--rule); }
+table.reg th[scope="row"] {
+  font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent);
+  text-align: left; vertical-align: top; padding: 11px 12px 11px 0; white-space: nowrap;
+}
+table.reg td { vertical-align: top; padding: 11px 12px 11px 0; }
+table.reg td.disp { color: var(--ink-2); font-size: 13px; }
+table.reg td:nth-child(2) { min-width: 200px; }
+.chip {
+  display: inline-block; font-family: var(--mono); font-size: 10px;
+  letter-spacing: 0.07em; text-transform: uppercase; padding: 3px 7px;
+  white-space: nowrap; border: 1px solid currentColor;
+}
+.chip.shipped { color: var(--ok); background: var(--ok-soft); }
+.chip.push { color: var(--push); background: var(--push-soft); }
+.chip.open { color: var(--open); background: var(--open-soft); }
+.chip.planned { color: var(--ink-2); background: var(--panel-2); }
+.chip.sub { color: var(--ink-2); background: transparent; border-style: dashed; }
+.chip.answered { color: var(--accent); background: var(--accent-soft); }
+
+/* ---- argued list ---- */
+.args { display: grid; gap: 0; border-top: 1px solid var(--rule); }
+.arg { border-bottom: 1px solid var(--rule); padding: 20px 0; display: grid; gap: 6px; grid-template-columns: 92px 1fr; }
+.arg .cid { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--push); }
+.arg .body h4 { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+.arg .body p { font-size: 15px; color: var(--ink-2); margin: 0 0 8px; }
+.arg .body p:last-child { margin-bottom: 0; }
+.arg .src { font-family: var(--mono); font-size: 11px; color: var(--ink-3); overflow-wrap: anywhere; }
+@media (max-width: 620px) { .arg { grid-template-columns: 1fr; } }
+
+/* ---- decisions ---- */
+.dec { display: grid; gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+.dec .row { background: var(--panel); padding: 15px 18px; display: grid; grid-template-columns: 54px 1fr; gap: 14px; align-items: start; }
+.dec .q { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--accent); }
+.dec .t { font-size: 15px; }
+.dec .t b { font-weight: 600; }
+.dec .t span { color: var(--ink-2); }
+
+.note { border-left: 3px solid var(--accent); background: var(--panel); padding: 18px 22px; margin: 26px 0 0; }
+.note p { font-size: 15px; color: var(--ink-2); margin: 0 0 10px; }
+.note p:last-child { margin: 0; }
+.note b { color: var(--ink); font-weight: 600; }
+
+ul.plain { margin: 0; padding-left: 20px; }
+ul.plain li { margin-bottom: 9px; color: var(--ink-2); font-size: 15px; }
+ul.plain li b { color: var(--ink); font-weight: 600; }
+
+footer { margin-top: 60px; padding-top: 22px; border-top: 2px solid var(--ink); font-family: var(--mono); font-size: 11px; color: var(--ink-3); letter-spacing: 0.05em; }
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <p class="eyebrow">FixThisInjustice &middot; guided alpha &middot; 4 September 2026</p>
+  <h1>Round One Register</h1>
+  <p class="stand">Every claim you made reviewing walkthrough stages <strong>w0</strong> and <strong>w1</strong>, and what happened to it. Three defects are fixed and tested. Ten requests were pushed back on with evidence from the code. <strong>Nothing was dropped.</strong></p>
+  <div class="strip">
+    <div class="cell"><span class="v">127</span><span class="k">Claims logged</span></div>
+    <div class="cell is-ok"><span class="v">6</span><span class="k">Shipped</span></div>
+    <div class="cell"><span class="v">60</span><span class="k">Planned</span></div>
+    <div class="cell"><span class="v">30</span><span class="k">Sub-plan</span></div>
+    <div class="cell is-push"><span class="v">13</span><span class="k">Pushed back</span></div>
+    <div class="cell is-open"><span class="v">1</span><span class="k">Open question</span></div>
+  </div>
+</header>
+
+<section class="band">
+  <h2>Fixed, tested, in the tree</h2>
+  <p class="lede">Three defects this round proved. All three now carry a test that fails if they return.</p>
+  <div class="shipped">
+
+    <article class="fix">
+      <h3>The invisible top bar</h3>
+      <p class="where">w1.03 &middot; src/app/appShell.css:10</p>
+      <p>The bar hard-coded the clinical skin&rsquo;s own background, so limelight inherited near-black type on a near-black bar. Colour is a token per skin now, and limelight takes the inverted black panel it already uses elsewhere.</p>
+      <div class="ba">
+        <span class="was">1.19:1</span><span class="arrow">&rarr;</span><span class="now">21:1</span>
+        <span class="unit">Brand contrast, over lime. Status line went 1.84:1 &rarr; 21:1.</span>
+      </div>
+    </article>
+
+    <article class="fix">
+      <h3>Inches read as centimetres</h3>
+      <p class="where">w1.08 &middot; src/ui/setup/SetupWizard.tsx</p>
+      <p>The three tape girths were held as cm whatever unit system you chose. An imperial user typed inches into a field the US Navy equation read as centimetres, and got a plausible, wrong body-fat percentage with no error anywhere.</p>
+      <div class="ba">
+        <span class="was">15 in &rarr; 15 cm</span><span class="arrow">&rarr;</span><span class="now">38.1 cm</span>
+        <span class="unit">Exact: 1 in = 2.54 cm by definition. The metric equation stays.</span>
+      </div>
+    </article>
+
+    <article class="fix">
+      <h3>Data for the states you couldn&rsquo;t reach</h3>
+      <p class="where">w0 &middot; docs/feedback/alpha-fixture.json</p>
+      <p>Twenty-two of the eighty-nine steps needed a state a fresh install never produces. Built by driving the store&rsquo;s own actions, so it describes a state the app can actually reach.</p>
+      <div class="ba">
+        <span class="now">225 sets</span><span class="arrow">&middot;</span><span class="now">3 missed weeks</span>
+        <span class="unit">Plus 3 deloads, all three Atlas rarities, 9 body-mass entries. Import via Settings &rarr; Data.</span>
+      </div>
+    </article>
+
+  </div>
+
+  <div class="note">
+    <p><b>A fourth thing was fixed that you did not report.</b> Eight of the planned tasks edit copy strings, and the alpha catalogue asserts every string byte-for-byte. Changing one string without regenerating turns the suite red and leaves these walkthrough pages describing text the app no longer has &mdash; breaking the review loop mid-round. That regeneration is now a gate that runs after every copy change. It fired for real on the first copy edit of the round.</p>
+    <p><b>Full suite after all three: 117 files, 2344 tests, all passing.</b> Type-check and lint clean on every changed file.</p>
+  </div>
+</section>
+
+<section class="band">
+  <h2>Where the code disagreed with you</h2>
+  <p class="lede">Each of these has a file and a line behind it. Any of them can be overridden &mdash; they are findings, not refusals.</p>
+  <div class="args">
+
+    <div class="arg"><div class="cid">C1.04.4</div><div class="body">
+      <h4>Storing both unit systems would break the thing you asked for</h4>
+      <p>You wanted a units toggle that needs no recalculation. You already have one: every quantity is stored canonically and formatted at render, so switching units costs nothing today. Storing both would add two sources of truth that can disagree, and round-trip drift at every display boundary.</p>
+      <p class="src">src/domain/types.ts &middot; LoggedSet.enteredUnit already records what you typed</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.09.5</div><div class="body">
+      <h4>The activity levels are not arbitrary, so your own condition rules out the slider</h4>
+      <p>You said &ldquo;let&rsquo;s revise this whole thing <em>if</em> it&rsquo;s arbitrary&rdquo;. It is not. They are three FAO/WHO/UNU 2004 PAL bands, and the file already records rejecting the five-point gym ladder you&rsquo;d recognise, because its interior points are arithmetic interpolations with no source.</p>
+      <p>Your actual complaint stands, though: &ldquo;sedentary in Houston&rdquo; and &ldquo;sedentary in New York&rdquo; are different lives. That is a labelling failure, not a banding one, and the labels get rewritten with the examples you asked for.</p>
+      <p class="src">src/domain/nutrition.ts:150 &middot; FAO Table 5.3 p.38</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.07.16</div><div class="body">
+      <h4>Neither hormone-therapy bullet can ship, and the evidence says why</h4>
+      <p>No study validates <em>any</em> RMR equation in a population on gender-affirming hormone therapy. And no evidence supports a six-month threshold: van Velzen 2020 found 20.2% of transmen showed no measurable body-composition change even at 24 months, so a rule keyed to elapsed time misroutes one user in five.</p>
+      <p>The better answer was already in your code. Supplying a body-fat percentage moves the app onto Cunningham (1991), which has no sex term at all.</p>
+      <p class="src">DOI 10.1530/EJE-20-0609 &middot; src/domain/nutrition.ts:109</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.13.6</div><div class="body">
+      <h4>The protein form you named doesn&rsquo;t matter</h4>
+      <p>&ldquo;Aim for isolate / concentrate / peptide&rdquo; &mdash; no clinically meaningful difference in hypertrophy between the three. What differs is lactose content and price. What does matter: total daily intake, about 0.4 g/kg per meal, and third-party testing, since 14.8% of 634 supplements across 13 countries carried undeclared anabolic steroids.</p>
+      <p class="src">DOI 10.3390/nu11092047 &middot; DOI 10.1055/s-2004-819955</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.13.4</div><div class="body">
+      <h4>Milk and sugar blunting caffeine is folklore</h4>
+      <p>The dose and the timing hold &mdash; 3 to 6 mg/kg, about 60 minutes before, and coffee works as well as a capsule. The milk-and-sugar clause has no evidence behind it. Also: your dose should be computed from body mass the way creatine already is, and capped, because 6 mg/kg at 90 kg exceeds EFSA&rsquo;s safe single dose.</p>
+      <p class="src">DOI 10.1186/s12970-020-00383-4 &middot; DOI 10.2903/j.efsa.2015.4102</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.08.10</div><div class="body">
+      <h4>Deleting &ldquo;Enter a number&rdquo; would remove every required-field message in the app</h4>
+      <p>One string, ten call sites, across the wizard and Settings. What you actually want is for it to stop showing as standing helper text under an untouched field &mdash; a rendering change, not a deletion. The Navy site prose is a separate matter: it is what keeps the tape estimate valid, so it moves into the diagram you asked for rather than vanishing.</p>
+      <p class="src">src/content/copy.ts:706 &middot; src/domain/bodyfat.ts:61</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.07.15</div><div class="body">
+      <h4>A lime divider is invisible on a lime page</h4>
+      <p>You wrote &ldquo;lime (match accent)&rdquo;. Under limelight, lime <em>is</em> the background and the accent is pink. Your parenthetical is the right instruction and the colour name is the wrong one &mdash; it&rsquo;s the same invisibility bug you reported in the top bar. Two more like it: &ldquo;darker when selected&rdquo; disappears on the board skin, and three pastel calendar hues would reverse a recorded decision that state colours are ink, not hues.</p>
+      <p class="src">src/ui/styles/tokens.css:109, 122</p>
+    </div></div>
+
+    <div class="arg"><div class="cid">C1.01.13</div><div class="body">
+      <h4>The intro says the app is open-source, and it isn&rsquo;t yet</h4>
+      <p>There is no licence file and <code>package.json</code> is marked private, so default copyright applies and nobody may legally reuse it. You&rsquo;ve since said MIT, which closes it. The same slide also promises rest-period minigames that do not exist &mdash; now confirmed in scope, so the copy stands, but it has to land before anyone but you sees the link.</p>
+      <p class="src">package.json:3 &middot; no LICENSE in the tree</p>
+    </div></div>
+
+  </div>
+</section>
+
+<section class="band">
+  <h2>Settled this round</h2>
+  <p class="lede">Twelve decisions closed. Each is recorded in the plan with the reasoning, so none of them has to be re-argued.</p>
+  <div class="dec">
+    <div class="row"><span class="q">Q1</span><span class="t"><b>Body fat.</b> <span>Keep &ldquo;Not measured&rdquo; last; the percentage box with the visual estimator becomes first and default.</span></span></div>
+    <div class="row"><span class="q">Q2</span><span class="t"><b>The chart ships, and we draw it.</b> <span>No licensed asset exists. It stores and tracks a number but does not select the RMR equation &mdash; visual estimates agree with measured adiposity at kappa 0.20&ndash;0.31.</span></span></div>
+    <div class="row"><span class="q">Q3</span><span class="t"><b>No hormone-therapy threshold.</b> <span>Resolved by evidence, not judgement. The fat-free-mass path replaces it.</span></span></div>
+    <div class="row"><span class="q">Q5</span><span class="t"><b>Minigames are in scope.</b> <span>The character was never a mascot &mdash; the requirement is animation and personality, so the licensing problem goes with it.</span></span></div>
+    <div class="row"><span class="q">Q6</span><span class="t"><b>Fade and typewriter.</b> <span>No flashing was intended, so the seizure-risk concern is moot.</span></span></div>
+    <div class="row"><span class="q">Q7</span><span class="t"><b>Close control upper-left.</b> <span>My objection was wrong: there is no house convention to break.</span></span></div>
+    <div class="row"><span class="q">Q8</span><span class="t"><b>One decimal place</b> <span>for body mass, in kg and lb.</span></span></div>
+    <div class="row"><span class="q">Q9</span><span class="t"><b>Step 4 keeps availability.</b> <span>Your split &mdash; what you can provide, versus what you want and when &mdash; reaches the feasibility check in two steps where mine took three.</span></span></div>
+    <div class="row"><span class="q">Q10</span><span class="t"><b>Dumbbell bands, derived increments.</b> <span>Only the microplate option goes. A range is inventory; an increment is granularity, and the generator reads the second.</span></span></div>
+    <div class="row"><span class="q">Q11</span><span class="t"><b>Screening out, dosing in.</b> <span>Raised once, reaffirmed, settled. Not to be re-raised.</span></span></div>
+    <div class="row"><span class="q">Q12</span><span class="t"><b>MIT.</b></span></div>
+    <div class="row"><span class="q">Q13</span><span class="t"><b>The tl;dr keeps its abbreviation.</b></span></div>
+  </div>
+
+  <div class="note">
+    <p><b>One question is still open.</b> <b>Q4:</b> the &ldquo;do you walk to the gym&rdquo; question. There is no MET coefficient anywhere in the project and the review corpus supplies none, so an energy term cannot be built without new sourced evidence. Default, unless you say otherwise: the walk informs which activity band you pick, and adds no second energy term.</p>
+  </div>
+</section>
+
+<section class="band">
+  <h2>The register</h2>
+  <p class="lede">All 127 claims, in the order you wrote them. The wording is my summary; your verbatim text is kept at <code>docs/feedback/round-1/w0-w1-owner-feedback.md</code>, and a hostile review checked this table against it sentence by sentence.</p>
+  <section class="stage">
+<h3><span class="step">w0</span>How to test<span class="n">2 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C0.1</th><td>Page 0 met expectations; content stands</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, no change</td></tr>
+<tr><th scope="row">C0.2</th><td>Generate synthetic data covering the states a fresh install cannot reach (missed week, ended block, legacy v2 data, reminder states), so the skippable steps can be reviewed</td><td><span class="chip shipped">Shipped</span></td><td class="disp">ACCEPT, Task 1</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.01–02</span>Boot and intro<span class="n">22 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.01.1</th><td>Observed: no intro; the app opened straight on Setup step 1 of 9</td><td><span class="chip answered">Answered</span></td><td class="disp">CONFIRMED. No intro sequence exists. <code>Boot.tsx</code> prints plan status lines only, and on a first run that is two lines lasting 0.18 s</td></tr>
+<tr><th scope="row">C1.01.2</th><td>Add an intro slideshow before setup</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.01.3</th><td>Opening line naming the author by initial</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4. <code>send</code> corrected to <code>sent</code></td></tr>
+<tr><th scope="row">C1.01.4</th><td>Bullets appear in sequence, fading in over 1 to 2 s</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.01.5</th><td>Text types out one letter at a time</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4, with a <code>prefers-reduced-motion</code> branch that prints the slide whole</td></tr>
+<tr><th scope="row">C1.01.6</th><td>Bullet 1, &quot;Who am I&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.01.7</th><td>Bullet 2, &quot;Purpose and functions&quot;</td><td><span class="chip push">Partial</span></td><td class="disp">PARTIAL. The atlas and the reminder exist. The &quot;demon function that berates you&quot; overstates what ships, and one named feature does not exist at all. See B4</td></tr>
+<tr><th scope="row">C1.01.8</th><td>Bullet 3, &quot;Motivation&quot;, including games during rest periods</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT. No game exists today; the games are confirmed in scope, so the copy stands and plan 15 must land before the alpha widens beyond you. See B4</td></tr>
+<tr><th scope="row">C1.01.9</th><td>Bullet 4, solo concept, built with Claude Code, one official repo</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.01.13</th><td>&quot;Be open-source and free to use&quot;</td><td><span class="chip open">Open</span></td><td class="disp">BLOCKED. There is no licence file; the repo is source-visible, not open-source. See B32 and Q12</td></tr>
+<tr><th scope="row">C1.01.14</th><td>&quot;150$ per session to get a personal trainer&quot;</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. An unsourced price claim printed to users. See B32</td></tr>
+<tr><th scope="row">C1.01.15</th><td>&quot;(*insert puke emoji*)&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT as literal text; it contains no emoji code point. But it exposes a gate hole. See B32 and B36</td></tr>
+<tr><th scope="row">C1.01.10</th><td>Each bullet replaces the previous one</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4. Read as: one slide per bullet, advanced by click</td></tr>
+<tr><th scope="row">C1.01.11</th><td>ASCII SpongeBob flexing at the foot of the slide</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. Third-party character IP. See B5</td></tr>
+<tr><th scope="row">C1.01.12</th><td>Hovering &quot;Click to continue...&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.02.1</th><td>Observed: no intro, same as C1.01.1</td><td><span class="chip answered">Answered</span></td><td class="disp">CONFIRMED, no separate action</td></tr>
+<tr><th scope="row">C1.02.2</th><td>A flashing tl;dr disclaimer slide</td><td><span class="chip open">Open</span></td><td class="disp">DECIDE, Q6. Flashing text is a WCAG 2.3.1 hazard. See B6</td></tr>
+<tr><th scope="row">C1.02.7</th><td>&quot;DO NOT be MJT trying to do what looks like a pull-up&quot;</td><td><span class="chip open">Open</span></td><td class="disp">DECIDE, Q13. Names an identifiable person as the butt of a joke in a public app under your name</td></tr>
+<tr><th scope="row">C1.02.3</th><td>It clears on click</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.02.4</th><td>A final slide naming the three things setup collects</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 4</td></tr>
+<tr><th scope="row">C1.02.5</th><td>Regroup the 9 steps under those three headings</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 5</td></tr>
+<tr><th scope="row">C1.02.6</th><td>Title becomes &quot;Setup: Personal Information&quot; and so on</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 5</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.03</span>Shell topbar<span class="n">6 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.03.1</th><td>The topbar is invisible under limelight</td><td><span class="chip shipped">Shipped</span></td><td class="disp">CONFIRMED AS A DEFECT. <code>src/app/App.tsx:483-494</code>. Task 2</td></tr>
+<tr><th scope="row">C1.03.2</th><td>Make it a moving banner: app name fixed, page instruction moving</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 6. <code>src/ui/components/Marquee.tsx</code> already does this and is reused, not rewritten</td></tr>
+<tr><th scope="row">C1.03.3</th><td>The instruction is one sentence, concise, all caps</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 6. Upper case is a skin register, applied in CSS, not baked into the key</td></tr>
+<tr><th scope="row">C1.03.4</th><td>Move &quot;local data loaded&quot; to the foot of the page</td><td><span class="chip shipped">Shipped</span></td><td class="disp">ACCEPT, Task 6</td></tr>
+<tr><th scope="row">C1.03.5</th><td>Add a discrete footer: name, GitHub link, last update, version</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 7. The URL is a build constant, never a copy string</td></tr>
+<tr><th scope="row">C1.03.6</th><td>&quot;Think if we need to say something else&quot;</td><td><span class="chip answered">Answered</span></td><td class="disp">ANSWERED in Part B7</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.04–05</span>Units and nav<span class="n">6 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.04.1</th><td>Observed: step 1 of 9, units, with the stored-units helper</td><td><span class="chip answered">Answered</span></td><td class="disp">CONFIRMED, no separate action</td></tr>
+<tr><th scope="row">C1.04.2</th><td>Replace the units helper text</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 8, resplit to pass R3</td></tr>
+<tr><th scope="row">C1.04.3</th><td>Units must be changeable later, from Settings, and &quot;those static settings&quot; plural</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 9. Read as units and time zone, the two fixed at setup</td></tr>
+<tr><th scope="row">C1.04.4</th><td>Store every number in both unit systems so a toggle needs no recalculation</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. The goal is already met and the proposed mechanism would break it. See B1</td></tr>
+<tr><th scope="row">C1.05.1</th><td>Nav layout stands</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, no change</td></tr>
+<tr><th scope="row">C1.05.2</th><td>Relabel to &quot;Previous&quot; and &quot;Next&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 8, in all three tables. Renaming the default alone leaves your screen reading &quot;go on&quot;. See B8 and B39</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.06</span>Timezone<span class="n">3 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.06.1</th><td>Replace the helper text</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 10</td></tr>
+<tr><th scope="row">C1.06.2</th><td>Make it a dropdown with offset and city labels</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 10. <code>Intl.supportedValuesOf(&#x27;timeZone&#x27;)</code> is already wired as a datalist at <code>SetupWizard.tsx:514</code>; this converts it to a labelled select</td></tr>
+<tr><th scope="row">C1.06.3</th><td>Change the label above the box</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 10</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.07</span>Body, part one<span class="n">22 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.07.1</th><td>The page is too long and scrolls</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 11</td></tr>
+<tr><th scope="row">C1.07.2</th><td>Two-column rows</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 11</td></tr>
+<tr><th scope="row">C1.07.3</th><td>&quot;Name&quot; becomes &quot;How should I refer to you?&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 11</td></tr>
+<tr><th scope="row">C1.07.4</th><td>The equation helper does not belong under the name field</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 11. Confirmed: <code>displayName</code> reaches no equation. <code>NutritionInput</code> takes sex, age, height, mass, body fat, activity, goal, sessions, creatine, and no name</td></tr>
+<tr><th scope="row">C1.07.5</th><td>Move it to the foot of the body box as a citation list</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 12</td></tr>
+<tr><th scope="row">C1.07.6</th><td>Do not present sex as a bare Male/Female pair</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13</td></tr>
+<tr><th scope="row">C1.07.7</th><td>Where is sex used?</td><td><span class="chip answered">Answered</span></td><td class="disp">ANSWERED. Two places, not one. See B2</td></tr>
+<tr><th scope="row">C1.07.8</th><td>Age and sex as one two-column row with a footnote marker</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13, with the label corrected per B2</td></tr>
+<tr><th scope="row">C1.07.9</th><td>Selectable bold male and female glyphs</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT AS SVG. The characters fail both emoji gates. See B26</td></tr>
+<tr><th scope="row">C1.07.10</th><td>A hyperlink reading &quot;Options suck? I agree. Click here for a workround.&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13, spelling corrected</td></tr>
+<tr><th scope="row">C1.07.11</th><td>A popup with a high-contrast close control at the upper left</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT. There is no competing convention; <code>ModalShell</code> renders no close control and its consumers differ</td></tr>
+<tr><th scope="row">C1.07.12</th><td>Two segments</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13</td></tr>
+<tr><th scope="row">C1.07.13</th><td>Equation with the sex term highlighted, in LaTeX if possible, with the source</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13. Rendered as MathML, not a LaTeX runtime. See B9</td></tr>
+<tr><th scope="row">C1.07.14</th><td>Quantify the difference for a 30-year-old male and female of equal mass</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13. The exact figure is 166 kcal/day at RMR. See B3</td></tr>
+<tr><th scope="row">C1.07.15</th><td>A lime divider between the segments</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 13</td></tr>
+<tr><th scope="row">C1.07.16</th><td>Guidance for users on hormone therapy, split at 6 months</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE, EVIDENCED. No validation exists and no threshold has support. Replacement drafted. See B10</td></tr>
+<tr><th scope="row">C1.07.17</th><td>Ask for age, not birth year</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 14. Input age, store birth year, recompute age. See B11</td></tr>
+<tr><th scope="row">C1.07.18</th><td>Two columns for height and mass</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 11</td></tr>
+<tr><th scope="row">C1.07.19</th><td>Age-sex and mass-height in separate bordered boxes</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 11</td></tr>
+<tr><th scope="row">C1.07.20</th><td>Height as two integer boxes, feet+inches or metres+centimetres</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 15</td></tr>
+<tr><th scope="row">C1.07.21</th><td>Integers only, no unit characters, no decimals</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 15</td></tr>
+<tr><th scope="row">C1.07.22</th><td>Body mass in one box, &quot;decimals up to the 3rd significant digit&quot;</td><td><span class="chip open">Open</span></td><td class="disp">DECIDE, Q8. The stated rule breaks above 99.9 kg. See B12</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.08</span>Body, part two<span class="n">14 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.08.1</th><td>&quot;why?&quot; and &quot;Optional&quot; sit above the control they explain</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT as a general principle, Task 16 for this control and Task 27 for the other twelve sites. See B34</td></tr>
+<tr><th scope="row">C1.08.2</th><td>Remove &quot;Not measured&quot;, or add a fourth option</td><td><span class="chip open">Open</span></td><td class="disp">DECIDE, Q1. You leaned to removing; the add branch is not dropped, it is on the table. The control is a radio group, so removal forces a new default. See B13</td></tr>
+<tr><th scope="row">C1.08.3</th><td>Two options: &quot;Percentage %&quot; and &quot;Body Measurements&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 16, subject to Q1</td></tr>
+<tr><th scope="row">C1.08.4</th><td>&quot;Click here to estimate&quot; above the percentage box</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 16</td></tr>
+<tr><th scope="row">C1.08.5</th><td>A popup with a row of male bodies and a row of female bodies</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT as an original asset, with the provenance tag of B31</td></tr>
+<tr><th scope="row">C1.08.6</th><td>Sourced, open licence, from a validated journal or magazine</td><td><span class="chip answered">Superseded</span></td><td class="disp">SUPERSEDED. No licensed asset exists (B27), so we draw our own and the licence is ours. See B31</td></tr>
+<tr><th scope="row">C1.08.7</th><td>No obesity classification labels</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 16</td></tr>
+<tr><th scope="row">C1.08.8</th><td>Girth inputs must follow the chosen unit system; today they do not</td><td><span class="chip shipped">Shipped</span></td><td class="disp">CONFIRMED AS A DEFECT. Task 3. The fix converts at entry; it does not implement the imperial equation. See B14</td></tr>
+<tr><th scope="row">C1.08.9</th><td>A line diagram of the neck and abdomen measurement sites</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 17</td></tr>
+<tr><th scope="row">C1.08.10</th><td>Remove the site prose (&quot;Abdomen II: horizontal...&quot;)</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. That prose is what keeps the estimate valid. See B15</td></tr>
+<tr><th scope="row">C1.08.13</th><td>Remove &quot;US NAVY...&quot;</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT with a fix: that string also hard-codes cm and carries the C1.08.8 defect. See B33</td></tr>
+<tr><th scope="row">C1.08.14</th><td>Remove &quot;Enter a number&quot;</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. One string, ten call sites, every required-field message in the wizard and Settings. See B33</td></tr>
+<tr><th scope="row">C1.08.11</th><td>Verify the numbers on the page connect correctly</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 18. One real trap found: the estimate is legitimately null for lean men</td></tr>
+<tr><th scope="row">C1.08.12</th><td>On a failed Next, vibrate and jump to the missing field</td><td><span class="chip push">Partial</span></td><td class="disp">PARTIAL. The jump lands; the vibration is a no-op on iOS. Task 19</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.09</span>Training context<span class="n">21 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.09.1</th><td>Rename to &quot;Equipment &amp; Availability&quot;</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. Availability moves off this step under C1.10.8. See B16</td></tr>
+<tr><th scope="row">C1.09.2</th><td>First box titled &quot;Everyday Activity Level&quot;</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.3</th><td>An &quot;Examples&quot; call-out that toggles</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.4</th><td>Where does the activity list come from?</td><td><span class="chip answered">Answered</span></td><td class="disp">ANSWERED. FAO/WHO/UNU 2004 Table 5.3. Not invented. See B17</td></tr>
+<tr><th scope="row">C1.09.5</th><td>If arbitrary, replace with a 1 to 10 slider</td><td><span class="chip push">Pushed back</span></td><td class="disp">NOT ACTIONED. Your own condition fails: it is not arbitrary. The real complaint is addressed instead. See B17</td></tr>
+<tr><th scope="row">C1.09.6</th><td>Rename &quot;Experience&quot; to &quot;Gym Comfort&quot;</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.7</th><td>Three levels, as a slider, with the wording given</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.8</th><td>Icons per level</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12, delivered as the icon register in Task 20</td></tr>
+<tr><th scope="row">C1.09.9</th><td>An icon register naming each icon, its location and a 5 to 8 word prompt</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 20</td></tr>
+<tr><th scope="row">C1.09.10</th><td>Rename &quot;The gear&quot; to &quot;Equipment Access&quot;, as a slider</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.11</th><td>Five equipment tiers instead of three</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12. Ripples into all 40 library exercises. See B18</td></tr>
+<tr><th scope="row">C1.09.12</th><td>Popup examples for the two combination tiers</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.13</th><td>You will generate those icons</td><td><span class="chip planned">Planned</span></td><td class="disp">NOTED, Task 20 lists them</td></tr>
+<tr><th scope="row">C1.09.14</th><td>Step 4 is rebuilt and alpha-tested on its own</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT. That is plan 12&#x27;s exit condition</td></tr>
+<tr><th scope="row">C1.09.15</th><td>Move the load-increment fields into their own box</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.16</th><td>Make them conditional on the equipment tier</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.17</th><td>Full gym: walk to the gym, yes/no, then minutes</td><td><span class="chip open">Open</span></td><td class="disp">DECIDE, Q4. Double-counts against the PAL band. See B19</td></tr>
+<tr><th scope="row">C1.09.18</th><td>Home gym: a multi-select equipment list</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12. You wrote &quot;2 options for aerobic&quot; and listed three</td></tr>
+<tr><th scope="row">C1.09.19</th><td>Body weight: simple options</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12</td></tr>
+<tr><th scope="row">C1.09.20</th><td>Exercises carry a requirement tag and are excluded when unmet</td><td><span class="chip shipped">Already built</span></td><td class="disp">ALREADY BUILT. <code>Exercise.equipment: Equipment[]</code> and <code>resolveSlot</code> do this. Plan 12 extends the tag set. Your sentence says an unmatched exercise &quot;would get recommended&quot;; read as would NOT be recommended, which is what the code does</td></tr>
+<tr><th scope="row">C1.09.21</th><td>Remove microplates entirely</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 12. Note the conflict with C1.09.15. See B20</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.10–12</span>Goal, target date, programme<span class="n">20 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.10.1</th><td>Observed: goal dropdown, target body mass, target date</td><td><span class="chip answered">Answered</span></td><td class="disp">CONFIRMED, no separate action</td></tr>
+<tr><th scope="row">C1.10.2</th><td>Rename to &quot;Fitness Goal&quot;</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.10.3</th><td>The goal options are wrongly exclusive</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13. There are four options, not three. See B21</td></tr>
+<tr><th scope="row">C1.10.4</th><td>The whole page is rebuilt</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.10.5</th><td>&quot;Target body mass&quot; is not a meaningful target</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13. <code>Profile.goal.targetBodyFatPct</code> already exists and the wizard never fills it</td></tr>
+<tr><th scope="row">C1.10.6</th><td>Present goals as outcomes, with infographics and examples</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.10.7</th><td>Search for the best presentation</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.10.8</th><td>Reorder: goal, then availability, then target date</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.10.9</th><td>Feasibility cannot be judged before training frequency is known</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13. Correct, and the engine agrees</td></tr>
+<tr><th scope="row">C1.11.1</th><td>Availability moves earlier; this step becomes the target date</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.11.2</th><td>Target date as a calendar</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.11.3</th><td>Pastel red, orange, green for improbable to realistic</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.11.4</th><td>A first-draft ballpark from current selections</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.11.5</th><td>Plan how, from what is already set, and only that</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13. Derivable for fat loss; not derivable for muscle gain. See B22</td></tr>
+<tr><th scope="row">C1.12.1</th><td>The programme step is unexplained</td><td><span class="chip answered">Answered</span></td><td class="disp">CONFIRMED. It sets <code>PlanTemplate.weeks</code>, 8 to 24</td></tr>
+<tr><th scope="row">C1.12.2</th><td>It should follow from the target date</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 13</td></tr>
+<tr><th scope="row">C1.12.3</th><td>What is it for, what does it solve?</td><td><span class="chip answered">Answered</span></td><td class="disp">ANSWERED. See B25</td></tr>
+<tr><th scope="row">C1.12.4</th><td>Ahead-of-time generation of N days: no</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 14</td></tr>
+<tr><th scope="row">C1.12.5</th><td>Generate the next session when the last one ends</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 14, as a split: provisional schedule ahead, prescription just in time. See B23</td></tr>
+<tr><th scope="row">C1.12.6</th><td>Drop fixed offload blocks</td><td><span class="chip sub">Sub-plan</span></td><td class="disp">ACCEPT-SUB, plan 14. The code&#x27;s own review already recommends autoregulation. See B23</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1.13–15</span>Readiness, review, notice<span class="n">10 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.13.1</th><td>Answering yes to all produced no consequence</td><td><span class="chip shipped">Shipped</span></td><td class="disp">UNDER INVESTIGATION, Task 21. If true it is a defect, and it is evidence either way</td></tr>
+<tr><th scope="row">C1.13.2</th><td>Remove the readiness screen completely</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 22, with one recorded caveat. See B24</td></tr>
+<tr><th scope="row">C1.13.3</th><td>Replace it with a creatine recommendation</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 23. The dose is grams, not milligrams, and the engine already computes it</td></tr>
+<tr><th scope="row">C1.13.8</th><td>&quot;It&#x27;s one of the most researched compounds, you have nothing to worry about&quot;</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. An unqualified safety claim replacing a screen whose function was to find the people for whom it is untrue. See B38</td></tr>
+<tr><th scope="row">C1.13.4</th><td>Caffeine dose and timing</td><td><span class="chip push">Partial</span></td><td class="disp">PARTIAL. Dose and timing hold and should be personalised. The milk-and-sugar clause is folklore. See B29</td></tr>
+<tr><th scope="row">C1.13.5</th><td>A bottle or shaker recommendation</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 23</td></tr>
+<tr><th scope="row">C1.13.6</th><td>Protein powder form guidance</td><td><span class="chip push">Pushed back</span></td><td class="disp">CHALLENGE. The form does not matter; the evidence points elsewhere. See B28</td></tr>
+<tr><th scope="row">C1.13.7</th><td>One Sonnet 5 subagent per point</td><td><span class="chip answered">Answered</span></td><td class="disp">DONE for caffeine, protein and HRT; creatine is already covered by the content review with verified DOIs and is not re-researched</td></tr>
+<tr><th scope="row">C1.14</th><td>Rebuild the review step afterwards</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 24</td></tr>
+<tr><th scope="row">C1.15</th><td>Rebuild the readiness notice afterwards</td><td><span class="chip answered">Superseded</span></td><td class="disp">SUPERSEDED by C1.13.2. Removed, not rebuilt</td></tr>
+</tbody></table></div>
+</section>
+<section class="stage">
+<h3><span class="step">w1</span>Across the stage<span class="n">1 claims</span></h3>
+<div class="scroll"><table class="reg">
+<thead><tr><th scope="col">Id</th><th scope="col">What you asked</th><th scope="col">Status</th><th scope="col">Disposition</th></tr></thead>
+<tbody>
+<tr><th scope="row">C1.G.1</th><td>Setup input must survive closing the browser</td><td><span class="chip planned">Planned</span></td><td class="disp">ACCEPT, Task 25. The single highest-value item in the set</td></tr>
+</tbody></table></div>
+</section>
+</section>
+
+<section class="band">
+  <h2>What I have not done</h2>
+  <div class="narrow">
+    <ul class="plain">
+      <li><b>Not republished the walkthrough pages.</b> They are regenerated on disk. Pushing now would change stages 2 to 6 under you while you are reading them, so it waits until this round&rsquo;s copy changes are finished, then goes out as one update to the same links.</li>
+      <li><b>Nothing is committed.</b> The working tree holds every change described here.</li>
+      <li><b>Sub-plans 12 to 15 are unwritten</b> &mdash; equipment, goal and target date, just-in-time sessions, minigames. Thirty claims wait on them.</li>
+      <li><b>Two states the fixture cannot reach.</b> Legacy v2 data lives under different storage keys, so no import can create it. Five of the seven reminder states are browser facts, not stored ones.</li>
+      <li><b>Body fat cannot be re-measured.</b> Found while tracing whether the girth fix propagates. It does &mdash; everything downstream is derived and recomputes on its own. But the stored number is write-once, so anyone who set up in imperial before the fix keeps a wrong figure with no way to correct it.</li>
+      <li><b>No page was opened in a browser.</b> Every check here is a test, a type-check, or arithmetic over the token file. The rendered pass is still yours to make.</li>
+      <li><b>The knowledge graph is stale</b> for the ten decisions recorded this round.</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  docs/plans/2026-09-04-11-alpha-round-1-corrections.md &middot; 1016 lines &middot; 127 claims &middot; 45 findings &middot; 31 tasks
+</footer>
+
+</div>
