@@ -25,6 +25,17 @@
   --text-2: #8e97a3;
   --text-3: #5a6270;
 
+  /*
+   * The sticky top bar's own surface. Alpha round 1 defect w1.03: appShell.css hard-coded
+   * rgba(10, 11, 12, 0.92) here, which is this skin's --bg at 92 %. That literal survived into
+   * limelight, whose ground is lime and whose --text is pure black, so the bar rendered black
+   * type on a near-black bar and the owner reported it as invisible. The colour is a token per
+   * skin now, and topbar.test.ts computes the contrast ratio for all three.
+   */
+  --topbar-bg: rgba(10, 11, 12, 0.92);
+  --topbar-text: #8e97a3;
+  --topbar-brand: #dde3ea;
+
   --accent: #a3e635;
   --accent-d: #84cc16;
   --accent-rgb: 163, 230, 53;
@@ -117,6 +128,12 @@ body {
   --text: var(--ink);
   --text-2: var(--fine);
   --text-3: var(--fine);
+
+  /* The bar takes the inverted panel, the same black surface .ll-panel already uses on the lime
+   * page. White on black is 21:1, against the 1.2:1 the hard-coded literal produced here. */
+  --topbar-bg: #000000;
+  --topbar-text: #ffffff;
+  --topbar-brand: #ffffff;
 
   --accent: var(--pink);
   --accent-d: var(--pink);
@@ -224,6 +241,11 @@ body {
   --text: var(--paper);
   --text-2: var(--mute);
   --text-3: var(--mute);
+
+  /* The board's own darkest ground, not the clinical literal it happened to resemble. */
+  --topbar-bg: #0b0b0c;
+  --topbar-text: #e8e4da;
+  --topbar-brand: #e8e4da;
 
   --accent: var(--amber);
   /* No darker amber was computed for this ground, so the accent does not vary by state depth. */
