@@ -4,6 +4,9 @@ import { KG_PER_LB } from './types';
 /** 1 US fluid ounce = 29.5735295625 mL exactly (1 US gal = 3.785411784 L / 128). */
 const ML_PER_US_FL_OZ = 29.5735295625; // [mL/fl oz]
 
+/** 1 international inch = 2.54 cm exactly, by definition since 1959. */
+const CM_PER_IN = 2.54; // [cm/in]
+
 /**
  * Guards the binary-float division inside achievableLoad. Dimensionless: it is
  * added to a count of steps, not to a mass, which makes it a relative tolerance
@@ -14,10 +17,10 @@ const STEP_COUNT_EPS = 1e-9; // dimensionless
 
 export const UNIT_LABEL: Record<
   UnitSystem,
-  { load: 'kg' | 'lb'; mass: 'kg' | 'lb'; volume: 'mL' | 'fl oz' }
+  { load: 'kg' | 'lb'; mass: 'kg' | 'lb'; volume: 'mL' | 'fl oz'; girth: 'cm' | 'in' }
 > = {
-  metric: { load: 'kg', mass: 'kg', volume: 'mL' },
-  imperial: { load: 'lb', mass: 'lb', volume: 'fl oz' },
+  metric: { load: 'kg', mass: 'kg', volume: 'mL', girth: 'cm' },
+  imperial: { load: 'lb', mass: 'lb', volume: 'fl oz', girth: 'in' },
 };
 
 /** Canonical kg -> display unit, rounded to 0.1 in the display unit. */
@@ -49,6 +52,21 @@ export function displayMass(massKg: Kg, units: UnitSystem): number {
 /** Body mass as typed by the user, converted exactly for storage. */
 export function toStoredMass(entered: number, units: UnitSystem): Kg {
   return toCanonical(entered, units); // [kg]
+}
+
+/**
+ * A tape girth as typed by the user, converted exactly to the centimetres the Navy equation
+ * takes. Added by alpha round 1 Task 3, which found the three girth fields held as cm whatever
+ * the profile's unit system: an imperial user entered inches and `estimateBodyFatNavy` read them
+ * as centimetres, returning a plausible and wrong body-fat percentage with no error anywhere.
+ *
+ * The conversion is at the ENTRY boundary and the equation stays metric. The imperial DoD form
+ * is deliberately not implemented: src/domain/bodyfat.ts records that the two are not
+ * algebraically equivalent, the imperial coefficients being a first-order linearisation that
+ * returns %BF directly, and that mixing them introduces a silent 0.3-0.7 %BF disagreement.
+ */
+export function toStoredGirthCm(entered: number, units: UnitSystem): number {
+  return units === 'imperial' ? entered * CM_PER_IN : entered; // [cm]
 }
 
 /**

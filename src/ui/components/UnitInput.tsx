@@ -1,6 +1,6 @@
 import type { JSX, RefObject } from 'react';
 import type { UnitSystem } from '../../domain/types';
-import { UNIT_LABEL, toStoredLoad, toStoredMass } from '../../domain/units';
+import { UNIT_LABEL, toStoredGirthCm, toStoredLoad, toStoredMass } from '../../domain/units';
 import { FORMAT } from '../../content/copy';
 
 /**
@@ -135,4 +135,15 @@ export function storedMassKg(text: string, units: UnitSystem): number | null {
 export function storedLoadKg(text: string, units: UnitSystem): number | null {
   const entered = parseDecimal(text);
   return entered === null ? null : toStoredLoad(entered, units); // [kg]
+}
+
+/** The unit a tape girth is entered in for this profile: "cm" or "in". */
+export function girthUnit(units: UnitSystem): string {
+  return UNIT_LABEL[units].girth;
+}
+
+/** A tape girth as typed in the display unit, converted exactly to the equation's cm. */
+export function storedGirthCm(text: string, units: UnitSystem): number | null {
+  const entered = parseDecimal(text);
+  return entered === null ? null : toStoredGirthCm(entered, units); // [cm]
 }

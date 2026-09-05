@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "e4aa638",
+  "generatedFrom": "dc06a5e",
   "counts": {
     "screens": 14,
     "parts": 102,
@@ -722,7 +722,7 @@
         },
         {
           "key": "advice.tapeMethod",
-          "default": "US Navy circumference method. Girths in cm, tape level and snug.",
+          "default": "US Navy circumference method. Keep the tape level and snug.",
           "limelight": "same",
           "board": "same",
           "isControl": false,

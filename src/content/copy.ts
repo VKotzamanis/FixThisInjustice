@@ -604,7 +604,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
   'advice.sexUsedFor': 'Used by the RMR, body-fat and fluid equations.',
   'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham equation.',
-  'advice.tapeMethod': 'US Navy circumference method. Girths in cm, tape level and snug.',
+  'advice.tapeMethod': 'US Navy circumference method. Keep the tape level and snug.',
   'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
   'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
   'advice.loadSteps': 'The smallest increment a suggested load uses.',

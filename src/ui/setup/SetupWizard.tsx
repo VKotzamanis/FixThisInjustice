@@ -41,9 +41,11 @@ import {
 import { displayMass, formatVolume } from '../../domain/units';
 import {
   UnitInput,
+  girthUnit,
   loadUnit,
   massUnit,
   parseDecimal,
+  storedGirthCm,
   storedLoadKg,
   storedMassKg,
 } from '../components/UnitInput';
@@ -253,9 +255,9 @@ interface Draft {
   mass: string; // [kg] or [lb], as typed
   bodyFatMode: 'none' | 'known' | 'tape';
   bodyFatPct: string; // [%], as typed
-  neck: string; // [cm], as typed
-  waist: string; // [cm], as typed
-  hip: string; // [cm], as typed
+  neck: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
+  waist: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
+  hip: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
   activity: ActivityLevel;
   experience: Experience;
   equipment: Equipment;
@@ -563,13 +565,13 @@ export function SetupWizard(): JSX.Element {
   /** The US Navy estimate for the girths entered so far, or null while it is unavailable. */
   const tapeEstimate = useMemo((): number | null => {
     if (draft.bodyFatMode !== 'tape') return null;
-    const neckCm = parseDecimal(draft.neck);
-    const waistCm = parseDecimal(draft.waist);
-    const hipCm = parseDecimal(draft.hip);
+    const neckCm = storedGirthCm(draft.neck, draft.units);
+    const waistCm = storedGirthCm(draft.waist, draft.units);
+    const hipCm = storedGirthCm(draft.hip, draft.units);
     if (heightCm === null || neckCm === null || waistCm === null) return null;
     if (draft.sex === 'female' && hipCm === null) return null;
     return estimateBodyFatNavy({ sex: draft.sex, heightCm, neckCm, waistCm, hipCm }); // [%]
-  }, [draft.bodyFatMode, draft.neck, draft.waist, draft.hip, draft.sex, heightCm]);
+  }, [draft.bodyFatMode, draft.neck, draft.waist, draft.hip, draft.sex, draft.units, heightCm]);
 
   /** The body-fat percentage that will be stored, whichever way it was obtained. */
   const bodyFatPct: number | null =
@@ -1250,7 +1252,7 @@ export function SetupWizard(): JSX.Element {
               <UnitInput
                 id="f-neck"
                 quantity={t('quantity.neck')}
-                unit={UNIT.cm}
+                unit={girthUnit(draft.units)}
                 value={draft.neck}
                 error={girthError(draft.neck, overrides)}
                 sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
@@ -1263,7 +1265,7 @@ export function SetupWizard(): JSX.Element {
                 quantity={
                   draft.sex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')
                 }
-                unit={UNIT.cm}
+                unit={girthUnit(draft.units)}
                 value={draft.waist}
                 error={girthError(draft.waist, overrides)}
                 sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
@@ -1277,7 +1279,7 @@ export function SetupWizard(): JSX.Element {
                   <UnitInput
                     id="f-hip"
                     quantity={t('quantity.hip')}
-                    unit={UNIT.cm}
+                    unit={girthUnit(draft.units)}
                     value={draft.hip}
                     error={girthError(draft.hip, overrides)}
                     sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
