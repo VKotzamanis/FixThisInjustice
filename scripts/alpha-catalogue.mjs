@@ -55,15 +55,7 @@ export const SCREEN_FILES = [
       'src/ui/nav/views.ts',
     ],
   ],
-  ['setup', ['src/ui/setup/SetupWizard.tsx']],
-  [
-    'readiness',
-    [
-      'src/ui/setup/ReadinessScreen.tsx',
-      'src/ui/components/ReadinessNotice.tsx',
-      'src/content/readinessQuestions.ts',
-    ],
-  ],
+  ['setup', ['src/ui/setup/SetupWizard.tsx', 'src/ui/setup/GuidanceScreen.tsx']],
   [
     'today',
     [

@@ -15,9 +15,7 @@ import {
   PREV_MONDAY,
   PROFILE_ID,
   TUESDAY,
-  TZ_ATHENS,
   WEDNESDAY,
-  makeProfile,
   seedState,
 } from '../../test/scheduleFixtures';
 import type { AppState, SessionAssignment, SkinId, WeeklyReview } from '../../domain/types';
@@ -82,8 +80,7 @@ beforeEach(() => {
   // status.lastActionError is not part of AppState, so setState does not reset it and a
   // refusal raised by one test would otherwise render a banner in the next.
   useAppStore.getState().clearActionError();
-  // ReadinessNotice remembers its dismissal in session storage for the browser session; the
-  // fake backing keeps that hermetic without naming the global (ESLint gate, P4 polish item 5).
+  // The fake backing keeps storage hermetic without naming the global (ESLint gate, P4 polish item 5).
   installFakeStorage();
 });
 
@@ -406,31 +403,6 @@ describe('TodayView: train something else today', () => {
     fireEvent.click(button('button.startSession'));
     expect(screen.queryByRole('button', { name: copy('button.trainSomethingElse') })).toBeNull();
     expect(screen.queryByTestId('label-picker')).toBeNull();
-  });
-});
-
-describe('TodayView: the readiness notice', () => {
-  function flag(flagged: boolean): void {
-    const profile = makeProfile(TZ_ATHENS);
-    setState({
-      ...useAppStore.getState(),
-      profiles: {
-        [PROFILE_ID]: { ...profile, readiness: { screenedAt: PREV_MONDAY, flagged } },
-      },
-    });
-  }
-
-  it('shows the physician-consult notice at a flagged session start', () => {
-    flag(true);
-    render(<TodayView />);
-    // Master plan section 10.4: shown at EVERY session start, above the hero.
-    expect(screen.getByText(copy('advice.readinessConsult'))).toBeTruthy();
-  });
-
-  it('shows nothing for a profile whose screen raised no flag', () => {
-    flag(false);
-    render(<TodayView />);
-    expect(screen.queryByText(copy('advice.readinessConsult'))).toBeNull();
   });
 });
 

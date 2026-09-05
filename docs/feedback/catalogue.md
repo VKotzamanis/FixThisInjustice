@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `29e63ed`. 102 parts across 14 screens, holding 497 of the table's 500 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `8536108`. 99 parts across 13 screens, holding 477 of the table's 480 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## boot (2)
 
@@ -336,17 +336,18 @@ States: `default`
 | `quantity.programmeWeeks` | Programme length | same | same | yes |
 | `step.programme` | Programme length | same | same | yes |
 
-### `setup.readiness`
+### `setup.guidance`
 
-Step 8, Readiness. The pre-participation screening, inside the wizard.
+Step 8, Guidance. Supplement and kit guidance, inside the wizard.
 
-Renders: `src/ui/setup/SetupWizard.tsx`
+Renders: `src/ui/setup/SetupWizard.tsx`, `src/ui/setup/GuidanceScreen.tsx`
 
-States: `unanswered`, `answered`
+States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `step.readiness` | Readiness | same | same | yes |
+| `hero.guidance` | A few things worth knowing | same | same | yes |
+| `step.guidance` | Getting started | same | same | yes |
 
 ### `setup.review`
 
@@ -386,46 +387,6 @@ States: `default`, `blocked`
 | `button.back` | Previous | same | same | yes |
 | `button.continue` | Next | same | PROCEED | yes |
 
-## readiness (2)
-
-### `readiness.screen`
-
-Readiness screening. The health questions and the physician-consult flag.
-
-Renders: `src/ui/setup/ReadinessScreen.tsx`, `src/content/readinessQuestions.ts`
-
-States: `unanswered`, `no-flags`, `consult`
-
-| Key | Clinical | Limelight | Board | Limelight row allowed |
-| --- | --- | --- | --- | --- |
-| `advice.notMedicalAdvice` | This is not medical advice. | same | same | yes |
-| `advice.readinessAnyYes` | Answer yes to any question: consult a physician before training. | same | same | yes |
-| `label.no` | No | same | same | yes |
-| `label.yes` | Yes | same | same | yes |
-| `readiness.q1` | Has a doctor diagnosed you with a heart condition? | same | same | yes |
-| `readiness.q2` | Do you get chest pain at rest or during physical activity? | same | same | yes |
-| `readiness.q3` | In the last 12 months, have you lost consciousness or lost balance from dizziness? | same | same | yes |
-| `readiness.q3Note` | Answer no if the dizziness came only from over-breathing during exercise. | same | same | yes |
-| `readiness.q4` | Has a doctor diagnosed you with another chronic condition? | same | same | yes |
-| `readiness.q5` | Do you take prescribed medication for a chronic condition? | same | same | yes |
-| `readiness.q6` | Do you have a bone, joint or soft tissue problem that activity could worsen? | same | same | yes |
-| `readiness.q6Note` | Answer no if the problem no longer limits your physical activity. | same | same | yes |
-| `readiness.q7` | Has a doctor told you to exercise only under medical supervision? | same | same | yes |
-| `why.readiness` | These seven questions are this app's wording of the seven PAR-Q+ screening domains. No answer is stored, only the screening date and whether any was yes. A yes is not a diagnosis and this app is not a clearance instrument. | same | same | yes |
-
-### `readiness.notice`
-
-Consult notice. The per-tab notice a flagged screening raises.
-
-Renders: `src/ui/components/ReadinessNotice.tsx`
-
-States: `shown`, `dismissed`
-
-| Key | Clinical | Limelight | Board | Limelight row allowed |
-| --- | --- | --- | --- | --- |
-| `advice.readinessConsult` | You answered yes on the readiness screen. Consult a physician before training. | same | same | yes |
-| `button.dismiss` | Dismiss | noted. | same | yes |
-
 ## today (13)
 
 ### `today.marquee`
@@ -454,6 +415,7 @@ States: `hidden`, `raised`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `banner.actionRefused.tag` | NOT APPLIED | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
+| `button.dismiss` | Dismiss | noted. | same | yes |
 | `status.refusalAlreadyStarted` | This session already started on {date}. | same | same | yes |
 | `status.refusalLabelNotOffered` | {label} is not offered on {date}. | same | same | yes |
 | `status.refusalNotNextDay` | {date} is not the next session day. | same | same | yes |
@@ -1062,24 +1024,7 @@ States: `open`
 | `button.closeModal` | Close | same | same | yes |
 | `label.atlasSource` | Source | same | same | yes |
 
-## settings (15)
-
-### `settings.readiness`
-
-Readiness row. The screening date, the flag, and the redo control.
-
-Renders: `src/ui/views/SettingsView.tsx`
-
-States: `not-screened`, `no-flags`, `consult`, `screening`
-
-| Key | Clinical | Limelight | Board | Limelight row allowed |
-| --- | --- | --- | --- | --- |
-| `button.redoReadiness` | Redo readiness screening | same | same | no: THE READINESS SCREENING |
-| `button.startReadiness` | Start readiness screening | same | same | no: THE READINESS SCREENING |
-| `hero.readiness` | Readiness | same | same | no: THE READINESS SCREENING |
-| `status.notScreened` | Not screened. | same | same | no: THE READINESS SCREENING |
-| `status.readinessConsult` | Physician consult advised. | same | same | no: THE READINESS SCREENING |
-| `status.readinessNoFlags` | No flags. | same | same | no: THE READINESS SCREENING |
+## settings (14)
 
 ### `settings.profile`
 

@@ -13,7 +13,7 @@ import { downloadText } from './download';
 import { FORMAT, copy, copyFor } from '../content/copy';
 import { WARMUP_NOTICE } from '../content/formCues';
 import { unlockAudio } from '../ui/audio/chime';
-import type { LocalDate, Profile, SkinId, WeeklyReview } from '../domain/types';
+import type { LocalDate, SkinId, WeeklyReview } from '../domain/types';
 import { addDays, todayLocal } from '../domain/dates';
 import { probeBundledVideo, resolveVideoSrc } from '../domain/motivation/assets';
 import { EMPTY_SESSION } from '../store/sessionMirror';
@@ -257,94 +257,6 @@ describe('CRT presentation preferences', () => {
   });
 });
 
-/**
- * The pre-participation screening gate (P2 Task 9, master plan section 10.4).
- *
- * A profile whose `readiness.screenedAt` is null has NOT been screened: it was created before
- * the screen existed, or imported by P7. Master plan section 10.4 says such a profile is shown
- * the screen on its next app open rather than being treated as clear, so the gate lives here,
- * between the wizard branch and the view shell, and clears itself as soon as the result is
- * recorded. It is gated on `hydrated` as well: before the stored document has been read there
- * is no profile to judge, and an unscreened-looking empty store would flash the screen.
- */
-describe('readiness gate', () => {
-  const PROFILE: Profile = {
-    id: 'p1',
-    displayName: 'Test subject',
-    timezone: 'Europe/Athens',
-    units: 'metric',
-    createdAt: 1_756_684_800_000, // [ms] epoch
-    body: {
-      sex: 'male',
-      birthYear: 1996,
-      heightCm: 180, // [cm]
-      baselineMassKg: 80, // [kg]
-      baselineAt: '2026-09-01',
-      baselineBodyFatPct: null,
-    },
-    activity: 'moderate',
-    experience: 'intermediate',
-    equipment: 'full-gym',
-    equipmentSteps: {
-      barbellKg: 2.5, // [kg] total on the bar
-      dumbbellPairKg: 5, // [kg] per pair
-      stackKg: 5, // [kg] per pin
-      hasMicroPlates: false,
-      microPlateKg: 0.5, // [kg] total on the bar
-    },
-    goal: { kind: 'fat-loss', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
-    supplements: { creatine: false },
-    hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL]
-    readiness: { screenedAt: null, flagged: false },
-  };
-
-  beforeEach(() => {
-    // Writes stay in an in-memory map: a document left in jsdom storage would be hydrated by
-    // the next test in this file.
-    installFakeStorage();
-    vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date('2026-09-01T12:00:00Z')); // 2026-09-01 in Europe/Athens
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  function seed(readiness: Profile['readiness']): void {
-    useAppStore.getState().createProfile({ ...PROFILE, readiness });
-  }
-
-  it('shows the screening to a profile that has never been screened', () => {
-    seed({ screenedAt: null, flagged: false });
-    render(<App />);
-    expect(screen.getByTestId('readiness-screen')).toBeInTheDocument();
-    expect(screen.queryByRole('navigation', { name: copy('nav.label') })).toBeNull();
-  });
-
-  it('opens the app for a profile that has been screened', () => {
-    seed({ screenedAt: '2026-08-01', flagged: false });
-    render(<App />);
-    expect(screen.queryByTestId('readiness-screen')).toBeNull();
-    expect(screen.getByRole('navigation', { name: copy('nav.label') })).toBeInTheDocument();
-  });
-
-  it('records the answers and opens the app on the same interaction', () => {
-    seed({ screenedAt: null, flagged: false });
-    render(<App />);
-    for (const id of [1, 2, 3, 4, 5, 6, 7]) {
-      const answer = id === 2 ? copy('label.yes') : copy('label.no');
-      fireEvent.click(within(screen.getByTestId(`readiness-q${id}`)).getByLabelText(answer));
-    }
-    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
-
-    expect(useAppStore.getState().profiles['p1']?.readiness).toEqual({
-      screenedAt: '2026-09-01',
-      flagged: true,
-    });
-    expect(screen.queryByTestId('readiness-screen')).toBeNull();
-    expect(screen.getByRole('navigation', { name: copy('nav.label') })).toBeInTheDocument();
-  });
-});
 
 /**
  * The top bar's plan position (P3 Task 7, wiring deferred to Task 6).

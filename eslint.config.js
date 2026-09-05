@@ -29,15 +29,14 @@ const noQualifiedLocalStorage = [
   },
 ];
 
-// The same ban for the per-tab store. sessionStorage has exactly two sanctioned
-// writers: src/store/sessionMirror.ts owns the session slice's mirror, and
-// src/ui/components/ReadinessNotice.tsx owns the per-tab dismissal of the
-// physician-consult notice. Nothing else, tests included: a test that named the
+// The same ban for the per-tab store. sessionStorage has exactly one sanctioned
+// writer: src/store/sessionMirror.ts owns the session slice's mirror.
+// Nothing else, tests included: a test that named the
 // global would be indistinguishable from application code doing the same thing,
 // which is the argument src/store/testStorage.ts already makes for localStorage.
 // Seed and read a raw key through installFakeStorage()'s returned Map instead.
 const sessionStorageMessage =
-  'sessionStorage is owned by src/store/sessionMirror.ts (and the readiness notice). Go through the store.';
+  'sessionStorage is owned by src/store/sessionMirror.ts. Go through the store.';
 const noQualifiedSessionStorage = [
   {
     selector: "MemberExpression[object.name='window'][property.name='sessionStorage']",
@@ -104,9 +103,9 @@ export default tseslint.config(
     },
   },
   {
-    // The only two modules allowed to touch sessionStorage (P4 polish, item 5).
+    // The only module allowed to touch sessionStorage.
     // The localStorage ban and the date ban are restated for the same reason.
-    files: ['src/store/sessionMirror.ts', 'src/ui/components/ReadinessNotice.tsx'],
+    files: ['src/store/sessionMirror.ts'],
     rules: {
       'no-restricted-globals': ['error', { name: 'localStorage', message: storageMessage }],
       'no-restricted-syntax': ['error', noToISOString, ...noQualifiedLocalStorage],

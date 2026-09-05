@@ -7,7 +7,6 @@ import { useAppStore } from '../store';
 import { useFirstGestureUnlock } from '../skins/sfx';
 import { useApplySkin } from '../skins/skinContext';
 import type { SaveErrorReason } from '../store';
-import type { Profile } from '../domain/types';
 import {
   useActiveProfile,
   useHydrated,
@@ -29,7 +28,6 @@ import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
 import { MigrationGate } from '../ui/migration/MigrationGate';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
-import { ReadinessScreen } from '../ui/setup/ReadinessScreen';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { AtlasView } from '../ui/views/AtlasView';
 import { LogView } from '../ui/views/LogView';
@@ -76,7 +74,7 @@ function ViewShell(): ReactElement {
   /*
    * The hotkey registry's ACTIVE SCOPE is the view on screen, so a key bound to 'plan' is
    * inert on every other view and cannot be shadowed by a global one (code review A54). The
-   * provider is mounted here, inside the profile and readiness gates, because the digits
+   * provider is mounted here, inside the profile gate, because the digits
    * switch views and there are no views to switch between until the shell is up.
    */
   return (
@@ -391,26 +389,6 @@ function LoadErrorBanner(): ReactElement | null {
   );
 }
 
-/**
- * The pre-participation screening, shown to a profile that has never been screened.
- *
- * `readiness.screenedAt === null` means UNSCREENED, not cleared: a profile created before the
- * screen existed, or imported by P7, carries that value. Master plan section 10.4 says such a
- * profile is shown the screen on its next app open rather than being treated as clear, so this
- * stands between the wizard and the view shell and clears itself the moment the result is
- * recorded. `recordReadiness` is the action for it, because by here the profile exists.
- */
-function ReadinessGate(props: { profile: Profile }): ReactElement {
-  return (
-    <ReadinessScreen
-      timezone={props.profile.timezone}
-      onComplete={(result) => {
-        useAppStore.getState().recordReadiness(props.profile.id, result.screenedAt, result.flagged);
-      }}
-    />
-  );
-}
-
 export function App(): ReactElement {
   /*
    * The skin, mirrored onto <html data-skin> for the two attribute-scoped token blocks in
@@ -519,13 +497,6 @@ export function App(): ReactElement {
               // No profile means setup has not run. The wizard is the whole screen until it has:
               // every other view needs a profile to read units, time zone and targets from.
               <SetupWizard />
-            ) : /*
-                 * Gated on `hydrated` as well as on the profile: before the stored document has been
-                 * read there is nothing to judge, and an empty store would look unscreened and flash
-                 * the screen at a user who has already answered it.
-                 */
-            hydrated && profile.readiness.screenedAt === null ? (
-              <ReadinessGate profile={profile} />
             ) : (
               <ViewShell />
             )}

@@ -297,29 +297,9 @@ export type CopyKey =
   | 'status.targetsNotEstimated'
   // --- targets and settings, review fixes (P2 Task 8) ---
   | 'nav.label'
-  // --- pre-participation readiness screen (P2 Task 9; appended by that task) ---
-  | 'step.readiness'
-  | 'hero.readiness'
-  | 'readiness.q1'
-  | 'readiness.q2'
-  | 'readiness.q3'
-  | 'readiness.q3Note'
-  | 'readiness.q4'
-  | 'readiness.q5'
-  | 'readiness.q6'
-  | 'readiness.q6Note'
-  | 'readiness.q7'
-  | 'label.yes'
-  | 'label.no'
-  | 'advice.notMedicalAdvice'
-  | 'advice.readinessAnyYes'
-  | 'advice.readinessConsult'
-  | 'why.readiness'
-  | 'status.notScreened'
-  | 'status.readinessNoFlags'
-  | 'status.readinessConsult'
-  | 'button.startReadiness'
-  | 'button.redoReadiness'
+  // --- guidance step (replaces readiness screening) ---
+  | 'step.guidance'
+  | 'hero.guidance'
   // --- Today view (P3 Task 5; appended by that task) ---
   | 'hero.nextFourteenDays'
   | 'status.remainingThisWeek'
@@ -919,48 +899,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // announced as "navigation navigation".
   'nav.label': 'Views',
 
-  // --- pre-participation readiness screen (P2 Task 9; appended by that task) ---
-  /*
-   * SAFETY TEXT, NOT SKIN COPY. The seven questions below are the screening instrument this app
-   * administers: a skin may not reword them, because rewording one changes what it screens for.
-   * They are this project's OWN wording of the seven PAR-Q+ screening domains, never the form's
-   * sentences (master plan section 10.4, decision `readiness-screen-own-wording`): the official
-   * PAR-Q+ form is "all rights reserved" and no reproduction permission has been obtained. The
-   * instrument being modelled is cited in READINESS_SOURCE (src/content/readinessQuestions.ts).
-   *
-   * Each question is a closed yes/no about a diagnosis, a symptom or an instruction the user has
-   * already been given. None asks WHICH condition or WHICH medication, because no such value is
-   * ever collected or stored (global constraint: Personal data). Question 5 names medication as
-   * a category for exactly that reason, and stores nothing but a boolean.
-   */
-  'step.readiness': 'Readiness',
-  'hero.readiness': 'Readiness',
-  'readiness.q1': 'Has a doctor diagnosed you with a heart condition?',
-  'readiness.q2': 'Do you get chest pain at rest or during physical activity?',
-  'readiness.q3': 'In the last 12 months, have you lost consciousness or lost balance from dizziness?',
-  'readiness.q3Note': 'Answer no if the dizziness came only from over-breathing during exercise.',
-  'readiness.q4': 'Has a doctor diagnosed you with another chronic condition?',
-  'readiness.q5': 'Do you take prescribed medication for a chronic condition?',
-  'readiness.q6': 'Do you have a bone, joint or soft tissue problem that activity could worsen?',
-  'readiness.q6Note': 'Answer no if the problem no longer limits your physical activity.',
-  'readiness.q7': 'Has a doctor told you to exercise only under medical supervision?',
-  'label.yes': 'Yes',
-  'label.no': 'No',
-  'advice.notMedicalAdvice': 'This is not medical advice.',
-  'advice.readinessAnyYes': 'Answer yes to any question: consult a physician before training.',
-  'advice.readinessConsult':
-    'You answered yes on the readiness screen. Consult a physician before training.',
-  // R9: what the screen is modelled on, what it stores, and what it does not do. The citation
-  // itself is READINESS_SOURCE and is rendered beside this line, never inside it.
-  'why.readiness':
-    'These seven questions are this app\'s wording of the seven PAR-Q+ screening domains. No answer is stored, only the screening date and whether any was yes. A yes is not a diagnosis and this app is not a clearance instrument.',
-  'status.notScreened': 'Not screened.',
-  'status.readinessNoFlags': 'No flags.',
-  'status.readinessConsult': 'Physician consult advised.',
-  // "screening", not "screen": the process, not the piece of glass it runs on. `status.notScreened`
-  // above already names it that way, and R11 asks the table to use one term for one thing (P9).
-  'button.startReadiness': 'Start readiness screening',
-  'button.redoReadiness': 'Redo readiness screening',
+  // --- guidance step (replaces readiness screening) ---
+  'step.guidance': 'Getting started',
+  'hero.guidance': 'A few things worth knowing',
 
   // --- Today view (P3 Task 5; appended by that task) ---
   'hero.nextFourteenDays': 'Next 14 days',
@@ -1717,14 +1658,12 @@ export const FORMAT = {
    * literal: they are the IOM TOTAL-water adequate intake, which this app neither stores nor
    * prescribes, and which is named only to say what the beverage share is a share of.
    */
-  // --- pre-participation readiness screen (P2 Task 9) ---
+  // --- guidance step (replaces readiness screening) ---
+  guidanceCreatine: (doseG: number): string =>
+    `Your estimated maintenance dose: ${doseG} g/day.`,
 
-  /**
-   * "Screened 2026-09-01. No flags." The date is the LOCAL screening date held on the profile,
-   * and the second sentence is a copy key (`status.readinessNoFlags` or
-   * `status.readinessConsult`), so this frame states no outcome of its own.
-   */
-  screenedOn: (date: string, status: string): string => `Screened ${date}. ${status}`,
+  guidanceCaffeine: (lowMg: number, highMg: number): string =>
+    `Your pre-workout range: ${lowMg}-${highMg} mg (45-60 min before training).`,
 
   beverageBasis: (maleML: number, femaleML: number): string =>
     'IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. ' +
