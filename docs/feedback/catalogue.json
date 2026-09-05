@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "dc06a5e",
+  "generatedFrom": "4109e8f",
   "counts": {
     "screens": 14,
     "parts": 102,
-    "keys": 491,
+    "keys": 496,
     "notRendered": 3,
-    "table": 494
+    "table": 499
   },
   "parts": [
     {
@@ -564,6 +564,33 @@
       ],
       "keys": [
         {
+          "key": "group.goal",
+          "default": "Fitness Goal & Schedule",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "group.personal",
+          "default": "Personal Information",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "group.settings",
+          "default": "Preferred Settings",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "setup.hero",
           "default": "Setup",
           "limelight": "same",
@@ -590,7 +617,16 @@
       "keys": [
         {
           "key": "advice.unitsOnce",
-          "default": "Chosen once. Values are stored in kg and mL.",
+          "default": "Makes logging stuff easier. Change at any point in Settings.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.units",
+          "default": "Units on the weight plates",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -642,7 +678,7 @@
       "keys": [
         {
           "key": "advice.timezoneDetected",
-          "default": "From this device. Dates and reminders use it.",
+          "default": "Necessary for the notification bot and the week planner.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -652,6 +688,15 @@
         {
           "key": "advice.timezoneInvalid",
           "default": "Not a recognised IANA time zone.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.timezonePick",
+          "default": "Select from the drop down menu:",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -848,7 +893,7 @@
         },
         {
           "key": "label.name",
-          "default": "Name",
+          "default": "How should I refer to you?",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1656,7 +1701,7 @@
       "keys": [
         {
           "key": "button.back",
-          "default": "Back",
+          "default": "Previous",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -1665,8 +1710,8 @@
         },
         {
           "key": "button.continue",
-          "default": "Continue",
-          "limelight": "go on",
+          "default": "Next",
+          "limelight": "same",
           "board": "PROCEED",
           "isControl": true,
           "limelightRowPermitted": true,

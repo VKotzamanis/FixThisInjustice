@@ -174,8 +174,8 @@ a{color:var(--text)}
 <section class="step" id="w1.04">
   <p class="stepno"><code>w1.04</code> step 4</p>
   <h3>Setup, step 1: units</h3>
-  <p class="do"><b>Do</b>Read the two lines above the choice, then pick metric or imperial.</p>
-  <p class="see"><b>You see</b>A step counter, a title, one note and two options.</p>
+  <p class="do"><b>Do</b>Read the heading and the line above the choice, then pick metric or imperial.</p>
+  <p class="see"><b>You see</b>A heading naming the group this step belongs to, a step counter, a title, a lead-in line, two options, and a note under them.</p>
   <p class="pids">covers setup.progress, setup.units</p>
   <ol class="strings">
 <li>
@@ -183,12 +183,28 @@ a{color:var(--text)}
 <p class="lime-str">Setup</p>
 </li>
 <li>
+<code>group.settings</code>
+<p class="lime-str">Preferred Settings</p>
+</li>
+<li>
+<code>group.personal</code>
+<p class="lime-str">Personal Information</p>
+</li>
+<li>
+<code>group.goal</code>
+<p class="lime-str">Fitness Goal &amp; Schedule</p>
+</li>
+<li>
 <code>step.units</code>
 <p class="lime-str">Units</p>
 </li>
 <li>
+<code>label.units</code>
+<p class="lime-str">Units on the weight plates</p>
+</li>
+<li>
 <code>advice.unitsOnce</code>
-<p class="lime-str">Chosen once. Values are stored in kg and mL.</p>
+<p class="lime-str">Makes logging stuff easier. Change at any point in Settings.</p>
 </li>
 <li>
 <code>label.unitsMetric</code>
@@ -214,11 +230,11 @@ a{color:var(--text)}
   <ol class="strings">
 <li>
 <code>button.back</code>
-<p class="lime-str">Back</p>
+<p class="lime-str">Previous</p>
 </li>
 <li>
 <code>button.continue</code>
-<p class="lime-str">go on</p>
+<p class="lime-str">Next</p>
 </li>
 </ol>
   <label class="box" for="c-w1.05">What needs to change here?</label>
@@ -238,7 +254,11 @@ a{color:var(--text)}
 </li>
 <li>
 <code>advice.timezoneDetected</code>
-<p class="lime-str">From this device. Dates and reminders use it.</p>
+<p class="lime-str">Necessary for the notification bot and the week planner.</p>
+</li>
+<li>
+<code>advice.timezonePick</code>
+<p class="lime-str">Select from the drop down menu:</p>
 </li>
 <li>
 <code>label.timezone</code>
@@ -266,7 +286,7 @@ a{color:var(--text)}
 </li>
 <li>
 <code>label.name</code>
-<p class="lime-str">Name</p>
+<p class="lime-str">How should I refer to you?</p>
 </li>
 <li>
 <code>advice.sexUsedFor</code>

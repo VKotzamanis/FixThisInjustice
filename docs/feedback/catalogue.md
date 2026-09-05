@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `dc06a5e`. 102 parts across 14 screens, holding 491 of the table's 494 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `4109e8f`. 102 parts across 14 screens, holding 496 of the table's 499 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## boot (2)
 
@@ -164,6 +164,9 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `group.goal` | Fitness Goal & Schedule | same | same | yes |
+| `group.personal` | Personal Information | same | same | yes |
+| `group.settings` | Preferred Settings | same | same | yes |
 | `setup.hero` | Setup | same | same | yes |
 
 ### `setup.units`
@@ -176,7 +179,8 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `advice.unitsOnce` | Chosen once. Values are stored in kg and mL. | same | same | yes |
+| `advice.unitsOnce` | Makes logging stuff easier. Change at any point in Settings. | same | same | yes |
+| `label.units` | Units on the weight plates | same | same | yes |
 | `label.unitsImperial` | Pounds (lb) | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `label.unitsMetric` | Kilograms (kg) | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `step.units` | Units | same | same | yes |
@@ -191,8 +195,9 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `advice.timezoneDetected` | From this device. Dates and reminders use it. | same | same | yes |
+| `advice.timezoneDetected` | Necessary for the notification bot and the week planner. | same | same | yes |
 | `advice.timezoneInvalid` | Not a recognised IANA time zone. | same | same | yes |
+| `advice.timezonePick` | Select from the drop down menu: | same | same | yes |
 | `label.timezone` | Time zone | same | same | yes |
 | `step.timezone` | Time zone | same | same | yes |
 
@@ -223,7 +228,7 @@ States: `default`, `blocked`
 | `label.bodyFatTape` | Estimate from tape measurements | same | same | yes |
 | `label.feet` | Feet | same | same | yes |
 | `label.inches` | Inches | same | same | yes |
-| `label.name` | Name | same | same | yes |
+| `label.name` | How should I refer to you? | same | same | yes |
 | `label.sexFemale` | Female | same | same | yes |
 | `label.sexMale` | Male | same | same | yes |
 | `quantity.abdomenI` | Abdomen I | same | same | yes |
@@ -377,8 +382,8 @@ States: `default`, `blocked`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.back` | Back | same | same | yes |
-| `button.continue` | Continue | go on | PROCEED | yes |
+| `button.back` | Previous | same | same | yes |
+| `button.continue` | Next | same | PROCEED | yes |
 
 ## readiness (2)
 
