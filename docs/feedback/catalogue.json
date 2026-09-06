@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "8536108",
+  "generatedFrom": "244d5d8",
   "counts": {
     "screens": 13,
     "parts": 99,
-    "keys": 477,
+    "keys": 481,
     "notRendered": 3,
-    "table": 480
+    "table": 484
   },
   "parts": [
     {
@@ -757,6 +757,24 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.estimateBodyFat",
+          "default": "Click here to estimate",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.sexWorkaround",
+          "default": "Options suck? I agree. Click here for a workaround.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.tapeMethod",
           "default": "US Navy circumference method. Keep the tape level and snug.",
           "limelight": "same",
@@ -789,6 +807,15 @@
           "limelight": "same",
           "board": "same",
           "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "button.closeModal",
+          "default": "Close",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
           "limelightRowPermitted": true,
           "refusalGroup": null
         },
@@ -829,8 +856,17 @@
           "refusalGroup": null
         },
         {
+          "key": "label.bodyFatChart",
+          "default": "Estimate visually",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.bodyFatKnown",
-          "default": "Known percentage",
+          "default": "Percentage",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -848,7 +884,7 @@
         },
         {
           "key": "label.bodyFatTape",
-          "default": "Estimate from tape measurements",
+          "default": "Body measurements",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -921,6 +957,15 @@
         {
           "key": "label.sexMale",
           "default": "Male",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.sexRationale",
+          "default": "Why sex is asked",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1542,6 +1587,15 @@
         {
           "key": "hero.guidance",
           "default": "A few things worth knowing",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.caution",
+          "default": "Caution",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -3899,15 +3953,6 @@
       ],
       "keys": [
         {
-          "key": "button.closeModal",
-          "default": "Close",
-          "limelight": "same",
-          "board": "same",
-          "isControl": true,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
           "key": "label.atlasSource",
           "default": "Source",
           "limelight": "same",
@@ -5776,15 +5821,6 @@
         {
           "key": "advice.noFormCues",
           "default": "No form cues for this exercise.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "label.caution",
-          "default": "Caution",
           "limelight": "same",
           "board": "same",
           "isControl": false,

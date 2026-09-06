@@ -461,3 +461,207 @@
   color: var(--text-3);
   overflow-wrap: anywhere;
 }
+
+/*
+ * A text button styled as a link (round 1 claims C1.07.10, C1.08.4): "Options suck? I agree.
+ * Click here for a workaround." and "Click here to estimate". `.wiz button` above sets a bordered,
+ * filled, flex-stretched chrome for every button under `.wiz`; this strips it back to link
+ * styling while keeping the 44 px tap-target floor every control in this file carries.
+ */
+.wiz .wiz-link {
+  display: block;
+  flex: none;
+  width: auto;
+  min-height: 2.75rem; /* 44 px at the 16 px root */
+  padding: 0.25rem 0;
+  background: none;
+  border: none;
+  color: var(--accent, #a3e635);
+  text-decoration: underline;
+  text-align: left;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+
+/*
+ * The measurement-site and body-fat-chart placeholder frames (round 1 claims C1.08.5, C1.08.9).
+ * The real artwork is separate work (docs/design/2026-09-04-icon-register.csv); this is the frame
+ * it will sit in, sized so the layout does not reflow when the drawn asset lands.
+ */
+.wiz-placeholder-frame {
+  width: 64px;
+  height: 64px;
+  border: 1px dashed var(--line-2);
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+
+.wiz-placeholder-caption {
+  margin-top: 4px;
+}
+
+.wiz-site {
+  display: inline-block;
+  margin: 0 10px 10px 0;
+  text-align: center;
+}
+
+/*
+ * The two body-step popups (Part 2). Both draw their own close control at the UPPER LEFT: the
+ * owner's explicit instruction (C1.07.11), and `ModalShell` renders none of its own to break.
+ * FormCuesModal's close sits at the upper right by a different, unrelated convention; this one
+ * does not follow it, on purpose.
+ */
+.wiz-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgb(0 0 0 / 0.72);
+}
+
+.wiz-modal {
+  position: relative;
+  width: min(34rem, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 3.25rem 1.25rem 1.25rem;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  color: var(--text, #dde3ea);
+  font-family: var(--mono, ui-monospace, monospace);
+  line-height: 1.5;
+}
+
+.wiz-modal:focus-visible {
+  outline: 1px solid var(--accent, #a3e635);
+  outline-offset: -2px;
+}
+
+/* High contrast by fill inversion, never a brightness shift (00-CONTEXT accessibility rule). */
+.wiz-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  min-width: 2.75rem; /* 44 px */
+  min-height: 2.75rem; /* 44 px */
+  background: var(--accent, #a3e635);
+  color: var(--bg, #0a0b0c);
+  border: 2px solid var(--text, #dde3ea);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wiz-modal-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wiz-modal-subtitle {
+  margin: 0 0 0.5rem;
+  font-size: 0.9rem;
+}
+
+.wiz-modal-segment {
+  margin: 0 0 0.5rem;
+}
+
+/*
+ * The rule between the two segments (C1.07.12, C1.07.15). It takes var(--accent), which is PINK
+ * on limelight (`--accent: var(--pink)`, tokens.css). Lime is that skin's BACKGROUND
+ * (`--bg: var(--lime)`), and a lime rule on a lime ground is invisible, the defect this round was
+ * called in to fix (B35). Never a hex literal here for that reason.
+ */
+.wiz-modal-divider {
+  margin: 1rem 0;
+  border: none;
+  border-top: 2px solid var(--accent, #a3e635);
+}
+
+/* Inline MathML (C1.07.13): no LaTeX runtime, and the expression stays selectable text. */
+.wiz-mathml {
+  margin: 0.5rem 0 0.1rem;
+  font-size: 1.05rem;
+  overflow-x: auto;
+}
+
+.wiz-mathml-caption {
+  margin-top: 0;
+}
+
+/* The sex term, highlighted per the brief. var(--accent), never a hex literal. */
+.wiz-mathml-term {
+  color: var(--accent, #a3e635);
+  font-weight: 700;
+}
+
+.wiz-chart-row {
+  margin: 0 0 1rem;
+}
+
+.wiz-chart-frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.wiz-chart-frame {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 2.75rem; /* 44 px */
+  min-height: 2.75rem; /* 44 px */
+  padding: 6px;
+  background: var(--bg, #0a0b0c);
+  border: 1px solid var(--line-2);
+  cursor: pointer;
+}
+
+.wiz-chart-frame .wiz-placeholder-frame {
+  width: 44px;
+  height: 76px;
+}
+
+.wiz-chart-pct {
+  font-size: 0.8rem;
+}
+
+/*
+ * The failed-Next cue (Part 4, C1.08.12): a short shake on the first invalid control, applied and
+ * removed imperatively in handleFailedBodyNext (SetupWizard.tsx) rather than through React state,
+ * so it can retrigger on a second failed press without a key change. Branches on
+ * prefers-reduced-motion, per 00-CONTEXT: "Animation branches on prefers-reduced-motion."
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .wiz-shake {
+    animation: wiz-shake 0.4s ease-in-out;
+  }
+}
+
+@keyframes wiz-shake {
+  10%,
+  90% {
+    transform: translateX(-1px);
+  }
+  20%,
+  80% {
+    transform: translateX(2px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-4px);
+  }
+  40%,
+  60% {
+    transform: translateX(4px);
+  }
+}

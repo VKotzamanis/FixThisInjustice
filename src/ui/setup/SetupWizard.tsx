@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type JSX, type Ref } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type JSX, type Ref } from 'react';
 import './setup.css';
 import { FORMAT, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
@@ -51,6 +51,18 @@ import {
 } from '../components/UnitInput';
 import { useAppStore } from '../../store';
 import { BODY_EQUATIONS, BODY_EQUATIONS_LEAD } from '../../content/bodyEquations';
+import { BODY_FAT_CHART_INTRO, BODY_FAT_CHART_PERCENTAGES } from '../../content/bodyFatChart';
+import {
+  SEX_RATIONALE_CUNNINGHAM_NOTE,
+  SEX_RATIONALE_HRT,
+  SEX_RATIONALE_HRT_SOURCE,
+  SEX_RATIONALE_HRT_TITLE,
+  SEX_RATIONALE_INTRO,
+  SEX_RATIONALE_MSJ_OFFSET_NOTE,
+  SEX_RATIONALE_SOURCES,
+} from '../../content/sexRationale';
+import { vibrate } from '../audio/chime';
+import { ModalShell } from '../components/ModalShell';
 import { GuidanceScreen } from './GuidanceScreen';
 
 /**
@@ -168,6 +180,11 @@ const DEFAULT_DISPLAY_NAME = 'Operator'; // used only when the optional name is 
 const MAX_STEP_KG = 100; // [kg]
 const MAX_SESSION_DURATION_MIN = 1440; // [min]
 
+const SHAKE_DURATION_MS = 400; // [ms], matches the .wiz-shake keyframe duration in setup.css
+// [ms] one short haptic pulse on a failed Next (Part 4, C1.08.12). Additive only: 00-CONTEXT
+// notes navigator.vibrate is a no-op on iOS at every version and must never be the only cue.
+const FAILED_NEXT_VIBRATE_MS = 120;
+
 /*
  * DOM ids for the messages that belong to more than one control, or to a control this file
  * renders itself rather than through UnitInput. Every one of them is referenced from an
@@ -259,6 +276,24 @@ function StepHeading(props: {
   );
 }
 
+/**
+ * A labelled empty frame standing in for a measurement-site or body-fat-percentage illustration.
+ * Round 1 claims C1.08.5 and C1.08.9: the artwork itself is out of this brief's scope (an
+ * original asset, per decision `visual-bodyfat-tracked-not-engine-feeding`, is drawn separately
+ * and registered in docs/design/2026-09-04-icon-register.csv, which does not exist yet). This
+ * renders the frame at the size and position the real asset will take, captioned in visible text
+ * so a screen reader loses nothing while the frame is empty (B15: "a caption for screen-reader
+ * users, who get nothing from an image").
+ */
+function ArtworkPlaceholder(props: { label: string; className: string }): JSX.Element {
+  return (
+    <div className={props.className}>
+      <div className="wiz-placeholder-frame" aria-hidden="true" />
+      <p className="wiz-note wiz-placeholder-caption">{props.label}</p>
+    </div>
+  );
+}
+
 interface DaySlot {
   enabled: boolean;
   startTime: string; // [HH:mm] local wall clock
@@ -288,6 +323,14 @@ interface Draft {
   mass: string; // [kg] or [lb], as typed
   bodyFatMode: 'none' | 'known' | 'tape';
   bodyFatPct: string; // [%], as typed
+  /*
+   * Provenance of bodyFatPct, round 1 decision `visual-bodyfat-tracked-not-engine-feeding`
+   * (docs/plans/2026-09-04-11-alpha-round-1-corrections.md, B31). 'measured' is typed straight
+   * into the box, 'tape' is set by the tape flow, 'visual' is set by the estimate-chart modal
+   * (Part 2b). Nothing downstream of this brief reads it yet: it is carried on the draft only,
+   * not written to Profile.body, and is reported as unused in the task report.
+   */
+  bodyFatSource: 'measured' | 'tape' | 'visual';
   neck: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
   waist: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
   hip: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
@@ -331,8 +374,10 @@ function initialDraft(): Draft {
     heightFt: '',
     heightIn: '',
     mass: '',
-    bodyFatMode: 'none',
+    // Round 1 claims C1.08.1 to C1.08.4: percentage entry is first and default, not "none".
+    bodyFatMode: 'known',
     bodyFatPct: '',
+    bodyFatSource: 'measured',
     neck: '',
     waist: '',
     hip: '',
@@ -509,6 +554,142 @@ function girthError(
   return null;
 }
 
+/**
+ * The two RMR equations, as inline MathML (round 1 claim C1.07.13). MathML, not a LaTeX runtime:
+ * B9 measured KaTeX at roughly 300 KB against a floor every target browser already supports
+ * natively, and unlike an image the expression stays selectable text a screen reader can read.
+ * `@types/react` (checked 2026-09-05, React 19.2.8) declares no MathML tag in
+ * JSX.IntrinsicElements, so the markup is set once as a static string rather than fought through
+ * `React.createElement` calls with untyped props; nothing here interpolates a variable, so there
+ * is no injection surface. The sex term carries its own class so CSS can highlight it with
+ * `var(--accent)`, per the brief and never a hex literal (00-CONTEXT accessibility rule).
+ */
+const MSJ_EQUATION_MATHML =
+  '<math display="block"><mrow><mi>RMR</mi><mo>=</mo><mn>10</mn><mo>&#215;</mo><mi>mass</mi>' +
+  '<mo>+</mo><mn>6.25</mn><mo>&#215;</mo><mi>height</mi><mo>&#8722;</mo><mn>5</mn><mo>&#215;</mo>' +
+  '<mi>age</mi><mo>+</mo><mi class="wiz-mathml-term">S</mi></mrow></math>';
+const CUNNINGHAM_EQUATION_MATHML =
+  '<math display="block"><mrow><mi>RMR</mi><mo>=</mo><mn>370</mn><mo>+</mo><mn>21.6</mn>' +
+  '<mo>&#215;</mo><mi>FFM</mi></mrow></math>';
+
+/**
+ * The sex explainer (C1.07.6, C1.07.10 to C1.07.16): two segments separated by a rule in
+ * `var(--accent)`. NOT lime: on limelight lime is the page background
+ * (`src/ui/styles/tokens.css`), and a lime rule on a lime ground is invisible, the exact defect
+ * this round exists to fix (B35).
+ */
+function SexRationaleModal(props: { onClose: () => void }): JSX.Element {
+  const t = useCopy();
+  const headingId = useId();
+  return (
+    <ModalShell
+      labelledBy={headingId}
+      className="wiz-modal"
+      backdropClassName="wiz-modal-bg"
+      testId="sex-rationale-backdrop"
+      onClose={props.onClose}
+    >
+      {/* Drawn at the upper left by the caller, per the owner's explicit instruction: ModalShell
+          renders no close control of its own (C1.07.11). */}
+      <button
+        type="button"
+        className="wiz-modal-close"
+        onClick={props.onClose}
+        aria-label={t('button.closeModal')}
+      >
+        {/* A mark from the token set, not an emoji (copy contract R6), matching FormCuesModal. */}
+        {'✕'}
+      </button>
+      <h2 id={headingId} className="wiz-modal-title">
+        {t('label.sexRationale')}
+      </h2>
+      <div className="wiz-modal-segment">
+        {SEX_RATIONALE_INTRO.map((paragraph) => (
+          <p key={paragraph} className="wiz-note">
+            {paragraph}
+          </p>
+        ))}
+        <div className="wiz-mathml" dangerouslySetInnerHTML={{ __html: MSJ_EQUATION_MATHML }} />
+        <p className="wiz-note wiz-mathml-caption">{SEX_RATIONALE_MSJ_OFFSET_NOTE}</p>
+        <div
+          className="wiz-mathml"
+          dangerouslySetInnerHTML={{ __html: CUNNINGHAM_EQUATION_MATHML }}
+        />
+        <p className="wiz-note wiz-mathml-caption">{SEX_RATIONALE_CUNNINGHAM_NOTE}</p>
+        <ol className="wiz-cite-list">
+          {SEX_RATIONALE_SOURCES.map((source) => (
+            <li key={source}>{source}</li>
+          ))}
+        </ol>
+      </div>
+      <hr className="wiz-modal-divider" />
+      <div className="wiz-modal-segment">
+        <h3 className="wiz-modal-subtitle">{SEX_RATIONALE_HRT_TITLE}</h3>
+        {SEX_RATIONALE_HRT.map((paragraph) => (
+          <p key={paragraph} className="wiz-note">
+            {paragraph}
+          </p>
+        ))}
+        <p className="wiz-note wiz-cite-src">{SEX_RATIONALE_HRT_SOURCE}</p>
+      </div>
+    </ModalShell>
+  );
+}
+
+/**
+ * The body-fat visual estimator (C1.08.5, C1.08.9). A placeholder grid, not the drawn asset
+ * (B31: the chart ships, but the artwork is separate work; this is the frame it will sit in).
+ * A number chosen here fills the percentage field with provenance `visual`, per B31.
+ */
+function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: () => void }): JSX.Element {
+  const t = useCopy();
+  const headingId = useId();
+  return (
+    <ModalShell
+      labelledBy={headingId}
+      className="wiz-modal"
+      backdropClassName="wiz-modal-bg"
+      testId="bodyfat-chart-backdrop"
+      onClose={props.onClose}
+    >
+      <button
+        type="button"
+        className="wiz-modal-close"
+        onClick={props.onClose}
+        aria-label={t('button.closeModal')}
+      >
+        {'✕'}
+      </button>
+      <h2 id={headingId} className="wiz-modal-title">
+        {t('label.bodyFatChart')}
+      </h2>
+      <p className="wiz-note">{BODY_FAT_CHART_INTRO}</p>
+      {(['male', 'female'] as const).map((sex) => (
+        <div key={sex} className="wiz-chart-row">
+          <p className="wiz-label">{t(sex === 'male' ? 'label.sexMale' : 'label.sexFemale')}</p>
+          <div className="wiz-chart-frames">
+            {BODY_FAT_CHART_PERCENTAGES.map((pct) => (
+              <button
+                key={pct}
+                type="button"
+                className="wiz-chart-frame"
+                onClick={() => {
+                  props.onSelect(pct);
+                }}
+              >
+                {/* Placeholder for the silhouette artwork; not drawn in this brief. See
+                    docs/design/2026-09-04-icon-register.csv for the id, prompt and status. */}
+                <span className="wiz-placeholder-frame" aria-hidden="true" />
+                <span className="wiz-chart-pct">{`${String(pct)}%`}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </ModalShell>
+  );
+}
+
 export function SetupWizard(): JSX.Element {
   const t = useCopy();
   const overrides = useCopyOverrides();
@@ -516,6 +697,20 @@ export function SetupWizard(): JSX.Element {
   const [stepIndex, setStepIndex] = useState(0);
   /** Latched by the first successful confirm; the profile is created exactly once. */
   const [submitted, setSubmitted] = useState(false);
+  const [sexRationaleOpen, setSexRationaleOpen] = useState(false);
+  const [bodyFatChartOpen, setBodyFatChartOpen] = useState(false);
+  /*
+   * Round 1 claim C1.08.14 (B33): `error.valueRequired` stays, but it must not stand as helper
+   * text under a field nobody has touched yet. `bodyNextAttempted` is the touched set the brief
+   * asks for, scoped to a single flag rather than a per-field Set<string>: UnitInput
+   * (src/ui/components/UnitInput.tsx) exposes no onBlur, and that shared component used by every
+   * numeric field in the app is outside this brief's file list, so there is no per-field "left
+   * the control" event to populate a finer set from. Pressing Next while blocked (Part 4,
+   * C1.08.12) sets this flag and reveals every outstanding "enter a number" on the step at once,
+   * which is the literal "mark every field touched" Part 4 asks for. Scoped to the body step
+   * only: the other eight steps keep their pre-existing disabled-Next behaviour unchanged.
+   */
+  const [bodyNextAttempted, setBodyNextAttempted] = useState(false);
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
 
@@ -555,6 +750,20 @@ export function SetupWizard(): JSX.Element {
 
   function patchDay(weekday: IsoWeekday, next: Partial<DaySlot>): void {
     setDraft((d) => ({ ...d, days: { ...d.days, [weekday]: { ...d.days[weekday], ...next } } }));
+  }
+
+  /**
+   * `error.valueRequired` hidden until Next has been pressed on this step, everywhere else shown
+   * as computed. Only the "enter a number" message is gated: an out-of-range or malformed value
+   * the user has just typed is informative the moment it appears, and every existing domain-guard
+   * test relies on that (SetupWizard.test.tsx, "domain guards" and "whole-number counts").
+   * Comparing by VALUE against the resolved string, not by re-deriving "was this blank", keeps
+   * this a thin render helper rather than a second copy of every validator's blank/invalid
+   * branch.
+   */
+  function bodyFieldError(error: string | null): string | null {
+    if (error === null || error !== t('error.valueRequired')) return error;
+    return bodyNextAttempted ? error : null;
   }
 
   /** Switching unit re-seeds every equipment step in the new unit. */
@@ -669,8 +878,16 @@ export function SetupWizard(): JSX.Element {
     overrides,
   );
 
+  /*
+   * Body fat stays optional in every mode, `known` included (round 1 decision
+   * `visual-bodyfat-tracked-not-engine-feeding`, B31: skipping it falls back to a validated
+   * equation, it does not produce nothing). `known` is now the pre-selected default
+   * (initialDraft, C1.08.1 to C1.08.4), so a blank box on first arrival must not block the step
+   * the way a genuinely required field does; only a value the user TYPED and got wrong does. The
+   * pattern mirrors targetMassError below, the wizard's other optional bounded quantity.
+   */
   const knownBodyFatError =
-    draft.bodyFatMode === 'known'
+    draft.bodyFatMode === 'known' && draft.bodyFatPct.trim() !== ''
       ? requiredInRange(
           copy('quantity.bodyFat', overrides),
           draft.bodyFatPct,
@@ -823,6 +1040,54 @@ export function SetupWizard(): JSX.Element {
    * weekday unchecked on the way back through) and keeps the store write off the invalid path.
    */
   const confirmBlocked = STEPS.some((s) => BLOCKED[s]);
+
+  /**
+   * The id of the first invalid control on the body step, top to bottom, or null when nothing
+   * blocks it. Used only by the failed-Next cue (Part 4, C1.08.12): BLOCKED.body itself, not
+   * this order, is what actually gates the step.
+   */
+  function firstInvalidBodyFieldId(): string | null {
+    if (ageError !== null) return 'f-age';
+    if (heightError !== null) return draft.units === 'metric' ? 'f-height-m' : 'f-height-ft';
+    if (massError !== null) return 'f-mass';
+    if (knownBodyFatError !== null) return 'f-bodyfat';
+    if (draft.bodyFatMode === 'tape') {
+      if (girthError(draft.neck, overrides) !== null) return 'f-neck';
+      if (girthError(draft.waist, overrides) !== null) return 'f-waist';
+      if (draft.sex === 'female' && girthError(draft.hip, overrides) !== null) return 'f-hip';
+      // tapeDomainError and tapeWithheld are properties of the three girths TOGETHER rather than
+      // of one field; the neck field is the first of the three and the reasonable landing spot.
+      if (tapeDomainError !== null || tapeWithheld) return 'f-neck';
+    }
+    return null;
+  }
+
+  /**
+   * Part 4, C1.08.12: Next on the body step is never HTML-disabled (see the nav button below),
+   * so a blocked press reaches here instead of being silently swallowed by the browser. It marks
+   * every outstanding "enter a number" touched at once, focuses and scrolls to the first invalid
+   * control, shakes it (branching on prefers-reduced-motion in CSS, not here), and vibrates as an
+   * additive cue. Every OTHER step keeps its original disabled-button behaviour untouched.
+   */
+  function handleFailedBodyNext(): void {
+    setBodyNextAttempted(true);
+    const targetId = firstInvalidBodyFieldId();
+    if (targetId !== null) {
+      const el = document.getElementById(targetId);
+      if (el !== null) {
+        el.focus();
+        // jsdom (SetupWizard.test.tsx) implements no layout engine and does not define
+        // scrollIntoView at all, unlike every shipped browser above this app's stated floor; the
+        // guard keeps the primary cues (focus, shake) working under test rather than throwing.
+        el.scrollIntoView?.({ block: 'center' });
+        el.classList.add('wiz-shake');
+        window.setTimeout(() => {
+          el.classList.remove('wiz-shake');
+        }, SHAKE_DURATION_MS);
+      }
+    }
+    vibrate(FAILED_NEXT_VIBRATE_MS);
+  }
 
   // ---- derived plan and targets ---------------------------------------------------------
 
@@ -1125,6 +1390,29 @@ export function SetupWizard(): JSX.Element {
         <fieldset>
           <StepHeading title={t(STEP_TITLE_KEY.body)} headingRef={headingRef} />
 
+          {sexRationaleOpen && (
+            <SexRationaleModal
+              onClose={() => {
+                setSexRationaleOpen(false);
+              }}
+            />
+          )}
+          {bodyFatChartOpen && (
+            <BodyFatChartModal
+              onClose={() => {
+                setBodyFatChartOpen(false);
+              }}
+              onSelect={(pct) => {
+                patch({
+                  bodyFatMode: 'known',
+                  bodyFatPct: String(pct),
+                  bodyFatSource: 'visual',
+                });
+                setBodyFatChartOpen(false);
+              }}
+            />
+          )}
+
           <div className="wiz-field">
             <label htmlFor="f-name">{t('label.name')}</label>
             <input
@@ -1152,7 +1440,7 @@ export function SetupWizard(): JSX.Element {
                 step="1"
                 inputMode="numeric"
                 value={draft.ageYears}
-                error={ageError}
+                error={bodyFieldError(ageError)}
                 onChange={(v) => {
                   patch({ ageYears: v });
                 }}
@@ -1178,6 +1466,16 @@ export function SetupWizard(): JSX.Element {
                     </label>
                   ))}
                 </div>
+                {/* C1.07.6, C1.07.10: the sex explainer, reached under the field it explains. */}
+                <button
+                  type="button"
+                  className="wiz-link"
+                  onClick={() => {
+                    setSexRationaleOpen(true);
+                  }}
+                >
+                  {t('advice.sexWorkaround')}
+                </button>
               </div>
             </div>
           </div>
@@ -1190,7 +1488,7 @@ export function SetupWizard(): JSX.Element {
                 unit={massLabelUnit}
                 step="0.1"
                 value={draft.mass}
-                error={massError}
+                error={bodyFieldError(massError)}
                 onChange={(v) => {
                   patch({ mass: v });
                 }}
@@ -1213,7 +1511,7 @@ export function SetupWizard(): JSX.Element {
                     inputMode="numeric"
                     value={draft.units === 'metric' ? draft.heightM : draft.heightFt}
                     error={null}
-                    sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
+                    sharedErrorId={bodyFieldError(heightError) === null ? null : HEIGHT_ERROR_ID}
                     onChange={(v) => {
                       patch(draft.units === 'metric' ? { heightM: v } : { heightFt: v });
                     }}
@@ -1226,72 +1524,84 @@ export function SetupWizard(): JSX.Element {
                     inputMode="numeric"
                     value={draft.units === 'metric' ? draft.heightCm : draft.heightIn}
                     error={null}
-                    sharedErrorId={heightError === null ? null : HEIGHT_ERROR_ID}
+                    sharedErrorId={bodyFieldError(heightError) === null ? null : HEIGHT_ERROR_ID}
                     onChange={(v) => {
                       patch(draft.units === 'metric' ? { heightCm: v } : { heightIn: v });
                     }}
                   />
                 </div>
-                {heightError !== null && (
+                {bodyFieldError(heightError) !== null && (
                   <p className="wiz-error" id={HEIGHT_ERROR_ID}>
-                    {heightError}
+                    {bodyFieldError(heightError)}
                   </p>
                 )}
               </div>
             </div>
           </div>
 
-          <p className="wiz-note">{t('advice.bodyFatOptional')}</p>
-          <details>
-            <summary>{t('disclosure.why')}</summary>
-            <p className="wiz-note">{t('why.bodyFatOptional')}</p>
-          </details>
-
-          <label className="wiz-inline">
-            <input
-              type="radio"
-              name="bodyfat"
-              checked={draft.bodyFatMode === 'none'}
-              onChange={() => {
-                patch({ bodyFatMode: 'none' });
-              }}
-            />
-            {t('label.bodyFatNone')}
-          </label>
-          <label className="wiz-inline">
-            <input
-              type="radio"
-              name="bodyfat"
-              checked={draft.bodyFatMode === 'known'}
-              onChange={() => {
-                patch({ bodyFatMode: 'known' });
-              }}
-            />
-            {t('label.bodyFatKnown')}
-          </label>
-          <label className="wiz-inline">
-            <input
-              type="radio"
-              name="bodyfat"
-              checked={draft.bodyFatMode === 'tape'}
-              onChange={() => {
-                patch({ bodyFatMode: 'tape' });
-              }}
-            />
-            {t('label.bodyFatTape')}
-          </label>
+          {/*
+           * Round 1 claims C1.08.1 to C1.08.4, C1.08.7: percentage entry first and pre-selected
+           * (initialDraft), "why?" and "Optional" moved BELOW the control they explain, no
+           * obesity or category classification anywhere (numbers only, and none is rendered).
+           */}
+          <div className="wiz-choice" role="radiogroup" aria-label={t('quantity.bodyFat')}>
+            <label className="wiz-inline">
+              <input
+                type="radio"
+                name="bodyfat"
+                checked={draft.bodyFatMode === 'known'}
+                onChange={() => {
+                  patch({ bodyFatMode: 'known' });
+                }}
+              />
+              {t('label.bodyFatKnown')}
+            </label>
+            <label className="wiz-inline">
+              <input
+                type="radio"
+                name="bodyfat"
+                checked={draft.bodyFatMode === 'tape'}
+                onChange={() => {
+                  patch({ bodyFatMode: 'tape', bodyFatSource: 'tape' });
+                }}
+              />
+              {t('label.bodyFatTape')}
+            </label>
+            <label className="wiz-inline">
+              <input
+                type="radio"
+                name="bodyfat"
+                checked={draft.bodyFatMode === 'none'}
+                onChange={() => {
+                  patch({ bodyFatMode: 'none' });
+                }}
+              />
+              {t('label.bodyFatNone')}
+            </label>
+          </div>
 
           {draft.bodyFatMode === 'known' && (
-            <UnitInput
-              id="f-bodyfat"
-              quantity={t('quantity.bodyFat')}
-              unit={UNIT.pct}
-              value={draft.bodyFatPct}
-              error={knownBodyFatError}
-              onChange={(v) => {
-                patch({ bodyFatPct: v });
-              }}
-            />
+            <>
+              <button
+                type="button"
+                className="wiz-link"
+                onClick={() => {
+                  setBodyFatChartOpen(true);
+                }}
+              >
+                {t('advice.estimateBodyFat')}
+              </button>
+              <UnitInput
+                id="f-bodyfat"
+                quantity={t('quantity.bodyFat')}
+                unit={UNIT.pct}
+                value={draft.bodyFatPct}
+                error={bodyFieldError(knownBodyFatError)}
+                onChange={(v) => {
+                  patch({ bodyFatPct: v, bodyFatSource: 'measured' });
+                }}
+              />
+            </>
           )}
 
           {draft.bodyFatMode === 'tape' && (
@@ -1302,12 +1612,13 @@ export function SetupWizard(): JSX.Element {
                 quantity={t('quantity.neck')}
                 unit={girthUnit(draft.units)}
                 value={draft.neck}
-                error={girthError(draft.neck, overrides)}
+                error={bodyFieldError(girthError(draft.neck, overrides))}
                 sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                 onChange={(v) => {
                   patch({ neck: v });
                 }}
               />
+              <ArtworkPlaceholder label={t('quantity.neck')} className="wiz-site" />
               <UnitInput
                 id="f-waist"
                 quantity={
@@ -1315,13 +1626,16 @@ export function SetupWizard(): JSX.Element {
                 }
                 unit={girthUnit(draft.units)}
                 value={draft.waist}
-                error={girthError(draft.waist, overrides)}
+                error={bodyFieldError(girthError(draft.waist, overrides))}
                 sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                 onChange={(v) => {
                   patch({ waist: v });
                 }}
               />
-              <p className="wiz-note">{withoutDashConnector(NAVY_SITE_LABEL[draft.sex].waist)}</p>
+              <ArtworkPlaceholder
+                label={draft.sex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')}
+                className="wiz-site"
+              />
               {draft.sex === 'female' && (
                 <>
                   <UnitInput
@@ -1329,17 +1643,28 @@ export function SetupWizard(): JSX.Element {
                     quantity={t('quantity.hip')}
                     unit={girthUnit(draft.units)}
                     value={draft.hip}
-                    error={girthError(draft.hip, overrides)}
+                    error={bodyFieldError(girthError(draft.hip, overrides))}
                     sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                     onChange={(v) => {
                       patch({ hip: v });
                     }}
                   />
+                  <ArtworkPlaceholder label={t('quantity.hip')} className="wiz-site" />
+                </>
+              )}
+              {/*
+               * C1.08.10, C1.08.13: the site prose moves behind why?, it is not deleted, because
+               * it is what keeps the estimate valid (B15). R10 exempts a disclosure's length.
+               */}
+              <details>
+                <summary>{t('disclosure.why')}</summary>
+                <p className="wiz-note">{withoutDashConnector(NAVY_SITE_LABEL[draft.sex].waist)}</p>
+                {draft.sex === 'female' && (
                   <p className="wiz-note">
                     {withoutDashConnector(NAVY_SITE_LABEL.female.hip ?? '')}
                   </p>
-                </>
-              )}
+                )}
+              </details>
               <p className="wiz-note" data-testid="bodyfat-estimate">
                 {tapeIncomplete
                   ? draft.sex === 'female'
@@ -1365,6 +1690,14 @@ export function SetupWizard(): JSX.Element {
               )}
             </>
           )}
+
+          {/* C1.08.1: explanatory text below the control it explains, not above it. */}
+          <p className="wiz-note">{t('advice.bodyFatOptional')}</p>
+          <details>
+            <summary>{t('disclosure.why')}</summary>
+            <p className="wiz-note">{t('why.bodyFatOptional')}</p>
+          </details>
+
           {/*
            * Round 1 claim C1.07.5: the methods, at the foot of the box, "do not be expansive -
            * just transparent". The markers are superscripts beside the two fields whose purpose
@@ -1807,9 +2140,21 @@ export function SetupWizard(): JSX.Element {
         {stepIndex < STEPS.length - 1 && (
           <button
             type="button"
-            disabled={BLOCKED[step]}
+            /*
+             * Every step but body keeps the original disabled-Next behaviour: BLOCKED[step]
+             * disables the control outright, exactly as before this brief. The body step alone
+             * uses aria-disabled instead (Part 4, C1.08.12): a native disabled button cannot
+             * dispatch a click at all, so "when Next is pressed with a blocking error" could
+             * never fire. aria-disabled keeps the same visual/semantic blocked state without
+             * removing the click that reveals it.
+             */
+            disabled={step === 'body' ? false : BLOCKED[step]}
+            aria-disabled={step === 'body' ? BLOCKED[step] : undefined}
             onClick={() => {
-              if (BLOCKED[step]) return;
+              if (BLOCKED[step]) {
+                if (step === 'body') handleFailedBodyNext();
+                return;
+              }
               setStepIndex((n) => Math.min(STEPS.length - 1, n + 1));
             }}
           >
