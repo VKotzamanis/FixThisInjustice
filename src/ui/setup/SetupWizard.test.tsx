@@ -1122,3 +1122,35 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
     expect(screen.getByText(FORMAT.stepOf(1, STEPS.length, 'Units'))).toBeInTheDocument();
   });
 });
+
+/*
+ * Round 1 claim C1.14 asked for the review step to be redone once the steps above it settled.
+ * The rest of that screen shows DERIVED numbers, which stay current on their own; what was
+ * missing was the user's own answers read back before Confirm writes them.
+ */
+describe('review reads the answers back', () => {
+  it('shows the name, age, sex, mass, stature, body fat and zone as entered', () => {
+    fillImperialWizard();
+    const review = screen.getByTestId('review');
+
+    expect(within(review).getByTestId('review-name').textContent).toBe('Test subject');
+    expect(within(review).getByTestId('review-age').textContent).toContain('30');
+    expect(within(review).getByTestId('review-sex').textContent).toBe(
+      copyFor('clinical', 'label.sexMale'),
+    );
+    // Stature reads back in the two boxes it was typed into, not as one converted number.
+    expect(within(review).getByTestId('review-height').textContent).toContain('5');
+    expect(within(review).getByTestId('review-height').textContent).toContain('11');
+    expect(within(review).getByTestId('review-timezone').textContent).toBe('America/New_York');
+  });
+
+  it('names the no-estimate state rather than printing an empty body fat', () => {
+    fillImperialWizard();
+
+    // The fixture supplies no body fat, which is a supported state: it routes RMR to
+    // Mifflin-St Jeor and protein to the body-mass rule, both validated.
+    expect(screen.getByTestId('review-bodyfat').textContent).toBe(
+      copyFor('clinical', 'label.bodyFatNone'),
+    );
+  });
+});

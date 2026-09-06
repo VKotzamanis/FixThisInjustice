@@ -71,6 +71,7 @@ export type CopyKey =
   | 'advice.loadSteps'
   | 'advice.creatineOnly'
   | 'advice.deloadEveryFourth'
+  | 'hero.yourAnswers'
   | 'hero.dailyTargets'
   | 'status.rateUnknown'
   | 'button.recordIntake'
@@ -631,6 +632,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.loadSteps': 'The smallest increment a suggested load uses.',
   'advice.creatineOnly': 'Dose scales with body mass.',
   'advice.deloadEveryFourth': 'Every fourth week halves set counts, load unchanged.',
+  'hero.yourAnswers': 'What you told me',
   'hero.dailyTargets': 'Daily targets',
   'status.rateUnknown': 'Not established by the evidence base',
   'button.recordIntake': 'Record intake',

@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "05204ae",
+  "generatedFrom": "aa6bd14",
   "counts": {
     "screens": 14,
     "parts": 102,
-    "keys": 497,
+    "keys": 498,
     "notRendered": 3,
-    "table": 500
+    "table": 501
   },
   "parts": [
     {
@@ -1865,6 +1865,15 @@
         {
           "key": "hero.programme",
           "default": "Programme",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "hero.yourAnswers",
+          "default": "What you told me",
           "limelight": "same",
           "board": "same",
           "isControl": false,
