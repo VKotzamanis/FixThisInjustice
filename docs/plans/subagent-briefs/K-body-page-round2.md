@@ -57,9 +57,12 @@ than as a plain input. Style only; the value is the user's text and is never alt
 
 ## 3. The sex modal, restructured (r2.12)
 
-- **The close control moves to the upper RIGHT.** This REVERSES round 1's ruling, at his request:
-  "more intuitive". Make it bold and high contrast. Every modal in the app should now agree, so
-  check the others and say in your report which you changed.
+- **The close control moves to the upper RIGHT.** This REVERSES round 1's ruling, and
+  `src/ui/setup/setup.css:566-571` records the old one in a comment citing C1.07.11 — **update that
+  comment, do not leave it contradicting the code.** He gave a reason ("more intuitive") and
+  `FormCuesModal` already closes upper-right, so this makes the app consistent rather than
+  inconsistent. Make it bold and high contrast, and say in your report which other modals you
+  aligned.
 - **Load `wait-what` before rewriting the prose.** That is the "I don't get it" / ELI5 skill he
   names. The text is currently a wall; it becomes subsection headings and bullets.
 - **Follow his rubric exactly**, in this order: introduce the topic; describe one function; give
@@ -83,9 +86,10 @@ than as a plain input. Style only; the value is the user's text and is never alt
   **below** it.
 - A subheading, `Body Fat Estimate`, over the whole tape section, so it is obvious the tape
   produces a body-fat number. He said it currently is not clear.
-- **The tape fields change with the selected sex** (r2.14). The male form takes neck and abdomen;
-  the female form takes neck, abdomen and hip. Render what the chosen equation needs and nothing
-  else. Under `ND` the whole tape block is disabled per section 2.
+- **The tape fields ALREADY change with the selected sex.** `SetupWizard.tsx:1815-1845` renders
+  the hip field only for female and already swaps the waist label between `quantity.abdomenII` and
+  `quantity.abdomenI`. **Do not rebuild it.** Verify it, and add only the `ND` branch: under `ND`
+  the whole tape block is disabled per section 2.
 - **Each girth field pairs with its diagram in a two-column row** — the diagram beside the input,
   not stacked above the group.
 - The `why?` becomes a **`Disclaimer`** box below the US Navy line, carrying HIS text, grammar
@@ -116,13 +120,16 @@ The old contents, naming which girths to enter, are removed: the fields themselv
 
 ## 6. The invalid-field cue (r2.16)
 
-- **The PAGE shakes, not the phone.** He gave the reason: a desktop cannot vibrate. Replace the
-  haptic-first cue with a short CSS shake on the step container, branching on
-  `prefers-reduced-motion`. `vibrate()` may stay as an Android-only extra; it must never be the
-  only signal.
-- **Every missing field is marked at once**, not one per press. His spec, followed literally
-  because it is simple and it works: white fill, bold red border. Use a token for the red; do not
-  add a hex literal to a component stylesheet.
+- **The shake ALREADY SHIPS and the vibration is already harmless.**
+  `SetupWizard.tsx:1216-1241` shakes the invalid element, gated on `prefers-reduced-motion`, and
+  calls `vibrate()` only as an additive cue; `src/ui/audio/chime.ts:173-175` makes that a no-op
+  wherever `navigator.vibrate` is absent, which covers his desktop case exactly. **Verify, do not
+  rebuild.** What he is actually missing is the second half of his own request, below.
+- **THIS IS THE REAL WORK OF SECTION 6: every missing field is marked at once**, not one per
+  press. Today the cue lands on the first invalid field only, so he has to press Next repeatedly to
+  discover them one at a time. Mark them all on a failed Next. His spec, followed literally because
+  it is simple and it works: white fill, bold red border. Use a token for the red; do not add a hex
+  literal to a component stylesheet.
 - Focus still moves to the first invalid field, and it still scrolls into view.
 
 ## Verification
