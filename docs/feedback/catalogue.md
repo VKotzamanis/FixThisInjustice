@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `8e71fce`. 101 parts across 14 screens, holding 483 of the table's 486 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `f0d4676`. 102 parts across 14 screens, holding 497 of the table's 500 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (2)
 
@@ -69,24 +69,31 @@ States: `visible`
 | --- | --- | --- | --- | --- |
 | `button.skipBoot` | Skip | skip it | same | yes |
 
-## shell (7)
+## shell (8)
 
 ### `shell.topbar`
 
-Top bar. The brand line and the loading or loaded status word.
+Top bar. The fixed brand and the moving instruction for the current view.
 
-Renders: `src/app/App.tsx`
+Renders: `src/app/App.tsx`, `src/ui/components/Marquee.tsx`
 
-States: `loading`, `loaded`
+States: `scrolling`, `static-fallback`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `shell.status.loaded` | local data loaded | same | same | yes |
-| `shell.status.loading` | reading local data | same | same | yes |
+| `advice.atlasInstruction` | Browse cards unlocked by the sets you have logged. | same | same | yes |
+| `advice.logInstruction` | Browse body mass, compliance, best reps and personal records. | same | same | yes |
+| `advice.planInstruction` | Browse blocks and weeks, then open any session card. | same | same | yes |
+| `advice.settingsInstruction` | Adjust units, reminders, skin, sounds, and manage your data. | same | same | yes |
+| `advice.setupInstruction` | Answer each step. Nothing leaves this device. | same | same | yes |
+| `advice.targetsInstruction` | Review daily energy, protein, fluid and creatine targets. | same | same | yes |
+| `advice.todayInstruction` | Start, resume, or skip the session assigned today. | same | same | yes |
+| `advice.trainInstruction` | Log sets, rest between them, and finish the session. | same | same | yes |
+| `button.pauseUpdates` | Pause updates | same | same | yes |
 
 ### `shell.session-indicator`
 
-Session indicator. The plan position shown in the header from every view.
+Session indicator. The plan position, read a second time as its own marquee item in shell.topbar (P10 Brief D); the standalone component is unrendered but still tested on its own.
 
 Renders: `src/ui/components/SessionIndicator.tsx`
 
@@ -98,6 +105,25 @@ States: `no-plan`, `idle`, `in-progress`
 | `label.planPosition` | Plan position | same | same | yes |
 | `status.planComplete` | complete | wrapped | same | yes |
 | `status.sessionCursor` | Session {shown} of {total} | ep. {shown} of {total} | SERVICE {shown} OF {total} | yes |
+
+### `shell.footer`
+
+Site footer. The author, the repository, the version and build, the last update, the hydration status, the on-device promise, the disclaimer and the licence, once at the foot of every screen.
+
+Renders: `src/ui/components/SiteFooter.tsx`
+
+States: `default`
+
+| Key | Clinical | Limelight | Board | Limelight row allowed |
+| --- | --- | --- | --- | --- |
+| `advice.dataOnDevice` | Everything stays on this device. No account. | same | same | no: RULE 4, a control whose misreading costs data |
+| `footer.builtBy` | Built by V. Kotzamanis. | same | same | yes |
+| `footer.licence` | MIT licence. | same | same | yes |
+| `footer.repository` | Repository | same | same | yes |
+| `footer.updated` | Last updated {date}. | same | same | yes |
+| `footer.version` | Version {version}. Build {commit}. | same | same | yes |
+| `shell.status.loaded` | local data loaded | same | same | yes |
+| `shell.status.loading` | reading local data | same | same | yes |
 
 ### `shell.tab-strip`
 
@@ -1247,7 +1273,7 @@ States: `idle`, `invalid`, `done`
 
 ### `settings.data.on-device`
 
-Data on device. The heading and the sentence saying where the document is held.
+Data on device. The heading naming where the document is held; the sentence itself is filed under shell.footer.
 
 Renders: `src/ui/settings/DataSection.tsx`
 
@@ -1255,7 +1281,6 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `advice.dataOnDevice` | Everything stays on this device. No account. | same | same | no: RULE 4, a control whose misreading costs data |
 | `hero.dataOnDevice` | Data on this device | same | same | no: RULE 4, a control whose misreading costs data |
 
 ### `settings.data.wipe`

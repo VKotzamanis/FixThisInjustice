@@ -95,13 +95,32 @@ export const STAGES = [
       {
         id: 'w1.05',
         title: 'The top bar',
-        do: 'Look at the strip across the top of the screen.',
-        see: 'The brand line, and one status word at the right end.',
-        keys: ['shell.status.loading', 'shell.status.loaded'],
+        do: 'Look at the strip across the top of the screen, while setup is still running.',
+        see: 'Only the brand line. The moving instruction and the plan position wait for a profile to exist.',
+        keys: [
+          'advice.setupInstruction',
+        ],
         parts: ['shell.topbar'],
       },
       {
         id: 'w1.06',
+        title: 'The footer',
+        do: 'Scroll to the very bottom of the screen, even while setup is still running.',
+        see: 'The author, a link to the repository, the version and build, the last update, whether local data has finished loading, that everything stays on this device, the safety disclaimer from the intro, and the licence.',
+        keys: [
+          'footer.builtBy',
+          'footer.repository',
+          'footer.version',
+          'footer.updated',
+          'shell.status.loading',
+          'shell.status.loaded',
+          'advice.dataOnDevice',
+          'footer.licence',
+        ],
+        parts: ['shell.footer'],
+      },
+      {
+        id: 'w1.07',
         title: 'Setup, step 1: units',
         do: 'Read the heading and the line above the choice, then pick metric or imperial.',
         see: 'A heading naming the group this step belongs to, a step counter, a title, a lead-in line, two options, and a note under them.',
@@ -119,7 +138,7 @@ export const STAGES = [
         parts: ['setup.progress', 'setup.units'],
       },
       {
-        id: 'w1.07',
+        id: 'w1.08',
         title: 'The wizard controls',
         do: 'Look at the foot of the setup screen, then tap "go on".',
         see: 'Back appears from step 2 onward; the forward control sits beside it.',
@@ -127,7 +146,7 @@ export const STAGES = [
         parts: ['setup.nav'],
       },
       {
-        id: 'w1.08',
+        id: 'w1.09',
         title: 'Setup, step 2: time zone',
         do: 'Read the note, then check the zone the app has filled in.',
         see: 'One note, one field, and an error line if the zone is not a real one.',
@@ -141,7 +160,7 @@ export const STAGES = [
         parts: ['setup.timezone'],
       },
       {
-        id: 'w1.09',
+        id: 'w1.10',
         title: 'Setup, step 3: name, age, sex, height, mass',
         do: 'Fill the fields from the top of the screen down to body mass. Leave one blank and tap "go on" to see the errors. Then open the sex explainer.',
         see: 'A name field, then age and a sex choice with a link under it, then height and body mass.',
@@ -167,7 +186,7 @@ export const STAGES = [
         parts: ['setup.body'],
       },
       {
-        id: 'w1.10',
+        id: 'w1.11',
         title: 'Setup, step 3: body fat',
         do: 'Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open "why?".',
         see: 'Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot.',
@@ -195,7 +214,7 @@ export const STAGES = [
         parts: ['setup.body'],
       },
       {
-        id: 'w1.11',
+        id: 'w1.12',
         title: 'Setup, step 4: training context',
         do: 'Set activity, experience and equipment, then scroll to the load steps.',
         see: 'Three menus, then a note and the load increments the app rounds to.',
@@ -223,7 +242,7 @@ export const STAGES = [
         parts: ['setup.training'],
       },
       {
-        id: 'w1.12',
+        id: 'w1.13',
         title: 'Setup, step 5: goal',
         do: 'Pick a goal, then read down to the two checkboxes.',
         see: 'A goal menu, a target mass, a target date, and two options with a note under each.',
@@ -244,7 +263,7 @@ export const STAGES = [
         parts: ['setup.goal'],
       },
       {
-        id: 'w1.13',
+        id: 'w1.14',
         title: 'Setup, step 6: availability',
         do: 'Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.',
         see: 'A sessions-per-week field, then seven weekday rows, each with a time and a length.',
@@ -266,7 +285,7 @@ export const STAGES = [
         parts: ['setup.availability'],
       },
       {
-        id: 'w1.14',
+        id: 'w1.15',
         title: 'Setup, step 7: programme length',
         do: 'Set how many weeks the plan runs for.',
         see: 'One field, a note about deload weeks, and a cardio checkbox.',
@@ -279,7 +298,7 @@ export const STAGES = [
         parts: ['setup.programme'],
       },
       {
-        id: 'w1.15',
+        id: 'w1.16',
         title: 'Setup, step 8: guidance',
         do: 'Read the supplement and kit guidance, then tap Continue.',
         see: 'Sections on creatine, caffeine, protein powder, and basic kit, with personalized doses.',
@@ -287,7 +306,7 @@ export const STAGES = [
         parts: ['setup.guidance'],
       },
       {
-        id: 'w1.16',
+        id: 'w1.17',
         title: 'Setup, step 9: review',
         do: 'Read the two panels, then tap "lock it in".',
         see: 'The daily targets, then the programme summary, then the control that writes the profile.',
@@ -321,16 +340,24 @@ export const STAGES = [
     steps: [
       {
         id: 'w2.01',
-        title: 'The plan position in the header',
-        do: 'Look at the middle of the top bar, then switch tabs and look again.',
-        see: 'The session the cursor stands at, on every screen.',
+        title: 'The top bar, now that a profile exists',
+        do: 'On limelight or board, watch the top bar strip; switch tabs and look again. On clinical, read the still line at the same spot instead.',
+        see: 'A moving strip carrying the instruction for the tab you are on and the session the cursor stands at, cycling on every screen except clinical, where one still line names the instruction alone.',
         keys: [
+          'advice.todayInstruction',
+          'advice.planInstruction',
+          'advice.trainInstruction',
+          'advice.targetsInstruction',
+          'advice.logInstruction',
+          'advice.atlasInstruction',
+          'advice.settingsInstruction',
+          'button.pauseUpdates',
           'label.planPosition',
           'status.sessionCursor',
           'status.planComplete',
           'hero.programmeComplete',
         ],
-        parts: ['shell.session-indicator'],
+        parts: ['shell.topbar', 'shell.session-indicator'],
       },
       {
         id: 'w2.02',
@@ -1083,8 +1110,8 @@ export const STAGES = [
         id: 'w5.12',
         title: 'Where the data lives',
         do: 'Read the block under the import section.',
-        see: 'A heading and one sentence saying where the document is held.',
-        keys: ['hero.dataOnDevice', 'advice.dataOnDevice'],
+        see: 'A heading naming where the document is held; the sentence itself is reviewed at the footer, step w1.06.',
+        keys: ['hero.dataOnDevice'],
         parts: ['settings.data.on-device'],
       },
       {

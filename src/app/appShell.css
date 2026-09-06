@@ -21,11 +21,34 @@
   font-size: 13px;
   letter-spacing: 0.06em;
   color: var(--topbar-brand);
+  /* Fixed, per the brief: the brand never shrinks to make room for the moving instruction. */
+  flex-shrink: 0;
 }
 
 .topbar .brand .acc {
   color: var(--accent);
   margin: 0 2px;
+}
+
+/*
+ * The clinical fallback (P10 Brief D): Marquee.tsx renders nothing on clinical by design, so
+ * this is what the top bar shows there instead of an empty slot. No colour of its own: it is a
+ * child of .topbar and inherits `color: var(--topbar-text)` from it, exactly as the old status
+ * span did.
+ */
+.topbar-instruction {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* The marquee fills the space the fixed brand leaves, on the two skins that render it. */
+.topbar .ll-marquee {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 main {

@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "8e71fce",
+  "generatedFrom": "f0d4676",
   "counts": {
     "screens": 14,
-    "parts": 101,
-    "keys": 483,
+    "parts": 102,
+    "keys": 497,
     "notRendered": 3,
-    "table": 486
+    "table": 500
   },
   "parts": [
     {
@@ -213,18 +213,19 @@
       "screen": "shell",
       "order": 1,
       "title": "Top bar",
-      "what": "The brand line and the loading or loaded status word.",
+      "what": "The fixed brand and the moving instruction for the current view.",
       "components": [
-        "src/app/App.tsx"
+        "src/app/App.tsx",
+        "src/ui/components/Marquee.tsx"
       ],
       "states": [
-        "loading",
-        "loaded"
+        "scrolling",
+        "static-fallback"
       ],
       "keys": [
         {
-          "key": "shell.status.loaded",
-          "default": "local data loaded",
+          "key": "advice.atlasInstruction",
+          "default": "Browse cards unlocked by the sets you have logged.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -232,11 +233,74 @@
           "refusalGroup": null
         },
         {
-          "key": "shell.status.loading",
-          "default": "reading local data",
+          "key": "advice.logInstruction",
+          "default": "Browse body mass, compliance, best reps and personal records.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.planInstruction",
+          "default": "Browse blocks and weeks, then open any session card.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.settingsInstruction",
+          "default": "Adjust units, reminders, skin, sounds, and manage your data.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.setupInstruction",
+          "default": "Answer each step. Nothing leaves this device.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.targetsInstruction",
+          "default": "Review daily energy, protein, fluid and creatine targets.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.todayInstruction",
+          "default": "Start, resume, or skip the session assigned today.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.trainInstruction",
+          "default": "Log sets, rest between them, and finish the session.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "button.pauseUpdates",
+          "default": "Pause updates",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
           "limelightRowPermitted": true,
           "refusalGroup": null
         }
@@ -248,7 +312,7 @@
       "screen": "shell",
       "order": 2,
       "title": "Session indicator",
-      "what": "The plan position shown in the header from every view.",
+      "what": "The plan position, read a second time as its own marquee item in shell.topbar (P10 Brief D); the standalone component is unrendered but still tested on its own.",
       "components": [
         "src/ui/components/SessionIndicator.tsx"
       ],
@@ -298,9 +362,97 @@
       "status": "live"
     },
     {
-      "id": "shell.tab-strip",
+      "id": "shell.footer",
       "screen": "shell",
       "order": 3,
+      "title": "Site footer",
+      "what": "The author, the repository, the version and build, the last update, the hydration status, the on-device promise, the disclaimer and the licence, once at the foot of every screen.",
+      "components": [
+        "src/ui/components/SiteFooter.tsx"
+      ],
+      "states": [
+        "default"
+      ],
+      "keys": [
+        {
+          "key": "advice.dataOnDevice",
+          "default": "Everything stays on this device. No account.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": false,
+          "refusalGroup": "RULE 4, a control whose misreading costs data"
+        },
+        {
+          "key": "footer.builtBy",
+          "default": "Built by V. Kotzamanis.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "footer.licence",
+          "default": "MIT licence.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "footer.repository",
+          "default": "Repository",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "footer.updated",
+          "default": "Last updated {date}.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "footer.version",
+          "default": "Version {version}. Build {commit}.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "shell.status.loaded",
+          "default": "local data loaded",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "shell.status.loading",
+          "default": "reading local data",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        }
+      ],
+      "status": "live"
+    },
+    {
+      "id": "shell.tab-strip",
+      "screen": "shell",
+      "order": 4,
       "title": "Tab strip",
       "what": "The seven tabs, in the order src/ui/nav/views.ts sets.",
       "components": [
@@ -389,7 +541,7 @@
     {
       "id": "shell.spotlight-button",
       "screen": "shell",
-      "order": 4,
+      "order": 5,
       "title": "Spotlight button",
       "what": "The control that opens the command palette.",
       "components": [
@@ -414,7 +566,7 @@
     {
       "id": "shell.update-prompt",
       "screen": "shell",
-      "order": 5,
+      "order": 6,
       "title": "Update prompt",
       "what": "The banner offering a reload when a new build is waiting.",
       "components": [
@@ -458,7 +610,7 @@
     {
       "id": "shell.save-error",
       "screen": "shell",
-      "order": 6,
+      "order": 7,
       "title": "Save error banner",
       "what": "The banner shown when the document could not be written.",
       "components": [
@@ -556,7 +708,7 @@
     {
       "id": "shell.load-error",
       "screen": "shell",
-      "order": 7,
+      "order": 8,
       "title": "Load error banner",
       "what": "The banner shown when the stored document could not be read.",
       "components": [
@@ -600,7 +752,7 @@
     {
       "id": "shell.unassigned",
       "screen": "shell",
-      "order": 8,
+      "order": 9,
       "title": "Unassigned",
       "what": "Keys this screen renders that no part claims. Must be empty.",
       "components": [
@@ -4844,7 +4996,7 @@
       "screen": "settings",
       "order": 12,
       "title": "Data on device",
-      "what": "The heading and the sentence saying where the document is held.",
+      "what": "The heading naming where the document is held; the sentence itself is filed under shell.footer.",
       "components": [
         "src/ui/settings/DataSection.tsx"
       ],
@@ -4852,15 +5004,6 @@
         "default"
       ],
       "keys": [
-        {
-          "key": "advice.dataOnDevice",
-          "default": "Everything stays on this device. No account.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "RULE 4, a control whose misreading costs data"
-        },
         {
           "key": "hero.dataOnDevice",
           "default": "Data on this device",

@@ -186,17 +186,13 @@ a{color:var(--text)}
 <section class="step" id="w1.05">
   <p class="stepno"><code>w1.05</code> step 5</p>
   <h3>The top bar</h3>
-  <p class="do"><b>Do</b>Look at the strip across the top of the screen.</p>
-  <p class="see"><b>You see</b>The brand line, and one status word at the right end.</p>
+  <p class="do"><b>Do</b>Look at the strip across the top of the screen, while setup is still running.</p>
+  <p class="see"><b>You see</b>Only the brand line. The moving instruction and the plan position wait for a profile to exist.</p>
   <p class="pids">covers shell.topbar</p>
   <ol class="strings">
 <li>
-<code>shell.status.loading</code>
-<p class="lime-str">reading local data</p>
-</li>
-<li>
-<code>shell.status.loaded</code>
-<p class="lime-str">local data loaded</p>
+<code>advice.setupInstruction</code>
+<p class="lime-str">Answer each step. Nothing leaves this device.</p>
 </li>
 </ol>
   <label class="box" for="c-w1.05">What needs to change here?</label>
@@ -205,6 +201,51 @@ a{color:var(--text)}
 
 <section class="step" id="w1.06">
   <p class="stepno"><code>w1.06</code> step 6</p>
+  <h3>The footer</h3>
+  <p class="do"><b>Do</b>Scroll to the very bottom of the screen, even while setup is still running.</p>
+  <p class="see"><b>You see</b>The author, a link to the repository, the version and build, the last update, whether local data has finished loading, that everything stays on this device, the safety disclaimer from the intro, and the licence.</p>
+  <p class="pids">covers shell.footer</p>
+  <ol class="strings">
+<li>
+<code>footer.builtBy</code>
+<p class="lime-str">Built by V. Kotzamanis.</p>
+</li>
+<li>
+<code>footer.repository</code>
+<p class="lime-str">Repository</p>
+</li>
+<li>
+<code>footer.version</code>
+<p class="lime-str">Version {version}. Build {commit}.</p>
+</li>
+<li>
+<code>footer.updated</code>
+<p class="lime-str">Last updated {date}.</p>
+</li>
+<li>
+<code>shell.status.loading</code>
+<p class="lime-str">reading local data</p>
+</li>
+<li>
+<code>shell.status.loaded</code>
+<p class="lime-str">local data loaded</p>
+</li>
+<li>
+<code>advice.dataOnDevice</code>
+<p class="lime-str">Everything stays on this device. No account.</p>
+<p class="refusal">This string keeps its plain wording on every skin: RULE 4, a control whose misreading costs data. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>footer.licence</code>
+<p class="lime-str">MIT licence.</p>
+</li>
+</ol>
+  <label class="box" for="c-w1.06">What needs to change here?</label>
+  <textarea id="c-w1.06" data-step="w1.06" data-parts="shell.footer" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="w1.07">
+  <p class="stepno"><code>w1.07</code> step 7</p>
   <h3>Setup, step 1: units</h3>
   <p class="do"><b>Do</b>Read the heading and the line above the choice, then pick metric or imperial.</p>
   <p class="see"><b>You see</b>A heading naming the group this step belongs to, a step counter, a title, a lead-in line, two options, and a note under them.</p>
@@ -249,12 +290,12 @@ a{color:var(--text)}
 <p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.06">What needs to change here?</label>
-  <textarea id="c-w1.06" data-step="w1.06" data-parts="setup.progress, setup.units" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.07">What needs to change here?</label>
+  <textarea id="c-w1.07" data-step="w1.07" data-parts="setup.progress, setup.units" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.07">
-  <p class="stepno"><code>w1.07</code> step 7</p>
+<section class="step" id="w1.08">
+  <p class="stepno"><code>w1.08</code> step 8</p>
   <h3>The wizard controls</h3>
   <p class="do"><b>Do</b>Look at the foot of the setup screen, then tap &quot;go on&quot;.</p>
   <p class="see"><b>You see</b>Back appears from step 2 onward; the forward control sits beside it.</p>
@@ -269,12 +310,12 @@ a{color:var(--text)}
 <p class="lime-str">Next</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.07">What needs to change here?</label>
-  <textarea id="c-w1.07" data-step="w1.07" data-parts="setup.nav" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.08">What needs to change here?</label>
+  <textarea id="c-w1.08" data-step="w1.08" data-parts="setup.nav" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.08">
-  <p class="stepno"><code>w1.08</code> step 8</p>
+<section class="step" id="w1.09">
+  <p class="stepno"><code>w1.09</code> step 9</p>
   <h3>Setup, step 2: time zone</h3>
   <p class="do"><b>Do</b>Read the note, then check the zone the app has filled in.</p>
   <p class="see"><b>You see</b>One note, one field, and an error line if the zone is not a real one.</p>
@@ -301,12 +342,12 @@ a{color:var(--text)}
 <p class="lime-str">Not a recognised IANA time zone.</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.08">What needs to change here?</label>
-  <textarea id="c-w1.08" data-step="w1.08" data-parts="setup.timezone" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.09">What needs to change here?</label>
+  <textarea id="c-w1.09" data-step="w1.09" data-parts="setup.timezone" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.09">
-  <p class="stepno"><code>w1.09</code> step 9</p>
+<section class="step" id="w1.10">
+  <p class="stepno"><code>w1.10</code> step 10</p>
   <h3>Setup, step 3: name, age, sex, height, mass</h3>
   <p class="do"><b>Do</b>Fill the fields from the top of the screen down to body mass. Leave one blank and tap &quot;go on&quot; to see the errors. Then open the sex explainer.</p>
   <p class="see"><b>You see</b>A name field, then age and a sex choice with a link under it, then height and body mass.</p>
@@ -384,12 +425,12 @@ a{color:var(--text)}
 <p class="refusal">This string keeps its plain wording on every skin: THE NUMBER-ENTRY ERRORS. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.09">What needs to change here?</label>
-  <textarea id="c-w1.09" data-step="w1.09" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.10">What needs to change here?</label>
+  <textarea id="c-w1.10" data-step="w1.10" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.10">
-  <p class="stepno"><code>w1.10</code> step 10</p>
+<section class="step" id="w1.11">
+  <p class="stepno"><code>w1.11</code> step 11</p>
   <h3>Setup, step 3: body fat</h3>
   <p class="do"><b>Do</b>Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open &quot;why?&quot;.</p>
   <p class="see"><b>You see</b>Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot.</p>
@@ -473,12 +514,12 @@ a{color:var(--text)}
 <p class="lime-str">With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.10">What needs to change here?</label>
-  <textarea id="c-w1.10" data-step="w1.10" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.11">What needs to change here?</label>
+  <textarea id="c-w1.11" data-step="w1.11" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.11">
-  <p class="stepno"><code>w1.11</code> step 11</p>
+<section class="step" id="w1.12">
+  <p class="stepno"><code>w1.12</code> step 12</p>
   <h3>Setup, step 4: training context</h3>
   <p class="do"><b>Do</b>Set activity, experience and equipment, then scroll to the load steps.</p>
   <p class="see"><b>You see</b>Three menus, then a note and the load increments the app rounds to.</p>
@@ -572,12 +613,12 @@ a{color:var(--text)}
 <p class="lime-str">Micro-plate step</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.11">What needs to change here?</label>
-  <textarea id="c-w1.11" data-step="w1.11" data-parts="setup.training" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.12">What needs to change here?</label>
+  <textarea id="c-w1.12" data-step="w1.12" data-parts="setup.training" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.12">
-  <p class="stepno"><code>w1.12</code> step 12</p>
+<section class="step" id="w1.13">
+  <p class="stepno"><code>w1.13</code> step 13</p>
   <h3>Setup, step 5: goal</h3>
   <p class="do"><b>Do</b>Pick a goal, then read down to the two checkboxes.</p>
   <p class="see"><b>You see</b>A goal menu, a target mass, a target date, and two options with a note under each.</p>
@@ -639,12 +680,12 @@ a{color:var(--text)}
 <p class="lime-str">Optional. Compares body mass before and after.</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.12">What needs to change here?</label>
-  <textarea id="c-w1.12" data-step="w1.12" data-parts="setup.goal" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.13">What needs to change here?</label>
+  <textarea id="c-w1.13" data-step="w1.13" data-parts="setup.goal" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.13">
-  <p class="stepno"><code>w1.13</code> step 13</p>
+<section class="step" id="w1.14">
+  <p class="stepno"><code>w1.14</code> step 14</p>
   <h3>Setup, step 6: availability</h3>
   <p class="do"><b>Do</b>Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.</p>
   <p class="see"><b>You see</b>A sessions-per-week field, then seven weekday rows, each with a time and a length.</p>
@@ -703,12 +744,12 @@ a{color:var(--text)}
 <p class="lime-str">Select at least one weekday.</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.13">What needs to change here?</label>
-  <textarea id="c-w1.13" data-step="w1.13" data-parts="setup.availability" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.14">What needs to change here?</label>
+  <textarea id="c-w1.14" data-step="w1.14" data-parts="setup.availability" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.14">
-  <p class="stepno"><code>w1.14</code> step 14</p>
+<section class="step" id="w1.15">
+  <p class="stepno"><code>w1.15</code> step 15</p>
   <h3>Setup, step 7: programme length</h3>
   <p class="do"><b>Do</b>Set how many weeks the plan runs for.</p>
   <p class="see"><b>You see</b>One field, a note about deload weeks, and a cardio checkbox.</p>
@@ -731,12 +772,12 @@ a{color:var(--text)}
 <p class="lime-str">One conditioning block per week</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.14">What needs to change here?</label>
-  <textarea id="c-w1.14" data-step="w1.14" data-parts="setup.programme" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.15">What needs to change here?</label>
+  <textarea id="c-w1.15" data-step="w1.15" data-parts="setup.programme" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.15">
-  <p class="stepno"><code>w1.15</code> step 15</p>
+<section class="step" id="w1.16">
+  <p class="stepno"><code>w1.16</code> step 16</p>
   <h3>Setup, step 8: guidance</h3>
   <p class="do"><b>Do</b>Read the supplement and kit guidance, then tap Continue.</p>
   <p class="see"><b>You see</b>Sections on creatine, caffeine, protein powder, and basic kit, with personalized doses.</p>
@@ -751,12 +792,12 @@ a{color:var(--text)}
 <p class="lime-str">A few things worth knowing</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.15">What needs to change here?</label>
-  <textarea id="c-w1.15" data-step="w1.15" data-parts="setup.guidance" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.16">What needs to change here?</label>
+  <textarea id="c-w1.16" data-step="w1.16" data-parts="setup.guidance" placeholder="What you saw. What you expected."></textarea>
 </section>
 
-<section class="step" id="w1.16">
-  <p class="stepno"><code>w1.16</code> step 16</p>
+<section class="step" id="w1.17">
+  <p class="stepno"><code>w1.17</code> step 17</p>
   <h3>Setup, step 9: review</h3>
   <p class="do"><b>Do</b>Read the two panels, then tap &quot;lock it in&quot;.</p>
   <p class="see"><b>You see</b>The daily targets, then the programme summary, then the control that writes the profile.</p>
@@ -819,8 +860,8 @@ a{color:var(--text)}
 <p class="lime-str">lock it in</p>
 </li>
 </ol>
-  <label class="box" for="c-w1.16">What needs to change here?</label>
-  <textarea id="c-w1.16" data-step="w1.16" data-parts="setup.review" placeholder="What you saw. What you expected."></textarea>
+  <label class="box" for="c-w1.17">What needs to change here?</label>
+  <textarea id="c-w1.17" data-step="w1.17" data-parts="setup.review" placeholder="What you saw. What you expected."></textarea>
 </section>
 <section class="step" id="w1-first-open.general">
   <p class="stepno"><code>w1-first-open.general</code> the whole stage</p>

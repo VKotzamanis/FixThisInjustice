@@ -560,7 +560,23 @@ export type CopyKey =
   | 'label.noSuggestedLoad'
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   | 'button.skipIntro'
-  | 'advice.clickToContinue';
+  | 'advice.clickToContinue'
+  | 'advice.setupInstruction'
+  // --- the top bar's per-view instruction, one per ViewId (P10 Brief D) ---
+  | 'advice.todayInstruction'
+  | 'advice.planInstruction'
+  | 'advice.trainInstruction'
+  | 'advice.targetsInstruction'
+  | 'advice.logInstruction'
+  | 'advice.atlasInstruction'
+  | 'advice.settingsInstruction'
+  | 'button.pauseUpdates'
+  // --- the site footer (P10 Brief D) ---
+  | 'footer.builtBy'
+  | 'footer.repository'
+  | 'footer.version'
+  | 'footer.updated'
+  | 'footer.licence';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1540,6 +1556,37 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // table); these two are the only strings the sequence's own controls draw from copy.ts.
   'button.skipIntro': 'Skip', // R1: 1 word
   'advice.clickToContinue': 'Click to continue', // R3: 3 words
+  'advice.setupInstruction': 'Answer each step. Nothing leaves this device.',
+
+  // --- the top bar's per-view instruction (P10 Brief D) ---
+  // src/ui/nav/views.ts's VIEW_INSTRUCTIONS is a Record<ViewId, CopyKey>, so a view added there
+  // with no row here is a compile error rather than a blank line in the marquee. Each is
+  // written from the same screen's own catalogue "what" in scripts/alpha-parts.mjs, so the
+  // instruction never claims a capability the view does not have.
+  'advice.todayInstruction': 'Start, resume, or skip the session assigned today.', // R3: 8 words
+  'advice.planInstruction': 'Browse blocks and weeks, then open any session card.', // R3: 9 words
+  'advice.trainInstruction': 'Log sets, rest between them, and finish the session.', // R3: 9 words
+  'advice.targetsInstruction': 'Review daily energy, protein, fluid and creatine targets.', // R3: 8 words
+  'advice.logInstruction': 'Browse body mass, compliance, best reps and personal records.', // R3: 9 words
+  'advice.atlasInstruction': 'Browse cards unlocked by the sets you have logged.', // R3: 9 words
+  'advice.settingsInstruction': 'Adjust units, reminders, skin, sounds, and manage your data.', // R3: 9 words
+  // The marquee's own pause control, distinct from `button.pauseTicker`: both a today.marquee
+  // strip and this one can be on screen together (the Today tab shows both), and two controls
+  // named "Pause ticker" at once is an ambiguous accessible name.
+  'button.pauseUpdates': 'Pause updates', // R1: 2 words
+
+  // --- the site footer (P10 Brief D) ---
+  // Quiet, and rendered once at the foot of the app shell, from every view. The repository URL,
+  // the version, the build commit and the build date are never copy strings (copy.test.ts bans
+  // a URL in one, and the other three are compiled constants, not wording a skin retunes): they
+  // are read in src/ui/components/SiteFooter.tsx from `__APP_VERSION__`, `__BUILD_COMMIT__` and
+  // `__BUILD_DATE__` (src/config/build.d.ts), and filled into the two slots below through
+  // FORMAT.footerVersion and FORMAT.footerUpdated.
+  'footer.builtBy': 'Built by V. Kotzamanis.',
+  'footer.repository': 'Repository',
+  'footer.version': 'Version {version}. Build {commit}.', // template; FORMAT.footerVersion
+  'footer.updated': 'Last updated {date}.', // template; FORMAT.footerUpdated
+  'footer.licence': 'MIT licence.',
 };
 
 /**
@@ -2417,4 +2464,26 @@ export const FORMAT = {
     copy('advice.capsuleDateRange', overrides)
       .replace('{from}', () => from)
       .replace('{to}', () => to),
+
+  // --- the site footer (P10 Brief D) ---
+
+  /**
+   * "Version 3.0.0. Build a1b2c3d." `version` and `commit` are the two build-time constants
+   * vite.config.ts's `define` block injects (`__APP_VERSION__`, `__BUILD_COMMIT__`), read once
+   * in src/ui/components/SiteFooter.tsx. Neither is a number the domain computed, so neither is
+   * validated here: an unset commit renders 'local' because that is the literal fallback the
+   * define block itself supplies, not a state this frame decides.
+   */
+  footerVersion: (
+    version: string,
+    commit: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('footer.version', overrides)
+      .replace('{version}', () => version)
+      .replace('{commit}', () => commit),
+
+  /** "Last updated 2026-09-04." `date` is `__BUILD_DATE__`, an ISO calendar date (YYYY-MM-DD). */
+  footerUpdated: (date: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('footer.updated', overrides).replace('{date}', () => date),
 } as const;

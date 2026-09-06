@@ -1,0 +1,31 @@
+/*
+ * The site footer (P10 Brief D): the author, the repository, the version and build, the last
+ * update, the on-device promise, the disclaimer and the licence, once at the foot of every
+ * screen. "Quiet" is the brief's own word for it: small type, --text-3 (the driest of the three
+ * text tones, the same one settings and status rows already use for fine print), and a hairline
+ * top rule rather than a panel background, so the block never competes with the content above
+ * it. Every colour is a token, per every other stylesheet in this tree; none is a skin's own
+ * literal, so this one file needs no per-skin variant.
+ */
+.site-footer {
+  padding: 18px 18px 28px;
+  border-top: 1px solid var(--line);
+  font-family: var(--sans);
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-3);
+}
+
+.site-footer p {
+  margin: 0 0 4px;
+}
+
+.site-footer p:last-child {
+  margin-bottom: 0;
+}
+
+/* Inherits the fine-print colour rather than an accent: a link row here is a fact, not a CTA. */
+.site-footer a {
+  color: inherit;
+  text-decoration: underline;
+}
