@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { MICRO_PLATE_STEP } from './types';
 import type { AppState } from './types';
 import { isValidLocalDate, isValidLocalTime, isValidTimeZone } from './dates';
 import { migrate } from './migrations';
@@ -45,6 +44,8 @@ const MAX_KCAL = 20_000;
 const MAX_PROTEIN_G = 1_000;
 /** [kg] Sanity ceiling for an equipment increment. */
 const MAX_STEP_KG = 100;
+/** [min] Sanity ceiling for a one-way walk to the gym: one day, mirrors MAX_SECONDS / 60. */
+const MAX_WALK_MINUTES = 1_440;
 /** [sets] and [sessions/week]: sanity ceilings. */
 const MAX_SETS = 20;
 const MAX_SESSIONS_PER_WEEK = 7;
@@ -143,7 +144,52 @@ const SexSchema = z.enum(['male', 'female']);
 const ActivityLevelSchema = z.enum(['sedentary', 'moderate', 'vigorous']);
 const GoalKindSchema = z.enum(['fat-loss', 'muscle-gain', 'recomposition', 'maintenance']);
 const ExperienceSchema = z.enum(['novice', 'intermediate', 'advanced']);
+/** What an EXERCISE needs. Unchanged by Brief F: no exercise tag is retagged. */
 const EquipmentSchema = z.enum(['full-gym', 'dumbbells-only', 'bodyweight']);
+/**
+ * What the USER HAS: the five Equipment Access slider positions (types.ts EquipmentAccess).
+ * Brief F Part 2.
+ */
+const EquipmentAccessSchema = z.enum([
+  'bodyweight',
+  'home-and-bodyweight',
+  'home',
+  'full-and-home',
+  'full-gym',
+]);
+/**
+ * Migration note (Brief F Part 2): a profile written before this change stored one of the old
+ * three `Equipment` tags directly under `Profile.equipment`. `full-gym` and `bodyweight` are
+ * spelled identically in `EquipmentAccess`, so they need no rewrite; only `dumbbells-only` has
+ * no literal counterpart and maps to `home`, the access tier that unlocks exactly the
+ * `dumbbells-only` exercise tier and nothing more. `.catch('full-gym')` is the belt: a value
+ * this preprocess step does not recognise (corruption, or a tag from a future downgrade) must
+ * not fail the whole document over one field, the same reasoning as every other `.catch()` in
+ * this file.
+ */
+const ProfileEquipmentSchema = z
+  .preprocess((value) => (value === 'dumbbells-only' ? 'home' : value), EquipmentAccessSchema)
+  .catch('full-gym');
+const HomeEquipmentItemSchema = z.enum([
+  'treadmill',
+  'elliptical',
+  'rowing-machine',
+  'dumbbells-5-20',
+  'dumbbells-20-40',
+  'dumbbells-40-plus',
+  'squat-rack',
+  'cable-machine',
+  'bench',
+  'leg-press',
+  'lat-pulldown',
+  'smith-machine',
+]);
+const BodyweightEquipmentItemSchema = z.enum([
+  'yoga-mat',
+  'skipping-rope',
+  'pull-up-bar',
+  'resistance-bands',
+]);
 
 export const ProfileSchema = z.object({
   id: z.string().min(1),
@@ -161,17 +207,26 @@ export const ProfileSchema = z.object({
   }),
   activity: ActivityLevelSchema,
   experience: ExperienceSchema,
-  equipment: EquipmentSchema,
+  equipment: ProfileEquipmentSchema,
+  // hasMicroPlates/microPlateKg removed (Brief F Part 3): the owner asked for the micro-plate
+  // option to go, and only that.
   equipmentSteps: z.object({
     barbellKg: z.number().gt(0).max(MAX_STEP_KG), // [kg] total on the bar
     dumbbellPairKg: z.number().gt(0).max(MAX_STEP_KG), // [kg] per pair
     stackKg: z.number().gt(0).max(MAX_STEP_KG), // [kg] per pin
-    hasMicroPlates: z.boolean(),
-    // [kg] total for a micro-plate pair. Added after the field set was first
-    // written, so it defaults to the metric MICRO_PLATE_STEP for documents that
-    // predate it; those documents already carried hasMicroPlates.
-    microPlateKg: z.number().gt(0).max(MAX_STEP_KG).default(MICRO_PLATE_STEP.metric),
   }),
+  // Additive (Brief F Part 3): a document written before this change never asked the question,
+  // so it defaults to "no" rather than failing the whole profile.
+  gymCommute: z
+    .object({
+      walks: z.boolean(),
+      minutesEachWay: z.number().min(0).max(MAX_WALK_MINUTES).nullable(), // [min]
+    })
+    .default({ walks: false, minutesEachWay: null }),
+  // Additive (Brief F Part 3): nothing reads either list yet; both default to empty for a
+  // document written before this change.
+  homeEquipment: z.array(HomeEquipmentItemSchema).default([]),
+  bodyweightEquipment: z.array(BodyweightEquipmentItemSchema).default([]),
   goal: z.object({
     kind: GoalKindSchema,
     targetMassKg: KgMass.nullable(), // [kg]
@@ -615,12 +670,15 @@ const SetupDraftShapeSchema = z.object({
   hip: z.string().max(MAX_DRAFT_TEXT_CHARS),
   activity: ActivityLevelSchema,
   experience: ExperienceSchema,
-  equipment: EquipmentSchema,
+  equipment: EquipmentAccessSchema,
   barbellStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
   dumbbellStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
   stackStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
-  hasMicroPlates: z.boolean(),
-  microPlateStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  // hasMicroPlates/microPlateStep removed: Brief F Part 3.
+  walksToGym: z.boolean(),
+  walkMinutes: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  homeEquipment: z.array(HomeEquipmentItemSchema),
+  bodyweightEquipment: z.array(BodyweightEquipmentItemSchema),
   goalKind: GoalKindSchema,
   targetMass: z.string().max(MAX_DRAFT_TEXT_CHARS),
   targetDate: z.string().max(MAX_DRAFT_TEXT_CHARS),

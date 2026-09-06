@@ -12,22 +12,83 @@ export const KG_PER_LB = 0.45359237;                       // exact by definitio
 export const DEFAULT_BARBELL_STEP: Record<UnitSystem, number> = { metric: 2.5 /* kg total: pair of 1.25 kg plates */, imperial: 5 /* lb total: pair of 2.5 lb plates */ };
 export const DEFAULT_DUMBBELL_STEP: Record<UnitSystem, number> = { metric: 5 /* kg per pair */, imperial: 10 /* lb per pair */ };
 export const DEFAULT_STACK_STEP: Record<UnitSystem, number> = { metric: 5 /* kg per pin, typical; user-editable */, imperial: 10 /* lb per pin */ };
-export const MICRO_PLATE_STEP: Record<UnitSystem, number> = { metric: 0.5 /* kg total: pair of 0.25 kg */, imperial: 1 /* lb total: pair of 0.5 lb */ };
+// MICRO_PLATE_STEP is gone: the owner asked for the micro-plate option to be removed entirely
+// (round 1 claim C1.09.21 / Brief F Part 3), and `hasMicroPlates`/`microPlateKg` went with it,
+// from Draft, initialDraft, the UI, Profile.equipmentSteps and the schema.
 
 // ---- profile ----
 export type Sex = "male" | "female";                        // required by the RMR equation; collected as such
 export type ActivityLevel = "sedentary" | "moderate" | "vigorous"; // the three FAO/WHO/UNU 2004 PAL bands the content review verified; no invented midpoints
 export type GoalKind = "fat-loss" | "muscle-gain" | "recomposition" | "maintenance";
 export type Experience = "novice" | "intermediate" | "advanced";
+/** What an EXERCISE needs. library.ts tags every entry with the tiers it is available in. */
 export type Equipment = "full-gym" | "dumbbells-only" | "bodyweight";
+/**
+ * What the USER HAS, as the five positions the Equipment Access slider offers
+ * (src/ui/setup/SetupWizard.tsx step `training`; round 1 claim C1.09.11 / Brief F Part 2).
+ * Distinct from `Equipment`, which says what an EXERCISE needs: the two combination tiers have
+ * no corresponding exercise tag and never will, because an exercise does not need "a full gym
+ * and a home gym" -- it needs one tier or another, and a combination access level unlocks
+ * whichever tiers `ACCESS_UNLOCKS` says it does.
+ */
+export type EquipmentAccess =
+  | "bodyweight"
+  | "home-and-bodyweight"
+  | "home"
+  | "full-and-home"
+  | "full-gym";
+/**
+ * The exercise tiers each access level opens. A combination is the union of its parts.
+ * `resolveSlot` (src/domain/plan/templates.ts) is the sole consumer: it resolves a slot's
+ * candidate list against this set rather than against a single `Equipment` value.
+ *
+ * Because `Exercise.equipment` tags are upward-closed (library.test.ts "closes every tag
+ * upward: bodyweight implies dumbbells-only implies full-gym" -- an exercise usable with less
+ * equipment is also usable with more), `home-and-bodyweight` resolves every slot IDENTICALLY to
+ * `home` (every bodyweight-tagged exercise already carries the `dumbbells-only` tag, so adding
+ * `bodyweight` to the unlocked set matches nothing new), and `full-and-home` resolves IDENTICALLY
+ * to `full-gym` (every exercise carries the `full-gym` tag, so `full-gym` alone already matches
+ * everything). A combination is therefore never worse than its dominant part: it IS that part,
+ * exactly, slot for slot. templates.test.ts asserts the identity directly.
+ */
+export const ACCESS_UNLOCKS: Record<EquipmentAccess, readonly Equipment[]> = {
+  bodyweight: ["bodyweight"],
+  "home-and-bodyweight": ["bodyweight", "dumbbells-only"],
+  home: ["dumbbells-only"],
+  "full-and-home": ["dumbbells-only", "full-gym"],
+  "full-gym": ["full-gym"],
+};
+
+/** The home-gym multi-select inventory, setup step 4 (Brief F Part 3). Nothing reads it yet. */
+export type HomeEquipmentItem =
+  | "treadmill" | "elliptical" | "rowing-machine"
+  | "dumbbells-5-20" | "dumbbells-20-40" | "dumbbells-40-plus" // [kg] or [lb] band per the profile's units; the id itself is unit-agnostic
+  | "squat-rack" | "cable-machine" | "bench" | "leg-press" | "lat-pulldown" | "smith-machine";
+/** The body-weight-only multi-select inventory, setup step 4 (Brief F Part 3). Nothing reads it yet. */
+export type BodyweightEquipmentItem = "yoga-mat" | "skipping-rope" | "pull-up-bar" | "resistance-bands";
 
 export interface Profile {
   id: string; displayName: string; timezone: TimeZone; units: UnitSystem; createdAt: EpochMs;
   body: { sex: Sex; birthYear: number; heightCm: number; baselineMassKg: Kg; baselineAt: LocalDate; baselineBodyFatPct: number | null; };
   activity: ActivityLevel;
   experience: Experience;
-  equipment: Equipment;
-  equipmentSteps: { barbellKg: number; dumbbellPairKg: number; stackKg: number; hasMicroPlates: boolean; microPlateKg: number; }; // canonical kg; seeded from DEFAULT_*_STEP / MICRO_PLATE_STEP in the user's unit at setup, editable
+  equipment: EquipmentAccess;
+  // canonical kg; seeded from DEFAULT_*_STEP in the user's unit at setup, editable.
+  // hasMicroPlates/microPlateKg removed (Brief F Part 3): the owner asked for the micro-plate
+  // option to go, and only that.
+  equipmentSteps: { barbellKg: number; dumbbellPairKg: number; stackKg: number; };
+  /**
+   * Setup step 4, full-gym or full-and-home only (round 1 claims C1.09.15-16 / Brief F Part 3).
+   * STORED, and fed into NO energy calculation: the FAO/WHO/UNU 2004 PAL bands (`activity`
+   * above) already count everything a person does in an ordinary day, including a walk to the
+   * gym, and no MET coefficient exists in this project to avoid double-counting it. `walks:
+   * false` sets `minutesEachWay` to 0 rather than null, per the brief's own "No sets it to zero".
+   */
+  gymCommute: { walks: boolean; minutesEachWay: number | null }; // [min] one way
+  /** Setup step 4 multi-select, shown for Home gym or either combination that includes it. */
+  homeEquipment: HomeEquipmentItem[];
+  /** Setup step 4 multi-select, shown for Body weight only. */
+  bodyweightEquipment: BodyweightEquipmentItem[];
   goal: { kind: GoalKind; targetMassKg: Kg | null; targetBodyFatPct: number | null; targetDate: LocalDate | null; };
   supplements: { creatine: boolean; };                     // no medication fields exist by design
   hydration: { dailyTargetML: ML; cupSizeML: ML; weighInOptIn: boolean; }; // cupSizeML is display granularity only; weighInOptIn enables the pre/post-session mass check
@@ -158,12 +219,22 @@ export interface SetupDraft {
   hip: string; // [cm] or [in], as typed, per `units`; converted by storedGirthCm
   activity: ActivityLevel;
   experience: Experience;
-  equipment: Equipment;
+  equipment: EquipmentAccess;
   barbellStep: string; // [kg] or [lb], as typed
   dumbbellStep: string; // [kg] or [lb] per pair, as typed
   stackStep: string; // [kg] or [lb] per pin, as typed
-  hasMicroPlates: boolean;
-  microPlateStep: string; // [kg] or [lb] per pair, as typed
+  // hasMicroPlates/microPlateStep removed: Brief F Part 3, the owner asked for the micro-plate
+  // option to go, and only that.
+  /**
+   * Setup step 4, asked only for `full-gym` or `full-and-home` (Brief F Part 3). `false` pairs
+   * with `walkMinutes: '0'`, matching the brief's own "No sets it to zero".
+   */
+  walksToGym: boolean;
+  walkMinutes: string; // [min] one way, as typed
+  /** Multi-select, shown for `home` or either combination that includes it. */
+  homeEquipment: HomeEquipmentItem[];
+  /** Multi-select, shown for `bodyweight`. */
+  bodyweightEquipment: BodyweightEquipmentItem[];
   goalKind: GoalKind;
   targetMass: string; // [kg] or [lb], as typed
   targetDate: string; // [YYYY-MM-DD], as typed

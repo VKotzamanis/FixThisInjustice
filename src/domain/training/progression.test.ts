@@ -94,8 +94,6 @@ describe('suggestedProgression', () => {
         barbellKg: toStoredLoad(5, 'imperial'), // [kg] 5 lb total = 2.26796185 kg
         dumbbellPairKg: toStoredLoad(10, 'imperial'), // [kg] 10 lb per pair
         stackKg: toStoredLoad(10, 'imperial'), // [kg] 10 lb per pin
-        hasMicroPlates: false,
-        microPlateKg: toStoredLoad(1, 'imperial'), // [kg] 1 lb total (pair of 0.5 lb)
       },
     });
     const loadKg = toStoredLoad(135, 'imperial'); // [kg] 61.23496995
@@ -288,8 +286,6 @@ describe('suggestedProgression', () => {
         barbellKg: 0, // [kg] a user who cleared the field
         dumbbellPairKg: 5, // [kg]
         stackKg: 5, // [kg]
-        hasMicroPlates: false,
-        microPlateKg: 0.5, // [kg]
       },
     });
     const advice = suggestedProgression(
@@ -303,31 +299,9 @@ describe('suggestedProgression', () => {
     expect(advice.nextPrescription).toEqual({ kind: 'reps', lo: 6, hi: 10 });
   });
 
-  it('uses the micro-plate step when the profile has micro-plates', () => {
-    // 2.5 % of 20 kg = 0.5 kg, which IS achievable on a 0.5 kg micro-plate pair,
-    // so the guard (0.5 / 20 = 2.5 %) does not fire and the load rises.
-    const profile = makeProfile({
-      equipmentSteps: {
-        barbellKg: 2.5, // [kg]
-        dumbbellPairKg: 5, // [kg]
-        stackKg: 5, // [kg]
-        hasMicroPlates: true,
-        microPlateKg: 0.5, // [kg] total, pair of 0.25 kg
-      },
-    });
-    const advice = suggestedProgression(
-      session('2026-03-02', 3, 20, 12, { exerciseId: 'barbell-curl' }),
-      makePlannedExercise({
-        exerciseId: 'barbell-curl',
-        prescription: { kind: 'reps', lo: 8, hi: 12 },
-      }),
-      makeExercise({ id: 'barbell-curl', loadClass: 'isolation' }),
-      profile,
-      makeBlock(),
-    );
-    expect(advice.kind).toBe('add-load');
-    expect(advice.loadKg).toBeCloseTo(20.5, 10); // [kg]
-  });
+  // 'uses the micro-plate step when the profile has micro-plates' removed: Brief F Part 3
+  // deleted hasMicroPlates/microPlateKg (and stepFor's branch on them, src/domain/units.ts)
+  // entirely, so there is no longer a micro-plate step for suggestedProgression to select.
 });
 
 describe('advice copy contract', () => {

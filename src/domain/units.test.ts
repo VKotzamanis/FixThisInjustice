@@ -20,8 +20,6 @@ const STEPS: Profile['equipmentSteps'] = {
   barbellKg: 2.5, // [kg] total, a pair of 1.25 kg plates
   dumbbellPairKg: 5, // [kg] per pair
   stackKg: 5, // [kg] per pin
-  hasMicroPlates: false,
-  microPlateKg: 0.5, // [kg] total, a pair of 0.25 kg plates
 };
 
 function exercise(id: string, modality: Exercise['modality']): Exercise {
@@ -115,9 +113,8 @@ describe('stepFor', () => {
     expect(stepFor(exercise('pushup', 'bodyweight'), STEPS)).toBe(0); // [kg]
   });
 
-  it('uses the micro-plate step for barbells when the user has them', () => {
-    expect(stepFor(exercise('bench', 'barbell'), { ...STEPS, hasMicroPlates: true })).toBe(0.5); // [kg]
-  });
+  // 'uses the micro-plate step for barbells when the user has them' removed: Brief F Part 3
+  // deleted hasMicroPlates/microPlateKg entirely, and stepFor's barbell branch with it.
 });
 
 describe('formatting', () => {

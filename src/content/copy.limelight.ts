@@ -264,6 +264,12 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // table's "set {n} of {targetSets}", so the two markers now speak one language.
   'label.bonusSet': 'encore',
   'label.equipment': 'the gear',
+  // Brief F Part 1c / round 1 owner feedback: "'The gear' -> Rename to equipment access." That
+  // feedback was about THIS screen's equipment picker specifically, now the Equipment Access
+  // slider, which is why it takes its OWN key rather than reusing `label.equipment` above --
+  // that key also labels AddCustomExercise.tsx's unrelated modality field, which "the gear"
+  // still suits and this rename must not touch.
+  'label.equipmentAccess': 'equipment access',
   // The rest timer's notification, which arrives on a lock screen. `button.returnToSession` is
   // "back on stage", so the notification that ends the rest uses the same words.
   'notification.restOver': 'rest over. back on stage.',
@@ -332,11 +338,13 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
    * advice line is the flag that comparison raises, and the why body is the ACSM 2007 citation:
    *   advice.fluidLoss, button.logBodyMass, why.postSessionMass
    *
-   * THE QUANTITIES, THE UNITS AND THE INCREMENTS (17). Rule 1 and contract R11: a skin may put a
+   * THE QUANTITIES, THE UNITS AND THE INCREMENTS (16). Rule 1 and contract R11: a skin may put a
    * word beside a quantity and may not rename one. Every string below is a defined quantity name,
-   * a unit name, or the sentence that defines an increment or a dose:
+   * a unit name, or the sentence that defines an increment or a dose. `label.microPlates` left
+   * this list when Brief F Part 3 deleted the key (the owner asked for the micro-plate option to
+   * go, and only that):
    *   advice.creatineOnly, advice.loadSteps, hero.equipmentSteps, hero.hydration, label.creatine,
-   *   label.displayUnit, label.microPlates, label.unitsImperial, label.unitsMetric, label.week,
+   *   label.displayUnit, label.unitsImperial, label.unitsMetric, label.week,
    *   quantity.barbellStep, quantity.bodyMass, quantity.dailyBeverageTarget,
    *   quantity.exerciseName, quantity.postSessionBodyMass, quantity.preSessionBodyMass,
    *   unit.characters

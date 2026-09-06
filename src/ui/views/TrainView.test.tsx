@@ -120,15 +120,11 @@ function seed(opts: SeedOptions = {}): AppState {
           barbellKg: toStoredLoad(5, 'imperial'), // [kg]
           dumbbellPairKg: toStoredLoad(10, 'imperial'), // [kg]
           stackKg: toStoredLoad(10, 'imperial'), // [kg]
-          hasMicroPlates: false,
-          microPlateKg: toStoredLoad(1, 'imperial'), // [kg]
         }
       : {
           barbellKg: 2.5, // [kg]
           dumbbellPairKg: 5, // [kg]
           stackKg: 5, // [kg]
-          hasMicroPlates: false,
-          microPlateKg: 0.5, // [kg]
         };
   const profile = makeProfile({
     units,

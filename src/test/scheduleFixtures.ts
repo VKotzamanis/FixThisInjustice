@@ -12,10 +12,10 @@
 // lastBlockSeenByProfile), and its `accent: "green"` is rejected by UiPrefsSchema, which
 // requires #rrggbb. emptyState() therefore starts from schema.defaultState() — the one
 // definition that cannot drift from the schema — and overrides only what the fixture needs.
-// makeProfile() likewise carries equipmentSteps.microPlateKg, hydration.weighInOptIn and
-// readiness, all required by the shipped Profile type.
+// makeProfile() likewise carries hydration.weighInOptIn and readiness, both required by the
+// shipped Profile type. equipmentSteps.hasMicroPlates/.microPlateKg, which the plan text also
+// predates, were removed rather than added (Brief F Part 3).
 
-import { MICRO_PLATE_STEP } from '../domain/types';
 import type {
   AppState,
   Availability,
@@ -111,9 +111,10 @@ export function makeProfile(timezone: TimeZone): Profile {
       barbellKg: 2.5, // [kg] total on the bar (pair of 1.25 kg plates)
       dumbbellPairKg: 5, // [kg] per pair
       stackKg: 5, // [kg] per pin
-      hasMicroPlates: false,
-      microPlateKg: MICRO_PLATE_STEP.metric, // [kg] total for a micro-plate pair
     },
+    gymCommute: { walks: false, minutesEachWay: null },
+    homeEquipment: [],
+    bodyweightEquipment: [],
     goal: { kind: 'recomposition', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
     supplements: { creatine: false },
     hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL]

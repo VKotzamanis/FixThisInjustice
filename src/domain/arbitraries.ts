@@ -90,6 +90,37 @@ const anyIsoWeekday = fc.constantFrom(
  */
 const anyEpochMs = fc.integer({ min: -MAX_EPOCH_MS, max: MAX_EPOCH_MS });
 
+/** The five Equipment Access slider positions (Brief F Part 1c). */
+const anyEquipmentAccess = fc.constantFrom(
+  'bodyweight' as const,
+  'home-and-bodyweight' as const,
+  'home' as const,
+  'full-and-home' as const,
+  'full-gym' as const,
+);
+
+const anyHomeEquipmentItem = fc.constantFrom(
+  'treadmill' as const,
+  'elliptical' as const,
+  'rowing-machine' as const,
+  'dumbbells-5-20' as const,
+  'dumbbells-20-40' as const,
+  'dumbbells-40-plus' as const,
+  'squat-rack' as const,
+  'cable-machine' as const,
+  'bench' as const,
+  'leg-press' as const,
+  'lat-pulldown' as const,
+  'smith-machine' as const,
+);
+
+const anyBodyweightEquipmentItem = fc.constantFrom(
+  'yoga-mat' as const,
+  'skipping-rope' as const,
+  'pull-up-bar' as const,
+  'resistance-bands' as const,
+);
+
 export const anyProfile: fc.Arbitrary<Profile> = fc.record({
   id: anyId,
   displayName: anyText,
@@ -107,14 +138,23 @@ export const anyProfile: fc.Arbitrary<Profile> = fc.record({
   // Master plan section 10: the three verified FAO/WHO/UNU PAL bands, no midpoints.
   activity: fc.constantFrom('sedentary' as const, 'moderate' as const, 'vigorous' as const),
   experience: fc.constantFrom('novice' as const, 'intermediate' as const, 'advanced' as const),
-  equipment: fc.constantFrom('full-gym' as const, 'dumbbells-only' as const, 'bodyweight' as const),
+  // Brief F Part 1c: what the USER has, not the three exercise-need Equipment tiers below
+  // (Exercise.equipment, unaffected).
+  equipment: anyEquipmentAccess,
+  // hasMicroPlates/microPlateKg removed: Brief F Part 3.
   equipmentSteps: fc.record({
     barbellKg: finite(0.25, 100), // [kg] total on the bar
     dumbbellPairKg: finite(0.25, 100), // [kg] per pair
     stackKg: finite(0.25, 100), // [kg] per pin
-    hasMicroPlates: fc.boolean(),
-    microPlateKg: finite(0.1, 5), // [kg] total for a micro-plate pair
   }),
+  // Additive (Brief F Part 3): a document written before the question existed backfills to
+  // "never asked" rather than failing the whole profile.
+  gymCommute: fc.record({
+    walks: fc.boolean(),
+    minutesEachWay: fc.option(finite(0, 1_440), { nil: null }), // [min]
+  }),
+  homeEquipment: fc.array(anyHomeEquipmentItem, { maxLength: 12 }),
+  bodyweightEquipment: fc.array(anyBodyweightEquipmentItem, { maxLength: 4 }),
   goal: fc.record({
     kind: fc.constantFrom(
       'fat-loss' as const,
@@ -516,12 +556,15 @@ export const anySetupDraft: fc.Arbitrary<SetupDraft> = fc.record({
   hip: anyDraftText,
   activity: fc.constantFrom('sedentary' as const, 'moderate' as const, 'vigorous' as const),
   experience: fc.constantFrom('novice' as const, 'intermediate' as const, 'advanced' as const),
-  equipment: fc.constantFrom('full-gym' as const, 'dumbbells-only' as const, 'bodyweight' as const),
+  equipment: anyEquipmentAccess,
   barbellStep: anyDraftText,
   dumbbellStep: anyDraftText,
   stackStep: anyDraftText,
-  hasMicroPlates: fc.boolean(),
-  microPlateStep: anyDraftText,
+  // hasMicroPlates/microPlateStep removed: Brief F Part 3.
+  walksToGym: fc.boolean(),
+  walkMinutes: anyDraftText,
+  homeEquipment: fc.array(anyHomeEquipmentItem, { maxLength: 12 }),
+  bodyweightEquipment: fc.array(anyBodyweightEquipmentItem, { maxLength: 4 }),
   goalKind: fc.constantFrom(
     'fat-loss' as const,
     'muscle-gain' as const,
