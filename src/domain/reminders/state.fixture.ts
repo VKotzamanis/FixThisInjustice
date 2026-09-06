@@ -15,8 +15,10 @@
 //      the additive UiPrefs fields (videoInstanceHost, legacyMigration, lastBlockSeenByProfile),
 //      and would not compile. Starting from defaultState() is the same technique
 //      src/test/scheduleFixtures.ts uses and cannot drift from the schema.
-//   2. Profile carries equipmentSteps.microPlateKg, hydration.weighInOptIn and readiness, all
-//      required by the shipped Profile type and absent from the draft.
+//   2. Profile carries hydration.weighInOptIn, readiness, gymCommute, homeEquipment and
+//      bodyweightEquipment, required (or additive-with-default) on the shipped Profile type and
+//      absent from the draft. equipmentSteps.hasMicroPlates/.microPlateKg, also absent from the
+//      draft, were removed rather than added (Brief F Part 3).
 //   3. FixtureOptions gains `assignments`, so a test can put a terminal (completed or skipped)
 //      assignment on a training day. Master plan §6.6 as amended emits no instants there.
 //   4. A one-day pause on D is stored as [D, D+1), not [D, D]. PlanPause is a HALF-OPEN
@@ -28,7 +30,6 @@
 
 import { addDays } from '../dates';
 import { defaultState } from '../schema';
-import { MICRO_PLATE_STEP } from '../types';
 import type {
   AppState,
   Availability,
@@ -80,9 +81,10 @@ function profile(): Profile {
       barbellKg: 2.5, // [kg] total on the bar
       dumbbellPairKg: 5, // [kg] per pair
       stackKg: 5, // [kg] per pin
-      hasMicroPlates: false,
-      microPlateKg: MICRO_PLATE_STEP.metric, // [kg] total for a micro-plate pair
     },
+    gymCommute: { walks: false, minutesEachWay: null },
+    homeEquipment: [],
+    bodyweightEquipment: [],
     goal: { kind: 'muscle-gain', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
     supplements: { creatine: true },
     hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL]

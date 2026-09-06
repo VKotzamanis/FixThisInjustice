@@ -9,11 +9,19 @@ import {
   WEEKLY_SET_BAND,
   type SessionsPerWeek,
 } from './templates';
-import type { Equipment, Experience } from '../types';
+import type { Equipment, EquipmentAccess, Experience } from '../types';
 
 const DAY_COUNTS: SessionsPerWeek[] = [2, 3, 4, 5, 6];
 const EXPERIENCES: Experience[] = ['novice', 'intermediate', 'advanced'];
+/** The three exercise-need tiers, unaffected by Brief F: `resolveSlot`'s equipment param takes
+ * an `EquipmentAccess`, not one of these, so every call below goes through `ACCESS_FOR_TIER`. */
 const EQUIPMENT: Equipment[] = ['full-gym', 'dumbbells-only', 'bodyweight'];
+/** The pure `EquipmentAccess` position that unlocks EXACTLY one exercise-need tier and no more. */
+const ACCESS_FOR_TIER: Record<Equipment, EquipmentAccess> = {
+  'full-gym': 'full-gym',
+  'dumbbells-only': 'home',
+  bodyweight: 'bodyweight',
+};
 
 describe('template integrity', () => {
   it('defines one template per supported day count, with that many sessions', () => {
@@ -105,6 +113,25 @@ describe('template integrity', () => {
     }
   });
 
+  it('never declares fewer in-band muscles for more equipment, at every day count', () => {
+    // Brief F Part 2: "a combination tier should never produce a worse band than either of its
+    // parts alone." A combination access level resolves every slot IDENTICALLY to its dominant
+    // pure tier (see the 'the two combination access levels' describe block below, and
+    // ACCESS_UNLOCKS's own comment in types.ts for why), so the claim reduces to: does MORE
+    // access ever declare a SMALLER in-band muscle set than LESS access? Verified here, over the
+    // library's actual tags, rather than assumed -- the exact in-band muscle IDENTITY differs by
+    // tier (full-gym trades a mid-back credit for a rear-delt one that dumbbells-only has, at two
+    // days), so this is a CARDINALITY claim, not a superset claim; templates.ts's own
+    // BAND_MUSCLES comment already documents the trade rather than hiding it.
+    for (const d of DAY_COUNTS) {
+      const fullGym = bandMusclesFor(d, 'full-gym').length;
+      const dumbbellsOnly = bandMusclesFor(d, 'dumbbells-only').length;
+      const bodyweight = bandMusclesFor(d, 'bodyweight').length;
+      expect(fullGym, `${d} days`).toBeGreaterThanOrEqual(dumbbellsOnly);
+      expect(dumbbellsOnly, `${d} days`).toBeGreaterThanOrEqual(bodyweight);
+    }
+  });
+
   it('keeps the flat bandMuscles list identical to the full-gym tier', () => {
     // One declaration, two views: the flat list is the shape the P2 Task 4 contract published and
     // generator.test.ts iterates, so it must not become a second, drifting source of truth.
@@ -178,7 +205,7 @@ function weeklyFractionalSets(
   for (const session of template.sessions) {
     const used = new Set<string>();
     for (const slot of session.slots) {
-      const ex = resolveSlot(slot, equipment, used);
+      const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
       if (!ex) continue;
       used.add(ex.id);
       const sets = template.sets[experience][slot.slotClass];
@@ -449,7 +476,7 @@ describe('equipment resolution', () => {
     expect(slot).toBeDefined();
     if (!slot) return;
     expect(resolveSlot(slot, 'full-gym', new Set())?.id).toBe('barbell-bench-press');
-    expect(resolveSlot(slot, 'dumbbells-only', new Set())?.id).toBe('incline-db-press');
+    expect(resolveSlot(slot, 'home', new Set())?.id).toBe('incline-db-press');
     expect(resolveSlot(slot, 'bodyweight', new Set())?.id).toBe('push-up');
   });
 
@@ -479,7 +506,7 @@ describe('equipment resolution', () => {
           const used = new Set<string>();
           let filled = 0;
           for (const s of session.slots) {
-            const ex = resolveSlot(s, equipment, used);
+            const ex = resolveSlot(s, ACCESS_FOR_TIER[equipment], used);
             if (ex) {
               used.add(ex.id);
               filled += 1;
@@ -503,7 +530,7 @@ describe('equipment resolution', () => {
         for (const session of SPLIT_TEMPLATES[d].sessions) {
           const used = new Set<string>();
           for (const slot of session.slots) {
-            const ex = resolveSlot(slot, equipment, used);
+            const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
             if (!ex) continue;
             used.add(ex.id);
             for (const m of ex.muscleGroups) direct.add(m);
@@ -553,7 +580,7 @@ describe('equipment resolution', () => {
         for (const session of SPLIT_TEMPLATES[d].sessions) {
           const used = new Set<string>();
           for (const slot of session.slots) {
-            const ex = resolveSlot(slot, equipment, used);
+            const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
             if (!ex) continue;
             used.add(ex.id);
             for (const m of ex.muscleGroups) covered.add(m);
@@ -578,7 +605,7 @@ describe('equipment resolution', () => {
         for (const session of SPLIT_TEMPLATES[d].sessions) {
           const used = new Set<string>();
           for (const slot of session.slots) {
-            const ex = resolveSlot(slot, equipment, used);
+            const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
             if (!ex) continue;
             used.add(ex.id);
             if (slot.slotClass === 'isolation' && ex.muscleGroups.includes('lats')) {
@@ -601,6 +628,65 @@ describe('equipment resolution', () => {
           expect(volumeOf(volume, m).mid, `${d} days, ${equipment}, ${m}`).toBeGreaterThan(0);
         }
       }
+    }
+  });
+});
+
+/**
+ * The five-member Equipment Access matrix (Brief F Part 2), extending the three-member
+ * `EQUIPMENT` matrix above.
+ *
+ * PROOF, not assumption: `ACCESS_UNLOCKS['home-and-bodyweight']` is `['bodyweight',
+ * 'dumbbells-only']` and `ACCESS_UNLOCKS['home']` is `['dumbbells-only']` alone. Because
+ * `Exercise.equipment` tags are upward-closed (library.test.ts "closes every tag upward":
+ * bodyweight implies dumbbells-only implies full-gym), every exercise tagged `bodyweight` is
+ * ALSO tagged `dumbbells-only`, so adding `bodyweight` to the unlocked set matches nothing a
+ * `dumbbells-only` match did not already match: the two access levels have an IDENTICAL
+ * matching set for every candidate, so `resolveSlot` returns the identical exercise for every
+ * slot. The same argument, with `full-gym` in the role `bodyweight` played above, shows
+ * `full-and-home` identical to `full-gym` (every exercise carries the `full-gym` tag, so
+ * `full-gym` alone already matches everything a `dumbbells-only` alternative would add).
+ *
+ * This is the rigorous form of "a combination tier is never worse than either of its parts": it
+ * is not merely no worse, it IS one of its parts, exactly, and that part is already established
+ * (the test above, and templates.ts's own BAND_MUSCLES table) to carry an in-band muscle COUNT
+ * never smaller than the other part's.
+ */
+describe('the two combination access levels resolve identically to their dominant pure tier', () => {
+  function assertIdenticalResolution(combo: EquipmentAccess, dominant: EquipmentAccess): void {
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        const usedCombo = new Set<string>();
+        const usedDominant = new Set<string>();
+        for (const slot of session.slots) {
+          const comboEx = resolveSlot(slot, combo, usedCombo);
+          const dominantEx = resolveSlot(slot, dominant, usedDominant);
+          expect(comboEx?.id, `${d}d/${session.label}/${slot.role}`).toBe(dominantEx?.id);
+          if (comboEx) usedCombo.add(comboEx.id);
+          if (dominantEx) usedDominant.add(dominantEx.id);
+        }
+      }
+    }
+  }
+
+  it("resolves 'home-and-bodyweight' identically to 'home', slot for slot, in every template", () => {
+    assertIdenticalResolution('home-and-bodyweight', 'home');
+  });
+
+  it("resolves 'full-and-home' identically to 'full-gym', slot for slot, in every template", () => {
+    assertIdenticalResolution('full-and-home', 'full-gym');
+  });
+
+  it('therefore declares the identical band-muscle count as its dominant part, at every day count', () => {
+    for (const d of DAY_COUNTS) {
+      // bandMusclesFor takes the exercise-need Equipment tier, not the access level; the
+      // dominant tier on each side is the bridge (ACCESS_FOR_TIER's inverse).
+      expect(bandMusclesFor(d, 'dumbbells-only').length).toBeGreaterThanOrEqual(
+        bandMusclesFor(d, 'bodyweight').length,
+      );
+      expect(bandMusclesFor(d, 'full-gym').length).toBeGreaterThanOrEqual(
+        bandMusclesFor(d, 'dumbbells-only').length,
+      );
     }
   });
 });

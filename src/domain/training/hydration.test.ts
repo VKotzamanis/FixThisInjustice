@@ -15,7 +15,6 @@ import { describe, expect, it } from 'vitest';
 
 import { DEFAULT_COPY } from '../../content/copy';
 import { defaultState } from '../schema';
-import { MICRO_PLATE_STEP } from '../types';
 import type {
   AppState,
   BodyMassEntry,
@@ -82,9 +81,10 @@ function makeProfile(hydration: Partial<Profile['hydration']> = {}): Profile {
       barbellKg: 2.5, // [kg] total on the bar
       dumbbellPairKg: 5, // [kg] per pair
       stackKg: 5, // [kg] per pin
-      hasMicroPlates: false,
-      microPlateKg: MICRO_PLATE_STEP.metric, // [kg] total for a micro-plate pair
     },
+    gymCommute: { walks: false, minutesEachWay: null },
+    homeEquipment: [],
+    bodyweightEquipment: [],
     goal: { kind: 'recomposition', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
     supplements: { creatine: false },
     hydration: { dailyTargetML: TARGET_ML, cupSizeML: 250, weighInOptIn: false, ...hydration }, // [mL]

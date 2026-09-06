@@ -17,11 +17,45 @@ import {
   type PlanInput,
 } from './generator';
 import { PlanTemplateSchema } from '../schema';
-import type { Equipment, Experience, GoalKind, PlanTemplate } from '../types';
+import type { Equipment, EquipmentAccess, Experience, GoalKind, PlanTemplate } from '../types';
 
 const DAY_COUNTS: SessionsPerWeek[] = [2, 3, 4, 5, 6];
 const EXPERIENCES: Experience[] = ['novice', 'intermediate', 'advanced'];
+/** The three exercise-need tiers. `bandMusclesFor` and `Exercise.equipment` still take these;
+ * `PlanInput.equipment` and `resolveSlot` take an `EquipmentAccess` instead (Brief F Part 2), so
+ * every call that reaches either goes through `ACCESS_FOR_TIER`. */
 const EQUIPMENT: Equipment[] = ['full-gym', 'dumbbells-only', 'bodyweight'];
+/** The pure `EquipmentAccess` position that unlocks EXACTLY one exercise-need tier and no more. */
+const ACCESS_FOR_TIER: Record<Equipment, EquipmentAccess> = {
+  'full-gym': 'full-gym',
+  'dumbbells-only': 'home',
+  bodyweight: 'bodyweight',
+};
+/**
+ * All five Equipment Access slider positions (Brief F Part 1c), for the section 7 gate below,
+ * which the brief asks to extend from three members to five.
+ */
+const EQUIPMENT_ACCESS: EquipmentAccess[] = [
+  'bodyweight',
+  'home-and-bodyweight',
+  'home',
+  'full-and-home',
+  'full-gym',
+];
+/**
+ * `bandMusclesFor` takes the exercise-need `Equipment`, not an `EquipmentAccess`. A combination
+ * level resolves every slot IDENTICALLY to its dominant pure tier (templates.test.ts, "the two
+ * combination access levels resolve identically to their dominant pure tier"), so its band claim
+ * is that dominant tier's, exactly -- this is the bridge from all five access levels to the three
+ * band rows `bandMusclesFor` actually has.
+ */
+const BAND_TIER_FOR_ACCESS: Record<EquipmentAccess, Equipment> = {
+  bodyweight: 'bodyweight',
+  'home-and-bodyweight': 'dumbbells-only',
+  home: 'dumbbells-only',
+  'full-and-home': 'full-gym',
+  'full-gym': 'full-gym',
+};
 const GOALS: GoalKind[] = ['fat-loss', 'muscle-gain', 'recomposition', 'maintenance'];
 /**
  * [weeks] The three programme lengths the gate sweeps: the minimum, the wizard default, and the
@@ -197,7 +231,7 @@ describe('plan shape', () => {
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
         const plan = generatePlan(
-          input({ sessionsPerWeek: d, equipment, weeks: 24, includeCardio: true }),
+          input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], weeks: 24, includeCardio: true }),
           EXERCISES,
         );
         const parsed = PlanTemplateSchema.safeParse(plan);
@@ -284,7 +318,7 @@ describe('prescriptions, rest and cardio', () => {
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
         const plan = generatePlan(
-          input({ sessionsPerWeek: d, equipment, includeCardio: true, weeks: 8 }),
+          input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], includeCardio: true, weeks: 8 }),
           EXERCISES,
         );
         for (const s of plan.sessions) {
@@ -385,31 +419,43 @@ describe('weekly set volume, the P2 generator gate', () => {
   /**
    * THE MASTER PLAN SECTION 7 P2 GENERATOR GATE, over the whole input space.
    *
-   * 5 sessionsPerWeek x 3 Experience x 3 Equipment x 3 weeks x 2 cardio = 270 cells. Every
-   * criterion the gate names is checked in each cell, and every violation is collected rather
-   * than thrown at the first one, so a failure prints the full census instead of one example.
+   * 5 sessionsPerWeek x 3 Experience x 5 Equipment Access x 3 weeks x 2 cardio = 450 cells.
+   * Brief F Part 2 extends this from three equipment members to five: the two combination access
+   * levels (`home-and-bodyweight`, `full-and-home`) join the three pure ones. Every criterion the
+   * gate names is checked in each cell, and every violation is collected rather than thrown at
+   * the first one, so a failure prints the full census instead of one example.
    *
-   * The band claim is read PER TIER, from `bandMusclesFor(days, equipment)` (master plan section
-   * 5), NOT from the flat `bandMuscles` list. That distinction is the whole point of the sweep:
-   * `bandMuscles` is the full-gym row, and asserting it against the sub-gym tiers produces 107
-   * violations across the 45 day x experience x tier cells -- the dumbbells-only tier has no
-   * barbell row to put the mid-back in band, the bodyweight tier has no curl for the biceps. Those
-   * are honest consequences of the equipment, declared per tier by the templates and reported to
-   * the user as maintenance-only, not defects to assert away.
+   * A combination cell is not redundant with its dominant pure-tier cell even though the two
+   * resolve identically (proven in templates.test.ts): this gate additionally checks schema
+   * validity, block/deload arithmetic and the evidence ceiling for the SPECIFIC plan the wizard
+   * would build for that access level, so a future change that broke the identity -- say, a
+   * combination that stopped resolving to its dominant part -- would fail HERE too, independent
+   * of the templates-level proof. This is also Brief F Part 2's "a combination tier should never
+   * produce a worse band than either of its parts": a combination cell's declared band muscles are
+   * read from its dominant part via `BAND_TIER_FOR_ACCESS`, and that dominant part's band-muscle
+   * COUNT is asserted, in templates.test.ts, to be >= the other part's at every day count.
+   *
+   * The band claim is read PER TIER, from `bandMusclesFor(days, BAND_TIER_FOR_ACCESS[equipment])`
+   * (master plan section 5), NOT from the flat `bandMuscles` list. That distinction is the whole
+   * point of the sweep: `bandMuscles` is the full-gym row, and asserting it against the sub-gym
+   * tiers produces violations -- the dumbbells-only tier has no barbell row to put the mid-back in
+   * band, the bodyweight tier has no curl for the biceps. Those are honest consequences of the
+   * equipment, declared per tier by the templates and reported to the user as maintenance-only,
+   * not defects to assert away.
    *
    * Two set statistics, because they answer two questions. The MIDPOINT of each prescribed set
    * interval is the prescribed weekly volume and is what the section 7 band describes. The TOP of
    * the interval is what a user who takes every exercise to its top set performs, and it is bounded
    * by the separate 20 sets/muscle/week evidence ceiling.
    */
-  it('holds the section 7 gate in all 270 day x experience x equipment x weeks x cardio cells', () => {
+  it('holds the section 7 gate in all 450 day x experience x equipment access x weeks x cardio cells', () => {
     const violations: string[] = [];
     let cells = 0;
     for (const d of DAY_COUNTS) {
       const [lo, hi] = WEEKLY_SET_BAND[d];
       const plannedLabels = SPLIT_TEMPLATES[d].sessions.map((s) => s.label);
       for (const experience of EXPERIENCES) {
-        for (const equipment of EQUIPMENT) {
+        for (const equipment of EQUIPMENT_ACCESS) {
           for (const weeks of GATE_WEEKS) {
             for (const includeCardio of [false, true]) {
               cells += 1;
@@ -464,7 +510,7 @@ describe('weekly set volume, the P2 generator gate', () => {
 
               // Weekly fractional sets, sets/muscle/week, from the first week of the plan.
               const week = weeklySetsByMuscle(plan.sessions.slice(0, d), EXERCISES);
-              for (const muscle of bandMusclesFor(d, equipment)) {
+              for (const muscle of bandMusclesFor(d, BAND_TIER_FOR_ACCESS[equipment])) {
                 const sets = week[muscle] ?? 0;
                 if (sets < lo || sets > hi) {
                   fail(`declared band muscle ${muscle} at ${sets} outside [${lo}, ${hi}]`);
@@ -496,8 +542,10 @@ describe('weekly set volume, the P2 generator gate', () => {
         }
       }
     }
-    expect(cells).toBe(DAY_COUNTS.length * EXPERIENCES.length * EQUIPMENT.length * GATE_WEEKS.length * 2);
-    expect(cells).toBe(270);
+    expect(cells).toBe(
+      DAY_COUNTS.length * EXPERIENCES.length * EQUIPMENT_ACCESS.length * GATE_WEEKS.length * 2,
+    );
+    expect(cells).toBe(450);
     expect(violations).toEqual([]);
   });
 
@@ -507,7 +555,10 @@ describe('weekly set volume, the P2 generator gate', () => {
     // "receives some stimulus", which is a weaker claim than "in band" and is stated as such.
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
-        const plan = generatePlan(input({ sessionsPerWeek: d, equipment }), EXERCISES);
+        const plan = generatePlan(
+          input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment] }),
+          EXERCISES,
+        );
         const week = weeklySetsByMuscle(plan.sessions.slice(0, d), EXERCISES);
         for (const m of MUSCLE_GROUPS) {
           expect(week[m] ?? 0, `${d} days, ${equipment}: ${m} is untrained`).toBeGreaterThan(0);
@@ -578,7 +629,7 @@ describe('equipment substitution', () => {
     for (const equipment of EQUIPMENT) {
       for (const d of DAY_COUNTS) {
         const plan = generatePlan(
-          input({ sessionsPerWeek: d, equipment, includeCardio: true }),
+          input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], includeCardio: true }),
           EXERCISES,
         );
         for (const s of plan.sessions) {
@@ -598,12 +649,12 @@ describe('equipment substitution', () => {
     // as an id sequence shorter than the template's own resolution.
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
-        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, weeks: 8 }), EXERCISES);
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], weeks: 8 }), EXERCISES);
         SPLIT_TEMPLATES[d].sessions.forEach((sessionTemplate, i) => {
           const used = new Set<string>();
           const expected: string[] = [];
           for (const slot of sessionTemplate.slots) {
-            const ex = resolveSlot(slot, equipment, used);
+            const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
             if (!ex) continue;
             used.add(ex.id);
             expected.push(ex.id);
@@ -634,7 +685,7 @@ describe('equipment substitution', () => {
     const sizes: Record<string, Record<string, number[]>> = {};
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
-        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, weeks: 8 }), EXERCISES);
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], weeks: 8 }), EXERCISES);
         sizes[String(d)] = {
           ...sizes[String(d)],
           [equipment]: plan.sessions.slice(0, d).map((s) => s.exercises.length),
@@ -674,13 +725,13 @@ describe('equipment substitution', () => {
     const census: Record<string, Record<string, string[]>> = {};
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
-        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, weeks: 8 }), EXERCISES);
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], weeks: 8 }), EXERCISES);
         const omitted: string[] = [];
         SPLIT_TEMPLATES[d].sessions.forEach((sessionTemplate, i) => {
           const planned = plan.sessions[i]?.exercises.length ?? 0;
           const used = new Set<string>();
           for (const slot of sessionTemplate.slots) {
-            const ex = resolveSlot(slot, equipment, used);
+            const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
             if (!ex) {
               omitted.push(`${sessionTemplate.label}/${slot.role}`);
               continue;
@@ -776,7 +827,7 @@ describe('the library argument is the plan vocabulary', () => {
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
         const plan = generatePlan(
-          input({ sessionsPerWeek: d, equipment, includeCardio: true, weeks: 8 }),
+          input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], includeCardio: true, weeks: 8 }),
           reduced,
         );
         for (const s of plan.sessions) {

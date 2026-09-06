@@ -93,7 +93,7 @@ export function achievableLoad(targetKg: Kg, stepKg: number): Kg {
 export function stepFor(ex: Exercise, steps: Profile['equipmentSteps']): number {
   switch (ex.modality) {
     case 'barbell':
-      return steps.hasMicroPlates ? steps.microPlateKg : steps.barbellKg; // [kg] total on the bar
+      return steps.barbellKg; // [kg] total on the bar
     case 'dumbbell':
       return steps.dumbbellPairKg; // [kg] per pair
     case 'machine':

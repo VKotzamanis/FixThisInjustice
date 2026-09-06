@@ -1,4 +1,5 @@
-import type { Equipment, Exercise, Experience, Prescription } from '../types';
+import { ACCESS_UNLOCKS } from '../types';
+import type { Equipment, EquipmentAccess, Exercise, Experience, Prescription } from '../types';
 import { EXERCISE_BY_ID, MUSCLE_GROUPS } from './library';
 
 /**
@@ -676,9 +677,17 @@ export function prescriptionFor(ex: Exercise, intensity: SlotIntensity): Prescri
 export { restSFor } from './library';
 
 /**
- * First candidate that the LIBRARY holds, the equipment supports, and the session has not already
- * used. Returns null only when no candidate clears all three, which is the sole omission a split
- * template declares: a slot is dropped rather than filled with something it does not train.
+ * First candidate that the LIBRARY holds, the equipment ACCESS unlocks, and the session has not
+ * already used. Returns null only when no candidate clears all three, which is the sole omission
+ * a split template declares: a slot is dropped rather than filled with something it does not
+ * train.
+ *
+ * Takes an `EquipmentAccess` (what the USER has), not an `Equipment` (what an exercise needs):
+ * Brief F Part 2. `ACCESS_UNLOCKS[equipment]` is the set of exercise tiers that access level
+ * opens, and a candidate matches when its own `equipment` array INTERSECTS that set, rather than
+ * containing one exact tier. A combination access level unlocks the union of its parts' tiers, so
+ * it can resolve anything either pure part could -- see ACCESS_UNLOCKS's own comment (types.ts)
+ * for why the two combination levels resolve every slot IDENTICALLY to one specific pure tier.
  *
  * `library` is the id-keyed exercise table to resolve against. It defaults to EXERCISE_BY_ID, so
  * every existing call site keeps its behaviour verbatim. The parameter exists because the plan
@@ -689,15 +698,16 @@ export { restSFor } from './library';
  */
 export function resolveSlot(
   slot: ExerciseSlot,
-  equipment: Equipment,
+  equipment: EquipmentAccess,
   used: ReadonlySet<string>,
   library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
 ): Exercise | null {
+  const unlocked = ACCESS_UNLOCKS[equipment];
   for (const id of slot.candidates) {
     const ex = library[id];
     if (!ex) continue;
     if (used.has(ex.id)) continue;
-    if (!ex.equipment.includes(equipment)) continue;
+    if (!ex.equipment.some((tier) => unlocked.includes(tier))) continue;
     return ex;
   }
   return null;

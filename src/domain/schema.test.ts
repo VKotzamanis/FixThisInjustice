@@ -9,7 +9,6 @@ import {
   parseState,
 } from './schema';
 import { anyAppState, anySetupDraft } from './arbitraries';
-import { MICRO_PLATE_STEP } from './types';
 import type { AppState } from './types';
 
 /**
@@ -276,9 +275,14 @@ describe('the schema and the hand-written AppState are the same type', () => {
 const P1 = 'profile-1';
 
 /**
- * A profile as it was written BEFORE the section 5 amendments: equipmentSteps
- * without microPlateKg, hydration without weighInOptIn, and no readiness block
- * at all. Returned as `unknown` because it is deliberately not a valid Profile.
+ * A profile as it was written BEFORE the section 5 amendments: hydration without weighInOptIn
+ * and no readiness block at all. Also predates Brief F: `equipmentSteps` still carries
+ * `hasMicroPlates` (an unrecognised key the schema now silently strips, since the field was
+ * removed rather than kept optional) and carries none of `gymCommute`, `homeEquipment` or
+ * `bodyweightEquipment`, all three additive with a default. `equipment` is `'full-gym'`, which
+ * is spelled identically in the old `Equipment` union and the new `EquipmentAccess` one, so it
+ * needs no migration to exercise this fixture; the `dumbbells-only` -> `home` rewrite is
+ * covered separately below. Returned as `unknown` because it is deliberately not a valid Profile.
  */
 function legacyProfile(id: string): unknown {
   return {
@@ -302,13 +306,13 @@ function legacyProfile(id: string): unknown {
       barbellKg: 2.5, // [kg] total on the bar
       dumbbellPairKg: 5, // [kg] per pair
       stackKg: 5, // [kg] per pin
-      hasMicroPlates: true,
-      // microPlateKg absent: the field postdates this document.
+      hasMicroPlates: true, // unrecognised now; the schema strips it rather than failing
     },
     goal: { kind: 'muscle-gain', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
     supplements: { creatine: false },
     hydration: { dailyTargetML: 3_000, cupSizeML: 250 }, // [mL]; weighInOptIn absent
-    // readiness absent: the pre-participation screen postdates this document.
+    // readiness, gymCommute, homeEquipment and bodyweightEquipment absent: all postdate this
+    // document.
   };
 }
 
@@ -380,11 +384,15 @@ describe('a document written before the section 5 amendments', () => {
 
     const profile = state.profiles[P1];
     expect(profile).toBeDefined();
-    // [kg] The metric micro-plate pair, because the document carried hasMicroPlates
-    // but no step; MICRO_PLATE_STEP.metric is 0.5 kg total.
-    expect(profile?.equipmentSteps.microPlateKg).toBe(MICRO_PLATE_STEP.metric);
+    // The unrecognised legacy hasMicroPlates key is stripped, not carried through or refused.
+    expect(profile?.equipmentSteps).toEqual({ barbellKg: 2.5, dumbbellPairKg: 5, stackKg: 5 });
     expect(profile?.hydration.weighInOptIn).toBe(false);
     expect(profile?.readiness).toEqual({ screenedAt: null, flagged: false });
+    // Brief F Part 3: additive, so a document written before the question existed backfills to
+    // "never asked" rather than failing the whole profile.
+    expect(profile?.gymCommute).toEqual({ walks: false, minutesEachWay: null });
+    expect(profile?.homeEquipment).toEqual([]);
+    expect(profile?.bodyweightEquipment).toEqual([]);
 
     expect(state.customExercises[P1]?.[0]?.secondaryMuscles).toEqual([]);
 
@@ -426,6 +434,14 @@ describe('a document written before the section 5 amendments', () => {
       second.state.ui.milestoneFloorByProfile,
     );
     expect(first.state.profiles[P1]?.readiness).not.toBe(second.state.profiles[P1]?.readiness);
+    // Brief F Part 3: the same aliasing hazard applies to the three new additive defaults.
+    expect(first.state.profiles[P1]?.gymCommute).not.toBe(second.state.profiles[P1]?.gymCommute);
+    expect(first.state.profiles[P1]?.homeEquipment).not.toBe(
+      second.state.profiles[P1]?.homeEquipment,
+    );
+    expect(first.state.profiles[P1]?.bodyweightEquipment).not.toBe(
+      second.state.profiles[P1]?.bodyweightEquipment,
+    );
 
     first.state.notes[P1] = { '2026-01-05': 'written into the first parse' };
     first.state.customExercises[P1] = [];
@@ -439,6 +455,51 @@ describe('a document written before the section 5 amendments', () => {
     expect(second.state.ui.lastBlockSeenByProfile).toEqual({});
     expect(second.state.ui.milestoneFloorByProfile).toEqual({});
     expect(second.state.profiles[P1]?.readiness).toEqual({ screenedAt: null, flagged: false });
+    expect(second.state.profiles[P1]?.gymCommute).toEqual({ walks: false, minutesEachWay: null });
+    expect(second.state.profiles[P1]?.homeEquipment).toEqual([]);
+  });
+});
+
+/** `legacyDocument()`, with `profiles[P1].equipment` overwritten to the given raw value. */
+function documentWithEquipment(value: string): Record<string, unknown> {
+  const doc = legacyDocument();
+  const profiles = doc.profiles as Record<string, Record<string, unknown>>;
+  const legacy = profiles[P1];
+  if (legacy) legacy.equipment = value;
+  return doc;
+}
+
+describe('the equipment access migration (Brief F Part 2)', () => {
+  it('rewrites the old dumbbells-only exercise tag to the home access tier', () => {
+    const result = parseState(documentWithEquipment('dumbbells-only'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.profiles[P1]?.equipment).toBe('home');
+  });
+
+  it('leaves full-gym and bodyweight untouched, since both spellings are shared', () => {
+    for (const value of ['full-gym', 'bodyweight'] as const) {
+      const result = parseState(documentWithEquipment(value));
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.state.profiles[P1]?.equipment).toBe(value);
+    }
+  });
+
+  it('falls back to full-gym on a value neither the old nor the new union recognises', () => {
+    const result = parseState(documentWithEquipment('garbage-tier'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.profiles[P1]?.equipment).toBe('full-gym');
+  });
+
+  it('accepts the two new combination tiers directly, with no rewrite', () => {
+    for (const value of ['home-and-bodyweight', 'full-and-home'] as const) {
+      const result = parseState(documentWithEquipment(value));
+      expect(result.ok).toBe(true);
+      if (!result.ok) continue;
+      expect(result.state.profiles[P1]?.equipment).toBe(value);
+    }
   });
 });
 

@@ -35,9 +35,10 @@ function profile(id: string): Profile {
       barbellKg: 2.5, // [kg] total on the bar
       dumbbellPairKg: 5, // [kg] per pair
       stackKg: 5, // [kg] per pin
-      hasMicroPlates: false,
-      microPlateKg: 0.5, // [kg] total for a micro-plate pair
     },
+    gymCommute: { walks: false, minutesEachWay: null },
+    homeEquipment: [],
+    bodyweightEquipment: [],
     goal: { kind: 'fat-loss', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
     supplements: { creatine: false },
     hydration: { dailyTargetML: 2200, cupSizeML: 250, weighInOptIn: false }, // [mL]

@@ -1,6 +1,7 @@
 import { newId } from '../ids';
+import { ACCESS_UNLOCKS } from '../types';
 import type {
-  Equipment,
+  EquipmentAccess,
   Exercise,
   Experience,
   GoalKind,
@@ -75,7 +76,7 @@ export interface PlanInput {
    */
   goal: GoalKind;
   experience: Experience;
-  equipment: Equipment;
+  equipment: EquipmentAccess;
   includeCardio: boolean;
 }
 
@@ -114,7 +115,7 @@ const CARDIO_PREFERENCE = ['rower-intervals', 'stair-climber', 'walk'];
 function buildSessionExercises(
   template: SessionTemplate,
   sets: { compound: { lo: number; hi: number }; isolation: { lo: number; hi: number } },
-  equipment: Equipment,
+  equipment: EquipmentAccess,
   library: Readonly<Record<string, Exercise>>,
 ): PlannedExercise[] {
   const used = new Set<string>();
@@ -148,12 +149,13 @@ function buildSessionExercises(
  * to a template is therefore the single edit that turns the cardio session on.
  */
 function cardioExercise(
-  equipment: Equipment,
+  equipment: EquipmentAccess,
   library: readonly Exercise[],
 ): PlannedExercise | null {
+  const unlocked = ACCESS_UNLOCKS[equipment];
   for (const id of CARDIO_PREFERENCE) {
     const ex = library.find((e) => e.id === id);
-    if (ex && ex.equipment.includes(equipment)) {
+    if (ex && ex.equipment.some((tier) => unlocked.includes(tier))) {
       const prescription = prescriptionFor(ex, 'light');
       return {
         exerciseId: ex.id,

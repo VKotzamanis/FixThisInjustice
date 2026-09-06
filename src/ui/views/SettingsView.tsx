@@ -442,18 +442,8 @@ export function SettingsView(): JSX.Element {
           });
         }}
       />
-      <label className="view-inline">
-        <input
-          type="checkbox"
-          checked={profile.equipmentSteps.hasMicroPlates}
-          onChange={(e) => {
-            updateProfile({
-              equipmentSteps: { ...profile.equipmentSteps, hasMicroPlates: e.target.checked },
-            });
-          }}
-        />
-        {t('label.microPlates')}
-      </label>
+      {/* label.microPlates / the micro-plate checkbox is gone: Brief F Part 3 removed
+          hasMicroPlates/microPlateKg entirely, and only that. */}
       <p className="view-note">{t('advice.loadSteps')}</p>
 
       <h2>{t('hero.hydration')}</h2>

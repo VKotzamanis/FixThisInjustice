@@ -3,8 +3,11 @@
 // name them. Every physical quantity carries its canonical unit in a comment.
 //
 // Deviations from the P4 plan's Task 1 Step 1 literal (recorded here; the plan is not edited):
-//  - Profile carries equipmentSteps.microPlateKg, hydration.weighInOptIn and readiness. All
-//    three are required by the shipped Profile type and postdate the plan text.
+//  - Profile carries hydration.weighInOptIn, readiness, gymCommute, homeEquipment and
+//    bodyweightEquipment. All are required (or, for the latter three, additive-with-default) on
+//    the shipped Profile type and postdate the plan text. equipmentSteps.hasMicroPlates and
+//    .microPlateKg, which the plan text also predates, were removed rather than added (Brief F
+//    Part 3: the owner asked for the micro-plate option to go).
 //  - Exercise carries secondaryMuscles (required by the shipped Exercise type), and the base
 //    object is the shipped library's barbell bench press rather than a hand-written copy, so a
 //    fixture cannot drift from the data the app ships. The literal in the plan had already
@@ -17,7 +20,6 @@
 // suites and is left untouched; the two modules are imported separately and never merged here.
 
 import { EXERCISE_BY_ID } from '../domain/plan/library';
-import { MICRO_PLATE_STEP } from '../domain/types';
 import type {
   Exercise,
   LoggedSet,
@@ -67,9 +69,10 @@ export function makeProfile(patch: Partial<Profile> = {}): Profile {
       barbellKg: 2.5, // [kg] total on the bar (pair of 1.25 kg plates)
       dumbbellPairKg: 5, // [kg] per pair
       stackKg: 5, // [kg] per pin
-      hasMicroPlates: false,
-      microPlateKg: MICRO_PLATE_STEP.metric, // [kg] total for a micro-plate pair
     },
+    gymCommute: { walks: false, minutesEachWay: null },
+    homeEquipment: [],
+    bodyweightEquipment: [],
     goal: { kind: 'muscle-gain', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
     supplements: { creatine: true },
     hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL/day], [mL]

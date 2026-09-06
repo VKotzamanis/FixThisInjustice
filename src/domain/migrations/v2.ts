@@ -30,6 +30,7 @@
 
 import { instantOf, isValidLocalDate, isValidTimeZone, daysBetween, localDateOf } from '../dates';
 import { newId } from '../ids';
+import { ACCESS_UNLOCKS } from '../types';
 import { CURRENT_SCHEMA_VERSION, MAX_EPOCH_MS, parseState } from '../schema';
 import type {
   AppState,
@@ -415,7 +416,10 @@ export function migrateV2(raw: unknown, opts: MigrateV2Options): MigrateV2Result
         loadClass: 'isolation',
         muscleGroups: [],
         secondaryMuscles: [],
-        equipment: [profile.equipment],
+        // profile.equipment is now an EquipmentAccess (what the user HAS), not an Equipment (what
+        // an exercise NEEDS): tag the imported custom exercise with every tier that access level
+        // unlocks, per src/domain/types.ts ACCESS_UNLOCKS.
+        equipment: [...ACCESS_UNLOCKS[profile.equipment]],
         videoQuery: name,
         formCueId: null,
         note:
