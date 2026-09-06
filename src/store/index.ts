@@ -12,6 +12,7 @@ import type {
   PlanTemplate,
   Profile,
   SessionAssignment,
+  SetupDraft,
   UiPrefs,
 } from '../domain/types';
 import { defaultState } from '../domain/schema';
@@ -135,6 +136,15 @@ export interface AppActions {
   wipeAll(): void;
   /** Shallow patch of the UI preferences; every other field is left alone. */
   setUi(patch: Partial<UiPrefs>): void;
+  /**
+   * Replaces the in-progress setup wizard's draft (C1.G.1), so a closed browser does not lose
+   * what has been typed so far. The caller (SetupWizard.tsx) owns the debounce; every call here
+   * is a whole `SetupDraft`, never a patch, because the wizard already holds the merged object
+   * and a partial write here would need to reconstruct it from whatever the store last held.
+   */
+  saveSetupDraft(draft: SetupDraft): void;
+  /** Called once setup is confirmed (or abandoned): nothing is left to resume. */
+  clearSetupDraft(): void;
   /** Records the outcome of a persistence write. Called only by the subscription below. */
   reportSaveResult(r: SaveResult): void;
   /**
@@ -289,6 +299,7 @@ export function selectState(s: AppStore): AppState {
     capsules: s.capsules,
     customExercises: s.customExercises,
     notes: s.notes,
+    setupDraft: s.setupDraft,
     ui: s.ui,
   };
 }
@@ -539,6 +550,14 @@ export const useAppStore = create<AppStore>()((set, get) => {
    * two identical shallow patches of `ui` in one initialiser is a duplicate the compiler is
    * right to reject (TS2783) and a second place for the behaviour to drift.
    */
+
+  saveSetupDraft(draft: SetupDraft): void {
+    set({ setupDraft: draft });
+  },
+
+  clearSetupDraft(): void {
+    set({ setupDraft: null });
+  },
 
   reportSaveResult(r: SaveResult): void {
     const next: SaveError | null = r.ok ? null : { reason: r.reason, error: r.error };

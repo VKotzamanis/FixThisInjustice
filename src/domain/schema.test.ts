@@ -8,7 +8,7 @@ import {
   defaultState,
   parseState,
 } from './schema';
-import { anyAppState } from './arbitraries';
+import { anyAppState, anySetupDraft } from './arbitraries';
 import { MICRO_PLATE_STEP } from './types';
 import type { AppState } from './types';
 
@@ -787,5 +787,65 @@ describe('the introSeen preference', () => {
     const result = parseState(doc);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.state.ui.introSeen).toBe(true);
+  });
+});
+
+/**
+ * The setup wizard's in-progress draft (C1.G.1). Additive, at the root rather than nested in
+ * `ui`, and the only field in this file backed by `.catch(null)` rather than a bare
+ * `.default(null)`: see SetupDraftSchema's own comment in schema.ts for why a corrupt draft has
+ * to be swallowed rather than left to fail AppStateSchema as a whole.
+ */
+describe('the setupDraft field', () => {
+  it('defaults a fresh document to no draft in progress', () => {
+    const s = defaultState();
+    expect(s.setupDraft).toBeNull();
+    expect(AppStateSchema.safeParse(s).success).toBe(true);
+    // Additive with a fallback, so the version does not move.
+    expect(s.schemaVersion).toBe(3);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  });
+
+  it('backfills null onto a document that predates it', () => {
+    const result = parseState(legacyDocument());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.setupDraft).toBeNull();
+  });
+
+  it('carries a stored, valid draft through unchanged', () => {
+    const draft = fc.sample(anySetupDraft, { numRuns: 1, seed: 20260905 })[0];
+    const doc = legacyDocument();
+    doc.setupDraft = draft;
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.setupDraft).toEqual(draft);
+  });
+
+  /*
+   * C1.G.1: "an invalid stored draft does not crash the wizard and does not corrupt the rest of
+   * the document." Three shapes of corruption, none of them a Zod validation error on the WHOLE
+   * document: a garbage primitive where the draft belongs, an object missing required fields,
+   * and (the shape a hand-edited or bit-flipped stored document is likeliest to produce) an
+   * otherwise-valid draft with one field out of its bound. Every one has to leave the profile,
+   * and every other field of the document, exactly as it was.
+   */
+  it.each([
+    ['a string where an object belongs', 'not a draft'],
+    ['an object missing required fields', { units: 'metric' }],
+    [
+      'a valid shape with stepIndex out of STEPS bounds',
+      { ...fc.sample(anySetupDraft, { numRuns: 1, seed: 7 })[0], stepIndex: 999 },
+    ],
+  ])('catches %s to null, without corrupting the rest of the document', (_label, corrupt) => {
+    const doc = legacyDocument();
+    doc.setupDraft = corrupt;
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.setupDraft).toBeNull();
+    // The rest of the document is untouched by the corruption in one unrelated field.
+    expect(result.state.profiles[P1]).toBeDefined();
+    expect(result.state.activeProfileId).toBe(P1);
   });
 });

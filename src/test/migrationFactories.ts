@@ -176,6 +176,8 @@ export function makeBlankState(profile = makeProfile(), plan = makePlan()): AppS
     sets: {},
     notes: {},
     customExercises: {},
+    // Additive (C1.G.1): a migrated document has no in-progress P1 wizard to resume.
+    setupDraft: null,
     bodyMass: {},
     hydration: {},
     intake: {},

@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { STEPS, SetupWizard } from './SetupWizard';
 import { useAppStore } from '../../store';
-import { parseState } from '../../domain/schema';
+import { STORAGE_KEY } from '../../store/persistence';
+import { installFakeStorage } from '../../store/testStorage';
+import { defaultState, parseState } from '../../domain/schema';
 import { EXERCISES } from '../../domain/plan/library';
 import { generatePlan, volumeReport } from '../../domain/plan/generator';
 import { SPLIT_TEMPLATES } from '../../domain/plan/templates';
@@ -43,6 +45,13 @@ const FIXED_NOW = new Date('2026-09-01T12:00:00Z');
 const IMPERIAL_MASS_LB = 135;
 const IMPERIAL_MASS_KG = 61.23496995; // [kg] exact
 const IMPERIAL_HEIGHT_CM = 180.34; // [cm] 5 ft 11 in = 71 in x 2.54 cm/in, exact
+
+/**
+ * [ms] C1.G.1: comfortably above SetupWizard.tsx's own SETUP_DRAFT_SAVE_DEBOUNCE_MS (400 ms),
+ * for the "setup draft survives a closed browser" suite below, which fakes setTimeout so this
+ * can be advanced deterministically rather than the test waiting on the wall clock.
+ */
+const DRAFT_SAVE_DEBOUNCE_ADVANCE_MS = 500;
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -458,7 +467,14 @@ describe('no free-text medical field exists', () => {
     }
   }
 
-  it('renders no textarea and no text input outside name and time zone', () => {
+  /*
+   * C1.06.2 turned the time-zone field into a `<select>` built from the platform's own zone
+   * list, which is available in every environment this suite runs in (Node's ICU build
+   * supports Intl.supportedValuesOf), so the free-text fallback this test used to name is
+   * unreachable here. The display name is now the only free-text input anywhere in the wizard;
+   * the fallback branch itself is exercised separately, below, by stubbing the platform API out.
+   */
+  it('renders no textarea and no text input outside the display name', () => {
     const { container } = render(<SetupWizard />);
     for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
       unblock(stepIndex);
@@ -467,7 +483,7 @@ describe('no free-text medical field exists', () => {
         (i) => (i.getAttribute('type') ?? 'text') === 'text',
       );
       expect(freeText.map((i) => i.id).sort()).toEqual(
-        STEPS[stepIndex] === 'timezone' ? ['f-timezone'] : STEPS[stepIndex] === 'body' ? ['f-name'] : [],
+        STEPS[stepIndex] === 'body' ? ['f-name'] : [],
       );
       const continueButton = screen.queryByRole('button', { name: 'Next' });
       if (!continueButton) break;
@@ -802,19 +818,53 @@ describe('availability against sessions per week', () => {
 });
 
 describe('entry aids and idempotency', () => {
-  it('turns off text assistance on the time-zone field and offers the platform zone list', () => {
+  /*
+   * C1.06.2: the time zone became a `<select>` built from the platform's own zone list, each
+   * option labelled with today's computed UTC offset ("(UTC+03:00) Europe/Athens" - Athens sits
+   * in EEST on the suite's FIXED_NOW of 2026-09-01, verified independently against Node's own
+   * Intl before writing this assertion, not assumed). The fallback branch this test used to
+   * name (a plain text input with autocapitalize/autocorrect/spellcheck turned off and a
+   * datalist) is unreachable here, because Node's ICU build always has
+   * Intl.supportedValuesOf; that branch is exercised on its own below by removing the API.
+   */
+  it('offers the platform zone list as a select, each option labelled with its computed UTC offset', () => {
     render(<SetupWizard />);
     next();
     const control = screen.getByLabelText(/^time zone$/i);
-    expect(control).toHaveAttribute('autocapitalize', 'none');
-    expect(control).toHaveAttribute('autocorrect', 'off');
-    expect(control).toHaveAttribute('spellcheck', 'false');
-    const listId = control.getAttribute('list');
-    expect(listId).not.toBeNull();
-    const list = document.getElementById(listId ?? '');
-    expect(list?.tagName.toLowerCase()).toBe('datalist');
-    const values = [...(list?.querySelectorAll('option') ?? [])].map((o) => o.value);
-    expect(values).toContain('America/New_York');
+    expect(control.tagName.toLowerCase()).toBe('select');
+    const options = [...control.querySelectorAll('option')] as HTMLOptionElement[];
+    expect(options.map((o) => o.value)).toContain('America/New_York');
+    const athens = options.find((o) => o.value === 'Europe/Athens');
+    expect(athens?.textContent).toBe('(UTC+03:00) Europe/Athens');
+  });
+
+  /*
+   * "Keep both branches" (00-CONTEXT / C1.06.2): the plain-text fallback still has to work on a
+   * platform old enough, or locked down enough, not to expose Intl.supportedValuesOf. Node's own
+   * runtime always has it, so the only way to exercise this branch here is to remove it for the
+   * length of the test and put it back, exactly as SetupWizard.tsx's own try/catch treats a
+   * runtime that throws on the call.
+   */
+  it('falls back to a validated free-text field when the platform has no zone list', () => {
+    const original = Intl.supportedValuesOf;
+    // @ts-expect-error -- deliberately undoing the ES2022 API for this one test
+    delete Intl.supportedValuesOf;
+    try {
+      render(<SetupWizard />);
+      next();
+      const control = screen.getByLabelText(/^time zone$/i);
+      expect(control.tagName.toLowerCase()).toBe('input');
+      expect(control).toHaveAttribute('autocapitalize', 'none');
+      expect(control).toHaveAttribute('autocorrect', 'off');
+      expect(control).toHaveAttribute('spellcheck', 'false');
+      expect(control).not.toHaveAttribute('list');
+      fireEvent.change(control, { target: { value: 'Not/AZone' } });
+      expect(screen.getByText('Not a recognised IANA time zone.')).toBeInTheDocument();
+      fireEvent.change(control, { target: { value: 'America/New_York' } });
+      expect(screen.queryByText('Not a recognised IANA time zone.')).toBeNull();
+    } finally {
+      Intl.supportedValuesOf = original;
+    }
   });
 
   it('creates one profile however many times Confirm is clicked', () => {
@@ -929,7 +979,9 @@ describe('Brief B: the body-fat control reorder (C1.08.1 to C1.08.4, C1.08.7)', 
     expect(screen.queryByText('Enter a number.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
     next();
-    expect(screen.getByText(FORMAT.stepOf(4, STEPS.length, 'Training context'))).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.stepOf(4, STEPS.length, 'Equipment & Availability')),
+    ).toBeInTheDocument();
   });
 
   it('shows no obesity or category classification anywhere on the step', () => {
@@ -981,5 +1033,92 @@ describe('Brief B: failed Next on the body step (C1.08.12, C1.08.14)', () => {
     expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
     expect(screen.getAllByText('Enter a number.').length).toBeGreaterThan(0);
     expect(document.activeElement).toBe(screen.getByLabelText(/^age \(years\)$/i));
+  });
+});
+
+/**
+ * C1.G.1: "if I don't end the onboarding and close the browser, when I open the page again, the
+ * information that has been put there needs to be there waiting for me."
+ */
+describe('the setup draft survives a closed browser (C1.G.1)', () => {
+  it('restores three patched fields and the step index after a simulated reload', () => {
+    /*
+     * The suite-wide beforeEach only fakes Date (line 48), because most tests here read the
+     * clock but never a timer. This one also needs setTimeout/clearTimeout faked, so the ~400 ms
+     * debounce (SetupWizard.tsx, SETUP_DRAFT_SAVE_DEBOUNCE_MS) can be advanced deterministically
+     * instead of the test actually waiting on the wall clock.
+     */
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(FIXED_NOW);
+
+    const { unmount } = render(<SetupWizard />);
+    // Field 1, step 0 (units).
+    fireEvent.click(screen.getByLabelText('Pounds (lb)'));
+    next();
+    // Field 2, step 1 (time zone).
+    setValue(/^time zone$/i, 'America/New_York');
+    next();
+    // Field 3, step 2 (body): the step index lands here, on the display name.
+    setValue(/^How should I refer to you\?$/i, 'Ada Lovelace');
+
+    // Let the debounced write reach the store.
+    vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
+
+    const stored = useAppStore.getState().setupDraft;
+    expect(stored?.units).toBe('imperial');
+    expect(stored?.timezone).toBe('America/New_York');
+    expect(stored?.displayName).toBe('Ada Lovelace');
+    expect(stored?.stepIndex).toBe(2);
+
+    // Simulate a reload: the document the store holds survives; only the component remounts.
+    unmount();
+    render(<SetupWizard />);
+
+    // The step index survived: the body step's own field is already on screen.
+    expect(screen.getByLabelText(/^How should I refer to you\?$/i)).toHaveValue('Ada Lovelace');
+
+    // The other two patched fields survived on their own, earlier steps.
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    expect(screen.getByLabelText(/^time zone$/i)).toHaveValue('America/New_York');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    expect(screen.getByLabelText('Pounds (lb)')).toBeChecked();
+  });
+
+  it('clears the draft on Confirm, so a later reload opens a fresh wizard', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(FIXED_NOW);
+
+    fillImperialWizard();
+    vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
+    expect(useAppStore.getState().setupDraft).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    expect(useAppStore.getState().setupDraft).toBeNull();
+
+    // A keystroke's debounce pending at the moment of the click must not resurrect it.
+    vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
+    expect(useAppStore.getState().setupDraft).toBeNull();
+  });
+
+  /*
+   * The wizard itself never sees an invalid draft as anything but null - SetupDraftSchema
+   * (src/domain/schema.ts) is `.catch(null)`, so a corrupt stored value is already sanitised by
+   * the time anything in this component tree can read it. This test exercises the whole path
+   * anyway (a corrupt document in Web Storage, through hydrate(), into a freshly mounted
+   * wizard) so the two halves of C1.G.1's requirement - the wizard does not crash, and the rest
+   * of the document is not corrupted - are demonstrated together rather than only at the schema
+   * layer (src/domain/schema.test.ts, "the setupDraft field").
+   */
+  it('does not crash the wizard when the stored draft is corrupt, and leaves the rest of the document intact', () => {
+    const corrupted = { ...defaultState(), setupDraft: { units: 'metric' } }; // missing required fields
+    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(corrupted) });
+    useAppStore.getState().hydrate();
+
+    expect(useAppStore.getState().status.lastLoadError).toBeNull();
+    expect(useAppStore.getState().setupDraft).toBeNull();
+
+    render(<SetupWizard />);
+    // Opens on step 1, exactly as it would for a brand-new document - no crash, no stray state.
+    expect(screen.getByText(FORMAT.stepOf(1, STEPS.length, 'Units'))).toBeInTheDocument();
   });
 });

@@ -4,7 +4,7 @@ import { FORMAT, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { NAVY_SEE_PCT, NAVY_SITE_LABEL, estimateBodyFatNavy } from '../../domain/bodyfat';
-import { deviceTimeZone, isValidLocalDate, isValidTimeZone, todayLocal } from '../../domain/dates';
+import { deviceTimeZone, isValidLocalDate, isValidTimeZone, todayLocal, utcOffsetLabel } from '../../domain/dates';
 import { newId } from '../../domain/ids';
 import {
   NUTRITION_DOMAIN,
@@ -35,7 +35,7 @@ import {
   type GoalKind,
   type IsoWeekday,
   type Profile,
-  type Sex,
+  type SetupDraft,
   type UnitSystem,
 } from '../../domain/types';
 import { displayMass, formatVolume } from '../../domain/units';
@@ -184,6 +184,15 @@ const SHAKE_DURATION_MS = 400; // [ms], matches the .wiz-shake keyframe duration
 // [ms] one short haptic pulse on a failed Next (Part 4, C1.08.12). Additive only: 00-CONTEXT
 // notes navigator.vibrate is a no-op on iOS at every version and must never be the only cue.
 const FAILED_NEXT_VIBRATE_MS = 120;
+/*
+ * [ms] C1.G.1: how long the wizard waits after the last keystroke before handing the store a
+ * new draft to persist. A SEPARATE coalescing step from the store's own write-to-storage
+ * debounce (src/store/index.ts SAVE_DEBOUNCE_MS = 250 ms): that one softens how often the
+ * finished document reaches Web Storage; this one softens how often typing here hands the store
+ * a new object to begin with, which would otherwise re-render every store subscriber on every
+ * character.
+ */
+const SETUP_DRAFT_SAVE_DEBOUNCE_MS = 400;
 
 /*
  * DOM ids for the messages that belong to more than one control, or to a control this file
@@ -191,7 +200,6 @@ const FAILED_NEXT_VIBRATE_MS = 120;
  * aria-describedby on the control(s) that produced it while, and only while, it is on screen.
  */
 const STEP_HEADING_ID = 'wiz-step-heading';
-const TIMEZONE_LIST_ID = 'f-timezone-options';
 const HEIGHT_ERROR_ID = 'f-height-error';
 const TAPE_ERROR_ID = 'f-tape-error';
 const TARGET_DATE_ERROR_ID = 'f-target-date-error';
@@ -300,59 +308,15 @@ interface DaySlot {
   durationMin: string; // [min], as typed
 }
 
-interface Draft {
-  units: UnitSystem;
-  timezone: string;
-  displayName: string;
-  sex: Sex;
-  /*
-   * Round 1 claim C1.07.17: "remove the birth year and replace it with age. Then in the
-   * equations you can backcalculate the birth year -> use that." Age is what the field ASKS
-   * for; `Profile.body.birthYear` is still what gets STORED, derived at Confirm, because age is
-   * a decaying value. A profile that stored 30 would still compute 30 two years later and every
-   * energy target would drift with it. The derived year is uncertain by one, since whether the
-   * birthday has passed is unknowable from an age alone; Mifflin-St Jeor's age term is
-   * -5 kcal/day per year, which is far inside the equation's own error, and selectors.ts already
-   * records the same bias for the same reason.
-   */
-  ageYears: string; // [years], as typed
-  heightM: string; // [m], metric entry, whole metres, as typed
-  heightCm: string; // [cm], metric entry, the remainder under a metre, as typed
-  heightFt: string; // [ft], imperial entry, as typed
-  heightIn: string; // [in], imperial entry, as typed
-  mass: string; // [kg] or [lb], as typed
-  bodyFatMode: 'none' | 'known' | 'tape';
-  bodyFatPct: string; // [%], as typed
-  /*
-   * Provenance of bodyFatPct, round 1 decision `visual-bodyfat-tracked-not-engine-feeding`
-   * (docs/plans/2026-09-04-11-alpha-round-1-corrections.md, B31). 'measured' is typed straight
-   * into the box, 'tape' is set by the tape flow, 'visual' is set by the estimate-chart modal
-   * (Part 2b). Nothing downstream of this brief reads it yet: it is carried on the draft only,
-   * not written to Profile.body, and is reported as unused in the task report.
-   */
-  bodyFatSource: 'measured' | 'tape' | 'visual';
-  neck: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
-  waist: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
-  hip: string; // [cm] or [in], as typed, per Draft.units; converted by storedGirthCm
-  activity: ActivityLevel;
-  experience: Experience;
-  equipment: Equipment;
-  barbellStep: string; // [kg] or [lb], as typed
-  dumbbellStep: string; // [kg] or [lb] per pair, as typed
-  stackStep: string; // [kg] or [lb] per pin, as typed
-  hasMicroPlates: boolean;
-  microPlateStep: string; // [kg] or [lb] per pair, as typed
-  goalKind: GoalKind;
-  targetMass: string; // [kg] or [lb], as typed
-  targetDate: string; // [YYYY-MM-DD]
-  creatine: boolean;
-  weighInOptIn: boolean;
-  sessionsPerWeek: SessionsPerWeek; // [sessions/week]
-  days: Record<IsoWeekday, DaySlot>;
-  weeklySessionTarget: string; // [sessions/week], as typed
-  weeks: string; // [weeks], as typed
-  includeCardio: boolean;
-}
+/*
+ * `SetupDraft` (src/domain/types.ts) is now the canonical shape: it is what gets PERSISTED
+ * (C1.G.1), so it has to live in the domain layer rather than in this component, the same way
+ * `Profile` does. `Draft` is derived from it with `Omit`, not hand-retyped, so the two cannot
+ * drift the way two independently maintained field lists would; every field comment now lives
+ * on `SetupDraft` itself. `stepIndex` is the one field this component tracks separately (its own
+ * `useState`, below), which is exactly what the `Omit` removes.
+ */
+type Draft = Omit<SetupDraft, 'stepIndex'>;
 
 function defaultDay(): DaySlot {
   return {
@@ -693,8 +657,27 @@ function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: ()
 export function SetupWizard(): JSX.Element {
   const t = useCopy();
   const overrides = useCopyOverrides();
-  const [draft, setDraft] = useState<Draft>(initialDraft);
-  const [stepIndex, setStepIndex] = useState(0);
+  /*
+   * C1.G.1: "if I don't end the onboarding and close the browser, when I open the page again,
+   * the information that has been put there needs to be there waiting for me." Both lazy
+   * initialisers read `useAppStore.getState().setupDraft` directly rather than through a hook,
+   * because this only has to run once, on the first render, and neither call can observe the
+   * other change it: nothing between them yields to the event loop.
+   *
+   * A corrupt stored draft never reaches here as anything other than `null` -
+   * `SetupDraftSchema` (src/domain/schema.ts) is `.catch(null)`, so whatever the store holds by
+   * the time a component can read it is either a fully valid `SetupDraft` or nothing.
+   */
+  const [draft, setDraft] = useState<Draft>((): Draft => {
+    const stored = useAppStore.getState().setupDraft;
+    if (stored === null) return initialDraft();
+    const { stepIndex, ...draftFields } = stored;
+    void stepIndex; // read by the sibling initialiser below, not here
+    return draftFields;
+  });
+  const [stepIndex, setStepIndex] = useState<number>(
+    () => useAppStore.getState().setupDraft?.stepIndex ?? 0,
+  );
   /** Latched by the first successful confirm; the profile is created exactly once. */
   const [submitted, setSubmitted] = useState(false);
   const [sexRationaleOpen, setSexRationaleOpen] = useState(false);
@@ -711,6 +694,34 @@ export function SetupWizard(): JSX.Element {
    * only: the other eight steps keep their pre-existing disabled-Next behaviour unchanged.
    */
   const [bodyNextAttempted, setBodyNextAttempted] = useState(false);
+
+  /*
+   * Persists the draft on change, debounced (C1.G.1). `draftSaveTimer` is read from `confirm()`
+   * too, below, so a keystroke's pending write cannot land a few hundred milliseconds AFTER
+   * Confirm has already cleared the draft and created the profile - the two clearTimeout sites
+   * (this effect's own cleanup, and `confirm()`) are belt and braces for the same race, not a
+   * duplicate: the effect's handles the general case (an edit pending when the component
+   * unmounts some other way), and `confirm()`'s handles the one this brief calls out by name.
+   *
+   * `draftSaveMounted` skips exactly the first run, which is the restore this component's own
+   * lazy initialisers just performed: persisting it again would be a write of exactly what the
+   * store already holds (or, for a brand-new draft, of nothing new).
+   */
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const draftSaveMounted = useRef(false);
+  useEffect(() => {
+    if (!draftSaveMounted.current) {
+      draftSaveMounted.current = true;
+      return;
+    }
+    if (submitted) return;
+    draftSaveTimer.current = setTimeout(() => {
+      useAppStore.getState().saveSetupDraft({ ...draft, stepIndex });
+    }, SETUP_DRAFT_SAVE_DEBOUNCE_MS);
+    return () => {
+      if (draftSaveTimer.current !== null) clearTimeout(draftSaveTimer.current);
+    };
+  }, [draft, stepIndex, submitted]);
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
 
@@ -743,6 +754,24 @@ export function SetupWizard(): JSX.Element {
       return [];
     }
   }, []);
+
+  /**
+   * `timeZoneOptions`, each paired with its computed "(UTC+02:00)" label (C1.06.2). Memoised on
+   * `timeZoneOptions` alone, which itself never changes after mount, so this runs Intl's
+   * formatter at most once per mount rather than on every render or every keystroke elsewhere on
+   * the step. `Date.now()` is read once, here, rather than per option: the two calendar dates a
+   * mount could ever straddle agree on every zone's offset to within the same civil day, and the
+   * point of computing rather than storing is to track daylight saving over MONTHS, not to
+   * chase a millisecond of drift within one render.
+   */
+  const timeZoneOptionLabels = useMemo(
+    () =>
+      timeZoneOptions.map((zone) => ({
+        zone,
+        label: `(${utcOffsetLabel(zone, Date.now())}) ${zone}`,
+      })),
+    [timeZoneOptions],
+  );
 
   function patch(next: Partial<Draft>): void {
     setDraft((d) => ({ ...d, ...next }));
@@ -1289,6 +1318,17 @@ export function SetupWizard(): JSX.Element {
     store.createProfile(profile);
     store.setAvailability(profileId, availability);
     store.setPlan(profileId, plan, today);
+    /*
+     * C1.G.1: setup is finished, so there is nothing left to resume. The pending debounce
+     * timer is cancelled explicitly, on top of the persistence effect's own cleanup (which
+     * `setSubmitted(true)` below will also trigger): a write already queued before this click
+     * must not resurrect the draft a few hundred milliseconds after it has just been cleared.
+     */
+    if (draftSaveTimer.current !== null) {
+      clearTimeout(draftSaveTimer.current);
+      draftSaveTimer.current = null;
+    }
+    store.clearSetupDraft();
     setSubmitted(true);
   }
 
@@ -1352,30 +1392,46 @@ export function SetupWizard(): JSX.Element {
           <div className="wiz-field">
             <p className="wiz-label">{t('advice.timezonePick')}</p>
             <label htmlFor="f-timezone">{t('label.timezone')}</label>
-            {/*
-             * An IANA identifier is case-sensitive and contains no words: autocapitalising,
-             * autocorrecting or spell-checking it can only corrupt it.
-             */}
-            <input
-              id="f-timezone"
-              type="text"
-              value={draft.timezone}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              list={timeZoneOptions.length === 0 ? undefined : TIMEZONE_LIST_ID}
-              aria-invalid={timezoneError !== null}
-              aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
-              onChange={(e) => {
-                patch({ timezone: e.target.value });
-              }}
-            />
-            {timeZoneOptions.length > 0 && (
-              <datalist id={TIMEZONE_LIST_ID}>
-                {timeZoneOptions.map((tz) => (
-                  <option key={tz} value={tz} />
+            {timeZoneOptions.length > 0 ? (
+              // A closed choice from the platform's own list (C1.06.2), each option labelled
+              // with today's computed offset so "Europe/Athens" reads as "(UTC+02:00)
+              // Europe/Athens" rather than asking the owner to already know it.
+              <select
+                id="f-timezone"
+                value={draft.timezone}
+                aria-invalid={timezoneError !== null}
+                aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
+                onChange={(e) => {
+                  patch({ timezone: e.target.value });
+                }}
+              >
+                {timeZoneOptionLabels.map((o) => (
+                  <option key={o.zone} value={o.zone}>
+                    {o.label}
+                  </option>
                 ))}
-              </datalist>
+              </select>
+            ) : (
+              /*
+               * Reached only when the platform has no Intl.supportedValuesOf('timeZone') to
+               * build the select's options from, or it throws (both treated as "no list" by
+               * `timeZoneOptions` above). An IANA identifier is case-sensitive and contains no
+               * words: autocapitalising, autocorrecting or spell-checking it can only corrupt
+               * it.
+               */
+              <input
+                id="f-timezone"
+                type="text"
+                value={draft.timezone}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                aria-invalid={timezoneError !== null}
+                aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
+                onChange={(e) => {
+                  patch({ timezone: e.target.value });
+                }}
+              />
             )}
             {timezoneError !== null && (
               <p className="wiz-error" id="f-timezone-error">
