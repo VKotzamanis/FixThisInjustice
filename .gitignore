@@ -25,3 +25,6 @@ screenshots/
 
 # Local agy (Gemini CLI) permissions, scoped to this repo. Tool config, not project source.
 .gemini/
+
+# Python bytecode from local asset tooling
+__pycache__/

@@ -42,8 +42,29 @@ different offsets by July**. New York and Panama are both UTC-05:00 in January; 
 the class of defect `src/domain/export/fixtures/athens-dst-week.ics` exists to catch. The offset
 is not the identity; the IANA id is.
 
-You MAY reduce the list by filtering aliases to canonical zones. Measure how many that removes and
-report the number; do not promise a reduction you have not measured.
+**RULED 2026-09-06: show 59, search 418.** Measured on this machine, not estimated. Group every
+zone by its behaviour across the whole year, sampling the offset on the first of each month so DST
+rules are part of the key. That gives **59 distinct behaviours out of 418 zones**. Two zones with
+the same offset in every month are interchangeable for everything this app does, which is day
+resets and reminder instants, so collapsing them loses nothing.
+
+Thirty-three European zones share one behaviour: Amsterdam, Ceuta, Longyearbyen and thirty others
+are one zone wearing different names.
+
+**This is NOT one-per-offset, which stays refused.** There are 37 distinct offsets in January and
+16 of them split by July. 59 is the safe reduction; 37 is the lossy one.
+
+**Offsets are not all whole hours.** Eleven are not: `+05:30` India, `+05:45` Nepal, `+03:30`
+Iran, `+04:30` Afghanistan, `+06:30` Myanmar, `+08:45` Eucla, `+09:30` Adelaide, `+12:45` and
+`+13:45` Chatham, `-03:30` Newfoundland, `-09:30` Marquesas. The span runs `-11:00` to `+14:00`,
+which is 25 hours, not 24. Never build a picker from `for (h = -12; h <= 12; h++)`.
+
+**Search the full 418, display the 59.** Someone typing "Amsterdam" must find their group even
+though the list shows a different representative city, or the reduction costs them the ability to
+find themselves. Pick the representative by population or by prominence, and label it so a user in
+a collapsed city still recognises the row.
+
+Store the IANA id of the representative, never an offset.
 
 **A bordered box below the field**, headed `Why the Time Zone Matters` (Title Case, noun phrase),
 with two bullets. Rework his words; keep his meaning and his register.
