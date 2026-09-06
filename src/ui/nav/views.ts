@@ -61,6 +61,24 @@ export const VIEWS: readonly ViewDef[] = [
 export const VIEW_IDS: readonly ViewId[] = VIEWS.map((v) => v.id);
 
 /**
+ * The top bar's moving instruction, one sentence per view (P10 Brief D). A `Record`, not a
+ * lookup with a fallback: a view added to `VIEWS` with no row here is a compile error rather
+ * than a blank line in the marquee, the same guarantee `ViewDef.copyKey` already gives the tab
+ * strip. The shell reads it in src/app/App.tsx, through the same `useCopy()` every renderer
+ * here uses, so a skin reaches these words exactly as it reaches everything else in the tab
+ * strip.
+ */
+export const VIEW_INSTRUCTIONS: Record<ViewId, CopyKey> = {
+  today: 'advice.todayInstruction',
+  plan: 'advice.planInstruction',
+  train: 'advice.trainInstruction',
+  targets: 'advice.targetsInstruction',
+  log: 'advice.logInstruction',
+  atlas: 'advice.atlasInstruction',
+  settings: 'advice.settingsInstruction',
+};
+
+/**
  * The combo that opens the spotlight palette, in the notation P8 Task 9's hotkey registry
  * normalises to ('mod' is Meta or Control, so one binding covers both platforms).
  *

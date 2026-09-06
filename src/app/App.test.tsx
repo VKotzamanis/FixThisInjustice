@@ -10,7 +10,7 @@ import { LEGACY_V2_KEY, STORAGE_KEY } from '../store/persistence';
 import { makeBlankState } from '../test/migrationFactories';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
-import { FORMAT, copy, copyFor } from '../content/copy';
+import { FORMAT, LIMELIGHT_COPY, copy, copyFor } from '../content/copy';
 import { WARMUP_NOTICE } from '../content/formCues';
 import { unlockAudio } from '../ui/audio/chime';
 import type { LocalDate, SkinId, WeeklyReview } from '../domain/types';
@@ -259,10 +259,17 @@ describe('CRT presentation preferences', () => {
 
 
 /**
- * The top bar's plan position (P3 Task 7, wiring deferred to Task 6).
+ * The top bar's per-view instruction, and the plan position it now carries (P10 Brief D, part
+ * 1). This suite's file pins `clinical` by default (the module-scoped `pinSkin()` above), which
+ * is exactly the skin the brief asks for a static fallback on, so the plain assertions below
+ * exercise that path; the marquee path (limelight, board) gets its own test with the skin
+ * pinned back. `advice.todayInstruction` is the row under test throughout because `ui.lastView`
+ * defaults to `'today'` (src/domain/schema.ts) and none of these tests changes it.
  *
- * The indicator itself is covered by SessionIndicator.test.tsx; what is asserted here is that
- * it is MOUNTED in the header, because a component nobody renders reports nothing.
+ * The session position itself stays covered by SessionIndicator.test.tsx, which renders the
+ * standalone component directly; the brief displaced it into the marquee rather than dropping
+ * it, and src/app/App.tsx's own comment names the trade-off this suite's third test asserts:
+ * on clinical, where Marquee.tsx renders nothing by design, the position is not shown at all.
  */
 describe('top bar', () => {
   const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
@@ -274,20 +281,76 @@ describe('top bar', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
   });
 
-  it('reports the cursor position in the header once a plan exists', () => {
+  it('carries a setup instruction before a profile exists, not an empty bar', () => {
+    // Round 1 claim C1.03.1 was an empty top bar. Scoping instructions to the seven views left
+    // the bar holding only the brand for the whole wizard, which is the same defect by another
+    // route, so setup carries one instruction of its own.
+    render(<App />);
+
+    const instruction = within(screen.getByRole('banner')).getByTestId('topbar-instruction');
+    expect(instruction.textContent).toBe(copy('advice.setupInstruction'));
+  });
+
+  it('falls back to a static instruction line on clinical, once a profile exists', () => {
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
 
     render(<App />);
 
-    const indicator = within(screen.getByRole('banner')).getByTestId('session-indicator');
-    // Session 1 of 6, from the cursor: never a calendar day (code review A11).
-    expect(indicator.textContent).toBe(FORMAT.planPosition(1, LABELS.length, ''));
+    const instruction = within(screen.getByRole('banner')).getByTestId('topbar-instruction');
+    // The static line is built from the SAME items the marquee gets, so clinical keeps the
+    // session position SessionIndicator used to carry. Building it from the instruction alone
+    // dropped a shipped fact, described in-file as visible from every view, on one skin of three.
+    expect(instruction.textContent).toContain(copy('advice.todayInstruction'));
+    expect(instruction.textContent).toContain(FORMAT.planPositionLabel(1, LABELS.length, ''));
   });
 
-  it('shows no position before a plan exists', () => {
+  it('carries the instruction and the plan position in the marquee on limelight', () => {
+    useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
+    pinSkin('limelight');
+
     render(<App />);
 
-    expect(screen.queryByTestId('session-indicator')).toBeNull();
+    const header = screen.getByRole('banner');
+    expect(within(header).queryByTestId('topbar-instruction')).toBeNull();
+    const lines = [...header.querySelectorAll('.ll-marquee-static .ll-marquee-line')].map(
+      (node) => node.textContent,
+    );
+    expect(lines).toContain(copy('advice.todayInstruction'));
+    // "ep. 1 of 6": limelight's own row for status.sessionCursor (copy.limelight.ts), read
+    // through the overrides FORMAT.planPositionLabel takes, never a calendar day (code review
+    // A11).
+    expect(lines).toContain(FORMAT.planPositionLabel(1, LABELS.length, '', LIMELIGHT_COPY));
+  });
+});
+
+/**
+ * The site footer (P10 Brief D): mounted once at the foot of the app shell, outside <main> and
+ * outside the view switch, so its presence does not depend on which screen -- Setup or a view
+ * -- happens to be showing above it.
+ */
+describe('site footer', () => {
+  beforeEach(() => {
+    installFakeStorage();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
+  });
+
+  it('renders before a profile exists, during setup', () => {
+    render(<App />);
+
+    expect(screen.getByText(copy('footer.licence'))).toBeTruthy();
+  });
+
+  it('renders on every view, carrying the on-device promise', () => {
+    useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
+
+    render(<App />);
+
+    expect(screen.getByText(copy('advice.dataOnDevice'))).toBeTruthy();
+
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'plan' });
+    });
+    expect(screen.getByText(copy('advice.dataOnDevice'))).toBeTruthy();
   });
 });
 

@@ -66,9 +66,10 @@ const SCREENS = [
 describe('the alpha catalogue', () => {
   it('states its part count, and holds it', () => {
     // P10 Brief C added two: intro.sequence and intro.skip, the same shape as boot.sequence and
-    // boot.skip, for the intro sequence shown once ahead of the boot sequence.
-    expect(catalogue.counts.parts).toBe(101);
-    expect(live).toHaveLength(101);
+    // boot.skip, for the intro sequence shown once ahead of the boot sequence. P10 Brief D added
+    // one more: shell.footer, for the site footer at the foot of the app shell.
+    expect(catalogue.counts.parts).toBe(102);
+    expect(live).toHaveLength(102);
   });
 
   it('gives every part an id in the grammar, under a known screen', () => {

@@ -89,11 +89,43 @@ a{color:var(--text)}
 
 <section class="step" id="w2.01">
   <p class="stepno"><code>w2.01</code> step 1</p>
-  <h3>The plan position in the header</h3>
-  <p class="do"><b>Do</b>Look at the middle of the top bar, then switch tabs and look again.</p>
-  <p class="see"><b>You see</b>The session the cursor stands at, on every screen.</p>
-  <p class="pids">covers shell.session-indicator</p>
+  <h3>The top bar, now that a profile exists</h3>
+  <p class="do"><b>Do</b>On limelight or board, watch the top bar strip; switch tabs and look again. On clinical, read the still line at the same spot instead.</p>
+  <p class="see"><b>You see</b>A moving strip carrying the instruction for the tab you are on and the session the cursor stands at, cycling on every screen except clinical, where one still line names the instruction alone.</p>
+  <p class="pids">covers shell.topbar, shell.session-indicator</p>
   <ol class="strings">
+<li>
+<code>advice.todayInstruction</code>
+<p class="lime-str">Start, resume, or skip the session assigned today.</p>
+</li>
+<li>
+<code>advice.planInstruction</code>
+<p class="lime-str">Browse blocks and weeks, then open any session card.</p>
+</li>
+<li>
+<code>advice.trainInstruction</code>
+<p class="lime-str">Log sets, rest between them, and finish the session.</p>
+</li>
+<li>
+<code>advice.targetsInstruction</code>
+<p class="lime-str">Review daily energy, protein, fluid and creatine targets.</p>
+</li>
+<li>
+<code>advice.logInstruction</code>
+<p class="lime-str">Browse body mass, compliance, best reps and personal records.</p>
+</li>
+<li>
+<code>advice.atlasInstruction</code>
+<p class="lime-str">Browse cards unlocked by the sets you have logged.</p>
+</li>
+<li>
+<code>advice.settingsInstruction</code>
+<p class="lime-str">Adjust units, reminders, skin, sounds, and manage your data.</p>
+</li>
+<li>
+<code>button.pauseUpdates</code>
+<p class="lime-str">Pause updates</p>
+</li>
 <li>
 <code>label.planPosition</code>
 <p class="lime-str">Plan position</p>
@@ -112,7 +144,7 @@ a{color:var(--text)}
 </li>
 </ol>
   <label class="box" for="c-w2.01">What needs to change here?</label>
-  <textarea id="c-w2.01" data-step="w2.01" data-parts="shell.session-indicator" placeholder="What you saw. What you expected."></textarea>
+  <textarea id="c-w2.01" data-step="w2.01" data-parts="shell.topbar, shell.session-indicator" placeholder="What you saw. What you expected."></textarea>
 </section>
 
 <section class="step" id="w2.02">

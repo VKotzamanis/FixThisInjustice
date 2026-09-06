@@ -1,8 +1,34 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
+/*
+ * The build date, as YYYY-MM-DD in UTC. Computed by hand rather than with `toISOString()`, and
+ * kept identical to vite.config.ts's own copy of this expression: see that file's comment for
+ * why (eslint.config.js's `no-restricted-syntax` bans the call outside src/domain/dates.ts).
+ */
+const buildDate = new Date();
+const BUILD_DATE_ISO = [
+  buildDate.getUTCFullYear(),
+  String(buildDate.getUTCMonth() + 1).padStart(2, '0'),
+  String(buildDate.getUTCDate()).padStart(2, '0'),
+].join('-');
+
 export default defineConfig({
   plugins: [react()],
+  /*
+   * BEYOND THE BRIEF, AND REQUIRED. vitest does not read vite.config.ts's `define` block: the
+   * two are separate Vite configurations, and without this the bare identifiers
+   * `__APP_VERSION__`, `__BUILD_COMMIT__` and `__BUILD_DATE__` src/ui/components/SiteFooter.tsx
+   * reads (P10 Brief D) are undeclared globals, and every suite that mounts the app shell
+   * (src/app/App.test.tsx, most of it) throws a ReferenceError on first render rather than
+   * failing one assertion. Kept byte-identical to vite.config.ts's own block, which is also why
+   * src/config/build.d.ts declares the three as `string` rather than `string | undefined`.
+   */
+  define: {
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    __BUILD_COMMIT__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
+    __BUILD_DATE__: JSON.stringify(BUILD_DATE_ISO),
+  },
   test: {
     testTimeout: 20_000, // [ms] UI suites run 25 s in total under a loaded runner; the default 5 s flaked (P2 final review)
     environment: 'jsdom',

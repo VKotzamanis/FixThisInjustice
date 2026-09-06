@@ -5,24 +5,28 @@ import type { CopyKey } from '../content/copy';
 import { useCopy, useCopyOverrides } from '../content/useCopy';
 import { useAppStore } from '../store';
 import { useFirstGestureUnlock } from '../skins/sfx';
-import { useApplySkin } from '../skins/skinContext';
+import { useApplySkin, useSkin } from '../skins/skinContext';
+import type { LimelightIconName } from '../skins/limelight/icons';
 import type { SaveErrorReason } from '../store';
 import {
+  useActivePlan,
   useActiveProfile,
-  useHydrated,
   useLastLoadRaw,
   useLoadError,
   useSaveError,
 } from '../store/selectors';
+import { useActiveCursor } from '../store/scheduleSelectors';
 import { HotkeyProvider, useHotkeys } from '../ui/hotkeys';
-import { SPOTLIGHT_COMBO, VIEWS, isViewId } from '../ui/nav/views';
+import { SPOTLIGHT_COMBO, VIEWS, VIEW_INSTRUCTIONS, isViewId } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { stepBrowseBlock, stepBrowseWeek } from '../ui/planBrowse';
 import { BootGate } from '../ui/components/Boot';
 import { IntroGate } from '../ui/intro/IntroSequence';
 import { KonamiOverlay, useKonamiCode } from '../ui/components/KonamiOverlay';
+import { Marquee } from '../ui/components/Marquee';
+import type { MarqueeItem } from '../ui/components/Marquee';
 import { PhaseTransitionGate } from '../ui/components/PhaseTransition';
-import { SessionIndicator } from '../ui/components/SessionIndicator';
+import { SiteFooter } from '../ui/components/SiteFooter';
 import { Spotlight } from '../ui/components/Spotlight';
 import { SpotlightButton } from '../ui/components/SpotlightButton';
 import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
@@ -390,6 +394,111 @@ function LoadErrorBanner(): ReactElement | null {
   );
 }
 
+/**
+ * One icon per view, for the marquee item TopbarTicker builds from `VIEW_INSTRUCTIONS`.
+ *
+ * Kept here rather than beside `VIEW_INSTRUCTIONS` in src/ui/nav/views.ts: that registry is
+ * skin-neutral (its own header says so), and `LimelightIconName` is a limelight-skin type, so
+ * the mapping belongs with the one renderer that reads it. A judgement call, not a fixed
+ * convention: none of these seven is a stronger fit than another among the icon set P10 Brief
+ * D's own instructions restrict this to (src/skins/limelight/icons.ts).
+ */
+const VIEW_ICONS: Record<ViewId, LimelightIconName> = {
+  today: 'alert',
+  plan: 'crownPanel',
+  train: 'barbellPanel',
+  targets: 'drop',
+  log: 'heart',
+  atlas: 'lips',
+  settings: 'fan',
+};
+
+/**
+ * The top bar's moving instruction, and the session position SessionIndicator used to carry
+ * (P10 Brief D, part 1).
+ *
+ * READS ui.lastView DIRECTLY rather than a prop, because the header sits above <main> and
+ * ViewShell -- the only other reader of ui.lastView -- is not mounted until a profile exists.
+ * Gated on a profile existing for the same reason: an instruction names one of the seven VIEWS,
+ * and Setup is a fixed sequence outside that list. Its own fallback ('targets') matches
+ * ViewShell's exactly, so the instruction shown here can never name a different view than the
+ * tab strip renders below it.
+ *
+ * ON CLINICAL, Marquee renders nothing by design (its own doc comment). The brief asks for a
+ * static instruction line there instead of an empty slot, so this component supplies one itself
+ * rather than asking Marquee to do something it deliberately does not.
+ *
+ * THE SESSION POSITION IS DISPLACED HERE FROM SessionIndicator, which the brief describes as "a
+ * shipped feature ... visible from every view" that this task moves "into the marquee as its
+ * own item rather than dropping it". src/ui/components/SessionIndicator.tsx is left standing,
+ * unedited and still fully covered by SessionIndicator.test.tsx: nothing in the brief asks for
+ * that file or its suite to change, so this reads the same two selectors and the same
+ * `FORMAT.planPositionLabel` frame it does, as a second, independent renderer of the same fact,
+ * rather than importing a component built to stand alone with its own `role="img"` label and
+ * its own tabular-nums guarantee, neither of which a MarqueeItem (an icon plus a plain string)
+ * has anywhere to put.
+ *
+ * ONE CONSEQUENCE OF THAT MOVE, STATED PLAINLY: Marquee renders nothing on clinical, so on that
+ * skin the session position is no longer visible in the top bar at all. It is not duplicated
+ * into the static fallback above, because "move it into the marquee AS ITS OWN ITEM" names one
+ * destination, not two.
+ */
+function TopbarTicker(): ReactElement | null {
+  const skin = useSkin();
+  const t = useCopy();
+  const overrides = useCopyOverrides();
+  const profile = useActiveProfile();
+  const storedView = useAppStore((s) => s.ui.lastView);
+  const plan = useActivePlan();
+  const cursor = useActiveCursor();
+
+  /*
+   * DURING SETUP the bar still carries an instruction. Brief D scoped the instruction registry to
+   * the seven VIEWS, and setup is a fixed sequence outside that list, which left the bar holding
+   * only the brand for the whole wizard. That is the empty bar round 1 reported (claim C1.03.1),
+   * arriving by a different route, so setup gets one instruction of its own rather than nine.
+   */
+  const view: ViewId | null =
+    profile === null ? null : isViewId(storedView) ? storedView : 'targets';
+  const instructionText = view === null ? t('advice.setupInstruction') : t(VIEW_INSTRUCTIONS[view]);
+
+  const items: MarqueeItem[] = [
+    { icon: view === null ? 'fan' : VIEW_ICONS[view], text: instructionText },
+  ];
+  if (plan !== null && cursor !== null) {
+    const total = plan.sessions.length; // [sessions] the whole programme
+    // 1-based for display, clamped exactly as SessionIndicator.tsx clamps it: nextSessionIndex's
+    // terminal value is sessions.length (master plan section 6.7), which would print N+1 unclamped.
+    const shown = total === 0 ? 0 : Math.min(cursor.nextSessionIndex + 1, total); // [sessions]
+    const complete = cursor.completedOn !== null;
+    items.push({
+      icon: 'stopwatchPanel',
+      text: FORMAT.planPositionLabel(
+        shown,
+        total,
+        complete ? t('hero.programmeComplete') : '',
+        overrides,
+      ),
+    });
+  }
+
+  /*
+   * ON CLINICAL, Marquee renders nothing by design, so the bar shows the same items as a static
+   * line. It is built from the SAME `items` array rather than from the instruction alone: the
+   * first version returned early here, before the session position was appended, which silently
+   * dropped a shipped fact (SessionIndicator, "visible from every view") on one of three skins.
+   */
+  if (skin === 'clinical') {
+    return (
+      <span className="topbar-instruction" data-testid="topbar-instruction">
+        {items.map((item) => item.text).join(' \u00b7 ')}
+      </span>
+    );
+  }
+
+  return <Marquee items={items} label={t('button.pauseUpdates')} />;
+}
+
 export function App(): ReactElement {
   /*
    * The skin, mirrored onto <html data-skin> for the two attribute-scoped token blocks in
@@ -410,12 +519,6 @@ export function App(): ReactElement {
    * sounds off the player fetches nothing at all (src/skins/sfx.ts).
    */
   useFirstGestureUnlock();
-  /*
-   * The header's own two words. Unconditional and above every early return in the tree below,
-   * like the hooks around it; the two rows read here were literals byte-identical to their
-   * table entries until P9 Task 15.
-   */
-  const t = useCopy();
   useHydrateOnce();
   /*
    * After useHydrateOnce, which reads the document during render, so the first run of the
@@ -425,7 +528,6 @@ export function App(): ReactElement {
    * stable, and it is a no-op until a profile exists.
    */
   useWeeklyClose();
-  const hydrated = useHydrated();
   const profile = useActiveProfile();
 
   /*
@@ -471,12 +573,12 @@ export function App(): ReactElement {
               FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
             </span>
             {/*
-             * The plan position the CURSOR stands at, mounted here so it is visible from every
-             * view (P3 Task 7). It renders nothing until a plan exists, so the header keeps its
-             * two-element layout through setup.
+             * The moving instruction for the current view, and the session position it now
+             * carries (P10 Brief D, part 1: the app name stays fixed on the left, the
+             * instruction moves). Renders nothing until a profile exists, so the header keeps
+             * its two-element layout through setup, exactly as SessionIndicator's absence did.
              */}
-            <SessionIndicator />
-            <span>{t(hydrated ? 'shell.status.loaded' : 'shell.status.loading')}</span>
+            <TopbarTicker />
           </header>
 
           <main>
@@ -527,6 +629,13 @@ export function App(): ReactElement {
               <ViewShell />
             )}
           </main>
+
+          {/*
+           * The footer (P10 Brief D), rendered once at the foot of the app shell: outside
+           * <main> and after it, so it is the last thing on the page across every view and
+           * across setup, and never sits inside the scrollable view area it is quiet beneath.
+           */}
+          <SiteFooter />
 
           {/*
            * The weekly-miss popup (P6). Outside <main>, as the last child of the CRT root,
