@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `aa6bd14`. 102 parts across 14 screens, holding 498 of the table's 501 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `0d89936`. 102 parts across 14 screens, holding 521 of the table's 524 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (2)
 
@@ -303,32 +303,54 @@ States: `default`, `blocked`
 
 ### `setup.training`
 
-Step 4, Training context. Experience and activity, which drive the energy target.
+Step 4, Equipment & Availability. Everyday activity, gym comfort and equipment access as sliders, the load increments, and the equipment questions the equipment access slider reveals (Brief F).
 
 Renders: `src/ui/setup/SetupWizard.tsx`
 
-States: `default`
+States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `advice.equipmentInventoryPrompt` | What equipment do you have? | same | same | yes |
 | `advice.loadSteps` | The smallest increment a suggested load uses. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
-| `label.activity` | Activity level | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `label.equipment` | Equipment | the gear | same | yes |
-| `label.experience` | Experience | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `label.microPlates` | Micro-plates available | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
-| `option.activityModerate` | Moderate: regular walking, including a walk to and from the gym, active job or training | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `option.activitySedentary` | Sedentary: desk work, little walking | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `option.activityVigorous` | Vigorous: heavy physical work, daily hard training | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `option.equipmentBodyweight` | Bodyweight only | same | same | yes |
-| `option.equipmentDumbbells` | Dumbbells only | same | same | yes |
-| `option.equipmentFullGym` | Full gym | same | same | yes |
-| `option.experienceAdvanced` | Advanced: over three years | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `option.experienceIntermediate` | Intermediate: one to three years | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `option.experienceNovice` | Novice: under one year of consistent training | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `advice.walkToGym` | Do you walk to and from the gym? | same | same | yes |
+| `button.no` | No | same | same | yes |
+| `button.yes` | Yes | same | same | yes |
+| `disclosure.examples` | Examples | same | same | yes |
+| `label.activity` | Everyday Activity Level | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `label.equipmentAccess` | Equipment Access | equipment access | same | yes |
+| `label.experience` | Gym Comfort | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `label.homeEquipmentAerobic` | Aerobic | same | same | yes |
+| `label.homeEquipmentDumbbells` | Dumbbells | same | same | yes |
+| `label.homeEquipmentMachines` | Machines | same | same | yes |
+| `option.accessBodyweight` | Body Weight Only | same | same | yes |
+| `option.accessFullAndHome` | Full Gym and Home Gym | same | same | yes |
+| `option.accessFullGym` | Full Gym | same | same | yes |
+| `option.accessHome` | Home Gym | same | same | yes |
+| `option.accessHomeAndBodyweight` | Home Gym and Body Weight | same | same | yes |
+| `option.activityModerate` | Moderate | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.activitySedentary` | Sedentary | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.activityVigorous` | Vigorous | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.bodyweightPullUpBar` | Pull-Up Bar | same | same | yes |
+| `option.bodyweightResistanceBands` | Resistance Bands | same | same | yes |
+| `option.bodyweightSkippingRope` | Skipping Rope | same | same | yes |
+| `option.bodyweightYogaMat` | Yoga Mat | same | same | yes |
+| `option.experienceAdvanced` | Free weights for three years or more | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.experienceIntermediate` | Regular at the gym, mostly the machines | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.experienceNovice` | Starting out | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.homeBench` | Bench | same | same | yes |
+| `option.homeCableMachine` | Cable Machine | same | same | yes |
+| `option.homeElliptical` | Elliptical | same | same | yes |
+| `option.homeLatPulldown` | Lat Pulldown | same | same | yes |
+| `option.homeLegPress` | Leg Press | same | same | yes |
+| `option.homeRowingMachine` | Rowing Machine | same | same | yes |
+| `option.homeSmithMachine` | Smith Machine | same | same | yes |
+| `option.homeSquatRack` | Squat Rack | same | same | yes |
+| `option.homeTreadmill` | Treadmill | same | same | yes |
 | `quantity.barbellStep` | Barbell step | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `quantity.dumbbellStep` | Dumbbell step, per pair | same | same | yes |
-| `quantity.microPlateStep` | Micro-plate step | same | same | yes |
 | `quantity.stackStep` | Weight-stack step | same | same | yes |
+| `quantity.walkMinutes` | Minutes each way | same | same | yes |
 | `step.training` | Equipment & Availability | same | same | yes |
 
 ### `setup.goal`
@@ -745,6 +767,7 @@ States: `closed`, `open`, `refused`
 | --- | --- | --- | --- | --- |
 | `button.addExercise` | Add exercise | same | same | no: THE CUSTOM-EXERCISE FORM |
 | `button.saveExercise` | Add | same | same | no: THE CUSTOM-EXERCISE FORM |
+| `label.equipment` | Equipment | the gear | same | yes |
 | `label.modality.barbell` | Barbell | same | same | no: THE EQUIPMENT NAMES |
 | `label.modality.bodyweight` | Bodyweight | same | same | no: THE EQUIPMENT NAMES |
 | `label.modality.cable` | Cable | same | same | no: THE EQUIPMENT NAMES |

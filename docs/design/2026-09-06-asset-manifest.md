@@ -22,6 +22,22 @@ and icon art originate with the project; no third-party material is used anywher
 
 Four items gate correct specification of assets below them. Read this section before batch 1.
 
+**RULED 2026-09-06, by the owner, via the asset-intake peer session:**
+
+- **§0.1 (female body-fat range):** not actually a decision — the register was already right. Fix
+  is `BODY_FAT_CHART_PERCENTAGES` going sex-specific in `src/content/bodyFatChart.ts`. Queued as
+  fc's one-line `src/` fix, behind brief F. Generate the female silhouettes against 15-40.
+- **§0.2 (icon format): SVG, `fill="currentColor"`.** Confirmed over the two-PNG convention. Batch A
+  proceeds as written: generate a clean black-on-white raster reference, then hand-vectorize.
+- **§0.3 (mascot wiring): wire them in**, per round 3's original plan — `mascotLifting` into
+  `TodayView`'s hero, `mascotCrown` beside `WeekStamp`. This is a `src/` change (two import sites);
+  the asset-intake session does not write to `src/`, so it is handed to fc to make.
+- **§0.4 (specimen glyphs): yes**, add one glyph per `SpecimenCategory` (8). Prompts are Batch E,
+  added to the companion file. Wiring an image field into `SpecimenCard`/`AtlasView.tsx` is a
+  follow-on `src/` task once the art exists, also fc's.
+- **§2 (app icon direction): direction 1, mascot-derived mark.** Colour resolved below, in §2.1 —
+  it is not the two options the draft prompt offered.
+
 ### 0.1 Female body-fat chart: the register and the code disagree on which percentages
 
 `src/content/bodyFatChart.ts` exports one shared `BODY_FAT_CHART_PERCENTAGES = [10, 15, 20, 25,
@@ -139,7 +155,7 @@ for the line-drawing rows), no fixed hex baked in. See §0.2.
 | `equip-4-full-home` | same slider, position 4 | Equipment Access, position 4 | C1.09.11 | anchors the second combination tier | specified, integration pending |
 | `equip-5-full-gym` | same slider, position 5 | Equipment Access, position 5 | C1.09.11 | anchors "full gym" | specified, integration pending |
 | `bf-male-10` … `bf-male-35` (6 rows) | `BodyFatChartModal`, `SetupWizard.tsx` line ~740, male row | body-fat visual-estimate chart | C1.08.5, C1.08.9 — "compare against the pictures and pick the closest" needs pictures | lets the user place themselves without a tape, while the copy right above it (`BODY_FAT_CHART_INTRO`) tells them not to trust the placement too far | specified |
-| `bf-female-15` … `bf-female-40` (6 rows) | same modal, female row | body-fat visual-estimate chart | C1.08.5, C1.08.9 | same as above, for the female row | specified — **blocked on §0.1** |
+| `bf-female-15` … `bf-female-40` (6 rows) | same modal, female row | body-fat visual-estimate chart | C1.08.5, C1.08.9 | same as above, for the female row | specified, art can proceed — code fix queued (fc, behind brief F) |
 
 **How the art must signal "orientation, not instrument" (the accuracy constraint):** lay
 self-estimation of body fat against a photographic reference agrees with measured values at
@@ -160,7 +176,7 @@ opposite of what the copy right beside it says.
 
 | id | where | why | purpose | spec | status |
 | --- | --- | --- | --- | --- | --- |
-| `app-icon` | `vite.config.ts` (`VitePWA.manifest.icons`), `index.html` (`<link rel="icon">`, `<link rel="apple-touch-icon">`); files at `public/icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | the icon a user sees on their Home Screen and app switcher — the first and most repeated brand impression the app makes | the app has an identity distinct from whatever it was ported from | 192x192, 512x512 (`purpose: any`), 512x512 (`purpose: maskable`, safe content inside the inner ~80% circle per the maskable-icon spec), full colour, must read as a mark at 48 px (Android's smallest shown size) | **needs-decision** |
+| `app-icon` | `vite.config.ts` (`VitePWA.manifest.icons`), `index.html` (`<link rel="icon">`, `<link rel="apple-touch-icon">`); files at `public/icons/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | the icon a user sees on their Home Screen and app switcher — the first and most repeated brand impression the app makes | the app has an identity distinct from whatever it was ported from | 192x192, 512x512 (`purpose: any`), 512x512 (`purpose: maskable`, safe content inside the inner ~80% circle per the maskable-icon spec), full colour, must read as a mark at 48 px (Android's smallest shown size) | **specified** — ruled, §2.1 |
 
 **Why this is flagged rather than just "exists":** all three files are present and are not blank —
 opened and inspected (192px and 512px, RGBA, 351-477 unique colours each) — but they depict a
@@ -183,9 +199,20 @@ both usable with existing, already-original IP:
 Once the owner picks a direction, this becomes a `specified` row with a prompt in the companion
 file; a proposed prompt for direction 1 is included there as a starting point to react to.
 
+**§2.1 Ruled: direction 1, and a third colour, not either one the draft prompt offered.** Neither
+`#8ace00` (limelight's own `--lime`, one skin only) nor the mascot's round-3 palette is the app's
+cross-skin identity. `vite.config.ts`'s `VitePWA` manifest already declares `theme_color: '#a3e635'`
+and `background_color: '#0a0b0c'`, and `index.html` repeats `#a3e635` in its `theme-color` meta —
+this is `--accent` (`src/ui/styles/tokens.css:39`), the one colour every skin carries, documented
+there as canonical over `--lime`. Android reads `theme_color` for the icon's own surrounding chrome,
+so an icon in a different green would sit next to a UI chrome in this one. **Mark: `#0a0b0c` figure
+on `#a3e635` ground** — matching what the PWA manifest already ships, not introducing a fourth
+colour. Prompt updated in the companion file (was: a colour choice between two options neither of
+which was this one).
+
 | id | where | why | purpose | spec | status |
 | --- | --- | --- | --- | --- | --- |
-| `notification-badge` | `src/sw.ts` line 75 (`badge:`) | Android's status-bar and lock-screen badge for a reminder or rest-timer notification | at a glance, in a notification tray with a dozen other apps' badges, which one is this app's | **96x96 px PNG, monochrome silhouette on a transparent background, no colour, no text, no fine internal detail** (Android auto-masks and recolours it; MDN / web.dev, logged in `REFERENCES.md`) | needs-decision (depends on `app-icon`'s direction, §2 above; same mark, silhouetted) |
+| `notification-badge` | `src/sw.ts` line 75 (`badge:`) | Android's status-bar and lock-screen badge for a reminder or rest-timer notification | at a glance, in a notification tray with a dozen other apps' badges, which one is this app's | **96x96 px PNG, monochrome silhouette on a transparent background, no colour, no text, no fine internal detail** (Android auto-masks and recolours it; MDN / web.dev, logged in `REFERENCES.md`) | **specified** — same mark as `app-icon` (§2.1), silhouetted; still needs the `src/sw.ts` pointer changed off `icon-192.png`, fc's `src/` edit |
 
 **Why this is a real gap, not a nicety:** `docs/plans/2026-09-01-00-master-plan.md` and the
 prose-pass doc both already flag it — `src/sw.ts` currently points `badge` at the same full-colour
@@ -259,13 +286,44 @@ take is a taste call for whoever sources them, not specified here.
 Real footage the owner supplies, not an AI-image or AI-video generation target — no prompt is
 written for it in the companion file.
 
-## 8. Specimen / Atlas cards (no art, by design — see §0.4)
+## 8. Specimen / Atlas cards — category glyphs, ruled yes (§0.4)
 
 `src/content/specimenCards.ts`, 37 cards (12 common, 13 uncommon, 12 rare), rendered by
-`AtlasView.tsx` as coloured typography, no image field on `SpecimenCard`. Listed here to close the
-loop the task asked to check, not because a gap was found: the cards carry no art and none is
-implied by any plan or brief. See §0.4 for the one open question (a category glyph) this manifest
-raises without specifying.
+`AtlasView.tsx` as coloured typography, no image field on `SpecimenCard` today. §0.4 flagged an
+optional per-category glyph rather than assuming it; **the owner said yes.**
+
+| id | category | status |
+| --- | --- | --- |
+| `glyph-anatomy` | anatomy | specified, Batch E |
+| `glyph-biology` | biology | specified, Batch E |
+| `glyph-biomechanics` | biomechanics | specified, Batch E |
+| `glyph-history` | history | specified, Batch E |
+| `glyph-nutrition` | nutrition | specified, Batch E |
+| `glyph-recovery` | recovery | specified, Batch E |
+| `glyph-supplements` | supplements | specified, Batch E |
+| `glyph-training` | training | specified, Batch E |
+
+Same format ruling as §0.2: SVG, `currentColor`, one flat pictogram-register shape per category, no
+text. Wiring an image field onto `SpecimenCard` and rendering it in `AtlasView.tsx` is a follow-on
+`src/` task once the art exists — not done from this session; handed to fc alongside the mascot
+wiring and the `sw.ts` badge pointer.
+
+---
+
+## 9. Round-2 additions (from the owner's feedback, flagged by fc before the ledger landed)
+
+Two rows added to `docs/design/2026-09-04-icon-register.csv`. Both target files are `unknown`
+pending the ledger `brief H` is producing — per that brief's own rule, `unknown` beats a guess.
+
+| id | source claim | why it's here | status |
+| --- | --- | --- | --- |
+| `sprite-subsection-marker` | r2.12: "a small emoji type as height as the text of the subsection, an emoji wearing a black bob and with eyeglasses (Azealia Banks meme)" | The named reference is a real public figure plus a meme — cannot ship as drawn, third-party likeness, contradicts README's originality claim the same way the earlier cartoon-character request did (§5, `intro-figure`). Depicts an **original** character carrying only the two visual traits named (bob, eyeglasses), no other resemblance. | **needs-decision**: confirm the substitution (original character, same two traits) is acceptable before generating, since it is a correction against what was literally asked, not what was asked |
+| `reset-cookies-icon` | r2.19: "Click on the {icon that I will provide as an asset}" (browser cookies-and-site-data reset) | Owner-supplied. Tracked here only so nothing gets drawn twice — no prompt is written for it and none should be. | owner-supplied |
+
+**Lower priority, not a register item:** r2.18 (a section on shoes and baby powder) — the owner said
+that where no reference exists he'll supply his own recommendation. When that batch is worked, flag
+which claims have no citable source rather than reaching for a weak one; this is a content-sourcing
+note, not an asset.
 
 ---
 
@@ -273,16 +331,19 @@ raises without specifying.
 
 | type | exists | specified, ready | needs-decision |
 | --- | --- | --- | --- |
-| Setup-wizard control icons (§1) | 0 | 18 | 6 (the female body-fat row, blocked on §0.1) |
-| PWA / notification icons (§2) | 0 | 0 | 2 (app icon, badge — both blocked on picking a mark) |
+| Setup-wizard control icons (§1) | 0 | 24 (all — female row's code fix is queued, not blocking) | 0 |
+| PWA / notification icons (§2) | 0 | 2 | 0 |
 | Limelight icon bank (§3) | 21 | 0 | 0 |
-| Mascot illustrations (§4) | 4 | 0 | 1 (wiring, not art) |
+| Mascot illustrations (§4) | 4 | 0 (art done; wiring is fc's `src/` task) | 0 |
 | ASCII (§5) | 1 | 0 | 0 (open stylistic question, not specified against) |
 | Sound effects (§6) | 0 | 4 slots x 3 skins | 0 |
 | Motivation video (§7) | 0 | 1 | 0 |
-| Specimen cards (§8) | 37 (text) | 0 | 1 (optional glyph set, needs a yes) |
+| Specimen cards (§8) | 37 (text) | 8 (category glyphs) | 0 |
 
-**Total drawable/generatable image assets specified and ready now: 18** (the 18 register icons not
-blocked by §0.1: 3 comfort + 5 equipment + 4 tape + 6 male body-fat). Prompts for all 18 are in the
-companion file, `docs/design/2026-09-06-asset-prompts.md`, plus one proposed (not yet approved)
-prompt for the app-icon direction in §2.1.
+**All four §0 decisions are ruled** (2026-09-06, owner via the asset-intake peer session): SVG
+format, mascot wiring on, app-icon direction 1 with the accent-matched colour in §2.1, category
+glyphs yes. **Total drawable/generatable image assets specified and ready now: 32** — the 24
+register icons, the app icon, the notification badge, and the 8 category glyphs. Prompts for the
+original 18 plus the app icon are in the companion file, `docs/design/2026-09-06-asset-prompts.md`;
+the 6 female body-fat, the notification badge and the 8 category glyphs still need prompts written
+there.

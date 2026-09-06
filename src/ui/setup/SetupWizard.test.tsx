@@ -12,7 +12,12 @@ import { KG_PER_LB } from '../../domain/types';
 import { toStoredMass } from '../../domain/units';
 import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
+import { nutritionInputFor } from '../../store/selectors';
 import { FORMAT, copyFor } from '../../content/copy';
+import {
+  ACTIVITY_LEVEL_EXAMPLES,
+  EQUIPMENT_ACCESS_EXAMPLES,
+} from '../../content/setupSliderExamples';
 import type { SkinId } from '../../domain/types';
 
 /**
@@ -89,10 +94,19 @@ function fillImperialWizardToGoal(): void {
   setValue(/^inches$/i, '11');
   setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
   next();
-  // 4 - training context
-  setValue(/activity level/i, 'moderate');
-  setValue(/^experience$/i, 'intermediate');
-  setValue(/^equipment$/i, 'full-gym');
+  // 4 - Equipment & Availability: three sliders, index-valued (Brief F). Everyday Activity
+  // Level's default is already 'moderate' (index 1) and Equipment Access's is already
+  // 'full-gym' (index 4), same as this fixture wants, but both are set explicitly so the
+  // fixture's intent does not depend on initialDraft's defaults staying what they are today.
+  fireEvent.change(screen.getByLabelText(/^everyday activity level$/i), {
+    target: { value: '1' }, // moderate
+  });
+  fireEvent.change(screen.getByLabelText(/^gym comfort$/i), {
+    target: { value: '1' }, // intermediate
+  });
+  fireEvent.change(screen.getByLabelText(/^equipment access$/i), {
+    target: { value: '4' }, // full-gym
+  });
   next();
   // 5 - goal
   setValue(/^goal$/i, 'fat-loss');
@@ -347,8 +361,18 @@ describe('submission', () => {
     // Steps are stored canonically in kg: 5 lb = 2.26796185 kg, 10 lb = 4.5359237 kg.
     expect(p.equipmentSteps.barbellKg).toBeCloseTo(2.26796185, 10);
     expect(p.equipmentSteps.dumbbellPairKg).toBeCloseTo(4.5359237, 10);
-    expect(p.equipmentSteps.hasMicroPlates).toBe(false);
-    expect(p.equipmentSteps.microPlateKg).toBeCloseTo(1 * KG_PER_LB, 10);
+    // Brief F Part 3: hasMicroPlates/microPlateKg no longer exist on equipmentSteps.
+    expect(p.equipmentSteps).toEqual({
+      barbellKg: p.equipmentSteps.barbellKg,
+      dumbbellPairKg: p.equipmentSteps.dumbbellPairKg,
+      stackKg: p.equipmentSteps.stackKg,
+    });
+    // Equipment access ends on full-gym (fillImperialWizardToGoal moves the slider there), and
+    // neither the walk-to-gym question nor an equipment inventory was ever shown for it.
+    expect(p.equipment).toBe('full-gym');
+    expect(p.gymCommute).toEqual({ walks: false, minutesEachWay: 0 });
+    expect(p.homeEquipment).toEqual([]);
+    expect(p.bodyweightEquipment).toEqual([]);
     // Hydration seeded from the IOM beverage share for the stated sex.
     expect(p.hydration.dailyTargetML).toBe(3000);
     expect(p.hydration.weighInOptIn).toBe(false);
@@ -1152,5 +1176,249 @@ describe('review reads the answers back', () => {
     expect(screen.getByTestId('review-bodyfat').textContent).toBe(
       copyFor('clinical', 'label.bodyFatNone'),
     );
+  });
+});
+
+/**
+ * Brief F: the three step-4 sliders (Everyday Activity Level, Gym Comfort, Equipment Access),
+ * the load-increments box, and the equipment-access-gated questions (walk to the gym, home
+ * equipment, body weight equipment). Claims C1.09.2, .3, .6, .7, .8, .10, .11, .12, .15, .16,
+ * .18, .19, .21.
+ */
+describe('Brief F: the equipment sliders', () => {
+  /**
+   * A fresh wizard, metric, advanced to the training step with minimal valid body data. Returns
+   * `unmount`, for the rare test that renders a second wizard in the same `it()` and must tear
+   * the first one down first (render does not auto-cleanup between two calls in one test, only
+   * between separate `it()`s).
+   */
+  function toTrainingStep(): { unmount: () => void } {
+    const { unmount } = render(<SetupWizard />);
+    next(); // units: metric is the default
+    setValue(/^time zone$/i, 'America/New_York');
+    next();
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    next();
+    return { unmount };
+  }
+
+  /** From the training step onward, complete and submit the wizard with whatever it holds. */
+  function finishFromTraining(): void {
+    next(); // goal
+    setValue(/^goal$/i, 'fat-loss');
+    next(); // availability
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
+    next(); // programme
+    setValue(/programme length/i, '12');
+    next(); // guidance
+    next(); // review
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+  }
+
+  /** The confirmed profile, or fails the test if none was created. */
+  function confirmedProfile() {
+    const state = useAppStore.getState();
+    const id = state.activeProfileId;
+    expect(id).not.toBeNull();
+    if (id === null) throw new Error('unreachable: asserted above');
+    const profile = state.profiles[id];
+    expect(profile).toBeDefined();
+    if (profile === undefined) throw new Error('unreachable: asserted above');
+    return profile;
+  }
+
+  it('renders three range sliders, one closed list each, never a free number', () => {
+    toTrainingStep();
+    const activity = screen.getByLabelText(/^everyday activity level$/i);
+    const comfort = screen.getByLabelText(/^gym comfort$/i);
+    const access = screen.getByLabelText(/^equipment access$/i);
+    for (const slider of [activity, comfort, access]) {
+      expect(slider).toHaveAttribute('type', 'range');
+      expect(slider).toHaveAttribute('step', '1');
+    }
+    expect(activity).toHaveAttribute('max', '2'); // 3 positions, index 0-2
+    expect(comfort).toHaveAttribute('max', '2'); // 3 positions, index 0-2
+    expect(access).toHaveAttribute('max', '4'); // 5 positions, index 0-4
+  });
+
+  it('defaults Everyday Activity Level to Moderate and Equipment Access to Full Gym', () => {
+    toTrainingStep();
+    expect(screen.getByText('Moderate')).toBeInTheDocument();
+    expect(screen.getByText('Full Gym')).toBeInTheDocument();
+  });
+
+  it('carries the three FAO/WHO/UNU bands as the Examples disclosure, verbatim and only there', () => {
+    toTrainingStep();
+    // Everyday Activity Level is the only slider with an Examples disclosure: Equipment
+    // Access's example is a single sentence shown unconditionally instead (Brief F Part 1c).
+    const examples = screen.getByText('Examples');
+    fireEvent.click(examples);
+    for (const line of ACTIVITY_LEVEL_EXAMPLES) expect(screen.getByText(line)).toBeInTheDocument();
+  });
+
+  it("renders the Gym Comfort slider's three positions as the owner's own words, each with a placeholder icon", () => {
+    toTrainingStep();
+    // Each position's words appear twice while it is selected: once as the current-position
+    // readout, once as its icon's caption (the three icons are a static legend, always shown).
+    expect(screen.getAllByText('Starting out').length).toBeGreaterThan(0);
+    const icons = [...document.querySelectorAll('.wiz-site[data-icon-row]')];
+    expect(icons.map((el) => el.getAttribute('data-icon-row'))).toEqual([
+      'comfort-1-starting',
+      'comfort-2-machines',
+      'comfort-3-freeweights',
+    ]);
+    fireEvent.change(screen.getByLabelText(/^gym comfort$/i), { target: { value: '1' } });
+    expect(
+      screen.getAllByText('Regular at the gym, mostly the machines').length,
+    ).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText(/^gym comfort$/i), { target: { value: '2' } });
+    expect(screen.getAllByText('Free weights for three years or more').length).toBeGreaterThan(0);
+  });
+
+  it('shows exactly one Equipment Access example, matching the selected position', () => {
+    toTrainingStep();
+    const access = screen.getByLabelText(/^equipment access$/i);
+    const positions: Array<[string, string]> = [
+      ['0', EQUIPMENT_ACCESS_EXAMPLES.bodyweight],
+      ['1', EQUIPMENT_ACCESS_EXAMPLES['home-and-bodyweight']],
+      ['2', EQUIPMENT_ACCESS_EXAMPLES.home],
+      ['3', EQUIPMENT_ACCESS_EXAMPLES['full-and-home']],
+      ['4', EQUIPMENT_ACCESS_EXAMPLES['full-gym']],
+    ];
+    for (const [index, example] of positions) {
+      fireEvent.change(access, { target: { value: index } });
+      expect(screen.getByText(example)).toBeInTheDocument();
+    }
+  });
+
+  it('has no micro-plate checkbox or step field anywhere on the training step', () => {
+    toTrainingStep();
+    expect(screen.queryByText(/micro-plate/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/micro-plate/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the walk-to-gym question only for Full Gym and Full Gym and Home Gym', () => {
+    toTrainingStep();
+    const access = screen.getByLabelText(/^equipment access$/i);
+    // index 4: Full Gym (the default) already shows it.
+    expect(screen.getByText('Do you walk to and from the gym?')).toBeInTheDocument();
+    fireEvent.change(access, { target: { value: '3' } }); // Full Gym and Home Gym
+    expect(screen.getByText('Do you walk to and from the gym?')).toBeInTheDocument();
+    fireEvent.change(access, { target: { value: '2' } }); // Home Gym
+    expect(screen.queryByText('Do you walk to and from the gym?')).not.toBeInTheDocument();
+    fireEvent.change(access, { target: { value: '1' } }); // Home Gym and Body Weight
+    expect(screen.queryByText('Do you walk to and from the gym?')).not.toBeInTheDocument();
+    fireEvent.change(access, { target: { value: '0' } }); // Body Weight Only
+    expect(screen.queryByText('Do you walk to and from the gym?')).not.toBeInTheDocument();
+  });
+
+  it('reveals Minutes each way on Yes and stores it; No zeroes it without a field', () => {
+    toTrainingStep(); // Equipment Access defaults to Full Gym
+    expect(screen.queryByLabelText(/minutes each way/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Yes'));
+    expect(screen.getByLabelText(/minutes each way/i)).toBeInTheDocument();
+    setValue(/minutes each way/i, '12');
+    finishFromTraining();
+    expect(confirmedProfile().gymCommute).toEqual({ walks: true, minutesEachWay: 12 });
+  });
+
+  it('stores walks: false and minutesEachWay: 0 when the answer is No, the field never shown', () => {
+    toTrainingStep();
+    fireEvent.click(screen.getByLabelText('No'));
+    expect(screen.queryByLabelText(/minutes each way/i)).not.toBeInTheDocument();
+    finishFromTraining();
+    expect(confirmedProfile().gymCommute).toEqual({ walks: false, minutesEachWay: 0 });
+  });
+
+  it('feeds the walk-to-gym answer into no energy calculation: targets are unchanged either way', () => {
+    const first = toTrainingStep();
+    fireEvent.click(screen.getByLabelText('Yes'));
+    setValue(/minutes each way/i, '45');
+    finishFromTraining();
+    const withWalk = confirmedProfile();
+    first.unmount();
+
+    useAppStore.getState().wipeAll();
+    pinSkin(); // wipeAll restores defaultState()'s shipped skin (limelight); re-pin to clinical
+    toTrainingStep();
+    fireEvent.click(screen.getByLabelText('No'));
+    finishFromTraining();
+    const withoutWalk = confirmedProfile();
+
+    // Every input computeTargets reads (sex, age, height, mass, body fat, ACTIVITY, goal,
+    // sessions/week, creatine) is identical between the two runs; only gymCommute differs.
+    expect(withWalk.activity).toBe(withoutWalk.activity);
+    expect(
+      computeTargets(nutritionInputFor(withWalk, null, 2, '2026-09-01')),
+    ).toEqual(computeTargets(nutritionInputFor(withoutWalk, null, 2, '2026-09-01')));
+  });
+
+  it('shows the home equipment multi-select for Home Gym and both combinations that include it', () => {
+    toTrainingStep();
+    const access = screen.getByLabelText(/^equipment access$/i);
+    for (const index of ['1', '2', '3']) {
+      // Home Gym and Body Weight, Home Gym, Full Gym and Home Gym
+      fireEvent.change(access, { target: { value: index } });
+      expect(screen.getByText('What equipment do you have?')).toBeInTheDocument();
+      expect(screen.getByText('Squat Rack')).toBeInTheDocument();
+    }
+    fireEvent.change(access, { target: { value: '0' } }); // Body Weight Only
+    expect(screen.queryByText('Squat Rack')).not.toBeInTheDocument();
+    fireEvent.change(access, { target: { value: '4' } }); // Full Gym
+    expect(screen.queryByText('Squat Rack')).not.toBeInTheDocument();
+  });
+
+  it("labels the dumbbell bands with the profile's own unit, same numbers either way", () => {
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Pounds (lb)'));
+    next();
+    setValue(/^time zone$/i, 'America/New_York');
+    next();
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^feet$/i, '5');
+    setValue(/^inches$/i, '11');
+    setValue(/body mass \(lb\)/i, '150');
+    next();
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '2' } }); // Home Gym
+    expect(screen.getByText('5 to 20 lb')).toBeInTheDocument();
+    expect(screen.getByText('20 to 40 lb')).toBeInTheDocument();
+    expect(screen.getByText('40 lb and above')).toBeInTheDocument();
+  });
+
+  it('shows the body weight only multi-select for Body Weight Only alone, and stores the selections', () => {
+    toTrainingStep();
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '2' } }); // Home Gym
+    expect(screen.queryByText('Yoga Mat')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '0' } }); // Body Weight Only
+    expect(screen.getByText('Yoga Mat')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Yoga Mat'));
+    fireEvent.click(screen.getByLabelText('Pull-Up Bar'));
+    finishFromTraining();
+    expect(confirmedProfile().bodyweightEquipment.sort()).toEqual(['pull-up-bar', 'yoga-mat']);
+    expect(confirmedProfile().homeEquipment).toEqual([]);
+  });
+
+  it('clears a home equipment selection made under one position once the slider leaves every position that shows it', () => {
+    toTrainingStep();
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '2' } }); // Home Gym
+    fireEvent.click(screen.getByLabelText('Squat Rack'));
+    // Move to a position that does not show the home-equipment question at all.
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '0' } }); // Body Weight Only
+    finishFromTraining();
+    expect(confirmedProfile().homeEquipment).toEqual([]);
+  });
+
+  it('never renders Equipment (the AddCustomExercise modality label) on the training step', () => {
+    // Regression guard for the label.equipment / label.equipmentAccess split: the two must not
+    // collide, or a rename meant for this slider would silently relabel an unrelated field.
+    toTrainingStep();
+    expect(screen.queryByText('Equipment', { selector: 'label' })).not.toBeInTheDocument();
+    expect(screen.getByText('Equipment Access')).toBeInTheDocument();
   });
 });

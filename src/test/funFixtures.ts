@@ -8,8 +8,10 @@
 // the plan:
 //  - makeProfile and makePlan delegate to src/test/fixtures.ts and
 //    src/test/migrationFactories.ts instead of restating a Profile and a PlanTemplate. The
-//    plan's literals predate equipmentSteps.microPlateKg, hydration.weighInOptIn, readiness
-//    and the 1-based PlannedSession.ordinal, so a copy of them would not parse.
+//    plan's literals predate hydration.weighInOptIn, readiness, gymCommute, homeEquipment,
+//    bodyweightEquipment and the 1-based PlannedSession.ordinal, so a copy of them would not
+//    parse. equipmentSteps.hasMicroPlates/.microPlateKg, which the plan's literals also predate,
+//    were removed rather than added (Brief F Part 3).
 //  - makeAppState overlays defaultState() rather than listing every root field, so a field
 //    added to AppState reaches this fixture without an edit here.
 //  - makeUiPrefs starts from defaultState().ui for the same reason; the plan's literal
