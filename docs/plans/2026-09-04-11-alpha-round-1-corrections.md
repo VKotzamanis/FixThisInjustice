@@ -1046,3 +1046,35 @@ output redirected to a file that Claude then applies and verifies. agy drafts; i
 gate, so it can never report a passing test it did not run.
 
 **2026-09-05, MIT licence and the icon register.** Commit `ff39400`. Claims C1.01.13 and C1.09.9.
+
+
+---
+
+## Round 1: closed, 2026-09-06
+
+**80 of 127 claims shipped, tested and deployed.** 30 wait on sub-plans 12 to 15, which need
+design decisions before code. The rest were answered, superseded or withdrawn.
+
+Suite at close: 122 files, 2402 tests. `tsc`, `eslint`, the emoji gate, both catalogue gates and
+the personal-data grep all green.
+
+**A fourteenth contract rule was adopted at close.** R14: labels, headings and control names are
+Title Case, and a heading is a noun phrase rather than a sentence. The owner reported it three
+times across two rounds, the third time saying he would stop mentioning it, which is the point at
+which a preference becomes a defect in the author. `scripts/check-title-case.mjs` decides the
+mechanical half and reports 141 of 221 naming keys failing; correcting them is the first task of
+round 2, after which the script joins CI.
+
+**Delegation, recorded because it cost four failed dispatches to learn.** agy in headless print
+mode auto-denies every tool call, and its error blames permissions, which sends you to the wrong
+place: the cause is a prompt that invites tool use. Naming a file path is enough to trigger it.
+The working recipe is a neutral working directory, no paths in the prompt, an explicit refusal
+instruction, and stdout redirected to a file the orchestrator applies. Sonnet subagents through
+the Agent tool are the reliable path for anything that must also run a gate.
+
+**Verification is not optional.** Three of five subagent reports claimed clean runs that were not:
+a module shipped with no contract test, the session position vanished from one skin, and the top
+bar was empty through the whole of setup. Every one was found by re-running the gates rather than
+reading the report.
+
+Continues in `docs/HANDOFF-2026-09-06.md`.
