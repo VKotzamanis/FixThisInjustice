@@ -491,6 +491,16 @@ export const TimeCapsuleSchema = z.object({
 
 export const UiPrefsSchema = z.object({
   bootSeen: z.boolean(),
+  /*
+   * Additive. Has this device shown the intro sequence (src/ui/intro/IntroSequence.tsx)?
+   * `bootSeen` beside it carries no default because every P8 document already had a boot
+   * decision to make; a document written before this field existed never met the intro at all,
+   * so `false` (rather than an omission that would make the field required everywhere) is the
+   * honest read: it opens on the intro exactly once, the same first run a brand new document
+   * gets. CURRENT_SCHEMA_VERSION stays 3, additive with a default being the rule types.ts
+   * records for all of P1-P8.
+   */
+  introSeen: z.boolean().default(false),
   lastView: z.string().min(1).max(40),
   accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'expected a #rrggbb colour'),
   scanlines: z.boolean(),
@@ -691,6 +701,7 @@ export function defaultState(): AppState {
     notes: {},
     ui: {
       bootSeen: false,
+      introSeen: false,
       lastView: 'today',
       // Reconciled accent, code review A67; matches tokens.css and the manifest.
       accent: '#a3e635',

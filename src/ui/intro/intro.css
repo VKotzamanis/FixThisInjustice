@@ -1,0 +1,164 @@
+/*
+ * The intro sequence (P10 Brief C): four caveat slides, a disclaimer and a final slide, shown
+ * once before the app's own boot sequence.
+ *
+ * A fixed overlay, not a block in the layout, for the reason boot.css gives for the boot
+ * sequence: it stands in for the whole screen while it runs, so mounting <IntroGate /> anywhere
+ * in the shell covers the shell, and the app behind it does not reflow when it unmounts.
+ *
+ * z-index 56: one above the boot sequence (55, boot.css). The two never actually overlap --
+ * App.tsx mounts <BootGate /> only once `ui.introSeen` is true, so this sequence is always gone
+ * before that one can appear -- but the ordinal states the order unambiguously rather than
+ * leaving two full-screen layers at the same number. Above the two CRT presentation layers (50
+ * and 51, src/ui/styles/crt.css), below the toast stack (60, toastQueue.css), which must stay
+ * visible over any full-screen layer if a save fails while this one is on screen.
+ *
+ * Every custom property carries a literal fallback, as boot.css and phaseTransition.css do, so
+ * the sequence renders whether or not the P1 token sheet has loaded -- which matters more here
+ * than almost anywhere else, because this can be the very first screen a document ever shows.
+ */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  overflow: auto;
+  color: var(--text, #dde3ea);
+  background: var(--bg, #0a0b0c);
+  font-family: var(--mono, ui-monospace, monospace);
+  cursor: pointer;
+}
+
+/*
+ * The current slide. `key={index}` on this element in IntroSequence.tsx remounts it on every
+ * slide change, which is what re-triggers `intro-fade` below without any timer of its own:
+ * a fresh DOM node always starts its own CSS animation from the beginning.
+ */
+.intro-slide {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 34rem;
+  animation: intro-fade 1200ms ease-out both;
+}
+
+.intro-heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent, #a3e635);
+}
+
+.intro-body {
+  margin: 0;
+  /* Significant whitespace: a slide 4's body carries one literal blank line (introSlides.ts),
+     which is the paragraph break the owner wrote, and this is what renders it as one rather than
+     collapsing it the way normal inline text would. */
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/*
+ * The picture, at the foot of slides 1 to 4 only (IntroSequence.tsx). `overflow-x: auto` rather
+ * than a wrap, exactly as phaseTransition.css's `.pt-art`: the figure is fixed-width ASCII and a
+ * wrapped line of it is not the same figure. `aria-hidden` in the component, because it conveys
+ * nothing a screen reader user needs that the slide's own text does not already say.
+ */
+.intro-figure {
+  margin: 0;
+  overflow-x: auto;
+  color: var(--accent, #a3e635);
+  font-size: 0.85rem;
+  line-height: 1.15;
+}
+
+/*
+ * "Click to continue...", a hover cue rather than an instruction the user must read to proceed
+ * (the whole screen is already the click target). The float is decorative motion, suppressed
+ * below with everything else this file animates.
+ */
+.intro-continue {
+  margin: 0;
+  color: var(--text-3, #5a6270);
+  font-size: 0.8rem;
+  animation: intro-hover 2000ms ease-in-out infinite alternate;
+}
+
+.intro-skip {
+  align-self: flex-start;
+  /* 2.75rem = 44 px at a 16 px root: the tap target size 00-CONTEXT sets, matching .boot-skip. */
+  min-height: 2.75rem;
+  padding: 0 1rem;
+  color: inherit;
+  background: var(--bg-2, #13161a);
+  border: 1px solid var(--line, #2a3038);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+@keyframes intro-fade {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * A SLOW pulse on the disclaimer slide, never a flash: WCAG 2.3.1 sets the seizure threshold at
+ * more than three flashes per second, and one full cycle here takes 3 SECONDS -- three orders of
+ * magnitude slower than the threshold, and a smooth opacity glide rather than a hard on/off
+ * toggle besides. Applied by IntroSequence.tsx only to the one slide the brief names ("emphasised
+ * by a slow pulse, not a flash"), and disabled entirely below under prefers-reduced-motion,
+ * exactly as the brief requires.
+ */
+.intro-pulse .intro-body {
+  animation: intro-pulse-glow 3000ms ease-in-out infinite;
+}
+
+@keyframes intro-pulse-glow {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes intro-hover {
+  from {
+    opacity: 0.55;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+/*
+ * Under this setting the component itself renders every slide's text at once with no typing
+ * timer (IntroSequence.tsx), so the reveal is already gone before this rule matters. The rule is
+ * still here because the two answer different questions, exactly as phaseTransition.css's own
+ * copy of this comment says: the component decides whether a reveal runs at all, and this
+ * decides whether anything on screen animates, including the fade every slide gets and the slow
+ * pulse the brief calls out by name.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .intro-slide,
+  .intro-continue,
+  .intro-pulse .intro-body {
+    animation: none;
+  }
+}

@@ -91,7 +91,8 @@ reminders runbook
 and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
 None of them lives in a copy table: they are `src/content/formCues.ts`,
 `src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
-`src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts` and that runbook.
+`src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts`, `src/content/introSlides.ts`
+and that runbook.
 
 <!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
 `src/content/bodyEquations.ts` was added to that list on 2026-09-04, for alpha round 1 claim
@@ -118,6 +119,16 @@ readiness screening with an evidence-based guidance step covering creatine, caff
 powder, and basic kit. Each section cites published literature with DOIs verified in
 `src/domain/nutrition.ts`. The module carries its own suite, `src/content/supplementGuidance.test.ts`,
 asserting R5, R6, R11, and that every DOI it prints appears in `src/domain/nutrition.ts`.
+
+<!-- decision: r10-intro-slides-module | status: adopted | supersedes: none -->
+`src/content/introSlides.ts` was added to that list on 2026-09-05, for alpha round 1 claims
+C1.01.2 to C1.01.15: the intro sequence shown once before "Setup, step 1 of 9", four caveat
+slides typed out, a disclaimer and a slide naming what setup collects. The six slides are the
+owner's own words, copied verbatim, and none of them is a control label a skin retunes, which is
+what puts them here rather than in a copy table. The module carries its own suite,
+`src/content/introSlides.test.ts`, modelled on `bodyEquations.test.ts`: it asserts R5, R6 and
+R11, that no slide carries a URL, and that the module's shape matches the brief (six slides, the
+two headingless ones, slide 4's two-paragraph split, and the disclaimer quoted byte for byte).
 
 Inside the tables the exemption list is one key long, and the suite holds it as `LENGTH_EXEMPT`:
 

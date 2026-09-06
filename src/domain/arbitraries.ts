@@ -470,6 +470,11 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   // a Zod default, so a document that omitted it would round-trip to `true` rather than to
   // itself and the parity property would fail for a reason that is not a bug.
   hotkeys: fc.boolean(),
+  // Whether this device has shown the intro sequence. Additive with a Zod default of `false`,
+  // for the same reason as the four above: a document that omitted it would round-trip to
+  // `false` rather than to itself and the parity property would fail for a reason that is not a
+  // bug.
+  introSeen: fc.boolean(),
 });
 
 /**

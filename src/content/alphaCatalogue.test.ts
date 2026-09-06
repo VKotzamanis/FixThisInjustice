@@ -47,6 +47,7 @@ const live = catalogue.parts.filter((p) => p.status === 'live');
 const ID_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*){1,2}$/;
 
 const SCREENS = [
+  'intro',
   'boot',
   'shell',
   'setup',
@@ -64,8 +65,10 @@ const SCREENS = [
 
 describe('the alpha catalogue', () => {
   it('states its part count, and holds it', () => {
-    expect(catalogue.counts.parts).toBe(99);
-    expect(live).toHaveLength(99);
+    // P10 Brief C added two: intro.sequence and intro.skip, the same shape as boot.sequence and
+    // boot.skip, for the intro sequence shown once ahead of the boot sequence.
+    expect(catalogue.counts.parts).toBe(101);
+    expect(live).toHaveLength(101);
   });
 
   it('gives every part an id in the grammar, under a known screen', () => {
