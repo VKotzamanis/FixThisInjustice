@@ -3,6 +3,7 @@ import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
 import { Icon } from '../../skins/limelight/Icon';
+import { Illustration } from '../../skins/limelight/Illustration';
 import { playSfx } from '../../skins/sfx';
 import { usePendingMotivation } from '../../store/selectors';
 import { weekDeltaKey } from '../format/weekDelta';
@@ -88,6 +89,8 @@ export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactEle
 
   return (
     <section className="ll-stamp" data-testid="week-stamp">
+      {/* Decorative: the stamp's own word carries the meaning. Asset manifest, 2026-09-06. */}
+      <Illustration name="mascotCrown" width={64} height={64} />
       <p className="ll-stamp-word ll-display">
         <Icon name="crown" />
         {c('status.weekMetStamp')}

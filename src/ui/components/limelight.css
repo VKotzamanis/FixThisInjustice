@@ -246,3 +246,35 @@
     opacity: 0.92;
   }
 }
+
+/*
+ * The mascot illustrations, placed by the asset manifest of 2026-09-06. Round 3 drew four and
+ * wired none; two are placed now, on the Today hero and beside the week stamp.
+ *
+ * They are DECORATION and behave like it: they never take space from the words, they shrink out
+ * of the way on a narrow screen, and they carry an empty alt so a screen reader skips them.
+ */
+.ll-illustration {
+  display: block;
+  margin: 0 auto 8px;
+  max-width: 100%;
+  height: auto;
+}
+
+.ll-stamp .ll-illustration {
+  margin: 0 auto 4px;
+}
+
+@media (max-width: 420px) {
+  /* A phone gives the heading the room before it gives the picture the room. */
+  .ll-illustration {
+    width: 56px;
+    height: 56px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ll-illustration {
+    animation: none;
+  }
+}
