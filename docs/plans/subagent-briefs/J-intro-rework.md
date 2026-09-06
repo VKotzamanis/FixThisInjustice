@@ -15,6 +15,13 @@ Remove the button, the any-key skip, and the `button.skipIntro` copy key. `ui.in
 stops the sequence returning, so the control only ever let a first-time reader skip the caveats,
 which is the one thing it must not do.
 
+**Remove the INTRO's skip only, `button.skipIntro`. Leave Boot's `button.skipBoot` alone.** The
+intake assessment flagged an apparent conflict: he says "remove the SKIP" at r2.01 and "works
+perfectly" at r2.04, whose part id is `intro.skip`. Ruled here, not escalated: r2.04's step asked
+him to press Skip and confirm the intro does not return on a reload, so "works perfectly" is praise
+for the seen-flag mechanism, which stays. r2.01 gives two reasons for removing the control anyway
+and both stand. Praise for a mechanism is not a request to keep the escape hatch that exercises it.
+
 Advancing between slides stays a click or a tap. Only the escape hatch goes.
 
 ## 2. The prose, restructured (r2.02)
