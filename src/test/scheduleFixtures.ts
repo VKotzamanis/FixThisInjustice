@@ -75,7 +75,17 @@ export function emptyState(): AppState {
   const base = defaultState();
   return {
     ...base,
-    ui: { ...base.ui, bootSeen: true, scanlines: false, flicker: false, skin: 'clinical' },
+    // introSeen: true for the same reason bootSeen is pinned true here (P10 Brief C): a suite
+    // built on this fixture is not a suite about the intro sequence, and an unseen intro would
+    // overlay every view these tests render with its own Skip control.
+    ui: {
+      ...base.ui,
+      bootSeen: true,
+      introSeen: true,
+      scanlines: false,
+      flicker: false,
+      skin: 'clinical',
+    },
   };
 }
 

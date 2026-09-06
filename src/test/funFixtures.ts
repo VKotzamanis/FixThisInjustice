@@ -40,9 +40,14 @@ export function makePlan(patch: Partial<PlanTemplate> = {}): PlanTemplate {
   return makeBasePlan(patch);
 }
 
-/** The shipped defaults with the boot sequence already seen, which is the usual test case. */
+/**
+ * The shipped defaults with the boot sequence and the intro sequence already seen, which is the
+ * usual test case: a suite about the boot, a view, or the app shell is not a suite about the
+ * intro, and an unseen intro would overlay every one of them with its own Skip control (P10
+ * Brief C).
+ */
 export function makeUiPrefs(patch: Partial<UiPrefs> = {}): UiPrefs {
-  return { ...defaultState().ui, bootSeen: true, ...patch };
+  return { ...defaultState().ui, bootSeen: true, introSeen: true, ...patch };
 }
 
 /** An empty inventory: nothing collected, no set logged, no ordinal spent. */

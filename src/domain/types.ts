@@ -108,7 +108,13 @@ export type SkinId = 'clinical' | 'limelight' | 'board';
 // criterion asks for a mechanism to turn them off, not for them to ship off, and a document
 // written before the switch existed was running with them on. Combos carrying a modifier
 // (mod+k) and keys that type no character (Escape) are outside the criterion and stay bound.
-export interface UiPrefs { bootSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; }
+// introSeen: has this device shown the four-caveat / disclaimer intro sequence
+// (src/ui/intro/IntroSequence.tsx, alpha round 1 claims C1.01.2-C1.01.15)? Additive with a Zod
+// default of false: a fresh document has not met it, and it is set true once, by finishing or by
+// Skip, and never returns (App.tsx gates the sequence on it, ahead of the boot gate). A document
+// migrated from v2, or any other test/production fixture standing in for an existing user, seeds
+// it true, exactly as bootSeen does, so a returning user is never shown a first-run screen.
+export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; }
 
 // ---- root ----
 export interface AppState {

@@ -1,13 +1,77 @@
 {
-  "generatedFrom": "244d5d8",
+  "generatedFrom": "8e71fce",
   "counts": {
-    "screens": 13,
-    "parts": 99,
-    "keys": 481,
+    "screens": 14,
+    "parts": 101,
+    "keys": 483,
     "notRendered": 3,
-    "table": 484
+    "table": 486
   },
   "parts": [
+    {
+      "id": "intro.sequence",
+      "screen": "intro",
+      "order": 1,
+      "title": "Intro sequence",
+      "what": "The four caveat slides, the disclaimer and the final slide, shown once before setup.",
+      "components": [
+        "src/ui/intro/IntroSequence.tsx"
+      ],
+      "states": [
+        "running",
+        "finished"
+      ],
+      "keys": [
+        {
+          "key": "advice.clickToContinue",
+          "default": "Click to continue",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        }
+      ],
+      "status": "live"
+    },
+    {
+      "id": "intro.skip",
+      "screen": "intro",
+      "order": 2,
+      "title": "Skip control",
+      "what": "The control that ends the sequence from any slide, without advancing through the rest.",
+      "components": [
+        "src/ui/intro/IntroSequence.tsx"
+      ],
+      "states": [
+        "visible"
+      ],
+      "keys": [
+        {
+          "key": "button.skipIntro",
+          "default": "Skip",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        }
+      ],
+      "status": "live"
+    },
+    {
+      "id": "intro.unassigned",
+      "screen": "intro",
+      "order": 3,
+      "title": "Unassigned",
+      "what": "Keys this screen renders that no part claims. Must be empty.",
+      "components": [
+        "src/ui/intro/IntroSequence.tsx"
+      ],
+      "states": [],
+      "keys": [],
+      "status": "synthetic"
+    },
     {
       "id": "boot.sequence",
       "screen": "boot",

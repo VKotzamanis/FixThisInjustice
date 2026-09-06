@@ -52,6 +52,22 @@ export const STAGES = [
     steps: [
       {
         id: 'w1.01',
+        title: 'The intro sequence',
+        do: 'Open the app for the very first time. Tap anywhere, or press any key, to move past the first four slides.',
+        see: 'A caveat slide types itself out, with a small ascii figure and "click to continue" at the foot. Each tap replaces it with the next.',
+        keys: ['advice.clickToContinue'],
+        parts: ['intro.sequence'],
+      },
+      {
+        id: 'w1.02',
+        title: 'Skipping the intro',
+        do: 'Open the app again (or clear its storage) and tap "skip" on any slide.',
+        see: 'The sequence ends immediately and the app behind it appears; it never runs again on this device.',
+        keys: ['button.skipIntro'],
+        parts: ['intro.skip'],
+      },
+      {
+        id: 'w1.03',
         title: 'The boot sequence',
         do: 'Open the app from its Home Screen icon and watch without touching the screen.',
         see: 'Dotted lines print one after another until the last one lands.',
@@ -69,7 +85,7 @@ export const STAGES = [
         parts: ['boot.sequence'],
       },
       {
-        id: 'w1.02',
+        id: 'w1.04',
         title: 'Skipping the boot',
         do: 'Open the app again and tap "skip it" while the lines are still printing.',
         see: 'The sequence stops and the app behind it appears.',
@@ -77,7 +93,7 @@ export const STAGES = [
         parts: ['boot.skip'],
       },
       {
-        id: 'w1.03',
+        id: 'w1.05',
         title: 'The top bar',
         do: 'Look at the strip across the top of the screen.',
         see: 'The brand line, and one status word at the right end.',
@@ -85,7 +101,7 @@ export const STAGES = [
         parts: ['shell.topbar'],
       },
       {
-        id: 'w1.04',
+        id: 'w1.06',
         title: 'Setup, step 1: units',
         do: 'Read the heading and the line above the choice, then pick metric or imperial.',
         see: 'A heading naming the group this step belongs to, a step counter, a title, a lead-in line, two options, and a note under them.',
@@ -103,7 +119,7 @@ export const STAGES = [
         parts: ['setup.progress', 'setup.units'],
       },
       {
-        id: 'w1.05',
+        id: 'w1.07',
         title: 'The wizard controls',
         do: 'Look at the foot of the setup screen, then tap "go on".',
         see: 'Back appears from step 2 onward; the forward control sits beside it.',
@@ -111,7 +127,7 @@ export const STAGES = [
         parts: ['setup.nav'],
       },
       {
-        id: 'w1.06',
+        id: 'w1.08',
         title: 'Setup, step 2: time zone',
         do: 'Read the note, then check the zone the app has filled in.',
         see: 'One note, one field, and an error line if the zone is not a real one.',
@@ -125,7 +141,7 @@ export const STAGES = [
         parts: ['setup.timezone'],
       },
       {
-        id: 'w1.07',
+        id: 'w1.09',
         title: 'Setup, step 3: name, age, sex, height, mass',
         do: 'Fill the fields from the top of the screen down to body mass. Leave one blank and tap "go on" to see the errors. Then open the sex explainer.',
         see: 'A name field, then age and a sex choice with a link under it, then height and body mass.',
@@ -151,7 +167,7 @@ export const STAGES = [
         parts: ['setup.body'],
       },
       {
-        id: 'w1.08',
+        id: 'w1.10',
         title: 'Setup, step 3: body fat',
         do: 'Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open "why?".',
         see: 'Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot.',
@@ -179,7 +195,7 @@ export const STAGES = [
         parts: ['setup.body'],
       },
       {
-        id: 'w1.09',
+        id: 'w1.11',
         title: 'Setup, step 4: training context',
         do: 'Set activity, experience and equipment, then scroll to the load steps.',
         see: 'Three menus, then a note and the load increments the app rounds to.',
@@ -207,7 +223,7 @@ export const STAGES = [
         parts: ['setup.training'],
       },
       {
-        id: 'w1.10',
+        id: 'w1.12',
         title: 'Setup, step 5: goal',
         do: 'Pick a goal, then read down to the two checkboxes.',
         see: 'A goal menu, a target mass, a target date, and two options with a note under each.',
@@ -228,7 +244,7 @@ export const STAGES = [
         parts: ['setup.goal'],
       },
       {
-        id: 'w1.11',
+        id: 'w1.13',
         title: 'Setup, step 6: availability',
         do: 'Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.',
         see: 'A sessions-per-week field, then seven weekday rows, each with a time and a length.',
@@ -250,7 +266,7 @@ export const STAGES = [
         parts: ['setup.availability'],
       },
       {
-        id: 'w1.12',
+        id: 'w1.14',
         title: 'Setup, step 7: programme length',
         do: 'Set how many weeks the plan runs for.',
         see: 'One field, a note about deload weeks, and a cardio checkbox.',
@@ -263,7 +279,7 @@ export const STAGES = [
         parts: ['setup.programme'],
       },
       {
-        id: 'w1.13',
+        id: 'w1.15',
         title: 'Setup, step 8: guidance',
         do: 'Read the supplement and kit guidance, then tap Continue.',
         see: 'Sections on creatine, caffeine, protein powder, and basic kit, with personalized doses.',
@@ -271,7 +287,7 @@ export const STAGES = [
         parts: ['setup.guidance'],
       },
       {
-        id: 'w1.14',
+        id: 'w1.16',
         title: 'Setup, step 9: review',
         do: 'Read the two panels, then tap "lock it in".',
         see: 'The daily targets, then the programme summary, then the control that writes the profile.',

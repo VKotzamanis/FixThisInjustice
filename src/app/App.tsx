@@ -19,6 +19,7 @@ import { SPOTLIGHT_COMBO, VIEWS, isViewId } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { stepBrowseBlock, stepBrowseWeek } from '../ui/planBrowse';
 import { BootGate } from '../ui/components/Boot';
+import { IntroGate } from '../ui/intro/IntroSequence';
 import { KonamiOverlay, useKonamiCode } from '../ui/components/KonamiOverlay';
 import { PhaseTransitionGate } from '../ui/components/PhaseTransition';
 import { SessionIndicator } from '../ui/components/SessionIndicator';
@@ -442,6 +443,13 @@ export function App(): ReactElement {
   const crtClasses = ['crt', scanlines ? 'sc' : '', flicker ? 'fl' : ''].filter(Boolean).join(' ');
 
   /*
+   * P10 Brief C: the intro sequence gates the boot sequence, not just the setup wizard. Read as
+   * a scalar selector so the snapshot stays referentially stable between renders, the same
+   * reason `scanlines` and `flicker` are read this way above.
+   */
+  const introSeen = useAppStore((s) => s.ui.introSeen);
+
+  /*
    * The two P4 modals are mounted once, here, and reached from any view through
    * useVideoModal() / useFormCuesModal(). Nothing is written to `window` (code review A53).
    * The provider renders its children unconditionally and each modal only while it holds an
@@ -484,14 +492,32 @@ export function App(): ReactElement {
             <MigrationGate />
 
             {/*
+             * The intro sequence (P10 Brief C), AHEAD of the boot sequence below. A fixed
+             * overlay exactly like BootGate, so it costs the tree nothing beyond itself and
+             * gates itself on `ui.introSeen`. It is mounted unconditionally, like BootGate,
+             * because it is the piece that has to notice the moment the sequence records itself
+             * as seen and disappear.
+             */}
+            <IntroGate />
+
+            {/*
              * The boot sequence (P8 Task 6). A FIXED overlay covering the whole screen while it
              * runs, so its position in the tree carries no layout and the app behind it does not
              * reflow when it unmounts. It gates itself on `ui.bootSeen` and renders null once the
              * sequence has recorded itself as seen, which is why it is mounted unconditionally.
              * Inside <main> so setup, which is the whole screen before a profile exists, boots
              * behind the same sequence as everything else.
+             *
+             * ALSO gated here on `introSeen`, which BootGate itself does not check: the two
+             * sequences both draw a control named "Skip" (button.skipIntro, button.skipBoot),
+             * and mounting both at once -- introSeen false, bootSeen false, a fresh document's
+             * actual first run -- would put two same-named Skip controls in the tree at once.
+             * Deferring Boot's mount until the intro has been seen or skipped keeps the two
+             * sequential, which is what "shown once before... Setup, step 1 of 9" already means
+             * for the intro and what P8 already means for the boot: the user meets exactly one
+             * full-screen sequence at a time.
              */}
-            <BootGate />
+            {introSeen && <BootGate />}
 
             {profile === null ? (
               // No profile means setup has not run. The wizard is the whole screen until it has:

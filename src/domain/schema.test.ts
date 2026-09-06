@@ -756,3 +756,36 @@ describe('the hotkeys preference', () => {
     if (result.ok) expect(result.state.ui.hotkeys).toBe(false);
   });
 });
+
+/**
+ * The intro sequence's own seen flag (P10 Brief C, src/ui/intro/IntroSequence.tsx).
+ *
+ * `false` by default, unlike hotkeys above: the intro is a screen to get PAST, not a mechanism
+ * to switch off, so a fresh document has not met it and a document written before the field
+ * existed has not either -- both open on the intro exactly once.
+ */
+describe('the introSeen preference', () => {
+  it('defaults a fresh document to unseen', () => {
+    const s = defaultState();
+    expect(s.ui.introSeen).toBe(false);
+    expect(AppStateSchema.safeParse(s).success).toBe(true);
+    // Additive with a Zod default, so the version does not move.
+    expect(s.schemaVersion).toBe(3);
+    expect(CURRENT_SCHEMA_VERSION).toBe(3);
+  });
+
+  it('backfills false onto a document that predates it', () => {
+    const result = parseState(legacyDocument());
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.ui.introSeen).toBe(false);
+  });
+
+  it('carries a stored true through unchanged', () => {
+    const doc = legacyDocument();
+    doc.ui = { ...(doc.ui as Record<string, unknown>), introSeen: true };
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state.ui.introSeen).toBe(true);
+  });
+});

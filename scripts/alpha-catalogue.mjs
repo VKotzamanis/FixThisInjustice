@@ -44,6 +44,9 @@ export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 /** The screens in app order, each with the paths that render its strings. */
 export const SCREEN_FILES = [
+  // P10 Brief C: the intro sequence, shown once ahead of the boot sequence below
+  // (App.tsx mounts <BootGate /> only once `ui.introSeen` is true).
+  ['intro', ['src/ui/intro/IntroSequence.tsx']],
   ['boot', ['src/ui/components/Boot.tsx']],
   [
     'shell',

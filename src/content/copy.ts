@@ -557,7 +557,10 @@ export type CopyKey =
   | 'label.modality.bodyweight'
   | 'unit.characters'
   // --- the suggested-load line has a row for the absence too (whole-app review, item 2) ---
-  | 'label.noSuggestedLoad';
+  | 'label.noSuggestedLoad'
+  // --- the intro sequence, shown once before setup (P10 Brief C) ---
+  | 'button.skipIntro'
+  | 'advice.clickToContinue';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1531,6 +1534,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // bodyweight exercise it is a false one — `isBodyweight` returns null forever, so the load
   // suggestion the word implies is never coming. The shipped form is true in all four branches.
   'label.noSuggestedLoad': 'No load suggested',
+
+  // --- the intro sequence, shown once before setup (P10 Brief C) ---
+  // The long-form slide text lives in src/content/introSlides.ts (R10 reference text, not this
+  // table); these two are the only strings the sequence's own controls draw from copy.ts.
+  'button.skipIntro': 'Skip', // R1: 1 word
+  'advice.clickToContinue': 'Click to continue', // R3: 3 words
 };
 
 /**

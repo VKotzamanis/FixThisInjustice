@@ -305,6 +305,10 @@ function blankState(profile: Profile, plan: PlanTemplate): AppState {
     notes: {},
     ui: {
       bootSeen: true,
+      // Additive, same rule as bootSeen above: a v2 document is an existing user who has
+      // already met the app, so the intro sequence (src/ui/intro/IntroSequence.tsx) is not
+      // shown to them either.
+      introSeen: true,
       lastView: 'today',
       accent: '#a3e635',
       scanlines: true,
