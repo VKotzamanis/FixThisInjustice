@@ -325,6 +325,8 @@ export const STAGES = [
           'label.inTargetRange',
           'label.maintenanceOnly',
           'button.confirmStart',
+        
+          'hero.yourAnswers',
         ],
         parts: ['setup.review'],
       },

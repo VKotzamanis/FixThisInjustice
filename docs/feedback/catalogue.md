@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `05204ae`. 102 parts across 14 screens, holding 497 of the table's 500 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `aa6bd14`. 102 parts across 14 screens, holding 498 of the table's 501 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (2)
 
@@ -420,6 +420,7 @@ States: `ready`, `blocked`
 | `button.confirmStart` | Confirm and start | lock it in | same | yes |
 | `hero.dailyTargets` | Daily targets | the numbers | same | yes |
 | `hero.programme` | Programme | same | same | yes |
+| `hero.yourAnswers` | What you told me | same | same | yes |
 | `label.creatineDose` | Creatine | same | same | yes |
 | `label.energy` | Energy | same | same | yes |
 | `label.expectedRate` | Expected rate | same | same | yes |

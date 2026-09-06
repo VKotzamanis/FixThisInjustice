@@ -38,7 +38,7 @@ import {
   type SetupDraft,
   type UnitSystem,
 } from '../../domain/types';
-import { displayMass, formatVolume } from '../../domain/units';
+import { displayMass, formatMass, formatVolume } from '../../domain/units';
 import {
   UnitInput,
   girthUnit,
@@ -157,7 +157,7 @@ const STEP_GROUP: Record<StepId, SetupGroup | null> = {
  * load labels come from UNIT_LABEL through UnitInput; these are the ones UNIT_LABEL does not
  * carry because they are the same in both unit systems.
  */
-const UNIT = { years: 'years', weeks: 'weeks', minutes: 'min', cm: 'cm', inch: 'in', pct: '%' };
+const UNIT = { years: 'years', weeks: 'weeks', minutes: 'min', m: 'm', cm: 'cm', ft: 'ft', inch: 'in', pct: '%' };
 
 const CM_PER_INCH = 2.54; // [cm/in] exact by definition
 const CM_PER_METRE = 100; // [cm/m]
@@ -2117,6 +2117,49 @@ export function SetupWizard(): JSX.Element {
           >
             {t(STEP_TITLE_KEY.review)}
           </h2>
+          {/*
+           * What the earlier steps collected, read back before Confirm writes it. Round 1 claim
+           * C1.14 asked for this step to be redone once the steps above settled: the rest of the
+           * screen shows DERIVED numbers, which stay current on their own, but nothing showed the
+           * user their own answers, which is the one thing a review screen exists to do.
+           *
+           * Every value is formatted through the same helpers the fields use, so a number here can
+           * never disagree with the number typed above it.
+           */}
+          <fieldset>
+            <legend>{t('hero.yourAnswers')}</legend>
+            <dl>
+              <dt>{t('label.name')}</dt>
+              <dd data-testid="review-name">{draft.displayName}</dd>
+              <dt>{t('quantity.age')}</dt>
+              <dd data-testid="review-age">{FORMAT.quantityWithUnit(draft.ageYears, UNIT.years)}</dd>
+              <dt>{t('label.sex')}</dt>
+              <dd data-testid="review-sex">
+                {t(draft.sex === 'male' ? 'label.sexMale' : 'label.sexFemale')}
+              </dd>
+              <dt>{t('quantity.bodyMass')}</dt>
+              <dd data-testid="review-mass">
+                {massKg === null ? t('label.none') : formatMass(massKg, draft.units)}
+              </dd>
+              <dt>{t('quantity.height')}</dt>
+              <dd data-testid="review-height">
+                {heightCm === null
+                  ? t('label.none')
+                  : draft.units === 'metric'
+                    ? `${draft.heightM} ${UNIT.m} ${draft.heightCm} ${UNIT.cm}`
+                    : `${draft.heightFt} ${UNIT.ft} ${draft.heightIn} ${UNIT.inch}`}
+              </dd>
+              <dt>{t('quantity.bodyFat')}</dt>
+              <dd data-testid="review-bodyfat">
+                {bodyFatPct === null
+                  ? t('label.bodyFatNone')
+                  : FORMAT.quantityWithUnit(round1(bodyFatPct).toString(), UNIT.pct)}
+              </dd>
+              <dt>{t('label.timezone')}</dt>
+              <dd data-testid="review-timezone">{draft.timezone}</dd>
+            </dl>
+          </fieldset>
+
           <fieldset>
             <legend>{t('hero.dailyTargets')}</legend>
             {targets === null ? (
