@@ -1,8 +1,9 @@
-import { Fragment, useRef, useState, type JSX } from 'react';
+import { Fragment, useMemo, useRef, useState, type JSX } from 'react';
 import { UnitInput, loadUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
+import { isValidTimeZone, utcOffsetLabel } from '../../domain/dates';
 import { dailyBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
 import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
@@ -75,6 +76,91 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
   { id: 'data', render: () => <DataSection /> },
 ];
 
+/**
+ * The time zone, changeable from Settings (C1.04.3: the owner said "those static settings",
+ * plural, so this sits beside the display-unit toggle above). Same closed-choice-with-fallback
+ * shape as SetupWizard.tsx's own timezone step: a `<select>` built from the platform's zone
+ * list when it is available, each option labelled with today's computed offset, and a
+ * validated free-text fallback when it is not.
+ *
+ * The fallback commits to the store only once `isValidTimeZone` accepts what was typed:
+ * `updateProfile` runs no schema check of its own (only `hydration.dailyTargetML` is guarded),
+ * so an invalid IANA string written here would sit quietly in memory and surface only on the
+ * NEXT load, when `TimeZoneSchema` rejects the whole document over one bad field.
+ *
+ * Remounted by the caller with `key={profile.id}`, exactly as `NumberSetting` is remounted on a
+ * unit change: the fallback branch's local draft must reseed from the newly active profile's own
+ * stored zone, not keep showing the previous profile's text.
+ */
+function TimeZoneSetting(props: { profile: Profile }): JSX.Element {
+  const t = useCopy();
+  const { profile } = props;
+  /*
+   * Intl.supportedValuesOf is ES2022 and absent on older engines, and a locked-down engine can
+   * throw on it, so both are treated as "no list" rather than as a failure.
+   */
+  const timeZoneOptions = useMemo((): readonly string[] => {
+    if (typeof Intl.supportedValuesOf !== 'function') return [];
+    try {
+      return Intl.supportedValuesOf('timeZone');
+    } catch {
+      return [];
+    }
+  }, []);
+  const timeZoneOptionLabels = useMemo(
+    () =>
+      timeZoneOptions.map((zone) => ({
+        zone,
+        label: `(${utcOffsetLabel(zone, Date.now())}) ${zone}`,
+      })),
+    [timeZoneOptions],
+  );
+  const [draftZone, setDraftZone] = useState(profile.timezone);
+  const zoneError = isValidTimeZone(draftZone) ? null : t('advice.timezoneInvalid');
+
+  return (
+    <div className="view-field">
+      <label htmlFor="settings-timezone">{t('label.timezone')}</label>
+      {timeZoneOptions.length > 0 ? (
+        <select
+          id="settings-timezone"
+          value={profile.timezone}
+          onChange={(e) => {
+            useAppStore.getState().updateProfile(profile.id, { timezone: e.target.value });
+          }}
+        >
+          {timeZoneOptionLabels.map((o) => (
+            <option key={o.zone} value={o.zone}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <input
+          id="settings-timezone"
+          type="text"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          value={draftZone}
+          aria-invalid={zoneError !== null}
+          aria-describedby={zoneError === null ? undefined : 'settings-timezone-error'}
+          onChange={(e) => {
+            setDraftZone(e.target.value);
+            if (isValidTimeZone(e.target.value)) {
+              useAppStore.getState().updateProfile(profile.id, { timezone: e.target.value });
+            }
+          }}
+        />
+      )}
+      {zoneError !== null && (
+        <p className="view-error" id="settings-timezone-error">
+          {zoneError}
+        </p>
+      )}
+    </div>
+  );
+}
 
 /**
  * A numeric setting held as a local draft and written through to the store on BLUR or ENTER.
@@ -267,6 +353,8 @@ export function SettingsView(): JSX.Element {
         </select>
       </div>
       <p className="view-note">{t('advice.storedUnitsUnchanged')}</p>
+
+      <TimeZoneSetting key={profile.id} profile={profile} />
 
       <div className="view-field">
         <label htmlFor="settings-activity">{t('label.activity')}</label>

@@ -18,6 +18,7 @@ import type {
   PushDevice,
   ReminderSettings,
   SessionAssignment,
+  SetupDraft,
   SpecimenInventory,
   TimeCapsule,
   UiPrefs,
@@ -478,6 +479,76 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
 });
 
 /**
+ * A hand-typed draft field: unlike `anyText`, empty is a real value here (an untouched field),
+ * so this admits the empty string `anyText` refuses.
+ */
+const anyDraftText = fc.string({ maxLength: 40 });
+
+const anyDaySlot = fc.record({
+  enabled: fc.boolean(),
+  startTime: anyDraftText,
+  durationMin: anyDraftText,
+});
+
+/**
+ * The setup wizard's in-progress answers (C1.G.1), generated for the same reason skin, sounds,
+ * hotkeys and introSeen are above: `setupDraft` is additive with a `.catch(null)` fallback (see
+ * SetupDraftSchema's comment), so a document that omitted it, or carried a garbage value for it,
+ * would round-trip to `null` rather than to itself, and only a VALID generated draft exercises
+ * the branch where the round trip has to reproduce the object exactly.
+ */
+export const anySetupDraft: fc.Arbitrary<SetupDraft> = fc.record({
+  units: anyUnitSystem,
+  timezone: anyTimeZone,
+  displayName: anyDraftText,
+  sex: fc.constantFrom('male' as const, 'female' as const),
+  ageYears: anyDraftText,
+  heightM: anyDraftText,
+  heightCm: anyDraftText,
+  heightFt: anyDraftText,
+  heightIn: anyDraftText,
+  mass: anyDraftText,
+  bodyFatMode: fc.constantFrom('none' as const, 'known' as const, 'tape' as const),
+  bodyFatPct: anyDraftText,
+  bodyFatSource: fc.constantFrom('measured' as const, 'tape' as const, 'visual' as const),
+  neck: anyDraftText,
+  waist: anyDraftText,
+  hip: anyDraftText,
+  activity: fc.constantFrom('sedentary' as const, 'moderate' as const, 'vigorous' as const),
+  experience: fc.constantFrom('novice' as const, 'intermediate' as const, 'advanced' as const),
+  equipment: fc.constantFrom('full-gym' as const, 'dumbbells-only' as const, 'bodyweight' as const),
+  barbellStep: anyDraftText,
+  dumbbellStep: anyDraftText,
+  stackStep: anyDraftText,
+  hasMicroPlates: fc.boolean(),
+  microPlateStep: anyDraftText,
+  goalKind: fc.constantFrom(
+    'fat-loss' as const,
+    'muscle-gain' as const,
+    'recomposition' as const,
+    'maintenance' as const,
+  ),
+  targetMass: anyDraftText,
+  targetDate: anyDraftText,
+  creatine: fc.boolean(),
+  weighInOptIn: fc.boolean(),
+  sessionsPerWeek: fc.constantFrom(2 as const, 3 as const, 4 as const, 5 as const, 6 as const),
+  days: fc.record({
+    1: anyDaySlot,
+    2: anyDaySlot,
+    3: anyDaySlot,
+    4: anyDaySlot,
+    5: anyDaySlot,
+    6: anyDaySlot,
+    7: anyDaySlot,
+  }),
+  weeklySessionTarget: anyDraftText,
+  weeks: anyDraftText,
+  includeCardio: fc.boolean(),
+  stepIndex: fc.integer({ min: 0, max: 8 }),
+});
+
+/**
  * A whole persisted document. Profile ids are shared across the per-profile maps
  * so the generated state resembles a real one rather than a bag of orphans.
  */
@@ -523,6 +594,7 @@ export const anyAppState: fc.Arbitrary<AppState> = fc
       capsules: byProfile(fc.option(anyTimeCapsule, { nil: null })),
       customExercises: byProfile(fc.array(anyExercise, { maxLength: 2 })),
       notes: byProfile(anyNotesForProfile),
+      setupDraft: fc.option(anySetupDraft, { nil: null }),
       ui: anyUiPrefs,
     });
   });

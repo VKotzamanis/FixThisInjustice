@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "f0d4676",
+  "generatedFrom": "05204ae",
   "counts": {
     "screens": 14,
     "parts": 102,
@@ -1350,7 +1350,7 @@
         },
         {
           "key": "option.activityModerate",
-          "default": "Moderate: regular walking, active job or training",
+          "default": "Moderate: regular walking, including a walk to and from the gym, active job or training",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1467,7 +1467,7 @@
         },
         {
           "key": "step.training",
-          "default": "Training context",
+          "default": "Equipment & Availability",
           "limelight": "same",
           "board": "same",
           "isControl": false,

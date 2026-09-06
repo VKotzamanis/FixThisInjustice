@@ -264,3 +264,29 @@ export function compareLocalDate(a: LocalDate, b: LocalDate): -1 | 0 | 1 {
   if (a > b) return 1;
   return 0;
 }
+
+/**
+ * A time zone's UTC offset, for today, as `UTC+02:00`.
+ *
+ * COMPUTED, NEVER STORED. An offset moves with daylight saving, so a stored one is wrong for half
+ * the year; src/domain/export/fixtures/athens-dst-week.ics exists because that has already bitten
+ * this project once. `atEpochMs` is a parameter rather than a `Date.now()` read so this stays a
+ * pure function of its arguments, testable without faking a clock.
+ *
+ * Lives here rather than beside either caller: alpha round 1 shipped it duplicated into the setup
+ * wizard and the Settings view, and two copies of a formatting rule drift.
+ */
+export function utcOffsetLabel(zone: string, atEpochMs: number): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      timeZoneName: 'longOffset',
+    }).formatToParts(new Date(atEpochMs));
+    const offset = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT+00:00';
+    return offset.replace('GMT', 'UTC');
+  } catch {
+    // Reachable only for a zone id the runtime accepted into supportedValuesOf a moment ago and
+    // now refuses; belt and braces, not a path this suite can drive.
+    return 'UTC';
+  }
+}

@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `f0d4676`. 102 parts across 14 screens, holding 497 of the table's 500 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `05204ae`. 102 parts across 14 screens, holding 497 of the table's 500 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (2)
 
@@ -316,7 +316,7 @@ States: `default`
 | `label.equipment` | Equipment | the gear | same | yes |
 | `label.experience` | Experience | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `label.microPlates` | Micro-plates available | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
-| `option.activityModerate` | Moderate: regular walking, active job or training | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `option.activityModerate` | Moderate: regular walking, including a walk to and from the gym, active job or training | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `option.activitySedentary` | Sedentary: desk work, little walking | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `option.activityVigorous` | Vigorous: heavy physical work, daily hard training | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `option.equipmentBodyweight` | Bodyweight only | same | same | yes |
@@ -329,7 +329,7 @@ States: `default`
 | `quantity.dumbbellStep` | Dumbbell step, per pair | same | same | yes |
 | `quantity.microPlateStep` | Micro-plate step | same | same | yes |
 | `quantity.stackStep` | Weight-stack step | same | same | yes |
-| `step.training` | Training context | same | same | yes |
+| `step.training` | Equipment & Availability | same | same | yes |
 
 ### `setup.goal`
 

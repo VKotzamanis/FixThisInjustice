@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { SettingsView } from './SettingsView';
 import { copy, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
+import { displayLoad, toStoredLoad } from '../../domain/units';
 import type { Profile } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
 
@@ -263,5 +264,100 @@ describe('SettingsView under a skin', () => {
     pinSkin('clinical');
     render(<SettingsView />);
     expect(screen.getByText(copyFor('clinical', 'hero.profile'))).toBeInTheDocument();
+  });
+});
+
+/**
+ * C1.04.3: the units toggle. It writes `Profile.units` and NOTHING ELSE - storage stays
+ * canonical kg and mL, formatted at render, so the toggle costs nothing to be free. Dual-unit
+ * storage was considered and rejected (00-CONTEXT / the brief): two sources of truth that can
+ * disagree, plus round-trip drift.
+ */
+describe('the units toggle in Settings (C1.04.3)', () => {
+  it('changes only Profile.units: a set logged in lb keeps its exact stored kg both ways', async () => {
+    useAppStore.getState().updateProfile('p1', { units: 'imperial' });
+    const enteredLb = 100;
+    const loadKg = toStoredLoad(enteredLb, 'imperial'); // [kg] 45.359237, exact by KG_PER_LB
+    useAppStore.getState().logSet(
+      {
+        profileId: 'p1',
+        assignmentDate: '2026-09-01',
+        sessionId: 'session-1',
+        exerciseId: 'barbell-bench-press',
+        setNumber: 1,
+        isBonus: false,
+        loadKg,
+        enteredUnit: 'imperial',
+        reps: 5,
+        durationS: null,
+        rpe: null,
+      },
+      Date.UTC(2026, 8, 1, 10, 0), // [ms] epoch, UTC
+    );
+    const setId = Object.keys(useAppStore.getState().sets)[0];
+    expect(setId).toBeDefined();
+
+    render(<SettingsView />);
+    const unitsSelect = screen.getByLabelText(copy('label.displayUnit'));
+
+    await userEvent.selectOptions(unitsSelect, 'metric');
+    expect(useAppStore.getState().profiles['p1']?.units).toBe('metric');
+    const afterMetric = useAppStore.getState().sets[setId ?? '']?.loadKg;
+    expect(afterMetric).toBe(45.359237); // exact: no conversion happened, the stored kg is unchanged
+    expect(displayLoad(afterMetric ?? 0, 'metric')).toBe(45.4); // [kg], 0.1 resolution
+
+    await userEvent.selectOptions(unitsSelect, 'imperial');
+    expect(useAppStore.getState().profiles['p1']?.units).toBe('imperial');
+    const afterImperial = useAppStore.getState().sets[setId ?? '']?.loadKg;
+    expect(afterImperial).toBe(45.359237); // still exact; switching back rewrote nothing either
+    expect(displayLoad(afterImperial ?? 0, 'imperial')).toBe(100); // [lb], back to the entered value
+  });
+});
+
+/**
+ * C1.04.3: "those static settings" (plural) - the owner asked for the time zone reachable from
+ * Settings too, beside the display unit. Same closed-choice-with-fallback shape as
+ * SetupWizard.tsx's own timezone step.
+ */
+describe('the time zone control in Settings (C1.04.3)', () => {
+  it('offers the platform zone list as a select, beside the display-unit toggle', () => {
+    render(<SettingsView />);
+    const control = screen.getByLabelText(copy('label.timezone'));
+    expect(control.tagName.toLowerCase()).toBe('select');
+    const options = [...control.querySelectorAll('option')] as HTMLOptionElement[];
+    expect(options.map((o) => o.value)).toContain('America/New_York');
+    expect(control).toHaveValue(PROFILE.timezone);
+  });
+
+  it('writes Profile.timezone and nothing else', async () => {
+    render(<SettingsView />);
+    const control = screen.getByLabelText(copy('label.timezone'));
+    await userEvent.selectOptions(control, 'America/New_York');
+    expect(useAppStore.getState().profiles['p1']?.timezone).toBe('America/New_York');
+    expect(useAppStore.getState().profiles['p1']?.units).toBe(PROFILE.units);
+  });
+
+  it('falls back to a validated free-text field when the platform has no zone list', async () => {
+    const original = Intl.supportedValuesOf;
+    // @ts-expect-error -- deliberately undoing the ES2022 API for this one test
+    delete Intl.supportedValuesOf;
+    try {
+      render(<SettingsView />);
+      const control = screen.getByLabelText(copy('label.timezone'));
+      expect(control.tagName.toLowerCase()).toBe('input');
+
+      await userEvent.clear(control);
+      await userEvent.type(control, 'Not/AZone');
+      expect(screen.getByText(copy('advice.timezoneInvalid'))).toBeInTheDocument();
+      // Refused: updateProfile is never asked to store an IANA string TimeZoneSchema rejects.
+      expect(useAppStore.getState().profiles['p1']?.timezone).toBe(PROFILE.timezone);
+
+      await userEvent.clear(control);
+      await userEvent.type(control, 'America/New_York');
+      expect(screen.queryByText(copy('advice.timezoneInvalid'))).toBeNull();
+      expect(useAppStore.getState().profiles['p1']?.timezone).toBe('America/New_York');
+    } finally {
+      Intl.supportedValuesOf = original;
+    }
   });
 });

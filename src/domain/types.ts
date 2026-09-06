@@ -116,6 +116,76 @@ export type SkinId = 'clinical' | 'limelight' | 'board';
 // it true, exactly as bootSeen does, so a returning user is never shown a first-run screen.
 export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; }
 
+// ---- setup draft (persisted so a closed browser does not lose in-progress setup) ----
+/*
+ * C1.G.1: "if I don't end the onboarding and close the browser, when I open the page again, the
+ * information that has been put there needs to be there waiting for me." Every free-typed
+ * quantity below is the RAW STRING the user typed, never a parsed number: a half-typed "5." must
+ * survive a reload and be RE-VALIDATED on the step that reads it, never trusted as correct just
+ * because it round-tripped, so nothing here is a Kg, an ML or any other canonical-unit primitive
+ * declared above. This is src/ui/setup/SetupWizard.tsx's own working shape for its answers (that
+ * file's local `Draft` type is `Omit<SetupDraft, 'stepIndex'>`, derived rather than hand-copied,
+ * so the two cannot drift apart the way a second, independently maintained interface would) plus
+ * the index of the step the user had reached, so a reload reopens on the same screen rather than
+ * back at step 1.
+ */
+export interface SetupDraft {
+  units: UnitSystem;
+  timezone: string; // IANA id as chosen; re-checked by isValidTimeZone on resume, never trusted
+  displayName: string;
+  sex: Sex;
+  /*
+   * Age is what the field ASKS for; Profile.body.birthYear is what gets STORED, backcalculated
+   * at Confirm (round 1 claim C1.07.17), because age is a decaying value a persisted draft must
+   * not freeze. This field carries the typed age either way, unaffected by that distinction.
+   */
+  ageYears: string; // [years], as typed
+  heightM: string; // [m], metric entry, whole metres, as typed
+  heightCm: string; // [cm], metric entry, the remainder under a metre, as typed
+  heightFt: string; // [ft], imperial entry, as typed
+  heightIn: string; // [in], imperial entry, as typed
+  mass: string; // [kg] or [lb], as typed
+  bodyFatMode: 'none' | 'known' | 'tape';
+  bodyFatPct: string; // [%], as typed
+  /*
+   * Provenance of bodyFatPct (round 1 decision visual-bodyfat-tracked-not-engine-feeding):
+   * 'measured' is typed straight into the box, 'tape' is set by the tape flow, 'visual' is set
+   * by the estimate-chart modal.
+   */
+  bodyFatSource: 'measured' | 'tape' | 'visual';
+  neck: string; // [cm] or [in], as typed, per `units`; converted by storedGirthCm
+  waist: string; // [cm] or [in], as typed, per `units`; converted by storedGirthCm
+  hip: string; // [cm] or [in], as typed, per `units`; converted by storedGirthCm
+  activity: ActivityLevel;
+  experience: Experience;
+  equipment: Equipment;
+  barbellStep: string; // [kg] or [lb], as typed
+  dumbbellStep: string; // [kg] or [lb] per pair, as typed
+  stackStep: string; // [kg] or [lb] per pin, as typed
+  hasMicroPlates: boolean;
+  microPlateStep: string; // [kg] or [lb] per pair, as typed
+  goalKind: GoalKind;
+  targetMass: string; // [kg] or [lb], as typed
+  targetDate: string; // [YYYY-MM-DD], as typed
+  creatine: boolean;
+  weighInOptIn: boolean;
+  /*
+   * One of the five per-week choices src/domain/plan/templates.ts (SessionsPerWeek) offers.
+   * Restated as a literal union rather than imported: templates.ts imports THIS file for
+   * Equipment/Exercise/Experience/Prescription, and the reverse edge would cycle the two modules.
+   */
+  sessionsPerWeek: 2 | 3 | 4 | 5 | 6;
+  // Per weekday: whether the user offered that day, and the start time and duration typed for
+  // it. Both are raw text, [HH:mm] and [min] respectively, unvalidated until the step re-reads
+  // them (mirrors SetupWizard.tsx's own pre-existing DaySlot shape).
+  days: Record<IsoWeekday, { enabled: boolean; startTime: string; durationMin: string }>;
+  weeklySessionTarget: string; // [sessions/week], as typed
+  weeks: string; // [weeks], as typed
+  includeCardio: boolean;
+  /** Index into STEPS (src/ui/setup/SetupWizard.tsx), so a reload reopens on the same screen. */
+  stepIndex: number;
+}
+
 // ---- root ----
 export interface AppState {
   schemaVersion: number;                 // CURRENT_SCHEMA_VERSION = 3
@@ -138,6 +208,7 @@ export interface AppState {
   capsules: Record<string, TimeCapsule | null>;
   customExercises: Record<string, Exercise[]>;     // by profileId; user-added exercises with generated ids (never positional)
   notes: Record<string, Record<LocalDate, string>>; // by profileId then local day; migrated from legacy daily notes
+  setupDraft: SetupDraft | null;                     // C1.G.1; null once there is nothing in progress
   ui: UiPrefs;
 }
 // Additive fields carry Zod defaults; CURRENT_SCHEMA_VERSION stays 3 for all of P1–P8. Non-persisted store fields: status { hydrated, lastLoadError, lastSaveError }, session slice, exerciseNames (derived).

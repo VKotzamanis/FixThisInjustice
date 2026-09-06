@@ -550,6 +550,113 @@ export const UiPrefsSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Setup draft (C1.G.1: the wizard survives a closed browser)
+// ---------------------------------------------------------------------------
+
+/**
+ * [characters] Sanity ceiling for a hand-typed field in the setup draft: a decimal quantity, a
+ * date typed as YYYY-MM-DD, a clock time, or an IANA time-zone id. Generous on purpose - this
+ * bounds a corrupted document, not a real keystroke, and the draft's whole point is that its
+ * numeric-looking fields are UNPARSED text the wizard re-validates on resume, never a Kg or an
+ * ML this file already bounds elsewhere.
+ */
+const MAX_DRAFT_TEXT_CHARS = 200;
+
+const SetupBodyFatModeSchema = z.enum(['none', 'known', 'tape']);
+const SetupBodyFatSourceSchema = z.enum(['measured', 'tape', 'visual']);
+
+/**
+ * The five session-per-week choices src/domain/plan/templates.ts (SessionsPerWeek) offers,
+ * restated rather than imported: that module imports this file for Equipment/Exercise/
+ * Experience/Prescription, and the reverse edge would cycle the two.
+ */
+const SetupSessionsPerWeekSchema = z.union([
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+]);
+
+/** One weekday slot on the availability step, both fields raw text (mirrors DaySlot). */
+const SetupDaySlotSchema = z.object({
+  enabled: z.boolean(),
+  startTime: z.string().max(MAX_DRAFT_TEXT_CHARS), // [HH:mm] as typed, unvalidated
+  durationMin: z.string().max(MAX_DRAFT_TEXT_CHARS), // [min] as typed, unvalidated
+});
+
+/** [step index] Sanity ceiling: STEPS in src/ui/setup/SetupWizard.tsx has 9 entries (0-8). */
+const MAX_SETUP_DRAFT_STEP_INDEX = 8;
+
+/**
+ * The wizard's in-progress answers, field for field the same shape as SetupDraft in ./types
+ * (that Equal<> parity is asserted the same way as everywhere else in this file, through the
+ * type-identity check in schema.test.ts). Every quantity that is free-typed text in the wizard
+ * is bounded only by length here, never re-derived as a number or checked against
+ * NUTRITION_DOMAIN: this schema's job is to keep a corrupted document from taking the rest of
+ * the app down with it, not to validate an answer, which is the wizard's own job on resume.
+ */
+const SetupDraftShapeSchema = z.object({
+  units: UnitSystemSchema,
+  timezone: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  displayName: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  sex: SexSchema,
+  ageYears: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  heightM: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  heightCm: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  heightFt: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  heightIn: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  mass: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  bodyFatMode: SetupBodyFatModeSchema,
+  bodyFatPct: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  bodyFatSource: SetupBodyFatSourceSchema,
+  neck: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  waist: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  hip: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  activity: ActivityLevelSchema,
+  experience: ExperienceSchema,
+  equipment: EquipmentSchema,
+  barbellStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  dumbbellStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  stackStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  hasMicroPlates: z.boolean(),
+  microPlateStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  goalKind: GoalKindSchema,
+  targetMass: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  targetDate: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  creatine: z.boolean(),
+  weighInOptIn: z.boolean(),
+  sessionsPerWeek: SetupSessionsPerWeekSchema,
+  days: z.object({
+    1: SetupDaySlotSchema,
+    2: SetupDaySlotSchema,
+    3: SetupDaySlotSchema,
+    4: SetupDaySlotSchema,
+    5: SetupDaySlotSchema,
+    6: SetupDaySlotSchema,
+    7: SetupDaySlotSchema,
+  }),
+  weeklySessionTarget: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  weeks: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  includeCardio: z.boolean(),
+  stepIndex: z.int().min(0).max(MAX_SETUP_DRAFT_STEP_INDEX),
+});
+
+/**
+ * Nullable, and caught rather than merely defaulted. `.default(null)` alone only fires when the
+ * KEY is absent, which covers a document written before this field existed but not a document
+ * where the key is PRESENT and corrupt - and a corrupt nested object would otherwise fail
+ * AppStateSchema as a whole, taking every profile and every logged set down with it over one
+ * bad draft (C1.G.1: "an invalid stored draft does not crash the wizard and does not corrupt
+ * the rest of the document"). `.catch(null)` subsumes the missing-key case too (verified: Zod
+ * 4.5.4 falls back to the catch value on a missing required key exactly as it does on a value
+ * that fails validation), so a document that predates the field, one that carries a clean
+ * draft, and one with a garbage `setupDraft` all parse - the first two keep or restore their
+ * exact value, the third loses only the draft, never the document.
+ */
+export const SetupDraftSchema = SetupDraftShapeSchema.nullable().catch(null);
+
+// ---------------------------------------------------------------------------
 // Root
 // ---------------------------------------------------------------------------
 
@@ -617,6 +724,9 @@ export const AppStateSchema = z
     notes: z
       .record(z.string(), z.record(LocalDateSchema, z.string().max(MAX_NOTE_CHARS)))
       .default({}),
+    // Additive (C1.G.1). See SetupDraftSchema's own comment for why this is `.catch(null)`
+    // rather than a bare `.default(null)`.
+    setupDraft: SetupDraftSchema,
     ui: UiPrefsSchema,
   })
   /**
@@ -699,6 +809,7 @@ export function defaultState(): AppState {
     capsules: {},
     customExercises: {},
     notes: {},
+    setupDraft: null,
     ui: {
       bootSeen: false,
       introSeen: false,

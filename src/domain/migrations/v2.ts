@@ -303,6 +303,8 @@ function blankState(profile: Profile, plan: PlanTemplate): AppState {
     capsules: {},
     customExercises: {},
     notes: {},
+    // Additive (C1.G.1): a v2 document has no in-progress P1 wizard to resume.
+    setupDraft: null,
     ui: {
       bootSeen: true,
       // Additive, same rule as bootSeen above: a v2 document is an existing user who has
