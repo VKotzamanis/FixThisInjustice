@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "aa6bd14",
+  "generatedFrom": "0d89936",
   "counts": {
     "screens": 14,
     "parts": 102,
-    "keys": 498,
+    "keys": 521,
     "notRendered": 3,
-    "table": 501
+    "table": 524
   },
   "parts": [
     {
@@ -1294,15 +1294,27 @@
       "id": "setup.training",
       "screen": "setup",
       "order": 5,
-      "title": "Step 4, Training context",
-      "what": "Experience and activity, which drive the energy target.",
+      "title": "Step 4, Equipment & Availability",
+      "what": "Everyday activity, gym comfort and equipment access as sliders, the load increments, and the equipment questions the equipment access slider reveals (Brief F).",
       "components": [
         "src/ui/setup/SetupWizard.tsx"
       ],
       "states": [
-        "default"
+        "default",
+        "walk-to-gym",
+        "home-equipment",
+        "bodyweight-equipment"
       ],
       "keys": [
+        {
+          "key": "advice.equipmentInventoryPrompt",
+          "default": "What equipment do you have?",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
         {
           "key": "advice.loadSteps",
           "default": "The smallest increment a suggested load uses.",
@@ -1313,8 +1325,44 @@
           "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
         },
         {
+          "key": "advice.walkToGym",
+          "default": "Do you walk to and from the gym?",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "button.no",
+          "default": "No",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "button.yes",
+          "default": "Yes",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "disclosure.examples",
+          "default": "Examples",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.activity",
-          "default": "Activity level",
+          "default": "Everyday Activity Level",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1322,9 +1370,9 @@
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
         },
         {
-          "key": "label.equipment",
-          "default": "Equipment",
-          "limelight": "the gear",
+          "key": "label.equipmentAccess",
+          "default": "Equipment Access",
+          "limelight": "equipment access",
           "board": "same",
           "isControl": false,
           "limelightRowPermitted": true,
@@ -1332,7 +1380,7 @@
         },
         {
           "key": "label.experience",
-          "default": "Experience",
+          "default": "Gym Comfort",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1340,17 +1388,80 @@
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
         },
         {
-          "key": "label.microPlates",
-          "default": "Micro-plates available",
+          "key": "label.homeEquipmentAerobic",
+          "default": "Aerobic",
           "limelight": "same",
           "board": "same",
           "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.homeEquipmentDumbbells",
+          "default": "Dumbbells",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.homeEquipmentMachines",
+          "default": "Machines",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.accessBodyweight",
+          "default": "Body Weight Only",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.accessFullAndHome",
+          "default": "Full Gym and Home Gym",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.accessFullGym",
+          "default": "Full Gym",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.accessHome",
+          "default": "Home Gym",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.accessHomeAndBodyweight",
+          "default": "Home Gym and Body Weight",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
         },
         {
           "key": "option.activityModerate",
-          "default": "Moderate: regular walking, including a walk to and from the gym, active job or training",
+          "default": "Moderate",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1359,7 +1470,7 @@
         },
         {
           "key": "option.activitySedentary",
-          "default": "Sedentary: desk work, little walking",
+          "default": "Sedentary",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1368,7 +1479,7 @@
         },
         {
           "key": "option.activityVigorous",
-          "default": "Vigorous: heavy physical work, daily hard training",
+          "default": "Vigorous",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1376,8 +1487,8 @@
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
         },
         {
-          "key": "option.equipmentBodyweight",
-          "default": "Bodyweight only",
+          "key": "option.bodyweightPullUpBar",
+          "default": "Pull-Up Bar",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1385,8 +1496,8 @@
           "refusalGroup": null
         },
         {
-          "key": "option.equipmentDumbbells",
-          "default": "Dumbbells only",
+          "key": "option.bodyweightResistanceBands",
+          "default": "Resistance Bands",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1394,8 +1505,17 @@
           "refusalGroup": null
         },
         {
-          "key": "option.equipmentFullGym",
-          "default": "Full gym",
+          "key": "option.bodyweightSkippingRope",
+          "default": "Skipping Rope",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.bodyweightYogaMat",
+          "default": "Yoga Mat",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1404,7 +1524,7 @@
         },
         {
           "key": "option.experienceAdvanced",
-          "default": "Advanced: over three years",
+          "default": "Free weights for three years or more",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1413,7 +1533,7 @@
         },
         {
           "key": "option.experienceIntermediate",
-          "default": "Intermediate: one to three years",
+          "default": "Regular at the gym, mostly the machines",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1422,12 +1542,93 @@
         },
         {
           "key": "option.experienceNovice",
-          "default": "Novice: under one year of consistent training",
+          "default": "Starting out",
           "limelight": "same",
           "board": "same",
           "isControl": false,
           "limelightRowPermitted": false,
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
+        },
+        {
+          "key": "option.homeBench",
+          "default": "Bench",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeCableMachine",
+          "default": "Cable Machine",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeElliptical",
+          "default": "Elliptical",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeLatPulldown",
+          "default": "Lat Pulldown",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeLegPress",
+          "default": "Leg Press",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeRowingMachine",
+          "default": "Rowing Machine",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeSmithMachine",
+          "default": "Smith Machine",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeSquatRack",
+          "default": "Squat Rack",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.homeTreadmill",
+          "default": "Treadmill",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
         },
         {
           "key": "quantity.barbellStep",
@@ -1448,8 +1649,8 @@
           "refusalGroup": null
         },
         {
-          "key": "quantity.microPlateStep",
-          "default": "Micro-plate step",
+          "key": "quantity.stackStep",
+          "default": "Weight-stack step",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1457,8 +1658,8 @@
           "refusalGroup": null
         },
         {
-          "key": "quantity.stackStep",
-          "default": "Weight-stack step",
+          "key": "quantity.walkMinutes",
+          "default": "Minutes each way",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -3172,6 +3373,15 @@
           "isControl": true,
           "limelightRowPermitted": false,
           "refusalGroup": "THE CUSTOM-EXERCISE FORM"
+        },
+        {
+          "key": "label.equipment",
+          "default": "Equipment",
+          "limelight": "the gear",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
         },
         {
           "key": "label.modality.barbell",

@@ -91,8 +91,8 @@ reminders runbook
 and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
 None of them lives in a copy table: they are `src/content/formCues.ts`,
 `src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
-`src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts`, `src/content/introSlides.ts`
-and that runbook.
+`src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts`, `src/content/introSlides.ts`,
+`src/content/setupSliderExamples.ts` and that runbook.
 
 <!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
 `src/content/bodyEquations.ts` was added to that list on 2026-09-04, for alpha round 1 claim

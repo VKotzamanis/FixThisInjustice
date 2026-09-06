@@ -8,9 +8,11 @@
 // Deviations from the P7 plan's Task 2 Step 6 literal, recorded here rather than by
 // editing the plan:
 //  - Profile is built from src/test/fixtures.ts rather than copied, so it cannot drift
-//    from the shipped Profile type. The plan's literal predates equipmentSteps
-//    .microPlateKg, hydration.weighInOptIn and readiness, and used activity 'light',
-//    which is not one of the three FAO/WHO/UNU bands ActivityLevel admits.
+//    from the shipped Profile type. The plan's literal predates hydration.weighInOptIn,
+//    readiness, gymCommute, homeEquipment and bodyweightEquipment, and used activity
+//    'light', which is not one of the three FAO/WHO/UNU bands ActivityLevel admits.
+//    equipmentSteps.hasMicroPlates/.microPlateKg, also predating the plan's literal, were
+//    removed rather than added (Brief F Part 3).
 //  - PlannedSession.ordinal is 1-based (types.ts: plan.sessions[i].ordinal === i + 1);
 //    the plan's literal numbered them from 0, which PlannedSessionSchema rejects.
 //  - AppState carries ui.videoInstanceHost and ui.lastBlockSeenByProfile, both added

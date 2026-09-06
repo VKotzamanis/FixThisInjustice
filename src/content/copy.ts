@@ -106,7 +106,7 @@ export type CopyKey =
   | 'label.activity'
   | 'label.experience'
   | 'label.equipment'
-  | 'label.microPlates'
+  | 'label.equipmentAccess'
   | 'label.goal'
   | 'label.targetDate'
   | 'label.creatine'
@@ -134,7 +134,7 @@ export type CopyKey =
   | 'quantity.barbellStep'
   | 'quantity.dumbbellStep'
   | 'quantity.stackStep'
-  | 'quantity.microPlateStep'
+  | 'quantity.walkMinutes'
   | 'quantity.weeklySessionTarget'
   | 'quantity.programmeWeeks'
   | 'quantity.age'
@@ -144,9 +144,32 @@ export type CopyKey =
   | 'option.experienceNovice'
   | 'option.experienceIntermediate'
   | 'option.experienceAdvanced'
-  | 'option.equipmentFullGym'
-  | 'option.equipmentDumbbells'
-  | 'option.equipmentBodyweight'
+  | 'option.accessBodyweight'
+  | 'option.accessHomeAndBodyweight'
+  | 'option.accessHome'
+  | 'option.accessFullAndHome'
+  | 'option.accessFullGym'
+  | 'label.homeEquipmentAerobic'
+  | 'label.homeEquipmentDumbbells'
+  | 'label.homeEquipmentMachines'
+  | 'option.homeTreadmill'
+  | 'option.homeElliptical'
+  | 'option.homeRowingMachine'
+  | 'option.homeSquatRack'
+  | 'option.homeCableMachine'
+  | 'option.homeBench'
+  | 'option.homeLegPress'
+  | 'option.homeLatPulldown'
+  | 'option.homeSmithMachine'
+  | 'option.bodyweightYogaMat'
+  | 'option.bodyweightSkippingRope'
+  | 'option.bodyweightPullUpBar'
+  | 'option.bodyweightResistanceBands'
+  | 'advice.walkToGym'
+  | 'advice.equipmentInventoryPrompt'
+  | 'disclosure.examples'
+  | 'button.yes'
+  | 'button.no'
   | 'option.goalFatLoss'
   | 'option.goalMuscleGain'
   | 'option.goalRecomposition'
@@ -679,10 +702,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    */
   'label.bodyFatKnown': 'Percentage',
   'label.bodyFatTape': 'Body measurements',
-  'label.activity': 'Activity level',
-  'label.experience': 'Experience',
+  // Brief F Part 1a: the everyday-activity slider's box label, renamed from "Activity level".
+  'label.activity': 'Everyday Activity Level',
+  // Brief F Part 1b: renamed from "Experience" in the UI only; the Experience type is unchanged.
+  'label.experience': 'Gym Comfort',
+  // Also AddCustomExercise.tsx's modality label; not the Equipment Access slider, which is its
+  // own key below so this rename cannot touch that unrelated field.
   'label.equipment': 'Equipment',
-  'label.microPlates': 'Micro-plates available',
+  'label.equipmentAccess': 'Equipment Access',
   'label.goal': 'Goal',
   'label.targetDate': 'Target date (optional)',
   'label.creatine': 'Creatine monohydrate',
@@ -711,19 +738,62 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'quantity.barbellStep': 'Barbell step',
   'quantity.dumbbellStep': 'Dumbbell step, per pair',
   'quantity.stackStep': 'Weight-stack step',
-  'quantity.microPlateStep': 'Micro-plate step',
+  // Brief F Part 3: the walk-to-the-gym minutes field. hasMicroPlates/microPlateStep and this
+  // table's old 'quantity.microPlateStep' row are gone -- the owner asked for the micro-plate
+  // option to go, and only that.
+  'quantity.walkMinutes': 'Minutes each way',
   'quantity.weeklySessionTarget': 'Weekly session target',
   'quantity.programmeWeeks': 'Programme length',
   'quantity.age': 'Age',
-  'option.activitySedentary': 'Sedentary: desk work, little walking',
-  'option.activityModerate': 'Moderate: regular walking, including a walk to and from the gym, active job or training',
-  'option.activityVigorous': 'Vigorous: heavy physical work, daily hard training',
-  'option.experienceNovice': 'Novice: under one year of consistent training',
-  'option.experienceIntermediate': 'Intermediate: one to three years',
-  'option.experienceAdvanced': 'Advanced: over three years',
-  'option.equipmentFullGym': 'Full gym',
-  'option.equipmentDumbbells': 'Dumbbells only',
-  'option.equipmentBodyweight': 'Bodyweight only',
+  // Brief F Part 1a: short slider-position labels. The longer descriptive text that used to live
+  // here moved to the "Examples" disclosure (src/content/setupSliderExamples.ts
+  // ACTIVITY_LEVEL_EXAMPLES), so it is not duplicated between the visible label and the
+  // disclosure.
+  'option.activitySedentary': 'Sedentary',
+  'option.activityModerate': 'Moderate',
+  'option.activityVigorous': 'Vigorous',
+  // Brief F Part 1b: the Gym Comfort slider's three positions, verbatim from the owner. Also
+  // labels the same three values in Settings' Experience picker (SettingsView.tsx), which shares
+  // this key: the two screens name the same profile field and must not disagree on its wording.
+  'option.experienceNovice': 'Starting out',
+  'option.experienceIntermediate': 'Regular at the gym, mostly the machines',
+  'option.experienceAdvanced': 'Free weights for three years or more',
+  // Brief F Part 1c: the five Equipment Access slider positions, lowest to highest access. The
+  // old three-position 'option.equipmentFullGym' / 'Dumbbells' / 'Bodyweight' rows are gone: this
+  // is a five-position replacement, not an addition alongside them.
+  'option.accessBodyweight': 'Body Weight Only',
+  'option.accessHomeAndBodyweight': 'Home Gym and Body Weight',
+  'option.accessHome': 'Home Gym',
+  'option.accessFullAndHome': 'Full Gym and Home Gym',
+  'option.accessFullGym': 'Full Gym',
+  // Brief F Part 3: the "What equipment do you have?" multi-select's three group headings.
+  'label.homeEquipmentAerobic': 'Aerobic',
+  'label.homeEquipmentDumbbells': 'Dumbbells',
+  'label.homeEquipmentMachines': 'Machines',
+  'option.homeTreadmill': 'Treadmill',
+  'option.homeElliptical': 'Elliptical',
+  'option.homeRowingMachine': 'Rowing Machine',
+  'option.homeSquatRack': 'Squat Rack',
+  'option.homeCableMachine': 'Cable Machine',
+  'option.homeBench': 'Bench',
+  'option.homeLegPress': 'Leg Press',
+  'option.homeLatPulldown': 'Lat Pulldown',
+  'option.homeSmithMachine': 'Smith Machine',
+  // Brief F Part 3: the Body Weight Only multi-select's four items.
+  'option.bodyweightYogaMat': 'Yoga Mat',
+  'option.bodyweightSkippingRope': 'Skipping Rope',
+  'option.bodyweightPullUpBar': 'Pull-Up Bar',
+  'option.bodyweightResistanceBands': 'Resistance Bands',
+  // Brief F Part 3. Stored, and fed into NO energy calculation: 1a's "Everyday Activity Level"
+  // already counts a normal day's walking, gym trip included.
+  'advice.walkToGym': 'Do you walk to and from the gym?',
+  // Reused for both the Home gym and the Body Weight Only multi-selects (Brief F Part 3): one
+  // prompt, since both ask the identical question of a different, equally short list.
+  'advice.equipmentInventoryPrompt': 'What equipment do you have?',
+  // Brief F Part 1a/1c: the Examples disclosure toggle, matching disclosure.why's own pattern.
+  'disclosure.examples': 'Examples',
+  'button.yes': 'Yes',
+  'button.no': 'No',
   'option.goalFatLoss': 'Fat loss',
   'option.goalMuscleGain': 'Muscle gain',
   'option.goalRecomposition': 'Recomposition',
@@ -1676,6 +1746,17 @@ export const FORMAT = {
 
   /** "5 g" for the creatine dose row. */
   grams: (value: number): string => `${value} g`,
+
+  /**
+   * "5 to 20 kg" or "5 to 20 lb" (Brief F Part 3). The word "to" is the brief's own connector,
+   * not a dash: R5 bars an em dash and an en-dash-as-connector, and this sidesteps the question
+   * entirely by writing the range out. The numbers are the SAME in both unit systems -- only the
+   * trailing unit word changes; see HOME_DUMBBELL_BANDS's own comment in SetupWizard.tsx.
+   */
+  dumbbellBand: (lo: number, hi: number, unit: string): string => `${lo} to ${hi} ${unit}`,
+
+  /** "40 kg and above" or "40 lb and above": the open-ended top dumbbell band. */
+  dumbbellBandOpen: (lo: number, unit: string): string => `${lo} ${unit} and above`,
 
   /** "Upper / Lower x2, 12 weeks, 48 sessions." */
   splitSummary: (name: string, weeks: number, sessions: number): string =>

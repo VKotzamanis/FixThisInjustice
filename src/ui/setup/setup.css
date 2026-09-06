@@ -331,6 +331,50 @@
 }
 
 /*
+ * The three step-4 sliders (Brief F Part 1): Everyday Activity Level, Gym Comfort, Equipment
+ * Access. `accent-color` themes the native thumb and filled track in one declaration and is
+ * supported by every engine this app already requires (Intl.supportedValuesOf, master plan
+ * section 3); the explicit thumb rules beneath it are the fallback for the one engine that
+ * still needs a vendor-prefixed pseudo-element to size the thumb at all.
+ *
+ * min-height plus vertical padding gives the whole control a 44 px tap-target tall enough to
+ * catch a drag that starts a few pixels off the visible track, same reasoning as every other
+ * control in this file; the thumb itself is smaller (28 px) because a slider is dragged along a
+ * track, not tapped once, and 44 px of THUMB would visually swallow a 3-to-5-position track.
+ */
+.wiz-slider input[type='range'] {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem; /* 44 px */
+  padding: 16px 0;
+  background: transparent;
+  accent-color: var(--accent, #a3e635);
+}
+
+.wiz-slider input[type='range']::-webkit-slider-thumb {
+  width: 28px;
+  height: 28px;
+}
+
+.wiz-slider input[type='range']::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border: none;
+}
+
+/* The current position's label, named in text beside the slider (Brief F Part 1). */
+.wiz-slider-position {
+  margin: 0 0 6px;
+  font-weight: 600;
+}
+
+.wiz-slider-icons {
+  display: flex;
+  gap: 10px;
+  margin: 4px 0 0.75rem;
+}
+
+/*
  * The body step's two bordered boxes and their two-column rows. Round 1 claims C1.07.1, C1.07.2,
  * C1.07.18 and C1.07.19: the page needed a scroll, and the fix is to pair the fields that are
  * read together and give each pair its own outline. Single column under 560 px, because two
@@ -371,7 +415,20 @@
  */
 .wiz-choice {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+}
+
+/*
+ * A wrapped `.wiz-choice` (Brief F Part 3's equipment multi-selects run to six items) still
+ * needs each item wide enough to read and tap, so `flex: 1` alone -- fine for the two- and
+ * three-item groups above -- would squeeze a many-item row into illegibly narrow strips. `1 1
+ * 45%` gives each item roughly half the row on a phone before it wraps, and still fills the
+ * full width on a two-item row (10px gap keeps neither item quite at 50%, so two of them do not
+ * themselves wrap).
+ */
+.wiz-choice .wiz-glyph {
+  flex: 1 1 45%;
 }
 
 .wiz-glyph {

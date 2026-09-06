@@ -292,10 +292,11 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   /*
    * WHAT STAYS CLINICAL ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
    *
-   * 131 default keys reach Today, Train, Plan or Settings. Twenty-one took a row above, the
-   * twenty-first being `label.noSuggestedLoad`, which the whole-app review added with a row in
-   * both tables. The other 110 are named below, grouped so each reason is written once rather
-   * than once per key. Recount the list against the tree with the sweep in
+   * 130 default keys reach Today, Train, Plan or Settings (131 until Brief F Part 3 deleted
+   * `label.microPlates`, which reached Settings' now-removed micro-plate checkbox). Twenty-one
+   * took a row above, the twenty-first being `label.noSuggestedLoad`, which the whole-app review
+   * added with a row in both tables. The other 109 are named below, grouped so each reason is
+   * written once rather than once per key. Recount the list against the tree with the sweep in
    * docs/plans/2026-09-02-09-prose-and-docs-pass.md, Task 12 step 1, WITH ONE CORRECTION: that
    * sweep greps for a single-quoted key and a view that hands a key to a component as a JSX prop
    * writes it in double quotes (`titleKey="label.confirmWipe"`, `copyKey="button.skipToday"`).

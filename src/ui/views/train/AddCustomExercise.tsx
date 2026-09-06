@@ -12,6 +12,7 @@ import { FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy } from '../../../content/useCopy';
 import { newId } from '../../../domain/ids';
 import { EXERCISE_NAME_MAX_CHARS } from '../../../domain/schema';
+import { ACCESS_UNLOCKS } from '../../../domain/types';
 import type { Exercise, Modality, Profile } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import '../../styles/train.css';
@@ -84,7 +85,10 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
       // user can state what it trains, which P4 does not collect.
       muscleGroups: [],
       secondaryMuscles: [],
-      equipment: [profile.equipment],
+      // profile.equipment is the user's EquipmentAccess (what they HAVE), not an Equipment tag
+      // (what an exercise NEEDS): tag the custom exercise with every tier that access level
+      // unlocks, per src/domain/types.ts ACCESS_UNLOCKS.
+      equipment: [...ACCESS_UNLOCKS[profile.equipment]],
       videoQuery: `${trimmed} technique`,
       formCueId: null,
       note: null,

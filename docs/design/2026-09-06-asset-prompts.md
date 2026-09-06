@@ -186,15 +186,14 @@ or framing:
 
 ---
 
-## Batch D — App icon, PROPOSED direction only (needs the owner's sign-off — manifest §2)
+## Batch D — App icon and notification badge (2, ruled — manifest §2.1)
 
-**Do not generate this until the owner has picked a direction (manifest §2, option 1 vs option 2)
-or approved this one specifically.** Included so there is something concrete to react to rather
-than an open-ended question. This is direction 1 (mascot-derived mark); direction 2 (a fully
-abstract mark, no character) has no draft prompt yet because it has no starting concept to draw
-from — that would need the owner's own idea of the shape first.
+Direction and colour are both ruled: direction 1 (mascot-derived mark), on `#a3e635` — the app's own
+canonical `--accent`, already declared as `theme_color` in `vite.config.ts`'s PWA manifest and in
+`index.html`'s `theme-color` meta — not limelight's skin-local `#8ace00` and not the round-3 mascot
+palette, both of which are single-skin, not cross-skin identity.
 
-### app-icon-concept-1 (mascot-derived, proposed)
+### app-icon-concept-1 (mascot-derived, ruled)
 
 An original stick-figure-style mascot character — no resemblance to any named or copyrighted
 character — reduced to a single bold mark: a simple figure with a rounded head and thick limbs,
@@ -204,14 +203,85 @@ effort rather than a static stance. The figure sits on a plain flat single-colou
 scenery, no horizon, no props besides the bar, and stays within the inner 80 percent of the canvas
 so an OS icon mask can crop the outer edge without cutting into the figure. Centered on a square
 1:1 canvas with generous even padding, the whole mark large and bold enough to still read as one
-recognizable shape when shrunk to 48 pixels. Render it as a flat, thick-lined mark in two colours
-only — a dark figure on a single bright flat background colour, no gradient, no drop shadow, no
+recognizable shape when shrunk to 48 pixels. Render it as a flat, thick-lined mark in exactly two
+colours — a `#0a0b0c` figure on a flat `#a3e635` background, no gradient, no drop shadow, no
 photorealism, no fine detail — the reduced geometric register of an app icon or a sports crest, not
 an illustration. Absolutely no text, no labels, no lettering of any kind, no additional characters
 or props in the scene.
 
-Two colour options to react to, both already the app's own (no new palette to invent): the
-limelight skin's own pair, a black figure on the lime ground (`#8ace00` background, `#000000`
-figure); or the mascot's original palette from `docs/design/round3/2026-09-01-round3-plan.md` §5
-(`#000000`, `#FCA3BE`, `#BB5F7B`, `#6D6D6D`, `#242424`) — e.g. a dark-grey figure on the `#FCA3BE`
-ground. State which in the prompt before running it.
+Export at 512x512 for `icon-512.png` and the maskable variant (keep the figure inside the inner 80%
+safe zone already specified above), downscale for `icon-192.png`.
+
+### notification-badge (ruled, same mark, silhouetted)
+
+The same mascot mark as `app-icon-concept-1` above — rounded head, thick limbs, overhead barbell
+press pose, one bar with two round plates — but rendered as a single flat black silhouette with no
+internal linework, on a fully transparent background, no ground colour at all. No gradient, no
+outline stroke, no anti-aliasing artefacts to preserve — Android auto-masks and recolours this
+asset, so any colour information here is discarded. Centered on a square 1:1 canvas, generous even
+padding, bold enough to read as one shape at 96x96 px and smaller. Absolutely no text, no labels, no
+lettering, no props beyond the bar.
+
+Export at 96x96 for `notification-badge.png`, referenced from `src/sw.ts`'s `badge:` field — a
+one-line pointer change fc makes once this file exists; it currently points at `icon-192.png`.
+
+---
+
+## Batch C2 — Female body-fat visual-estimate silhouettes (6, unblocked — manifest §0.1)
+
+Register rows `bf-female-15` through `bf-female-40`. Generate against the register's range, not the
+code's current shared array — `BODY_FAT_CHART_PERCENTAGES` going sex-specific (15-40 for the female
+row) is fc's queued one-line fix in `src/content/bodyFatChart.ts`; it lands before or alongside this
+art, not after.
+
+**Shared framing, identical rules to Batch C**: a generic adult female silhouette, front-facing,
+standing straight, legs together, arms held slightly away from the sides so the waistline is
+unobstructed. Identical pose, identical camera framing and scale across all six, so only the body
+outline's proportions change. No background, isolated on plain white, full body from head to feet,
+centered. Flat solid black silhouette, no internal linework — no muscle striation, no skin texture,
+no navel, no facial features, no hair detail — no shading, no gradient. Same deliberate
+low-fidelity, generic register as the male set: the chart is a rough visual comparison, not a
+measuring instrument. Absolutely no text, no labels, no lettering, no percentage numerals baked into
+the image.
+
+Per-image proportion, changing only the waist-to-hip relationship, nothing else about the pose or
+framing:
+
+- **bf-female-15**: leanest of the six — a visibly narrower waist than hip and shoulder width, a
+  pronounced waist taper.
+- **bf-female-20**: slightly less taper than bf-female-15 — still a clear waist, softer than the
+  leanest.
+- **bf-female-25**: an average build — waist narrower than the hips but the taper more gradual.
+- **bf-female-30**: a fuller midsection — the waist-to-hip taper is shallow, the torso rounder.
+- **bf-female-35**: a broader midsection still — the waist reads close to the width of the hips.
+- **bf-female-40**: the largest midsection in the set — little to no waist taper, the widest and
+  roundest silhouette of the six.
+
+---
+
+## Batch E — Atlas category glyphs (8, ruled — manifest §0.4 and §8)
+
+Register: `glyph-anatomy` through `glyph-training`. One consistent pictogram language across all
+eight, matching the setup-wizard icons' §0.2 format (SVG, `currentColor`) and pictogram register, so
+a card's glyph and a wizard control icon read as the same visual system. Each renders small, next to
+or behind a `SpecimenCard`'s typography — legible at 24px is the same constraint as §1.
+
+**Shared framing across all eight**: a single object or figure, centred, isolated on a flat white
+ground, no scenery, no border, no frame — the frame is the card's own, drawn separately. Flat solid
+black silhouette, hard clean edges, no gradient, no shading, no internal texture, reduced to the
+fewest shapes that still read at a glance. Absolutely no text, no labels, no lettering of any kind.
+
+- **glyph-anatomy**: a simple front-facing human skeleton torso outline, ribcage and pelvis only, no
+  skull, no limbs — reads as "the body's structure" without being a full skeleton illustration.
+- **glyph-biology**: a single-cell shape — an oval outline with one smaller circle (nucleus) offset
+  inside it — the standard reduced pictogram for "cell", not a detailed organelle diagram.
+- **glyph-biomechanics**: a simple stick-figure lever diagram — one straight limb segment, a pivot
+  dot at one end (the joint), and a short arrow at the other end indicating a force direction.
+- **glyph-history**: a simple hourglass silhouette, both bulbs equal size, resting on its wider ends.
+- **glyph-nutrition**: a simple fork-and-plate silhouette — a plain circular plate with one fork
+  laid across it at an angle, no food depicted.
+- **glyph-recovery**: a simple crescent-moon silhouette, single clean curve, no stars, no face.
+- **glyph-supplements**: a simple capsule-pill silhouette, standard two-tone capsule shape drawn as
+  one outline with a single dividing line across its middle, no brand shape, no scoop, no bottle.
+- **glyph-training**: a single hex-head dumbbell silhouette, side view, matching the dumbbell drawn
+  for `equip-2-home-bodyweight` in Batch A so the same object reads identically in both places.

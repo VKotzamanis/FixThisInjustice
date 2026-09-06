@@ -520,9 +520,9 @@ a{color:var(--text)}
 
 <section class="step" id="w1.12">
   <p class="stepno"><code>w1.12</code> step 12</p>
-  <h3>Setup, step 4: training context</h3>
-  <p class="do"><b>Do</b>Set activity, experience and equipment, then scroll to the load steps.</p>
-  <p class="see"><b>You see</b>Three menus, then a note and the load increments the app rounds to.</p>
+  <h3>Setup, step 4: equipment &amp; availability</h3>
+  <p class="do"><b>Do</b>Move each of the three sliders through every position, opening the Examples disclosure on the first two. Then move the Equipment Access slider through Full gym, Home gym and Body weight only in turn to see the load increments box and each equipment question it reveals.</p>
+  <p class="see"><b>You see</b>Three sliders, each naming its current position in text and (for the first two) an Examples disclosure; a bordered box with the three load increments; then, depending on the Equipment Access position, a walk-to-the-gym question or an equipment multi-select.</p>
   <p class="pids">covers setup.training</p>
   <ol class="strings">
 <li>
@@ -531,59 +531,71 @@ a{color:var(--text)}
 </li>
 <li>
 <code>label.activity</code>
-<p class="lime-str">Activity level</p>
+<p class="lime-str">Everyday Activity Level</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>option.activitySedentary</code>
-<p class="lime-str">Sedentary: desk work, little walking</p>
+<p class="lime-str">Sedentary</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>option.activityModerate</code>
-<p class="lime-str">Moderate: regular walking, including a walk to and from the gym, active job or training</p>
+<p class="lime-str">Moderate</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>option.activityVigorous</code>
-<p class="lime-str">Vigorous: heavy physical work, daily hard training</p>
+<p class="lime-str">Vigorous</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
+<code>disclosure.examples</code>
+<p class="lime-str">Examples</p>
+</li>
+<li>
 <code>label.experience</code>
-<p class="lime-str">Experience</p>
+<p class="lime-str">Gym Comfort</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>option.experienceNovice</code>
-<p class="lime-str">Novice: under one year of consistent training</p>
+<p class="lime-str">Starting out</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>option.experienceIntermediate</code>
-<p class="lime-str">Intermediate: one to three years</p>
+<p class="lime-str">Regular at the gym, mostly the machines</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>option.experienceAdvanced</code>
-<p class="lime-str">Advanced: over three years</p>
+<p class="lime-str">Free weights for three years or more</p>
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
-<code>label.equipment</code>
-<p class="lime-str">the gear</p>
+<code>label.equipmentAccess</code>
+<p class="lime-str">equipment access</p>
 </li>
 <li>
-<code>option.equipmentFullGym</code>
-<p class="lime-str">Full gym</p>
+<code>option.accessBodyweight</code>
+<p class="lime-str">Body Weight Only</p>
 </li>
 <li>
-<code>option.equipmentDumbbells</code>
-<p class="lime-str">Dumbbells only</p>
+<code>option.accessHomeAndBodyweight</code>
+<p class="lime-str">Home Gym and Body Weight</p>
 </li>
 <li>
-<code>option.equipmentBodyweight</code>
-<p class="lime-str">Bodyweight only</p>
+<code>option.accessHome</code>
+<p class="lime-str">Home Gym</p>
+</li>
+<li>
+<code>option.accessFullAndHome</code>
+<p class="lime-str">Full Gym and Home Gym</p>
+</li>
+<li>
+<code>option.accessFullGym</code>
+<p class="lime-str">Full Gym</p>
 </li>
 <li>
 <code>advice.loadSteps</code>
@@ -604,13 +616,88 @@ a{color:var(--text)}
 <p class="lime-str">Weight-stack step</p>
 </li>
 <li>
-<code>label.microPlates</code>
-<p class="lime-str">Micro-plates available</p>
-<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+<code>advice.walkToGym</code>
+<p class="lime-str">Do you walk to and from the gym?</p>
 </li>
 <li>
-<code>quantity.microPlateStep</code>
-<p class="lime-str">Micro-plate step</p>
+<code>button.yes</code>
+<p class="lime-str">Yes</p>
+</li>
+<li>
+<code>button.no</code>
+<p class="lime-str">No</p>
+</li>
+<li>
+<code>quantity.walkMinutes</code>
+<p class="lime-str">Minutes each way</p>
+</li>
+<li>
+<code>advice.equipmentInventoryPrompt</code>
+<p class="lime-str">What equipment do you have?</p>
+</li>
+<li>
+<code>label.homeEquipmentAerobic</code>
+<p class="lime-str">Aerobic</p>
+</li>
+<li>
+<code>option.homeTreadmill</code>
+<p class="lime-str">Treadmill</p>
+</li>
+<li>
+<code>option.homeElliptical</code>
+<p class="lime-str">Elliptical</p>
+</li>
+<li>
+<code>option.homeRowingMachine</code>
+<p class="lime-str">Rowing Machine</p>
+</li>
+<li>
+<code>label.homeEquipmentDumbbells</code>
+<p class="lime-str">Dumbbells</p>
+</li>
+<li>
+<code>label.homeEquipmentMachines</code>
+<p class="lime-str">Machines</p>
+</li>
+<li>
+<code>option.homeSquatRack</code>
+<p class="lime-str">Squat Rack</p>
+</li>
+<li>
+<code>option.homeCableMachine</code>
+<p class="lime-str">Cable Machine</p>
+</li>
+<li>
+<code>option.homeBench</code>
+<p class="lime-str">Bench</p>
+</li>
+<li>
+<code>option.homeLegPress</code>
+<p class="lime-str">Leg Press</p>
+</li>
+<li>
+<code>option.homeLatPulldown</code>
+<p class="lime-str">Lat Pulldown</p>
+</li>
+<li>
+<code>option.homeSmithMachine</code>
+<p class="lime-str">Smith Machine</p>
+</li>
+<li>
+<code>option.bodyweightYogaMat</code>
+<p class="lime-str">Yoga Mat</p>
+</li>
+<li>
+<code>option.bodyweightSkippingRope</code>
+<p class="lime-str">Skipping Rope</p>
+</li>
+<li>
+<code>option.bodyweightPullUpBar</code>
+<p class="lime-str">Pull-Up Bar</p>
+</li>
+<li>
+<code>option.bodyweightResistanceBands</code>
+<p class="lime-str">Resistance Bands</p>
 </li>
 </ol>
   <label class="box" for="c-w1.12">What needs to change here?</label>

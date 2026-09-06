@@ -26,13 +26,14 @@ import {
   DEFAULT_DUMBBELL_STEP,
   DEFAULT_STACK_STEP,
   KG_PER_LB,
-  MICRO_PLATE_STEP,
   type ActivityLevel,
   type Availability,
   type AvailabilitySlot,
-  type Equipment,
+  type BodyweightEquipmentItem,
+  type EquipmentAccess,
   type Experience,
   type GoalKind,
+  type HomeEquipmentItem,
   type IsoWeekday,
   type Profile,
   type SetupDraft,
@@ -64,6 +65,10 @@ import {
 import { vibrate } from '../audio/chime';
 import { ModalShell } from '../components/ModalShell';
 import { GuidanceScreen } from './GuidanceScreen';
+import {
+  ACTIVITY_LEVEL_EXAMPLES,
+  EQUIPMENT_ACCESS_EXAMPLES,
+} from '../../content/setupSliderExamples';
 
 /**
  * Setup wizard.
@@ -225,7 +230,9 @@ const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
 /**
  * Three bands, not five (master plan section 10.1, decision `activity-levels-three-bands`).
  * Each label names the band FAO/WHO/UNU 2004 Table 5.3 prints; the two midpoint levels the
- * legacy ladder carried had no primary source and do not ship.
+ * legacy ladder carried had no primary source and do not ship. Brief F Part 1a: a THREE-POSITION
+ * slider over these same bands, never a 1-10 scale -- the owner asked for the wider scale
+ * conditional on the bands being arbitrary, and they are not.
  */
 const ACTIVITY_OPTIONS: { value: ActivityLevel; labelKey: CopyKey }[] = [
   { value: 'sedentary', labelKey: 'option.activitySedentary' },
@@ -233,17 +240,89 @@ const ACTIVITY_OPTIONS: { value: ActivityLevel; labelKey: CopyKey }[] = [
   { value: 'vigorous', labelKey: 'option.activityVigorous' },
 ];
 
-const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey }[] = [
-  { value: 'novice', labelKey: 'option.experienceNovice' },
-  { value: 'intermediate', labelKey: 'option.experienceIntermediate' },
-  { value: 'advanced', labelKey: 'option.experienceAdvanced' },
+/**
+ * Brief F Part 1b: "Experience" renamed to Gym Comfort IN THE UI ONLY -- the type stays
+ * `Experience` (novice | intermediate | advanced), and so does this array; only the copy the
+ * three keys resolve to changed, to the owner's own verbatim wording. Each position also carries
+ * an icon row id from docs/design/2026-09-04-icon-register.csv: the artwork does not exist yet,
+ * so the render below is a labelled ArtworkPlaceholder naming the row, not generated art.
+ */
+const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey; iconRow: string }[] = [
+  { value: 'novice', labelKey: 'option.experienceNovice', iconRow: 'comfort-1-starting' },
+  {
+    value: 'intermediate',
+    labelKey: 'option.experienceIntermediate',
+    iconRow: 'comfort-2-machines',
+  },
+  {
+    value: 'advanced',
+    labelKey: 'option.experienceAdvanced',
+    iconRow: 'comfort-3-freeweights',
+  },
 ];
 
-const EQUIPMENT_OPTIONS: { value: Equipment; labelKey: CopyKey }[] = [
-  { value: 'full-gym', labelKey: 'option.equipmentFullGym' },
-  { value: 'dumbbells-only', labelKey: 'option.equipmentDumbbells' },
-  { value: 'bodyweight', labelKey: 'option.equipmentBodyweight' },
+/**
+ * Brief F Part 1c: five positions, lowest to highest access. The two combination positions
+ * (`home-and-bodyweight`, `full-and-home`) carry no exercise tag of their own -- they resolve
+ * through `ACCESS_UNLOCKS` (src/domain/types.ts) at generation time, in `resolveSlot`
+ * (src/domain/plan/templates.ts). This is why library.ts needed no retagging: see that type's own
+ * comment for the proof that a combination resolves identically to its dominant pure tier.
+ */
+const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey }[] = [
+  { value: 'bodyweight', labelKey: 'option.accessBodyweight' },
+  { value: 'home-and-bodyweight', labelKey: 'option.accessHomeAndBodyweight' },
+  { value: 'home', labelKey: 'option.accessHome' },
+  { value: 'full-and-home', labelKey: 'option.accessFullAndHome' },
+  { value: 'full-gym', labelKey: 'option.accessFullGym' },
 ];
+
+/** Brief F Part 3: the aerobic row of the "What equipment do you have?" multi-select. */
+const HOME_AEROBIC_OPTIONS: { value: HomeEquipmentItem; labelKey: CopyKey }[] = [
+  { value: 'treadmill', labelKey: 'option.homeTreadmill' },
+  { value: 'elliptical', labelKey: 'option.homeElliptical' },
+  { value: 'rowing-machine', labelKey: 'option.homeRowingMachine' },
+];
+
+/**
+ * Brief F Part 3: the three dumbbell bands. Each carries its own lower bound and an optional
+ * upper bound (`hi: null` is the open-ended "40 and above" band); FORMAT.dumbbellBand /
+ * dumbbellBandOpen append the profile's own unit at render, per the owner's own flag ("a range
+ * with no unit is ambiguous"). The NUMBERS are the same in both unit systems -- the brief states
+ * the pair verbatim as "5 to 20 kg" or "5 to 20 lb" -- only the trailing unit word changes.
+ */
+const HOME_DUMBBELL_BANDS: { value: HomeEquipmentItem; lo: number; hi: number | null }[] = [
+  { value: 'dumbbells-5-20', lo: 5, hi: 20 },
+  { value: 'dumbbells-20-40', lo: 20, hi: 40 },
+  { value: 'dumbbells-40-plus', lo: 40, hi: null },
+];
+
+/** Brief F Part 3: the machine row of the "What equipment do you have?" multi-select. */
+const HOME_MACHINE_OPTIONS: { value: HomeEquipmentItem; labelKey: CopyKey }[] = [
+  { value: 'squat-rack', labelKey: 'option.homeSquatRack' },
+  { value: 'cable-machine', labelKey: 'option.homeCableMachine' },
+  { value: 'bench', labelKey: 'option.homeBench' },
+  { value: 'leg-press', labelKey: 'option.homeLegPress' },
+  { value: 'lat-pulldown', labelKey: 'option.homeLatPulldown' },
+  { value: 'smith-machine', labelKey: 'option.homeSmithMachine' },
+];
+
+/** Brief F Part 3: the Body Weight Only multi-select, a flat unlabelled list. */
+const BODYWEIGHT_EQUIPMENT_OPTIONS: { value: BodyweightEquipmentItem; labelKey: CopyKey }[] = [
+  { value: 'yoga-mat', labelKey: 'option.bodyweightYogaMat' },
+  { value: 'skipping-rope', labelKey: 'option.bodyweightSkippingRope' },
+  { value: 'pull-up-bar', labelKey: 'option.bodyweightPullUpBar' },
+  { value: 'resistance-bands', labelKey: 'option.bodyweightResistanceBands' },
+];
+
+/** Brief F Part 3: `Home gym`, or either combination that includes it. */
+function showsHomeEquipment(equipment: EquipmentAccess): boolean {
+  return equipment === 'home' || equipment === 'home-and-bodyweight' || equipment === 'full-and-home';
+}
+
+/** Brief F Part 3: `Full gym`, or `Full gym and home gym`. */
+function showsGymCommute(equipment: EquipmentAccess): boolean {
+  return equipment === 'full-gym' || equipment === 'full-and-home';
+}
 
 const GOAL_OPTIONS: { value: GoalKind; labelKey: CopyKey }[] = [
   { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
@@ -293,9 +372,17 @@ function StepHeading(props: {
  * so a screen reader loses nothing while the frame is empty (B15: "a caption for screen-reader
  * users, who get nothing from an image").
  */
-function ArtworkPlaceholder(props: { label: string; className: string }): JSX.Element {
+function ArtworkPlaceholder(props: {
+  label: string;
+  className: string;
+  /** docs/design/2026-09-04-icon-register.csv row id, rendered as a data attribute so the
+   * naming lives at the render site rather than only in a comment above the call (Brief F
+   * Part 1b: "leave a comment naming the register row"). Optional: the body step's
+   * measurement-site and body-fat-chart placeholders predate the icon register. */
+  iconRow?: string;
+}): JSX.Element {
   return (
-    <div className={props.className}>
+    <div className={props.className} data-icon-row={props.iconRow}>
       <div className="wiz-placeholder-frame" aria-hidden="true" />
       <p className="wiz-note wiz-placeholder-caption">{props.label}</p>
     </div>
@@ -351,8 +438,10 @@ function initialDraft(): Draft {
     barbellStep: String(DEFAULT_BARBELL_STEP.metric),
     dumbbellStep: String(DEFAULT_DUMBBELL_STEP.metric),
     stackStep: String(DEFAULT_STACK_STEP.metric),
-    hasMicroPlates: false,
-    microPlateStep: String(MICRO_PLATE_STEP.metric),
+    walksToGym: false,
+    walkMinutes: '0',
+    homeEquipment: [],
+    bodyweightEquipment: [],
     goalKind: 'fat-loss',
     targetMass: '',
     targetDate: '',
@@ -384,6 +473,32 @@ function pickSessionsPerWeek(raw: string): SessionsPerWeek {
   return (
     SESSIONS_PER_WEEK_OPTIONS.find((n) => n === value) ?? DEFAULT_SESSIONS_PER_WEEK
   );
+}
+
+/**
+ * A `<input type="range">`'s current position: the index of `value` in `options`, or 0. The
+ * range's own value is ALWAYS an index into a closed list (Brief F Part 1), never a free number,
+ * so this and `sliderValueAt` below are the only two places a slider's index and its domain value
+ * meet.
+ */
+function sliderIndexOf<T extends string>(options: readonly { value: T }[], value: T): number {
+  const i = options.findIndex((o) => o.value === value);
+  return i === -1 ? 0 : i;
+}
+
+/** The domain value at a `<input type="range">`'s raw string index, or `fallback` off the list. */
+function sliderValueAt<T extends string>(
+  options: readonly { value: T }[],
+  raw: string,
+  fallback: T,
+): T {
+  const i = Number(raw);
+  return options[i]?.value ?? fallback;
+}
+
+/** Adds `item` to `list` if absent, removes it if present. Order of the rest is preserved. */
+function toggleItem<T>(list: readonly T[], item: T): T[] {
+  return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }
 
 /** Round to 0.1 for a bound shown in a message. Display resolution only, never storage. */
@@ -802,7 +917,6 @@ export function SetupWizard(): JSX.Element {
       barbellStep: String(DEFAULT_BARBELL_STEP[units]),
       dumbbellStep: String(DEFAULT_DUMBBELL_STEP[units]),
       stackStep: String(DEFAULT_STACK_STEP[units]),
-      microPlateStep: String(MICRO_PLATE_STEP[units]),
     });
   }
 
@@ -970,15 +1084,23 @@ export function SetupWizard(): JSX.Element {
       draft.units,
       overrides,
     ),
-    microPlate: draft.hasMicroPlates
-      ? stepError(
-          copy('quantity.microPlateStep', overrides),
-          draft.microPlateStep,
-          draft.units,
-          overrides,
-        )
-      : null,
   };
+
+  /**
+   * Brief F Part 3: the walk-to-gym minutes field, required only while it is on screen (full
+   * gym or full gym and home gym, and the user answered Yes). A generous sanity bound, mirroring
+   * MAX_WALK_MINUTES in src/domain/schema.ts, not a claim about how far anyone should walk.
+   */
+  const walkMinutesError =
+    showsGymCommute(draft.equipment) && draft.walksToGym
+      ? requiredInRange(
+          copy('quantity.walkMinutes', overrides),
+          draft.walkMinutes,
+          { lo: 1, hi: MAX_SESSION_DURATION_MIN },
+          overrides,
+          UNIT.minutes,
+        )
+      : null;
 
   // Optional: an empty target is not an error. A target that IS given is held to the same
   // canonical kg bound as the baseline, so the profile never stores a mass the engine refuses.
@@ -1050,7 +1172,7 @@ export function SetupWizard(): JSX.Element {
       tapeDomainError !== null ||
       tapeIncomplete ||
       tapeWithheld,
-    training: Object.values(stepErrors).some((e) => e !== null),
+    training: Object.values(stepErrors).some((e) => e !== null) || walkMinutesError !== null,
     goal: targetMassError !== null || targetDateError !== null,
     availability:
       weekdayError !== null ||
@@ -1225,16 +1347,17 @@ export function SetupWizard(): JSX.Element {
     const barbellKg = storedLoadKg(draft.barbellStep, draft.units); // [kg]
     const dumbbellPairKg = storedLoadKg(draft.dumbbellStep, draft.units); // [kg]
     const stackKg = storedLoadKg(draft.stackStep, draft.units); // [kg]
-    const microPlateKg = storedLoadKg(draft.microPlateStep, draft.units); // [kg]
     const targetMassKg = storedMassKg(draft.targetMass, draft.units); // [kg]
+    // [min] one way, stored only (Brief F Part 3). "0" whenever the field is not shown or the
+    // answer is No, matching draft.walkMinutes's own reset on a No click.
+    const walkMinutesTyped = parseDecimal(draft.walkMinutes);
     if (
       massKg === null ||
       heightCm === null ||
       birthYear === null ||
       barbellKg === null ||
       dumbbellPairKg === null ||
-      stackKg === null ||
-      microPlateKg === null
+      stackKg === null
     ) {
       return; // unreachable: every one of these blocks its own step
     }
@@ -1262,9 +1385,21 @@ export function SetupWizard(): JSX.Element {
         barbellKg,
         dumbbellPairKg,
         stackKg,
-        hasMicroPlates: draft.hasMicroPlates,
-        microPlateKg,
       },
+      // Brief F Part 3. Re-gated on showsGymCommute here, not just on draft.walksToGym: the
+      // question and its Yes/No answer both live in draft state independent of the slider, so a
+      // Yes given at Full gym must not survive into a stored profile whose final slider position
+      // is Home gym, where the question was never shown for this confirm.
+      gymCommute: {
+        walks: showsGymCommute(draft.equipment) && draft.walksToGym,
+        minutesEachWay:
+          showsGymCommute(draft.equipment) && draft.walksToGym ? (walkMinutesTyped ?? 0) : 0, // [min]
+      },
+      // Same re-gating as gymCommute above, and for the same reason: an inventory ticked while
+      // the slider sat somewhere it applied must not survive into a profile whose final slider
+      // position no longer shows that question.
+      homeEquipment: showsHomeEquipment(draft.equipment) ? draft.homeEquipment : [],
+      bodyweightEquipment: draft.equipment === 'bodyweight' ? draft.bodyweightEquipment : [],
       goal: {
         kind: draft.goalKind,
         targetMassKg, // [kg] or null
@@ -1778,110 +1913,273 @@ export function SetupWizard(): JSX.Element {
         <fieldset>
           <StepHeading title={t(STEP_TITLE_KEY.training)} headingRef={headingRef} />
 
-          <div className="wiz-field">
+          {/* Brief F Part 1a: Everyday Activity Level, a 3-position slider over the FAO/WHO/UNU
+              2004 PAL bands. Three positions, never ten: src/domain/nutrition.ts records
+              rejecting a five-point ladder because its interior points have no source, and the
+              owner's own 1-10 idea was conditional on the bands being arbitrary, which they are
+              not. */}
+          <div className="wiz-field wiz-slider">
             <label htmlFor="f-activity">{t('label.activity')}</label>
-            <select
-              id="f-activity"
-              value={draft.activity}
-              onChange={(e) => {
-                patch({ activity: pick(ACTIVITY_OPTIONS, e.target.value, 'moderate') });
-              }}
-            >
-              {ACTIVITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {t(o.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="wiz-field">
-            <label htmlFor="f-experience">{t('label.experience')}</label>
-            <select
-              id="f-experience"
-              value={draft.experience}
-              onChange={(e) => {
-                patch({ experience: pick(EXPERIENCE_OPTIONS, e.target.value, 'novice') });
-              }}
-            >
-              {EXPERIENCE_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {t(o.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="wiz-field">
-            <label htmlFor="f-equipment">{t('label.equipment')}</label>
-            <select
-              id="f-equipment"
-              value={draft.equipment}
-              onChange={(e) => {
-                patch({ equipment: pick(EQUIPMENT_OPTIONS, e.target.value, 'full-gym') });
-              }}
-            >
-              {EQUIPMENT_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {t(o.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <p className="wiz-note">{t('advice.loadSteps')}</p>
-          <UnitInput
-            id="f-barbell-step"
-            quantity={t('quantity.barbellStep')}
-            unit={loadLabelUnit}
-            value={draft.barbellStep}
-            error={stepErrors.barbell}
-            onChange={(v) => {
-              patch({ barbellStep: v });
-            }}
-          />
-          <UnitInput
-            id="f-dumbbell-step"
-            quantity={t('quantity.dumbbellStep')}
-            unit={loadLabelUnit}
-            value={draft.dumbbellStep}
-            error={stepErrors.dumbbell}
-            onChange={(v) => {
-              patch({ dumbbellStep: v });
-            }}
-          />
-          <UnitInput
-            id="f-stack-step"
-            quantity={t('quantity.stackStep')}
-            unit={loadLabelUnit}
-            value={draft.stackStep}
-            error={stepErrors.stack}
-            onChange={(v) => {
-              patch({ stackStep: v });
-            }}
-          />
-          <label className="wiz-inline">
             <input
-              type="checkbox"
-              checked={draft.hasMicroPlates}
+              id="f-activity"
+              type="range"
+              min={0}
+              max={ACTIVITY_OPTIONS.length - 1}
+              step={1}
+              value={sliderIndexOf(ACTIVITY_OPTIONS, draft.activity)}
               onChange={(e) => {
-                patch({ hasMicroPlates: e.target.checked });
+                patch({ activity: sliderValueAt(ACTIVITY_OPTIONS, e.target.value, 'moderate') });
               }}
             />
-            {t('label.microPlates')}
-          </label>
-          {/* Shown only when the toggle is on, because that is exactly when stepFor() uses it. */}
-          {draft.hasMicroPlates && (
+            <p className="wiz-slider-position" aria-live="polite">
+              {t(ACTIVITY_OPTIONS[sliderIndexOf(ACTIVITY_OPTIONS, draft.activity)]?.labelKey ?? 'option.activityModerate')}
+            </p>
+            <details>
+              <summary>{t('disclosure.examples')}</summary>
+              {ACTIVITY_LEVEL_EXAMPLES.map((line) => (
+                <p key={line} className="wiz-note">
+                  {line}
+                </p>
+              ))}
+            </details>
+          </div>
+
+          {/* Brief F Part 1b: Gym Comfort, renamed from Experience IN THE UI ONLY -- the
+              underlying Experience type and its three values are unchanged. Each position's
+              icon does not exist yet; the placeholder names its docs/design/2026-09-04-icon-
+              register.csv row rather than rendering generated art. */}
+          <div className="wiz-field wiz-slider">
+            <label htmlFor="f-experience">{t('label.experience')}</label>
+            <input
+              id="f-experience"
+              type="range"
+              min={0}
+              max={EXPERIENCE_OPTIONS.length - 1}
+              step={1}
+              value={sliderIndexOf(EXPERIENCE_OPTIONS, draft.experience)}
+              onChange={(e) => {
+                patch({
+                  experience: sliderValueAt(EXPERIENCE_OPTIONS, e.target.value, 'novice'),
+                });
+              }}
+            />
+            <p className="wiz-slider-position" aria-live="polite">
+              {t(EXPERIENCE_OPTIONS[sliderIndexOf(EXPERIENCE_OPTIONS, draft.experience)]?.labelKey ?? 'option.experienceNovice')}
+            </p>
+            <div className="wiz-slider-icons">
+              {EXPERIENCE_OPTIONS.map((o) => (
+                // Icon row per docs/design/2026-09-04-icon-register.csv, named here because the
+                // artwork does not exist yet (Brief F Part 1b): comfort-1-starting,
+                // comfort-2-machines, comfort-3-freeweights.
+                <ArtworkPlaceholder
+                  key={o.value}
+                  label={t(o.labelKey)}
+                  className="wiz-site"
+                  iconRow={o.iconRow}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Brief F Part 1c: Equipment Access, 5 positions. The two combination positions
+              carry no exercise tag of their own; see EQUIPMENT_ACCESS_OPTIONS's own comment. */}
+          <div className="wiz-field wiz-slider">
+            <label htmlFor="f-equipment-access">{t('label.equipmentAccess')}</label>
+            <input
+              id="f-equipment-access"
+              type="range"
+              min={0}
+              max={EQUIPMENT_ACCESS_OPTIONS.length - 1}
+              step={1}
+              value={sliderIndexOf(EQUIPMENT_ACCESS_OPTIONS, draft.equipment)}
+              onChange={(e) => {
+                patch({
+                  equipment: sliderValueAt(EQUIPMENT_ACCESS_OPTIONS, e.target.value, 'full-gym'),
+                });
+              }}
+            />
+            <p className="wiz-slider-position" aria-live="polite">
+              {t(EQUIPMENT_ACCESS_OPTIONS[sliderIndexOf(EQUIPMENT_ACCESS_OPTIONS, draft.equipment)]?.labelKey ?? 'option.accessFullGym')}
+            </p>
+            <p className="wiz-note">{EQUIPMENT_ACCESS_EXAMPLES[draft.equipment]}</p>
+          </div>
+
+          {/* Brief F Part 3: the three load-increment fields, moved into their own bordered box
+              so they read as visually separate from the sliders above -- the owner's own words,
+              "another box... so that they are visually separated but still in the same page."
+              hasMicroPlates/microPlateStep are gone entirely, and only that. */}
+          <div className="wiz-box">
+            <p className="wiz-note">{t('advice.loadSteps')}</p>
             <UnitInput
-              id="f-microplate-step"
-              quantity={t('quantity.microPlateStep')}
+              id="f-barbell-step"
+              quantity={t('quantity.barbellStep')}
               unit={loadLabelUnit}
-              value={draft.microPlateStep}
-              error={stepErrors.microPlate}
+              value={draft.barbellStep}
+              error={stepErrors.barbell}
               onChange={(v) => {
-                patch({ microPlateStep: v });
+                patch({ barbellStep: v });
               }}
             />
+            <UnitInput
+              id="f-dumbbell-step"
+              quantity={t('quantity.dumbbellStep')}
+              unit={loadLabelUnit}
+              value={draft.dumbbellStep}
+              error={stepErrors.dumbbell}
+              onChange={(v) => {
+                patch({ dumbbellStep: v });
+              }}
+            />
+            <UnitInput
+              id="f-stack-step"
+              quantity={t('quantity.stackStep')}
+              unit={loadLabelUnit}
+              value={draft.stackStep}
+              error={stepErrors.stack}
+              onChange={(v) => {
+                patch({ stackStep: v });
+              }}
+            />
+          </div>
+
+          {/* Brief F Part 3: "Do you walk to and from the gym?", Full gym or Full gym and home
+              gym only. Answer is STORED and feeds NO energy calculation -- see 1a above for why:
+              the PAL band already counts it. */}
+          {showsGymCommute(draft.equipment) && (
+            <div className="wiz-field">
+              <p className="wiz-label" id="walk-to-gym-label">
+                {t('advice.walkToGym')}
+              </p>
+              <div className="wiz-choice" role="radiogroup" aria-labelledby="walk-to-gym-label">
+                <label className="wiz-glyph">
+                  <input
+                    type="radio"
+                    name="walks-to-gym"
+                    checked={draft.walksToGym}
+                    onChange={() => {
+                      patch({ walksToGym: true });
+                    }}
+                  />
+                  {t('button.yes')}
+                </label>
+                <label className="wiz-glyph">
+                  <input
+                    type="radio"
+                    name="walks-to-gym"
+                    checked={!draft.walksToGym}
+                    onChange={() => {
+                      // No sets it to zero (Brief F Part 3), not to blank: the field carries no
+                      // meaning once the answer is No.
+                      patch({ walksToGym: false, walkMinutes: '0' });
+                    }}
+                  />
+                  {t('button.no')}
+                </label>
+              </div>
+              {draft.walksToGym && (
+                <UnitInput
+                  id="f-walk-minutes"
+                  quantity={t('quantity.walkMinutes')}
+                  unit={UNIT.minutes}
+                  inputMode="numeric"
+                  value={draft.walkMinutes}
+                  error={walkMinutesError}
+                  onChange={(v) => {
+                    patch({ walkMinutes: v });
+                  }}
+                />
+              )}
+            </div>
+          )}
+
+          {/* Brief F Part 3: "What equipment do you have?", Home gym or either combination that
+              includes it. Multi-select: a non-contiguous inventory (a light dumbbell pair and a
+              heavy one, nothing between) is uncommon but real, so nothing here is exclusive. */}
+          {showsHomeEquipment(draft.equipment) && (
+            <div className="wiz-field">
+              <p className="wiz-label" id="home-equipment-label">
+                {t('advice.equipmentInventoryPrompt')}
+              </p>
+              <div role="group" aria-labelledby="home-equipment-label">
+                <p className="wiz-label">{t('label.homeEquipmentAerobic')}</p>
+                <div className="wiz-choice">
+                  {HOME_AEROBIC_OPTIONS.map((o) => (
+                    <label key={o.value} className="wiz-glyph">
+                      <input
+                        type="checkbox"
+                        checked={draft.homeEquipment.includes(o.value)}
+                        onChange={() => {
+                          patch({ homeEquipment: toggleItem(draft.homeEquipment, o.value) });
+                        }}
+                      />
+                      {t(o.labelKey)}
+                    </label>
+                  ))}
+                </div>
+                <p className="wiz-label">{t('label.homeEquipmentDumbbells')}</p>
+                <div className="wiz-choice">
+                  {HOME_DUMBBELL_BANDS.map((band) => (
+                    <label key={band.value} className="wiz-glyph">
+                      <input
+                        type="checkbox"
+                        checked={draft.homeEquipment.includes(band.value)}
+                        onChange={() => {
+                          patch({ homeEquipment: toggleItem(draft.homeEquipment, band.value) });
+                        }}
+                      />
+                      {band.hi === null
+                        ? FORMAT.dumbbellBandOpen(band.lo, loadLabelUnit)
+                        : FORMAT.dumbbellBand(band.lo, band.hi, loadLabelUnit)}
+                    </label>
+                  ))}
+                </div>
+                <p className="wiz-label">{t('label.homeEquipmentMachines')}</p>
+                <div className="wiz-choice">
+                  {HOME_MACHINE_OPTIONS.map((o) => (
+                    <label key={o.value} className="wiz-glyph">
+                      <input
+                        type="checkbox"
+                        checked={draft.homeEquipment.includes(o.value)}
+                        onChange={() => {
+                          patch({ homeEquipment: toggleItem(draft.homeEquipment, o.value) });
+                        }}
+                      />
+                      {t(o.labelKey)}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Brief F Part 3: Body weight only, its own flat multi-select. Nothing reads either
+              list yet; that wiring is a later task. */}
+          {draft.equipment === 'bodyweight' && (
+            <div className="wiz-field">
+              <p className="wiz-label" id="bodyweight-equipment-label">
+                {t('advice.equipmentInventoryPrompt')}
+              </p>
+              <div
+                className="wiz-choice"
+                role="group"
+                aria-labelledby="bodyweight-equipment-label"
+              >
+                {BODYWEIGHT_EQUIPMENT_OPTIONS.map((o) => (
+                  <label key={o.value} className="wiz-glyph">
+                    <input
+                      type="checkbox"
+                      checked={draft.bodyweightEquipment.includes(o.value)}
+                      onChange={() => {
+                        patch({
+                          bodyweightEquipment: toggleItem(draft.bodyweightEquipment, o.value),
+                        });
+                      }}
+                    />
+                    {t(o.labelKey)}
+                  </label>
+                ))}
+              </div>
+            </div>
           )}
         </fieldset>
       )}

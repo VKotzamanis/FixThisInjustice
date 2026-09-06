@@ -125,6 +125,31 @@ deficit by days, stop.
    unmeasured contrast." So either compute the contrast for all three pastels on all three
    grounds and record it, or express the bands in the ink the skins already have. Do not add an
    unmeasured colour.
+
+   **Measured 2026-09-06, by the asset-intake session, WCAG 2.1 relative luminance, sRGB.** One
+   HSL family, hue-only variation (S 62%, L 78%), so the three read as siblings:
+
+   | band | hex | vs `--bg` clinical `#0a0b0c` | vs `--bg` limelight `#8ace00` | vs `--board` `#0b0b0c` | vs limelight `--panel` `#000000` |
+   | --- | --- | --- | --- | --- | --- |
+   | realistic (green) | `#a4eab0` | 14.05:1 | **1.37:1 — fails** | 14.03:1 | 14.97:1 |
+   | improbable (orange) | `#eac9a4` | 12.56:1 | **1.23:1 — fails** | 12.54:1 | 13.39:1 |
+   | highly improbable (red) | `#eaa6a4` | 9.84:1 | **1.04:1 — fails** | 9.83:1 | 10.49:1 |
+
+   Ink text (`#000000`) on any of the three fills clears 10.49:1 to 14.97:1 — never the
+   constraint. **The constraint is the fill against its own page ground, and it fails exactly
+   where the existing decision predicted: on raw `--bg` in limelight**, where a light pastel sits
+   on a light lime ground at 1.0-1.4:1, below even the 3:1 non-text minimum (WCAG 1.4.11) — the
+   band would be functionally invisible.
+
+   **Resolution: these three fills render inside limelight's `--panel` (`#000000`), never on
+   `--bg` directly** — the same move already made for the setup-wizard icons and the top bar,
+   which hit the identical lime-ground problem. On clinical and board, which are already
+   near-black, the raw page ground works with no panel needed. This is a **layout constraint on
+   the calendar component**, not a colour change: in limelight, calendar cells carrying a band
+   colour need the inverted-panel surface (or an equivalent dark card), not the bare page
+   background. Do not re-derive the palette to fit the lime ground instead — a pastel light enough
+   to read as "green" against black will not read as distinct from lime, and pastel-on-pastel is
+   the failure this measurement exists to catch.
 3. **Say it is an estimate.** The bands come from a prescribed rate, not a prediction about this
    user. One line, in the same honest register the basis strings use.
 
