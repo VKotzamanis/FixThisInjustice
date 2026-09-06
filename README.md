@@ -123,7 +123,8 @@ delete it, from **Settings**, then **Delete legacy data**.
 | `docs/review/` | the security, code and content peer reviews |
 | `docs/design/` | the three design rounds, the shipped direction, and the copy contract |
 | `docs/RUNBOOK-reminders.md` | deploying and operating the reminder Worker |
-| `docs/HANDOFF-2026-09-02.md` | where the work stopped on 2026-09-02, and what to do next |
+| `docs/HANDOFF-2026-09-06.md` | where the work stopped on 2026-09-06, and what to do next |
+| `docs/HANDOFF-2026-09-02.md` | the previous handoff, superseded |
 | `docs/DEPLOY-CUTOVER-NOTE.md` | publishing the site for the first time, and rolling back |
 | `docs/motivation-video.md` | where the motivation clip goes, and which format to use |
 | `docs/sfx.md` | where skin sound effects go; none ship in this repository |

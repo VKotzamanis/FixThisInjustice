@@ -168,6 +168,36 @@ The symbols the rule guards are `s`, `kg`, `lb`, `mL`, `min`, `g`, `kcal`, `MiB`
 get wrong. The gate reads the default, not the override. A skin may write a sentence that names no
 quantity, and every row that names one names it the same way.
 
+<!-- decision: copy-rule-title-case | status: adopted | supersedes: none -->
+**R14. A label, a heading or a control name is Title Case, and a heading is a noun phrase.**
+(adopted, 2026-09-06)
+
+Two clauses. The first is mechanical and `scripts/check-title-case.mjs` decides it; the second is
+review, like R7 and R11.
+
+**Title Case.** Capitalise the first word, the last word, and everything between them except
+articles, coordinating conjunctions, and prepositions of four letters or fewer. `Units on the
+Weight Plates`. `Time Zone`. `What You Told Me`. It applies to the `label.`, `hero.`, `step.`,
+`group.` and `button.` families: the keys that NAME something. It does not apply to `advice.`,
+`banner.`, `why.` or `error.`, which are sentences and stay sentence case.
+
+**A heading is a noun phrase.** Not a sentence, not a question, not a conditional clause.
+`Individuals in Gender-Affirming Hormone Therapy`, never `If you are on gender-affirming hormone
+therapy`. A heading names the thing below it; it does not address the reader.
+
+Scoped to the DEFAULT table, exactly as R8 and R9 are. The skin registers are recorded decisions
+going the other way: limelight is deliberately lower case (`go on`, `the look`) and the board is
+deliberately upper (`PROCEED`). Applying R14 to them would overwrite a design decision with a
+typographic one.
+
+Unit symbols are exempt, because R12 already owns them: the case IS the quantity, so `(kg)` stays
+`(kg)`. Title-casing a symbol states a different quantity.
+
+WHY IT IS A GATE AND NOT A NOTE. The owner reported it three times across two rounds, the third
+time prefaced with "something I won't mention in the feedback but you keep doing wrongly". A rule
+an author has to remember is a rule that decays. As of adoption, 141 of 221 naming keys fail it;
+they are corrected in round 2, and the gate joins CI once they do.
+
 <!-- decision: copy-rule-no-return-promise | status: adopted | supersedes: none -->
 **R13. A control that closes for good never promises a return.** (adopted, 2026-09-02)
 
