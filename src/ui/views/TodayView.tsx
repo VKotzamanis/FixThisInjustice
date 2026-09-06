@@ -4,6 +4,7 @@ import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
 import type { PlanPause, WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
+import { Illustration } from '../../skins/limelight/Illustration';
 import { useAppStore, type AppStore } from '../../store';
 import {
   useActionError,
@@ -298,6 +299,9 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
+        {/* Decorative: the heading already says a session is under way. Round 3 drew this and
+            never placed it; the asset manifest of 2026-09-06 put it here. */}
+        <Illustration name="mascotLifting" width={72} height={72} />
         <h1 className="hero-name">{c('hero.sessionInProgress')}</h1>
         {session !== null && <p className="today-sub">{session.name}</p>}
       </div>
