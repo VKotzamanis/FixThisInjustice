@@ -1,0 +1,500 @@
+<title>Round 2: Onboarding</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --chip:var(--pink); --chip-text:var(--ink);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 12px;border-bottom:2px solid var(--line-2)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-family:var(--sans);font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase}
+h2{font-family:var(--sans);font-weight:800;font-size:22px;margin:32px 0 4px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-family:var(--sans);font-weight:700;font-size:18px;margin:0 0 8px}
+p{margin:0 0 10px}
+.lede{max-width:60ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-all}
+section.step{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px;background:transparent}
+.stepno{display:inline-block;font-family:var(--mono);font-size:12px;border:1px solid var(--line-2);border-radius:3px;padding:2px 6px;margin:0 0 8px}
+.do,.see{margin:0 0 8px;padding:0 0 0 10px;border-left:3px solid var(--line-2)}
+.do b,.see b{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;display:block}
+.only{font-size:13px;margin:0 0 10px;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+.pids{font-family:var(--mono);font-size:12px;color:var(--text-2);margin:0 0 10px;word-break:break-all}
+ol.strings{list-style:none;margin:0 0 14px;padding:0}
+ol.strings li{border-left:3px solid var(--chip);padding:0 0 0 10px;margin:0 0 12px}
+.lime-str{font-size:17px;font-weight:700;margin:2px 0 4px}
+.refusal{font-size:12px;margin:4px 0 0;border:1px dashed var(--line-2);padding:4px 6px;border-radius:3px}
+label.box{display:block;font-weight:700;font-size:14px;margin:0 0 6px}
+textarea{width:100%;min-height:88px;padding:10px;border:1px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);font:inherit;font-size:15px}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--text)}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:2px}
+textarea.set{border-width:3px;border-color:var(--chip)}
+button{min-height:44px;padding:0 16px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);font:inherit;font-weight:700;cursor:pointer}
+button.quiet{background:transparent;color:var(--text)}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:2}
+.count{font-family:var(--mono);font-size:12px}
+.assembled{width:100%;min-height:180px;font-family:var(--mono);font-size:12.5px}
+nav.pager{display:flex;gap:10px;flex-wrap:wrap;padding:16px;border-top:2px solid var(--line-2)}
+nav.pager a{font-family:var(--mono);font-size:13px;min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line-2);border-radius:3px;color:var(--text);text-decoration:none}
+a{color:var(--text)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+</style>
+<header class="page">
+  <p class="eyebrow">alpha round 2, onboarding and setup</p>
+  <h1>Onboarding, round 2</h1>
+  <p class="lede">Everything from your round-1 feedback that could be built is live. Walk these twenty steps with the app open beside this page and write in the box under each one, exactly as you did in round 1. Start in a private tab or wipe your data first, or the intro will not run. Each step says why it is here and what I want you to judge.</p>
+</header>
+<div class="tools">
+  <span class="count" id="count">0 of 0 commented</span>
+  <button type="button" id="assemble">Assemble</button>
+  <button type="button" class="quiet" id="theme">Flip theme</button>
+</div>
+<main class="wrap">
+
+<section class="step" id="r2.01">
+  <p class="stepno"><code>r2.01</code> step 1</p>
+  <h3>The intro, slide one</h3>
+  <p class="do"><b>Do</b>Open the app in a private tab, or after wiping data, so the intro runs. Watch without touching the screen.</p>
+  <p class="see"><b>You see</b>Text typing itself out a character at a time, an ASCII figure at the foot, and a hovering line saying to click.</p>
+  <p class="pids">covers intro.sequence</p>
+  <ol class="strings">
+<li>
+<code>advice.clickToContinue</code>
+<p class="lime-str">Click to continue</p>
+</li>
+</ol>
+  <p class="only">Why it is here: This did not exist in round 1: the app opened straight on Setup step 1. The words are yours, copied over verbatim. The figure is drawn here rather than the cartoon character your note named, which is third-party property and would have made the README licence claim false.</p>
+  <label class="box" for="c-r2.01">What needs to change here?</label>
+  <textarea id="c-r2.01" data-step="r2.01" data-parts="intro.sequence" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.02">
+  <p class="stepno"><code>r2.02</code> step 2</p>
+  <h3>Slides two, three and four</h3>
+  <p class="do"><b>Do</b>Click through Who am I, Purpose and functions, and Motivation. Read each one fully before advancing.</p>
+  <p class="see"><b>You see</b>Each slide replaces the one before it. Each fades in, then types.</p>
+  <p class="pids">covers intro.sequence</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: Read these as prose you are about to show other people. Tell me what is wrong in the wording, the order, the length and the tone. Slide four promises rest-period games, which do NOT exist yet; you confirmed they are in scope, so the copy stands, but that promise has to ship before anyone else sees this link.</p>
+  <label class="box" for="c-r2.02">What needs to change here?</label>
+  <textarea id="c-r2.02" data-step="r2.02" data-parts="intro.sequence" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.03">
+  <p class="stepno"><code>r2.03</code> step 3</p>
+  <h3>The tl;dr disclaimer</h3>
+  <p class="do"><b>Do</b>Advance to the disclaimer slide and watch it for about ten seconds.</p>
+  <p class="see"><b>You see</b>The text pulses slowly, one cycle every three seconds.</p>
+  <p class="pids">covers intro.sequence</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: Your note said flashing; you clarified you meant animation. One cycle per three seconds is 0.33 Hz, against the three-per-second threshold that carries a seizure risk. Tell me whether it reads as emphatic enough, or whether it is too slow to notice.</p>
+  <label class="box" for="c-r2.03">What needs to change here?</label>
+  <textarea id="c-r2.03" data-step="r2.03" data-parts="intro.sequence" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.04">
+  <p class="stepno"><code>r2.04</code> step 4</p>
+  <h3>The last slide, and Skip</h3>
+  <p class="do"><b>Do</b>Read the final slide, then reload and press Skip on the first slide instead.</p>
+  <p class="see"><b>You see</b>The final slide names the three things setup will ask for. Skip jumps straight to setup, and the intro does not return on a later reload.</p>
+  <p class="pids">covers intro.skip</p>
+  <ol class="strings">
+<li>
+<code>button.skipIntro</code>
+<p class="lime-str">Skip</p>
+</li>
+</ol>
+  <p class="only">Why it is here: The intro shows once and records that it has been seen. Check Skip is findable and that the intro really does not come back.</p>
+  <label class="box" for="c-r2.04">What needs to change here?</label>
+  <textarea id="c-r2.04" data-step="r2.04" data-parts="intro.skip" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.05">
+  <p class="stepno"><code>r2.05</code> step 5</p>
+  <h3>The top bar during setup</h3>
+  <p class="do"><b>Do</b>Look at the bar across the top of the setup screen. Then Settings, skin picker, and cycle all three skins if you can reach them.</p>
+  <p class="see"><b>You see</b>The app name fixed on the left, and an instruction moving beside it.</p>
+  <p class="pids">covers shell.topbar</p>
+  <ol class="strings">
+<li>
+<code>advice.setupInstruction</code>
+<p class="lime-str">Answer each step. Nothing leaves this device.</p>
+</li>
+</ol>
+  <p class="only">Why it is here: You reported this bar as invisible. Measured before: the app name sat at 1.19:1 against its own background, the status line at 1.84:1, where 4.5:1 is the readable floor. Both are 21:1 now. Judge whether it reads as a bar worth keeping, not merely whether you can see it.</p>
+  <label class="box" for="c-r2.05">What needs to change here?</label>
+  <textarea id="c-r2.05" data-step="r2.05" data-parts="shell.topbar" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.06">
+  <p class="stepno"><code>r2.06</code> step 6</p>
+  <h3>The footer</h3>
+  <p class="do"><b>Do</b>Scroll to the very bottom of any screen.</p>
+  <p class="see"><b>You see</b>A quiet block: your name, the repository, the version and build commit, the date, a line about data staying on the device, the disclaimer, and the licence.</p>
+  <p class="pids">covers shell.footer</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: You asked for this and asked me to think about what else belongs. What I added beyond your list: the build commit, because it is the first thing you will want from a bug report and the only thing a tester cannot tell you; and the disclaimer, so it is reachable after the intro has gone. Tell me what is missing or superfluous.</p>
+  <label class="box" for="c-r2.06">What needs to change here?</label>
+  <textarea id="c-r2.06" data-step="r2.06" data-parts="shell.footer" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.07">
+  <p class="stepno"><code>r2.07</code> step 7</p>
+  <h3>Setup step 1, units</h3>
+  <p class="do"><b>Do</b>Read the heading, then the line above the choice, then the line below it.</p>
+  <p class="see"><b>You see</b>The heading reads Setup: Preferred Settings. Above the choice, Units on the weight plates. Below it, a shorter line.</p>
+  <p class="pids">covers setup.units, setup.progress</p>
+  <ol class="strings">
+<li>
+<code>label.units</code>
+<p class="lime-str">Units on the weight plates</p>
+</li>
+<li>
+<code>advice.unitsOnce</code>
+<p class="lime-str">Makes logging stuff easier. Change at any point in Settings.</p>
+</li>
+</ol>
+  <p class="only">Why it is here: Your sentence ran to fifteen words and the contract caps an advice line at twelve, so it split: a lead-in above the control and a note below it. The heading now names which of your three groups the step belongs to.</p>
+  <label class="box" for="c-r2.07">What needs to change here?</label>
+  <textarea id="c-r2.07" data-step="r2.07" data-parts="setup.units, setup.progress" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.08">
+  <p class="stepno"><code>r2.08</code> step 8</p>
+  <h3>The Previous and Next controls</h3>
+  <p class="do"><b>Do</b>Look at the foot of the step, then move forward and back.</p>
+  <p class="see"><b>You see</b>Next on the right. Previous appears from step 2 onward.</p>
+  <p class="pids">covers setup.nav</p>
+  <ol class="strings">
+<li>
+<code>button.back</code>
+<p class="lime-str">Previous</p>
+</li>
+<li>
+<code>button.continue</code>
+<p class="lime-str">Next</p>
+</li>
+</ol>
+  <p class="only">Why it is here: These read go on and Back before. The limelight override was dropped rather than lower-cased, so you see the words you asked for.</p>
+  <label class="box" for="c-r2.08">What needs to change here?</label>
+  <textarea id="c-r2.08" data-step="r2.08" data-parts="setup.nav" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.09">
+  <p class="stepno"><code>r2.09</code> step 9</p>
+  <h3>Setup step 2, time zone</h3>
+  <p class="do"><b>Do</b>Read the line above the field, then open the dropdown and scroll it.</p>
+  <p class="see"><b>You see</b>A note about the notification bot, a line telling you to select, and a list of zones each labelled with its offset and city.</p>
+  <p class="pids">covers setup.timezone</p>
+  <ol class="strings">
+<li>
+<code>advice.timezoneDetected</code>
+<p class="lime-str">Necessary for the notification bot and the week planner.</p>
+</li>
+<li>
+<code>advice.timezonePick</code>
+<p class="lime-str">Select from the drop down menu:</p>
+</li>
+<li>
+<code>label.timezone</code>
+<p class="lime-str">Time zone</p>
+</li>
+</ol>
+  <p class="only">Why it is here: Your sketch said GMT+2 UTC+2 and the city; those are the same offset written twice, so it shows one. The offset is computed for today, never stored, because offsets move with daylight saving.</p>
+  <label class="box" for="c-r2.09">What needs to change here?</label>
+  <textarea id="c-r2.09" data-step="r2.09" data-parts="setup.timezone" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.10">
+  <p class="stepno"><code>r2.10</code> step 10</p>
+  <h3>Setup step 3, the shape of the page</h3>
+  <p class="do"><b>Do</b>Look at the whole step before typing anything. Try to reach the bottom without scrolling.</p>
+  <p class="see"><b>You see</b>A name field, then two bordered boxes: age beside sex, and body mass beside stature.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>label.name</code>
+<p class="lime-str">How should I refer to you?</p>
+</li>
+</ol>
+  <p class="only">Why it is here: You said this page was too long and needed a scroll. Age sits with sex and mass with stature because each pair is read together by the same equation. Tell me whether it fits your phone now.</p>
+  <label class="box" for="c-r2.10">What needs to change here?</label>
+  <textarea id="c-r2.10" data-step="r2.10" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.11">
+  <p class="stepno"><code>r2.11</code> step 11</p>
+  <h3>Age, sex and stature</h3>
+  <p class="do"><b>Do</b>Enter your age. Tap each of the two sex options. Then enter your height in the two boxes, and try typing a decimal into them.</p>
+  <p class="see"><b>You see</b>Age in years, not a birth year. Two selectable glyphs. Two whole-number boxes for stature, which refuse anything but integers.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>quantity.age</code>
+<p class="lime-str">Age</p>
+</li>
+<li>
+<code>label.sex</code>
+<p class="lime-str">Biological sex</p>
+</li>
+<li>
+<code>label.metres</code>
+<p class="lime-str">Metres</p>
+</li>
+<li>
+<code>label.centimetres</code>
+<p class="lime-str">Centimetres</p>
+</li>
+</ol>
+  <p class="only">Why it is here: The field asks for age; the profile still stores a birth year, because a stored age goes stale and every energy target drifts with it. The glyphs are drawn rather than typed: the male and female characters are read as emoji by two gates in this repository.</p>
+  <label class="box" for="c-r2.11">What needs to change here?</label>
+  <textarea id="c-r2.11" data-step="r2.11" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.12">
+  <p class="stepno"><code>r2.12</code> step 12</p>
+  <h3>The sex explainer</h3>
+  <p class="do"><b>Do</b>Tap the small link under the sex field. Read both halves of what opens, then close it.</p>
+  <p class="see"><b>You see</b>A window with a close control at the upper left, two equations, a worked number, a coloured divider, and a section about hormone therapy.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>advice.sexWorkaround</code>
+<p class="lime-str">Options suck? I agree. Click here for a workaround.</p>
+</li>
+</ol>
+  <p class="only">Why it is here: The divider is PINK, not lime: lime is this skin background and a lime rule on it would be invisible. Segment two does NOT carry your six-month threshold. No study validates any of these equations for people on hormone therapy and none supports a time cut-off, so it says that plainly and points at the route that avoids the question. This is the most sensitive text in the app: tell me if the tone is wrong.</p>
+  <label class="box" for="c-r2.12">What needs to change here?</label>
+  <textarea id="c-r2.12" data-step="r2.12" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.13">
+  <p class="stepno"><code>r2.13</code> step 13</p>
+  <h3>The body-fat control</h3>
+  <p class="do"><b>Do</b>Look at the three options and their order. Pick Percentage, then tap Click here to estimate.</p>
+  <p class="see"><b>You see</b>Percentage first and already selected, Body measurements second, Not measured last. Explanatory lines sit below the control now.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>advice.estimateBodyFat</code>
+<p class="lime-str">Click here to estimate</p>
+</li>
+<li>
+<code>label.bodyFatKnown</code>
+<p class="lime-str">Percentage</p>
+</li>
+<li>
+<code>label.bodyFatTape</code>
+<p class="lime-str">Body measurements</p>
+</li>
+<li>
+<code>label.bodyFatNone</code>
+<p class="lime-str">Not measured</p>
+</li>
+</ol>
+  <p class="only">Why it is here: Not measured stayed as you asked, last in the list. It is a real option: it routes to a different validated equation rather than refusing you. The estimate window shows empty frames where the artwork will go; that artwork is specified in the icon register for you to generate.</p>
+  <label class="box" for="c-r2.13">What needs to change here?</label>
+  <textarea id="c-r2.13" data-step="r2.13" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.14">
+  <p class="stepno"><code>r2.14</code> step 14</p>
+  <h3>The tape measurement, in your units</h3>
+  <p class="do"><b>Do</b>Choose Body measurements. Read the field labels and the line above them.</p>
+  <p class="see"><b>You see</b>Neck and abdomen labelled in your chosen unit. A diagram frame per site. No wall of prose.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>advice.tapeMethod</code>
+<p class="lime-str">US Navy circumference method. Keep the tape level and snug.</p>
+</li>
+</ol>
+  <p class="only">Why it is here: This is the defect you found: the fields were centimetres whatever you chose, so an imperial user typed inches and got a plausible wrong number with no error. The site description moved behind why? rather than being deleted, because measuring the wrong place silently biases the result.</p>
+  <label class="box" for="c-r2.14">What needs to change here?</label>
+  <textarea id="c-r2.14" data-step="r2.14" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.15">
+  <p class="stepno"><code>r2.15</code> step 15</p>
+  <h3>The methods, at the foot of the step</h3>
+  <p class="do"><b>Do</b>Scroll to the bottom of step 3.</p>
+  <p class="see"><b>You see</b>A short lead-in and a numbered list of the published methods your numbers feed.</p>
+  <p class="pids">covers setup.body</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: You asked for this to be transparent but not expansive. Every reference here is checked against the engine that uses it by a test, so a citation cannot drift from the code.</p>
+  <label class="box" for="c-r2.15">What needs to change here?</label>
+  <textarea id="c-r2.15" data-step="r2.15" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.16">
+  <p class="stepno"><code>r2.16</code> step 16</p>
+  <h3>Pressing Next with something missing</h3>
+  <p class="do"><b>Do</b>Leave a required field empty and press Next.</p>
+  <p class="see"><b>You see</b>The page jumps to the field that is missing, and it shakes.</p>
+  <p class="pids">covers setup.body</p>
+  <ol class="strings">
+<li>
+<code>error.valueRequired</code>
+<p class="lime-str">Enter a number.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE NUMBER-ENTRY ERRORS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+</ol>
+  <p class="only">Why it is here: You asked for a rumble. A phone vibration does nothing on iOS at any version, so the visible cue is the real one and the vibration is an extra on Android only. Enter a number was NOT deleted: it has ten call sites. What changed is that it appears when you press Next, not as standing text under an untouched field.</p>
+  <label class="box" for="c-r2.16">What needs to change here?</label>
+  <textarea id="c-r2.16" data-step="r2.16" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.17">
+  <p class="stepno"><code>r2.17</code> step 17</p>
+  <h3>Steps 4 to 7, unchanged so far</h3>
+  <p class="do"><b>Do</b>Walk through Equipment &amp; Availability, the goal, availability and programme length.</p>
+  <p class="see"><b>You see</b>Mostly what you saw in round 1, except step 4 has been renamed.</p>
+  <p class="pids">covers setup.training, setup.goal, setup.availability, setup.programme</p>
+  <ol class="strings">
+<li>
+<code>step.training</code>
+<p class="lime-str">Equipment &amp; Availability</p>
+</li>
+</ol>
+  <p class="only">Why it is here: These are the four steps whose rebuilds are NOT done: the sliders, the equipment tiers, the goal model, the feasibility calendar and the just-in-time programme all need decisions from you before code. Comment freely, but expect no change here yet.</p>
+  <label class="box" for="c-r2.17">What needs to change here?</label>
+  <textarea id="c-r2.17" data-step="r2.17" data-parts="setup.training, setup.goal, setup.availability, setup.programme" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.18">
+  <p class="stepno"><code>r2.18</code> step 18</p>
+  <h3>Step 8, where the questionnaire used to be</h3>
+  <p class="do"><b>Do</b>Read all four sections and open a why? disclosure.</p>
+  <p class="see"><b>You see</b>Creatine, caffeine, protein and kit, each with a dose worked out from your own body mass, a caution, and its sources.</p>
+  <p class="pids">covers setup.guidance</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: The medical questionnaire is gone completely. Three of your instructions ship corrected rather than as written: creatine is dosed in grams not milligrams; the milk-and-sugar advice has no evidence behind it and was dropped; and isolate against concentrate against hydrolysate makes no meaningful difference, so the protein advice is about daily total and third-party testing instead. Caffeine is the lifting dose, which is smaller than the number usually quoted.</p>
+  <label class="box" for="c-r2.18">What needs to change here?</label>
+  <textarea id="c-r2.18" data-step="r2.18" data-parts="setup.guidance" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.19">
+  <p class="stepno"><code>r2.19</code> step 19</p>
+  <h3>Step 9, the review</h3>
+  <p class="do"><b>Do</b>Read the whole review screen before confirming.</p>
+  <p class="see"><b>You see</b>What you told me, read back, then the daily targets and the programme summary.</p>
+  <p class="pids">covers setup.review</p>
+  <ol class="strings">
+<li>
+<code>hero.yourAnswers</code>
+<p class="lime-str">What you told me</p>
+</li>
+</ol>
+  <p class="only">Why it is here: The answers block is new: the rest of this screen was always derived, so it stayed current on its own, but nothing showed you your own entries before writing them. Check every value matches what you typed.</p>
+  <label class="box" for="c-r2.19">What needs to change here?</label>
+  <textarea id="c-r2.19" data-step="r2.19" data-parts="setup.review" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r2.20">
+  <p class="stepno"><code>r2.20</code> step 20</p>
+  <h3>Close the browser in the middle</h3>
+  <p class="do"><b>Do</b>Start setup again, fill in two or three steps, then close the tab completely. Reopen the app.</p>
+  <p class="see"><b>You see</b>Your answers waiting, at the step you left.</p>
+  <p class="pids">covers setup.progress</p>
+  <p class="small">No copy key. Review its layout and behaviour.</p>
+  <p class="only">Why it is here: This is the item you called out on its own, and the most valuable thing in the round. It stores what you typed rather than what it parsed, so a half-finished number survives and is checked again on resume rather than trusted.</p>
+  <label class="box" for="c-r2.20">What needs to change here?</label>
+  <textarea id="c-r2.20" data-step="r2.20" data-parts="setup.progress" placeholder="What you saw. What you expected."></textarea>
+</section>
+<section class="step" id="r2-onboarding.general">
+  <p class="stepno"><code>r2-onboarding.general</code> the whole retest</p>
+  <h3>Anything else about onboarding</h3>
+  <p class="do"><b>Do</b>Think back over the eleven steps.</p>
+  <p class="see"><b>You see</b>Something belonging to the whole of onboarding rather than one step: an order that is wrong, a step that should not exist, something missing entirely.</p>
+  <p class="pids">covers r2-onboarding</p>
+  <label class="box" for="c-r2-onboarding.general">What needs to change?</label>
+  <textarea id="c-r2-onboarding.general" data-step="r2-onboarding.general" data-parts="r2-onboarding" placeholder="What you saw. What you expected."></textarea>
+</section>
+<h2>your comments, ready to paste</h2>
+<p class="small">One line per box you filled, each carrying its step id and the part ids that step covers. Press Assemble, then paste the block back into Claude. You can also leave a comment thread on this published page.</p>
+<textarea class="assembled" id="assembled" readonly aria-label="Assembled comments" placeholder="Press Assemble."></textarea>
+<p class="small" id="status" role="status" aria-live="polite"></p>
+</main>
+<script>
+(function(){
+  var KEY='fti-walk-r1-r2-onboarding';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-step]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-step')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-step');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-step');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+' | '+b.getAttribute('data-parts')+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+'. Select the text and copy it.';
+    out.focus();out.select();
+    if(navigator.clipboard&&lines.length){
+      navigator.clipboard.writeText(out.value).then(function(){status.textContent=lines.length+' comments copied to the clipboard.';},function(){});
+    }
+  });
+  document.getElementById('theme').addEventListener('click',function(){
+    var r=document.documentElement;
+    r.setAttribute('data-theme',r.getAttribute('data-theme')==='dark'?'light':'dark');
+  });
+  tally();
+})();</script>
