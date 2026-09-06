@@ -275,9 +275,9 @@ a{color:var(--text)}
 
 <section class="step" id="w1.07">
   <p class="stepno"><code>w1.07</code> step 7</p>
-  <h3>Setup, step 3: name, sex, age, height, mass</h3>
-  <p class="do"><b>Do</b>Fill the fields from the top of the screen down to body mass. Leave one blank and tap &quot;go on&quot; to see the errors.</p>
-  <p class="see"><b>You see</b>A name field, a sex choice with a note above it, then year of birth, height and body mass.</p>
+  <h3>Setup, step 3: name, age, sex, height, mass</h3>
+  <p class="do"><b>Do</b>Fill the fields from the top of the screen down to body mass. Leave one blank and tap &quot;go on&quot; to see the errors. Then open the sex explainer.</p>
+  <p class="see"><b>You see</b>A name field, then age and a sex choice with a link under it, then height and body mass.</p>
   <p class="pids">covers setup.body</p>
   <ol class="strings">
 <li>
@@ -289,16 +289,12 @@ a{color:var(--text)}
 <p class="lime-str">How should I refer to you?</p>
 </li>
 <li>
+<code>quantity.age</code>
+<p class="lime-str">Age</p>
+</li>
+<li>
 <code>label.sex</code>
 <p class="lime-str">Biological sex</p>
-</li>
-<li>
-<code>label.metres</code>
-<p class="lime-str">Metres</p>
-</li>
-<li>
-<code>label.centimetres</code>
-<p class="lime-str">Centimetres</p>
 </li>
 <li>
 <code>label.sexMale</code>
@@ -309,12 +305,29 @@ a{color:var(--text)}
 <p class="lime-str">Female</p>
 </li>
 <li>
-<code>quantity.age</code>
-<p class="lime-str">Age</p>
+<code>advice.sexWorkaround</code>
+<p class="lime-str">Options suck? I agree. Click here for a workaround.</p>
+</li>
+<li>
+<code>label.sexRationale</code>
+<p class="lime-str">Why sex is asked</p>
+</li>
+<li>
+<code>quantity.bodyMass</code>
+<p class="lime-str">Body mass</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>quantity.height</code>
 <p class="lime-str">Height</p>
+</li>
+<li>
+<code>label.metres</code>
+<p class="lime-str">Metres</p>
+</li>
+<li>
+<code>label.centimetres</code>
+<p class="lime-str">Centimetres</p>
 </li>
 <li>
 <code>label.feet</code>
@@ -323,11 +336,6 @@ a{color:var(--text)}
 <li>
 <code>label.inches</code>
 <p class="lime-str">Inches</p>
-</li>
-<li>
-<code>quantity.bodyMass</code>
-<p class="lime-str">Body mass</p>
-<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>error.valueRequired</code>
@@ -351,34 +359,29 @@ a{color:var(--text)}
 <section class="step" id="w1.08">
   <p class="stepno"><code>w1.08</code> step 8</p>
   <h3>Setup, step 3: body fat</h3>
-  <p class="do"><b>Do</b>Scroll down the same screen. Open &quot;why?&quot;, then pick the tape option.</p>
-  <p class="see"><b>You see</b>A note, a why disclosure, three options, and the tape fields under the third.</p>
+  <p class="do"><b>Do</b>Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open &quot;why?&quot;.</p>
+  <p class="see"><b>You see</b>Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot.</p>
   <p class="pids">covers setup.body</p>
   <ol class="strings">
 <li>
-<code>advice.bodyFatOptional</code>
-<p class="lime-str">Optional. With it, RMR uses the Cunningham equation.</p>
+<code>label.bodyFatKnown</code>
+<p class="lime-str">Percentage</p>
 </li>
 <li>
-<code>disclosure.why</code>
-<p class="lime-str">why?</p>
-<p class="refusal">This string keeps its plain wording on every skin: CASE ALONE, OR THE LIMELIGHT WORD ALREADY. A word change here is out of scope; a layout or behaviour change is not.</p>
-</li>
-<li>
-<code>why.bodyFatOptional</code>
-<p class="lime-str">With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.</p>
+<code>label.bodyFatTape</code>
+<p class="lime-str">Body measurements</p>
 </li>
 <li>
 <code>label.bodyFatNone</code>
 <p class="lime-str">Not measured</p>
 </li>
 <li>
-<code>label.bodyFatKnown</code>
-<p class="lime-str">Known percentage</p>
+<code>advice.estimateBodyFat</code>
+<p class="lime-str">Click here to estimate</p>
 </li>
 <li>
-<code>label.bodyFatTape</code>
-<p class="lime-str">Estimate from tape measurements</p>
+<code>label.bodyFatChart</code>
+<p class="lime-str">Estimate visually</p>
 </li>
 <li>
 <code>quantity.bodyFat</code>
@@ -405,6 +408,11 @@ a{color:var(--text)}
 <p class="lime-str">Hip</p>
 </li>
 <li>
+<code>disclosure.why</code>
+<p class="lime-str">why?</p>
+<p class="refusal">This string keeps its plain wording on every skin: CASE ALONE, OR THE LIMELIGHT WORD ALREADY. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
 <code>advice.tapeNeedMale</code>
 <p class="lime-str">Enter neck and abdomen II girths.</p>
 </li>
@@ -423,6 +431,14 @@ a{color:var(--text)}
 <li>
 <code>why.bodyFatEstimate</code>
 <p class="lime-str">The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number.</p>
+</li>
+<li>
+<code>advice.bodyFatOptional</code>
+<p class="lime-str">Optional. With it, RMR uses the Cunningham equation.</p>
+</li>
+<li>
+<code>why.bodyFatOptional</code>
+<p class="lime-str">With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.</p>
 </li>
 </ol>
   <label class="box" for="c-w1.08">What needs to change here?</label>

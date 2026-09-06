@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `8536108`. 99 parts across 13 screens, holding 477 of the table's 480 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `244d5d8`. 99 parts across 13 screens, holding 481 of the table's 484 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## boot (2)
 
@@ -213,17 +213,21 @@ States: `default`, `blocked`
 | --- | --- | --- | --- | --- |
 | `advice.bodyFatEstimate` | 21.9 % body fat, ± 3.52 percentage points. | same | same | yes |
 | `advice.bodyFatOptional` | Optional. With it, RMR uses the Cunningham equation. | same | same | yes |
+| `advice.estimateBodyFat` | Click here to estimate | same | same | yes |
+| `advice.sexWorkaround` | Options suck? I agree. Click here for a workaround. | same | same | yes |
 | `advice.tapeMethod` | US Navy circumference method. Keep the tape level and snug. | same | same | yes |
 | `advice.tapeNeedFemale` | Enter neck, abdomen I and hip girths. | same | same | yes |
 | `advice.tapeNeedMale` | Enter neck and abdomen II girths. | same | same | yes |
 | `advice.tapeOutOfDomain` | Girths outside the equation's domain. No estimate is shown. | same | same | yes |
+| `button.closeModal` | Close | same | same | yes |
 | `disclosure.why` | why? | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
 | `error.positive` | Enter a number above zero. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.valueRequired` | Enter a number. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.wholeNumber` | Enter a whole number. | same | same | yes |
-| `label.bodyFatKnown` | Known percentage | same | same | yes |
+| `label.bodyFatChart` | Estimate visually | same | same | yes |
+| `label.bodyFatKnown` | Percentage | same | same | yes |
 | `label.bodyFatNone` | Not measured | same | same | yes |
-| `label.bodyFatTape` | Estimate from tape measurements | same | same | yes |
+| `label.bodyFatTape` | Body measurements | same | same | yes |
 | `label.centimetres` | Centimetres | same | same | yes |
 | `label.feet` | Feet | same | same | yes |
 | `label.inches` | Inches | same | same | yes |
@@ -232,6 +236,7 @@ States: `default`, `blocked`
 | `label.sex` | Biological sex | same | same | yes |
 | `label.sexFemale` | Female | same | same | yes |
 | `label.sexMale` | Male | same | same | yes |
+| `label.sexRationale` | Why sex is asked | same | same | yes |
 | `quantity.abdomenI` | Abdomen I | same | same | yes |
 | `quantity.abdomenII` | Abdomen II | same | same | yes |
 | `quantity.age` | Age | same | same | yes |
@@ -347,6 +352,7 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `hero.guidance` | A few things worth knowing | same | same | yes |
+| `label.caution` | Caution | same | same | yes |
 | `step.guidance` | Getting started | same | same | yes |
 
 ### `setup.review`
@@ -1021,7 +1027,6 @@ States: `open`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.closeModal` | Close | same | same | yes |
 | `label.atlasSource` | Source | same | same | yes |
 
 ## settings (14)
@@ -1493,7 +1498,6 @@ States: `open`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.noFormCues` | No form cues for this exercise. | same | same | yes |
-| `label.caution` | Caution | same | same | yes |
 | `label.cueExecution` | Execution | same | same | yes |
 | `label.cueMistakes` | Common mistakes | same | same | yes |
 | `label.cueSetup` | Setup | same | same | yes |

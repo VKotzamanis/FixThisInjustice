@@ -200,14 +200,14 @@ describe('domain guards', () => {
     setValue(/^age \(years\)$/i, '6'); // under the 18 to 80 domain
 
     expect(screen.getByText('Age must be 18 to 80 years.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
     next();
     // Still on the body screen: the guard held.
     expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
 
     setValue(/^age \(years\)$/i, '30');
     expect(screen.queryByText('Age must be 18 to 80 years.')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   it('blocks a body mass outside the validated adult domain', () => {
@@ -219,7 +219,7 @@ describe('domain guards', () => {
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '12');
     expect(screen.getByText('Body mass must be 30 to 300 kg.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('blocks an empty weekday selection', () => {
@@ -411,7 +411,7 @@ describe('body fat by tape measure', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '95.3');
-    fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
+    fireEvent.click(screen.getByLabelText('Body measurements'));
     setValue(/^neck \(cm\)$/i, '40');
     setValue(/abdomen ii \(cm\)/i, '95');
     const estimate = screen.getByTestId('bodyfat-estimate').textContent ?? '';
@@ -430,7 +430,7 @@ describe('body fat by tape measure', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
-    fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
+    fireEvent.click(screen.getByLabelText('Body measurements'));
     setValue(/^neck \(cm\)$/i, '32');
     setValue(/abdomen i \(cm\)/i, '75');
     expect(screen.getByTestId('bodyfat-estimate').textContent).toMatch(/hip/i);
@@ -533,6 +533,11 @@ describe('copy rules', () => {
         setValue(/weekly session target/i, '2');
       }
       for (const button of screen.getAllByRole('button')) {
+        // `.wiz-link` controls carry `advice.` copy (R3's twelve-word cap), styled as a button
+        // for a real tap target rather than a bare `<a href="#">`. They are not `button.` copy
+        // and R1's three-word cap does not bind them (Brief B, Part 2: "Options suck? I agree.
+        // Click here for a workaround." and "Click here to estimate").
+        if (button.classList.contains('wiz-link')) continue;
         expect((button.textContent ?? '').trim().split(/\s+/).length).toBeLessThanOrEqual(3);
       }
       expect(document.body.textContent ?? '').not.toMatch(/[—–]/);
@@ -591,7 +596,7 @@ describe('the converted value is what the domain gate tests', () => {
 
     imperialBodyStep(FLOOR_LB);
     expect(screen.getByText('Body mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
     next();
     expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
   });
@@ -600,7 +605,7 @@ describe('the converted value is what the domain gate tests', () => {
     const kg = toStoredMass(Number(CEILING_LB), 'imperial'); // [kg] 300.008 kg
     expect(kg).toBeGreaterThan(NUTRITION_DOMAIN.massKg.hi);
     imperialBodyStep(CEILING_LB);
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('accepts the bound the message quotes, and that bound is inside the domain', () => {
@@ -608,7 +613,7 @@ describe('the converted value is what the domain gate tests', () => {
     expect(isInDomain(inputAt(kg))).toBe(true);
     imperialBodyStep(INSIDE_LB);
     expect(screen.queryByText(/body mass must be/i)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   it('holds an optional target body mass to the same kg bound', () => {
@@ -650,10 +655,10 @@ describe('whole-number counts', () => {
     setValue(/body mass \(kg\)/i, '80');
     setValue(/^age \(years\)$/i, '30.5');
     expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
     setValue(/^age \(years\)$/i, '30');
     expect(screen.queryByText('Enter a whole number.')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
   });
 
   it('refuses a fractional programme length', () => {
@@ -742,7 +747,7 @@ describe('focus, announcement and message binding', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '95.3');
-    fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
+    fireEvent.click(screen.getByLabelText('Body measurements'));
     setValue(/^neck \(cm\)$/i, '40');
     setValue(/abdomen ii \(cm\)/i, '182'); // Navy estimate 60.1 %, above the 60 % ceiling
     for (const label of [/^neck \(cm\)$/i, /abdomen ii \(cm\)/i]) {
@@ -750,7 +755,7 @@ describe('focus, announcement and message binding', () => {
       expect(control).toHaveAttribute('aria-invalid', 'true');
       expect(describedText(control)).toContain('Body fat must be 3 to 60 %.');
     }
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('binds the target-date message to its control', () => {
@@ -832,7 +837,7 @@ describe('entry aids and idempotency', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
-    fireEvent.click(screen.getByLabelText('Estimate from tape measurements'));
+    fireEvent.click(screen.getByLabelText('Body measurements'));
     for (const label of [/^neck \(cm\)$/i, /^abdomen i \(cm\)$/i, /^hip \(cm\)$/i]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
@@ -892,5 +897,89 @@ describe('SetupWizard under a skin', () => {
     expect(
       screen.getByRole('button', { name: copyFor('clinical', 'button.continue') }),
     ).toBeInTheDocument();
+  });
+});
+
+/** Reaches the body step with age, height and mass filled, in metric, ready for these tests. */
+function reachBody(): void {
+  render(<SetupWizard />);
+  next();
+  next();
+  setValue(/^age \(years\)$/i, '30');
+  setValue(/^metres$/i, '1');
+  setValue(/^centimetres$/i, '80');
+  setValue(/body mass \(kg\)/i, '80');
+}
+
+describe('Brief B: the body-fat control reorder (C1.08.1 to C1.08.4, C1.08.7)', () => {
+  it('pre-selects Percentage, in the order Percentage, Body measurements, Not measured', () => {
+    reachBody();
+    const radios = screen.getAllByRole('radio', { name: /percentage|body measurements|not measured/i });
+    expect(radios.map((r) => r.getAttribute('aria-label') ?? r.closest('label')?.textContent)).toEqual([
+      'Percentage',
+      'Body measurements',
+      'Not measured',
+    ]);
+    expect(screen.getByLabelText('Percentage')).toBeChecked();
+  });
+
+  it('leaves Next enabled with the percentage box blank, because body fat stays optional', () => {
+    reachBody();
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(null);
+    expect(screen.queryByText('Enter a number.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
+    next();
+    expect(screen.getByText(FORMAT.stepOf(4, STEPS.length, 'Training context'))).toBeInTheDocument();
+  });
+
+  it('shows no obesity or category classification anywhere on the step', () => {
+    reachBody();
+    const text = document.body.textContent ?? '';
+    expect(text).not.toMatch(/obes|overweight|underweight|athletic build/i);
+  });
+});
+
+describe('Brief B: the sex explainer (C1.07.6, C1.07.10 to C1.07.16)', () => {
+  it('opens from a link under the sex field, shows the MSJ offset and the HRT segment, and closes', () => {
+    reachBody();
+    fireEvent.click(screen.getByText('Options suck? I agree. Click here for a workaround.'));
+    expect(screen.getByTestId('sex-rationale-backdrop')).toBeInTheDocument();
+    expect(screen.getByText('S = +5 for male, -161 for female [kcal/day]')).toBeInTheDocument();
+    expect(screen.getByText('If you are on gender-affirming hormone therapy')).toBeInTheDocument();
+    // No six-month threshold ships (decision hrt-no-threshold-ffm-path).
+    expect(document.body.textContent ?? '').not.toMatch(/six[- ]month|6[- ]month/i);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByTestId('sex-rationale-backdrop')).toBeNull();
+  });
+});
+
+describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
+  it('opens above the percentage field and a chosen percentage fills it', () => {
+    reachBody();
+    fireEvent.click(screen.getByText('Click here to estimate'));
+    expect(screen.getByTestId('bodyfat-chart-backdrop')).toBeInTheDocument();
+    const twentyFivePctButtons = screen.getAllByRole('button', { name: '25%' });
+    expect(twentyFivePctButtons.length).toBeGreaterThanOrEqual(2); // one per sex row
+    fireEvent.click(twentyFivePctButtons[0] as HTMLElement);
+    expect(screen.queryByTestId('bodyfat-chart-backdrop')).toBeNull();
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(25);
+  });
+});
+
+describe('Brief B: failed Next on the body step (C1.08.12, C1.08.14)', () => {
+  it('hides "Enter a number" until Next is pressed, then reveals it, holds the step and focuses age', () => {
+    render(<SetupWizard />);
+    next();
+    next();
+    // age, height and mass are all blank: error.valueRequired would fire for each, and none of
+    // them should stand as helper text before the field is touched or Next is pressed.
+    expect(screen.queryByText('Enter a number.')).toBeNull();
+    const nextButton = screen.getByRole('button', { name: 'Next' });
+    expect(nextButton).toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(nextButton);
+    // Still on the body screen: a blocked press never advances.
+    expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
+    expect(screen.getAllByText('Enter a number.').length).toBeGreaterThan(0);
+    expect(document.activeElement).toBe(screen.getByLabelText(/^age \(years\)$/i));
   });
 });

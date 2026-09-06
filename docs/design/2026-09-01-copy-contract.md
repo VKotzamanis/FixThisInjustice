@@ -85,10 +85,13 @@ string and never concatenates it into the message.
 **R10. Exempt content.** Two halves, and only one of them is mechanical.
 
 Exercise form cues, exercise notes and tips, Atlas card bodies and citations, the body-step
-equation list, supplement guidance, and the reminders runbook (`docs/RUNBOOK-reminders.md`) are exempt from R1 to R4
+equation list, the sex-field rationale, supplement guidance, the body-fat chart text, and the
+reminders runbook
+(`docs/RUNBOOK-reminders.md`) are exempt from R1 to R4
 and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
 None of them lives in a copy table: they are `src/content/formCues.ts`,
-`src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/supplementGuidance.ts` and that runbook.
+`src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
+`src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts` and that runbook.
 
 <!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
 `src/content/bodyEquations.ts` was added to that list on 2026-09-04, for alpha round 1 claim
@@ -97,6 +100,17 @@ numbers feed. A citation carrying a DOI cannot pass R3's twelve words and should
 module carries its own suite, `src/content/bodyEquations.test.ts`, asserting R5, R6 and R11 and
 that every DOI it prints also appears in the engine that uses it, so a citation cannot drift from
 the code it describes.
+
+<!-- decision: r10-sex-rationale-module | status: adopted | supersedes: none -->
+`src/content/sexRationale.ts` was added to that list on 2026-09-05, for alpha round 1 claims
+C1.07.6 and C1.07.10 to C1.07.16: the sex-field explainer opened from the body step, in two
+segments separated by a rule in `var(--accent)`. Segment one quotes the two RMR equations and the
+exact 166 kcal/day offset difference; segment two replaces the owner's requested six-month
+hormone-therapy threshold, which the evidence does not support (decision
+`hrt-no-threshold-ffm-path`, `docs/plans/2026-09-04-11-alpha-round-1-corrections.md` section B10).
+The module carries its own suite, `src/content/sexRationale.test.ts`, asserting R5, R6 and R11,
+that the Mifflin-St Jeor and Cunningham DOIs it prints also appear in `src/domain/nutrition.ts`,
+and that no six-month rule ships.
 
 <!-- decision: r10-supplement-guidance-module | status: adopted | supersedes: none -->
 `src/content/supplementGuidance.ts` was added to that list on 2026-09-05, replacing the deleted

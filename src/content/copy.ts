@@ -63,6 +63,8 @@ export type CopyKey =
   | 'advice.timezonePick'
   | 'advice.timezoneInvalid'
   | 'advice.bodyFatOptional'
+  | 'advice.estimateBodyFat'
+  | 'advice.sexWorkaround'
   | 'advice.tapeMethod'
   | 'advice.tapeNeedFemale'
   | 'advice.tapeNeedMale'
@@ -93,6 +95,8 @@ export type CopyKey =
   | 'label.centimetres'
   | 'label.sexMale'
   | 'label.sexFemale'
+  | 'label.sexRationale'
+  | 'label.bodyFatChart'
   | 'label.feet'
   | 'label.inches'
   | 'label.bodyFatNone'
@@ -600,6 +604,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.timezonePick': 'Select from the drop down menu:',
   'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
   'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham equation.',
+  'advice.estimateBodyFat': 'Click here to estimate',
+  'advice.sexWorkaround': 'Options suck? I agree. Click here for a workaround.',
   'advice.tapeMethod': 'US Navy circumference method. Keep the tape level and snug.',
   'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
   'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
@@ -638,11 +644,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.centimetres': 'Centimetres',
   'label.sexMale': 'Male',
   'label.sexFemale': 'Female',
+  // Accessible titles for the two body-step popups, drawn as layout labels rather than as
+  // evidence (00-CONTEXT: "Layout, labels and control names you may write").
+  'label.sexRationale': 'Why sex is asked',
+  'label.bodyFatChart': 'Estimate visually',
   'label.feet': 'Feet',
   'label.inches': 'Inches',
   'label.bodyFatNone': 'Not measured',
-  'label.bodyFatKnown': 'Known percentage',
-  'label.bodyFatTape': 'Estimate from tape measurements',
+  /*
+   * Round 1 claims C1.08.2 and C1.08.3: "Percentage %" and "Body Measurements" replace "Known
+   * percentage" and "Estimate from tape measurements". The radio order changes with them
+   * (SetupWizard.tsx): known is now first and pre-selected, tape second, none last.
+   */
+  'label.bodyFatKnown': 'Percentage',
+  'label.bodyFatTape': 'Body measurements',
   'label.activity': 'Activity level',
   'label.experience': 'Experience',
   'label.equipment': 'Equipment',
