@@ -31,7 +31,7 @@ every open question is ruled, and the dispatch order is set.
 | Round 1 | Closed. 80 of 127 claims shipped |
 | Round 2 | Open. 91 claims ledgered, every ruling taken, brief F shipped, seven briefs waiting |
 | Suite | 123 files, 2430 tests, green |
-| Failing on purpose | `scripts/check-title-case.mjs`, 141 violations. Not in CI until they are fixed |
+| Failing on purpose | `scripts/check-title-case.mjs`, 139 of 226 naming keys. Not in CI until they are fixed. Run it rather than quoting this row: the count moves with every key added |
 
 ## 3. The five rules that get work rejected
 

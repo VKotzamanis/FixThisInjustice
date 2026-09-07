@@ -30,7 +30,7 @@ every copy string byte for byte, so two branches that both added keys will both 
 | 3 | **L** | own tree | One strong-model agent, whole screen. Long-running because it does literature work. |
 | 4 | **G**, **I** | separate trees | G widens F's activity slider; I rebuilds steps 5 to 7. Both are round-1 carry-over. |
 | 5 | **M** | anywhere | Small, and it must be last: the review page restates what the earlier steps collect, so it cannot be written while they are still moving. |
-| 6 | Title Case | own tree | 141 corrections across `copy.ts`. Do it when no other brief is live, then add `scripts/check-title-case.mjs` to CI. |
+| 6 | Title Case | own tree | 139 corrections across `copy.ts`. Do it when no other brief is live, then add `scripts/check-title-case.mjs` to CI. |
 
 **K before everything.** It introduces `Sex = 'male' | 'female' | 'nd'` and the two-tier draft.
 A brief that lands first and then has to be rewritten against those types wastes a whole agent.
@@ -56,7 +56,7 @@ Always repeat these, whatever the brief:
 - **Never invent a citation, a DOI, a dose or a coefficient.** The one unrecoverable error here.
 - **The catalogue trap**, in full, with the four commands in order.
 - **R14**: labels, headings and control names are Title Case; a heading is a noun phrase. New keys
-  must comply even though 141 old ones do not.
+  must comply even though 139 old ones do not.
 - **The baseline test count**, so a regression is visible. Currently 123 files, 2430 tests.
 
 ## 4. Verify. Do not read the report and believe it.
