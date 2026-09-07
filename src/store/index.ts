@@ -18,7 +18,7 @@ import type {
 import { defaultState } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { newId } from '../domain/ids';
-import { dailyBeverageTargetML } from '../domain/nutrition';
+import { seedBeverageTargetML } from '../domain/nutrition';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
 import type { RestTimer } from '../domain/training/restTimer';
 import {
@@ -597,14 +597,16 @@ export const useAppStore = create<AppStore>()((set, get) => {
     }
     // The hydration target is a stored preference, not a derived value, so it
     // has to hold a number from the moment the profile exists. A caller that
-    // left it at 0 gets the IOM 2005 beverage figure for the profile's sex
-    // (nutrition.ts, dailyBeverageTargetML) rather than a silent zero target.
+    // left it at 0 gets the IOM 2005 beverage seed for the profile's sex
+    // (nutrition.ts, seedBeverageTargetML) rather than a silent zero target.
+    // With a non-disclosed sex the reference is a RANGE, so the seed function
+    // owns that one conversion and states why; see its comment (decision A1).
     const stored: Profile =
       p.hydration.dailyTargetML > 0
         ? p
         : {
             ...p,
-            hydration: { ...p.hydration, dailyTargetML: dailyBeverageTargetML(p.body.sex) }, // [mL/day]
+            hydration: { ...p.hydration, dailyTargetML: seedBeverageTargetML(p.body.sex) }, // [mL/day]
           };
     set({
       // Keyed by the profile's own id, which is the invariant the schema's root

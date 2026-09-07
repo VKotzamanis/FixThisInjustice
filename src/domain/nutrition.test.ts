@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import {
   ACTIVITY_BAND,
   ACTIVITY_FACTOR,
+  BEVERAGE_TARGET_RANGE_ML,
   FAT_LOSS_RATE_BOUND,
   NUTRITION_DOMAIN,
   caffeineDoseMg,
@@ -11,6 +12,8 @@ import {
   dailyBeverageTargetML,
   fatFreeMassKg,
   isInDomain,
+  seedBeverageTargetML,
+  statedBeverageTargetML,
   type NutritionInput,
 } from './nutrition';
 import type { ActivityLevel, GoalKind, Sex } from './types';
@@ -260,16 +263,55 @@ describe('fluid and creatine', () => {
   it('uses the IOM beverage share, not the total-water AI', () => {
     // IOM 2005, DOI 10.17226/10925: total-water AI 3.7 L men / 2.7 L women, of which
     // BEVERAGES supply 3.0 L and 2.2 L (~81 %). The app cannot measure water in food.
-    expect(dailyBeverageTargetML('male')).toBe(3000); // mL/day
-    expect(dailyBeverageTargetML('female')).toBe(2200); // mL/day
-    expect(computeTargets(base).fluidML).toBe(3000); // mL/day
-    expect(computeTargets({ ...base, sex: 'female' }).fluidML).toBe(2200); // mL/day
+    expect(dailyBeverageTargetML('male')).toEqual({ kind: 'stated', ml: 3000 }); // mL/day
+    expect(dailyBeverageTargetML('female')).toEqual({ kind: 'stated', ml: 2200 }); // mL/day
+    expect(computeTargets(base).fluidML).toEqual({ kind: 'stated', ml: 3000 }); // mL/day
+    expect(computeTargets({ ...base, sex: 'female' }).fluidML).toEqual({
+      kind: 'stated',
+      ml: 2200,
+    }); // mL/day
+  });
+
+  /*
+   * Round 2 decision A1, third consequence, ruled by the owner: with a non-disclosed sex the
+   * screen shows 2200 to 3000 mL and states that the reference intake is published per sex. It
+   * does not average the two and it does not pick one.
+   *
+   * The union is what enforces that. A consumer cannot read a millilitre figure off the result
+   * without handling the range case first, so "print a single number" is not something a view can
+   * do by accident.
+   */
+  it('returns the published RANGE under nd, and never an average or one endpoint', () => {
+    expect(dailyBeverageTargetML('nd')).toEqual({ kind: 'range', loML: 2200, hiML: 3000 });
+    expect(BEVERAGE_TARGET_RANGE_ML).toEqual({ loML: 2200, hiML: 3000 });
+    // The mean of the two published figures, 2600 mL/day, is a number nobody published. It must
+    // appear nowhere in the result.
+    expect(JSON.stringify(dailyBeverageTargetML('nd'))).not.toContain('2600');
+    // `nd` needs a body-fat percentage to compute at all (see the domain suite below), so the
+    // targets are read from an input that has one.
+    const nd = computeTargets({ ...base, sex: 'nd', bodyFatPct: 20 });
+    expect(nd.fluidML).toEqual({ kind: 'range', loML: 2200, hiML: 3000 });
+    // And the RMR came from the equation with no sex term, not from a defaulted offset.
+    expect(nd.basis.rmr).toBe('cunningham');
+  });
+
+  /*
+   * The seed is the ONE place the range becomes a single figure, because
+   * `Profile.hydration.dailyTargetML` is a stored preference and a denominator. It takes the low
+   * end, which is a published figure rather than an average; `seedBeverageTargetML`'s own comment
+   * states why the low end and not the high one.
+   */
+  it('seeds a stored hydration preference from a published figure, never from an average', () => {
+    expect(seedBeverageTargetML('male')).toBe(3000); // mL/day
+    expect(seedBeverageTargetML('female')).toBe(2200); // mL/day
+    expect(seedBeverageTargetML('nd')).toBe(2200); // mL/day, the low END, not the mean
+    expect(seedBeverageTargetML('nd')).not.toBe(2600); // the mean of the two: unpublished
   });
 
   it('never displays the total-water AI or the legacy flat 3.5 L', () => {
     const banned = [3700, 2700, 3500]; // mL/day
-    expect(banned).not.toContain(dailyBeverageTargetML('male'));
-    expect(banned).not.toContain(dailyBeverageTargetML('female'));
+    expect(banned).not.toContain(statedBeverageTargetML('male'));
+    expect(banned).not.toContain(statedBeverageTargetML('female'));
   });
 
   it('returns null creatine when the toggle is off', () => {

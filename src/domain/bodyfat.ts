@@ -1,4 +1,4 @@
-import type { Sex } from './types';
+import type { StatedSex } from './types';
 
 /**
  * US Navy circumference (tape) method — METRIC form.
@@ -39,7 +39,14 @@ import type { Sex } from './types';
  */
 
 export interface NavyTapeInput {
-  sex: Sex;
+  /*
+   * `StatedSex`, never `Sex`. Round 2 decision A1: the male and female equations differ in FORM
+   * (the female one sums a hip girth the male one does not read, and every coefficient differs),
+   * so there is no `nd` form to fall back to and no defensible average of the two. Typing the
+   * field as `StatedSex` makes a caller holding a `Sex` a COMPILE ERROR rather than a silent
+   * `else` branch that would run the female equation on a non-disclosed profile.
+   */
+  sex: StatedSex;
   heightCm: number; // cm, > 0
   neckCm: number; // cm, > 0, measured below the larynx
   waistCm: number; // cm, > 0; men: Abdomen II (umbilicus); women: Abdomen I (minimal width)
@@ -52,7 +59,7 @@ export interface NavyTapeInput {
  * DOI 10.21236/ada143890); women n=214, R=0.85 (NHRC 84-29, DOI 10.21236/ada146456).
  * The UI must show this beside the figure: it is larger than most changes a user will chase.
  */
-export const NAVY_SEE_PCT: Record<Sex, number> = { male: 3.52, female: 3.72 };
+export const NAVY_SEE_PCT: Record<StatedSex, number> = { male: 3.52, female: 3.72 };
 
 /**
  * The abdomen site differs by sex — this is not a naming variation. Men are measured at
@@ -60,7 +67,7 @@ export const NAVY_SEE_PCT: Record<Sex, number> = { male: 3.52, female: 3.72 };
  * (NHRC 84-29, DOI 10.21236/ada146456). Measuring a woman at the umbilicus, or a man at
  * minimal width, silently biases the result: the girth term carries the whole prediction.
  */
-export const NAVY_SITE_LABEL: Record<Sex, { waist: string; hip: string | null }> = {
+export const NAVY_SITE_LABEL: Record<StatedSex, { waist: string; hip: string | null }> = {
   male: { waist: 'Abdomen II — horizontal, at the umbilicus', hip: null },
   female: {
     waist: 'Abdomen I — horizontal, at minimal width, midway between xyphoid and umbilicus',
@@ -115,6 +122,8 @@ export function navyBodyDensity(input: NavyTapeInput): number | null {
   let logHeightCoeff: number; // g/cm3 per log10(cm)
   let intercept: number; // g/cm3
 
+  // Exhaustive over StatedSex by construction: the type has exactly two members, so the `else`
+  // is provably the female branch. It would NOT be if this field were `Sex` (round 2 decision A1).
   if (input.sex === 'male') {
     girthSum = input.waistCm - input.neckCm; // cm
     logGirthCoeff = M_LOG_GIRTH;
