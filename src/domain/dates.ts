@@ -290,3 +290,245 @@ export function utcOffsetLabel(zone: string, atEpochMs: number): string {
     return 'UTC';
   }
 }
+
+// ---- the time-zone picker's grouping (round 2 claim r2.09) -------------------------------------
+
+/**
+ * A zone's UTC offset at an instant, in minutes EAST of UTC. [min]
+ *
+ * East-positive, so `+330` is India and `-240` is New York in July. That is `tzOffset`'s own
+ * convention and the mirror of `Date.prototype.getTimezoneOffset`; `instantOf` above already
+ * depends on it, and this exists so the picker sorts on the same number the label prints.
+ *
+ * @throws RangeError on an invalid IANA zone.
+ */
+export function zoneOffsetMinutes(zone: TimeZone, atEpochMs: EpochMs): number {
+  assertValidTimeZone(zone, 'zoneOffsetMinutes');
+  return tzOffset(zone, new Date(atEpochMs)); // [min] east of UTC
+}
+
+/**
+ * `UTC/GMT-05:00`. Both abbreviations, because Europe says GMT (round 2 claim r2.09).
+ *
+ * BUILT FROM THE OFFSET MINUTES, not from Intl's `longOffset` string, and that is deliberate:
+ * `utcOffsetLabel` above renders the zone `UTC` itself as the bare word `UTC` because that is
+ * what `longOffset` returns for it, so a picker labelled from the string would show one row with
+ * no offset at all. Deriving from the same number the picker SORTS on also makes it impossible
+ * for the label and the ordering to disagree.
+ *
+ * @throws RangeError on an invalid IANA zone.
+ */
+export function utcGmtOffsetLabel(zone: TimeZone, atEpochMs: EpochMs): string {
+  const minutes = zoneOffsetMinutes(zone, atEpochMs); // [min] east of UTC
+  const sign = minutes < 0 ? '-' : '+';
+  const abs = Math.abs(minutes); // [min]
+  return `UTC/GMT${sign}${pad2(Math.trunc(abs / 60))}:${pad2(abs % 60)}`;
+}
+
+/**
+ * The zone's offset on the first of each month of the year containing `atEpochMs`, as a key. [min]
+ *
+ * WHY A WHOLE YEAR AND NOT ONE INSTANT. Two zones that agree today can disagree in July:
+ * America/New_York and America/Panama are both UTC-05:00 in January, and in July New York is
+ * -04:00 and Panama is not. Sampling twelve months puts each zone's daylight-saving RULE in the
+ * key, so zones collapse together only when they are interchangeable for every day of the year.
+ *
+ * The sample instants are UTC midnight on the first of each month, which is what the round-2
+ * ruling was measured against. The measurement is stable: the same 59 groups come out of 418
+ * zones for the 1st and for the 15th, and for 2026 and for 2027.
+ *
+ * @throws RangeError on an invalid IANA zone.
+ */
+export function zoneYearSignature(zone: TimeZone, atEpochMs: EpochMs): string {
+  assertValidTimeZone(zone, 'zoneYearSignature');
+  const year = new Date(atEpochMs).getUTCFullYear();
+  const offsets: number[] = [];
+  for (let month = 1; month <= 12; month += 1) {
+    offsets.push(tzOffset(zone, new Date(utcMidnightOf(year, month, 1)))); // [min] east of UTC
+  }
+  return offsets.join(',');
+}
+
+/** One row of the picker: the zone it stores, every zone it stands for, and how it sorts. */
+export interface TimeZoneGroup {
+  /** The IANA id STORED when this row is chosen. Never an offset: the offset is not the identity. */
+  representative: TimeZone;
+  /** Every zone with this year of offsets, the representative included, in alphabetical order. */
+  members: readonly TimeZone[];
+  /** The offset in force at `atEpochMs`, east-positive. The primary sort key. [min] */
+  offsetMinutes: number;
+  /** `UTC/GMT+05:45`, from `utcGmtOffsetLabel`. */
+  offsetLabel: string;
+}
+
+/**
+ * The zones a user is likely to recognise, most prominent first, one per multi-member group.
+ *
+ * WHAT THIS IS AND IS NOT. It is a DISPLAY preference and nothing else: which of a group's
+ * interchangeable ids the row is named after. It feeds no computation, and every id in it is a
+ * real IANA identifier that `timeZoneGroups.test.ts` asserts is a member of the group it is
+ * chosen for. No population figure is recorded here and none is invented: the ordering is an
+ * editorial judgement about which city name a reader will know, reviewable line by line, and a
+ * group whose members are all absent from this list falls back to the deterministic rule below.
+ *
+ * The 2026 tz database groups 418 zones into 59 behaviours, 30 of which have more than one
+ * member. The singletons need no entry: their one member is their representative either way.
+ */
+const PROMINENT_ZONES: readonly string[] = [
+  'Europe/London', 'Europe/Paris', 'Europe/Athens', 'Europe/Moscow', 'Europe/Lisbon',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Phoenix', 'America/Anchorage', 'America/Mexico_City', 'America/Bogota',
+  'America/Caracas', 'America/Halifax', 'America/Sao_Paulo', 'America/Godthab',
+  'America/Noronha', 'Pacific/Honolulu', 'Pacific/Pago_Pago',
+  'Africa/Lagos', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Abidjan', 'Africa/Casablanca',
+  'Asia/Dubai', 'Asia/Karachi', 'Asia/Calcutta', 'Asia/Dhaka', 'Asia/Rangoon', 'Asia/Jakarta',
+  'Asia/Shanghai', 'Asia/Tokyo',
+  'Australia/Sydney', 'Australia/Brisbane', 'Australia/Adelaide',
+  'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Apia', 'Pacific/Guadalcanal',
+];
+
+/**
+ * The region a zone id names, which is the segment before the first `/`. `Europe/Amsterdam` is
+ * `Europe`; the handful of ids with no slash (`UTC`) are their own region.
+ */
+function zoneRegion(zone: string): string {
+  const slash = zone.indexOf('/');
+  return slash === -1 ? zone : zone.slice(0, slash);
+}
+
+/**
+ * The row's name when no member appears in `PROMINENT_ZONES`.
+ *
+ * Alphabetically first WITHIN THE REGION MOST OF THE GROUP LIVES IN, not alphabetically first
+ * overall. The thirty-three zones that share western Europe's behaviour include `Africa/Ceuta`
+ * and `Arctic/Longyearbyen`, both of which sort ahead of every `Europe/` id, so a plain
+ * alphabetical rule would name Europe's row after a Spanish enclave in Morocco. Ties on the
+ * region count are broken by region name, then by zone name, so the result depends on the
+ * membership alone and never on the order the platform happened to list the zones in.
+ */
+function fallbackRepresentative(members: readonly string[]): string {
+  const countByRegion = new Map<string, number>();
+  for (const zone of members) {
+    const region = zoneRegion(zone);
+    countByRegion.set(region, (countByRegion.get(region) ?? 0) + 1);
+  }
+  const regions = [...countByRegion.entries()].sort(
+    (a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1),
+  );
+  const modal = regions[0]?.[0];
+  const inModal = members.filter((zone) => zoneRegion(zone) === modal).sort();
+  // `members` is never empty (a group exists because a zone fell into it), so both `?? ''`
+  // branches are unreachable; they exist because noUncheckedIndexedAccess is on and an
+  // assertion would be a runtime cost for a state the caller cannot construct.
+  return inModal[0] ?? members[0] ?? '';
+}
+
+/**
+ * The zones, grouped by the offsets they keep across the whole year.
+ *
+ * ONE ROW PER OFFSET IS REFUSED AND STAYS REFUSED (round 2, r2.09). There are 37 distinct offsets
+ * in January and 16 of them split by July, so a list keyed on the offset would put New York and
+ * Panama on the same row and get one of them wrong for eight months of the year. That is the
+ * defect class src/domain/export/fixtures/athens-dst-week.ics exists to catch. The identity is
+ * the IANA id; the offset is a property it has today.
+ *
+ * WHAT IS COLLAPSED IS SAFE. Two zones with the same offset in every month of the year are
+ * interchangeable for everything this app computes, which is civil dates and reminder instants.
+ * Measured against the platform's own list on 2026-09-06: 418 zones, 59 behaviours.
+ *
+ * Sorted by offset from the most negative to the most positive, then by representative name
+ * within an offset. Alphabetical order by IANA id is what r2.09 reports as the defect: it reads
+ * -05:00, -04:00, -04:00, -04:00, -05:00.
+ *
+ * @param zones every zone to consider; the caller passes `Intl.supportedValuesOf('timeZone')`.
+ * @param atEpochMs the instant the OFFSET and the sort order are read at. The signature uses the
+ *   whole year containing it, so the grouping itself does not move with the season.
+ * @throws RangeError on an invalid IANA zone.
+ */
+export function groupTimeZones(zones: readonly string[], atEpochMs: EpochMs): TimeZoneGroup[] {
+  const bySignature = new Map<string, string[]>();
+  for (const zone of zones) {
+    const signature = zoneYearSignature(zone, atEpochMs);
+    const members = bySignature.get(signature);
+    if (members === undefined) bySignature.set(signature, [zone]);
+    else members.push(zone);
+  }
+
+  const groups: TimeZoneGroup[] = [];
+  for (const members of bySignature.values()) {
+    const sorted = [...members].sort();
+    const prominent = PROMINENT_ZONES.find((zone) => sorted.includes(zone));
+    const representative = prominent ?? fallbackRepresentative(sorted);
+    groups.push({
+      representative,
+      members: sorted,
+      offsetMinutes: zoneOffsetMinutes(representative, atEpochMs), // [min] east of UTC
+      offsetLabel: utcGmtOffsetLabel(representative, atEpochMs),
+    });
+  }
+
+  groups.sort(
+    (a, b) =>
+      a.offsetMinutes - b.offsetMinutes ||
+      (a.representative < b.representative ? -1 : a.representative > b.representative ? 1 : 0),
+  );
+  return groups;
+}
+
+/**
+ * The same rows, with `selected` promoted to representative of whichever group holds it.
+ *
+ * A user must see the zone they actually chose. The device's own zone is very often a collapsed
+ * member rather than the row's name (Europe/Berlin sits under Europe/Paris), and a picker that
+ * silently renamed it would read as having ignored the answer. Cheap by construction: it is one
+ * pass over 59 rows, so it can run on every keystroke, where re-grouping 418 zones cannot.
+ *
+ * A `selected` that is in no group leaves every row untouched, which is the caller's cue that the
+ * entry is not one of the platform's zones.
+ */
+export function promoteSelectedZone(
+  groups: readonly TimeZoneGroup[],
+  selected: string,
+): TimeZoneGroup[] {
+  return groups.map((group) =>
+    group.representative !== selected && group.members.includes(selected)
+      ? { ...group, representative: selected }
+      : { ...group },
+  );
+}
+
+/**
+ * Whether a row answers a search, matched against EVERY member and against the offset label.
+ *
+ * Search reaches all 418 zones while the list shows 59, which is the whole reason the reduction
+ * is safe to ship: someone typing "Amsterdam" finds their group even though the row is named
+ * after Paris. The underscore in an IANA id is folded to a space, so "New York" finds
+ * America/New_York, which is how a person writes the name.
+ */
+export function zoneGroupMatches(group: TimeZoneGroup, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return true;
+  if (group.offsetLabel.toLowerCase().includes(needle)) return true;
+  return group.members.some((zone) => zoneNameMatches(zone, needle));
+}
+
+/** One zone id against an already-lowercased, already-trimmed needle. */
+function zoneNameMatches(zone: string, needle: string): boolean {
+  const name = zone.toLowerCase();
+  return name.includes(needle) || name.replace(/_/g, ' ').includes(needle);
+}
+
+/**
+ * The members of `group` a search matched, excluding the row's own name, alphabetically.
+ *
+ * This is what lets the row identify itself to a user in a collapsed city: with "berlin" typed,
+ * the Europe/Paris row can say so. Empty for an empty query, because with nothing typed there is
+ * no particular member to name.
+ */
+export function matchedZoneMembers(group: TimeZoneGroup, query: string): readonly string[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return [];
+  return group.members.filter(
+    (zone) => zone !== group.representative && zoneNameMatches(zone, needle),
+  );
+}

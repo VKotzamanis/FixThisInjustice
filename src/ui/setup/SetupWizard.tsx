@@ -4,7 +4,16 @@ import { FORMAT, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { NAVY_SEE_PCT, NAVY_SITE_LABEL, estimateBodyFatNavy } from '../../domain/bodyfat';
-import { deviceTimeZone, isValidLocalDate, isValidTimeZone, todayLocal, utcOffsetLabel } from '../../domain/dates';
+import {
+  deviceTimeZone,
+  groupTimeZones,
+  isValidLocalDate,
+  isValidTimeZone,
+  matchedZoneMembers,
+  promoteSelectedZone,
+  todayLocal,
+  zoneGroupMatches,
+} from '../../domain/dates';
 import { newId } from '../../domain/ids';
 import {
   NUTRITION_DOMAIN,
@@ -82,6 +91,7 @@ import {
 import { vibrate } from '../audio/chime';
 import { ModalShell } from '../components/ModalShell';
 import { GuidanceScreen } from './GuidanceScreen';
+import { usePublishSetupBanner } from './setupBanner';
 import {
   ACTIVITY_LEVEL_EXAMPLES,
   EQUIPMENT_ACCESS_EXAMPLES,
@@ -215,6 +225,15 @@ const FAILED_NEXT_VIBRATE_MS = 120;
  * character.
  */
 const SETUP_DRAFT_SAVE_DEBOUNCE_MS = 400;
+
+/**
+ * How many matched member zones a time-zone row names beside its own (round 2, r2.09).
+ *
+ * A search for "st" matches thirty of the thirty-three zones that share western Europe's
+ * behaviour, and a row that listed all of them would be unreadable inside an `<option>`. Two is
+ * enough to say "your city is in this row" without the row becoming the list it replaced.
+ */
+const MATCHED_ZONES_SHOWN = 2;
 
 /*
  * DOM ids for the messages that belong to more than one control, or to a control this file
@@ -947,6 +966,13 @@ export function SetupWizard(): JSX.Element {
    * only: the other eight steps keep their pre-existing disabled-Next behaviour unchanged.
    */
   const [bodyNextAttempted, setBodyNextAttempted] = useState(false);
+  /*
+   * The time-zone search box (round 2, r2.09). NOT part of the draft and not persisted: it is a
+   * view of the list, not an answer, so it belongs in neither tier of the two-tier draft and a
+   * reload should reopen the step with the full list rather than with someone's half-typed
+   * filter still hiding most of it.
+   */
+  const [zoneQuery, setZoneQuery] = useState('');
 
   /*
    * Persists the draft on change, debounced (C1.G.1). `draftSaveTimer` is read from `confirm()`
@@ -980,6 +1006,19 @@ export function SetupWizard(): JSX.Element {
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
 
+  /*
+   * The top bar's banner reads these two and nothing else (round 2, r2-onboarding.general). The
+   * banner is rendered in <header> by src/app/App.tsx, above <main>, so it cannot reach this
+   * component's state without being handed it; src/ui/setup/setupBanner.tsx records why that is
+   * a context and not the persisted draft.
+   *
+   * `draft.displayName`, WHICH IS THE MERGED VIEW (`buffer ?? committed`), and so is exactly the
+   * string the name field's own `value` renders. The banner therefore updates as the user types
+   * and can never disagree with the field two lines below it. It is passed RAW: the banner
+   * decides whether a name was given by trimming, and renders what was typed.
+   */
+  usePublishSetupBanner(draft.displayName, step === 'review');
+
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const shownStepIndex = useRef(stepIndex);
 
@@ -1011,22 +1050,68 @@ export function SetupWizard(): JSX.Element {
   }, []);
 
   /**
-   * `timeZoneOptions`, each paired with its computed "(UTC+02:00)" label (C1.06.2). Memoised on
-   * `timeZoneOptions` alone, which itself never changes after mount, so this runs Intl's
-   * formatter at most once per mount rather than on every render or every keystroke elsewhere on
-   * the step. `Date.now()` is read once, here, rather than per option: the two calendar dates a
-   * mount could ever straddle agree on every zone's offset to within the same civil day, and the
-   * point of computing rather than storing is to track daylight saving over MONTHS, not to
-   * chase a millisecond of drift within one render.
+   * The 418 zones reduced to the 59 distinct behaviours, sorted by offset (round 2, r2.09).
+   *
+   * THE ORDERING WAS THE DEFECT the owner reported: "it Shows UTC-05 America/Cancun the below
+   * UTC-04,-04,-04, and then again UTC-05 : America/Cayman. That is confusing." The list was in
+   * IANA alphabetical order. `groupTimeZones` sorts by the offset in force, most negative first.
+   *
+   * ONE ROW PER OFFSET IS REFUSED, and src/domain/dates.ts carries the measurement that refuses
+   * it: 37 offsets in January, 16 of which split by July. Rows are keyed on the zone's offsets
+   * across the WHOLE YEAR instead, so New York and Panama stay apart.
+   *
+   * Memoised on `timeZoneOptions` alone, which never changes after mount, so the twelve-month
+   * signature is computed once per mount rather than on every keystroke on the step. `Date.now()`
+   * is read once, here, for the reason the previous version gave: the point of computing rather
+   * than storing an offset is to track daylight saving over MONTHS, not to chase a millisecond
+   * within one render.
+   *
+   * The selected zone is appended when the platform's list does not carry it, so a zone restored
+   * from a draft written by another build, or typed into the fallback field below, still has a
+   * row of its own rather than silently selecting someone else's.
    */
-  const timeZoneOptionLabels = useMemo(
-    () =>
-      timeZoneOptions.map((zone) => ({
-        zone,
-        label: `(${utcOffsetLabel(zone, Date.now())}) ${zone}`,
-      })),
-    [timeZoneOptions],
-  );
+  const timeZoneGroups = useMemo(() => {
+    if (timeZoneOptions.length === 0) return [];
+    const known = isValidTimeZone(draft.timezone) && !timeZoneOptions.includes(draft.timezone);
+    const zones = known ? [...timeZoneOptions, draft.timezone] : timeZoneOptions;
+    return groupTimeZones(zones, Date.now());
+    // draft.timezone is deliberately NOT a dependency: re-grouping 418 zones on every selection
+    // change would run 5016 offset lookups per keystroke. What the selection changes is which
+    // row is NAMED after it, and `promoteSelectedZone` below does that in one cheap pass. The
+    // list itself only has to be rebuilt when a zone outside the platform's own list appears,
+    // which the mount-time read covers for every path that can produce one.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeZoneOptions]);
+
+  /**
+   * The rows as the picker actually draws them: the chosen zone naming its own row, the search
+   * applied, and the chosen row always present even when the search would have hidden it.
+   *
+   * SEARCH READS ALL 418 WHILE THE LIST SHOWS 59. Someone typing "Amsterdam" has to find their
+   * group even though the row is named after Paris, or the reduction has cost them the ability
+   * to find themselves; when a search names a member the row is not named after, the row says so.
+   */
+  const shownTimeZoneRows = useMemo(() => {
+    const promoted = promoteSelectedZone(timeZoneGroups, draft.timezone);
+    const query = zoneQuery.trim();
+    return promoted
+      .filter(
+        (group) => group.representative === draft.timezone || zoneGroupMatches(group, query),
+      )
+      .map((group) => {
+        const matched = matchedZoneMembers(group, query);
+        const also =
+          matched.length > 0
+            ? matched.slice(0, MATCHED_ZONES_SHOWN).join(', ')
+            : group.members.length > 1
+              ? FORMAT.timeZoneAlso(group.members.length - 1, overrides)
+              : '';
+        return {
+          zone: group.representative,
+          label: FORMAT.timeZoneOption(group.offsetLabel, group.representative, also),
+        };
+      });
+  }, [timeZoneGroups, draft.timezone, zoneQuery, overrides]);
 
   /**
    * Writes into the UNCOMMITTED tier (A2). The functional update seeds the buffer from the
@@ -1784,27 +1869,70 @@ export function SetupWizard(): JSX.Element {
           <StepHeading title={t(STEP_TITLE_KEY.timezone)} headingRef={headingRef} />
           <p className="wiz-note">{t('advice.timezoneDetected')}</p>
           <div className="wiz-field">
-            <p className="wiz-label">{t('advice.timezonePick')}</p>
-            <label htmlFor="f-timezone">{t('label.timezone')}</label>
             {timeZoneOptions.length > 0 ? (
-              // A closed choice from the platform's own list (C1.06.2), each option labelled
-              // with today's computed offset so "Europe/Athens" reads as "(UTC+02:00)
-              // Europe/Athens" rather than asking the owner to already know it.
-              <select
-                id="f-timezone"
-                value={draft.timezone}
-                aria-invalid={timezoneError !== null}
-                aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
-                onChange={(e) => {
-                  patch({ timezone: e.target.value });
-                }}
-              >
-                {timeZoneOptionLabels.map((o) => (
-                  <option key={o.zone} value={o.zone}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
+              <>
+                {/*
+                 * The search box, above the list rather than beside it: the list shows 59 rows
+                 * and the search reads all 418 zones, so this is how a user in one of the
+                 * collapsed cities finds their group (round 2, r2.09). An IANA id is
+                 * case-sensitive and contains no words, and so does what a user types towards
+                 * one: autocapitalising, autocorrecting or spell-checking it can only get in
+                 * the way. type="search" rather than type="text" so a phone offers the clear
+                 * control and a search-shaped keyboard.
+                 */}
+                <label htmlFor="f-timezone-search">{t('label.timezoneSearch')}</label>
+                <input
+                  id="f-timezone-search"
+                  type="search"
+                  value={zoneQuery}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  onChange={(e) => {
+                    setZoneQuery(e.target.value);
+                  }}
+                />
+                <p className="wiz-note">{t('advice.timezoneGrouped')}</p>
+                {/*
+                 * The lead-in sits with the LIST, not at the top of the field group: it says
+                 * "Select from the drop down menu:" and the first control in the group is now
+                 * the search box, which is not one.
+                 */}
+                <p className="wiz-label">{t('advice.timezonePick')}</p>
+                <label htmlFor="f-timezone">{t('label.timezone')}</label>
+                {/*
+                 * A closed choice from the platform's own list (C1.06.2), grouped by year-round
+                 * behaviour and SORTED BY OFFSET, most negative first, which is the defect
+                 * r2.09 reported. Each row carries both abbreviations, because Europe says GMT:
+                 * "(UTC/GMT-05:00) America/New_York". The VALUE is the representative's IANA id
+                 * and never an offset: the offset is a property a zone has today, not its
+                 * identity (src/domain/dates.ts carries the measurement that refuses one row
+                 * per offset).
+                 */}
+                <select
+                  id="f-timezone"
+                  value={draft.timezone}
+                  aria-invalid={timezoneError !== null}
+                  aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
+                  onChange={(e) => {
+                    patch({ timezone: e.target.value });
+                  }}
+                >
+                  {shownTimeZoneRows.map((row) => (
+                    <option key={row.zone} value={row.zone}>
+                      {row.label}
+                    </option>
+                  ))}
+                </select>
+                {/*
+                 * The chosen row is never filtered out, so this is reached only when a search
+                 * matched nothing else: the list is not empty, it is down to the one row the
+                 * user already has.
+                 */}
+                {shownTimeZoneRows.length === 1 && zoneQuery.trim() !== '' && (
+                  <p className="wiz-note">{t('advice.timezoneNoMatch')}</p>
+                )}
+              </>
             ) : (
               /*
                * Reached only when the platform has no Intl.supportedValuesOf('timeZone') to
@@ -1813,25 +1941,50 @@ export function SetupWizard(): JSX.Element {
                * words: autocapitalising, autocorrecting or spell-checking it can only corrupt
                * it.
                */
-              <input
-                id="f-timezone"
-                type="text"
-                value={draft.timezone}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                aria-invalid={timezoneError !== null}
-                aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
-                onChange={(e) => {
-                  patch({ timezone: e.target.value });
-                }}
-              />
+              <>
+                <p className="wiz-label">{t('advice.timezonePick')}</p>
+                <label htmlFor="f-timezone">{t('label.timezone')}</label>
+                <input
+                  id="f-timezone"
+                  type="text"
+                  value={draft.timezone}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  aria-invalid={timezoneError !== null}
+                  aria-describedby={timezoneError === null ? undefined : 'f-timezone-error'}
+                  onChange={(e) => {
+                    patch({ timezone: e.target.value });
+                  }}
+                />
+              </>
             )}
             {timezoneError !== null && (
               <p className="wiz-error" id="f-timezone-error">
                 {timezoneError}
               </p>
             )}
+          </div>
+
+          {/*
+           * The bordered box r2.09 asks for, below the field: "have a seperate bordered textbox
+           * below that say: Heading 'Important: Time Functions' (rework the title). Then below
+           * it says in 2 bullet points where we need this."
+           *
+           * The first bullet is the one he asked to stand out ("*make this bold/underlined/ make
+           * it stand out*"). The emphasis is `.wiz-tz-primary` in setup.css, drawn from tokens,
+           * never a mark written into the copy string and never a hex literal.
+           */}
+          <div className="wiz-box wiz-tz-why">
+            <h3 className="wiz-box-title">{t('hero.timezoneWhy')}</h3>
+            <ul className="wiz-tz-why-list">
+              <li className="wiz-tz-primary">
+                <strong>{t('label.timezoneDayBoundary')}</strong> {t('advice.timezoneDayBoundary')}
+              </li>
+              <li>
+                <strong>{t('label.timezoneReminders')}</strong> {t('advice.timezoneReminders')}
+              </li>
+            </ul>
           </div>
         </fieldset>
       )}
