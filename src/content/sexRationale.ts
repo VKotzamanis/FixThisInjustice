@@ -187,6 +187,12 @@ export const SEX_RATIONALE_HRT_SOURCE_LEAD =
  * volume(issue):pages, year, DOI last. Every element below is one of those, moved. No author was
  * added to the "et al.", no article title was supplied, and no DOI was retyped from memory: the
  * string a reviewer can check is the same string, in the order he asked for.
+ *
+ * PAGE RANGE CORRECTED 2026-09-06, and it is the one element that is NOT round 1's. Round 1
+ * shipped 529-537. CrossRef (api.crossref.org/works/10.1530/EJE-20-0609) and PubMed
+ * (PMID 33071222) independently give 529-536, so the round-1 string was off by one page. Two
+ * primary sources agreeing against one unsourced figure decides it. Both fetches are logged in
+ * REFERENCES.md. Everything else on this line is still round 1's, moved and not re-sourced.
  */
 export const SEX_RATIONALE_HRT_SOURCE =
-  'van Velzen DM, et al. Eur J Endocrinol 183(5):529-537, 2020. DOI 10.1530/EJE-20-0609';
+  'van Velzen DM, et al. Eur J Endocrinol 183(5):529-536, 2020. DOI 10.1530/EJE-20-0609';

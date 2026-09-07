@@ -195,10 +195,10 @@ describe('segment two ships no six-month hormone-therapy threshold', () => {
     // r2.15(ii). The elements are the round-1 string's own, REORDERED; nothing was looked up to
     // produce it, so the assertion is on the ORDER and on the elements still being present.
     expect(SEX_RATIONALE_HRT_SOURCE).toBe(
-      'van Velzen DM, et al. Eur J Endocrinol 183(5):529-537, 2020. DOI 10.1530/EJE-20-0609',
+      'van Velzen DM, et al. Eur J Endocrinol 183(5):529-536, 2020. DOI 10.1530/EJE-20-0609',
     );
     const yearAt = SEX_RATIONALE_HRT_SOURCE.indexOf('2020');
-    const pagesAt = SEX_RATIONALE_HRT_SOURCE.indexOf('529-537');
+    const pagesAt = SEX_RATIONALE_HRT_SOURCE.indexOf('529-536');
     const doiAt = SEX_RATIONALE_HRT_SOURCE.indexOf('DOI');
     expect(pagesAt).toBeLessThan(yearAt);
     expect(yearAt).toBeLessThan(doiAt);
