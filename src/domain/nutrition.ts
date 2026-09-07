@@ -1,4 +1,4 @@
-import type { ActivityLevel, GoalKind, Kg, ML, Sex } from './types';
+import type { ActivityLevel, GoalKind, Kg, ML, Sex, StatedSex } from './types';
 
 /**
  * Nutrition engine.
@@ -62,7 +62,10 @@ export interface NutritionTargets {
   tdeeKcal: number; // kcal/day
   targetKcal: number; // kcal/day
   proteinG: { lo: number; hi: number }; // g/day
-  fluidML: ML; // mL/day, beverages only (water in food is not counted)
+  // mL/day, beverages only (water in food is not counted). A UNION, not a scalar: with a
+  // non-disclosed sex the IOM figure is a range rather than a number, and the discriminant is
+  // what stops a view printing one endpoint as though it were the target (decision A1).
+  fluidML: BeverageTarget;
   creatineG: number | null; // g/day; null when the supplement toggle is off
   expectedRateKgPerWeek: number | null; // kg/week, signed; null = the report gives no rate
   basis: {
@@ -93,7 +96,13 @@ export interface NutritionTargets {
 const MSJ_MASS_COEFF = 10; // kcal/day per kg body mass
 const MSJ_HEIGHT_COEFF = 6.25; // kcal/day per cm stature
 const MSJ_AGE_COEFF = -5; // kcal/day per year of age
-const MSJ_CONSTANT: Record<Sex, number> = { male: 5, female: -161 }; // kcal/day
+/*
+ * Keyed by StatedSex, never by Sex (round 2 decision A1). There is no published third constant
+ * and the mean of these two would be a coefficient nobody measured, so the equation simply has
+ * no `nd` form: `mifflinStJeorKcal` takes a StatedSex and `computeTargets` refuses the
+ * combination that would need one, rather than defaulting the offset to +5.
+ */
+const MSJ_CONSTANT: Record<StatedSex, number> = { male: 5, female: -161 }; // kcal/day
 
 /**
  * Cunningham (1991). Am J Clin Nutr 54(6):963-969. DOI 10.1093/ajcn/54.6.963 (verified).
@@ -120,12 +129,20 @@ export function fatFreeMassKg(massKg: Kg, bodyFatPct: number): Kg {
   return massKg * (1 - bodyFatPct / 100); // kg
 }
 
-function mifflinStJeorKcal(input: NutritionInput): number {
+/**
+ * `sex` is a separate parameter, narrowed to StatedSex, rather than read off `input`.
+ *
+ * That is the whole mechanism behind decision A1. `input.sex` is a `Sex` and can be `nd`; this
+ * function cannot be called at all without the caller first proving the sex is stated, which is
+ * done once, in `computeTargets`, at the point where the Cunningham branch has already been
+ * ruled out.
+ */
+function mifflinStJeorKcal(input: NutritionInput, sex: StatedSex): number {
   return (
     MSJ_MASS_COEFF * input.massKg +
     MSJ_HEIGHT_COEFF * input.heightCm +
     MSJ_AGE_COEFF * input.ageYears +
-    MSJ_CONSTANT[input.sex]
+    MSJ_CONSTANT[sex]
   ); // kcal/day
 }
 
@@ -291,10 +308,72 @@ const PROTEIN_FFM_DEFICIT = { lo: 2.3, hi: 3.1 }; // g/kg fat-free mass per day
  * mass), and lives in P4's hydration.ts. The commonly cited ~1.5 L per kg lost is marked
  * PARAPHRASE in the content review and therefore ships as no number anywhere.
  */
-const BEVERAGE_TARGET_ML: Record<Sex, ML> = { male: 3000, female: 2200 }; // mL/day
+const BEVERAGE_TARGET_ML: Record<StatedSex, ML> = { male: 3000, female: 2200 }; // mL/day
 
-export function dailyBeverageTargetML(sex: Sex): ML {
+/**
+ * The beverage target for a profile, which is a RANGE when the sex is not disclosed.
+ *
+ * Round 2 decision A1, third consequence, ruled by the owner: with `nd` the app shows 2200 to
+ * 3000 mL and says the reference intake is published per sex. It does not average the two (that
+ * would invent a figure the IOM never published) and it does not pick one silently.
+ *
+ * The discriminant is what enforces that. A caller cannot read a millilitre figure off this
+ * without first handling the `range` case, so "print a single number" is not a thing a consumer
+ * can do by accident; `NutritionTargets.fluidML` carries the same union for the same reason.
+ */
+export type BeverageTarget =
+  /** The published figure for a stated sex. */
+  | { kind: 'stated'; ml: ML }
+  /** Both published figures, because the intake is stated per sex and no sex was given. */
+  | { kind: 'range'; loML: ML; hiML: ML };
+
+/**
+ * The two published figures as a range, DERIVED from the table above rather than retyped, so the
+ * range's endpoints cannot drift from the figures the stated-sex branch prescribes.
+ */
+export const BEVERAGE_TARGET_RANGE_ML: { loML: ML; hiML: ML } = {
+  loML: Math.min(BEVERAGE_TARGET_ML.male, BEVERAGE_TARGET_ML.female), // mL/day
+  hiML: Math.max(BEVERAGE_TARGET_ML.male, BEVERAGE_TARGET_ML.female), // mL/day
+};
+
+export function dailyBeverageTargetML(sex: Sex): BeverageTarget {
+  if (sex === 'nd') return { kind: 'range', ...BEVERAGE_TARGET_RANGE_ML }; // mL/day
+  return { kind: 'stated', ml: BEVERAGE_TARGET_ML[sex] }; // mL/day
+}
+
+/**
+ * The published figure for a sex that IS stated, for the copy that names both of them.
+ *
+ * Separate from `dailyBeverageTargetML` on purpose. That function answers "what is this profile's
+ * target", which is a range when no sex was given; this one answers "what does the IOM publish
+ * for men, and for women", which is two known figures and never a range. Keeping them apart is
+ * what lets the union stay unforgiving at the call sites that matter.
+ */
+export function statedBeverageTargetML(sex: StatedSex): ML {
   return BEVERAGE_TARGET_ML[sex]; // mL/day
+}
+
+/**
+ * The mL/day figure a NEW profile's editable hydration preference is seeded with.
+ *
+ * `Profile.hydration.dailyTargetML` is a stored preference and a DENOMINATOR: hydration progress
+ * renders as volume/target, so it has to hold one positive number from the moment the profile
+ * exists (see `createProfile` in src/store/index.ts). A range cannot be stored there, so this is
+ * the one place in the app that turns the `nd` range into a single figure, and it is named rather
+ * than inlined so that the choice has exactly one auditable home.
+ *
+ * WHY THE LOW END, and what it is not. It is not an estimate of anyone's requirement, and the app
+ * never presents it as one: decision A1's range is what the user is SHOWN, here and in Settings,
+ * with the sentence saying the reference intake is published per sex. What is stored is only the
+ * starting position of a slider the user can move. The low end is chosen because the seed is a
+ * reminder threshold: seeding the higher figure would nag a person whose actual reference is the
+ * lower one, while seeding the lower figure under-reminds someone who can raise it in one field.
+ * Averaging was rejected outright, here as everywhere: the mean of two published intakes is a
+ * third figure nobody published.
+ */
+export function seedBeverageTargetML(sex: Sex): ML {
+  const target = dailyBeverageTargetML(sex);
+  return target.kind === 'stated' ? target.ml : target.loML; // mL/day
 }
 
 /* ------------------------------------------------------------------ *
@@ -486,6 +565,11 @@ function inBound(value: number, bound: { lo: number; hi: number }): boolean {
  */
 export function isInDomain(input: NutritionInput): boolean {
   return (
+    // Decision A1: a non-disclosed sex is workable ONLY through Cunningham, which needs a
+    // body-fat percentage. Without one there is no equation left to run, so this is a domain
+    // condition of the engine and not a form preference; the wizard reads the same rule to make
+    // the body-fat field required while the sex is `nd`.
+    (input.sex !== 'nd' || input.bodyFatPct !== null) &&
     inBound(input.massKg, NUTRITION_DOMAIN.massKg) &&
     inBound(input.heightCm, NUTRITION_DOMAIN.heightCm) &&
     inBound(input.ageYears, NUTRITION_DOMAIN.ageYears) &&
@@ -526,7 +610,25 @@ export function computeTargets(input: NutritionInput): NutritionTargets {
   requireInDomain('sessionsPerWeek', input.sessionsPerWeek, NUTRITION_DOMAIN.sessionsPerWeek);
 
   const ffmKg = input.bodyFatPct === null ? null : fatFreeMassKg(input.massKg, input.bodyFatPct); // kg
-  const rmrKcal = ffmKg === null ? mifflinStJeorKcal(input) : cunninghamKcal(ffmKg); // kcal/day
+  /*
+   * Written as a branch rather than a ternary so the `nd` case is stated in the code instead of
+   * being reachable only through a type error. Decision A1: with no body-fat percentage the only
+   * equation left is Mifflin-St Jeor, which has no sex-free form, and averaging its two constants
+   * would invent a coefficient. `isInDomain` reports this exact combination as out of domain, so
+   * the wizard blocks the step before the engine is called and this throw is the contract rather
+   * than a live path. In the final branch `input.sex` is narrowed to StatedSex by the compiler,
+   * which is what makes the missing-branch defect impossible rather than merely unlikely.
+   */
+  let rmrKcal: number; // kcal/day
+  if (ffmKg !== null) {
+    rmrKcal = cunninghamKcal(ffmKg);
+  } else if (input.sex === 'nd') {
+    throw new RangeError(
+      'computeTargets: bodyFatPct is required when sex is "nd": Mifflin-St Jeor has no sex-free form',
+    );
+  } else {
+    rmrKcal = mifflinStJeorKcal(input, input.sex);
+  }
   const activityFactor = ACTIVITY_FACTOR[input.activity]; // PAL, dimensionless
   const tdeeKcal = rmrKcal * activityFactor; // kcal/day, unrounded through the chain
   const energy = energyPlan(input.goal, tdeeKcal, input.massKg);

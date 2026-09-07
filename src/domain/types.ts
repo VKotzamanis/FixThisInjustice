@@ -17,7 +17,39 @@ export const DEFAULT_STACK_STEP: Record<UnitSystem, number> = { metric: 5 /* kg 
 // from Draft, initialDraft, the UI, Profile.equipmentSteps and the schema.
 
 // ---- profile ----
-export type Sex = "male" | "female";                        // required by the RMR equation; collected as such
+/**
+ * Biological sex, as the published equations state it, plus `nd` for non-disclosed.
+ *
+ * Round 2 claim r2.11 and plan decision A1 (`sex-nd-requires-body-fat`): the control is
+ * deselectable and `nd` is its DEFAULT, so someone who does not want to answer can pass the step.
+ * `nd` is not an error state and it is not a third sex: it is the absence of an answer, recorded
+ * so that nothing downstream has to guess one.
+ *
+ * WHAT `nd` COSTS, and why the type is widened rather than the field made optional. Three
+ * published methods read this value and two of them have no sex-free form:
+ *
+ *   Mifflin-St Jeor  +5 male, -161 female        cannot run under `nd`
+ *   Cunningham       no sex term                 runs under `nd`, needs a body-fat percentage
+ *   US Navy tape     different equation per sex  cannot run under `nd`
+ *   IOM 2005 beverage target                     published per sex; `nd` gets the RANGE
+ *
+ * Averaging the two Mifflin-St Jeor constants would invent a coefficient this project does not
+ * have, so `nd` is workable only through Cunningham, which is why `nd` makes the body-fat
+ * percentage REQUIRED on the body step.
+ *
+ * A `Sex`-typed value therefore CANNOT be passed to a sex-keyed table. Every such table is keyed
+ * by `StatedSex` below, so a consumer that forgot the `nd` branch is a compile error rather than
+ * a silent fall-through to `male`.
+ */
+export type Sex = "male" | "female" | "nd";                 // "nd" = non-disclosed (r2.11)
+/**
+ * The two sexes a published equation is actually stated for.
+ *
+ * Every sex-keyed coefficient table (`MSJ_CONSTANT`, `BEVERAGE_TARGET_ML`, `NAVY_SEE_PCT`,
+ * `NAVY_SITE_LABEL`) and every equation input that has no `nd` form is typed with this, never
+ * with `Sex`. That is the mechanism that makes the missing branch a compile error.
+ */
+export type StatedSex = Exclude<Sex, "nd">;
 export type ActivityLevel = "sedentary" | "moderate" | "vigorous"; // the three FAO/WHO/UNU 2004 PAL bands the content review verified; no invented midpoints
 export type GoalKind = "fat-loss" | "muscle-gain" | "recomposition" | "maintenance";
 export type Experience = "novice" | "intermediate" | "advanced";
@@ -185,12 +217,11 @@ export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: stri
  * survive a reload and be RE-VALIDATED on the step that reads it, never trusted as correct just
  * because it round-tripped, so nothing here is a Kg, an ML or any other canonical-unit primitive
  * declared above. This is src/ui/setup/SetupWizard.tsx's own working shape for its answers (that
- * file's local `Draft` type is `Omit<SetupDraft, 'stepIndex'>`, derived rather than hand-copied,
- * so the two cannot drift apart the way a second, independently maintained interface would) plus
- * the index of the step the user had reached, so a reload reopens on the same screen rather than
- * back at step 1.
+ * file's local `Draft` type is `SetupAnswers`, used rather than hand-copied, so the two cannot
+ * drift apart the way a second, independently maintained interface would) plus the index of the
+ * step the user had reached, so a reload reopens on the same screen rather than back at step 1.
  */
-export interface SetupDraft {
+export interface SetupAnswers {
   units: UnitSystem;
   timezone: string; // IANA id as chosen; re-checked by isValidTimeZone on resume, never trusted
   displayName: string;
@@ -253,8 +284,34 @@ export interface SetupDraft {
   weeklySessionTarget: string; // [sessions/week], as typed
   weeks: string; // [weeks], as typed
   includeCardio: boolean;
+}
+
+/**
+ * The two persisted tiers of an in-progress setup, plus the step the user had reached.
+ *
+ * Round 2 claim r2.11 and plan decision A2 (`wizard-commit-on-next`): "the data of a field cell
+ * should not be replaced at the entry point (store it as temp), but it should be replaced only
+ * when NEXT is pressed." A step's typing therefore does NOT reach the committed answers until
+ * Next is pressed, and Back discards it rather than committing it.
+ *
+ * WHY BOTH TIERS ARE PERSISTED, and not just the committed one. C1.G.1, round 1's most valued
+ * feature, is that setup survives a closed browser. If a field only reached storage on Next,
+ * closing the browser mid-step would lose everything typed on that step, which is exactly the
+ * loss C1.G.1 exists to prevent. So the flat fields above hold the COMMITTED answers and
+ * `buffer` holds the step in progress; a reload restores both, and the user resumes with their
+ * half-typed values on screen and their committed answers untouched behind them.
+ *
+ * `buffer` is a WHOLE `SetupAnswers`, not a patch: the wizard already holds the merged object it
+ * renders from, so storing the merge is one assignment, where storing a patch would need the
+ * reader to reconstruct the merge and would leave "field absent" and "field cleared to empty"
+ * indistinguishable. `null` means nothing is uncommitted, which is the state after every Next,
+ * every Back and every fresh start.
+ */
+export interface SetupDraft extends SetupAnswers {
   /** Index into STEPS (src/ui/setup/SetupWizard.tsx), so a reload reopens on the same screen. */
   stepIndex: number;
+  /** The step in progress, or null when nothing has been typed since the last Next or Back. */
+  buffer: SetupAnswers | null;
 }
 
 // ---- root ----

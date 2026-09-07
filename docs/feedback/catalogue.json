@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "0d89936",
+  "generatedFrom": "739b88e",
   "counts": {
     "screens": 14,
     "parts": 102,
-    "keys": 521,
+    "keys": 529,
     "notRendered": 3,
-    "table": 524
+    "table": 532
   },
   "parts": [
     {
@@ -973,8 +973,26 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.bodyFatRequiredND",
+          "default": "Required without a sex: the equation with no sex term needs it.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.estimateBodyFat",
           "default": "Click here to estimate",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.sexDeselect",
+          "default": "Click the selected option again to clear it.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1018,6 +1036,15 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.tapeNeedsSex",
+          "default": "Unavailable without a sex: the equations differ in form.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.tapeOutOfDomain",
           "default": "Girths outside the equation's domain. No estimate is shown.",
           "limelight": "same",
@@ -1036,13 +1063,22 @@
           "refusalGroup": null
         },
         {
-          "key": "disclosure.why",
-          "default": "why?",
+          "key": "disclosure.disclaimer",
+          "default": "Disclaimer",
           "limelight": "same",
           "board": "same",
           "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "CASE ALONE, OR THE LIMELIGHT WORD ALREADY"
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "disclosure.references",
+          "default": "References",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
         },
         {
           "key": "error.positive",
@@ -1072,8 +1108,26 @@
           "refusalGroup": null
         },
         {
+          "key": "label.bodyFat",
+          "default": "Body Fat",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.bodyFatChart",
           "default": "Estimate visually",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.bodyFatEstimate",
+          "default": "Body Fat Estimate",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1180,6 +1234,15 @@
           "refusalGroup": null
         },
         {
+          "key": "label.sexNotDisclosed",
+          "default": "Not Disclosed",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.sexRationale",
           "default": "Why sex is asked",
           "limelight": "same",
@@ -1272,15 +1335,6 @@
         {
           "key": "why.bodyFatEstimate",
           "default": "The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "why.bodyFatOptional",
-          "default": "With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2046,6 +2100,15 @@
       ],
       "keys": [
         {
+          "key": "advice.beverageRange",
+          "default": "The reference intake is published per sex, so both figures are shown.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "button.confirmStart",
           "default": "Confirm and start",
           "limelight": "lock it in",
@@ -2053,6 +2116,15 @@
           "isControl": true,
           "limelightRowPermitted": true,
           "refusalGroup": null
+        },
+        {
+          "key": "disclosure.why",
+          "default": "why?",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": false,
+          "refusalGroup": "CASE ALONE, OR THE LIMELIGHT WORD ALREADY"
         },
         {
           "key": "hero.dailyTargets",

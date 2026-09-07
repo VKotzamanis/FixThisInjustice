@@ -32,9 +32,14 @@ describe('the skin attribute blocks', () => {
     expect(BASE).toContain('--bg');
     expect(BASE).toContain('--accent-rgb');
     // 22 through P8; 25 from alpha round 1 Task 2, which added the three --topbar-* tokens
-    // after the w1.03 defect showed a hard-coded bar colour surviving into every skin.
+    // after the w1.03 defect showed a hard-coded bar colour surviving into every skin; 28 from
+    // alpha round 2, which added --field-invalid-bg, --field-invalid-text and --highlight-bg for
+    // r2.16's white-fill-and-red-border mark and r2.12(iv)'s white highlight. Both are colours a
+    // component stylesheet would otherwise have had to write as a literal.
     expect(BASE).toContain('--topbar-bg');
-    expect(BASE.length).toBe(25);
+    expect(BASE).toContain('--field-invalid-bg');
+    expect(BASE).toContain('--highlight-bg');
+    expect(BASE.length).toBe(28);
     expect(tokens).toContain('--accent: #a3e635');
   });
 

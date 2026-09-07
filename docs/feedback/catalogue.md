@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `0d89936`. 102 parts across 14 screens, holding 521 of the table's 524 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `739b88e`. 102 parts across 14 screens, holding 529 of the table's 532 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (2)
 
@@ -265,18 +265,24 @@ States: `default`, `blocked`
 | --- | --- | --- | --- | --- |
 | `advice.bodyFatEstimate` | 21.9 % body fat, ± 3.52 percentage points. | same | same | yes |
 | `advice.bodyFatOptional` | Optional. With it, RMR uses the Cunningham equation. | same | same | yes |
+| `advice.bodyFatRequiredND` | Required without a sex: the equation with no sex term needs it. | same | same | yes |
 | `advice.estimateBodyFat` | Click here to estimate | same | same | yes |
+| `advice.sexDeselect` | Click the selected option again to clear it. | same | same | yes |
 | `advice.sexWorkaround` | Options suck? I agree. Click here for a workaround. | same | same | yes |
 | `advice.tapeMethod` | US Navy circumference method. Keep the tape level and snug. | same | same | yes |
 | `advice.tapeNeedFemale` | Enter neck, abdomen I and hip girths. | same | same | yes |
 | `advice.tapeNeedMale` | Enter neck and abdomen II girths. | same | same | yes |
+| `advice.tapeNeedsSex` | Unavailable without a sex: the equations differ in form. | same | same | yes |
 | `advice.tapeOutOfDomain` | Girths outside the equation's domain. No estimate is shown. | same | same | yes |
 | `button.closeModal` | Close | same | same | yes |
-| `disclosure.why` | why? | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
+| `disclosure.disclaimer` | Disclaimer | same | same | yes |
+| `disclosure.references` | References | same | same | yes |
 | `error.positive` | Enter a number above zero. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.valueRequired` | Enter a number. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.wholeNumber` | Enter a whole number. | same | same | yes |
+| `label.bodyFat` | Body Fat | same | same | yes |
 | `label.bodyFatChart` | Estimate visually | same | same | yes |
+| `label.bodyFatEstimate` | Body Fat Estimate | same | same | yes |
 | `label.bodyFatKnown` | Percentage | same | same | yes |
 | `label.bodyFatNone` | Not measured | same | same | yes |
 | `label.bodyFatTape` | Body measurements | same | same | yes |
@@ -288,6 +294,7 @@ States: `default`, `blocked`
 | `label.sex` | Biological sex | same | same | yes |
 | `label.sexFemale` | Female | same | same | yes |
 | `label.sexMale` | Male | same | same | yes |
+| `label.sexNotDisclosed` | Not Disclosed | same | same | yes |
 | `label.sexRationale` | Why sex is asked | same | same | yes |
 | `quantity.abdomenI` | Abdomen I | same | same | yes |
 | `quantity.abdomenII` | Abdomen II | same | same | yes |
@@ -299,7 +306,6 @@ States: `default`, `blocked`
 | `quantity.neck` | Neck | same | same | yes |
 | `step.body` | Body | same | same | yes |
 | `why.bodyFatEstimate` | The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number. | same | same | yes |
-| `why.bodyFatOptional` | With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass. | same | same | yes |
 
 ### `setup.training`
 
@@ -439,7 +445,9 @@ States: `ready`, `blocked`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `advice.beverageRange` | The reference intake is published per sex, so both figures are shown. | same | same | yes |
 | `button.confirmStart` | Confirm and start | lock it in | same | yes |
+| `disclosure.why` | why? | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
 | `hero.dailyTargets` | Daily targets | the numbers | same | yes |
 | `hero.programme` | Programme | same | same | yes |
 | `hero.yourAnswers` | What you told me | same | same | yes |

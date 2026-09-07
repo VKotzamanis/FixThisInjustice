@@ -108,8 +108,12 @@ measurement or any other source, and it switches to the equation with no sex ter
 would rather not, pick whichever option you expect to fit your current body composition better,
 and treat every energy number that follows as the estimate it already was.
 
-van Velzen DM et al. (2020), Eur J Endocrinol 183(5):529-537. DOI 10.1530/EJE-20-0609
+van Velzen DM et al. (2020), Eur J Endocrinol 183(5):529-536. DOI 10.1530/EJE-20-0609
 ```
+
+> **Page range corrected 2026-09-06.** This brief shipped 529-537 and the app carried it until
+> brief K. CrossRef and PubMed (PMID 33071222) independently give **529-536**. Copy the range
+> above, not the one in round 1's `sexRationale.ts` history comment.
 
 This text is long-form reference content. Put both segments in a new module
 `src/content/sexRationale.ts`, NOT in a copy table, and add it to R10 in

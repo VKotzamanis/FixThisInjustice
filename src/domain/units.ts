@@ -1,3 +1,4 @@
+import type { BeverageTarget } from './nutrition';
 import type { Exercise, Kg, ML, Profile, UnitSystem } from './types';
 import { KG_PER_LB } from './types';
 
@@ -120,4 +121,19 @@ export function formatMass(massKg: Kg, units: UnitSystem): string {
 export function formatVolume(ml: ML, units: UnitSystem): string {
   if (units === 'metric') return `${Math.round(ml)} ${UNIT_LABEL.metric.volume}`;
   return `${Math.round(ml / ML_PER_US_FL_OZ)} ${UNIT_LABEL.imperial.volume}`; // [fl oz]
+}
+
+/**
+ * "3000 mL", or "2200 mL to 3000 mL" when the sex was not disclosed.
+ *
+ * Round 2 decision A1: the IOM 2005 beverage share is published per sex, so with `nd` the app
+ * shows BOTH figures and never averages them or picks one. This is the single place that decision
+ * is rendered, so no view can print one endpoint of the range as though it were the target; the
+ * type (`BeverageTarget` in ./nutrition) is what forces every caller through here.
+ *
+ * The connector is the word "to", not a dash: copy contract R5 bars an en dash as a connector.
+ */
+export function formatBeverageTarget(target: BeverageTarget, units: UnitSystem): string {
+  if (target.kind === 'stated') return formatVolume(target.ml, units);
+  return `${formatVolume(target.loML, units)} to ${formatVolume(target.hiML, units)}`;
 }

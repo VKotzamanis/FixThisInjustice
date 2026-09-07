@@ -9,8 +9,8 @@ import { newId } from '../../domain/ids';
 import {
   NUTRITION_DOMAIN,
   computeTargets,
-  dailyBeverageTargetML,
   isInDomain,
+  seedBeverageTargetML,
   type NutritionInput,
 } from '../../domain/nutrition';
 import { EXERCISES } from '../../domain/plan/library';
@@ -36,10 +36,12 @@ import {
   type HomeEquipmentItem,
   type IsoWeekday,
   type Profile,
-  type SetupDraft,
+  type SetupAnswers,
+  type Sex,
+  type StatedSex,
   type UnitSystem,
 } from '../../domain/types';
-import { displayMass, formatMass, formatVolume } from '../../domain/units';
+import { displayMass, formatBeverageTarget, formatMass } from '../../domain/units';
 import {
   UnitInput,
   girthUnit,
@@ -51,16 +53,31 @@ import {
   storedMassKg,
 } from '../components/UnitInput';
 import { useAppStore } from '../../store';
-import { BODY_EQUATIONS, BODY_EQUATIONS_LEAD } from '../../content/bodyEquations';
+import {
+  BODY_EQUATIONS,
+  BODY_EQUATIONS_LEAD,
+  BODY_TAPE_DISCLAIMER,
+} from '../../content/bodyEquations';
 import { BODY_FAT_CHART_INTRO, BODY_FAT_CHART_PERCENTAGES } from '../../content/bodyFatChart';
 import {
+  SEX_RATIONALE_CUNNINGHAM,
   SEX_RATIONALE_CUNNINGHAM_NOTE,
-  SEX_RATIONALE_HRT,
+  SEX_RATIONALE_CUNNINGHAM_TITLE,
+  SEX_RATIONALE_HRT_KNOWN,
+  SEX_RATIONALE_HRT_KNOWN_TITLE,
+  SEX_RATIONALE_HRT_NOW,
+  SEX_RATIONALE_HRT_NOW_TITLE,
+  SEX_RATIONALE_HRT_OPEN,
+  SEX_RATIONALE_HRT_OPEN_TITLE,
   SEX_RATIONALE_HRT_SOURCE,
+  SEX_RATIONALE_HRT_SOURCE_LEAD,
   SEX_RATIONALE_HRT_TITLE,
-  SEX_RATIONALE_INTRO,
+  SEX_RATIONALE_MSJ,
   SEX_RATIONALE_MSJ_OFFSET_NOTE,
-  SEX_RATIONALE_SOURCES,
+  SEX_RATIONALE_MSJ_TITLE,
+  SEX_RATIONALE_SUMMARY,
+  SEX_RATIONALE_SUMMARY_TITLE,
+  SEX_RATIONALE_TOPIC,
 } from '../../content/sexRationale';
 import { vibrate } from '../audio/chime';
 import { ModalShell } from '../components/ModalShell';
@@ -210,6 +227,14 @@ const TAPE_ERROR_ID = 'f-tape-error';
 const TARGET_DATE_ERROR_ID = 'f-target-date-error';
 const WEEKDAY_ERROR_ID = 'f-weekday-error';
 const AVAILABILITY_DAYS_ERROR_ID = 'f-availability-days-error';
+/*
+ * The one line saying why the tape route and `Not measured` are unavailable (round 2 decision
+ * A1). Both refused controls point at it with aria-describedby, so the state is ANNOUNCED rather
+ * than only greyed: a control that looks different and says nothing is invisible to a screen
+ * reader, which is the accessibility rule 00-CONTEXT states for selection state and which
+ * applies with more force to a refusal.
+ */
+const BODYFAT_ND_REASON_ID = 'f-bodyfat-nd-reason';
 
 /** Display name of each RMR equation. A proper noun, not skin copy. */
 const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
@@ -396,14 +421,15 @@ interface DaySlot {
 }
 
 /*
- * `SetupDraft` (src/domain/types.ts) is now the canonical shape: it is what gets PERSISTED
- * (C1.G.1), so it has to live in the domain layer rather than in this component, the same way
- * `Profile` does. `Draft` is derived from it with `Omit`, not hand-retyped, so the two cannot
- * drift the way two independently maintained field lists would; every field comment now lives
- * on `SetupDraft` itself. `stepIndex` is the one field this component tracks separately (its own
- * `useState`, below), which is exactly what the `Omit` removes.
+ * `SetupAnswers` (src/domain/types.ts) is the canonical shape: it is what gets PERSISTED
+ * (C1.G.1), so it lives in the domain layer rather than in this component, the same way
+ * `Profile` does. `Draft` is that type under this file's own name, not a hand-retyped copy, so
+ * the two cannot drift the way two independently maintained field lists would; every field
+ * comment lives on `SetupAnswers` itself. `stepIndex` and the uncommitted `buffer` are the two
+ * fields this component tracks separately (their own `useState`, below), which is exactly what
+ * `SetupDraft` adds on top of `SetupAnswers`.
  */
-type Draft = Omit<SetupDraft, 'stepIndex'>;
+type Draft = SetupAnswers;
 
 function defaultDay(): DaySlot {
   return {
@@ -418,7 +444,14 @@ function initialDraft(): Draft {
     units: 'metric',
     timezone: deviceTimeZone(),
     displayName: '',
-    sex: 'male',
+    /*
+     * Round 2 claim r2.11, ruled in plan decision A1: "Have ND be the default field variable for
+     * SEX and it would be overriden when NEXT is pressed with a sex option." `nd` is therefore
+     * the value a wizard OPENS with, not an error state and not a fallback after a failure, and
+     * Next does not block on it. What it does block on is the body-fat percentage, which the
+     * only sex-free equation needs; see `knownBodyFatError` below.
+     */
+    sex: 'nd',
     ageYears: '',
     heightM: '',
     heightCm: '',
@@ -668,8 +701,14 @@ function SexRationaleModal(props: { onClose: () => void }): JSX.Element {
       testId="sex-rationale-backdrop"
       onClose={props.onClose}
     >
-      {/* Drawn at the upper left by the caller, per the owner's explicit instruction: ModalShell
-          renders no close control of its own (C1.07.11). */}
+      {/*
+       * r2.12(i): "The X should be on then upper right corner (more intuitive) and should be bold
+       * and stand out." This REVERSES round 1's C1.07.11, which put it upper left. Plan ruling
+       * D2.12.2 allows the reversal and notes that it makes the app CONSISTENT: FormCuesModal
+       * already closes upper right. The comment in setup.css that recorded the old ruling was
+       * updated with the rule, not left contradicting it. ModalShell still renders no close
+       * control of its own, so this is the only one.
+       */}
       <button
         type="button"
         className="wiz-modal-close"
@@ -682,34 +721,111 @@ function SexRationaleModal(props: { onClose: () => void }): JSX.Element {
       <h2 id={headingId} className="wiz-modal-title">
         {t('label.sexRationale')}
       </h2>
+
+      {/*
+       * SEGMENT ONE, in the owner's own running order (r2.12(iii)): "(a) introduce the topic, (b)
+       * describe 1 function of the topic, (c) provide the corresponding equation, (d) describe the
+       * other function of the topic, (e) provide that equation, and (f) write a brief
+       * conclusion/summary as a comparison."
+       *
+       * Each equation now sits at ITS OWN point of use, under the paragraphs that describe it,
+       * which is what he objected to: "The two equations appear together but they are referred to
+       * in different points of the text explanation."
+       *
+       * The citations that used to close this segment are gone from here and live in the step's
+       * one reference list (r2.12(v)).
+       */}
       <div className="wiz-modal-segment">
-        {SEX_RATIONALE_INTRO.map((paragraph) => (
+        {/* (a) */}
+        {SEX_RATIONALE_TOPIC.map((paragraph) => (
           <p key={paragraph} className="wiz-note">
             {paragraph}
           </p>
         ))}
+
+        {/* (b) */}
+        <h3 className="wiz-modal-subtitle">{SEX_RATIONALE_MSJ_TITLE}</h3>
+        <ul className="wiz-modal-points">
+          {SEX_RATIONALE_MSJ.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+        {/* (c) */}
         <div className="wiz-mathml" dangerouslySetInnerHTML={{ __html: MSJ_EQUATION_MATHML }} />
         <p className="wiz-note wiz-mathml-caption">{SEX_RATIONALE_MSJ_OFFSET_NOTE}</p>
+
+        {/* (d) */}
+        <h3 className="wiz-modal-subtitle">{SEX_RATIONALE_CUNNINGHAM_TITLE}</h3>
+        <ul className="wiz-modal-points">
+          {SEX_RATIONALE_CUNNINGHAM.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+        {/* (e) */}
         <div
           className="wiz-mathml"
           dangerouslySetInnerHTML={{ __html: CUNNINGHAM_EQUATION_MATHML }}
         />
         <p className="wiz-note wiz-mathml-caption">{SEX_RATIONALE_CUNNINGHAM_NOTE}</p>
-        <ol className="wiz-cite-list">
-          {SEX_RATIONALE_SOURCES.map((source) => (
-            <li key={source}>{source}</li>
+
+        {/* (f) */}
+        <h3 className="wiz-modal-subtitle">{SEX_RATIONALE_SUMMARY_TITLE}</h3>
+        <ul className="wiz-modal-points">
+          {SEX_RATIONALE_SUMMARY.map((point) => (
+            <li key={point}>{point}</li>
           ))}
-        </ol>
+        </ul>
       </div>
+
       <hr className="wiz-modal-divider" />
+
+      {/*
+       * SEGMENT TWO, r2.12(iv). Three subsection headings, his words and his order, with the wall
+       * of text under each broken into points. The heading itself takes the theme colour on a
+       * white highlight ("fuchsia pink here"), which is `var(--accent)` in setup.css so clinical
+       * and board resolve their own rather than inheriting limelight's pink.
+       */}
       <div className="wiz-modal-segment">
-        <h3 className="wiz-modal-subtitle">{SEX_RATIONALE_HRT_TITLE}</h3>
-        {SEX_RATIONALE_HRT.map((paragraph) => (
-          <p key={paragraph} className="wiz-note">
-            {paragraph}
-          </p>
-        ))}
-        <p className="wiz-note wiz-cite-src">{SEX_RATIONALE_HRT_SOURCE}</p>
+        <h3 className="wiz-modal-subtitle wiz-modal-hrt">{SEX_RATIONALE_HRT_TITLE}</h3>
+
+        <h4 className="wiz-modal-subsection">{SEX_RATIONALE_HRT_OPEN_TITLE}</h4>
+        <ul className="wiz-modal-points">
+          {SEX_RATIONALE_HRT_OPEN.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+
+        <h4 className="wiz-modal-subsection">{SEX_RATIONALE_HRT_KNOWN_TITLE}</h4>
+        <ul className="wiz-modal-points">
+          {SEX_RATIONALE_HRT_KNOWN.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
+
+        {/*
+         * r2.12(iv), last sentence: "I will add a sprite next to that heading so make space. It
+         * will be a small emoji type as height as the text of the subsection."
+         *
+         * The space, and nothing else. The artwork is the owner's (plan decision A3: no agent
+         * draws, generates or re-specifies an asset), and the row it will fill is
+         * `sprite-subsection-marker` in docs/design/2026-09-06-asset-manifest.md, which is still
+         * marked needs-decision because what was asked for is a real person's likeness. The slot
+         * is sized to the heading's own text height so the line does not reflow when it lands, and
+         * it is aria-hidden because it is a decorative marker beside a heading that already reads.
+         */}
+        <div className="wiz-modal-subsection-row">
+          <h4 className="wiz-modal-subsection">{SEX_RATIONALE_HRT_NOW_TITLE}</h4>
+          <span
+            className="wiz-sprite-slot"
+            data-icon-row="sprite-subsection-marker"
+            aria-hidden="true"
+          />
+        </div>
+        <ul className="wiz-modal-points">
+          {SEX_RATIONALE_HRT_NOW.map((point) => (
+            <li key={point}>{point}</li>
+          ))}
+        </ul>
       </div>
     </ModalShell>
   );
@@ -783,16 +899,38 @@ export function SetupWizard(): JSX.Element {
    * `SetupDraftSchema` (src/domain/schema.ts) is `.catch(null)`, so whatever the store holds by
    * the time a component can read it is either a fully valid `SetupDraft` or nothing.
    */
-  const [draft, setDraft] = useState<Draft>((): Draft => {
+  const [committed, setCommitted] = useState<Draft>((): Draft => {
     const stored = useAppStore.getState().setupDraft;
     if (stored === null) return initialDraft();
-    const { stepIndex, ...draftFields } = stored;
-    void stepIndex; // read by the sibling initialiser below, not here
-    return draftFields;
+    const { stepIndex, buffer, ...answers } = stored;
+    void stepIndex; // read by a sibling initialiser below, not here
+    void buffer; // likewise
+    return answers;
   });
+  /*
+   * The UNCOMMITTED half of the two tiers, r2.11 / plan decision A2: "the data of a field cell
+   * should not be replaced at the entry point (store it as temp), but it should be replaced only
+   * when NEXT is pressed." Every control on every step writes here; Next merges this into
+   * `committed` and clears it, and Back clears it without merging, which is what makes Back
+   * non-destructive.
+   *
+   * It is RESTORED from storage, not started empty, and that is the whole point of persisting two
+   * tiers rather than one. Round 1's most valued behaviour (C1.G.1) is that setup survives a
+   * closed browser; if a field only reached storage on Next, closing the browser mid-step would
+   * lose the step, which is the exact loss C1.G.1 exists to prevent.
+   */
+  const [buffer, setBuffer] = useState<Draft | null>(
+    () => useAppStore.getState().setupDraft?.buffer ?? null,
+  );
   const [stepIndex, setStepIndex] = useState<number>(
     () => useAppStore.getState().setupDraft?.stepIndex ?? 0,
   );
+  /*
+   * What the screen renders and what every validator below reads: the committed answers with the
+   * step in progress laid over them. Nothing downstream of this line knows there are two tiers,
+   * which is why the commit boundary could be added without rewriting the step bodies.
+   */
+  const draft: Draft = buffer ?? committed;
   /** Latched by the first successful confirm; the profile is created exactly once. */
   const [submitted, setSubmitted] = useState(false);
   const [sexRationaleOpen, setSexRationaleOpen] = useState(false);
@@ -831,12 +969,14 @@ export function SetupWizard(): JSX.Element {
     }
     if (submitted) return;
     draftSaveTimer.current = setTimeout(() => {
-      useAppStore.getState().saveSetupDraft({ ...draft, stepIndex });
+      // BOTH tiers, separately (A2). The committed answers spread flat, exactly as before; the
+      // step in progress rides beside them under `buffer` and never overwrites them.
+      useAppStore.getState().saveSetupDraft({ ...committed, stepIndex, buffer });
     }, SETUP_DRAFT_SAVE_DEBOUNCE_MS);
     return () => {
       if (draftSaveTimer.current !== null) clearTimeout(draftSaveTimer.current);
     };
-  }, [draft, stepIndex, submitted]);
+  }, [committed, buffer, stepIndex, submitted]);
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
 
@@ -888,12 +1028,60 @@ export function SetupWizard(): JSX.Element {
     [timeZoneOptions],
   );
 
+  /**
+   * Writes into the UNCOMMITTED tier (A2). The functional update seeds the buffer from the
+   * committed answers on its first call of a step, so a second keystroke on the same step builds
+   * on the first rather than on a stale copy.
+   */
   function patch(next: Partial<Draft>): void {
-    setDraft((d) => ({ ...d, ...next }));
+    setBuffer((b) => ({ ...(b ?? committed), ...next }));
+  }
+
+  /**
+   * The sex control's one writer, including the deselect back to `nd` (r2.11).
+   *
+   * It also REPAIRS the body-fat mode, because decision A1 makes two of the three modes
+   * unavailable the moment the sex is cleared: the tape equations have no `nd` form, and
+   * `Not measured` cannot stand while a percentage is the only thing Cunningham can read. The
+   * repair happens on the click that caused it rather than in an effect, so the screen never
+   * renders a combination the rules forbid, not even for one frame.
+   *
+   * The typed percentage is NOT cleared on the way in either direction. Losing a number the user
+   * supplied because they changed a different field is the app throwing away their work.
+   */
+  function selectSex(next: Sex): void {
+    if (next !== 'nd' || draft.bodyFatMode === 'known') {
+      patch({ sex: next });
+      return;
+    }
+    patch({ sex: next, bodyFatMode: 'known' });
   }
 
   function patchDay(weekday: IsoWeekday, next: Partial<DaySlot>): void {
-    setDraft((d) => ({ ...d, days: { ...d.days, [weekday]: { ...d.days[weekday], ...next } } }));
+    setBuffer((b) => {
+      const base = b ?? committed;
+      return { ...base, days: { ...base.days, [weekday]: { ...base.days[weekday], ...next } } };
+    });
+  }
+
+  /**
+   * Next: the step's answers become the committed ones, and the buffer empties.
+   *
+   * `setCommitted(draft)` and not `setCommitted({ ...committed, ...buffer })`, because `draft` is
+   * already that merge and computing it twice is how the two would drift.
+   */
+  function commitStep(): void {
+    if (buffer !== null) setCommitted(draft);
+    setBuffer(null);
+  }
+
+  /**
+   * Back: the step's answers are DISCARDED rather than committed (A2, "Back does not commit").
+   * The committed answers are what the previous step renders, so a user who typed something on a
+   * step and then went back finds the screen as they last confirmed it, not half-edited.
+   */
+  function discardStep(): void {
+    setBuffer(null);
   }
 
   /**
@@ -919,6 +1107,17 @@ export function SetupWizard(): JSX.Element {
       stackStep: String(DEFAULT_STACK_STEP[units]),
     });
   }
+
+  /**
+   * The sex when one was actually given, and `null` under `nd` (round 2 decision A1).
+   *
+   * Every sex-keyed table and every equation with no sex-free form takes `StatedSex`, so this one
+   * narrowing is where the branch is made, once, in the open. There is deliberately no `?? 'male'`
+   * anywhere in this file: defaulting a non-disclosed sex to a stated one would feed a coefficient
+   * the user never supplied into three engines, silently, which is the failure mode decision A1
+   * exists to make impossible.
+   */
+  const statedSex: StatedSex | null = draft.sex === 'nd' ? null : draft.sex;
 
   // The zone every date on this screen is computed in. An unrecognised entry blocks the time-zone
   // step, so the fallback is only ever used to keep the age readout alive while it is being typed.
@@ -953,16 +1152,24 @@ export function SetupWizard(): JSX.Element {
   // Back-calculated for storage, never for display: see the Draft.ageYears comment.
   const birthYear = ageYears === null ? null : Number(today.slice(0, 4)) - ageYears; // [year]
 
-  /** The US Navy estimate for the girths entered so far, or null while it is unavailable. */
+  /**
+   * The US Navy estimate for the girths entered so far, or null while it is unavailable.
+   *
+   * Null under `nd` and not merely absent from the screen: decision A1 disables the tape route
+   * without a stated sex, because the male and female equations differ in FORM rather than in
+   * coefficient, so there is no third equation to fall back to and no defensible average of the
+   * two. `estimateBodyFatNavy` takes a `StatedSex`, so this is a compile-time guarantee.
+   */
   const tapeEstimate = useMemo((): number | null => {
     if (draft.bodyFatMode !== 'tape') return null;
+    if (statedSex === null) return null;
     const neckCm = storedGirthCm(draft.neck, draft.units);
     const waistCm = storedGirthCm(draft.waist, draft.units);
     const hipCm = storedGirthCm(draft.hip, draft.units);
     if (heightCm === null || neckCm === null || waistCm === null) return null;
-    if (draft.sex === 'female' && hipCm === null) return null;
-    return estimateBodyFatNavy({ sex: draft.sex, heightCm, neckCm, waistCm, hipCm }); // [%]
-  }, [draft.bodyFatMode, draft.neck, draft.waist, draft.hip, draft.sex, draft.units, heightCm]);
+    if (statedSex === 'female' && hipCm === null) return null;
+    return estimateBodyFatNavy({ sex: statedSex, heightCm, neckCm, waistCm, hipCm }); // [%]
+  }, [draft.bodyFatMode, draft.neck, draft.waist, draft.hip, statedSex, draft.units, heightCm]);
 
   /** The body-fat percentage that will be stored, whichever way it was obtained. */
   const bodyFatPct: number | null =
@@ -1029,16 +1236,43 @@ export function SetupWizard(): JSX.Element {
    * the way a genuinely required field does; only a value the user TYPED and got wrong does. The
    * pattern mirrors targetMassError below, the wizard's other optional bounded quantity.
    */
+  /**
+   * Round 2 decision A1, the consequence that has to ship with `nd` or the state is incoherent:
+   * WITHOUT a stated sex the body-fat percentage is REQUIRED.
+   *
+   * It is not a form preference. Mifflin-St Jeor has no sex-free form and averaging its two
+   * constants would invent a coefficient, so the only equation left is Cunningham, and Cunningham
+   * reads fat-free mass, which the app can only get from a body-fat percentage. `isInDomain`
+   * (src/domain/nutrition.ts) reports the same combination as out of domain, so this rule and the
+   * engine's own rule are the same rule stated in the two places that have to agree.
+   */
+  const bodyFatRequired = statedSex === null;
+
   const knownBodyFatError =
-    draft.bodyFatMode === 'known' && draft.bodyFatPct.trim() !== ''
-      ? requiredInRange(
-          copy('quantity.bodyFat', overrides),
-          draft.bodyFatPct,
-          NUTRITION_DOMAIN.bodyFatPct,
-          overrides,
-          UNIT.pct,
-        )
-      : null;
+    draft.bodyFatMode === 'known' && draft.bodyFatPct.trim() === ''
+      ? bodyFatRequired
+        ? copy('error.valueRequired', overrides)
+        : null
+      : draft.bodyFatMode === 'known'
+        ? requiredInRange(
+            copy('quantity.bodyFat', overrides),
+            draft.bodyFatPct,
+            NUTRITION_DOMAIN.bodyFatPct,
+            overrides,
+            UNIT.pct,
+          )
+        : null;
+
+  /**
+   * A mode that cannot produce a percentage, while one is required.
+   *
+   * `Not measured` and the tape route are both unavailable under `nd` (A1), and the controls say
+   * so and refuse the selection. This is the belt: a draft restored from storage can arrive on
+   * this step already holding `bodyFatMode: 'none'` with `sex: 'nd'`, a combination no click on
+   * this screen can now produce, and it must block rather than confirm a profile the engine will
+   * refuse to compute targets for.
+   */
+  const bodyFatModeUnavailable = bodyFatRequired && draft.bodyFatMode !== 'known';
 
   /**
    * A tape estimate outside the engine's body-fat domain blocks the step. It is not clamped and
@@ -1058,12 +1292,17 @@ export function SetupWizard(): JSX.Element {
 
   const tapeIncomplete =
     draft.bodyFatMode === 'tape' &&
+    statedSex !== null &&
     (girthError(draft.neck, overrides) !== null ||
       girthError(draft.waist, overrides) !== null ||
-      (draft.sex === 'female' && girthError(draft.hip, overrides) !== null));
+      (statedSex === 'female' && girthError(draft.hip, overrides) !== null));
 
   /** Girths are complete and positive, yet the equation returned no estimate for them. */
-  const tapeWithheld = draft.bodyFatMode === 'tape' && !tapeIncomplete && tapeEstimate === null;
+  const tapeWithheld =
+    draft.bodyFatMode === 'tape' &&
+    statedSex !== null &&
+    !tapeIncomplete &&
+    tapeEstimate === null;
 
   const stepErrors = {
     barbell: stepError(
@@ -1169,6 +1408,7 @@ export function SetupWizard(): JSX.Element {
       heightError !== null ||
       massError !== null ||
       knownBodyFatError !== null ||
+      bodyFatModeUnavailable ||
       tapeDomainError !== null ||
       tapeIncomplete ||
       tapeWithheld,
@@ -1193,24 +1433,34 @@ export function SetupWizard(): JSX.Element {
   const confirmBlocked = STEPS.some((s) => BLOCKED[s]);
 
   /**
-   * The id of the first invalid control on the body step, top to bottom, or null when nothing
-   * blocks it. Used only by the failed-Next cue (Part 4, C1.08.12): BLOCKED.body itself, not
-   * this order, is what actually gates the step.
+   * The ids of EVERY invalid control on the body step, top to bottom, or an empty list when
+   * nothing blocks it.
+   *
+   * Round 2 claim r2.16, second half, which is the real work of that claim: "Highlight the
+   * textboxes that are missing info. So i dont have to click next over and over again until im
+   * reminded of all of them." Round 1 marked one field per press, so a step with three blanks
+   * took three presses to discover. This returns all of them, `handleFailedBodyNext` focuses the
+   * FIRST (a caret can only be in one place) and `bodyNextAttempted` reveals every outstanding
+   * message at once, which is what puts the white fill and the bold red border on all of them
+   * together: setup.css marks on `aria-invalid`, and a message is what sets `aria-invalid`.
+   *
+   * BLOCKED.body, not this order, is still what actually gates the step.
    */
-  function firstInvalidBodyFieldId(): string | null {
-    if (ageError !== null) return 'f-age';
-    if (heightError !== null) return draft.units === 'metric' ? 'f-height-m' : 'f-height-ft';
-    if (massError !== null) return 'f-mass';
-    if (knownBodyFatError !== null) return 'f-bodyfat';
-    if (draft.bodyFatMode === 'tape') {
-      if (girthError(draft.neck, overrides) !== null) return 'f-neck';
-      if (girthError(draft.waist, overrides) !== null) return 'f-waist';
-      if (draft.sex === 'female' && girthError(draft.hip, overrides) !== null) return 'f-hip';
+  function invalidBodyFieldIds(): readonly string[] {
+    const ids: string[] = [];
+    if (ageError !== null) ids.push('f-age');
+    if (heightError !== null) ids.push(draft.units === 'metric' ? 'f-height-m' : 'f-height-ft');
+    if (massError !== null) ids.push('f-mass');
+    if (knownBodyFatError !== null) ids.push('f-bodyfat');
+    if (draft.bodyFatMode === 'tape' && statedSex !== null) {
+      if (girthError(draft.neck, overrides) !== null) ids.push('f-neck');
+      if (girthError(draft.waist, overrides) !== null) ids.push('f-waist');
+      if (statedSex === 'female' && girthError(draft.hip, overrides) !== null) ids.push('f-hip');
       // tapeDomainError and tapeWithheld are properties of the three girths TOGETHER rather than
       // of one field; the neck field is the first of the three and the reasonable landing spot.
-      if (tapeDomainError !== null || tapeWithheld) return 'f-neck';
+      if ((tapeDomainError !== null || tapeWithheld) && !ids.includes('f-neck')) ids.push('f-neck');
     }
-    return null;
+    return ids;
   }
 
   /**
@@ -1222,7 +1472,10 @@ export function SetupWizard(): JSX.Element {
    */
   function handleFailedBodyNext(): void {
     setBodyNextAttempted(true);
-    const targetId = firstInvalidBodyFieldId();
+    // r2.16: every invalid field is marked, and the FIRST one is where the caret goes. The
+    // marking is not done here: it follows from the messages this flag reveals, so a field cannot
+    // be marked without also saying, in words, what is wrong with it.
+    const targetId = invalidBodyFieldIds()[0] ?? null;
     if (targetId !== null) {
       const el = document.getElementById(targetId);
       if (el !== null) {
@@ -1410,8 +1663,14 @@ export function SetupWizard(): JSX.Element {
       },
       supplements: { creatine: draft.creatine },
       hydration: {
-        // IOM 2005 beverage share for the stated sex; editable afterwards in Settings.
-        dailyTargetML: dailyBeverageTargetML(draft.sex), // [mL/day]
+        /*
+         * The SEEDED preference, not the published reference. With a stated sex the two are the
+         * same figure; under `nd` the reference is a range and this field cannot hold one, so
+         * `seedBeverageTargetML` (src/domain/nutrition.ts) owns that single conversion and states
+         * why it takes the low end. The reference itself is shown to the user as the range, on
+         * the review screen below and in Settings. Editable afterwards in Settings either way.
+         */
+        dailyTargetML: seedBeverageTargetML(draft.sex), // [mL/day]
         cupSizeML: DEFAULT_CUP_ML, // [mL]
         weighInOptIn: draft.weighInOptIn,
       },
@@ -1578,7 +1837,9 @@ export function SetupWizard(): JSX.Element {
       )}
 
       {step === 'body' && (
-        <fieldset>
+        /* `wiz-step-body` scopes r2.16's invalid-field mark to the step the claim was filed
+           against; setup.css keys the mark on aria-invalid inside it. */
+        <fieldset className="wiz-step-body">
           <StepHeading title={t(STEP_TITLE_KEY.body)} headingRef={headingRef} />
 
           {sexRationaleOpen && (
@@ -1604,10 +1865,18 @@ export function SetupWizard(): JSX.Element {
             />
           )}
 
+          {/*
+           * r2.11: "Let's make the name box print the name with the skins overall theme, just to
+           * distinguish it aesthetically and make it more 'fun'." STYLE ONLY. The value is the
+           * user's own text and nothing here alters it: no capitalisation, no trimming for
+           * display, no substitution. `wiz-name` sets the skin's display face and accent through
+           * tokens, so limelight, clinical and board each resolve their own.
+           */}
           <div className="wiz-field">
             <label htmlFor="f-name">{t('label.name')}</label>
             <input
               id="f-name"
+              className="wiz-name"
               type="text"
               value={draft.displayName}
               onChange={(e) => {
@@ -1641,6 +1910,18 @@ export function SetupWizard(): JSX.Element {
                   {t('label.sex')}
                   <sup>1</sup>
                 </p>
+                {/*
+                 * r2.11: "we need to allow the user to click on what they have selected again and
+                 * deselect it if they don't feel comfortable picking one." Clicking the checked
+                 * option clears the group back to `nd`.
+                 *
+                 * WHY THE HANDLER IS SPLIT ACROSS onChange AND onClick. A radio that is already
+                 * checked fires no `change` event when it is clicked again, in every engine and in
+                 * jsdom, so a deselect can only be seen on `click`. The two cannot double-fire:
+                 * `click` runs first and reads React state that has not moved yet, so on an
+                 * UNCHECKED option its guard is false and only `onChange` acts, while on the
+                 * CHECKED option `onChange` never runs at all.
+                 */}
                 <div className="wiz-choice" role="radiogroup" aria-labelledby="sex-label">
                   {(['male', 'female'] as const).map((value) => (
                     <label key={value} className="wiz-glyph">
@@ -1649,7 +1930,10 @@ export function SetupWizard(): JSX.Element {
                         name="sex"
                         checked={draft.sex === value}
                         onChange={() => {
-                          patch({ sex: value });
+                          selectSex(value);
+                        }}
+                        onClick={() => {
+                          if (draft.sex === value) selectSex('nd');
                         }}
                       />
                       <span aria-hidden="true" className="wiz-glyph-mark" data-sex={value} />
@@ -1657,6 +1941,16 @@ export function SetupWizard(): JSX.Element {
                     </label>
                   ))}
                 </div>
+                {/*
+                 * The third state, named. `nd` is the default (A1), so this is what the step opens
+                 * showing, and a group with nothing checked is otherwise indistinguishable from a
+                 * group that failed to render. It is a live region because clearing the selection
+                 * is a state change a screen reader would otherwise get no announcement of: the
+                 * radios simply stop being checked.
+                 */}
+                <p className="wiz-note" role="status" data-testid="sex-state">
+                  {draft.sex === 'nd' ? t('label.sexNotDisclosed') : t('advice.sexDeselect')}
+                </p>
                 {/* C1.07.6, C1.07.10: the sex explainer, reached under the field it explains. */}
                 <button
                   type="button"
@@ -1691,7 +1985,8 @@ export function SetupWizard(): JSX.Element {
               <div className="wiz-field">
                 <p className="wiz-label" id="height-label">
                   {t('quantity.height')}
-                  <sup>2</sup>
+                  {/* Entry 4 of the reference list below: one numbering scheme, r2.15(ii). */}
+                  <sup>4</sup>
                 </p>
                 <div className="wiz-row wiz-row-tight">
                   <UnitInput
@@ -1731,181 +2026,295 @@ export function SetupWizard(): JSX.Element {
           </div>
 
           {/*
-           * Round 1 claims C1.08.1 to C1.08.4, C1.08.7: percentage entry first and pre-selected
-           * (initialDraft), "why?" and "Optional" moved BELOW the control they explain, no
-           * obesity or category classification anywhere (numbers only, and none is rendered).
+           * THE BODY-FAT BOX, r2.13(i): "Put the Body fat also in a bordered box. That box should
+           * have everything w.r.t. the souces and body fat."
+           *
+           * Round 1 claims C1.08.1 to C1.08.4 and C1.08.7 still hold inside it: percentage entry
+           * first and pre-selected (initialDraft), and no obesity or category classification
+           * anywhere (numbers only, and none is rendered). What round 2 moves is the ORDER inside
+           * the box, r2.13(iii) and (iv): "Optional. With it..." sits ABOVE the percentage field
+           * and "Click here to estimate" BELOW it. Plan ruling D2.13.3/D2.13.4 records that this
+           * is not a contradiction of round 1, which was about the mode radio group rather than
+           * about the number field.
+           *
+           * The `why?` disclosures that used to explain the field are gone, r2.13(ii): "Let's
+           * remove the Why?. We can replace that element with just citation superscripts. For
+           * example Percentage^2." The superscripts below are those, and they point into the one
+           * reference list at the foot of the step.
            */}
-          <div className="wiz-choice" role="radiogroup" aria-label={t('quantity.bodyFat')}>
-            <label className="wiz-inline">
-              <input
-                type="radio"
-                name="bodyfat"
-                checked={draft.bodyFatMode === 'known'}
-                onChange={() => {
-                  patch({ bodyFatMode: 'known' });
-                }}
-              />
-              {t('label.bodyFatKnown')}
-            </label>
-            <label className="wiz-inline">
-              <input
-                type="radio"
-                name="bodyfat"
-                checked={draft.bodyFatMode === 'tape'}
-                onChange={() => {
-                  patch({ bodyFatMode: 'tape', bodyFatSource: 'tape' });
-                }}
-              />
-              {t('label.bodyFatTape')}
-            </label>
-            <label className="wiz-inline">
-              <input
-                type="radio"
-                name="bodyfat"
-                checked={draft.bodyFatMode === 'none'}
-                onChange={() => {
-                  patch({ bodyFatMode: 'none' });
-                }}
-              />
-              {t('label.bodyFatNone')}
-            </label>
-          </div>
+          <div className="wiz-box wiz-box-bodyfat">
+            <p className="wiz-label" id="bodyfat-box-label">
+              {t('label.bodyFat')}
+            </p>
 
-          {draft.bodyFatMode === 'known' && (
-            <>
-              <button
-                type="button"
-                className="wiz-link"
-                onClick={() => {
-                  setBodyFatChartOpen(true);
-                }}
-              >
-                {t('advice.estimateBodyFat')}
-              </button>
-              <UnitInput
-                id="f-bodyfat"
-                quantity={t('quantity.bodyFat')}
-                unit={UNIT.pct}
-                value={draft.bodyFatPct}
-                error={bodyFieldError(knownBodyFatError)}
-                onChange={(v) => {
-                  patch({ bodyFatPct: v, bodyFatSource: 'measured' });
-                }}
-              />
-            </>
-          )}
+            <div className="wiz-choice" role="radiogroup" aria-labelledby="bodyfat-box-label">
+              <label className="wiz-inline">
+                <input
+                  type="radio"
+                  name="bodyfat"
+                  checked={draft.bodyFatMode === 'known'}
+                  onChange={() => {
+                    patch({ bodyFatMode: 'known' });
+                  }}
+                />
+                {t('label.bodyFatKnown')}
+                {/* r2.13(ii), his own example: "Percentage^2". Entry 2 is Cunningham, the
+                    equation a percentage actually buys the user. */}
+                <sup>2</sup>
+              </label>
+              {/*
+               * Decision A1, second consequence: `nd` DISABLES the tape route. "Show the option,
+               * disabled, with one line saying why. Do not hide it."
+               *
+               * `aria-disabled` and a refused handler, not the `disabled` attribute: a disabled
+               * input is removed from the tab order, so a screen-reader user arrows past it and
+               * never hears the reason. This way the control keeps focus, keeps its accessible
+               * description, and announces itself as unavailable. The handler still refuses the
+               * selection, so the state cannot be reached by keyboard either.
+               */}
+              <label className="wiz-inline" aria-disabled={bodyFatRequired}>
+                <input
+                  type="radio"
+                  name="bodyfat"
+                  checked={draft.bodyFatMode === 'tape'}
+                  aria-disabled={bodyFatRequired}
+                  aria-describedby={bodyFatRequired ? BODYFAT_ND_REASON_ID : undefined}
+                  onChange={() => {
+                    if (bodyFatRequired) return;
+                    patch({ bodyFatMode: 'tape', bodyFatSource: 'tape' });
+                  }}
+                />
+                {t('label.bodyFatTape')}
+              </label>
+              <label className="wiz-inline" aria-disabled={bodyFatRequired}>
+                <input
+                  type="radio"
+                  name="bodyfat"
+                  checked={draft.bodyFatMode === 'none'}
+                  aria-disabled={bodyFatRequired}
+                  aria-describedby={bodyFatRequired ? BODYFAT_ND_REASON_ID : undefined}
+                  onChange={() => {
+                    if (bodyFatRequired) return;
+                    patch({ bodyFatMode: 'none' });
+                  }}
+                />
+                {t('label.bodyFatNone')}
+              </label>
+            </div>
+            {/* The one line saying why, wired to both refused controls by aria-describedby so it
+                is announced rather than merely greyed. */}
+            {bodyFatRequired && (
+              <p className="wiz-note" id={BODYFAT_ND_REASON_ID} data-testid="bodyfat-nd-reason">
+                {t('advice.tapeNeedsSex')}
+              </p>
+            )}
 
-          {draft.bodyFatMode === 'tape' && (
-            <>
-              <p className="wiz-note">{t('advice.tapeMethod')}</p>
-              <UnitInput
-                id="f-neck"
-                quantity={t('quantity.neck')}
-                unit={girthUnit(draft.units)}
-                value={draft.neck}
-                error={bodyFieldError(girthError(draft.neck, overrides))}
-                sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
-                onChange={(v) => {
-                  patch({ neck: v });
-                }}
-              />
-              <ArtworkPlaceholder label={t('quantity.neck')} className="wiz-site" />
-              <UnitInput
-                id="f-waist"
-                quantity={
-                  draft.sex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')
-                }
-                unit={girthUnit(draft.units)}
-                value={draft.waist}
-                error={bodyFieldError(girthError(draft.waist, overrides))}
-                sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
-                onChange={(v) => {
-                  patch({ waist: v });
-                }}
-              />
-              <ArtworkPlaceholder
-                label={draft.sex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')}
-                className="wiz-site"
-              />
-              {draft.sex === 'female' && (
-                <>
+            {draft.bodyFatMode === 'known' && (
+              <>
+                {/* r2.13(iii): above the field it explains. Under `nd` it is not optional at
+                    all, and the line says which of the two situations the user is in. */}
+                <p className="wiz-note" data-testid="bodyfat-optional">
+                  {bodyFatRequired ? t('advice.bodyFatRequiredND') : t('advice.bodyFatOptional')}
+                </p>
+                <UnitInput
+                  id="f-bodyfat"
+                  quantity={t('quantity.bodyFat')}
+                  unit={UNIT.pct}
+                  value={draft.bodyFatPct}
+                  error={bodyFieldError(knownBodyFatError)}
+                  onChange={(v) => {
+                    patch({ bodyFatPct: v, bodyFatSource: 'measured' });
+                  }}
+                />
+                {/* r2.13(iv): below the field it fills. */}
+                <button
+                  type="button"
+                  className="wiz-link"
+                  onClick={() => {
+                    setBodyFatChartOpen(true);
+                  }}
+                >
+                  {t('advice.estimateBodyFat')}
+                </button>
+              </>
+            )}
+
+            {draft.bodyFatMode === 'tape' && statedSex !== null && (
+              <>
+                {/*
+                 * r2.14, last sentence: "if the tape measurement are used as a way to estimate
+                 * the Body Fat, right now that's now clear. You would need to have a Body Fat
+                 * Estimate as a subheading." This is that subheading, and it carries entry 3's
+                 * superscript because entry 3 is the method it runs.
+                 */}
+                <h3 className="wiz-subheading">
+                  {t('label.bodyFatEstimate')}
+                  <sup>3</sup>
+                </h3>
+                <p className="wiz-note">{t('advice.tapeMethod')}</p>
+
+                {/*
+                 * r2.14(ii): "make the Neck image call out be next to the Neck textbox. Like a 2
+                 * column array. Similar change for the other measurements." Each girth is its own
+                 * two-column row, input beside diagram, rather than one stack of inputs followed
+                 * by one stack of pictures.
+                 *
+                 * ALREADY SEX-CONDITIONED BEFORE ROUND 2, and verified rather than rebuilt: the
+                 * waist label has always swapped between Abdomen II (male) and Abdomen I (female)
+                 * and the hip field has always been female-only, because the two Navy equations
+                 * read different sites. What round 2 adds is the `nd` branch above, which is why
+                 * this whole block sits behind `statedSex !== null`.
+                 */}
+                <div className="wiz-row wiz-row-site">
                   <UnitInput
-                    id="f-hip"
-                    quantity={t('quantity.hip')}
+                    id="f-neck"
+                    quantity={t('quantity.neck')}
                     unit={girthUnit(draft.units)}
-                    value={draft.hip}
-                    error={bodyFieldError(girthError(draft.hip, overrides))}
+                    value={draft.neck}
+                    error={bodyFieldError(girthError(draft.neck, overrides))}
                     sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
                     onChange={(v) => {
-                      patch({ hip: v });
+                      patch({ neck: v });
                     }}
                   />
-                  <ArtworkPlaceholder label={t('quantity.hip')} className="wiz-site" />
-                </>
-              )}
-              {/*
-               * C1.08.10, C1.08.13: the site prose moves behind why?, it is not deleted, because
-               * it is what keeps the estimate valid (B15). R10 exempts a disclosure's length.
-               */}
-              <details>
-                <summary>{t('disclosure.why')}</summary>
-                <p className="wiz-note">{withoutDashConnector(NAVY_SITE_LABEL[draft.sex].waist)}</p>
-                {draft.sex === 'female' && (
-                  <p className="wiz-note">
-                    {withoutDashConnector(NAVY_SITE_LABEL.female.hip ?? '')}
-                  </p>
+                  {/* The caption is the site description the NHRC reports print, so the
+                      instruction sits beside the field it governs rather than behind a
+                      disclosure (r2.14(ii), and B15: a caption is what a screen reader gets
+                      while the artwork is a frame). NAVY_SITE_LABEL names no neck site. */}
+                  <ArtworkPlaceholder label={t('quantity.neck')} className="wiz-site" />
+                </div>
+
+                <div className="wiz-row wiz-row-site">
+                  <UnitInput
+                    id="f-waist"
+                    quantity={
+                      statedSex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')
+                    }
+                    unit={girthUnit(draft.units)}
+                    value={draft.waist}
+                    error={bodyFieldError(girthError(draft.waist, overrides))}
+                    sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
+                    onChange={(v) => {
+                      patch({ waist: v });
+                    }}
+                  />
+                  <ArtworkPlaceholder
+                    label={withoutDashConnector(NAVY_SITE_LABEL[statedSex].waist)}
+                    className="wiz-site"
+                  />
+                </div>
+
+                {statedSex === 'female' && (
+                  <div className="wiz-row wiz-row-site">
+                    <UnitInput
+                      id="f-hip"
+                      quantity={t('quantity.hip')}
+                      unit={girthUnit(draft.units)}
+                      value={draft.hip}
+                      error={bodyFieldError(girthError(draft.hip, overrides))}
+                      sharedErrorId={tapeDomainError === null ? null : TAPE_ERROR_ID}
+                      onChange={(v) => {
+                        patch({ hip: v });
+                      }}
+                    />
+                    <ArtworkPlaceholder
+                      label={withoutDashConnector(NAVY_SITE_LABEL.female.hip ?? '')}
+                      className="wiz-site"
+                    />
+                  </div>
                 )}
-              </details>
-              <p className="wiz-note" data-testid="bodyfat-estimate">
-                {tapeIncomplete
-                  ? draft.sex === 'female'
-                    ? t('advice.tapeNeedFemale')
-                    : t('advice.tapeNeedMale')
-                  : tapeEstimate === null
-                    ? t('advice.tapeOutOfDomain')
-                    : FORMAT.bodyFatEstimate(tapeEstimate, NAVY_SEE_PCT[draft.sex])}
-              </p>
-              {/* One estimate, three girths: described by each of the fields that produced it. */}
-              {tapeDomainError !== null && (
-                <p className="wiz-error" id={TAPE_ERROR_ID}>
-                  {tapeDomainError}
+
+                <p className="wiz-note" data-testid="bodyfat-estimate">
+                  {tapeIncomplete
+                    ? statedSex === 'female'
+                      ? t('advice.tapeNeedFemale')
+                      : t('advice.tapeNeedMale')
+                    : tapeEstimate === null
+                      ? t('advice.tapeOutOfDomain')
+                      : FORMAT.bodyFatEstimate(tapeEstimate, NAVY_SEE_PCT[statedSex])}
                 </p>
-              )}
-              {tapeEstimate !== null && (
-                <details>
-                  <summary>{t('disclosure.why')}</summary>
+                {/*
+                 * The standard error, in words, on the face rather than behind a `why?`.
+                 * r2.13(ii) removes the disclosure CONTROL; it does not remove this caveat, and
+                 * this one is not arithmetic (R9 sends derivations behind a disclosure, and there
+                 * is none here). It says what the number after the plus-or-minus sign is and why
+                 * the figure is for tracking change rather than for reading absolutely, which is
+                 * the caveat src/domain/bodyfat.ts requires the UI to print beside the estimate.
+                 */}
+                {tapeEstimate !== null && (
                   <p className="wiz-note" data-testid="bodyfat-why">
                     {t('why.bodyFatEstimate')}
                   </p>
-                </details>
-              )}
-            </>
-          )}
+                )}
+                {/* One estimate, three girths: described by each of the fields that produced it. */}
+                {tapeDomainError !== null && (
+                  <p className="wiz-error" id={TAPE_ERROR_ID}>
+                    {tapeDomainError}
+                  </p>
+                )}
 
-          {/* C1.08.1: explanatory text below the control it explains, not above it. */}
-          <p className="wiz-note">{t('advice.bodyFatOptional')}</p>
-          <details>
-            <summary>{t('disclosure.why')}</summary>
-            <p className="wiz-note">{t('why.bodyFatOptional')}</p>
-          </details>
+                {/*
+                 * r2.14(iii): "Move the Why? hidden box, below the US Navy Ci... text and rename
+                 * it as Disclaimer." A NEW key, per plan ruling D2.14.3: `disclosure.why` has six
+                 * call sites across the app and renaming it would relabel every one of them.
+                 *
+                 * The old contents, which named which girth to enter where, are GONE rather than
+                 * moved: the fields above now say it themselves, and they change with the sex.
+                 * The superscript is entry 3, the method whose fields differ by sex, which is the
+                 * citation his own text asked for after "in this method".
+                 */}
+                <details>
+                  <summary>{t('disclosure.disclaimer')}</summary>
+                  <p className="wiz-note" data-testid="tape-disclaimer">
+                    {BODY_TAPE_DISCLAIMER}
+                    <sup>3</sup>
+                  </p>
+                </details>
+              </>
+            )}
+          </div>
 
           {/*
-           * Round 1 claim C1.07.5: the methods, at the foot of the box, "do not be expansive -
-           * just transparent". The markers are superscripts beside the two fields whose purpose
-           * is least obvious; a row with marker 0 carries no marker and is listed for
-           * completeness, because it reads this page's numbers too.
+           * THE REFERENCE LIST, r2.15. One collapsible box at the foot of the step, in the
+           * pattern the `why?` disclosures already use, holding every citation the step prints.
+           *
+           * Round 1 claim C1.07.5 asked for the methods here and "do not be expansive, just
+           * transparent"; r2.15 keeps that and fixes the format. Two things changed:
+           *
+           *   ONE NUMBERING SCHEME. It used to be an <ol> whose items carried superscripts of
+           *   their own, so entry two read "2. (1) Body-fat percentage...". It is a <ul> now and
+           *   the superscript IS the entry number, unique across the list and the same number
+           *   printed beside the field above.
+           *
+           *   A BOLD LEAD SENTENCE ABOVE EACH CITATION, consistently, r2.15(iii). That is
+           *   `BodyEquation.computes`, which already was that sentence for most rows.
+           *
+           * The last entry is the hormone-therapy source, moved out of the sex explainer by
+           * r2.12(v) so that every citation on this step is in one place. It lives in
+           * sexRationale.ts rather than in bodyEquations.ts because no engine in this repository
+           * implements a hormone-therapy adjustment, and bodyEquations.test.ts requires every DOI
+           * in that module to appear in the engine that uses it.
            */}
-          <div className="wiz-cites">
+          <details className="wiz-refs" data-testid="references">
+            <summary>{t('disclosure.references')}</summary>
             <p className="wiz-note">{BODY_EQUATIONS_LEAD}</p>
-            <ol className="wiz-cite-list">
-              {BODY_EQUATIONS.map((eq, n) => (
-                <li key={`${String(eq.marker)}-${String(n)}`}>
-                  {eq.marker > 0 && <sup>{eq.marker}</sup>} {eq.computes}{' '}
+            <ul className="wiz-cite-list">
+              {BODY_EQUATIONS.map((eq) => (
+                <li key={eq.marker}>
+                  <p className="wiz-cite-lead">
+                    <sup>{eq.marker}</sup> {eq.computes}
+                  </p>
                   <span className="wiz-cite-src">{eq.source}</span>
                 </li>
               ))}
-            </ol>
-          </div>
+              <li key="hrt">
+                <p className="wiz-cite-lead">
+                  <sup>{BODY_EQUATIONS.length + 1}</sup> {SEX_RATIONALE_HRT_SOURCE_LEAD}
+                </p>
+                <span className="wiz-cite-src">{SEX_RATIONALE_HRT_SOURCE}</span>
+              </li>
+            </ul>
+          </details>
         </fieldset>
       )}
 
@@ -2433,7 +2842,15 @@ export function SetupWizard(): JSX.Element {
               <dd data-testid="review-age">{FORMAT.quantityWithUnit(draft.ageYears, UNIT.years)}</dd>
               <dt>{t('label.sex')}</dt>
               <dd data-testid="review-sex">
-                {t(draft.sex === 'male' ? 'label.sexMale' : 'label.sexFemale')}
+                {/* Three states, read back as the user left them (r2.11). `nd` is named, not
+                    shown as a blank: a blank row would read as a screen that lost the answer. */}
+                {t(
+                  draft.sex === 'male'
+                    ? 'label.sexMale'
+                    : draft.sex === 'female'
+                      ? 'label.sexFemale'
+                      : 'label.sexNotDisclosed',
+                )}
               </dd>
               <dt>{t('quantity.bodyMass')}</dt>
               <dd data-testid="review-mass">
@@ -2474,7 +2891,9 @@ export function SetupWizard(): JSX.Element {
                     {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
                   </dd>
                   <dt>{t('label.fluid')}</dt>
-                  <dd data-testid="target-fluid">{formatVolume(targets.fluidML, draft.units)}</dd>
+                  <dd data-testid="target-fluid">
+                    {formatBeverageTarget(targets.fluidML, draft.units)}
+                  </dd>
                   <dt>{t('label.expectedRate')}</dt>
                   <dd data-testid="target-rate">{signedRate()}</dd>
                   {targets.creatineG !== null && (
@@ -2484,6 +2903,14 @@ export function SetupWizard(): JSX.Element {
                     </>
                   )}
                 </dl>
+                {/* Decision A1: the reason the fluid row is a range and not a figure. Rendered
+                    only in that case, so a stated-sex profile is not told about a rule it never
+                    met. */}
+                {targets.fluidML.kind === 'range' && (
+                  <p className="wiz-note" data-testid="fluid-range-note">
+                    {t('advice.beverageRange')}
+                  </p>
+                )}
                 {/* R9: the derivation is never inline. */}
                 <details>
                   <summary>{t('disclosure.why')}</summary>
@@ -2528,6 +2955,8 @@ export function SetupWizard(): JSX.Element {
           <button
             type="button"
             onClick={() => {
+              // A2: Back discards the step in progress instead of committing it.
+              discardStep();
               setStepIndex((n) => n - 1);
             }}
           >
@@ -2552,6 +2981,8 @@ export function SetupWizard(): JSX.Element {
                 if (step === 'body') handleFailedBodyNext();
                 return;
               }
+              // A2: this press, and only this press, is what replaces the stored answers.
+              commitStep();
               setStepIndex((n) => Math.min(STEPS.length - 1, n + 1));
             }}
           >

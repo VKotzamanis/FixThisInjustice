@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { STEPS, SetupWizard } from './SetupWizard';
+// The stylesheet as text. jsdom renders no geometry, so a layout RULE is what can be asserted
+// here; the device pass itself is a row in docs/phone-visual-check.md (r2.10).
+import setupCss from './setup.css?raw';
+import { BODY_EQUATIONS } from '../../content/bodyEquations';
 import { useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
@@ -73,6 +77,23 @@ function next(): void {
   fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 }
 
+/**
+ * Choose a stated sex on the body step.
+ *
+ * ROUND 2 CHANGED THE PRECONDITION EVERY TEST BELOW WAS WRITTEN UNDER. `initialDraft` used to
+ * open with `sex: 'male'`; r2.11 and plan decision A1 make `nd` the default and make the body-fat
+ * percentage REQUIRED on that path, because Mifflin-St Jeor has no sex-free form. So a test that
+ * walks past the body step without answering now blocks, correctly.
+ *
+ * Calling this restores each test's original conditions exactly rather than working around the
+ * new rule: `male` is the value those tests used to get for free, and every number they assert
+ * (the Mifflin-St Jeor offset, the 3000 mL beverage share) was computed under it. The `nd` path
+ * has its own tests, which assert that it blocks and why.
+ */
+function pickSex(sex: 'Male' | 'Female' = 'Male'): void {
+  fireEvent.click(screen.getByLabelText(sex));
+}
+
 function setValue(label: RegExp | string, value: string): void {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
@@ -88,7 +109,7 @@ function fillImperialWizardToGoal(): void {
   next();
   // 3 - body
   setValue(/^How should I refer to you\?$/i, 'Test subject');
-  fireEvent.click(screen.getByLabelText('Male'));
+  pickSex();
   setValue(/^age \(years\)$/i, '30');
   setValue(/^feet$/i, '5');
   setValue(/^inches$/i, '11');
@@ -202,6 +223,7 @@ describe('unit labelling', () => {
     fireEvent.click(screen.getByLabelText('Pounds (lb)'));
     next();
     next();
+    pickSex();
     setValue(/^age \(years\)$/i, '30');
     setValue(/^feet$/i, '5');
     setValue(/^inches$/i, '11');
@@ -217,6 +239,7 @@ describe('domain guards', () => {
     render(<SetupWizard />);
     next();
     next();
+    pickSex();
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
@@ -249,6 +272,7 @@ describe('domain guards', () => {
     render(<SetupWizard />);
     next();
     next();
+    pickSex();
     setValue(/^age \(years\)$/i, '30');
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
@@ -313,6 +337,7 @@ describe('review screen', () => {
     render(<SetupWizard />);
     next();
     next();
+    pickSex();
     setValue(/^age \(years\)$/i, '30');
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
@@ -443,6 +468,9 @@ describe('body fat by tape measure', () => {
     setValue(/^age \(years\)$/i, '30');
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
+    // r2.11 / decision A1: the tape route needs a stated sex, so this is now explicit. It was
+    // implicit before, through initialDraft's old `sex: 'male'` default.
+    pickSex();
     setValue(/body mass \(kg\)/i, '95.3');
     fireEvent.click(screen.getByLabelText('Body measurements'));
     setValue(/^neck \(cm\)$/i, '40');
@@ -476,6 +504,7 @@ describe('no free-text medical field exists', () => {
   /** Minimum entry needed to pass each screen's Continue guard. */
   function unblock(stepIndex: number): void {
     if (STEPS[stepIndex] === 'body') {
+      pickSex();
       setValue(/^age \(years\)$/i, '30');
       setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
@@ -544,6 +573,7 @@ describe('no free-text medical field exists', () => {
     render(<SetupWizard />);
     next();
     next();
+    pickSex();
     setValue(/^age \(years\)$/i, '30');
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
@@ -561,6 +591,7 @@ describe('copy rules', () => {
     render(<SetupWizard />);
     for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
       if (STEPS[stepIndex] === 'body') {
+        pickSex();
         setValue(/^age \(years\)$/i, '30');
         setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
@@ -690,6 +721,7 @@ describe('whole-number counts', () => {
     render(<SetupWizard />);
     next();
     next();
+    pickSex();
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
@@ -786,6 +818,9 @@ describe('focus, announcement and message binding', () => {
     setValue(/^age \(years\)$/i, '30');
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
+    // r2.11 / decision A1: the tape route needs a stated sex, so this is now explicit. It was
+    // implicit before, through initialDraft's old `sex: 'male'` default.
+    pickSex();
     setValue(/body mass \(kg\)/i, '95.3');
     fireEvent.click(screen.getByLabelText('Body measurements'));
     setValue(/^neck \(cm\)$/i, '40');
@@ -979,6 +1014,30 @@ function reachBody(): void {
   render(<SetupWizard />);
   next();
   next();
+  pickSex();
+  setValue(/^age \(years\)$/i, '30');
+  setValue(/^metres$/i, '1');
+  setValue(/^centimetres$/i, '80');
+  setValue(/body mass \(kg\)/i, '80');
+}
+
+/**
+ * The body step with the sex question left as it opens: `nd` (r2.11, decision A1). Every field
+ * except the ones the test under it is about is left blank, so the ND rules are what decide the
+ * step rather than a half-filled form.
+ */
+function reachBodyWithoutSex(): void {
+  render(<SetupWizard />);
+  next();
+  next();
+}
+
+/**
+ * The same, with every OTHER body field filled, so the sex question and the body-fat rule that
+ * follows from it are the only things left that can block the step.
+ */
+function reachBodyFilledWithoutSex(): void {
+  reachBodyWithoutSex();
   setValue(/^age \(years\)$/i, '30');
   setValue(/^metres$/i, '1');
   setValue(/^centimetres$/i, '80');
@@ -989,12 +1048,15 @@ describe('Brief B: the body-fat control reorder (C1.08.1 to C1.08.4, C1.08.7)', 
   it('pre-selects Percentage, in the order Percentage, Body measurements, Not measured', () => {
     reachBody();
     const radios = screen.getAllByRole('radio', { name: /percentage|body measurements|not measured/i });
+    // r2.13(ii) put a citation superscript on the Percentage label, his own example
+    // ("Percentage^2"), which is why the accessible name now ends in the entry number. The ORDER
+    // and the pre-selection are what this test is about and both are unchanged.
     expect(radios.map((r) => r.getAttribute('aria-label') ?? r.closest('label')?.textContent)).toEqual([
-      'Percentage',
+      'Percentage2',
       'Body measurements',
       'Not measured',
     ]);
-    expect(screen.getByLabelText('Percentage')).toBeChecked();
+    expect(screen.getByLabelText('Percentage2')).toBeChecked();
   });
 
   it('leaves Next enabled with the percentage box blank, because body fat stays optional', () => {
@@ -1021,7 +1083,22 @@ describe('Brief B: the sex explainer (C1.07.6, C1.07.10 to C1.07.16)', () => {
     fireEvent.click(screen.getByText('Options suck? I agree. Click here for a workaround.'));
     expect(screen.getByTestId('sex-rationale-backdrop')).toBeInTheDocument();
     expect(screen.getByText('S = +5 for male, -161 for female [kcal/day]')).toBeInTheDocument();
-    expect(screen.getByText('If you are on gender-affirming hormone therapy')).toBeInTheDocument();
+    /*
+     * r2.12(iv) and R14: the segment-two heading is a NOUN PHRASE in Title Case now. Round 1
+     * shipped "If you are on gender-affirming hormone therapy", which is a conditional clause,
+     * and R14's second clause names that exact wording as the thing to fix.
+     */
+    expect(
+      screen.getByText('Individuals in Gender-Affirming Hormone Therapy'),
+    ).toBeInTheDocument();
+    // r2.12(iv): his three subsection headings, in his order.
+    for (const heading of [
+      'Still an Open Research Question',
+      'What We Know',
+      'I Do. So, What Now?',
+    ]) {
+      expect(screen.getByText(heading)).toBeInTheDocument();
+    }
     // No six-month threshold ships (decision hrt-no-threshold-ffm-path).
     expect(document.body.textContent ?? '').not.toMatch(/six[- ]month|6[- ]month/i);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
@@ -1088,17 +1165,31 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
     // Let the debounced write reach the store.
     vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
 
+    /*
+     * BOTH TIERS, SEPARATELY. Round 2's r2.11 and plan decision A2 commit a step's answers on
+     * Next, so the two fields whose steps were confirmed sit in the committed answers while the
+     * name, typed on the step still in progress, sits in `buffer` and has NOT replaced anything.
+     *
+     * This is the tension A2 says must be solved rather than discovered: if the buffer were not
+     * persisted, closing the browser here would lose the name, which is the exact loss C1.G.1
+     * exists to prevent; if the buffer were written into the answers, Next would mean nothing.
+     */
     const stored = useAppStore.getState().setupDraft;
     expect(stored?.units).toBe('imperial');
     expect(stored?.timezone).toBe('America/New_York');
-    expect(stored?.displayName).toBe('Ada Lovelace');
     expect(stored?.stepIndex).toBe(2);
+    // The committed tier was NOT overwritten by the typing.
+    expect(stored?.displayName).toBe('');
+    // The uncommitted tier holds it, and holds the committed answers unchanged beside it.
+    expect(stored?.buffer?.displayName).toBe('Ada Lovelace');
+    expect(stored?.buffer?.units).toBe('imperial');
+    expect(stored?.buffer?.timezone).toBe('America/New_York');
 
     // Simulate a reload: the document the store holds survives; only the component remounts.
     unmount();
     render(<SetupWizard />);
 
-    // The step index survived: the body step's own field is already on screen.
+    // The step index survived, and so did the half-typed value on it.
     expect(screen.getByLabelText(/^How should I refer to you\?$/i)).toHaveValue('Ada Lovelace');
 
     // The other two patched fields survived on their own, earlier steps.
@@ -1197,6 +1288,7 @@ describe('Brief F: the equipment sliders', () => {
     next(); // units: metric is the default
     setValue(/^time zone$/i, 'America/New_York');
     next();
+    pickSex();
     setValue(/^age \(years\)$/i, '30');
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
@@ -1380,6 +1472,7 @@ describe('Brief F: the equipment sliders', () => {
     next();
     setValue(/^time zone$/i, 'America/New_York');
     next();
+    pickSex();
     setValue(/^age \(years\)$/i, '30');
     setValue(/^feet$/i, '5');
     setValue(/^inches$/i, '11');
@@ -1420,5 +1513,398 @@ describe('Brief F: the equipment sliders', () => {
     toTrainingStep();
     expect(screen.queryByText('Equipment', { selector: 'label' })).not.toBeInTheDocument();
     expect(screen.getByText('Equipment Access')).toBeInTheDocument();
+  });
+});
+
+/*
+ * ============================================================================
+ * ALPHA ROUND 2, brief K: claims r2.10 to r2.16 on the body step.
+ * ============================================================================
+ */
+
+describe('r2.11: the sex control is deselectable and ND is the default', () => {
+  it('opens with neither option checked, and names the state rather than showing a blank group', () => {
+    reachBodyWithoutSex();
+    expect(screen.getByLabelText('Male')).not.toBeChecked();
+    expect(screen.getByLabelText('Female')).not.toBeChecked();
+    // A radiogroup with nothing checked is otherwise indistinguishable from one that failed to
+    // render, so the third state is named in text and announced through role="status".
+    const state = screen.getByTestId('sex-state');
+    expect(state).toHaveTextContent('Not Disclosed');
+    expect(state).toHaveAttribute('role', 'status');
+  });
+
+  it('clears the selection back to ND when the checked option is clicked again', () => {
+    reachBodyWithoutSex();
+    pickSex();
+    expect(screen.getByLabelText('Male')).toBeChecked();
+    expect(screen.getByTestId('sex-state')).toHaveTextContent(
+      'Click the selected option again to clear it.',
+    );
+
+    // His words: "we need to allow the user to click on what they have selected again and
+    // deselect it". A checked radio fires no change event, so the deselect rides on the click.
+    pickSex();
+    expect(screen.getByLabelText('Male')).not.toBeChecked();
+    expect(screen.getByTestId('sex-state')).toHaveTextContent('Not Disclosed');
+  });
+
+  it('switches the selection between the two without ever clearing it by accident', () => {
+    reachBodyWithoutSex();
+    pickSex('Male');
+    pickSex('Female');
+    expect(screen.getByLabelText('Female')).toBeChecked();
+    expect(screen.getByLabelText('Male')).not.toBeChecked();
+  });
+});
+
+describe('decision A1: ND makes the body-fat percentage required', () => {
+  it('blocks Next with no percentage, and stops blocking once one is typed', () => {
+    reachBodyFilledWithoutSex();
+    // The engine's own rule, stated on the screen: Mifflin-St Jeor has no sex-free form, so the
+    // only equation left is Cunningham and Cunningham needs a body-fat percentage.
+    expect(screen.getByTestId('bodyfat-optional')).toHaveTextContent(
+      'Required without a sex: the equation with no sex term needs it.',
+    );
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
+    next();
+    expect(screen.getByText(FORMAT.stepOf(3, STEPS.length, 'Body'))).toBeInTheDocument();
+
+    setValue(/body fat \(%\)/i, '20');
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+    next();
+    expect(
+      screen.getByText(FORMAT.stepOf(4, STEPS.length, 'Equipment & Availability')),
+    ).toBeInTheDocument();
+  });
+
+  it('does not require it once a sex is given, and requires it again if the sex is cleared', () => {
+    reachBodyFilledWithoutSex();
+    pickSex();
+    expect(screen.getByTestId('bodyfat-optional')).toHaveTextContent(
+      'Optional. With it, RMR uses the Cunningham equation.',
+    );
+    expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
+
+    pickSex(); // deselect, back to ND
+    expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('shows the tape option, refuses it, and ANNOUNCES the refusal rather than only greying it', () => {
+    reachBodyWithoutSex();
+    const tape = screen.getByLabelText('Body measurements');
+    // "Show the option, disabled, with one line saying why. Do not hide it." (decision A1)
+    expect(tape).toBeInTheDocument();
+    expect(tape).toHaveAttribute('aria-disabled', 'true');
+    // aria-disabled and not the disabled ATTRIBUTE: a disabled input leaves the tab order, so a
+    // screen-reader user arrows past it and never hears the reason.
+    expect(tape).not.toBeDisabled();
+
+    // The reason is wired to the control, so it is part of what the control announces.
+    const reason = screen.getByTestId('bodyfat-nd-reason');
+    expect(reason).toHaveTextContent('Unavailable without a sex: the equations differ in form.');
+    expect(tape.getAttribute('aria-describedby')).toBe(reason.id);
+
+    // And the refusal holds: clicking it does not select it, and no girth field appears.
+    fireEvent.click(tape);
+    expect(tape).not.toBeChecked();
+    expect(screen.queryByLabelText(/^neck \(cm\)$/i)).toBeNull();
+  });
+
+  it('refuses Not measured on the same terms, and repairs the mode if the sex is cleared', () => {
+    reachBodyWithoutSex();
+    pickSex();
+    fireEvent.click(screen.getByLabelText('Not measured'));
+    expect(screen.getByLabelText('Not measured')).toBeChecked();
+
+    // Clearing the sex must not leave the screen holding a mode the rules forbid, not even for
+    // one frame: selectSex repairs it on the click that caused it.
+    pickSex();
+    expect(screen.getByLabelText('Percentage2')).toBeChecked();
+    expect(screen.getByLabelText('Not measured')).toHaveAttribute('aria-disabled', 'true');
+  });
+
+  it('keeps a typed percentage when the sex is cleared, rather than throwing the number away', () => {
+    reachBodyWithoutSex();
+    pickSex();
+    setValue(/body fat \(%\)/i, '22');
+    pickSex();
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(22);
+  });
+
+  it('shows the beverage target as a RANGE on review, with the reason, and never one figure', () => {
+    reachBodyFilledWithoutSex();
+    setValue(/body fat \(%\)/i, '20');
+    next(); // training
+    next(); // goal
+    setValue(/^goal$/i, 'fat-loss');
+    next(); // availability
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
+    next(); // programme
+    next(); // guidance
+    next(); // review
+
+    const fluid = screen.getByTestId('target-fluid');
+    expect(fluid).toHaveTextContent('2200 mL to 3000 mL');
+    // Neither endpoint may stand alone as "the target", and the average of the two is a figure
+    // the IOM never published.
+    expect(fluid.textContent).not.toBe('2200 mL');
+    expect(fluid.textContent).not.toBe('3000 mL');
+    expect(fluid.textContent ?? '').not.toContain('2600');
+    expect(screen.getByTestId('fluid-range-note')).toHaveTextContent(
+      'The reference intake is published per sex, so both figures are shown.',
+    );
+  });
+
+  it('reads the profile back as Not Disclosed rather than as a blank row', () => {
+    reachBodyFilledWithoutSex();
+    setValue(/body fat \(%\)/i, '20');
+    next();
+    next();
+    setValue(/^goal$/i, 'fat-loss');
+    next();
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
+    next();
+    next();
+    next();
+    expect(screen.getByTestId('review-sex')).toHaveTextContent('Not Disclosed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    const state = useAppStore.getState();
+    const id = state.activeProfileId ?? '';
+    expect(state.profiles[id]?.body.sex).toBe('nd');
+    // The stored hydration preference is a seeded figure from the published pair, never their
+    // mean; see seedBeverageTargetML's own comment for why the low end.
+    expect(state.profiles[id]?.hydration.dailyTargetML).toBe(2200);
+  });
+});
+
+describe('r2.14: the tape fields follow the selected sex', () => {
+  it('asks a male user for neck and abdomen II, and for no hip girth', () => {
+    reachBodyWithoutSex();
+    pickSex('Male');
+    fireEvent.click(screen.getByLabelText('Body measurements'));
+    expect(screen.getByLabelText(/^neck \(cm\)$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/abdomen ii \(cm\)/i)).toBeInTheDocument();
+    // The male Navy equation reads no hip girth at all, so the field is absent rather than
+    // optional. This half already shipped before round 2 and is asserted here as a regression
+    // guard, not as new behaviour.
+    expect(screen.queryByLabelText(/^hip \(cm\)$/i)).toBeNull();
+    expect(screen.queryByLabelText(/abdomen i \(cm\)/i)).toBeNull();
+  });
+
+  it('asks a female user for the hip girth and swaps the abdomen site', () => {
+    reachBodyWithoutSex();
+    pickSex('Female');
+    fireEvent.click(screen.getByLabelText('Body measurements'));
+    expect(screen.getByLabelText(/^hip \(cm\)$/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/abdomen i \(cm\)/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/abdomen ii \(cm\)/i)).toBeNull();
+  });
+
+  it('renames the tape disclosure to Disclaimer and carries his text, not the old girth list', () => {
+    reachBodyWithoutSex();
+    pickSex('Male');
+    fireEvent.click(screen.getByLabelText('Body measurements'));
+    // A NEW key, not a rename of disclosure.why: that key has six call sites across the app
+    // (plan ruling D2.14.3).
+    expect(screen.getByText('Disclaimer')).toBeInTheDocument();
+    expect(screen.getByTestId('tape-disclaimer').textContent ?? '').toContain(
+      'FYI: the fields differ between male and female in this method.',
+    );
+    // The old contents, which named which girth to enter where, are gone: the fields say it.
+    expect(screen.queryByText('why?')).toBeNull();
+  });
+
+  it('puts a Body Fat Estimate subheading over the tape section', () => {
+    reachBodyWithoutSex();
+    pickSex('Male');
+    fireEvent.click(screen.getByLabelText('Body measurements'));
+    expect(
+      screen.getByRole('heading', { name: /^body fat estimate/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe('r2.15: one reference list, one numbering scheme', () => {
+  it('collapses every citation into a single References box', () => {
+    reachBody();
+    const refs = screen.getByTestId('references');
+    expect(refs.tagName).toBe('DETAILS');
+    expect(within(refs).getByText('References')).toBeInTheDocument();
+  });
+
+  it('numbers each entry once, and the number is the superscript beside the field', () => {
+    reachBody();
+    const refs = screen.getByTestId('references');
+    // A <ul>, not an <ol>: the ordered list was the SECOND numbering scheme, which is what made
+    // entry two read "2. (1) Body-fat percentage..." (r2.15(ii)).
+    expect(refs.querySelector('ol')).toBeNull();
+    expect(refs.querySelector('ul')).not.toBeNull();
+
+    const markers = [...refs.querySelectorAll('li > p > sup')].map((el) => el.textContent);
+    // Unique, contiguous, and one per entry.
+    expect(markers).toEqual([...markers].filter((m, i) => markers.indexOf(m) === i));
+    expect(markers).toEqual(['1', '2', '3', '4', '5', '6', '7']);
+
+    // And the numbers the fields carry point into that list rather than into a second one.
+    expect(screen.getByText('Biological sex').textContent).toContain('1');
+    expect(screen.getByLabelText('Percentage2')).toBeInTheDocument();
+    expect(screen.getByText('Height').textContent).toContain('4');
+  });
+
+  it('prints a bold lead sentence above each citation, consistently', () => {
+    reachBody();
+    const refs = screen.getByTestId('references');
+    const leads = [...refs.querySelectorAll('.wiz-cite-lead')];
+    const sources = [...refs.querySelectorAll('.wiz-cite-src')];
+    expect(leads).toHaveLength(BODY_EQUATIONS.length + 1);
+    expect(sources).toHaveLength(BODY_EQUATIONS.length + 1);
+    for (const lead of leads) expect((lead.textContent ?? '').length).toBeGreaterThan(20);
+  });
+
+  it('prints every citation in Elsevier order: pages, then year, then DOI last', () => {
+    for (const eq of BODY_EQUATIONS) {
+      const doiAt = eq.source.indexOf('DOI');
+      if (doiAt === -1) continue; // the FAO row, which says in words that it has no DOI
+      const yearAt = eq.source.search(/\b(19|20)\d{2}\b/);
+      expect({ source: eq.source, ordered: yearAt < doiAt }).toEqual({
+        source: eq.source,
+        ordered: true,
+      });
+    }
+  });
+});
+
+describe('r2.16: every missing field is marked at once', () => {
+  it('marks all of them on one failed Next, not one per press', () => {
+    reachBodyWithoutSex();
+    pickSex();
+    // Three blanks at once: age, stature and body mass. Round 1 revealed them one press at a
+    // time, which is the complaint ("So i dont have to click next over and over again").
+    next();
+
+    const marked = [
+      screen.getByLabelText(/^age \(years\)$/i),
+      screen.getByLabelText(/^metres$/i),
+      screen.getByLabelText(/^centimetres$/i),
+      screen.getByLabelText(/body mass \(kg\)/i),
+    ];
+    for (const field of marked) expect(field).toHaveAttribute('aria-invalid', 'true');
+    // The mark is never colour alone: each field carries its message too (00-CONTEXT).
+    expect(screen.getAllByText('Enter a number.').length).toBeGreaterThanOrEqual(2);
+    // Focus still lands on the first one, top to bottom.
+    expect(document.activeElement).toBe(screen.getByLabelText(/^age \(years\)$/i));
+  });
+
+  it('clears a field mark as soon as that field is filled, leaving the others marked', () => {
+    reachBodyWithoutSex();
+    pickSex();
+    next();
+    setValue(/^age \(years\)$/i, '30');
+    expect(screen.getByLabelText(/^age \(years\)$/i)).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.getByLabelText(/body mass \(kg\)/i)).toHaveAttribute('aria-invalid', 'true');
+  });
+});
+
+describe('r2.11 / decision A2: a step commits on Next, and Back does not commit', () => {
+  it('does not replace the committed answer until Next is pressed', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(FIXED_NOW);
+
+    render(<SetupWizard />);
+    next();
+    next();
+    pickSex();
+    setValue(/^How should I refer to you\?$/i, 'Grace');
+    vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
+    expect(useAppStore.getState().setupDraft?.displayName).toBe('');
+    expect(useAppStore.getState().setupDraft?.buffer?.displayName).toBe('Grace');
+
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    next();
+    vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
+    // Next, and only Next, is what replaced it. The buffer is empty again.
+    expect(useAppStore.getState().setupDraft?.displayName).toBe('Grace');
+    expect(useAppStore.getState().setupDraft?.buffer).toBeNull();
+  });
+
+  it('discards the step in progress on Back rather than committing it', () => {
+    render(<SetupWizard />);
+    next();
+    next();
+    pickSex();
+    setValue(/^How should I refer to you\?$/i, 'Grace');
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    next(); // commits
+
+    // Now edit, and go Back instead of Next.
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    setValue(/^How should I refer to you\?$/i, 'Ada');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    next(); // forward again, to the body step
+    expect(screen.getByLabelText(/^How should I refer to you\?$/i)).toHaveValue('Grace');
+  });
+});
+
+/*
+ * r2.10, "The page is a bit wider / doesn't fit in the phone."
+ *
+ * jsdom performs NO layout: every element it renders has a zero client rectangle, so a measured
+ * width here would assert nothing at all. What is checkable is the rule that makes the overflow
+ * impossible, which is the shrink permission on the two-column rows and on the controls inside
+ * them. The 390 px pass on a real device is a row in docs/phone-visual-check.md, and is the only
+ * evidence that counts for geometry.
+ */
+describe('r2.10: the step cannot scroll sideways at 390 px', () => {
+  it('lets every two-column row and every control shrink below its intrinsic width', () => {
+    // A grid track of `1fr` is `minmax(auto, 1fr)`, and that `auto` is the min-content width of a
+    // number field, which is about twenty characters. Two of those exceed a 390 px phone's
+    // content box, and the row pushes the document wider than the viewport.
+    expect(setupCss).toContain('grid-template-columns: minmax(0, 1fr);');
+    expect(setupCss).toContain('grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);');
+    expect(setupCss).not.toMatch(/grid-template-columns:\s*1fr;/);
+    expect(setupCss).not.toMatch(/grid-template-columns:\s*1fr 1fr;/);
+
+    // The flex form of the same row, above the breakpoint.
+    const rowChildren = setupCss.slice(setupCss.indexOf('.wiz .wiz-row > * {'));
+    expect(rowChildren.slice(0, 120)).toContain('min-width: 0;');
+  });
+});
+
+/*
+ * r2.12(i). The close control moved from the upper LEFT (round 1's C1.07.11) to the upper RIGHT.
+ * A reversal is allowed (plan ruling D2.12.2); a stale comment recording the old ruling beside
+ * the new code is not, which is what this second assertion is for.
+ */
+describe('r2.12: the modal close control, and the comment that records the ruling', () => {
+  it('draws it at the upper right', () => {
+    const close = setupCss.slice(setupCss.indexOf('.wiz-modal-close {'));
+    const block = close.slice(0, close.indexOf('}'));
+    expect(block).toContain('right: 0.75rem;');
+    expect(block).not.toContain('left:');
+  });
+
+  it('leaves no comment still claiming the upper left', () => {
+    expect(setupCss).not.toContain('UPPER LEFT');
+    expect(setupCss).toContain('UPPER RIGHT');
   });
 });
