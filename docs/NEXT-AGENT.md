@@ -16,9 +16,7 @@ npx vitest run                 # 123 files, 2462 tests, all passing. If not, sto
 cat docs/plans/2026-09-06-ORCHESTRATION.md
 ```
 
-Then dispatch **wave 2**: briefs **J** and **N**, in separate worktrees, in parallel. They are
-disjoint, J being `src/ui/intro/` and N the shell and the time zone, and neither touches the wizard
-body. Whichever branch merges second must regenerate the catalogue.
+**Wave 2 is half dispatched. Read section 2.1 before you do anything with it.**
 
 Wave 1 is done. Brief K merged on 2026-09-06 as `3f43e11`; it went first and alone because it
 changed the `Sex` type and the wizard's draft model, and anything landing before it would have been
@@ -26,6 +24,28 @@ rewritten against it.
 
 Everything you need is already written. **Do not re-plan the round.** Six briefs remain, every open
 question is ruled, and the dispatch order is set.
+
+### 2.1 Where wave 2 actually stands, 2026-09-06
+
+| Brief | State |
+| --- | --- |
+| **N** | Dispatched and running when the session stopped. Branch `worktree-agent-af85b546ca8c9a7ac` |
+| **J** | **NOT dispatched.** Three launch attempts failed on a harness rate limit, not on the task |
+
+**The defect to fix before you merge N.** Its worktree branched from `739b88e`, the session's
+starting commit, **not from current `main`** — so it does not contain K's merge. Its
+`src/domain/types.ts` still reads `Sex = "male" | "female"`, with no `nd`, no `StatedSex` and no
+two-tier draft buffer. So:
+
+- **Verify the base of every worktree you dispatch**, before you trust a word of its report:
+  `git worktree list` shows the commit. Do not assume isolation branches from `HEAD`.
+- **Merge `main` into N's branch first**, resolve there, regenerate the catalogue, then re-run the
+  whole gate set before merging back. N and K both touch `src/content/copy.ts`, and N's banner
+  reads the setup name, which is exactly what K's two-tier buffer changed.
+- N was told in its prompt to decide whether the banner follows the committed draft or the
+  keystroke buffer. **That code is not in its tree**, so its answer is about a model it could not
+  see. Re-ask the question against merged `main`, and do not accept the reasoning unchecked.
+- **Dispatch J from current `main`**, and check its worktree base before believing it too.
 
 ## 2. The state, in one table
 
