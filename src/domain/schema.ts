@@ -136,7 +136,17 @@ const PercentSchema = z.number().min(0).max(100);
 // Profile
 // ---------------------------------------------------------------------------
 
-const SexSchema = z.enum(['male', 'female']);
+/**
+ * Round 2 claim r2.11 / plan decision A1: `nd` (non-disclosed) is additive, and it is the
+ * wizard's default rather than an error state.
+ *
+ * `.catch('nd')` for the same reason `ProfileEquipmentSchema` catches: a value this enum does not
+ * recognise (corruption, or a tag from a future downgrade) must not fail the whole document over
+ * one field. The fallback is `nd` and not `male` deliberately. Falling back to a stated sex would
+ * INVENT an answer the user never gave and would silently feed a sex-specific coefficient into
+ * three engines; `nd` records the absence, which is what a value we cannot read actually means.
+ */
+const SexSchema = z.enum(['male', 'female', 'nd']).catch('nd');
 /**
  * Master plan section 10.1: the three FAO/WHO/UNU 2004 PAL bands the content
  * review verified. The five-band form with invented midpoints was rejected.
@@ -651,7 +661,7 @@ const MAX_SETUP_DRAFT_STEP_INDEX = 8;
  * NUTRITION_DOMAIN: this schema's job is to keep a corrupted document from taking the rest of
  * the app down with it, not to validate an answer, which is the wizard's own job on resume.
  */
-const SetupDraftShapeSchema = z.object({
+const SetupAnswersShapeSchema = z.object({
   units: UnitSystemSchema,
   timezone: z.string().max(MAX_DRAFT_TEXT_CHARS),
   displayName: z.string().max(MAX_DRAFT_TEXT_CHARS),
@@ -697,7 +707,19 @@ const SetupDraftShapeSchema = z.object({
   weeklySessionTarget: z.string().max(MAX_DRAFT_TEXT_CHARS),
   weeks: z.string().max(MAX_DRAFT_TEXT_CHARS),
   includeCardio: z.boolean(),
+});
+
+/**
+ * The committed answers, plus the step index, plus the uncommitted step in progress.
+ *
+ * `buffer` is round 2's commit-on-Next tier (plan decision A2, types.ts `SetupDraft`). Its own
+ * `.catch(null)` is deliberately INSIDE the draft rather than relying on the draft's outer catch:
+ * a corrupt buffer costs the user the step they were typing, where the outer catch would cost
+ * them every answer they had already committed. The narrower catch loses the smaller thing.
+ */
+const SetupDraftShapeSchema = SetupAnswersShapeSchema.extend({
   stepIndex: z.int().min(0).max(MAX_SETUP_DRAFT_STEP_INDEX),
+  buffer: SetupAnswersShapeSchema.nullable().catch(null),
 });
 
 /**

@@ -165,8 +165,11 @@ describe('published constants', () => {
 
 describe('dailyBeverageTargetML', () => {
   it('re-exports the IOM 2005 beverage share, not the total-water AI', () => {
-    expect(dailyBeverageTargetML('male')).toBe(3000); // [mL/day]
-    expect(dailyBeverageTargetML('female')).toBe(2200); // [mL/day]
+    expect(dailyBeverageTargetML('male')).toEqual({ kind: 'stated', ml: 3000 }); // [mL/day]
+    expect(dailyBeverageTargetML('female')).toEqual({ kind: 'stated', ml: 2200 }); // [mL/day]
+    // Round 2 decision A1: the re-export carries the `nd` range too, so a caller reaching it
+    // through this module cannot get a single figure the reference never published either.
+    expect(dailyBeverageTargetML('nd')).toEqual({ kind: 'range', loML: 2200, hiML: 3000 });
   });
 });
 

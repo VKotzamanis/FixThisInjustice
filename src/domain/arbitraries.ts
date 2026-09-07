@@ -18,6 +18,7 @@ import type {
   PushDevice,
   ReminderSettings,
   SessionAssignment,
+  SetupAnswers,
   SetupDraft,
   SpecimenInventory,
   TimeCapsule,
@@ -128,7 +129,10 @@ export const anyProfile: fc.Arbitrary<Profile> = fc.record({
   units: anyUnitSystem,
   createdAt: anyEpochMs,
   body: fc.record({
-    sex: fc.constantFrom('male' as const, 'female' as const),
+    // Round 2 decision A1: `nd` is a stored value like any other, so the round-trip property has
+    // to see it. It is NOT a value the engines accept unconditionally, which is exactly why a
+    // generated profile must be able to carry it.
+    sex: fc.constantFrom('male' as const, 'female' as const, 'nd' as const),
     birthYear: fc.integer({ min: 1900, max: 2200 }),
     heightCm: finite(1, 300), // [cm]
     baselineMassKg: finite(1, 500), // [kg]
@@ -537,11 +541,11 @@ const anyDaySlot = fc.record({
  * would round-trip to `null` rather than to itself, and only a VALID generated draft exercises
  * the branch where the round trip has to reproduce the object exactly.
  */
-export const anySetupDraft: fc.Arbitrary<SetupDraft> = fc.record({
+const anySetupAnswers: fc.Arbitrary<SetupAnswers> = fc.record({
   units: anyUnitSystem,
   timezone: anyTimeZone,
   displayName: anyDraftText,
-  sex: fc.constantFrom('male' as const, 'female' as const),
+  sex: fc.constantFrom('male' as const, 'female' as const, 'nd' as const),
   ageYears: anyDraftText,
   heightM: anyDraftText,
   heightCm: anyDraftText,
@@ -588,8 +592,20 @@ export const anySetupDraft: fc.Arbitrary<SetupDraft> = fc.record({
   weeklySessionTarget: anyDraftText,
   weeks: anyDraftText,
   includeCardio: fc.boolean(),
-  stepIndex: fc.integer({ min: 0, max: 8 }),
 });
+
+/**
+ * The persisted draft: committed answers, the step reached, and the uncommitted step in progress
+ * (round 2 decision A2). `buffer` is generated as an option so both tiers are exercised: a draft
+ * with nothing uncommitted and a draft caught mid-step must both round-trip exactly.
+ */
+export const anySetupDraft: fc.Arbitrary<SetupDraft> = fc
+  .tuple(
+    anySetupAnswers,
+    fc.integer({ min: 0, max: 8 }),
+    fc.option(anySetupAnswers, { nil: null }),
+  )
+  .map(([answers, stepIndex, buffer]) => ({ ...answers, stepIndex, buffer }));
 
 /**
  * A whole persisted document. Profile ids are shared across the per-profile maps
