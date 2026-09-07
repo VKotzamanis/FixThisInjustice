@@ -29,23 +29,26 @@ question is ruled, and the dispatch order is set.
 
 | Brief | State |
 | --- | --- |
-| **N** | Dispatched and running when the session stopped. Branch `worktree-agent-af85b546ca8c9a7ac` |
+| **N** | **Finished, committed, NOT verified and NOT merged.** Branch `worktree-agent-af85b546ca8c9a7ac`, commit `53db114`, parent `82e4a06`. Its report is captured in `docs/review/2026-09-06-brief-N-report.md` |
 | **J** | **NOT dispatched.** Three launch attempts failed on a harness rate limit, not on the task |
 
-**The defect to fix before you merge N.** Its worktree branched from `739b88e`, the session's
-starting commit, **not from current `main`** — so it does not contain K's merge. Its
-`src/domain/types.ts` still reads `Sex = "male" | "female"`, with no `nd`, no `StatedSex` and no
-two-tier draft buffer. So:
+**Your first job is to verify N, not to merge it.** Nothing in its report has been checked. Run all
+seven gates in its worktree, then the checks no gate can make — that `PROMINENT_ZONES` contains no
+invented population data, that the banner never alters the user's own text, that the new CSS uses
+tokens, and that 59 and 418 in the code match the ruling. The report lists what it changed outside
+its brief; read that section before reading the diff.
 
-- **Verify the base of every worktree you dispatch**, before you trust a word of its report:
-  `git worktree list` shows the commit. Do not assume isolation branches from `HEAD`.
-- **Merge `main` into N's branch first**, resolve there, regenerate the catalogue, then re-run the
-  whole gate set before merging back. N and K both touch `src/content/copy.ts`, and N's banner
-  reads the setup name, which is exactly what K's two-tier buffer changed.
-- N was told in its prompt to decide whether the banner follows the committed draft or the
-  keystroke buffer. **That code is not in its tree**, so its answer is about a model it could not
-  see. Re-ask the question against merged `main`, and do not accept the reasoning unchecked.
-- **Dispatch J from current `main`**, and check its worktree base before believing it too.
+**N found a live defect it was right not to fix.** `src/ui/views/SettingsView.tsx:110-117` still
+builds all 418 zones in IANA alphabetical order with the old `(UTC+02:00)` label — the r2.09 defect,
+still shipping on the Settings screen. Brief N does not list that file and rule 5 says stop.
+`groupTimeZones` is ready for it. It needs a claim of its own or a line in a later brief.
+
+**The worktree base trap, which cost this round an hour.** N's worktree branched from `739b88e`,
+the session's starting commit, **not from current `main`**, so it began without K. It caught this
+itself, read this section, and fast-forwarded onto `main` — so the merge-main-in step is already
+done for N, and its work is against K's real code. **Do not assume isolation branches from `HEAD`.**
+Run `git worktree list` immediately after dispatch and record the base commit. Dispatch J from
+current `main` and check its base the same way.
 
 ## 2. The state, in one table
 
