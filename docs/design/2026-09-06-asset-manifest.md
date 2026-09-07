@@ -327,6 +327,20 @@ note, not an asset.
 
 ---
 
+## 10. SpriteAI character animation (owner-drawn layers, script-composited)
+
+Not part of the round-2 register — a separate character asset the owner drew and animated
+alongside it, tracked here so it isn't lost. Method and pitfalls are written up in full in
+**[`docs/design/2026-09-06-layered-sprite-animation-guide.md`](2026-09-06-layered-sprite-animation-guide.md)**,
+the reusable how-to for this technique; this entry is only the asset's own record.
+
+| id | where | what | status |
+| --- | --- | --- | --- |
+| `spriteai-vasileios-layers` | `agy-artifacts/SpriteAI_Vasileios/{HairandFace,OnlyHair,Sunglasses,Only_face,Character_Combined}_32x32px.png` | five owner-drawn layers (base, hair overlay, sunglasses, hairless face, static reference), 32x32 each, verified to composite back to the reference within single-digit pixel drift | exists |
+| `spriteai-vasileios-jolt-animation` | `agy-artifacts/SpriteAI_Vasileios/sprite-40x40px-11f-sheet.png` (160x120, 11 frames of 40x40) and `Untitled-sprite-40x40px-11f.gif` (11 frames, 130ms each) | sunglasses slide down revealing the owner's drawn eyes, head-jolt with a row-sheared hair reaction, settle — built via `scripts/make-sunglasses-jolt-spritesheet.py`, then refined by the owner to 11 frames | exists, final |
+
+**Licence:** original, this project — same standing as every other asset in this manifest.
+
 ## Summary
 
 | type | exists | specified, ready | needs-decision |
@@ -339,6 +353,7 @@ note, not an asset.
 | Sound effects (§6) | 0 | 4 slots x 3 skins | 0 |
 | Motivation video (§7) | 0 | 1 | 0 |
 | Specimen cards (§8) | 37 (text) | 8 (category glyphs) | 0 |
+| SpriteAI character animation (§10) | 7 files (5 layers + sheet + gif) | 0 | 0 |
 
 **All four §0 decisions are ruled** (2026-09-06, owner via the asset-intake peer session): SVG
 format, mascot wiring on, app-icon direction 1 with the accent-matched colour in §2.1, category
