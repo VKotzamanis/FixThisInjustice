@@ -12,16 +12,20 @@ This file is the entry point. It replaces reading the whole history.
 
 ```
 git log --oneline -15          # what just happened
-npx vitest run                 # 123 files, 2430 tests, all passing. If not, stop and find out why
+npx vitest run                 # 123 files, 2462 tests, all passing. If not, stop and find out why
 cat docs/plans/2026-09-06-ORCHESTRATION.md
 ```
 
-Then dispatch **brief K**, `docs/plans/subagent-briefs/K-body-page-round2.md`, alone, in its own
-worktree. It changes the `Sex` type and the wizard's draft model, so anything that lands before it
-gets rewritten against it.
+Then dispatch **wave 2**: briefs **J** and **N**, in separate worktrees, in parallel. They are
+disjoint, J being `src/ui/intro/` and N the shell and the time zone, and neither touches the wizard
+body. Whichever branch merges second must regenerate the catalogue.
 
-Everything you need is already written. **Do not re-plan the round.** Seven briefs are drafted,
-every open question is ruled, and the dispatch order is set.
+Wave 1 is done. Brief K merged on 2026-09-06 as `3f43e11`; it went first and alone because it
+changed the `Sex` type and the wizard's draft model, and anything landing before it would have been
+rewritten against it.
+
+Everything you need is already written. **Do not re-plan the round.** Six briefs remain, every open
+question is ruled, and the dispatch order is set.
 
 ## 2. The state, in one table
 
@@ -29,9 +33,9 @@ every open question is ruled, and the dispatch order is set.
 | --- | --- |
 | Live | https://vkotzamanis.github.io/FixThisInjustice/ |
 | Round 1 | Closed. 80 of 127 claims shipped |
-| Round 2 | Open. 91 claims ledgered, every ruling taken, brief F shipped, seven briefs waiting |
-| Suite | 123 files, 2430 tests, green |
-| Failing on purpose | `scripts/check-title-case.mjs`, 139 of 226 naming keys. Not in CI until they are fixed. Run it rather than quoting this row: the count moves with every key added |
+| Round 2 | Open. 91 claims ledgered, every ruling taken, briefs F and K shipped, six waiting |
+| Suite | 123 files, 2462 tests, green |
+| Failing on purpose | `scripts/check-title-case.mjs`, 139 of 229 naming keys. Not in CI until they are fixed. Run it rather than quoting this row: the count moves with every key added |
 
 ## 3. The five rules that get work rejected
 
