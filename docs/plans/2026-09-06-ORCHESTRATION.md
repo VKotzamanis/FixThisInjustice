@@ -57,7 +57,7 @@ Always repeat these, whatever the brief:
 - **The catalogue trap**, in full, with the four commands in order.
 - **R14**: labels, headings and control names are Title Case; a heading is a noun phrase. New keys
   must comply even though 139 old ones do not.
-- **The baseline test count**, so a regression is visible. Currently 123 files, 2430 tests.
+- **The baseline test count**, so a regression is visible. Currently 123 files, 2462 tests.
 
 ## 4. Verify. Do not read the report and believe it.
 
