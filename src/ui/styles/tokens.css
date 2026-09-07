@@ -52,6 +52,23 @@
   --chart-grid: rgba(220, 230, 240, 0.08);
   --chart-text: rgba(220, 230, 240, 0.5);
   --chart-marker: var(--accent);
+
+  /*
+   * ROUND 2, r2.16: the invalid-field mark, and the highlight behind a heading.
+   *
+   * `--field-invalid-bg` is the owner's own spec for a field that is missing information: "just
+   * make the fill of the box white and the border red and bold" (r2.16(2)). The BORDER colour is
+   * `--danger`, which every skin already defines; only the fill needed a token, because white is
+   * not otherwise in this set and a hex literal in a component stylesheet is the defect this file
+   * exists to prevent. `--field-invalid-text` rides with it: a white fill needs dark ink, and the
+   * skin's own `--text` is near-white on two of the three grounds.
+   *
+   * `--highlight-bg` is the "white highlight" r2.12(iv) asks for behind the gender-affirming
+   * heading, which is what makes `--accent` legal as type there on limelight.
+   */
+  --field-invalid-bg: #ffffff;
+  --field-invalid-text: #0a0b0c;
+  --highlight-bg: #ffffff;
 }
 
 * {
@@ -157,6 +174,22 @@ body {
   --chart-grid: rgba(0, 0, 0, 0.14);
   --chart-text: var(--fine);
   --chart-marker: var(--ink);
+
+  /*
+   * r2.16 / r2.12(iv). The invalid fill is white and the ink on it is this skin's own black,
+   * which measures 21:1; the border stays `--danger`, which is ink here rather than a red,
+   * because round-three section 2.3 computed a contrast ratio for five colours on the lime ground
+   * and for no others, and a red invented here would ship an unmeasured contrast. A bold black
+   * border on a white fill is the highest-contrast mark this palette can make, and the field
+   * still carries its message in words.
+   *
+   * `--highlight-bg` white is load-bearing rather than decorative: pink on lime is 1.41:1 and
+   * BANNED as type at every size, while pink on white clears it. The highlight is what lets the
+   * gender-affirming heading take the accent at all.
+   */
+  --field-invalid-bg: #ffffff;
+  --field-invalid-text: var(--ink);
+  --highlight-bg: #ffffff;
 
   /* Display, marquee and stamp geometry. The offset is the shadow snap's resting value. */
   --display-stretch: 62%;
@@ -264,6 +297,15 @@ body {
   --chart-grid: var(--rule);
   --chart-text: var(--mute);
   --chart-marker: var(--amber);
+
+  /*
+   * r2.16 / r2.12(iv). The white fill takes the board's own darkest ground as ink (#000000 on
+   * #FFFFFF is 21:1); the border is `--danger`, which is this skin's published alert colour
+   * (#FF6B4A, 6.98:1 on the board ground) rather than a red named here.
+   */
+  --field-invalid-bg: #ffffff;
+  --field-invalid-text: var(--board);
+  --highlight-bg: #ffffff;
 }
 
 :root[data-skin='board'] body {

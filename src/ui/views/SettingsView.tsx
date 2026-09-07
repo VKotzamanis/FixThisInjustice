@@ -4,10 +4,10 @@ import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
 import { isValidTimeZone, utcOffsetLabel } from '../../domain/dates';
-import { dailyBeverageTargetML } from '../../domain/nutrition';
+import { dailyBeverageTargetML, statedBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
 import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
-import { displayLoad, formatVolume, toStoredLoad } from '../../domain/units';
+import { displayLoad, formatBeverageTarget, toStoredLoad } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
@@ -290,6 +290,12 @@ export function SettingsView(): JSX.Element {
   };
 
   const units = profile.units;
+  /*
+   * The published beverage reference for THIS profile: one figure, or the per-sex range when the
+   * sex was not disclosed (decision A1). Read once, so the sentence and the volume below cannot
+   * disagree about which of the two cases the profile is in.
+   */
+  const beverageTarget = dailyBeverageTargetML(profile.body.sex);
   const profileIds = Object.keys(profiles);
 
   /** Reject what the schema would reject, in the same words for every numeric field. */
@@ -462,8 +468,16 @@ export function SettingsView(): JSX.Element {
           });
         }}
       />
+      {/*
+        * Decision A1: with a non-disclosed sex the IOM figure is a RANGE, and the sentence has to
+        * say so rather than naming a default the reference never states for this profile. The
+        * discriminant is what forces the branch; the stored field above is a seeded preference,
+        * which is a different quantity from the published reference described here.
+        */}
       <p className="view-note">
-        {FORMAT.beverageDefault(formatVolume(dailyBeverageTargetML(profile.body.sex), units))}
+        {beverageTarget.kind === 'stated'
+          ? FORMAT.beverageDefault(formatBeverageTarget(beverageTarget, units))
+          : FORMAT.beveragePerSex(formatBeverageTarget(beverageTarget, units))}
       </p>
       {/* R9: the derivation of that default, and what it deliberately excludes. The litres
           come from the engine's mL/day constant rather than being restated in the copy
@@ -471,7 +485,7 @@ export function SettingsView(): JSX.Element {
       <details>
         <summary>{t('disclosure.why')}</summary>
         <p className="view-note">
-          {FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female'))}
+          {FORMAT.beverageBasis(statedBeverageTargetML('male'), statedBeverageTargetML('female'))}
         </p>
       </details>
 

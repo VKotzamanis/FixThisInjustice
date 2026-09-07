@@ -5,12 +5,12 @@ import { FORMAT, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
-import { dailyBeverageTargetML, type NutritionTargets } from '../../domain/nutrition';
+import { statedBeverageTargetML, type NutritionTargets } from '../../domain/nutrition';
 import { volumeReport } from '../../domain/plan/generator';
 import { EXERCISES } from '../../domain/plan/library';
 import { IntakeEntrySchema } from '../../domain/schema';
 import type { IntakeEntry, Profile } from '../../domain/types';
-import { displayMass, formatVolume } from '../../domain/units';
+import { displayMass, formatBeverageTarget } from '../../domain/units';
 import { useAppStore } from '../../store';
 import {
   useActivePlan,
@@ -154,7 +154,7 @@ export function TargetsView(): JSX.Element {
           {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
         </dd>
         <dt>{t('label.fluid')}</dt>
-        <dd data-testid="target-fluid">{formatVolume(targets.fluidML, profile.units)}</dd>
+        <dd data-testid="target-fluid">{formatBeverageTarget(targets.fluidML, profile.units)}</dd>
         <dt>{t('label.expectedRate')}</dt>
         <dd data-testid="target-rate">{rateText(targets, profile, overrides)}</dd>
         <dt>{t('label.creatineDose')}</dt>
@@ -182,7 +182,7 @@ export function TargetsView(): JSX.Element {
           {/* Litres derived from the engine's mL/day constant, not restated in the copy
               table where they could drift from what the app actually prescribes. */}
           <p>
-            {FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female'))}
+            {FORMAT.beverageBasis(statedBeverageTargetML('male'), statedBeverageTargetML('female'))}
           </p>
         </div>
       </details>

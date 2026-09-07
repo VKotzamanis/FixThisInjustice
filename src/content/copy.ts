@@ -62,8 +62,12 @@ export type CopyKey =
   | 'advice.timezoneDetected'
   | 'advice.timezonePick'
   | 'advice.timezoneInvalid'
+  | 'advice.beverageRange'
   | 'advice.bodyFatOptional'
+  | 'advice.bodyFatRequiredND'
   | 'advice.estimateBodyFat'
+  | 'advice.sexDeselect'
+  | 'advice.tapeNeedsSex'
   | 'advice.sexWorkaround'
   | 'advice.tapeMethod'
   | 'advice.tapeNeedFemale'
@@ -78,6 +82,8 @@ export type CopyKey =
   | 'advice.storedUnitsUnchanged'
   | 'advice.noProfileSetupFirst'
   // --- setup wizard fields and validation (P2 Task 7; appended by that task) ---
+  | 'disclosure.disclaimer'
+  | 'disclosure.references'
   | 'disclosure.why'
   | 'step.units'
   | 'step.timezone'
@@ -96,10 +102,13 @@ export type CopyKey =
   | 'label.centimetres'
   | 'label.sexMale'
   | 'label.sexFemale'
+  | 'label.sexNotDisclosed'
   | 'label.sexRationale'
   | 'label.bodyFatChart'
   | 'label.feet'
   | 'label.inches'
+  | 'label.bodyFat'
+  | 'label.bodyFatEstimate'
   | 'label.bodyFatNone'
   | 'label.bodyFatKnown'
   | 'label.bodyFatTape'
@@ -186,7 +195,6 @@ export type CopyKey =
   | 'advice.tapeOutOfDomain'
   | 'advice.bodyFatEstimate'
   | 'why.bodyFatEstimate'
-  | 'why.bodyFatOptional'
   | 'error.valueRequired'
   | 'error.pickOneDay'
   | 'error.positive'
@@ -647,6 +655,18 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.timezonePick': 'Select from the drop down menu:',
   'advice.timezoneInvalid': 'Not a recognised IANA time zone.',
   'advice.bodyFatOptional': 'Optional. With it, RMR uses the Cunningham equation.',
+  /*
+   * Round 2 decision A1. Not optional at all while the sex is Not Disclosed: Mifflin-St Jeor has
+   * no sex-free form, so Cunningham is the only equation left and Cunningham reads fat-free mass,
+   * which the app can only get from this field. R3, twelve words: this is twelve.
+   */
+  'advice.bodyFatRequiredND': 'Required without a sex: the equation with no sex term needs it.',
+  /* The one line saying why the tape route is shown but refused (A1). Nine words. */
+  'advice.tapeNeedsSex': 'Unavailable without a sex: the equations differ in form.',
+  /* r2.11: the deselect is not discoverable, so the control says so. Eight words. */
+  'advice.sexDeselect': 'Click the selected option again to clear it.',
+  /* Why the beverage row is a range and not a figure (A1). Twelve words. */
+  'advice.beverageRange': 'The reference intake is published per sex, so both figures are shown.',
   'advice.estimateBodyFat': 'Click here to estimate',
   'advice.sexWorkaround': 'Options suck? I agree. Click here for a workaround.',
   'advice.tapeMethod': 'US Navy circumference method. Keep the tape level and snug.',
@@ -665,6 +685,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- setup wizard fields and validation (P2 Task 7; appended by that task) ---
   // R9: the literal summary for any disclosure carrying arithmetic or a derivation.
   'disclosure.why': 'why?',
+  /*
+   * r2.14(iii) renames the tape disclosure to Disclaimer. A NEW key and not a rename of
+   * `disclosure.why`, per plan ruling D2.14.3: that key has six call sites across the app and
+   * renaming it would relabel every `why?` in it. Used once, on the body step.
+   */
+  'disclosure.disclaimer': 'Disclaimer',
+  /* r2.15(i): the one collapsible box holding every citation the body step prints. */
+  'disclosure.references': 'References',
   'step.units': 'Units',
   'step.timezone': 'Time zone',
   'step.body': 'Body',
@@ -688,6 +716,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.centimetres': 'Centimetres',
   'label.sexMale': 'Male',
   'label.sexFemale': 'Female',
+  /*
+   * The third state of the sex control (r2.11, decision A1). It names the ABSENCE of an answer,
+   * which is why it is not a third sex and why the wording is the owner's own "ND (Non
+   * Disclosed)" rather than "Prefer not to say": the second reads as a refusal, and this is the
+   * default the step opens on.
+   */
+  'label.sexNotDisclosed': 'Not Disclosed',
   // Accessible titles for the two body-step popups, drawn as layout labels rather than as
   // evidence (00-CONTEXT: "Layout, labels and control names you may write").
   'label.sexRationale': 'Why sex is asked',
@@ -702,6 +737,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    */
   'label.bodyFatKnown': 'Percentage',
   'label.bodyFatTape': 'Body measurements',
+  /* r2.13(i): the bordered box that now holds everything about body fat, including its sources. */
+  'label.bodyFat': 'Body Fat',
+  /*
+   * r2.14, last sentence: "if the tape measurement are used as a way to estimate the Body Fat,
+   * right now that's now clear. You would need to have a Body Fat Estimate as a subheading."
+   */
+  'label.bodyFatEstimate': 'Body Fat Estimate',
   // Brief F Part 1a: the everyday-activity slider's box label, renamed from "Activity level".
   'label.activity': 'Everyday Activity Level',
   // Brief F Part 1b: renamed from "Experience" in the UI only; the Experience type is unchanged.
@@ -811,8 +853,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.bodyFatEstimate': '21.9 % body fat, ± 3.52 percentage points.', // formatted
   'why.bodyFatEstimate':
     'The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number.',
-  'why.bodyFatOptional':
-    'With a body-fat value: Cunningham for RMR, protein per kg of fat-free mass. Without one: Mifflin-St Jeor, protein per kg of body mass.',
   'error.valueRequired': 'Enter a number.',
   'error.pickOneDay': 'Select at least one weekday.',
   'error.positive': 'Enter a number above zero.',
@@ -1791,6 +1831,17 @@ export const FORMAT = {
 
   /** "Default for the stated sex: 3000 mL per day." The volume is already formatted. */
   beverageDefault: (volume: string): string => `Default for the stated sex: ${volume} per day.`,
+
+  /**
+   * "Published per sex: 2200 mL to 3000 mL per day." The sentence `beverageDefault` becomes when
+   * no sex was given (round 2 decision A1).
+   *
+   * A SEPARATE frame rather than a parameter on the one above, because the two say different
+   * things: `beverageDefault` names one figure as this profile's default, and this one says the
+   * reference publishes two and the app is not choosing between them. The range arrives already
+   * formatted by `formatBeverageTarget` (src/domain/units.ts), which owns the "to" connector.
+   */
+  beveragePerSex: (range: string): string => `Published per sex: ${range} per day.`,
 
   /**
    * "2 days selected for 4 sessions per week. Select at least 4 days." Both counts are

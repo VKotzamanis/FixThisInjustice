@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
 import { FORMAT, copy, copyFor } from '../../content/copy';
-import { dailyBeverageTargetML } from '../../domain/nutrition';
+import { statedBeverageTargetML } from '../../domain/nutrition';
 import { asciiBar } from '../components/AsciiBar';
 import { TargetsView } from './TargetsView';
 import { useAppStore } from '../../store';
@@ -331,7 +331,7 @@ describe('TargetsView', () => {
     fireEvent.click(screen.getByText('why?'));
 
     expect(screen.getByTestId('basis').textContent ?? '').toContain(
-      FORMAT.beverageBasis(dailyBeverageTargetML('male'), dailyBeverageTargetML('female')),
+      FORMAT.beverageBasis(statedBeverageTargetML('male'), statedBeverageTargetML('female')),
     );
   });
 

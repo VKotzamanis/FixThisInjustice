@@ -119,13 +119,47 @@
   flex: none;
 }
 
+/*
+ * THE PHONE-WIDTH RULE, round 2 claim r2.10: "The page is a bit wider / doesn't fit in the phone."
+ *
+ * The defect was never the breakpoint. It is that a grid track sized `1fr` and a flex item with
+ * `flex: 1 1 0` both take their MINIMUM size from the item's min-content width, and the item here
+ * is `<input type="number">`, whose intrinsic width is its default `size` of about twenty
+ * characters. Two of those in one row demand roughly 390 px of content box between them, which is
+ * more than a 390 px phone has left after the page padding, the fieldset padding and the box
+ * padding, so the row pushed the document wider than the viewport and the whole step scrolled
+ * sideways. `max-width: 100%` on an ancestor cannot fix that; only telling the item it may shrink
+ * below its intrinsic width can, which is what `min-width: 0` does here and `minmax(0, 1fr)` does
+ * on the grid tracks below.
+ *
+ * This is the rule the test asserts. jsdom performs no layout, so a measured width would be
+ * meaningless there; what is checkable is that every row that can hold two number fields carries
+ * the shrink permission. The 390 px pass itself is recorded in docs/phone-visual-check.md.
+ */
 .wiz .wiz-row {
   display: flex;
   gap: 0.75rem;
+  /* Nothing inside a row may make the row wider than its container. */
+  max-width: 100%;
 }
 
 .wiz .wiz-row > * {
   flex: 1 1 0;
+  min-width: 0;
+}
+
+/*
+ * And the same permission for the controls themselves, which is what actually carries the
+ * intrinsic width. `width: 100%` above already sizes them; without this they still REFUSE to go
+ * below about twenty characters, which is the whole defect.
+ */
+.wiz input[type='text'],
+.wiz input[type='number'],
+.wiz input[type='time'],
+.wiz input[type='date'],
+.wiz select {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .wiz .wiz-nav {
@@ -394,13 +428,29 @@
 @media (max-width: 560px) {
   .wiz-row {
     display: grid;
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr), never a bare 1fr: see the .wiz-row comment above. A bare `1fr` is
+       `minmax(auto, 1fr)`, and that `auto` is the number field's intrinsic width, which is what
+       pushed the step past the viewport on a 390 px phone (r2.10). */
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
   }
   /* Feet and inches stay paired: they are one quantity in two boxes, not two quantities. */
   .wiz-row-tight {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
+  /*
+   * r2.14(ii): each girth field pairs with its diagram in a two-column row. The diagram column is
+   * the placeholder's own width and does not grow; the input takes the rest and may shrink.
+   */
+  .wiz-row-site {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+/* The same pairing above the breakpoint, where .wiz-row is still a flex row. */
+.wiz-row-site > .wiz-site {
+  flex: 0 0 auto;
 }
 
 /*
@@ -499,16 +549,33 @@
   border-top: 1px solid var(--line);
 }
 
+/*
+ * r2.15(ii): ONE numbering scheme. The list used to be an <ol> whose items carried superscripts of
+ * their own, so the second entry read "2. (1) Body-fat percentage...". `list-style: none` is what
+ * removes the second scheme; the superscript printed inside each item is the only number, and it
+ * is the same number printed beside the field it belongs to.
+ */
 .wiz-cite-list {
   margin: 8px 0 0;
-  padding-left: 20px;
+  padding-left: 0;
+  list-style: none;
   font-size: 13px;
   line-height: 1.5;
   color: var(--text-2);
 }
 
 .wiz-cite-list li {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+/*
+ * r2.15(iii): "above each citation, have a bold small brief sentence that says what this reference
+ * is about". Bold and on its own line, with the citation beneath it.
+ */
+.wiz-cite-lead {
+  margin: 0 0 2px;
+  font-weight: 700;
+  color: var(--text);
 }
 
 .wiz-cite-src {
@@ -564,10 +631,15 @@
 }
 
 /*
- * The two body-step popups (Part 2). Both draw their own close control at the UPPER LEFT: the
- * owner's explicit instruction (C1.07.11), and `ModalShell` renders none of its own to break.
- * FormCuesModal's close sits at the upper right by a different, unrelated convention; this one
- * does not follow it, on purpose.
+ * The two body-step popups (Part 2). Both draw their own close control at the UPPER RIGHT, and
+ * `ModalShell` renders none of its own to break.
+ *
+ * ROUND 2 REVERSED ROUND 1 HERE, and this comment was updated with the rule rather than left
+ * contradicting it. Round 1 claim C1.07.11 put the control at the upper LEFT on the owner's
+ * explicit instruction; round 2 claim r2.12(i) moves it right, his words: "The X should be on
+ * then upper right corner (more intuitive) and should be bold and stand out." Plan ruling
+ * D2.12.2 allows the reversal and records why it is an improvement rather than a coin toss:
+ * FormCuesModal already closes upper right, so the app is now consistent where it was not.
  */
 .wiz-modal-bg {
   position: fixed;
@@ -598,17 +670,23 @@
   outline-offset: -2px;
 }
 
-/* High contrast by fill inversion, never a brightness shift (00-CONTEXT accessibility rule). */
+/*
+ * High contrast by fill inversion, never a brightness shift (00-CONTEXT accessibility rule).
+ * `right`, not `left`, per r2.12(i). "Bold and stand out" is the 3 px border and the 700 weight:
+ * the fill was already the accent and the ink already the page ground, which is the highest
+ * contrast pair each skin has.
+ */
 .wiz-modal-close {
   position: absolute;
   top: 0.75rem;
-  left: 0.75rem;
+  right: 0.75rem;
   min-width: 2.75rem; /* 44 px */
   min-height: 2.75rem; /* 44 px */
   background: var(--accent, #a3e635);
   color: var(--bg, #0a0b0c);
-  border: 2px solid var(--text, #dde3ea);
-  font-size: 1.1rem;
+  border: 3px solid var(--text, #dde3ea);
+  font-size: 1.25rem;
+  font-weight: 700;
   line-height: 1;
   cursor: pointer;
 }
@@ -721,4 +799,150 @@
   60% {
     transform: translateX(4px);
   }
+}
+
+/*
+ * r2.11: the name box takes the skin's own theme, "just to distinguish it aesthetically and make
+ * it more 'fun'." STYLE ONLY: nothing here alters the value, which is the user's own text.
+ *
+ * The display face is `--sans`, which is the skin's display cut (Archivo on limelight, Space Mono
+ * on board, Geist on clinical), and the outline is `--accent`, which is that skin's own accent
+ * rather than a colour named here. Never a hex literal, for the reason every other rule in this
+ * file gives: a colour that reads on one ground can be invisible on another.
+ */
+.wiz input.wiz-name {
+  font-family: var(--sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  border: 2px solid var(--accent);
+}
+
+/*
+ * r2.13(i): the body-fat box. It is a `.wiz-box` like the two above it, so the border, radius and
+ * spacing are the ones the owner already said he liked; this class exists to hold what is
+ * specific to it and to name the box in the markup.
+ */
+.wiz-box-bodyfat > .wiz-label {
+  margin-bottom: 10px;
+}
+
+/* r2.14: "Body Fat Estimate", the subheading over the whole tape section. */
+.wiz .wiz-subheading {
+  margin: 14px 0 6px;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/*
+ * THE INVALID-FIELD MARK, r2.16(2): "just make the fill of the box white and the border red and
+ * bold." His spec, followed literally, because it is simple and it works.
+ *
+ * It keys on `aria-invalid`, which UnitInput sets from the message it is rendering, so a field
+ * cannot be marked without also SAYING what is wrong with it: the colour is never the only cue
+ * (00-CONTEXT), and every field carrying a message is marked at the same moment rather than one
+ * per press of Next, which is the defect he reported.
+ *
+ * Scoped to the body step, which is where r2.16 was filed. Both colours are tokens:
+ * `--field-invalid-bg` and `--danger` in src/ui/styles/tokens.css, so limelight (whose state
+ * colour is ink, because section 2.3 measured a contrast ratio for five colours on lime and for
+ * no others) does not get a red nobody measured on a lime ground.
+ */
+.wiz-step-body input[aria-invalid='true'] {
+  background: var(--field-invalid-bg);
+  color: var(--field-invalid-text);
+  border: 2px solid var(--danger);
+}
+
+/*
+ * r2.12(ii): the wall of text becomes points. A list, not paragraphs, because that is what he
+ * asked for and because a point is where the eye can stop.
+ */
+.wiz-modal-points {
+  margin: 0 0 0.75rem;
+  padding-left: 20px;
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+
+.wiz-modal-points li {
+  margin-bottom: 6px;
+}
+
+/* r2.12(iv): the three subsection headings inside segment two. */
+.wiz-modal-subsection {
+  margin: 0.75rem 0 0.35rem;
+  font-size: 0.85rem;
+  text-decoration: underline;
+}
+
+/* The heading and the sprite slot on one line, so the space is beside the words. */
+.wiz-modal-subsection-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wiz-modal-subsection-row > .wiz-modal-subsection {
+  margin-bottom: 0;
+}
+
+/*
+ * r2.12(iv): "Make the 'if you are on gender-affirming..' use bold theme color (fuchsia pink
+ * here) and white highlight."
+ *
+ * `var(--accent)` and not a pink literal: on limelight the accent IS fuchsia pink (#FF5FCB), and
+ * clinical and board resolve their own, which is the whole point of the token. The white
+ * highlight is what makes it legal there: round-three section 2.3 measures pink on lime at 1.41:1
+ * and BANS pink as type on the lime ground at every size, while pink on white clears it. The
+ * highlight is therefore load-bearing rather than decorative, and it is a token
+ * (`--highlight-bg`) rather than a hex literal for the usual reason.
+ */
+.wiz-modal-hrt {
+  display: inline-block;
+  padding: 2px 6px;
+  color: var(--accent);
+  background: var(--highlight-bg);
+  font-weight: 700;
+}
+
+/*
+ * r2.12(iv): "I will add a sprite next to that heading so make space. It will be a small emoji
+ * type as height as the text of the subsection."
+ *
+ * THE SPACE, AND NOTHING ELSE. The artwork is the owner's (plan decision A3), registered as
+ * `sprite-subsection-marker` in docs/design/2026-09-06-asset-manifest.md. `1em` is the subsection
+ * heading's own text height, so the line does not reflow when the real asset lands.
+ */
+.wiz-sprite-slot {
+  display: inline-block;
+  flex: none;
+  width: 1em;
+  height: 1em;
+  border: 1px dashed var(--line-2);
+  border-radius: 2px;
+}
+
+/*
+ * r2.15(i): "Hide that text between a REFERENCES box similar to the 'why?' we've been using.
+ * Center it. make it larger (like a heading) and color match the theme."
+ *
+ * The summary is the control, so it keeps the 44 px tap-target floor every control in this file
+ * carries; centring it means centring the flex line, not adding a text-align nothing applies to.
+ */
+.wiz-refs {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.wiz-refs > summary {
+  justify-content: center;
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }

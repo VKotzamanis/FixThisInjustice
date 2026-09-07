@@ -31,7 +31,7 @@ import type { NutritionInput } from '../nutrition';
 import { EXERCISE_BY_ID } from '../plan/library';
 import { computeRecords } from '../training/records';
 import type { AppState, EpochMs, Exercise, Kg, UnitSystem } from '../types';
-import { UNIT_LABEL, formatLoad, formatMass, formatVolume } from '../units';
+import { UNIT_LABEL, formatBeverageTarget, formatLoad, formatMass } from '../units';
 
 /** [weeks] the period the expected body-mass change is reported over. See RATE-RESOLUTION. */
 const RATE_WINDOW_WEEKS = 4;
@@ -150,7 +150,8 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
         `${String(Math.round(targets.proteinG.lo))}-${String(Math.round(targets.proteinG.hi))} g`,
       ),
     );
-    lines.push(field('Fluid (beverages)', formatVolume(targets.fluidML, units)));
+    // A range rather than a figure when no sex was stated (nutrition.ts, decision A1).
+    lines.push(field('Fluid (beverages)', formatBeverageTarget(targets.fluidML, units)));
     lines.push(
       field(
         'Creatine',

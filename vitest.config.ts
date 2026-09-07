@@ -66,12 +66,21 @@ export default defineConfig({
      * text through ?raw and asserts the rules name tokens instead. Unanchored for the query,
      * exactly as the tokens.css entry above.
      */
+    /*
+     * setup.css joins them for alpha round 2 (claims r2.10 and r2.12(i)). Two guarantees in that
+     * sheet are LAYOUT rules, and jsdom performs no layout at all: the shrink permission that
+     * stops the body step scrolling sideways at 390 px, and the corner the modal close control is
+     * drawn in. src/ui/setup/SetupWizard.test.tsx asserts both in the sheet's own text, which
+     * requires the sheet to be processed rather than stubbed. Unanchored for the query, exactly
+     * as the tokens.css entry above.
+     */
     css: {
       include: [
         /crt\.css$/,
         /tokens\.css(\?|$)/,
         /limelight\.css(\?|$)/,
         /appShell\.css(\?|$)/,
+        /setup\.css(\?|$)/,
       ],
     },
   },
