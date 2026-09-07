@@ -13,6 +13,7 @@ import { EXERCISES } from '../../domain/plan/library';
 import { generatePlan, volumeReport } from '../../domain/plan/generator';
 import { SPLIT_TEMPLATES } from '../../domain/plan/templates';
 import { KG_PER_LB } from '../../domain/types';
+import { isValidTimeZone } from '../../domain/dates';
 import { toStoredMass } from '../../domain/units';
 import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
@@ -879,12 +880,20 @@ describe('availability against sessions per week', () => {
 describe('entry aids and idempotency', () => {
   /*
    * C1.06.2: the time zone became a `<select>` built from the platform's own zone list, each
-   * option labelled with today's computed UTC offset ("(UTC+03:00) Europe/Athens" - Athens sits
-   * in EEST on the suite's FIXED_NOW of 2026-09-01, verified independently against Node's own
-   * Intl before writing this assertion, not assumed). The fallback branch this test used to
-   * name (a plain text input with autocapitalize/autocorrect/spellcheck turned off and a
-   * datalist) is unreachable here, because Node's ICU build always has
-   * Intl.supportedValuesOf; that branch is exercised on its own below by removing the API.
+   * option labelled with today's computed UTC offset. Athens sits in EEST on the suite's
+   * FIXED_NOW of 2026-09-01, verified independently against Node's own Intl before writing this
+   * assertion, not assumed. The fallback branch this test used to name (a plain text input with
+   * autocapitalize/autocorrect/spellcheck turned off and a datalist) is unreachable here,
+   * because Node's ICU build always has Intl.supportedValuesOf; that branch is exercised on its
+   * own below by removing the API.
+   *
+   * ROUND 2 CHANGED WHAT THE LABEL SAYS, and this assertion moved with it (r2.09). Two changes,
+   * both requested: the label carries BOTH abbreviations, because Europe says GMT
+   * ("(UTC/GMT+03:00)"), and the list shows one row per year-round BEHAVIOUR rather than one per
+   * zone, so the Athens row stands for the sixteen zones that keep its offsets in every month
+   * and says so. The ordering and the grouping themselves are tested in
+   * src/domain/timeZoneGroups.test.ts against a fixed clock; this asserts only that the wizard
+   * renders what that module produced.
    */
   it('offers the platform zone list as a select, each option labelled with its computed UTC offset', () => {
     render(<SetupWizard />);
@@ -894,7 +903,7 @@ describe('entry aids and idempotency', () => {
     const options = [...control.querySelectorAll('option')] as HTMLOptionElement[];
     expect(options.map((o) => o.value)).toContain('America/New_York');
     const athens = options.find((o) => o.value === 'Europe/Athens');
-    expect(athens?.textContent).toBe('(UTC+03:00) Europe/Athens');
+    expect(athens?.textContent).toBe('(UTC/GMT+03:00) Europe/Athens, 15 more');
   });
 
   /*
@@ -1906,5 +1915,208 @@ describe('r2.12: the modal close control, and the comment that records the rulin
   it('leaves no comment still claiming the upper left', () => {
     expect(setupCss).not.toContain('UPPER LEFT');
     expect(setupCss).toContain('UPPER RIGHT');
+  });
+});
+
+/*
+ * ROUND 2 CLAIM r2.09, the time-zone step.
+ *
+ * "The UTCs options are not ordered correctly. For example, when I click on it, it Shows UTC-05
+ * America/Cancun the below UTC-04,-04,-04, and then again UTC -05 : America/Cayman. That is
+ * confusing. have them be ordered numerically from the most negative to the most positive. Also,
+ * I am not sure that having multiple options for a UTC is correct ... Lastly can we have
+ * (UTC/GMT) in the parentheses, since in Europe we mainly use GMT."
+ *
+ * THE CLOCK IS FAKED FOR EVERY TEST IN THIS FILE (`FIXED_NOW`, 2026-09-01T12:00:00Z, set in the
+ * top-level beforeEach), which is what keeps these assertions still. Half the northern hemisphere
+ * changes offset twice a year, so a suite reading the wall clock would assert one order from
+ * March to October and another from November to February, and would go red on a date nobody
+ * changed any code on. The grouping and ordering themselves are tested against two instants six
+ * months apart in src/domain/timeZoneGroups.test.ts; what is asserted here is that the step
+ * renders what that module produced.
+ */
+describe('r2.09: the time-zone list', () => {
+  /** The `<option>` rows, in the order the select paints them. */
+  function zoneOptions(): HTMLOptionElement[] {
+    const control = screen.getByLabelText(/^time zone$/i);
+    return [...control.querySelectorAll('option')];
+  }
+
+  /** The offset a row's label states, in minutes east of UTC, read back off the rendered text. */
+  function offsetOf(option: HTMLOptionElement): number {
+    const m = /^\(UTC\/GMT([+-])(\d{2}):(\d{2})\)/.exec(option.textContent ?? '');
+    if (m === null) throw new Error(`no offset in ${JSON.stringify(option.textContent)}`);
+    const minutes = Number(m[2]) * 60 + Number(m[3]); // [min]
+    return m[1] === '-' ? -minutes : minutes;
+  }
+
+  function openTimeZoneStep(): void {
+    render(<SetupWizard />);
+    next();
+  }
+
+  it('orders the rows from the most negative offset to the most positive', () => {
+    openTimeZoneStep();
+    const offsets = zoneOptions().map(offsetOf); // [min]
+
+    expect(offsets.length).toBeGreaterThan(1);
+    expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
+    // The defect the owner reported, stated as its own assertion: the old list was in IANA
+    // alphabetical order, which put a -05:00 row after three -04:00 rows.
+    const alphabetical = zoneOptions()
+      .map((o) => o.value)
+      .slice()
+      .sort();
+    expect(zoneOptions().map((o) => o.value)).not.toEqual(alphabetical);
+  });
+
+  it('labels every row with both abbreviations, because Europe says GMT', () => {
+    openTimeZoneStep();
+    for (const option of zoneOptions()) {
+      expect({ text: option.textContent, ok: true }).toEqual({
+        text: option.textContent,
+        ok: /^\(UTC\/GMT[+-]\d{2}:\d{2}\) /.test(option.textContent ?? ''),
+      });
+    }
+  });
+
+  it('shows one row per year-round behaviour, not one per zone and not one per offset', () => {
+    openTimeZoneStep();
+    const rows = zoneOptions();
+
+    // Far fewer rows than the platform has zones ...
+    expect(rows.length).toBeLessThan(Intl.supportedValuesOf('timeZone').length / 4);
+    // ... and MORE rows than there are distinct offsets, which is the whole refusal: New York
+    // and Panama are both UTC-05:00 today and are not interchangeable, because in July one of
+    // them moves and the other does not.
+    const distinctOffsets = new Set(rows.map(offsetOf));
+    expect(rows.length).toBeGreaterThan(distinctOffsets.size);
+    const values = rows.map((o) => o.value);
+    expect(values).toContain('America/New_York');
+    expect(values).toContain('America/Bogota'); // Panama's row: -05:00 in every month
+  });
+
+  it('stores an IANA id and never an offset', () => {
+    openTimeZoneStep();
+    for (const option of zoneOptions()) {
+      expect({ value: option.value, offsetLike: /^UTC|^GMT|^[+-]\d/.test(option.value) }).toEqual({
+        value: option.value,
+        offsetLike: false,
+      });
+      expect(isValidTimeZone(option.value)).toBe(true);
+    }
+  });
+
+  it('finds a collapsed city by name, and says which one matched', () => {
+    openTimeZoneStep();
+    // Thirty-three zones share western Europe's behaviour and the row is named after Paris.
+    // Someone in Amsterdam has to be able to find it, or the reduction has cost them the
+    // ability to find themselves.
+    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+      target: { value: 'Amsterdam' },
+    });
+
+    const rows = zoneOptions();
+    const paris = rows.find((o) => o.value === 'Europe/Paris');
+    expect(paris).toBeDefined();
+    // The row identifies itself by the member the search actually matched.
+    expect(paris?.textContent).toContain('Europe/Amsterdam');
+    // And the list really did narrow: this is a search, not a no-op.
+    expect(rows.length).toBeLessThan(5);
+  });
+
+  it('folds the underscore, because that is how a person writes the name', () => {
+    openTimeZoneStep();
+    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+      target: { value: 'new york' },
+    });
+
+    expect(zoneOptions().map((o) => o.value)).toContain('America/New_York');
+  });
+
+  it('never hides the row the user has already chosen', () => {
+    openTimeZoneStep();
+    const control = screen.getByLabelText<HTMLSelectElement>(/^time zone$/i);
+    fireEvent.change(control, { target: { value: 'Asia/Katmandu' } });
+    expect(control.value).toBe('Asia/Katmandu');
+
+    // A search that matches nothing else still leaves the selection on screen, so the control
+    // can never render with no option matching its own value.
+    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+      target: { value: 'zzzz-no-such-city' },
+    });
+    expect(zoneOptions().map((o) => o.value)).toEqual(['Asia/Katmandu']);
+    expect(control.value).toBe('Asia/Katmandu');
+    expect(screen.getByText(copyFor('clinical', 'advice.timezoneNoMatch'))).toBeInTheDocument();
+  });
+
+  it('names the chosen row after the zone actually chosen', () => {
+    openTimeZoneStep();
+    const control = screen.getByLabelText<HTMLSelectElement>(/^time zone$/i);
+    // A collapsed member, not the row's own name: choosing it must not silently rename it to
+    // Paris, or the app looks as though it ignored the answer.
+    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+      target: { value: 'Berlin' },
+    });
+    fireEvent.change(control, { target: { value: 'Europe/Paris' } });
+    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+      target: { value: '' },
+    });
+
+    const chosen = zoneOptions().find((o) => o.selected);
+    expect(chosen?.value).toBe('Europe/Paris');
+    expect(chosen?.textContent).toContain('Europe/Paris');
+  });
+
+  it('keeps the offsets that are not whole hours', () => {
+    openTimeZoneStep();
+    const labels = zoneOptions().map((o) => o.textContent ?? '');
+    /*
+     * The span is -11:00 to +14:00, which is 25 hours, so a picker built from an hour loop could
+     * express none of these and would be an hour short at both ends besides.
+     *
+     * NEWFOUNDLAND IS -02:30 HERE, NOT THE -03:30 THE BRIEF LISTS, and that is the point rather
+     * than a slip: FIXED_NOW is 2026-09-01, when St John's is on daylight time. The brief's list
+     * of eleven fractional offsets is the STANDARD-time set; across a whole year there are
+     * thirteen, the two extra being Newfoundland's -02:30 and Adelaide's +10:30. Nothing in the
+     * app depends on either count -- every offset is read from the tz database -- and
+     * src/domain/timeZoneGroups.test.ts pins both numbers so the discrepancy stays visible.
+     */
+    for (const fragment of ['(UTC/GMT+05:30)', '(UTC/GMT+05:45)', '(UTC/GMT-02:30)']) {
+      expect({ fragment, present: labels.some((l) => l.startsWith(fragment)) }).toEqual({
+        fragment,
+        present: true,
+      });
+    }
+  });
+
+  it('draws the bordered box, with the day boundary made to stand out', () => {
+    openTimeZoneStep();
+
+    expect(
+      screen.getByRole('heading', { name: copyFor('clinical', 'hero.timezoneWhy') }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(copyFor('clinical', 'advice.timezoneDayBoundary')),
+    ).toBeInTheDocument();
+    expect(screen.getByText(copyFor('clinical', 'advice.timezoneReminders'))).toBeInTheDocument();
+
+    // The emphasis is a CLASS, so the mark is CSS drawn from tokens rather than a character
+    // written into a copy string, and the two bullets stay two plain sentences.
+    const primary = document.querySelector('.wiz-tz-primary');
+    expect(primary?.textContent).toContain(copyFor('clinical', 'advice.timezoneDayBoundary'));
+    expect(primary?.textContent).not.toContain(copyFor('clinical', 'advice.timezoneReminders'));
+  });
+
+  it('marks the day-boundary bullet with two cues, not colour alone', () => {
+    // A reader who cannot separate two greys still has to see which bullet is the loud one, so
+    // the rule carries an underline as well as the full-strength text token.
+    const start = setupCss.indexOf('.wiz-tz-why-list > li.wiz-tz-primary {');
+    expect(start).toBeGreaterThan(-1);
+    const block = setupCss.slice(start, setupCss.indexOf('}', start));
+    expect(block).toContain('text-decoration: underline;');
+    expect(block).toContain('var(--text)');
+    // Never a hex literal in a component stylesheet: every colour is a token.
+    expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 });

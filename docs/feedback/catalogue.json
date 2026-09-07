@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "739b88e",
+  "generatedFrom": "82e4a06",
   "counts": {
     "screens": 14,
     "parts": 102,
-    "keys": 529,
+    "keys": 543,
     "notRendered": 3,
-    "table": 532
+    "table": 546
   },
   "parts": [
     {
@@ -213,14 +213,19 @@
       "screen": "shell",
       "order": 1,
       "title": "Top bar",
-      "what": "The fixed brand and the moving instruction for the current view.",
+      "what": "The fixed brand, the banner naming where the user is, the moving instruction for the current view, and the setup-only skin control.",
       "components": [
         "src/app/App.tsx",
-        "src/ui/components/Marquee.tsx"
+        "src/ui/components/Marquee.tsx",
+        "src/ui/setup/setupBanner.tsx"
       ],
       "states": [
         "scrolling",
-        "static-fallback"
+        "static-fallback",
+        "intro",
+        "setup",
+        "setup-named",
+        "setup-anonymous"
       ],
       "keys": [
         {
@@ -301,6 +306,51 @@
           "limelight": "same",
           "board": "same",
           "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "disclosure.skin",
+          "default": "Choose Skin",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bannerIntro",
+          "default": "Hi, How Are Ya",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bannerSetup",
+          "default": "Welcome Aboard",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bannerSetupAnonymous",
+          "default": "Welcome Aboard: Shy or Paranoid?",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bannerSetupNamed",
+          "default": "Welcome Aboard: {name}",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
           "limelightRowPermitted": true,
           "refusalGroup": null
         }
@@ -884,17 +934,38 @@
       "screen": "setup",
       "order": 3,
       "title": "Step 2, Time zone",
-      "what": "The zone every civil date in the app is computed in.",
+      "what": "The zone every civil date in the app is computed in, chosen from a list grouped by year-round behaviour and ordered by offset, searchable across every zone the platform knows.",
       "components": [
-        "src/ui/setup/SetupWizard.tsx"
+        "src/ui/setup/SetupWizard.tsx",
+        "src/domain/dates.ts"
       ],
       "states": [
-        "default"
+        "default",
+        "searching",
+        "no-match"
       ],
       "keys": [
         {
+          "key": "advice.timezoneDayBoundary",
+          "default": "Every date, streak and weekly close is computed in this zone.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.timezoneDetected",
           "default": "Necessary for the notification bot and the week planner.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.timezoneGrouped",
+          "default": "Zones with identical offsets all year are grouped; search finds all.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -911,6 +982,15 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.timezoneNoMatch",
+          "default": "No zone matches that search.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.timezonePick",
           "default": "Select from the drop down menu:",
           "limelight": "same",
@@ -920,8 +1000,62 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.timezoneReminders",
+          "default": "Turn them on and the gym bag stops staying at home.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "hero.timezoneWhy",
+          "default": "Why the Time Zone Matters",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.timezone",
           "default": "Time zone",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.timezoneDayBoundary",
+          "default": "The Day Boundary",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.timezoneReminders",
+          "default": "Reminders",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.timezoneSearch",
+          "default": "Search Time Zones",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.timezoneAlso",
+          "default": "{count} more",
           "limelight": "same",
           "board": "same",
           "isControl": false,

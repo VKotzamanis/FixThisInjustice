@@ -186,13 +186,33 @@ a{color:var(--text)}
 <section class="step" id="w1.05">
   <p class="stepno"><code>w1.05</code> step 5</p>
   <h3>The top bar</h3>
-  <p class="do"><b>Do</b>Look at the strip across the top of the screen, while setup is still running.</p>
-  <p class="see"><b>You see</b>Only the brand line. The moving instruction and the plan position wait for a profile to exist.</p>
+  <p class="do"><b>Do</b>Look at the strip across the top of the screen, while setup is still running. Then open the skin control at its right-hand end and pick a different skin.</p>
+  <p class="see"><b>You see</b>The fixed brand, then where you are: &quot;Hi, How Are Ya&quot; during the caveats and &quot;Welcome Aboard&quot; once setup starts, which grows into &quot;Welcome Aboard: your name&quot; as you type one and turns into a joke if you reach the last step without giving one. The plan position waits for a profile to exist. The skin control opens the three skins on the spot, without leaving setup.</p>
   <p class="pids">covers shell.topbar</p>
   <ol class="strings">
 <li>
 <code>advice.setupInstruction</code>
 <p class="lime-str">Answer each step. Nothing leaves this device.</p>
+</li>
+<li>
+<code>status.bannerIntro</code>
+<p class="lime-str">Hi, How Are Ya</p>
+</li>
+<li>
+<code>status.bannerSetup</code>
+<p class="lime-str">Welcome Aboard</p>
+</li>
+<li>
+<code>status.bannerSetupNamed</code>
+<p class="lime-str">Welcome Aboard: {name}</p>
+</li>
+<li>
+<code>status.bannerSetupAnonymous</code>
+<p class="lime-str">Welcome Aboard: Shy or Paranoid?</p>
+</li>
+<li>
+<code>disclosure.skin</code>
+<p class="lime-str">Choose Skin</p>
 </li>
 </ol>
   <label class="box" for="c-w1.05">What needs to change here?</label>
@@ -317,8 +337,8 @@ a{color:var(--text)}
 <section class="step" id="w1.09">
   <p class="stepno"><code>w1.09</code> step 9</p>
   <h3>Setup, step 2: time zone</h3>
-  <p class="do"><b>Do</b>Read the note, then check the zone the app has filled in.</p>
-  <p class="see"><b>You see</b>One note, one field, and an error line if the zone is not a real one.</p>
+  <p class="do"><b>Do</b>Read the note, then check the zone the app has filled in. Open the list and look at the order. Type a city into the search box above it, including one that is not the name any row carries: try &quot;Amsterdam&quot;. Then read the bordered box below the field.</p>
+  <p class="see"><b>You see</b>A search box, a note about the grouping, and a list ordered from the most negative offset to the most positive, each row reading &quot;(UTC/GMT-05:00) America/New_York&quot; and saying how many other zones it stands for. A search finds a city even when the row is named after a different one, and says which one it matched. Below the field, a bordered box with a heading and two bullets, the first one marked out.</p>
   <p class="pids">covers setup.timezone</p>
   <ol class="strings">
 <li>
@@ -334,12 +354,48 @@ a{color:var(--text)}
 <p class="lime-str">Select from the drop down menu:</p>
 </li>
 <li>
+<code>label.timezoneSearch</code>
+<p class="lime-str">Search Time Zones</p>
+</li>
+<li>
+<code>advice.timezoneGrouped</code>
+<p class="lime-str">Zones with identical offsets all year are grouped; search finds all.</p>
+</li>
+<li>
 <code>label.timezone</code>
 <p class="lime-str">Time zone</p>
 </li>
 <li>
+<code>status.timezoneAlso</code>
+<p class="lime-str">{count} more</p>
+</li>
+<li>
+<code>advice.timezoneNoMatch</code>
+<p class="lime-str">No zone matches that search.</p>
+</li>
+<li>
 <code>advice.timezoneInvalid</code>
 <p class="lime-str">Not a recognised IANA time zone.</p>
+</li>
+<li>
+<code>hero.timezoneWhy</code>
+<p class="lime-str">Why the Time Zone Matters</p>
+</li>
+<li>
+<code>label.timezoneDayBoundary</code>
+<p class="lime-str">The Day Boundary</p>
+</li>
+<li>
+<code>advice.timezoneDayBoundary</code>
+<p class="lime-str">Every date, streak and weekly close is computed in this zone.</p>
+</li>
+<li>
+<code>label.timezoneReminders</code>
+<p class="lime-str">Reminders</p>
+</li>
+<li>
+<code>advice.timezoneReminders</code>
+<p class="lime-str">Turn them on and the gym bag stops staying at home.</p>
 </li>
 </ol>
   <label class="box" for="c-w1.09">What needs to change here?</label>

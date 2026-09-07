@@ -79,6 +79,31 @@ export const VIEW_INSTRUCTIONS: Record<ViewId, CopyKey> = {
 };
 
 /**
+ * The name the top bar shows for each view, one per ViewId (round 2, `r2-onboarding.general`).
+ *
+ * "after onboarding, it should just say 'ATLAS' or 'LEG DAY' etc w.r.t. the context of what
+ * specific page the user is viewing." A `Record`, like `VIEW_INSTRUCTIONS` above and for the same
+ * reason: a view added to `VIEWS` with no row here is a compile error rather than a blank banner.
+ *
+ * WHY THESE POINT AT THE `nav.*` ROWS AND NOT AT SEVEN NEW ONES. A view has ONE name, and the tab
+ * strip already renders it. Seven parallel rows carrying the same seven words would be a second
+ * place to rename a view, and the pair would drift the first time only one of them was edited;
+ * the copy contract already files a key rendered on several screens once, under the first screen
+ * that renders it, rather than duplicating it per renderer. This table exists so the banner is
+ * NEVER the instruction -- `VIEW_INSTRUCTIONS` is a sentence and a banner is a name -- and so
+ * that the day a banner name has to differ from its tab, it is one edit here and nothing else.
+ */
+export const VIEW_TITLES: Record<ViewId, CopyKey> = {
+  today: 'nav.today',
+  plan: 'nav.plan',
+  train: 'nav.train',
+  targets: 'nav.targets',
+  log: 'nav.log',
+  atlas: 'nav.atlas',
+  settings: 'nav.settings',
+};
+
+/**
  * The combo that opens the spotlight palette, in the notation P8 Task 9's hotkey registry
  * normalises to ('mod' is Meta or Control, so one binding covers both platforms).
  *

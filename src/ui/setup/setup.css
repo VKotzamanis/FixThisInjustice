@@ -946,3 +946,66 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
+
+/*
+ * r2.09: the bordered box under the time-zone field. "have a seperate bordered textbox below
+ * that say: Heading 'Important: Time Functions' (rework the title). Then below it says in 2
+ * bullet points where we need this."
+ *
+ * A `.wiz-box` like the body step's, so the border, radius and padding are stated once.
+ */
+.wiz-tz-why {
+  margin-top: 18px;
+}
+
+/*
+ * The box's own heading. Not `.wiz-label`: that is a lead-in ABOVE A CONTROL and this box has
+ * none, and not the step heading either, which is the <legend> and there is exactly one of those
+ * per step. `--accent` rather than `--text` so the box reads as a callout on all three skins;
+ * a token, never a hex literal, because lime on lime and black on black are both invisible.
+ */
+.wiz-box-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.wiz-tz-why-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: var(--text-2);
+}
+
+.wiz-tz-why-list > li + li {
+  margin-top: 8px;
+}
+
+/*
+ * The bullet the owner asked to stand out: "(a) We need it for the day resets (rework the text)
+ * and *make this bold/underlined/ make it stand out*".
+ *
+ * BOTH cues, and neither of them colour alone. The full-strength text token lifts it out of the
+ * `--text-2` the list sits in, and the underline under the sentence is the second, non-colour
+ * cue: a reader who cannot separate the two greys still sees which bullet is the loud one. The
+ * underline offset keeps it clear of descenders. The bold on the label ahead of it is the
+ * <strong> in the markup and applies to both bullets equally.
+ */
+.wiz-tz-why-list > li.wiz-tz-primary {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/*
+ * The search box sits directly above the list it filters, so it takes the same full width every
+ * other field on the step has rather than the browser's default input width.
+ */
+.wiz #f-timezone-search {
+  width: 100%;
+  box-sizing: border-box;
+}

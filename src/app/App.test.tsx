@@ -1122,3 +1122,262 @@ describe('the tab strip under a skin', () => {
     ).toBeInTheDocument();
   });
 });
+
+/*
+ * The top bar's dynamic half, round 2 claim `r2-onboarding.general`.
+ *
+ * "The banner of the web page (That now says FIX THIS INJUSTICE) is not dynamic. I would Like it
+ * to append some information as the user moves forward."
+ *
+ * The five states are asserted through the SHELL rather than against the component in isolation,
+ * because three of them are properties of where the app is (no profile, the intro unseen, the
+ * review step on screen) rather than of a prop anybody passes.
+ */
+describe('the top bar banner', () => {
+  /** The text beside the fixed brand. */
+  function banner(): string {
+    return screen.getByTestId('topbar-title').textContent ?? '';
+  }
+
+  /** The wizard's forward control. `button.continue` reads "Next" (round 1 claim C1.05.2). */
+  function next(): void {
+    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
+  }
+
+  /** No profile, and both first-run sequences already seen: the wizard is the whole screen. */
+  function seedSetupScreen(): void {
+    installFakeStorage();
+    useAppStore.setState((s) => ({ ui: { ...s.ui, introSeen: true, bootSeen: true } }));
+  }
+
+  /** The body step's four required quantities, so Next is not blocked. */
+  function fillBodyStep(): void {
+    // Sex is stated because r2.11 makes `nd` the default and the body-fat percentage required
+    // on that path; every other field here is a number the nutrition domain needs.
+    fireEvent.click(screen.getByLabelText('Male'));
+    fireEvent.change(screen.getByLabelText(/^age \(years\)$/i), { target: { value: '30' } });
+    fireEvent.change(screen.getByLabelText(/^metres$/i), { target: { value: '1' } });
+    fireEvent.change(screen.getByLabelText(/^centimetres$/i), { target: { value: '78' } });
+    fireEvent.change(screen.getByLabelText(/body mass \(kg\)/i), { target: { value: '70' } });
+  }
+
+  /**
+   * The rest of the wizard, from the body step to Review.
+   *
+   * A duplicate of SetupWizard.test.tsx's own fixture rather than an import of it, and
+   * deliberately so: what is under test here is that walking the real wizard to its last step
+   * moves the banner in the shell ABOVE it, which is a fact about the two together. Nothing is
+   * asserted about the wizard's own screens; those have their own suite.
+   */
+  function walkFromBodyToReview(): void {
+    next(); // 3 body
+    next(); // 4 equipment and availability, every slider on its default
+    next(); // 5 goal
+    // 6 availability: four days for the default four-session split.
+    for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
+      fireEvent.click(screen.getByLabelText(day));
+    }
+    next();
+    next(); // 7 programme length, 12 weeks by default
+    next(); // 8 guidance
+  }
+
+  it('greets on the intro, which is the first thing a fresh document shows', () => {
+    installFakeStorage();
+    // defaultState() leaves `introSeen` false, which is exactly what IntroGate mounts on.
+    render(<App />);
+
+    expect(banner()).toBe(copy('status.bannerIntro'));
+  });
+
+  it('welcomes aboard once setup starts, before a name is given', () => {
+    seedSetupScreen();
+    render(<App />);
+
+    expect(banner()).toBe(copy('status.bannerSetup'));
+  });
+
+  it('appends the name on the keystroke that types it', () => {
+    seedSetupScreen();
+    render(<App />);
+    next();
+    next();
+
+    fireEvent.change(screen.getByLabelText(/^How should I refer to you\?$/i), {
+      target: { value: 'Ada' },
+    });
+    /*
+     * The SAME keystroke, not the one after it and not 400 ms later. The banner follows the
+     * wizard's MERGED draft (the uncommitted buffer over the committed answers), which is what
+     * the field itself renders from, so the two cannot disagree; reading the persisted draft
+     * instead would trail by SETUP_DRAFT_SAVE_DEBOUNCE_MS, and reading the committed tier alone
+     * would leave the banner a whole step behind.
+     */
+    expect(banner()).toBe('Welcome Aboard: Ada');
+
+    fireEvent.change(screen.getByLabelText(/^How should I refer to you\?$/i), {
+      target: { value: 'Ada Lovelace' },
+    });
+    expect(banner()).toBe('Welcome Aboard: Ada Lovelace');
+  });
+
+  it('renders the name exactly as typed, and expands nothing inside it', () => {
+    seedSetupScreen();
+    render(<App />);
+    next();
+    next();
+
+    // Mixed case that no title-casing would survive, leading and trailing spaces, and the two
+    // replacement patterns String.prototype.replace would otherwise expand.
+    const typed = '  ada $& LOVELACE `$` ';
+    fireEvent.change(screen.getByLabelText(/^How should I refer to you\?$/i), {
+      target: { value: typed },
+    });
+
+    expect(banner()).toBe(`Welcome Aboard: ${typed}`);
+  });
+
+  it('does NOT make the blank-name joke before the last step', () => {
+    seedSetupScreen();
+    render(<App />);
+    next();
+    next();
+
+    // The name field is on screen and empty. That is someone who has not typed it yet, not
+    // someone who reached the end and declined to.
+    expect(screen.getByLabelText(/^How should I refer to you\?$/i)).toHaveValue('');
+    expect(banner()).toBe(copy('status.bannerSetup'));
+    expect(banner()).not.toBe(copy('status.bannerSetupAnonymous'));
+  });
+
+  it('makes the joke at Review, and only there', () => {
+    seedSetupScreen();
+    render(<App />);
+    next();
+    next();
+    fillBodyStep(); // the name is deliberately left blank
+    walkFromBodyToReview();
+
+    // The review step really is on screen: the control that writes the profile names it.
+    expect(screen.getByRole('button', { name: copy('button.confirmStart') })).toBeInTheDocument();
+    expect(banner()).toBe(copy('status.bannerSetupAnonymous'));
+  });
+
+  it('keeps the name at Review when one was given, rather than the joke', () => {
+    seedSetupScreen();
+    render(<App />);
+    next();
+    next();
+    fireEvent.change(screen.getByLabelText(/^How should I refer to you\?$/i), {
+      target: { value: 'Ada' },
+    });
+    fillBodyStep();
+    walkFromBodyToReview();
+
+    expect(screen.getByRole('button', { name: copy('button.confirmStart') })).toBeInTheDocument();
+    expect(banner()).toBe('Welcome Aboard: Ada');
+  });
+
+  it('names the view once setup is done, and follows a tab change', () => {
+    installFakeStorage();
+    useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
+    pinSkin('clinical');
+    render(<App />);
+
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'atlas' });
+    });
+    expect(banner()).toBe(copy('nav.atlas'));
+
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'log' });
+    });
+    expect(banner()).toBe(copy('nav.log'));
+  });
+
+  it('names the view in the words of the active skin, not the default table', () => {
+    installFakeStorage();
+    useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
+    pinSkin('limelight');
+    render(<App />);
+
+    act(() => {
+      useAppStore.getState().setUi({ lastView: 'train' });
+    });
+    expect(banner()).toBe(copyFor('limelight', 'nav.train'));
+  });
+
+  it('falls back to the same view the shell falls back to', () => {
+    // A document written by a later version can name a view this build does not have, and the
+    // banner must not then name a different view than the one rendered below it.
+    installFakeStorage();
+    const base = seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY });
+    useAppStore.setState({ ...base, ui: { ...base.ui, lastView: 'a-view-from-the-future' } });
+    pinSkin('clinical');
+    render(<App />);
+
+    expect(banner()).toBe(copy('nav.targets'));
+  });
+});
+
+/*
+ * Round 2 claim r2.05: "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any
+ * skin picker or any app settings."
+ */
+describe('the skin picker during setup', () => {
+  function seedSetupScreen(): void {
+    installFakeStorage();
+    useAppStore.setState((s) => ({ ui: { ...s.ui, introSeen: true, bootSeen: true } }));
+    pinSkin('clinical');
+  }
+
+  it('is reachable with no profile in the document, and changes the skin', () => {
+    seedSetupScreen();
+
+    render(<App />);
+
+    // No profile at all: the state the whole nine-step wizard runs in, and the state in which
+    // the tab strip -- and with it the Settings tab -- does not exist.
+    expect(useAppStore.getState().activeProfileId).toBeNull();
+    expect(screen.queryByRole('navigation', { name: copy('nav.label') })).toBeNull();
+
+    const picker = screen.getByTestId('topbar-skin');
+    fireEvent.click(within(picker).getByText(copy('disclosure.skin')));
+
+    fireEvent.click(within(picker).getByLabelText(copy('option.skinBoard')));
+    expect(useAppStore.getState().ui.skin).toBe('board');
+
+    fireEvent.click(within(picker).getByLabelText(copy('option.skinLimelight')));
+    expect(useAppStore.getState().ui.skin).toBe('limelight');
+  });
+
+  it('offers the skin row alone, not the Settings view that needs a profile', () => {
+    seedSetupScreen();
+
+    render(<App />);
+    const picker = screen.getByTestId('topbar-skin');
+
+    // The three skins and the two switches SkinSettings owns are there...
+    expect(within(picker).getByLabelText(copy('option.skinClinical'))).toBeInTheDocument();
+    expect(within(picker).getByLabelText(copy('label.settingsSounds'))).toBeInTheDocument();
+    // ...and nothing that reads a profile is. SettingsView draws these three headings off
+    // `Profile`, and mounting it here would throw rather than render.
+    expect(screen.queryByText(copy('hero.profile'))).toBeNull();
+    expect(screen.queryByText(copy('hero.equipmentSteps'))).toBeNull();
+    expect(screen.queryByText(copy('hero.hydration'))).toBeNull();
+  });
+
+  it('disappears the moment a profile exists', () => {
+    installFakeStorage();
+    useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
+    pinSkin('clinical');
+
+    render(<App />);
+
+    expect(screen.queryByTestId('topbar-skin')).toBeNull();
+    // The skin is reachable the ordinary way again, through the tab strip.
+    expect(
+      screen.getByRole('button', { name: copyFor('clinical', 'nav.settings') }),
+    ).toBeInTheDocument();
+  });
+});
