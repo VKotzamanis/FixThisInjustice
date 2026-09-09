@@ -99,17 +99,29 @@ clean, so any failure it reports is genuinely yours.
 **Run `npx vitest run` once BEFORE you edit anything** and record the file and test counts. A drop
 in either afterwards is a regression you caused.
 
-**Commit before you finish.**
+**You CANNOT commit, and that is expected. Do not try.**
+
+<!-- decision: orchestrator-commits-worker-output | status: adopted | supersedes: worker-commits-own-branch -->
+
+Measured 2026-09-09: `git commit` inside a nested worktree fails with
+`Unable to create .git/worktrees/<name>/index.lock: Read-only file system`. Git's metadata and its
+object store live in the MAIN repository's `.git`, outside the directory you can write to. Widening
+the sandbox to reach it would also hand you every other branch's refs, which is not a trade worth
+making for a convenience.
+
+**The orchestrator stages and commits your work after verifying it.** So instead, before you
+report, save your diff where it cannot be lost:
 
 ```
-git add -- <the exact files you changed>     # NEVER git add -A
-git commit -m "<what changed, and why it departs from the brief where it does>"
+git add -A --intent-to-add . && git diff > MY-BRIEF-<letter>.patch
+git status --short
 ```
 
-Other agents share this tree, and a bare `git add -A` has already swept another agent's half-written
-work into an unrelated commit. Uncommitted work inside your worktree is not backed up.
+`--intent-to-add` makes new files show up in the diff; it stages nothing and writes only to a file
+inside your own worktree. Name the patch file in your report.
 
-If your brief asks you to DELETE a file, delete it with `git rm` and say so in your report.
+If your brief asks you to DELETE a file, delete it with `rm` and list it under `DELETED` in your
+report, so the orchestrator stages the deletion.
 
 **A failing test is not "done with a caveat". Fix it or report the failure with its exact output.**
 If a test fails because it asserts the old behaviour your brief replaced, update the test and say
