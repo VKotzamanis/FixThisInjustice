@@ -23,7 +23,6 @@
 export const PARTS = [
   // --- intro, shown once ahead of boot (P10 Brief C) ---
   { id: 'intro.sequence', title: 'Intro sequence', what: 'The four caveat slides, the disclaimer and the final slide, shown once before setup.', screen: 'intro', components: ['src/ui/intro/IntroSequence.tsx'], states: ['running', 'finished'] },
-  { id: 'intro.skip', title: 'Skip control', what: 'The control that ends the sequence from any slide, without advancing through the rest.', screen: 'intro', components: ['src/ui/intro/IntroSequence.tsx'], states: ['visible'], keys: ['button.skipIntro'] },
 
   // --- boot ---
   { id: 'boot.sequence', title: 'Boot sequence', what: 'The dotted step lines that print on the first open.', screen: 'boot', components: ['src/ui/components/Boot.tsx'], states: ['running', 'finished'] },
