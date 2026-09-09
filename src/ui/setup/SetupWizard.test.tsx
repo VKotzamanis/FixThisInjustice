@@ -1999,7 +1999,8 @@ describe('r2.09: the time-zone list', () => {
   it('stores an IANA id and never an offset', () => {
     openTimeZoneStep();
     for (const option of zoneOptions()) {
-      expect({ value: option.value, offsetLike: /^UTC|^GMT|^[+-]\d/.test(option.value) }).toEqual({
+      // Bare "UTC" and "GMT" are IANA identifiers; the device zone is appended when missing.
+      expect({ value: option.value, offsetLike: /^(UTC|GMT)[+-]|^[+-]\d|^\(/.test(option.value) }).toEqual({
         value: option.value,
         offsetLike: false,
       });
