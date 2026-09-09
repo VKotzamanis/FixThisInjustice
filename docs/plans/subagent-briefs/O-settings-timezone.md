@@ -115,6 +115,16 @@ runtime returns, **121 are Link names, leaving 297 canonical** — a 28.9 % redu
 
 Record the measurement in the code comment so the question is not reopened without it.
 
+## 5. One thing you will notice and must NOT fix
+
+`scripts/alpha-parts.mjs` has a `setup.timezone` part (line 52) and **no `settings.timezone` part**,
+so the Settings zone control is not in the catalogue and will not appear in the walk pages. That is
+a real gap and it is not yours: rule 5. Say so in your report and stop there.
+
+This brief should need no catalogue change at all, because it reuses `label.timezone` and adds no
+key. If you find yourself adding one, run the four catalogue commands and add the part and the walk
+step, as `00-CONTEXT.md` requires.
+
 ## Verification
 
 Everything in `00-CONTEXT.md`, plus:

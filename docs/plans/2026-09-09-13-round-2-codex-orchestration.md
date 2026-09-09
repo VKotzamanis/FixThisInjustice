@@ -72,6 +72,14 @@ subagents. Each is a defect waiting to happen if it is not handled before the fi
 5. **Codex does not have the `wait-what` skill**, which is the ELI5 register the owner named by
    name in briefs J and L. Prose written in that register is drafted by Claude and handed to the
    worker as fixed input. See Task 3.1 and Task 4.
+6. **A worker cannot commit, and the plan changed to suit.** Measured 2026-09-09 on the first live
+   dispatch: `git commit` inside a nested worktree fails with `Unable to create
+   .git/worktrees/<name>/index.lock: Read-only file system`, because git's metadata and object
+   store are in the MAIN repository's `.git`, outside the worker's writable root. `--add-dir` on
+   that `.git` would fix it and would also hand the worker every branch's refs. **Ruled: the
+   orchestrator stages and commits.** The worker writes `MY-BRIEF-<letter>.patch` into its own
+   worktree before reporting, so its work survives independently of the working tree. The
+   `<execution_policy>` block below reflects this.
 
 ### The canonical dispatch
 
@@ -120,8 +128,10 @@ YOU HAVE A SHELL AND YOU MUST USE IT. Run npx, node and git yourself. `node_modu
 from the parent directory; do not run `npm install` and do not use the network.
 Edits: allowed, inside your brief's file list only.
 Destructive actions: stop and ask before executing.
-COMMIT before you finish: `git add -- <the exact files>` then `git commit`. Never `git add -A`
-— other agents share this tree. Uncommitted work in your directory is not backed up.
+DO NOT COMMIT. It fails in this worktree: git's metadata is outside your writable root. The
+orchestrator commits your work after verifying it. Before you report, save your diff:
+  git add -A --intent-to-add . && git diff > MY-BRIEF-<letter>.patch
+That writes only inside your own worktree and stages nothing. Name the file in your report.
 </execution_policy>
 
 <grounding_rules>
