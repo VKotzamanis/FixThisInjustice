@@ -7,9 +7,9 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `82e4a06`. 102 parts across 14 screens, holding 543 of the table's 546 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `1506f92`. 101 parts across 14 screens, holding 543 of the table's 545 copy keys; 3 have no surface and are excused by name at the foot.
 
-## intro (2)
+## intro (1)
 
 ### `intro.sequence`
 
@@ -22,18 +22,7 @@ States: `running`, `finished`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.clickToContinue` | Click to continue | same | same | yes |
-
-### `intro.skip`
-
-Skip control. The control that ends the sequence from any slide, without advancing through the rest.
-
-Renders: `src/ui/intro/IntroSequence.tsx`
-
-States: `visible`
-
-| Key | Clinical | Limelight | Board | Limelight row allowed |
-| --- | --- | --- | --- | --- |
-| `button.skipIntro` | Skip | same | same | yes |
+| `button.continue` | Next | same | PROCEED | yes |
 
 ## boot (2)
 

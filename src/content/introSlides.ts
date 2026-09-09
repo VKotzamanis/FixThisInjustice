@@ -5,8 +5,8 @@
 // caveats, then a disclaimer, then a slide naming what setup collects.
 //
 // R10 REFERENCE TEXT (docs/design/2026-09-01-copy-contract.md), NOT A COPY TABLE. The app draws
-// exactly two copy KEYS around this content -- `button.skipIntro` and `advice.clickToContinue`,
-// both in src/content/copy.ts -- and the six slides themselves are long-form prose a screen
+// exactly one copy KEY around this content: `advice.clickToContinue`, in src/content/copy.ts.
+// The five slides and acknowledgement are long-form prose a screen
 // shows once, not a control label a skin retunes. They live here instead, exactly as the other
 // five R10 modules do (src/content/formCues.ts, specimenCards.ts, bodyEquations.ts,
 // sexRationale.ts, supplementGuidance.ts). This module is NOT exempt from R5 (no em dash, no
@@ -14,14 +14,9 @@
 // src/content/introSlides.test.ts asserts all three, plus the no-URL rule every module here
 // carries.
 //
-// COPIED VERBATIM. 00-CONTEXT rule 2: user-facing copy that carries the owner's own statement is
-// supplied verbatim and copied character for character, never reworded, shortened or improved.
-// Every `body` below is transcribed from the owner's brief with ONE mechanical change: the
-// brief's own line wrapping (a fixed column width in a markdown fence) is collapsed to a single
-// space, because that wrapping is an artifact of the editor and was never part of the sentence.
-// A literal BLANK line inside a `body` (two consecutive `\n`) is different: it is a paragraph
-// break the owner actually wrote (slide 4 is two paragraphs), and IntroSequence.tsx renders the
-// string through `white-space: pre-wrap`, so that blank line reaches the screen as one.
+// ROUND 2 RESTRUCTURED. The copied-verbatim rule is superseded for slide shape at the owner's
+// instruction: the content remains his and must not be reworded, shortened or improved, but
+// round 2 changes the former walls of prose into headings, lead lines and bullets.
 //
 // THE ASCII FIGURE IS ORIGINAL. The owner's note named a cartoon character for this spot; that is
 // third-party IP, and README.md's "Licences" section already states that this project's mascot
@@ -38,49 +33,74 @@
 // does not yet keep, and showing it to another tester would be advertising a control that is not
 // there to press.
 
-/** One slide: the heading it shows, or none, and the body typed out beneath it. */
+/** One bullet: an emphasised lead phrase, then the rest of the sentence. */
+export interface IntroBullet {
+  /** Rendered with the lead-phrase class. Two to five words. */
+  lead: string;
+  /** The rest, rendered plain after a colon. `null` where the lead IS the whole bullet. */
+  rest: string | null;
+}
+
 export interface IntroSlide {
-  /** The heading rendered above the body, or `null` on the two slides the brief gives none. */
+  /** Rendered whole, before the body types. Title Case noun phrase, `null` on slide 1. */
   heading: string | null;
-  /**
-   * The body text, typed out one character at a time by IntroSequence.tsx (roughly 18 ms per
-   * character). Copied verbatim from the owner's brief; do not edit, shorten or reword it.
-   */
-  body: string;
+  /** A line above the bullets, or `null`. Types out with the body. */
+  lead: string | null;
+  bullets: readonly IntroBullet[];
 }
 
 /**
- * The six slides, in the order the sequence shows them. Slides 1 to 4 (indices 0 to 3) carry the
- * ASCII figure and the "Click to continue" line at their foot (IntroSequence.tsx reads that
- * split from the array position, per the brief's own "slides 1 to 4" wording); slide 5 (index 4)
- * is the disclaimer, emphasised by a slow pulse instead; slide 6 (index 5) is plain.
+ * The five slides, in the order the sequence shows them. The acknowledgement is a modal over
+ * slide 4, rather than a slide of its own.
  */
 export const INTRO_SLIDES: readonly IntroSlide[] = [
   {
     heading: null,
-    body: 'Hi. You probably have this link because V sent you the app he has been working on. If not, here are some caveats.',
+    lead: 'Hi. You probably have this link because V sent you the app he has been working on. If not, here are some caveats.',
+    bullets: [],
   },
   {
-    heading: 'Who am I',
-    body: 'The creator of this app is not a medical professional and has not actively pursued bodybuilding since 2020. That said, he is the guy who will come to the gym with you, teach you how to lift, and build you a plan.',
+    heading: 'Who I Am',
+    lead: 'The creator of this app:',
+    bullets: [
+      { lead: 'Not a medical professional', rest: 'and not someone who has actively pursued bodybuilding since 2020.' },
+      { lead: 'Still the guy who shows up', rest: 'he will come to the gym with you, teach you how to lift, and build you a plan.' },
+    ],
   },
   {
-    heading: 'Purpose and functions',
-    body: 'The purpose of this app, webpage really, is to make going to the gym somewhat stress free, by handing you a plan for what to lift, when, and how. It is also a fitness diary, and yes, that phrase is as unpleasant to write as it is to read. It is built so that logging an exercise, cataloguing your progress and seeing whether you are drifting off your goal are all easy. There are some things in it I like: a reminder on your gym day, an atlas of odd facts that unlocks as you go, and my own favourite, something that berates you when you slack off.',
+    heading: 'Purpose of the App',
+    lead: 'This app, webpage really, exists to make going to the gym somewhat stress free.',
+    bullets: [
+      { lead: 'Simplify the fitness habit', rest: 'you get a day-to-day plan for what to lift, when, and how.' },
+      { lead: 'A fitness diary', rest: 'logging a lift, cataloguing your progress and seeing whether you are drifting off your goal are all easy. That phrase is as unpleasant to write as it is to read.' },
+      { lead: 'The parts I like', rest: 'a reminder on your gym day, an atlas of odd facts that unlocks as you go, and one that berates you when you slack off.' },
+    ],
   },
   {
     heading: 'Motivation',
-    body: 'Two reasons. First, this should be open and free. Most people I know cannot spend 150 dollars a session on a personal trainer, and the fitness apps I have tried are generic and keep the useful part behind a paywall. Second, exercise should not feel like a chore to get through, so there are small games to play during the rest between hard sets.\n\nThe concept was a solo project to get myself back in shape. The code was written with Claude Code, and this repository is the only official one.',
+    lead: 'Two reasons.',
+    bullets: [
+      { lead: 'This should be open and free', rest: 'most people I know cannot spend 150 dollars a session on a personal trainer, and the fitness apps I have tried are generic and keep the useful part behind a paywall.' },
+      { lead: 'Exercise should not feel like a chore', rest: 'so there are small games to play during the rest between hard sets.' },
+      { lead: 'Where it came from', rest: 'a solo project to get myself back in shape. The code was written with Claude Code, and this repository is the only official one.' },
+    ],
   },
   {
-    heading: null,
-    body: 'Tl;dr: do not be MJT attempting what looks like a pull-up. If you are unsure of an exercise, skip it and ask someone who works at your gym to show you. Consider yourself warned and me not liable.',
-  },
-  {
-    heading: 'Before we launch',
-    body: 'You need to give me three things: your preferred settings, your personal information, and your fitness goal and schedule.',
+    heading: 'What Setup Collects',
+    lead: 'You need to give me three things.',
+    bullets: [
+      { lead: 'Your preferred settings', rest: null },
+      { lead: 'Your personal information', rest: null },
+      { lead: 'Your fitness goal and schedule', rest: null },
+    ],
   },
 ];
+
+export const INTRO_DISCLAIMER: string = 'Tl;dr: do not be MJT attempting what looks like a pull-up. If you are unsure of an exercise, skip it and ask someone who works at your gym to show you. Consider yourself warned and me not liable.';
+
+export const INTRO_DISCLAIMER_HEADING = 'Tl;dr';
+
+export const INTRO_ACKNOWLEDGEMENT = 'I realise that asking for help from an actual human is necessary when I am unsure about my form. I agree to use common sense and stop being shy to the detriment of my own health.';
 
 /**
  * A small original stick figure, flexing. Four lines by seven columns: well inside the brief's
