@@ -91,7 +91,8 @@ reminders runbook
 and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
 None of them lives in a copy table: they are `src/content/formCues.ts`,
 `src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
-`src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts`, `src/content/introSlides.ts`,
+`src/content/supplementGuidance.ts`, `src/content/guidanceReferences.ts`,
+`src/content/bodyFatChart.ts`, `src/content/introSlides.ts`,
 `src/content/setupSliderExamples.ts` and that runbook.
 
 <!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
@@ -119,6 +120,23 @@ readiness screening with an evidence-based guidance step covering creatine, caff
 powder, and basic kit. Each section cites published literature with DOIs verified in
 `src/domain/nutrition.ts`. The module carries its own suite, `src/content/supplementGuidance.test.ts`,
 asserting R5, R6, R11, and that every DOI it prints appears in `src/domain/nutrition.ts`.
+
+<!-- decision: r10-guidance-references-module | status: adopted | supersedes: r10-supplement-guidance-module -->
+`src/content/guidanceReferences.ts` was added to that list on 2026-09-09, for round 2 claim r2.18.
+The guidance step became eight collapsible topics, so its citations could no longer sit inside the
+topic that raised them: two topics cite the same fluid source, and the step needed ONE numbering
+scheme with superscripts on the headings, matching the body step's list (decision
+`r10-body-equations-module`). The citations therefore moved out of `supplementGuidance.ts` into
+this module, which supersedes that half of the decision above; the topics themselves stay there.
+
+Two things this module does that no earlier R10 module did. First, a citation carries the file
+that already held its DOI (`recordedIn`), and the suite reads that file and asserts the DOI is in
+it, so the check is no longer hard-wired to `nutrition.ts` alone: the rest-interval sources live
+in `src/domain/training/restTimer.ts`. Second, a claim with NO source is a first-class entry
+(`kind: 'unsourced'`) that names the claim, rather than an omission. Brief L section 3b closed the
+sourcing for this step and five rows came back with no adequate source, so the absence is data and
+is rendered as such. `src/content/supplementGuidance.test.ts` asserts the join: a topic carries a
+marked placeholder exactly when one of its references is unsourced.
 
 <!-- decision: r10-intro-slides-module | status: adopted | supersedes: none -->
 `src/content/introSlides.ts` was added to that list on 2026-09-05, for alpha round 1 claims
