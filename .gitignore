@@ -28,3 +28,8 @@ screenshots/
 
 # Python bytecode from local asset tooling
 __pycache__/
+
+# Agent worktrees and local Claude Code state. Worktrees are nested here deliberately: Node's
+# upward module resolution finds the parent's node_modules, so a worker needs no install and no
+# network, and vite's cache dir stays inside the worker's own sandbox.
+.claude/
