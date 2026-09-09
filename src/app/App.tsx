@@ -17,7 +17,7 @@ import {
 } from '../store/selectors';
 import { useActiveCursor } from '../store/scheduleSelectors';
 import { HotkeyProvider, useHotkeys } from '../ui/hotkeys';
-import { SPOTLIGHT_COMBO, VIEWS, VIEW_INSTRUCTIONS, isViewId } from '../ui/nav/views';
+import { SPOTLIGHT_COMBO, VIEWS, VIEW_INSTRUCTIONS, VIEW_TITLES, isViewId } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { stepBrowseBlock, stepBrowseWeek } from '../ui/planBrowse';
 import { BootGate } from '../ui/components/Boot';
@@ -34,6 +34,8 @@ import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider'
 import { MigrationGate } from '../ui/migration/MigrationGate';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
 import { SetupWizard } from '../ui/setup/SetupWizard';
+import { SetupBannerProvider, useSetupBanner } from '../ui/setup/setupBanner';
+import { SkinSettings } from '../ui/settings/SkinSettings';
 import { AtlasView } from '../ui/views/AtlasView';
 import { LogView } from '../ui/views/LogView';
 import { PlanView } from '../ui/views/PlanView';
@@ -414,6 +416,103 @@ const VIEW_ICONS: Record<ViewId, LimelightIconName> = {
 };
 
 /**
+ * What follows the fixed brand in the top bar: where the user is, in one phrase.
+ *
+ * ROUND 2, `r2-onboarding.general`: "The banner of the web page (That now says FIX THIS
+ * INJUSTICE) is not dynamic. I would Like it to append some information as the user moves
+ * forward." The brand does not move; this is the part that does.
+ *
+ *   the intro                    `Hi, How Are Ya`
+ *   setup, no name yet           `Welcome Aboard`
+ *   setup, once a name is given  `Welcome Aboard: {name}`
+ *   setup, blank name at Review  `Welcome Aboard: Shy or Paranoid?`
+ *   after setup                  the view's own name: `Atlas`, `Log`, and so on
+ *
+ * THE NAME IS THE USER'S OWN TEXT and is rendered exactly as typed. `FORMAT.bannerName` is a
+ * frame with a slot, never a concatenation here, and nothing on this path trims, re-cases or
+ * truncates the string. `trim()` decides only WHETHER a name has been given, which is the same
+ * test `SetupWizard.confirm()` uses before falling back to the default display name; the value
+ * handed to the frame is the raw one.
+ *
+ * THE JOKE IS KEYED OFF REVIEW, NEVER OFF AN EMPTY FIELD. `Shy or Paranoid?` is for a user who
+ * reached the end of setup without giving a name, not for one who has not typed it yet, so it
+ * reads `atReview` from the wizard rather than deciding for itself that the field is blank.
+ *
+ * WHICH SETUP TIER IT FOLLOWS, decided against brief K's two-tier draft: the MERGED view, which
+ * is `buffer ?? committed` and is exactly what `SetupWizard` renders the name field's own `value`
+ * from. Following the committed tier alone would leave the banner a step behind the field the
+ * user is looking at, which reads as a bug; following the buffer alone would blank the banner
+ * every time a step commits and the buffer empties. The wizard publishes its own merged `draft`,
+ * so the banner and the field can never disagree by construction.
+ */
+function TopbarTitle(): ReactElement {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
+  const profile = useActiveProfile();
+  // Scalar selectors, so each snapshot stays referentially stable between renders.
+  const introSeen = useAppStore((s) => s.ui.introSeen);
+  const storedView = useAppStore((s) => s.ui.lastView);
+  const setup = useSetupBanner();
+
+  function text(): string {
+    // The intro is the first thing a fresh document shows, ahead of boot and ahead of setup, and
+    // `ui.introSeen` is the same flag IntroGate mounts itself on.
+    if (!introSeen) return t('status.bannerIntro');
+    if (profile === null) {
+      // `null` means no wizard is mounted yet, which is the same screen as "nothing typed".
+      const typed = setup?.displayName ?? '';
+      if (typed.trim() !== '') return FORMAT.bannerName(typed, overrides);
+      if (setup?.atReview === true) return t('status.bannerSetupAnonymous');
+      return t('status.bannerSetup');
+    }
+    // The same fallback ViewShell uses, so the banner can never name a view the shell is not
+    // showing.
+    return t(VIEW_TITLES[isViewId(storedView) ? storedView : 'targets']);
+  }
+
+  return (
+    <span className="topbar-title" data-testid="topbar-title">
+      {text()}
+    </span>
+  );
+}
+
+/**
+ * The skin picker, reachable from the top bar while setup is running (round 2, r2.05).
+ *
+ * "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any skin picker or any app
+ * settings." Confirmed gap: the tab strip is inside `ViewShell`, which is not mounted until a
+ * profile exists, so nothing in the nine-step wizard could reach the skin. Someone who dislikes
+ * the default could not change it until the whole wizard was done.
+ *
+ * THE SKIN PICKER ALONE, NOT THE SETTINGS VIEW. `SettingsView` reads the active profile for its
+ * units, reminders, targets and data sections, and mounting it with no profile is a crash rather
+ * than a screen. `SkinSettings` was read before this was written and stands alone: it reads
+ * `ui.skin`, `ui.sounds` and `ui.hotkeys` and nothing else, touches no profile, and needs no
+ * provider (`useSkin` is a store selector, by that module's own design note).
+ *
+ * A `<details>` rather than a modal, matching `disclosure.why` and `disclosure.examples`
+ * elsewhere in the app: the platform control brings its own keyboard and screen-reader
+ * behaviour, and a dialog here would need a focus trap and a scroll lock for a three-radio row.
+ *
+ * Gated on there being no profile, which is the same condition `App` uses to decide to render
+ * the wizard at all, so the control appears exactly while setup is reachable and never after.
+ */
+function TopbarSkinPicker(): ReactElement | null {
+  const t = useCopy();
+  const profile = useActiveProfile();
+  if (profile !== null) return null;
+  return (
+    <details className="topbar-skin" data-testid="topbar-skin">
+      <summary>{t('disclosure.skin')}</summary>
+      <div className="topbar-skin-panel">
+        <SkinSettings />
+      </div>
+    </details>
+  );
+}
+
+/**
  * The top bar's moving instruction, and the session position SessionIndicator used to carry
  * (P10 Brief D, part 1).
  *
@@ -560,101 +659,117 @@ export function App(): ReactElement {
   return (
     <ToastProvider>
       <TrainingModalsProvider>
-        <div className={crtClasses}>
-          {/*
-           * The Worker's copy of the reminder schedule, kept in step with the store (P5 Task 6).
-           * It renders nothing, so its position carries no layout: it is first so the mount
-           * sync is issued on the app's first commit rather than behind the view tree, and it
-           * attaches nothing at all in a build that carried no Worker origin.
-           */}
-          <ReminderSync />
-          <header className="topbar">
-            <span className="brand">
-              FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
-            </span>
+        {/*
+         * The two facts the banner reads off the setup wizard (round 2, r2-onboarding.general).
+         * It has to wrap BOTH the header and <main>, because the wizard is inside <main> and the
+         * banner is in the header above it, and neither can read the other's state; see
+         * src/ui/setup/setupBanner.tsx for why this is a context rather than a store field.
+         */}
+        <SetupBannerProvider>
+          <div className={crtClasses}>
             {/*
-             * The moving instruction for the current view, and the session position it now
-             * carries (P10 Brief D, part 1: the app name stays fixed on the left, the
-             * instruction moves). Renders nothing until a profile exists, so the header keeps
-             * its two-element layout through setup, exactly as SessionIndicator's absence did.
+             * The Worker's copy of the reminder schedule, kept in step with the store (P5 Task 6).
+             * It renders nothing, so its position carries no layout: it is first so the mount
+             * sync is issued on the app's first commit rather than behind the view tree, and it
+             * attaches nothing at all in a build that carried no Worker origin.
              */}
-            <TopbarTicker />
-          </header>
+            <ReminderSync />
+            <header className="topbar">
+              <span className="brand">
+                FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+              </span>
+              {/*
+               * Where the user is, appended to the fixed brand (round 2, r2-onboarding.general).
+               * Immediately after the brand rather than at the far end of the bar, because the two
+               * are read as one line: the app's name, then this page's.
+               */}
+              <TopbarTitle />
+              {/*
+               * The moving instruction for the current view, and the session position it now
+               * carries (P10 Brief D, part 1: the app name stays fixed on the left, the
+               * instruction moves). Renders nothing until a profile exists, so the header keeps
+               * its two-element layout through setup, exactly as SessionIndicator's absence did.
+               */}
+              <TopbarTicker />
+              {/* The one way to the skin picker while setup is running (round 2, r2.05). */}
+              <TopbarSkinPicker />
+            </header>
 
-          <main>
-            <UpdatePrompt />
-            <SaveErrorBanner />
-            <LoadErrorBanner />
+            <main>
+              <UpdatePrompt />
+              <SaveErrorBanner />
+              <LoadErrorBanner />
+              {/*
+               * The legacy import offer (P7). A PANEL, not a route and not a modal: it is rendered
+               * beside the view switch rather than in place of it, so a user who wants to ignore
+               * the old data can still log a set today. It gates itself on all four of its
+               * conditions and renders null otherwise, so it costs the shell nothing.
+               */}
+              <MigrationGate />
+
+              {/*
+               * The intro sequence (P10 Brief C), AHEAD of the boot sequence below. A fixed
+               * overlay exactly like BootGate, so it costs the tree nothing beyond itself and
+               * gates itself on `ui.introSeen`. It is mounted unconditionally, like BootGate,
+               * because it is the piece that has to notice the moment the sequence records itself
+               * as seen and disappear.
+               */}
+              <IntroGate />
+
+              {/*
+               * The boot sequence (P8 Task 6). A FIXED overlay covering the whole screen while it
+               * runs, so its position in the tree carries no layout and the app behind it does not
+               * reflow when it unmounts. It gates itself on `ui.bootSeen` and renders null once the
+               * sequence has recorded itself as seen, which is why it is mounted unconditionally.
+               * Inside <main> so setup, which is the whole screen before a profile exists, boots
+               * behind the same sequence as everything else.
+               *
+               * ALSO gated here on `introSeen`, which BootGate itself does not check: the two
+               * sequences both draw a control named "Skip" (button.skipIntro, button.skipBoot),
+               * and mounting both at once -- introSeen false, bootSeen false, a fresh document's
+               * actual first run -- would put two same-named Skip controls in the tree at once.
+               * Deferring Boot's mount until the intro has been seen or skipped keeps the two
+               * sequential, which is what "shown once before... Setup, step 1 of 9" already means
+               * for the intro and what P8 already means for the boot: the user meets exactly one
+               * full-screen sequence at a time.
+               */}
+              {introSeen && <BootGate />}
+
+              {profile === null ? (
+                // No profile means setup has not run. The wizard is the whole screen until it has:
+                // every other view needs a profile to read units, time zone and targets from.
+                <SetupWizard />
+              ) : (
+                <ViewShell />
+              )}
+            </main>
+
             {/*
-             * The legacy import offer (P7). A PANEL, not a route and not a modal: it is rendered
-             * beside the view switch rather than in place of it, so a user who wants to ignore
-             * the old data can still log a set today. It gates itself on all four of its
-             * conditions and renders null otherwise, so it costs the shell nothing.
+             * The footer (P10 Brief D), rendered once at the foot of the app shell: outside
+             * <main> and after it, so it is the last thing on the page across every view and
+             * across setup, and never sits inside the scrollable view area it is quiet beneath.
              */}
-            <MigrationGate />
+            <SiteFooter />
 
             {/*
-             * The intro sequence (P10 Brief C), AHEAD of the boot sequence below. A fixed
-             * overlay exactly like BootGate, so it costs the tree nothing beyond itself and
-             * gates itself on `ui.introSeen`. It is mounted unconditionally, like BootGate,
-             * because it is the piece that has to notice the moment the sequence records itself
-             * as seen and disappear.
+             * The weekly-miss popup (P6). Outside <main>, as the last child of the CRT root,
+             * because it is a modal over the whole app rather than a panel inside the view area.
+             * It gates itself on the pending week, the profile, an idle session and the migration
+             * offer, and renders null otherwise.
              */}
-            <IntroGate />
+            <MotivationGate />
 
             {/*
-             * The boot sequence (P8 Task 6). A FIXED overlay covering the whole screen while it
-             * runs, so its position in the tree carries no layout and the app behind it does not
-             * reflow when it unmounts. It gates itself on `ui.bootSeen` and renders null once the
-             * sequence has recorded itself as seen, which is why it is mounted unconditionally.
-             * Inside <main> so setup, which is the whole screen before a profile exists, boots
-             * behind the same sequence as everything else.
-             *
-             * ALSO gated here on `introSeen`, which BootGate itself does not check: the two
-             * sequences both draw a control named "Skip" (button.skipIntro, button.skipBoot),
-             * and mounting both at once -- introSeen false, bootSeen false, a fresh document's
-             * actual first run -- would put two same-named Skip controls in the tree at once.
-             * Deferring Boot's mount until the intro has been seen or skipped keeps the two
-             * sequential, which is what "shown once before... Setup, step 1 of 9" already means
-             * for the intro and what P8 already means for the boot: the user meets exactly one
-             * full-screen sequence at a time.
+             * The block transition cutscene (P8 Task 10). A modal over the whole app, beside the
+             * weekly-miss popup rather than inside <main>, and last because it is the lowest
+             * priority interruption of the two: it reports work already done, while the popup
+             * asks for a decision about a week that was missed. It gates itself on the plan
+             * CURSOR's block, an idle session, a finished boot and the migration offer, and
+             * renders null otherwise.
              */}
-            {introSeen && <BootGate />}
-
-            {profile === null ? (
-              // No profile means setup has not run. The wizard is the whole screen until it has:
-              // every other view needs a profile to read units, time zone and targets from.
-              <SetupWizard />
-            ) : (
-              <ViewShell />
-            )}
-          </main>
-
-          {/*
-           * The footer (P10 Brief D), rendered once at the foot of the app shell: outside
-           * <main> and after it, so it is the last thing on the page across every view and
-           * across setup, and never sits inside the scrollable view area it is quiet beneath.
-           */}
-          <SiteFooter />
-
-          {/*
-           * The weekly-miss popup (P6). Outside <main>, as the last child of the CRT root,
-           * because it is a modal over the whole app rather than a panel inside the view area.
-           * It gates itself on the pending week, the profile, an idle session and the migration
-           * offer, and renders null otherwise.
-           */}
-          <MotivationGate />
-
-          {/*
-           * The block transition cutscene (P8 Task 10). A modal over the whole app, beside the
-           * weekly-miss popup rather than inside <main>, and last because it is the lowest
-           * priority interruption of the two: it reports work already done, while the popup
-           * asks for a decision about a week that was missed. It gates itself on the plan
-           * CURSOR's block, an idle session, a finished boot and the migration offer, and
-           * renders null otherwise.
-           */}
-          <PhaseTransitionGate />
-        </div>
+            <PhaseTransitionGate />
+          </div>
+        </SetupBannerProvider>
       </TrainingModalsProvider>
 
       {/*
