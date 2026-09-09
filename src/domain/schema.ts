@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { AppState } from './types';
 import { isValidLocalDate, isValidLocalTime, isValidTimeZone } from './dates';
+import { ACTIVITY_BAND, ACTIVITY_FACTOR } from './nutrition';
 import { migrate } from './migrations';
 
 /** The schema version this build writes and is the ceiling for what it will read. */
@@ -176,7 +177,26 @@ const ActivityLevelSchema = z.enum(['sedentary', 'moderate', 'vigorous']);
  * others, none of them in this brief's file list) to be edited just to keep compiling.
  * Optional keeps the field's blast radius inside Brief G's own listed files.
  */
-const ActivityPalSchema = z.number().min(1.4).max(2.4).nullable().catch(null).optional(); // [PAL]
+/*
+ * DERIVED, never restated. The bounds are FAO/WHO/UNU 2004's outermost band edges and the repair
+ * value is the moderate band's floor, which is exactly what ACTIVITY_FACTOR returns. Writing
+ * .min(1.4).max(2.4).catch(1.7) here would be correct today and free to drift tomorrow: an edit to
+ * ACTIVITY_BAND would move the nine stops and leave the validator behind, silently accepting a PAL
+ * the domain no longer considers in range. That is the same failure ACTIVITY_STOPS' own containment
+ * test exists to prevent, and it does not stop being one because it happens in another file.
+ * `nutrition.ts` does not import this module, so the direction is safe.
+ */
+const PAL_MIN = ACTIVITY_BAND.sedentary[0]; // [PAL] FAO sedentary floor
+const PAL_MAX = ACTIVITY_BAND.vigorous[1]; // [PAL] FAO vigorous ceiling
+const PAL_REPAIR = ACTIVITY_FACTOR.moderate; // [PAL] the moderate band's floor
+
+const ActivityPalSchema = z
+  .number()
+  .min(PAL_MIN)
+  .max(PAL_MAX)
+  .nullable()
+  .catch(null)
+  .optional(); // [PAL]
 const GoalKindSchema = z.enum(['fat-loss', 'muscle-gain', 'recomposition', 'maintenance']);
 const ExperienceSchema = z.enum(['novice', 'intermediate', 'advanced']);
 /** What an EXERCISE needs. Unchanged by Brief F: no exercise tag is retagged. */
@@ -721,7 +741,7 @@ const SetupAnswersShapeSchema = z.object({
   // `activityPal?: number` field exactly; `.catch(1.7)` still repairs a PRESENT but corrupt
   // value to the same floor `activity: 'moderate'` above already assumes, rather than failing
   // the whole draft over one field.
-  activityPal: z.number().min(1.4).max(2.4).catch(1.7).optional(), // [PAL]
+  activityPal: z.number().min(PAL_MIN).max(PAL_MAX).catch(PAL_REPAIR).optional(), // [PAL]
   experience: ExperienceSchema,
   equipment: EquipmentAccessSchema,
   barbellStep: z.string().max(MAX_DRAFT_TEXT_CHARS),
