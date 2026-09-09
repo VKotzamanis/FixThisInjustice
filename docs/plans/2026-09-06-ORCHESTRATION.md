@@ -37,6 +37,29 @@ A brief that lands first and then has to be rewritten against those types wastes
 
 **M last, always.** Round 1 learned this: the review screen restates the other steps.
 
+### Creating a worktree by hand, for a Codex worker
+
+<!-- decision: worktrees-nested-in-repo | status: adopted | supersedes: none -->
+
+Codex has no `isolation: "worktree"`. Make the tree yourself, and **keep it nested inside the
+repo** — that is load-bearing, not tidiness. Verified 2026-09-09 on brief N's worktree: its
+`node_modules/` is an empty stub, and Node's upward module resolution finds the parent tree's
+install (351 packages), so a worker needs no `npm ci` and no network. Vite's cache dir is
+`<root>/node_modules/.vite`, which with the stub present resolves inside the worktree, so cache
+writes stay in the worker's own sandbox. A worktree outside the repo loses both properties.
+
+```bash
+BRIEF=J
+WT=".claude/worktrees/brief-${BRIEF}"
+git worktree add -b "brief-${BRIEF}" "$WT" main
+mkdir -p "$WT/node_modules"        # the stub. Do not populate it
+git -C "$WT" log --oneline -1      # RECORD THIS
+```
+
+**Run that last line and record the base commit, every time.** Brief N's worktree branched from
+`739b88e`, the session's starting commit, not from `main`, so it began without brief K. It caught
+this itself and fast-forwarded, but it cost an hour. Do not assume isolation branches from `HEAD`.
+
 ## 3. The dispatch prompt
 
 Give every agent the same four things. Nothing else is reliably read.

@@ -73,28 +73,43 @@ any more must be **deleted** from `copy.ts`, from `alpha-parts.mjs` and from `al
 
 ---
 
-## You do NOT run shell commands
+<!-- decision: worker-shell-access-restored | status: adopted | supersedes: orchestrator-runs-all-checks -->
 
-You have no shell permission in this environment. **Do not try to run `npx`, `node`, `git`, `rm`
-or anything else.** Edit files with your file tools only.
+## You DO run shell commands, and you must
 
-The orchestrator runs every check listed below and sends you the failures to fix. Your job is to
-make the edits correct enough to pass them, not to run them. In your report, section 2 becomes
-**COMMANDS I COULD NOT RUN** — leave it saying exactly that.
+You have a sandboxed shell inside your own git worktree. **Run every check yourself.**
+`node_modules` resolves from the parent directory, so `npx` works with no install: do **not** run
+`npm install` or `npm ci`, and do not use the network.
 
-If your brief asks you to DELETE a file, do not try. List it under a heading `DELETE THESE` in
-your report and the orchestrator will remove it.
-
-## Verification the orchestrator runs, so write code that passes it
+## Verification you run before you report
 
 ```
-npx tsc -b                       # expect: no output, exit 0
-npx eslint .                     # expect: no output, exit 0
+npx tsc -b --force               # expect: no output, exit 0
+npx eslint ./src ./scripts       # expect: no output, exit 0
 npx vitest run                   # expect: all files passed, 0 failed
 node scripts/check-no-emoji.mjs  # expect: OK - N file(s) clean
 ```
 
 Plus the catalogue block above if you touched copy.
+
+**Scope ESLint to `./src ./scripts` as written.** A bare `npx eslint .` reports 24 pre-existing
+errors under `worker/` that are not yours; measured on `main` at `0dd4435`, `./src ./scripts` is
+clean, so any failure it reports is genuinely yours.
+
+**Run `npx vitest run` once BEFORE you edit anything** and record the file and test counts. A drop
+in either afterwards is a regression you caused.
+
+**Commit before you finish.**
+
+```
+git add -- <the exact files you changed>     # NEVER git add -A
+git commit -m "<what changed, and why it departs from the brief where it does>"
+```
+
+Other agents share this tree, and a bare `git add -A` has already swept another agent's half-written
+work into an unrelated commit. Uncommitted work inside your worktree is not backed up.
+
+If your brief asks you to DELETE a file, delete it with `git rm` and say so in your report.
 
 **A failing test is not "done with a caveat". Fix it or report the failure with its exact output.**
 If a test fails because it asserts the old behaviour your brief replaced, update the test and say
