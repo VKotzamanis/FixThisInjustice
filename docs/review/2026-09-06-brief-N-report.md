@@ -91,3 +91,89 @@ personal-data grep. Then check what no gate can: that the `PROMINENT_ZONES` list
 invented data, that the banner never title-cases or alters the user's own text, that the new CSS
 uses tokens and not literals, and that 59 and 418 in the code match the ruling rather than a
 recomputation that happened to agree.
+
+---
+
+## Verified 2026-09-09, by re-running
+
+Every gate run by the orchestrator in N's own worktree, not read from the report above.
+
+| Gate | Result | Matches the report? |
+| --- | --- | --- |
+| `npx tsc -b --force` | exit 0 | yes |
+| `npx eslint ./src ./scripts` | exit 0, no output | yes |
+| `npx vitest run` | **124 files, 2514 tests, 0 failed** | yes, exactly |
+| `node scripts/check-no-emoji.mjs` | OK, 121 files clean | yes |
+| `node scripts/check-title-case.mjs` | **139 of 233** | yes, exactly |
+| `alpha-catalogue --check` / `alpha-walk-pages --check` | both PASS | yes |
+| personal-data grep | printed nothing | yes |
+
+**The ESLint stash claim, proved independently.** The report said 24 errors, all in `worker/`, and
+said it proved they pre-date the change by stashing. Rather than confirm the stash, the same
+measurement was taken on `main` at `0dd4435`, a tree brief N never touched: `npx eslint .` gives 24
+problems (24 errors, 0 warnings), and `npx eslint ./src ./scripts` is clean and exits 0. The count
+matches and the two directories a worker edits are clean, so N introduced none of them.
+
+**`npm run test:tz` found a real failure that the single-zone suite could not.** This gate is in
+`package.json` and is listed neither in the orchestration handout nor in brief N's report.
+
+```
+FAIL  SetupWizard.test.tsx > r2.09: the time-zone list > stores an IANA id and never an offset
+      expected { value: 'UTC', offsetLike: true } to deeply equal { value: 'UTC', offsetLike: false }
+```
+
+A test defect, not a product defect. The guard regex `/^UTC|^GMT|^[+-]\d/` catches an offset LABEL
+leaking into a value, and also matched the legitimate bare id `UTC`. Under `TZ=UTC` the device's
+zone is `UTC`, which is a real IANA identifier but is absent from this runtime's
+`supportedValuesOf('timeZone')`, so `SetupWizard` appends it on purpose. Fixed in `eccdfc9` by
+requiring a sign after `UTC`/`GMT` and adding `^\(`, which catches a whole rendered label leaking
+in and which the old regex would have missed. All four zones then passed at 124 files / 2514 tests.
+
+**Add `npm run test:tz` to the verification block for any brief touching dates, zones or
+reminders.** It is the only gate here that varies the one input the developer's machine holds fixed.
+
+## The deep review, gpt-5.6-sol at high effort
+
+The four claims no gate can check. Two confirmed, two refuted, and the orchestrator disagrees with
+one refutation.
+
+1. **`PROMINENT_ZONES` invents no population data — the report's claim stands.** Codex returned
+   "refuted" on the ground that the array encodes a non-IANA prominence ordering. It does, and
+   `dates.ts:364-372` says so in its own words: "It is a DISPLAY preference and nothing else... the
+   ordering is an editorial judgement about which city name a reader will know, reviewable line by
+   line." A declared editorial ordering that feeds no computation is not invented data, and no
+   population figure appears. **Verdict overturned to confirmed.**
+2. **The banner cannot alter the user's typed text. CONFIRMED.** Codex traced the whole path:
+   `setupDraft` to `committed`/`buffer` (`SetupWizard.tsx:921-943`), `draft = buffer ?? committed`
+   (`:952`), `e.target.value` unchanged through `patch()`, published at `:1020`, read unchanged at
+   `App.tsx:455,463`. `trim()` only decides whether to render, so whitespace-only input is omitted
+   rather than transformed. `FORMAT.bannerName` inserts with a replacement FUNCTION, so `$&` and
+   `$1` stay literal (`copy.ts:2706-2707`).
+3. **No colour literal in the added CSS. CONFIRMED, and checked independently.** Codex listed the
+   token-using declarations. `git diff 53db114~1 53db114 -- '*.css' | grep -E '^\+' | grep -iE
+   '#[0-9a-fA-F]{3,8}|rgb\(|hsl\('` returns nothing.
+4. **59 and 418 are pinned, not derived, and one test does catch the failure mode.** Codex is right
+   that §A4 supplies 418, 37 and 16 but not 59, which appears later in that document. The tests
+   hard-code both numbers. It named the test that would catch a January-only grouping: "refuses to
+   collapse New York into Panama" (`timeZoneGroups.test.ts:155-160`), which requires the two to be
+   separate groups. That is the assertion that makes the reduction defensible.
+
+## Found while verifying, and NOT brief N's defect: brief O
+
+`PROMINENT_ZONES` is pinned to one engine's spelling. Three of its forty entries are IANA **Link**
+names: `Asia/Calcutta`, `Asia/Rangoon`, `America/Godthab`. Node 22.23.1 returns only the Link
+spelling for these, so brief N could not have written `Asia/Kolkata` — `.find()` would never have
+matched. But ECMA-402 requires only that an identifier be "a Zone name or a Link name", so an
+engine may return the canonical spelling instead, and on such an engine those three lookups miss
+and the rows fall back to `fallbackRepresentative`. **The suite runs under Node and cannot catch
+it**: `timeZoneGroups.test.ts:202` asserts `Asia/Calcutta` and always will here. Filed as brief O
+with the fix (list both spellings) and a test that asserts presence of either.
+
+## D2.09.4, the one row that was the owner's, measured and ruled
+
+Against the IANA `backward` file (`github.com/eggert/tz`, 252 Link names): of the 418 zones this
+runtime returns, **121 are Link names, leaving 297 canonical, a 28.9 % reduction**. Ruled: do not
+filter. The visible list is already 59 rows after N's grouping, so filtering shrinks the SEARCHABLE
+set and not the visible one; the aliases dropped are capital cities (Accra, Addis Ababa, Bamako,
+Banjul, Brazzaville, Blantyre); and it would break the three names above, which exist only as Links
+on this engine. Reversible if the owner wants it anyway.
