@@ -70,6 +70,7 @@ export type CopyKey =
   | 'advice.sexDeselect'
   | 'advice.tapeNeedsSex'
   | 'advice.sexWorkaround'
+  | 'advice.activityLevelsSource'
   | 'advice.tapeMethod'
   | 'advice.tapeNeedFemale'
   | 'advice.tapeNeedMale'
@@ -114,6 +115,7 @@ export type CopyKey =
   | 'label.bodyFatKnown'
   | 'label.bodyFatTape'
   | 'label.activity'
+  | 'label.activityLevelsSource'
   | 'label.experience'
   | 'label.equipment'
   | 'label.equipmentAccess'
@@ -694,6 +696,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.beverageRange': 'The reference intake is published per sex, so both figures are shown.',
   'advice.estimateBodyFat': 'Click here to estimate',
   'advice.sexWorkaround': 'Options suck? I agree. Click here for a workaround.',
+  // Brief G. Verbatim, quoted in the brief inside its own code fence: "Where These Levels Come
+  // From". `advice.` rather than `button.` (R1's three-word cap) for the same reason
+  // advice.sexWorkaround above sits under a <button> too: R3 caps `advice.` at twelve words.
+  'advice.activityLevelsSource': 'Where These Levels Come From',
   'advice.tapeMethod': 'US Navy circumference method. Keep the tape level and snug.',
   'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
   'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
@@ -771,6 +777,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.bodyFatEstimate': 'Body Fat Estimate',
   // Brief F Part 1a: the everyday-activity slider's box label, renamed from "Activity level".
   'label.activity': 'Everyday Activity Level',
+  // Brief G: the modal's own heading, deliberately distinct wording from the
+  // advice.activityLevelsSource link text above it (the sex explainer does the same: compare
+  // advice.sexWorkaround with label.sexRationale). R14: Title Case, and a noun phrase, not the
+  // link's own wh-clause wording.
+  'label.activityLevelsSource': 'Activity Level Sources',
   // Brief F Part 1b: renamed from "Experience" in the UI only; the Experience type is unchanged.
   'label.experience': 'Gym Comfort',
   // Also AddCustomExercise.tsx's modality label; not the Equipment Access slider, which is its

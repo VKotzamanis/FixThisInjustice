@@ -151,10 +151,16 @@ function unitSymbolsOf(value: string): readonly string[] {
  * R10 and R9 exemptions, key by key, each with the position that earns it.
  *
  * R10 exempts form cues, exercise notes and tips, Atlas card bodies and citations; none of those
- * live in this table (they are `src/content/formCues.ts` and `src/content/specimenCards.ts`).
+ * live in this table (they are `src/content/formCues.ts` and `src/content/specimenCards.ts`, and,
+ * as of Brief G, `src/content/activityLevels.ts` for the "Where These Levels Come From" modal).
  * What does live here is R9's other exemption: "text inside a disclosure is exempt from R1-R4".
  * A key earns a place below only by being rendered inside a `<details>`, and the call site is
  * named so the exemption can be revoked when the call site changes.
+ *
+ * Brief G's two new keys, `advice.activityLevelsSource` (5 words) and `label.activityLevelsSource`
+ * (`label.` carries no R1-R4 length cap at all), need no entry here: neither is rendered inside a
+ * `<details>`, and both comply with their own family's cap unaided, so an exemption would be
+ * simply wrong rather than merely unnecessary.
  */
 const LENGTH_EXEMPT: ReadonlyMap<string, string> = new Map([
   [

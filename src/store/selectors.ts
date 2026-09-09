@@ -139,6 +139,10 @@ export function nutritionInputFor(
     massKg,
     bodyFatPct,
     activity: profile.activity,
+    // Brief G: computeTargets prefers this PAL over `activity`'s band floor when it is a
+    // number; `?? null` normalises the field's absence on a profile written before it existed
+    // to the same null computeTargets already treats as "use the floor".
+    activityPal: profile.activityPal ?? null,
     goal: profile.goal.kind,
     sessionsPerWeek,
     creatine: profile.supplements.creatine,

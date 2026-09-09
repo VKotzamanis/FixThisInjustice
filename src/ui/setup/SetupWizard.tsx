@@ -16,6 +16,8 @@ import {
 } from '../../domain/dates';
 import { newId } from '../../domain/ids';
 import {
+  ACTIVITY_FACTOR,
+  ACTIVITY_STOPS,
   NUTRITION_DOMAIN,
   computeTargets,
   isInDomain,
@@ -88,6 +90,13 @@ import {
   SEX_RATIONALE_SUMMARY_TITLE,
   SEX_RATIONALE_TOPIC,
 } from '../../content/sexRationale';
+import {
+  ACTIVITY_LEVELS_BAND_ROWS,
+  ACTIVITY_LEVELS_CITATION,
+  ACTIVITY_LEVELS_CLOSING,
+  ACTIVITY_LEVELS_INTRO,
+  ACTIVITY_LEVELS_STOP_ROWS,
+} from '../../content/activityLevels';
 import { vibrate } from '../audio/chime';
 import { ModalShell } from '../components/ModalShell';
 import { GuidanceScreen } from './GuidanceScreen';
@@ -272,17 +281,35 @@ const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
 ];
 
 /**
- * Three bands, not five (master plan section 10.1, decision `activity-levels-three-bands`).
- * Each label names the band FAO/WHO/UNU 2004 Table 5.3 prints; the two midpoint levels the
- * legacy ladder carried had no primary source and do not ship. Brief F Part 1a: a THREE-POSITION
- * slider over these same bands, never a 1-10 scale -- the owner asked for the wider scale
- * conditional on the bands being arbitrary, and they are not.
+ * SUPERSEDED (Brief G, decision `activity-slider-nine-stops`): master plan section 10.1's
+ * amendment `activity-levels-three-bands` read "the bands are not arbitrary, so no slider wider
+ * than three positions." That was half right. The bands are not arbitrary, but they are RANGES,
+ * not points, and a stop INSIDE a published range invents nothing. The slider below is nine
+ * positions, three per band, every PAL printed in the same FAO/WHO/UNU 2004 Table 5.3 the three-
+ * band amendment already cited; `src/domain/nutrition.ts`'s ACTIVITY_STOPS carries the table and
+ * the citation. `ActivityLevel` itself is UNCHANGED (still exactly `sedentary | moderate |
+ * vigorous`): a stop's band is DERIVED from it, never a second, independently editable field, and
+ * the earlier five-member ladder with invented midpoints at 1.55 and 1.85 stays rejected exactly
+ * as before -- those two numbers now ship, but as points INSIDE the sedentary and moderate
+ * bands (Brief G's own stops 2 and 5), not as a replacement for the printed floor the old ladder
+ * used them for.
  */
-const ACTIVITY_OPTIONS: { value: ActivityLevel; labelKey: CopyKey }[] = [
-  { value: 'sedentary', labelKey: 'option.activitySedentary' },
-  { value: 'moderate', labelKey: 'option.activityModerate' },
-  { value: 'vigorous', labelKey: 'option.activityVigorous' },
-];
+const ACTIVITY_LEVEL_LABEL_KEY: Record<ActivityLevel, CopyKey> = {
+  sedentary: 'option.activitySedentary',
+  moderate: 'option.activityModerate',
+  vigorous: 'option.activityVigorous',
+};
+
+/**
+ * The nine-stop slider's own option list, `value` keyed by PAL rather than by band so
+ * `sliderIndexOf`/`sliderValueAt` can address it exactly like every string-keyed slider on this
+ * step (see their own updated doc comment above). `level` travels alongside each PAL so choosing
+ * a stop sets `activity` (the band) and `activityPal` (the stop) together in one `patch` call --
+ * the band is never chosen independently of the stop that implies it.
+ */
+const ACTIVITY_STOP_OPTIONS: { value: number; level: ActivityLevel }[] = ACTIVITY_STOPS.map(
+  (stop) => ({ value: stop.pal, level: stop.level }),
+);
 
 /**
  * Brief F Part 1b: "Experience" renamed to Gym Comfort IN THE UI ONLY -- the type stays
@@ -485,6 +512,9 @@ function initialDraft(): Draft {
     waist: '',
     hip: '',
     activity: 'moderate',
+    // Brief G: ACTIVITY_FACTOR.moderate is that band's own printed floor (stop 4 of 9), so a
+    // fresh wizard that never touches the slider reproduces the pre-nine-stop default exactly.
+    activityPal: ACTIVITY_FACTOR.moderate,
     experience: 'novice',
     equipment: 'full-gym',
     barbellStep: String(DEFAULT_BARBELL_STEP.metric),
@@ -532,14 +562,20 @@ function pickSessionsPerWeek(raw: string): SessionsPerWeek {
  * range's own value is ALWAYS an index into a closed list (Brief F Part 1), never a free number,
  * so this and `sliderValueAt` below are the only two places a slider's index and its domain value
  * meet.
+ *
+ * `T extends string | number` rather than Brief F's original `string`-only bound (Brief G): the
+ * nine-stop Everyday Activity Level slider addresses its options by PAL, a number, not a string
+ * enum member like every other slider on this step. Widening the bound here keeps that slider on
+ * the SAME two functions instead of forking a numeric-only pair beside them, which is what the
+ * doc comment's own "only two places" claim depends on staying true.
  */
-function sliderIndexOf<T extends string>(options: readonly { value: T }[], value: T): number {
+function sliderIndexOf<T extends string | number>(options: readonly { value: T }[], value: T): number {
   const i = options.findIndex((o) => o.value === value);
   return i === -1 ? 0 : i;
 }
 
 /** The domain value at a `<input type="range">`'s raw string index, or `fallback` off the list. */
-function sliderValueAt<T extends string>(
+function sliderValueAt<T extends string | number>(
   options: readonly { value: T }[],
   raw: string,
   fallback: T,
@@ -904,6 +940,56 @@ function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: ()
   );
 }
 
+/**
+ * "Where These Levels Come From" (Brief G), opened from the training step's Everyday Activity
+ * Level slider. Same `ModalShell`, same upper-right close control as SexRationaleModal and
+ * BodyFatChartModal above: the brief's own text says "close control upper left", the position
+ * round 1 shipped, but r2.12(i)/ruling D2.12.2 moved every other modal's close control upper
+ * right for consistency (FormCuesModal included) after this brief was written, and matching the
+ * two modals above rather than the brief's now-superseded wording is what keeps this one
+ * consistent with them.
+ */
+function ActivityLevelsModal(props: { onClose: () => void }): JSX.Element {
+  const t = useCopy();
+  const headingId = useId();
+  return (
+    <ModalShell
+      labelledBy={headingId}
+      className="wiz-modal"
+      backdropClassName="wiz-modal-bg"
+      testId="activity-levels-backdrop"
+      onClose={props.onClose}
+    >
+      <button
+        type="button"
+        className="wiz-modal-close"
+        onClick={props.onClose}
+        aria-label={t('button.closeModal')}
+      >
+        {/* A mark from the token set, not an emoji (copy contract R6), matching every other
+            modal's close control in this file. */}
+        {'✕'}
+      </button>
+      <h2 id={headingId} className="wiz-modal-title">
+        {t('label.activityLevelsSource')}
+      </h2>
+      <p className="wiz-note">{ACTIVITY_LEVELS_INTRO}</p>
+      <ul className="wiz-modal-points">
+        {ACTIVITY_LEVELS_BAND_ROWS.map((row) => (
+          <li key={row}>{row}</li>
+        ))}
+      </ul>
+      <ol className="wiz-modal-points">
+        {ACTIVITY_LEVELS_STOP_ROWS.map((row) => (
+          <li key={row}>{row}</li>
+        ))}
+      </ol>
+      <p className="wiz-note">{ACTIVITY_LEVELS_CLOSING}</p>
+      <p className="wiz-note wiz-cite-src">{ACTIVITY_LEVELS_CITATION}</p>
+    </ModalShell>
+  );
+}
+
 export function SetupWizard(): JSX.Element {
   const t = useCopy();
   const overrides = useCopyOverrides();
@@ -954,6 +1040,7 @@ export function SetupWizard(): JSX.Element {
   const [submitted, setSubmitted] = useState(false);
   const [sexRationaleOpen, setSexRationaleOpen] = useState(false);
   const [bodyFatChartOpen, setBodyFatChartOpen] = useState(false);
+  const [activityLevelsOpen, setActivityLevelsOpen] = useState(false);
   /*
    * Round 1 claim C1.08.14 (B33): `error.valueRequired` stays, but it must not stand as helper
    * text under a field nobody has touched yet. `bodyNextAttempted` is the touched set the brief
@@ -1647,6 +1734,11 @@ export function SetupWizard(): JSX.Element {
       massKg, // [kg]
       bodyFatPct, // [%] of body mass, or null
       activity: draft.activity,
+      // Brief G: the nine-stop slider's own PAL, preferred over `activity`'s band floor by
+      // computeTargets whenever it is a number (it always is once the training step's default
+      // has run; `?? null` only guards a draft resumed from a document written before this
+      // field existed).
+      activityPal: draft.activityPal ?? null,
       goal: draft.goalKind,
       sessionsPerWeek: sessionsPerWeekForTargets, // [sessions/week], integer
       creatine: draft.creatine,
@@ -1660,6 +1752,7 @@ export function SetupWizard(): JSX.Element {
     bodyFatPct,
     draft.sex,
     draft.activity,
+    draft.activityPal,
     draft.goalKind,
     draft.creatine,
     sessionsPerWeekForTargets,
@@ -1716,6 +1809,8 @@ export function SetupWizard(): JSX.Element {
         baselineBodyFatPct: bodyFatPct, // [%] or null
       },
       activity: draft.activity,
+      // Brief G: the nine-stop slider's own PAL choice, stored alongside the band it implies.
+      activityPal: draft.activityPal ?? null,
       experience: draft.experience,
       equipment: draft.equipment,
       equipmentSteps: {
@@ -2475,26 +2570,45 @@ export function SetupWizard(): JSX.Element {
         <fieldset>
           <StepHeading title={t(STEP_TITLE_KEY.training)} headingRef={headingRef} />
 
-          {/* Brief F Part 1a: Everyday Activity Level, a 3-position slider over the FAO/WHO/UNU
-              2004 PAL bands. Three positions, never ten: src/domain/nutrition.ts records
-              rejecting a five-point ladder because its interior points have no source, and the
-              owner's own 1-10 idea was conditional on the bands being arbitrary, which they are
-              not. */}
+          {activityLevelsOpen && (
+            <ActivityLevelsModal
+              onClose={() => {
+                setActivityLevelsOpen(false);
+              }}
+            />
+          )}
+
+          {/* Brief G: Everyday Activity Level, widened from Brief F Part 1a's 3-position slider
+              to nine stops, three per FAO/WHO/UNU 2004 band -- ACTIVITY_STOP_OPTIONS above,
+              read from src/domain/nutrition.ts's ACTIVITY_STOPS. Interpolating BETWEEN bands to
+              invent a new category is still forbidden, exactly as it was at three positions:
+              every one of the nine values is printed in the same Table 5.3 the three bands
+              already cite. Choosing a stop sets `activity` (the band) and `activityPal` (the
+              stop) together in one patch, never independently. */}
           <div className="wiz-field wiz-slider">
             <label htmlFor="f-activity">{t('label.activity')}</label>
             <input
               id="f-activity"
               type="range"
               min={0}
-              max={ACTIVITY_OPTIONS.length - 1}
+              max={ACTIVITY_STOP_OPTIONS.length - 1}
               step={1}
-              value={sliderIndexOf(ACTIVITY_OPTIONS, draft.activity)}
+              value={sliderIndexOf(ACTIVITY_STOP_OPTIONS, draft.activityPal ?? ACTIVITY_FACTOR.moderate)}
               onChange={(e) => {
-                patch({ activity: sliderValueAt(ACTIVITY_OPTIONS, e.target.value, 'moderate') });
+                const pal = sliderValueAt(ACTIVITY_STOP_OPTIONS, e.target.value, ACTIVITY_FACTOR.moderate);
+                const level =
+                  ACTIVITY_STOP_OPTIONS.find((option) => option.value === pal)?.level ?? 'moderate';
+                patch({ activity: level, activityPal: pal });
               }}
             />
             <p className="wiz-slider-position" aria-live="polite">
-              {t(ACTIVITY_OPTIONS[sliderIndexOf(ACTIVITY_OPTIONS, draft.activity)]?.labelKey ?? 'option.activityModerate')}
+              {t(
+                ACTIVITY_LEVEL_LABEL_KEY[
+                  ACTIVITY_STOP_OPTIONS[
+                    sliderIndexOf(ACTIVITY_STOP_OPTIONS, draft.activityPal ?? ACTIVITY_FACTOR.moderate)
+                  ]?.level ?? 'moderate'
+                ],
+              )}
             </p>
             <details>
               <summary>{t('disclosure.examples')}</summary>
@@ -2504,6 +2618,17 @@ export function SetupWizard(): JSX.Element {
                 </p>
               ))}
             </details>
+            {/* Brief G's callout: a text link under the slider opening the same ModalShell the
+                sex explainer uses, with the FAO/WHO/UNU citation and the full nine-stop table. */}
+            <button
+              type="button"
+              className="wiz-link"
+              onClick={() => {
+                setActivityLevelsOpen(true);
+              }}
+            >
+              {t('advice.activityLevelsSource')}
+            </button>
           </div>
 
           {/* Brief F Part 1b: Gym Comfort, renamed from Experience IN THE UI ONLY -- the
