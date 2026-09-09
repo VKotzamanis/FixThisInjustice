@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `aa9fe7a`. 101 parts across 14 screens, holding 545 of the table's 548 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `bda7398`. 101 parts across 14 screens, holding 545 of the table's 548 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
