@@ -121,7 +121,7 @@ export function IntroSequence(): ReactElement {
             {INTRO_ACKNOWLEDGEMENT}
           </label>
           <button type="button" className="intro-acknowledgement-continue" disabled={!acknowledged} onClick={() => { setAcknowledgementOpen(false); setIndex((current) => current + 1); }}>
-            {t('button.continue')}
+            {t('button.introContinue')}
           </button>
         </ModalShell>
       )}

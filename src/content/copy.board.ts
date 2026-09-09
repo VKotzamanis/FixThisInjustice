@@ -108,6 +108,7 @@ export const BOARD_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // (`button.skipToday` reads CANCEL SERVICE). The abort stays an abort: the copy suite checks
   // that no override puts a commit word on `button.cancel`.
   'button.continue': 'PROCEED',
+  'button.introContinue': 'PROCEED', // mirrors button.continue: same control, separate key
   'button.cancel': 'CANCEL',
 
   // --- the nav, so the tabs and the board speak one language ---

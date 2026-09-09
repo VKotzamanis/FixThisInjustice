@@ -22,7 +22,13 @@
 /** @type {Part[]} */
 export const PARTS = [
   // --- intro, shown once ahead of boot (P10 Brief C) ---
-  { id: 'intro.sequence', title: 'Intro sequence', what: 'The four caveat slides, the disclaimer and the final slide, shown once before setup.', screen: 'intro', components: ['src/ui/intro/IntroSequence.tsx'], states: ['running', 'finished'] },
+  // EXPLICIT `keys`, and it must stay explicit. IntroSequence.tsx also renders `button.continue`,
+  // which `setup.nav` owns. The intro screen is swept before the setup screen, so a part here with
+  // no `keys` array claims that shared key first and setup.nav then collides with it -- the same
+  // hazard the two-pass comment in alpha-catalogue.mjs records for boot.sequence and
+  // button.skipBoot. Listing this part's own key leaves button.continue for setup.nav to claim.
+  // Round 2, brief J: the acknowledgement modal is what introduced the shared control here.
+  { id: 'intro.sequence', title: 'Intro sequence', what: 'The caveat slides, and the tl;dr acknowledgement modal that gates the end of the sequence.', screen: 'intro', components: ['src/ui/intro/IntroSequence.tsx'], states: ['running', 'finished'], keys: ['advice.clickToContinue', 'button.introContinue'] },
 
   // --- boot ---
   { id: 'boot.sequence', title: 'Boot sequence', what: 'The dotted step lines that print on the first open.', screen: 'boot', components: ['src/ui/components/Boot.tsx'], states: ['running', 'finished'] },

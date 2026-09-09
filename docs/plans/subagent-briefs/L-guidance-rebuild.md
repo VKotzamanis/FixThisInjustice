@@ -71,6 +71,71 @@ trial behind it, and the powder claim almost certainly does not.** Flag both rat
 opinion as evidence; he has already said he will supply his own recommendation for the shaker, and
 this is the same case.
 
+## 3b. The sourcing is DONE. Use this set and add nothing to it
+
+**Searched by a Codex researcher with live web access on 2026-09-09, then every DOI verified
+against CrossRef independently by the orchestrator. Both fetches are logged in `REFERENCES.md`.**
+You are NOT to run your own literature search, and you are NOT to add a source that is not below.
+Two of the four claims came back with no adequate source; that is the finding, not a gap for you
+to fill.
+
+### TEMPO / time under tension — SOURCED, and it refutes the gym truism
+
+```
+Schoenfeld BJ, Ogborn DI, Krieger JW (2015). Effect of Repetition Duration During Resistance
+Training on Muscle Hypertrophy: A Systematic Review and Meta-Analysis. Sports Medicine.
+DOI 10.1007/s40279-015-0304-0
+```
+
+Verified: CrossRef 200, title, author, year and journal all match. Eight eligible trials found
+**similar hypertrophy across repetition durations of roughly 0.5 to 8 seconds.**
+
+**Write what the evidence says, not the gym truism.** The brief asked whether "fast repetitions do
+not build muscle" is true. It is not supported. Say plainly that across the range most people
+actually lift in, repetition speed does not appear to change hypertrophy, and that time under
+tension is not the lever it is popularly held to be. The owner asked for the truth over agreement;
+this is the case he was anticipating.
+
+### ELECTROLYTES — the obvious source is SUPERSEDED. Read this before citing anything
+
+The researcher returned Convertino et al. 1996, *ACSM Position Stand: Exercise and Fluid
+Replacement*, DOI `10.1097/00005768-199610000-00045`, for the "greater than 1 hour" threshold.
+It resolves (CrossRef 200) and it is real. **It is also the 1996 position stand, superseded by the
+2007 one — which this project ALREADY cites**: Sawka et al. 2007, DOI
+`10.1249/mss.0b013e31802ca597`, in `src/domain/nutrition.ts`.
+
+**Do not cite Convertino 1996.** Citing a superseded guideline when its replacement is already in
+the tree is a defect, not a citation.
+
+Instead: read what `src/domain/nutrition.ts` already records about Sawka 2007 and use only what is
+recorded there. **If the 2007 stand as recorded does not state a duration or sweat-loss threshold
+for electrolyte replacement, then this claim has NO SOURCE** and ships as a marked placeholder like
+the two below. Do not carry the 1996 number across to the 2007 citation: that would attach a figure
+to a paper that was not checked for it.
+
+### WATER — NO ADEQUATE SOURCE FOUND
+
+Searched for resistance-training-specific studies giving session duration, intensity, an in-session
+water volume, timing, and the under-2 %-body-mass-loss anchor. The closest was Peacock et al. 2012
+(DOI `10.1016/j.appet.2011.08.023`), a 100-minute gym session containing only 20 minutes of
+resistance exercise, ad libitum water, no prescribed schedule. **Not adequate, and rejected.**
+
+Ships as a marked placeholder naming the claim. Keep the existing Sawka 2007 citation for the
+under-2 % anchor, which `src/domain/nutrition.ts` already carries and which is unaffected. The
+"1.5 L per kg lost" figure is marked PARAPHRASE in this project's content review and **ships
+nowhere**.
+
+### FOOTWEAR and FOOT CARE — NO ADEQUATE SOURCE FOUND
+
+Searched weightlifting, strength training and squat against footwear, sole compressibility and
+stiffness, performance, injury and randomised trial. Acute heel-height biomechanics studies exist;
+nothing isolates sole compressibility or measures injury outcomes. **The honest answer is that
+there is no strong trial**, which is what the brief predicted and what the owner asked to be told.
+
+Both the shoe claim and the baby-powder claim ship as marked placeholders naming the claim. The
+owner supplies his own recommendation for these. **Do not dress an opinion as evidence, and do not
+substitute a weak study to fill the row.**
+
 ## 4. References
 
 A collapsible `REFERENCES` box at the foot, matching the one brief K builds on the body page:
@@ -83,7 +148,7 @@ drop his own recommendation in. Do not invent a citation to fill the row.
 New long-form text goes in R10 modules named in the contract's R10 list, each with its own
 contract suite. Follow `src/content/bodyEquations.ts`.
 
-## 5. Sourcing
+## 5. Sourcing — SUPERSEDED by section 3b, do not run a search
 
 You may use `agy` for literature search. It works ONLY in pure print mode: run from a directory
 that is not this repository, put no file paths in the prompt, open with "Do not read any file. Do
