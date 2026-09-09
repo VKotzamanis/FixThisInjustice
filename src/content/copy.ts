@@ -591,7 +591,6 @@ export type CopyKey =
   // --- the suggested-load line has a row for the absence too (whole-app review, item 2) ---
   | 'label.noSuggestedLoad'
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
-  | 'button.skipIntro'
   | 'advice.clickToContinue'
   | 'advice.setupInstruction'
   // --- the top bar's per-view instruction, one per ViewId (P10 Brief D) ---
@@ -1682,8 +1681,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   // The long-form slide text lives in src/content/introSlides.ts (R10 reference text, not this
-  // table); these two are the only strings the sequence's own controls draw from copy.ts.
-  'button.skipIntro': 'Skip', // R1: 1 word
+  // table); this is the only string the sequence's own controls draw from copy.ts.
   'advice.clickToContinue': 'Click to continue', // R3: 3 words
   'advice.setupInstruction': 'Answer each step. Nothing leaves this device.',
 

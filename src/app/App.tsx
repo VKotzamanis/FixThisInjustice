@@ -725,10 +725,8 @@ export function App(): ReactElement {
                * behind the same sequence as everything else.
                *
                * ALSO gated here on `introSeen`, which BootGate itself does not check: the two
-               * sequences both draw a control named "Skip" (button.skipIntro, button.skipBoot),
-               * and mounting both at once -- introSeen false, bootSeen false, a fresh document's
-               * actual first run -- would put two same-named Skip controls in the tree at once.
-               * Deferring Boot's mount until the intro has been seen or skipped keeps the two
+               * intro and Boot sequence would otherwise overlap when introSeen and bootSeen are false.
+               * Deferring Boot's mount until the intro has been seen keeps the two
                * sequential, which is what "shown once before... Setup, step 1 of 9" already means
                * for the intro and what P8 already means for the boot: the user meets exactly one
                * full-screen sequence at a time.
