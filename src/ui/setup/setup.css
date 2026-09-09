@@ -938,9 +938,25 @@
   border-top: 1px solid var(--line);
 }
 
+/*
+ * MEASURED 2026-09-09, and the reason this is `--text` and not `--accent`.
+ *
+ * <!-- decision: refs-summary-is-ink-not-accent | status: adopted | supersedes: refs-summary-accent -->
+ *
+ * `--accent` on limelight is `--pink` #ff5fcb on a `--lime` #8ace00 ground: **1.41:1**. WCAG 1.4.3
+ * wants 4.5:1 for text and 1.4.11 wants 3:1 for anything you have to see, so the REFERENCES
+ * control was functionally invisible on the default skin -- the one the owner actually tests on.
+ * `--text` is #000000 there, which measures 10.91:1, and near-white on clinical and board, 15.93:1.
+ *
+ * tokens.css already records the rule this broke: "pink is never type". The rule is even asserted
+ * by scripts/alpha-walk-pages.mjs -- but only against the generated review pages, never against the
+ * app's own stylesheets, which is why a violation shipped with the check green. Found while
+ * verifying brief L (r2.18), which reuses this control on the guidance screen and so doubled the
+ * screens it affected. Pre-existing from brief K's body-page references box.
+ */
 .wiz-refs > summary {
   justify-content: center;
-  color: var(--accent);
+  color: var(--text);
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.08em;
