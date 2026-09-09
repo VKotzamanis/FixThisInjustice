@@ -15,7 +15,14 @@ import { SPLIT_TEMPLATES } from '../../domain/plan/templates';
 import { KG_PER_LB } from '../../domain/types';
 import { isValidTimeZone } from '../../domain/dates';
 import { toStoredMass } from '../../domain/units';
-import { NUTRITION_DOMAIN, computeTargets, isInDomain } from '../../domain/nutrition';
+import {
+  ACTIVITY_FACTOR,
+  ACTIVITY_STOPS,
+  NUTRITION_DOMAIN,
+  computeTargets,
+  isInDomain,
+} from '../../domain/nutrition';
+import { ACTIVITY_LEVELS_CITATION } from '../../content/activityLevels';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
 import { nutritionInputFor } from '../../store/selectors';
 import { FORMAT, copyFor } from '../../content/copy';
@@ -116,12 +123,14 @@ function fillImperialWizardToGoal(): void {
   setValue(/^inches$/i, '11');
   setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
   next();
-  // 4 - Equipment & Availability: three sliders, index-valued (Brief F). Everyday Activity
-  // Level's default is already 'moderate' (index 1) and Equipment Access's is already
-  // 'full-gym' (index 4), same as this fixture wants, but both are set explicitly so the
-  // fixture's intent does not depend on initialDraft's defaults staying what they are today.
+  // 4 - Equipment & Availability: three sliders, index-valued (Brief F; Brief G widened Everyday
+  // Activity Level from 3 positions to 9). Everyday Activity Level's default is already
+  // 'moderate' floor (index 3 of 9: stop 4, PAL 1.70 -- src/domain/nutrition.ts's
+  // ACTIVITY_STOPS) and Equipment Access's is already 'full-gym' (index 4), same as this
+  // fixture wants, but both are set explicitly so the fixture's intent does not depend on
+  // initialDraft's defaults staying what they are today.
   fireEvent.change(screen.getByLabelText(/^everyday activity level$/i), {
-    target: { value: '1' }, // moderate
+    target: { value: '3' }, // moderate floor, PAL 1.70 (stop 4 of 9)
   });
   fireEvent.change(screen.getByLabelText(/^gym comfort$/i), {
     target: { value: '1' }, // intermediate
@@ -1343,7 +1352,9 @@ describe('Brief F: the equipment sliders', () => {
       expect(slider).toHaveAttribute('type', 'range');
       expect(slider).toHaveAttribute('step', '1');
     }
-    expect(activity).toHaveAttribute('max', '2'); // 3 positions, index 0-2
+    // Brief G widened Everyday Activity Level from 3 positions to 9 (three per FAO/WHO/UNU 2004
+    // band); the other two sliders are unchanged by that brief.
+    expect(activity).toHaveAttribute('max', '8'); // 9 positions, index 0-8
     expect(comfort).toHaveAttribute('max', '2'); // 3 positions, index 0-2
     expect(access).toHaveAttribute('max', '4'); // 5 positions, index 0-4
   });
@@ -1361,6 +1372,80 @@ describe('Brief F: the equipment sliders', () => {
     const examples = screen.getByText('Examples');
     fireEvent.click(examples);
     for (const line of ACTIVITY_LEVEL_EXAMPLES) expect(screen.getByText(line)).toBeInTheDocument();
+  });
+
+  /**
+   * Brief G: the nine-stop slider. Claim C1.09.5, reopened; decision `activity-slider-nine-stops`.
+   */
+  describe('Brief G: the activity slider, nine stops', () => {
+    it('moves through all nine stops, naming the correct band at each', () => {
+      toTrainingStep();
+      const activity = screen.getByLabelText(/^everyday activity level$/i);
+      // index -> expected band label, per src/domain/nutrition.ts's ACTIVITY_STOPS order.
+      const expectedBandAt: Record<number, string> = {
+        0: 'Sedentary',
+        1: 'Sedentary',
+        2: 'Sedentary',
+        3: 'Moderate',
+        4: 'Moderate',
+        5: 'Moderate',
+        6: 'Vigorous',
+        7: 'Vigorous',
+        8: 'Vigorous',
+      };
+      for (let index = 0; index < ACTIVITY_STOPS.length; index += 1) {
+        fireEvent.change(activity, { target: { value: String(index) } });
+        expect(screen.getByText(expectedBandAt[index] ?? '')).toBeInTheDocument();
+      }
+    });
+
+    it('opens "Where These Levels Come From" and shows the FAO citation, then closes', () => {
+      toTrainingStep();
+      fireEvent.click(screen.getByText('Where These Levels Come From'));
+      expect(screen.getByText('Activity Level Sources')).toBeInTheDocument();
+      expect(screen.getByText(ACTIVITY_LEVELS_CITATION)).toBeInTheDocument();
+      fireEvent.click(screen.getByLabelText('Close'));
+      expect(screen.queryByText('Activity Level Sources')).not.toBeInTheDocument();
+    });
+
+    it('stores the selected stop as Profile.activityPal, and the stop\'s own band as activity', () => {
+      toTrainingStep();
+      const stop = ACTIVITY_STOPS[4]; // moderate mid-point, PAL 1.85 (index 4 of 9)
+      if (stop === undefined) throw new Error('unreachable: ACTIVITY_STOPS has nine members');
+      fireEvent.change(screen.getByLabelText(/^everyday activity level$/i), {
+        target: { value: '4' },
+      });
+      finishFromTraining();
+      const profile = confirmedProfile();
+      expect(profile.activity).toBe(stop.level);
+      expect(profile.activityPal).toBe(stop.pal);
+    });
+
+    it('can now over-prescribe relative to the old floor-only ceiling: a stop above the floor raises TDEE', () => {
+      // The reversal src/domain/nutrition.ts's own ACTIVITY_FACTOR comment records: nine stops
+      // let a user pick above the band floor, where the three-band default structurally could
+      // not. Two runs, same body inputs, only the slider position differs.
+      const floor = toTrainingStep();
+      finishFromTraining(); // leaves the slider at its default: moderate floor, PAL 1.70
+      const floorProfile = confirmedProfile();
+      floor.unmount();
+
+      useAppStore.getState().wipeAll();
+      pinSkin(); // wipeAll restores defaultState()'s shipped skin (limelight); re-pin to clinical
+      toTrainingStep();
+      fireEvent.change(screen.getByLabelText(/^everyday activity level$/i), {
+        target: { value: '5' }, // moderate ceiling, PAL 1.99
+      });
+      finishFromTraining();
+      const raisedProfile = confirmedProfile();
+
+      expect(floorProfile.activityPal).toBe(ACTIVITY_FACTOR.moderate);
+      const floorTargets = computeTargets(nutritionInputFor(floorProfile, null, 2, '2026-09-01'));
+      const raisedTargets = computeTargets(
+        nutritionInputFor(raisedProfile, null, 2, '2026-09-01'),
+      );
+      expect(raisedTargets.tdeeKcal).toBeGreaterThan(floorTargets.tdeeKcal);
+    });
   });
 
   it("renders the Gym Comfort slider's three positions as the owner's own words, each with a placeholder icon", () => {

@@ -22,6 +22,16 @@ export interface NutritionInput {
   massKg: Kg; // kg, NUTRITION_DOMAIN.massKg
   bodyFatPct: number | null; // percent of body mass, NUTRITION_DOMAIN.bodyFatPct; null = not measured
   activity: ActivityLevel;
+  /**
+   * Brief G (decision `activity-slider-nine-stops`, supersedes `activity-levels-three-bands`):
+   * the nine-stop slider's own PAL choice (one of ACTIVITY_STOPS), or null when the caller has
+   * none. PAL, dimensionless. computeTargets prefers this over `activity`'s band floor when it
+   * is a number, and falls back to ACTIVITY_FACTOR[activity] when it is null or absent, so a
+   * caller written before this field existed keeps its old number unchanged. Optional rather
+   * than required for the same reason: a fixture, export or test built before this change must
+   * keep compiling without being rewritten to supply a value it never had.
+   */
+  activityPal?: number | null; // PAL, dimensionless, or null/absent = use the band floor
   goal: GoalKind;
   sessionsPerWeek: number; // sessions/week, integer, NUTRITION_DOMAIN.sessionsPerWeek; see NOTE-FREQ
   creatine: boolean;
@@ -186,12 +196,76 @@ export const ACTIVITY_BAND: Record<ActivityLevel, readonly [number, number]> = {
  * Master plan section 10, amendment "activity-levels-three-bands" (adopted): the earlier
  * five-member ladder with midpoint placements at 1.55 and 1.85 does not ship.
  * The chosen value is surfaced through NutritionTargets.basis.activityFactor.
+ *
+ * THE REVERSAL THIS DECISION EVENTUALLY TAKES BACK (Brief G, decision
+ * `activity-slider-nine-stops`, supersedes the "activity-levels-three-bands" amendment above).
+ * ACTIVITY_STOPS below gives a user nine PAL choices, six of which sit ABOVE their band's
+ * floor (every stop but the three floors themselves). Where this floor-only table structurally
+ * could not over-prescribe energy, `computeTargets` now can, for a user who picks a stop above
+ * the floor. That is deliberate, not an oversight, and it is recorded rather than buried: the
+ * mitigation is the SAME one this comment already relied on, not a new one. Targets re-derive
+ * from scratch at every body-mass re-measure (`src/store/selectors.ts`, `nutritionInputFor`
+ * feeding `useTargets`), so a wrong estimate is corrected against observed mass rather than
+ * left to compound. This table itself is UNCHANGED: `computeTargets` still uses it verbatim as
+ * the fallback whenever `NutritionInput.activityPal` is null or absent, so a profile or a call
+ * site that predates the slider keeps exactly its old number.
  */
 export const ACTIVITY_FACTOR: Record<ActivityLevel, number> = {
   sedentary: 1.4, // PAL, printed band floor (FAO free-living floor)
   moderate: 1.7, // PAL, printed band floor
   vigorous: 2.0, // PAL, printed band floor
 };
+
+/**
+ * Nine stops, three per ACTIVITY_BAND, every PAL printed in the same FAO/WHO/UNU (2004) Human
+ * Energy Requirements Table 5.3 p.38 ACTIVITY_BAND's own doc comment cites (that report is a
+ * United Nations technical report and carries no DOI). Decision `activity-slider-nine-stops`
+ * (round 1 claim C1.09.5, reopened): a stop INSIDE a published range invents nothing, which is
+ * what separates this table from the REJECTED gym ladder ACTIVITY_BAND's comment describes -
+ * that rejection is of the ladder's specific five values as an ACTIVITY_FACTOR replacement, not
+ * of every number near them, and it stands unchanged here.
+ *
+ * `ActivityLevel` itself does not change: `level` below is the band a stop belongs to, DERIVED
+ * from the stop and never a second, independently editable field.
+ *
+ *   Stop  Band       PAL   Example
+ *   1     sedentary  1.40  Desk, car, sofa. You have wondered whether standing counts as
+ *                          cardio.
+ *   2     sedentary  1.55  Desk job, but you walk somewhere most days and take the stairs
+ *                          when the lift is slow.
+ *   3     sedentary  1.69  Desk job with a commute on foot, and weekends that involve
+ *                          leaving the house.
+ *   4     moderate   1.70  You train a couple of times a week and are on your feet more
+ *                          than you sit.
+ *   5     moderate   1.85  Three or four sessions a week, or a job that keeps you moving
+ *                          all day.
+ *   6     moderate   1.99  Training most days, or an active job with training on top.
+ *   7     vigorous   2.00  Hard training most days, and a job that does not let you sit
+ *                          down.
+ *   8     vigorous   2.20  Two sessions most days, or manual work plus serious training.
+ *   9     vigorous   2.40  Athlete, or your job is brutal and you train as well.
+ *
+ * The Example column is quoted again, verbatim, in src/content/activityLevels.ts, the R10
+ * module behind the setup wizard's "Where These Levels Come From" modal, so a reader of the
+ * app sees the same words this comment does.
+ *
+ * FORBIDDEN, same as ACTIVITY_BAND's own comment: interpolating BETWEEN bands to invent a new
+ * category, and any PAL outside 1.40-2.40. nutrition.test.ts's containment test asserts every
+ * member's `pal` lies inside `ACTIVITY_BAND[member.level]`, reading the bound from
+ * `ACTIVITY_BAND` itself rather than a restated literal, so a later edit that moved a stop out
+ * of its band fails there instead of shipping silently.
+ */
+export const ACTIVITY_STOPS: readonly { pal: number; level: ActivityLevel }[] = [
+  { pal: 1.4, level: 'sedentary' },
+  { pal: 1.55, level: 'sedentary' },
+  { pal: 1.69, level: 'sedentary' },
+  { pal: 1.7, level: 'moderate' },
+  { pal: 1.85, level: 'moderate' },
+  { pal: 1.99, level: 'moderate' },
+  { pal: 2.0, level: 'vigorous' },
+  { pal: 2.2, level: 'vigorous' },
+  { pal: 2.4, level: 'vigorous' },
+];
 
 /* ------------------------------------------------------------------ *
  * Energy target and rate of change
@@ -629,7 +703,11 @@ export function computeTargets(input: NutritionInput): NutritionTargets {
   } else {
     rmrKcal = mifflinStJeorKcal(input, input.sex);
   }
-  const activityFactor = ACTIVITY_FACTOR[input.activity]; // PAL, dimensionless
+  // Brief G: activityPal (one of ACTIVITY_STOPS) wins when the caller supplies one; the band
+  // floor is the fallback for a null/absent value, which is every profile written before this
+  // field existed (nutritionInputFor reads Profile.activityPal, which schema.ts defaults to
+  // null for such a document) and every other existing call site.
+  const activityFactor = input.activityPal ?? ACTIVITY_FACTOR[input.activity]; // PAL, dimensionless
   const tdeeKcal = rmrKcal * activityFactor; // kcal/day, unrounded through the chain
   const energy = energyPlan(input.goal, tdeeKcal, input.massKg);
   const protein = proteinPlan(input.goal, input.massKg, ffmKg);

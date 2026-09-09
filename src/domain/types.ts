@@ -103,6 +103,33 @@ export interface Profile {
   id: string; displayName: string; timezone: TimeZone; units: UnitSystem; createdAt: EpochMs;
   body: { sex: Sex; birthYear: number; heightCm: number; baselineMassKg: Kg; baselineAt: LocalDate; baselineBodyFatPct: number | null; };
   activity: ActivityLevel;
+  /**
+   * Brief G (decision `activity-slider-nine-stops`, supersedes `activity-levels-three-bands`):
+   * the nine-stop slider's own PAL choice, one of src/domain/nutrition.ts's ACTIVITY_STOPS, or
+   * null/absent for a profile that never set it. `activity` above is unchanged and still names
+   * the band; the band is DERIVED from whichever stop this field holds and is never a second,
+   * independently editable field. Additive: schema.ts's ProfileSchema field is
+   * `.nullable().catch(null).optional()`, AppState.schemaVersion stays 3, and a profile written
+   * before this field existed simply lacks the key. computeTargets falls back to
+   * ACTIVITY_FACTOR[activity]'s band floor for either null or absent, so its old number does
+   * not move.
+   *
+   * Optional (`?:`) rather than required, matching z.infer<typeof ProfileSchema>'s own output
+   * type field for field: schema.test.ts's `schemaInfersAppState` asserts type IDENTITY, not
+   * mere assignability, between the two. ActivityPalSchema's outer `.optional()` (see its own
+   * comment in schema.ts) resolves a missing key to plain absence rather than a defined `null`,
+   * which is what keeps this field optional instead of forcing every Profile-typed fixture in
+   * the codebase - arbitraries.ts's `anyProfile` chief among them, none of them in this brief's
+   * file list - to be edited just to keep compiling.
+   *
+   * `| undefined` is written explicitly, not left implicit in the `?:` modifier: this project's
+   * tsconfig sets `exactOptionalPropertyTypes: true`, under which `?:` alone means "present as
+   * number|null, or absent" and does NOT by itself admit a key explicitly holding `undefined`.
+   * z.infer<typeof ProfileSchema> types this field as exactly `number | null | undefined`
+   * (ZodOptional always includes it), so the explicit union member is required for the two
+   * types to be identical rather than merely compatible.
+   */
+  activityPal?: number | null | undefined; // PAL, dimensionless
   experience: Experience;
   equipment: EquipmentAccess;
   // canonical kg; seeded from DEFAULT_*_STEP in the user's unit at setup, editable.
@@ -249,6 +276,23 @@ export interface SetupAnswers {
   waist: string; // [cm] or [in], as typed, per `units`; converted by storedGirthCm
   hip: string; // [cm] or [in], as typed, per `units`; converted by storedGirthCm
   activity: ActivityLevel;
+  /**
+   * Brief G: the nine-stop slider's live selection while setup is in progress, one of
+   * src/domain/nutrition.ts's ACTIVITY_STOPS. Optional, matching z.infer<typeof
+   * SetupDraftShapeSchema>'s own output field for field (schema.test.ts's `schemaInfersAppState`
+   * asserts type identity, not mere assignability): that schema's `.catch(1.7).optional()`
+   * resolves a draft persisted before this field existed to plain absence rather than a defined
+   * value, which is what keeps this field optional instead of forcing every SetupAnswers- or
+   * SetupDraft-typed fixture in the codebase - arbitraries.ts's `anySetupDraft` chief among
+   * them, none of them in this brief's file list - to be edited just to keep compiling.
+   * SetupWizard.tsx falls back to ACTIVITY_FACTOR.moderate, the same floor `activity:
+   * 'moderate'` above already assumes, whenever this field is absent.
+   *
+   * `| undefined` is written explicitly for the same `exactOptionalPropertyTypes: true` reason
+   * Profile.activityPal's own comment gives: ZodOptional's inferred type always includes it, so
+   * the explicit union member is required for type IDENTITY with z.infer, not just assignability.
+   */
+  activityPal?: number | undefined; // PAL, dimensionless
   experience: Experience;
   equipment: EquipmentAccess;
   barbellStep: string; // [kg] or [lb], as typed

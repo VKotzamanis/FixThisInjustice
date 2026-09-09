@@ -228,14 +228,16 @@ export const STAGES = [
       {
         id: 'w1.11',
         title: 'Setup, step 4: equipment & availability',
-        do: 'Move each of the three sliders through every position, opening the Examples ' +
-          'disclosure on the first two. Then move the Equipment Access slider through Full ' +
-          'gym, Home gym and Body weight only in turn to see the load increments box and each ' +
-          'equipment question it reveals.',
+        do: 'Move the Everyday Activity Level slider through all nine stops, opening the ' +
+          'Examples disclosure, then open "Where These Levels Come From" and close it. Move ' +
+          'the other two sliders through every position too. Then move the Equipment Access ' +
+          'slider through Full gym, Home gym and Body weight only in turn to see the load ' +
+          'increments box and each equipment question it reveals.',
         see: 'Three sliders, each naming its current position in text and (for the first two) ' +
-          'an Examples disclosure; a bordered box with the three load increments; then, ' +
-          'depending on the Equipment Access position, a walk-to-the-gym question or an ' +
-          'equipment multi-select.',
+          'an Examples disclosure; under the Everyday Activity Level slider, a link opening a ' +
+          'modal that names the three FAO/WHO/UNU bands and the nine stops with their PAL and ' +
+          'example; a bordered box with the three load increments; then, depending on the ' +
+          'Equipment Access position, a walk-to-the-gym question or an equipment multi-select.',
         keys: [
           'step.training',
           'label.activity',
@@ -243,6 +245,8 @@ export const STAGES = [
           'option.activityModerate',
           'option.activityVigorous',
           'disclosure.examples',
+          'advice.activityLevelsSource',
+          'label.activityLevelsSource',
           'label.experience',
           'option.experienceNovice',
           'option.experienceIntermediate',
