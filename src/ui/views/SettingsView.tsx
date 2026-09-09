@@ -2,8 +2,14 @@ import { Fragment, useMemo, useRef, useState, type JSX } from 'react';
 import { UnitInput, loadUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
-import { useCopy } from '../../content/useCopy';
-import { isValidTimeZone, utcOffsetLabel } from '../../domain/dates';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
+import {
+  groupTimeZones,
+  isValidTimeZone,
+  matchedZoneMembers,
+  promoteSelectedZone,
+  zoneGroupMatches,
+} from '../../domain/dates';
 import { dailyBeverageTargetML, statedBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
 import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
@@ -94,6 +100,7 @@ const SETTINGS_ROWS: readonly SettingsRow[] = [
  */
 function TimeZoneSetting(props: { profile: Profile }): JSX.Element {
   const t = useCopy();
+  const overrides = useCopyOverrides();
   const { profile } = props;
   /*
    * Intl.supportedValuesOf is ES2022 and absent on older engines, and a locked-down engine can
@@ -107,14 +114,33 @@ function TimeZoneSetting(props: { profile: Profile }): JSX.Element {
       return [];
     }
   }, []);
-  const timeZoneOptionLabels = useMemo(
-    () =>
-      timeZoneOptions.map((zone) => ({
-        zone,
-        label: `(${utcOffsetLabel(zone, Date.now())}) ${zone}`,
-      })),
-    [timeZoneOptions],
-  );
+  const timeZoneGroups = useMemo(() => {
+    if (timeZoneOptions.length === 0) return [];
+    const known = isValidTimeZone(profile.timezone) && !timeZoneOptions.includes(profile.timezone);
+    const zones = known ? [...timeZoneOptions, profile.timezone] : timeZoneOptions;
+    return groupTimeZones(zones, Date.now());
+  }, [timeZoneOptions, profile.timezone]);
+  const [zoneQuery, setZoneQuery] = useState('');
+  const shownTimeZoneRows = useMemo(() => {
+    const promoted = promoteSelectedZone(timeZoneGroups, profile.timezone);
+    return promoted
+      .filter(
+        (group) => group.representative === profile.timezone || zoneGroupMatches(group, zoneQuery),
+      )
+      .map((group) => {
+        const matched = matchedZoneMembers(group, zoneQuery);
+        const also =
+          matched.length > 0
+            ? matched.join(', ')
+            : group.members.length > 1
+              ? FORMAT.timeZoneAlso(group.members.length - 1, overrides)
+              : '';
+        return {
+          zone: group.representative,
+          label: FORMAT.timeZoneOption(group.offsetLabel, group.representative, also),
+        };
+      });
+  }, [timeZoneGroups, profile.timezone, zoneQuery, overrides]);
   const [draftZone, setDraftZone] = useState(profile.timezone);
   const zoneError = isValidTimeZone(draftZone) ? null : t('advice.timezoneInvalid');
 
@@ -122,19 +148,31 @@ function TimeZoneSetting(props: { profile: Profile }): JSX.Element {
     <div className="view-field">
       <label htmlFor="settings-timezone">{t('label.timezone')}</label>
       {timeZoneOptions.length > 0 ? (
-        <select
-          id="settings-timezone"
-          value={profile.timezone}
-          onChange={(e) => {
-            useAppStore.getState().updateProfile(profile.id, { timezone: e.target.value });
-          }}
-        >
-          {timeZoneOptionLabels.map((o) => (
-            <option key={o.zone} value={o.zone}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <>
+          <label htmlFor="settings-timezone-search">{t('label.timezoneSearch')}</label>
+          <input
+            id="settings-timezone-search"
+            type="search"
+            value={zoneQuery}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            onChange={(e) => setZoneQuery(e.target.value)}
+          />
+          <select
+            id="settings-timezone"
+            value={profile.timezone}
+            onChange={(e) => {
+              useAppStore.getState().updateProfile(profile.id, { timezone: e.target.value });
+            }}
+          >
+            {shownTimeZoneRows.map((o) => (
+              <option key={o.zone} value={o.zone}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </>
       ) : (
         <input
           id="settings-timezone"
