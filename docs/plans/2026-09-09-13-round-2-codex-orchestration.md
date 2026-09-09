@@ -161,8 +161,8 @@ Run all of these and fix what fails:
 Baseline before your change: run `npx vitest run` BEFORE you edit anything and record the
 file and test counts. A drop in either afterwards is a regression. At the head of this plan
 the count was 123 files / 2462 tests; every merged brief raises it.
-`npx eslint .` reports 24 pre-existing errors in worker/ that are not yours; scope it to
-./src ./scripts as above.
+`npx eslint .` reports 24 phantom errors from this worktree's dependency-less worker/ copy;
+scope it to ./src ./scripts as above.
 A failing test is not "done with a caveat". If a test fails because it asserted the behaviour your
 brief replaced, update it and say which and why. If it fails for any other reason, stop and report.
 </verification_loop>
@@ -227,8 +227,8 @@ Run these, in this order, and fix what fails before you report:
     npx vitest run                   # expect: all files passed, 0 failed
     node scripts/check-no-emoji.mjs  # expect: OK - N file(s) clean
 
-Plus the catalogue block above if you touched copy. `npx eslint .` reports 24 pre-existing errors
-in `worker/`; scope it to `./src ./scripts`.
+Plus the catalogue block above if you touched copy. `npx eslint .` reports 24 phantom errors
+from the worktree's dependency-less `worker/` copy; scope
 
 **Commit before you finish.** `git add -- <the exact files>`, never `git add -A`: other agents
 share this tree. Uncommitted work inside your worktree is not backed up.

@@ -108,11 +108,22 @@ Every gate run by the orchestrator in N's own worktree, not read from the report
 | `alpha-catalogue --check` / `alpha-walk-pages --check` | both PASS | yes |
 | personal-data grep | printed nothing | yes |
 
-**The ESLint stash claim, proved independently.** The report said 24 errors, all in `worker/`, and
-said it proved they pre-date the change by stashing. Rather than confirm the stash, the same
-measurement was taken on `main` at `0dd4435`, a tree brief N never touched: `npx eslint .` gives 24
-problems (24 errors, 0 warnings), and `npx eslint ./src ./scripts` is clean and exits 0. The count
-matches and the two directories a worker edits are clean, so N introduced none of them.
+**The ESLint "24 errors in `worker/`" claim, RUN DOWN TO ITS CAUSE 2026-09-09, and it was never
+a real defect.** N's report said 24 errors, all in `worker/`, pre-dating its change. The same count
+appeared on `main` at `0dd4435`, which seemed to confirm it. It did not.
+
+**There are zero ESLint errors in this repository.** The 24 come entirely from the agent worktrees
+under `.claude/worktrees/`, which are full copies of the tree that `eslint.config.js` did not
+ignore. A worktree's `worker/` copy has no `node_modules` -- CI runs `npm ci --prefix worker`, a
+local `git worktree add` does not -- so the type-aware rules resolve every worker import to `any`
+and emit exactly 24 `no-unsafe-*` errors per worktree. Measured: `brief-O`'s worktree alone gives
+24; two worktreesL gave 48; the main tree's `worker/`, which does have `node_modules`, lints clean;
+`npx eslint ./src ./scripts` lints clean. CI never saw any of this because it checks out a tree
+with no worktrees in it.
+
+Fixed by adding `.claude/**` to the ignores in `eslint.config.js`, with the measurement recorded
+there. **N introduced none of them, and neither did anyone else: they were an artifact of running
+`eslint .` from a root that contained worktrees.**
 
 **`npm run test:tz` found a real failure that the single-zone suite could not.** This gate is in
 `package.json` and is listed neither in the orchestration handout nor in brief N's report.
