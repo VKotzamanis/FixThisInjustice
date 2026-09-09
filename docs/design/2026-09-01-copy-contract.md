@@ -92,7 +92,7 @@ and R9. They are reference text a user chooses to open. They are not exempt from
 None of them lives in a copy table: they are `src/content/formCues.ts`,
 `src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
 `src/content/supplementGuidance.ts`, `src/content/bodyFatChart.ts`, `src/content/introSlides.ts`,
-`src/content/setupSliderExamples.ts` and that runbook.
+`src/content/setupSliderExamples.ts`, `src/content/activityLevels.ts` and that runbook.
 
 <!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
 `src/content/bodyEquations.ts` was added to that list on 2026-09-04, for alpha round 1 claim
@@ -129,6 +129,18 @@ what puts them here rather than in a copy table. The module carries its own suit
 `src/content/introSlides.test.ts`, modelled on `bodyEquations.test.ts`: it asserts R5, R6 and
 R11, that no slide carries a URL, and that the module's shape matches the brief (six slides, the
 two headingless ones, slide 4's two-paragraph split, and the disclaimer quoted byte for byte).
+
+<!-- decision: r10-activity-levels-module | status: adopted | supersedes: none -->
+`src/content/activityLevels.ts` was added to that list on 2026-09-09, for round 1 claim C1.09.5
+reopened (Brief G, decision `activity-slider-nine-stops`): "Where These Levels Come From", the
+modal opened from the training step's widened, nine-stop Everyday Activity Level slider. It
+states the three FAO/WHO/UNU (2004) Table 5.3 p.38 bands with their printed ranges, the nine
+stops with band, PAL and example, and the report's own "no DOI" fact rather than omitting the
+citation row or inventing one. Modelled on `src/content/bodyEquations.ts` per the brief: a
+content module is data, with no runtime import from `src/domain/nutrition.ts`, and the module's
+own suite, `src/content/activityLevels.test.ts`, cross-checks every PAL and band bound against
+that engine file's own source text (the same `?raw` technique `bodyEquations.test.ts` uses for
+its DOIs), asserting R5, R6 and R11 alongside it.
 
 Inside the tables the exemption list is one key long, and the suite holds it as `LENGTH_EXEMPT`:
 

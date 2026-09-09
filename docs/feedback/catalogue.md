@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `8703a18`. 101 parts across 14 screens, holding 543 of the table's 546 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `fdc8cea`. 101 parts across 14 screens, holding 545 of the table's 548 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -320,6 +320,7 @@ States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `advice.activityLevelsSource` | Where These Levels Come From | same | same | yes |
 | `advice.equipmentInventoryPrompt` | What equipment do you have? | same | same | yes |
 | `advice.loadSteps` | The smallest increment a suggested load uses. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `advice.walkToGym` | Do you walk to and from the gym? | same | same | yes |
@@ -327,6 +328,7 @@ States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 | `button.yes` | Yes | same | same | yes |
 | `disclosure.examples` | Examples | same | same | yes |
 | `label.activity` | Everyday Activity Level | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `label.activityLevelsSource` | Activity Level Sources | same | same | yes |
 | `label.equipmentAccess` | Equipment Access | equipment access | same | yes |
 | `label.experience` | Gym Comfort | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `label.homeEquipmentAerobic` | Aerobic | same | same | yes |

@@ -152,6 +152,31 @@ const SexSchema = z.enum(['male', 'female', 'nd']).catch('nd');
  * review verified. The five-band form with invented midpoints was rejected.
  */
 const ActivityLevelSchema = z.enum(['sedentary', 'moderate', 'vigorous']);
+/**
+ * [PAL] Brief G, decision `activity-slider-nine-stops`: the nine-stop slider's own PAL choice.
+ * 1.40 and 2.40 are the FAO/WHO/UNU 2004 Table 5.3 span src/domain/nutrition.ts's ACTIVITY_BAND
+ * covers end to end (`ACTIVITY_BAND.sedentary[0]` to `ACTIVITY_BAND.vigorous[1]`); restated here
+ * as sanity bounds in this file's own established style (MAX_HEIGHT_CM and its neighbours above
+ * do the same) rather than imported, so this file's only cross-module dependency stays `./types`
+ * and `./dates`.
+ *
+ * `.nullable().catch(null).optional()`, deliberately three wrappers rather than
+ * SetupDraftSchema's simpler `.nullable().catch(null)` (its own comment below explains that
+ * one, and the `.catch(null)` half here works identically: verified against Zod 4.5.4, a
+ * PRESENT but corrupt or out-of-range value still falls back to `null`, never failing the whole
+ * profile over one field). The outer `.optional()` is the deliberate difference: Zod resolves
+ * a MISSING key against `.optional()` before the wrapped schema ever runs (verified live
+ * against this project's Zod 4.5.4: `z.object({a: z.number().catch(0).optional()}).parse({})`
+ * returns `{}`, not `{a: 0}`), so a document written before this field existed parses with the
+ * key simply ABSENT rather than present-and-null. That is what keeps
+ * `z.infer<typeof ProfileSchema>` field-for-field identical to `Profile.activityPal?: number |
+ * null` in types.ts (optional, not `| null` alone) - schema.test.ts's `schemaInfersAppState`
+ * checks type IDENTITY, not assignability, and a required `number | null` output would force
+ * every Profile-typed fixture across the codebase (arbitraries.ts's `anyProfile` among many
+ * others, none of them in this brief's file list) to be edited just to keep compiling.
+ * Optional keeps the field's blast radius inside Brief G's own listed files.
+ */
+const ActivityPalSchema = z.number().min(1.4).max(2.4).nullable().catch(null).optional(); // [PAL]
 const GoalKindSchema = z.enum(['fat-loss', 'muscle-gain', 'recomposition', 'maintenance']);
 const ExperienceSchema = z.enum(['novice', 'intermediate', 'advanced']);
 /** What an EXERCISE needs. Unchanged by Brief F: no exercise tag is retagged. */
@@ -216,6 +241,11 @@ export const ProfileSchema = z.object({
     baselineBodyFatPct: PercentSchema.nullable(), // [%]
   }),
   activity: ActivityLevelSchema,
+  // Additive (Brief G, decision `activity-slider-nine-stops`): a profile written before the
+  // nine-stop slider existed lacks this key and stays absent (ActivityPalSchema's own comment
+  // above explains the outer `.optional()`); a present-but-corrupt value falls back to null via
+  // its `.catch(null)`. Either way computeTargets keeps using `activity`'s band floor for it.
+  activityPal: ActivityPalSchema,
   experience: ExperienceSchema,
   equipment: ProfileEquipmentSchema,
   // hasMicroPlates/microPlateKg removed (Brief F Part 3): the owner asked for the micro-plate
@@ -679,6 +709,19 @@ const SetupAnswersShapeSchema = z.object({
   waist: z.string().max(MAX_DRAFT_TEXT_CHARS),
   hip: z.string().max(MAX_DRAFT_TEXT_CHARS),
   activity: ActivityLevelSchema,
+  // Additive (Brief G): a draft saved before the nine-stop slider existed lacks this key.
+  // `.catch(1.7).optional()` rather than a bare `.default(1.7)`: `.default()` would make the
+  // OUTPUT field always present, which would force `SetupDraft.activityPal` in types.ts to be
+  // required rather than optional to keep schema.test.ts's `schemaInfersAppState` type-identity
+  // check passing - and a required field would in turn force `anySetupDraft` in
+  // arbitraries.ts, and every other SetupAnswers/SetupDraft-typed fixture, to be edited just to
+  // keep compiling, none of them in this brief's file list. `.optional()` on the outside
+  // resolves a missing key to plain absence (verified live against this project's Zod 4.5.4,
+  // same as ActivityPalSchema's own comment above), matching an optional
+  // `activityPal?: number` field exactly; `.catch(1.7)` still repairs a PRESENT but corrupt
+  // value to the same floor `activity: 'moderate'` above already assumes, rather than failing
+  // the whole draft over one field.
+  activityPal: z.number().min(1.4).max(2.4).catch(1.7).optional(), // [PAL]
   experience: ExperienceSchema,
   equipment: EquipmentAccessSchema,
   barbellStep: z.string().max(MAX_DRAFT_TEXT_CHARS),

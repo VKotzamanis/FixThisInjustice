@@ -3,6 +3,7 @@ import fc from 'fast-check';
 import {
   ACTIVITY_BAND,
   ACTIVITY_FACTOR,
+  ACTIVITY_STOPS,
   BEVERAGE_TARGET_RANGE_ML,
   FAT_LOSS_RATE_BOUND,
   NUTRITION_DOMAIN,
@@ -140,6 +141,83 @@ describe('activity factors', () => {
     const t = computeTargets(base);
     expect(t.basis.activityFactor).toBe(1.7); // PAL, dimensionless
     expect(t.tdeeKcal).toBe(3026); // kcal/day
+  });
+});
+
+/**
+ * Brief G: the nine-stop slider, decision `activity-slider-nine-stops` (supersedes
+ * `activity-levels-three-bands`). The containment test below is, in the brief's own words,
+ * "the gate that makes this defensible": every stop's PAL must lie inside the band ACTIVITY_BAND
+ * already publishes for it. The bound comes from ACTIVITY_BAND itself in every assertion here,
+ * never a restated 1.40/1.69/1.70/1.99/2.00/2.40 literal, because restating it is exactly what
+ * would let a later edit drift a stop out of its band without this test noticing.
+ */
+describe('ACTIVITY_STOPS (Brief G: nine stops, three per FAO 2004 band)', () => {
+  it('has nine members, three per band, in sedentary/moderate/vigorous order', () => {
+    expect(ACTIVITY_STOPS).toHaveLength(9);
+    expect(ACTIVITY_STOPS.map((stop) => stop.level)).toEqual([
+      'sedentary',
+      'sedentary',
+      'sedentary',
+      'moderate',
+      'moderate',
+      'moderate',
+      'vigorous',
+      'vigorous',
+      'vigorous',
+    ]);
+  });
+
+  it("places every stop's PAL inside its own ACTIVITY_BAND, read from ACTIVITY_BAND and never restated", () => {
+    for (const stop of ACTIVITY_STOPS) {
+      const [lo, hi] = ACTIVITY_BAND[stop.level];
+      expect(stop.pal).toBeGreaterThanOrEqual(lo);
+      expect(stop.pal).toBeLessThanOrEqual(hi);
+    }
+  });
+
+  it('is strictly increasing, so no stop duplicates or reorders another', () => {
+    for (let i = 1; i < ACTIVITY_STOPS.length; i += 1) {
+      expect(ACTIVITY_STOPS[i]?.pal).toBeGreaterThan(ACTIVITY_STOPS[i - 1]?.pal ?? Number.NaN);
+    }
+  });
+
+  it('carries the three band floors ACTIVITY_FACTOR already uses, at the same array positions', () => {
+    // Stop 1, 4 and 7 (index 0, 3, 6) are each band's own floor, so the default slider position
+    // (Brief G's stop 4, index 3) reproduces ACTIVITY_FACTOR.moderate exactly rather than a
+    // second, independently typed 1.7.
+    expect(ACTIVITY_STOPS[0]).toEqual({ pal: ACTIVITY_FACTOR.sedentary, level: 'sedentary' });
+    expect(ACTIVITY_STOPS[3]).toEqual({ pal: ACTIVITY_FACTOR.moderate, level: 'moderate' });
+    expect(ACTIVITY_STOPS[6]).toEqual({ pal: ACTIVITY_FACTOR.vigorous, level: 'vigorous' });
+  });
+});
+
+describe('computeTargets prefers activityPal over the band floor when present (Brief G)', () => {
+  it('falls back to ACTIVITY_FACTOR[activity] when activityPal is null', () => {
+    const withNull = computeTargets({ ...base, activityPal: null });
+    const withoutField = computeTargets(base);
+    expect(withNull).toEqual(withoutField);
+    expect(withNull.basis.activityFactor).toBe(ACTIVITY_FACTOR.moderate);
+  });
+
+  it('uses activityPal verbatim when it is a number, even above the band floor', () => {
+    // base.activity is 'moderate'; stop 5 (index 4) is the moderate mid-point, PAL 1.85.
+    const stop = ACTIVITY_STOPS[4];
+    if (stop === undefined) throw new Error('unreachable: ACTIVITY_STOPS has nine members');
+    const t = computeTargets({ ...base, activityPal: stop.pal });
+    expect(t.basis.activityFactor).toBe(stop.pal);
+    // 1780 x 1.85 = 3293 kcal/day
+    expect(t.tdeeKcal).toBe(1780 * stop.pal);
+  });
+
+  it('can now over-prescribe relative to the floor: a stop above ACTIVITY_FACTOR raises TDEE', () => {
+    // The reversal nutrition.ts's own ACTIVITY_FACTOR comment records: the floor-only table
+    // could not do this; activityPal above the floor can.
+    const floorTdee = computeTargets({ ...base, activityPal: null }).tdeeKcal;
+    const stop = ACTIVITY_STOPS[5]; // moderate ceiling, PAL 1.99
+    if (stop === undefined) throw new Error('unreachable: ACTIVITY_STOPS has nine members');
+    const raisedTdee = computeTargets({ ...base, activityPal: stop.pal }).tdeeKcal;
+    expect(raisedTdee).toBeGreaterThan(floorTdee);
   });
 });
 

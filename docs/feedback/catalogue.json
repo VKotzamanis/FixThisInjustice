@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "8703a18",
+  "generatedFrom": "fdc8cea",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 543,
+    "keys": 545,
     "notRendered": 3,
-    "table": 546
+    "table": 548
   },
   "parts": [
     {
@@ -1479,6 +1479,15 @@
       ],
       "keys": [
         {
+          "key": "advice.activityLevelsSource",
+          "default": "Where These Levels Come From",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.equipmentInventoryPrompt",
           "default": "What equipment do you have?",
           "limelight": "same",
@@ -1540,6 +1549,15 @@
           "isControl": false,
           "limelightRowPermitted": false,
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
+        },
+        {
+          "key": "label.activityLevelsSource",
+          "default": "Activity Level Sources",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
         },
         {
           "key": "label.equipmentAccess",
