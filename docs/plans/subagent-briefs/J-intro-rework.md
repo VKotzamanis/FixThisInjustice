@@ -80,6 +80,126 @@ acknowledgement, not a consent record, and the app collects no such field.
 Reuse `ModalShell`. **The close control goes upper RIGHT** — round 2 reversed round 1 on this
 (r2.12), and every modal in the app should agree.
 
+## 5. The slide copy, supplied. Copy it character for character
+
+**Written by the orchestrator on 2026-09-09 with the `wait-what` skill loaded, which is the "I
+don't get it" skill r2.02 names.** Do not rewrite, improve, shorten, re-tone or "fix" a single
+sentence of it. If something reads wrong to you, say so in your report and ship it as written.
+
+Two things to know before you read it:
+
+- **The person shifts between slides and that is deliberate.** Slide 2 speaks about the creator in
+  the third person, slides 3 and 4 are his own first person, the acknowledgement is first person.
+  That is how he wrote it. Normalising the person is exactly the flattening r2.02 objects to.
+- **`INTRO_SLIDES`' shape changes.** A slide is now a heading, an optional lead line, and bullets.
+  Each bullet has a `lead` (rendered with the underlined lead-phrase class) and an optional `rest`.
+
+```ts
+/** One bullet: an emphasised lead phrase, then the rest of the sentence. */
+export interface IntroBullet {
+  /** Rendered with the lead-phrase class. Two to five words. */
+  lead: string;
+  /** The rest, rendered plain after a colon. `null` where the lead IS the whole bullet. */
+  rest: string | null;
+}
+
+export interface IntroSlide {
+  /** Rendered whole, before the body types. Title Case noun phrase, R14. `null` on slide 1. */
+  heading: string | null;
+  /** A line above the bullets, or `null`. Types out with the body. */
+  lead: string | null;
+  bullets: readonly IntroBullet[];
+}
+```
+
+### Slide 1
+
+```
+heading: null
+lead:    Hi. You probably have this link because V sent you the app he has been working on. If not, here are some caveats.
+bullets: (none)
+```
+
+### Slide 2
+
+```
+heading: Who I Am
+lead:    The creator of this app:
+bullets:
+  1. lead: Not a medical professional
+     rest: and not someone who has actively pursued bodybuilding since 2020.
+  2. lead: Still the guy who shows up
+     rest: he will come to the gym with you, teach you how to lift, and build you a plan.
+```
+
+### Slide 3
+
+His own worked example is bullet 1. It is reproduced exactly as he wrote it.
+
+```
+heading: Purpose of the App
+lead:    This app, webpage really, exists to make going to the gym somewhat stress free.
+bullets:
+  1. lead: Simplify the fitness habit
+     rest: you get a day-to-day plan for what to lift, when, and how.
+  2. lead: A fitness diary
+     rest: logging a lift, cataloguing your progress and seeing whether you are drifting off your goal are all easy. That phrase is as unpleasant to write as it is to read.
+  3. lead: The parts I like
+     rest: a reminder on your gym day, an atlas of odd facts that unlocks as you go, and one that berates you when you slack off.
+```
+
+### Slide 4
+
+```
+heading: Motivation
+lead:    Two reasons.
+bullets:
+  1. lead: This should be open and free
+     rest: most people I know cannot spend 150 dollars a session on a personal trainer, and the fitness apps I have tried are generic and keep the useful part behind a paywall.
+  2. lead: Exercise should not feel like a chore
+     rest: so there are small games to play during the rest between hard sets.
+  3. lead: Where it came from
+     rest: a solo project to get myself back in shape. The code was written with Claude Code, and this repository is the only official one.
+```
+
+**Slide 4 still promises a feature this tree does not build.** "Small games to play during the rest
+between hard sets" names a mechanic that exists nowhere in `src/`. That is a decision already taken,
+not a defect: the sentence ships. Keep the warning that currently sits in `introSlides.ts`' header
+about not showing this slide to anyone but the owner until the feature lands.
+
+### Slide 5 becomes the modal, not a slide
+
+The warning body, verbatim, unchanged from what ships today:
+
+```
+Tl;dr: do not be MJT attempting what looks like a pull-up. If you are unsure of an exercise, skip it and ask someone who works at your gym to show you. Consider yourself warned and me not liable.
+```
+
+The checkbox label, HIS sentence, already given in section 4 above. Copy it from there.
+
+### Slide 6
+
+```
+heading: What Setup Collects
+lead:    You need to give me three things.
+bullets:
+  1. lead: Your preferred settings          rest: null
+  2. lead: Your personal information        rest: null
+  3. lead: Your fitness goal and schedule   rest: null
+```
+
+### The file header must be corrected, not left contradicting the code
+
+<!-- decision: intro-slides-restructured-not-verbatim | status: adopted | supersedes: intro-slides-copied-verbatim -->
+
+`src/content/introSlides.ts` opens with a block headed **COPIED VERBATIM** stating that every body
+is transcribed from the owner's brief and must never be "reworded, shortened or improved". r2.02
+supersedes that for the slide bodies: he asked for exactly the restructuring this brief specifies,
+and said so in his own words ("you have a huge wall of text that could be restructured and
+formatted as bullet points"). Update that header to record the supersession and to say that the
+CONTENT is still his and still may not be reworded; only the SHAPE changed, in round 2, at his
+instruction. Do not delete the block and do not leave it standing as written.
+
 ## Verification
 
 Everything in `00-CONTEXT.md`, plus:
