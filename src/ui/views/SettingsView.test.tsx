@@ -2,9 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsView } from './SettingsView';
-import { copy, copyFor } from '../../content/copy';
+import { FORMAT, copy, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { displayLoad, toStoredLoad } from '../../domain/units';
+import { groupTimeZones } from '../../domain/dates';
 import type { Profile } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
 
@@ -328,6 +329,23 @@ describe('the time zone control in Settings (C1.04.3)', () => {
     const options = [...control.querySelectorAll('option')] as HTMLOptionElement[];
     expect(options.map((o) => o.value)).toContain('America/New_York');
     expect(control).toHaveValue(PROFILE.timezone);
+  });
+
+  it('uses the setup picker label construction for the selected zone', () => {
+    render(<SettingsView />);
+    const option = screen.getByRole('option', { selected: true });
+    const group = groupTimeZones(Intl.supportedValuesOf('timeZone'), Date.now()).find((candidate) =>
+      candidate.members.includes(PROFILE.timezone),
+    );
+    expect(group).toBeDefined();
+    if (group === undefined) return;
+    expect(option).toHaveTextContent(
+      FORMAT.timeZoneOption(
+        group.offsetLabel,
+        PROFILE.timezone,
+        FORMAT.timeZoneAlso(group.members.length - 1),
+      ),
+    );
   });
 
   it('writes Profile.timezone and nothing else', async () => {
