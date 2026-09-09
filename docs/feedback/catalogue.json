@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "82e4a06",
+  "generatedFrom": "1506f92",
   "counts": {
     "screens": 14,
-    "parts": 102,
+    "parts": 101,
     "keys": 543,
     "notRendered": 3,
-    "table": 546
+    "table": 545
   },
   "parts": [
     {
@@ -30,28 +30,12 @@
           "isControl": false,
           "limelightRowPermitted": true,
           "refusalGroup": null
-        }
-      ],
-      "status": "live"
-    },
-    {
-      "id": "intro.skip",
-      "screen": "intro",
-      "order": 2,
-      "title": "Skip control",
-      "what": "The control that ends the sequence from any slide, without advancing through the rest.",
-      "components": [
-        "src/ui/intro/IntroSequence.tsx"
-      ],
-      "states": [
-        "visible"
-      ],
-      "keys": [
+        },
         {
-          "key": "button.skipIntro",
-          "default": "Skip",
+          "key": "button.continue",
+          "default": "Next",
           "limelight": "same",
-          "board": "same",
+          "board": "PROCEED",
           "isControl": true,
           "limelightRowPermitted": true,
           "refusalGroup": null
@@ -62,7 +46,7 @@
     {
       "id": "intro.unassigned",
       "screen": "intro",
-      "order": 3,
+      "order": 2,
       "title": "Unassigned",
       "what": "Keys this screen renders that no part claims. Must be empty.",
       "components": [

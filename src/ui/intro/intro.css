@@ -46,6 +46,14 @@
   animation: intro-fade 1200ms ease-out both;
 }
 
+.intro-no-motion {
+  animation: none;
+}
+
+.intro-fade-out {
+  animation: intro-fade-out 180ms ease-in both;
+}
+
 .intro-heading {
   margin: 0;
   font-size: 1rem;
@@ -55,12 +63,37 @@
   color: var(--accent, #a3e635);
 }
 
+.intro-highlight {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.2rem 0.35rem;
+  color: var(--accent);
+  background: var(--highlight-bg);
+}
+
+.intro-subsection-title {
+  font-weight: 800;
+}
+
+.intro-lead-phrase {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 0.12em;
+  text-underline-offset: 0.16em;
+}
+
 .intro-body {
   margin: 0;
-  /* Significant whitespace: a slide 4's body carries one literal blank line (introSlides.ts),
-     which is the paragraph break the owner wrote, and this is what renders it as one rather than
-     collapsing it the way normal inline text would. */
-  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.intro-bullets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin: 0;
+  padding-left: 1.25rem;
   font-size: 0.95rem;
   line-height: 1.6;
 }
@@ -91,19 +124,6 @@
   animation: intro-hover 2000ms ease-in-out infinite alternate;
 }
 
-.intro-skip {
-  align-self: flex-start;
-  /* 2.75rem = 44 px at a 16 px root: the tap target size 00-CONTEXT sets, matching .boot-skip. */
-  min-height: 2.75rem;
-  padding: 0 1rem;
-  color: inherit;
-  background: var(--bg-2, #13161a);
-  border: 1px solid var(--line, #2a3038);
-  font: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
 @keyframes intro-fade {
   from {
     opacity: 0;
@@ -114,27 +134,66 @@
   }
 }
 
-/*
- * A SLOW pulse on the disclaimer slide, never a flash: WCAG 2.3.1 sets the seizure threshold at
- * more than three flashes per second, and one full cycle here takes 3 SECONDS -- three orders of
- * magnitude slower than the threshold, and a smooth opacity glide rather than a hard on/off
- * toggle besides. Applied by IntroSequence.tsx only to the one slide the brief names ("emphasised
- * by a slow pulse, not a flash"), and disabled entirely below under prefers-reduced-motion,
- * exactly as the brief requires.
- */
-.intro-pulse .intro-body {
-  animation: intro-pulse-glow 3000ms ease-in-out infinite;
-}
-
-@keyframes intro-pulse-glow {
-  0%,
-  100% {
+@keyframes intro-fade-out {
+  from {
     opacity: 1;
   }
 
-  50% {
-    opacity: 0.72;
+  to {
+    opacity: 0;
   }
+}
+
+.intro-modal-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 57;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: var(--bg);
+}
+
+.intro-modal {
+  width: min(34rem, 100%);
+  padding: 1.5rem;
+  color: var(--text);
+  background: var(--bg-2);
+  border: 2px solid var(--warn);
+}
+
+.intro-modal-title,
+.intro-modal-warning {
+  margin: 0 0 1rem;
+}
+
+.intro-modal-warning {
+  font-weight: 700;
+  line-height: 1.6;
+}
+
+.intro-acknowledgement {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+
+.intro-acknowledgement input {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--accent);
+}
+
+.intro-acknowledgement-continue {
+  min-height: 2.75rem;
+  margin-top: 1rem;
+  padding: 0 1rem;
+  color: var(--text);
+  background: var(--accent);
+  border: 1px solid var(--line-2);
+  font: inherit;
 }
 
 @keyframes intro-hover {
@@ -157,8 +216,9 @@
  */
 @media (prefers-reduced-motion: reduce) {
   .intro-slide,
+  .intro-fade-out,
   .intro-continue,
-  .intro-pulse .intro-body {
+  .intro-modal {
     animation: none;
   }
 }

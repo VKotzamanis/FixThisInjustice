@@ -67,12 +67,11 @@ const STEPS = [
   },
   {
     id: 'r2.04',
-    title: 'The last slide, and Skip',
-    do: 'Read the final slide, then reload and press Skip on the first slide instead.',
-    see: 'The final slide names the three things setup will ask for. Skip jumps straight to setup, and the intro does not return on a later reload.',
-    keys: ['button.skipIntro'],
-    parts: ['intro.skip'],
-    note: 'The intro shows once and records that it has been seen. Check Skip is findable and that the intro really does not come back.',
+    title: 'The Final Slide and Acknowledgement',
+    do: 'Read the final slide, acknowledge the warning, then reload.',
+    see: 'The final slide names the three things setup will ask for. The acknowledgement requires its checkbox, and the intro does not return on a later reload.',
+    parts: ['intro.sequence'],
+    note: 'The intro shows once and records that it has been seen after its last slide.',
   },
   {
     id: 'r2.05',
