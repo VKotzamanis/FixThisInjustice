@@ -75,36 +75,37 @@ any more must be **deleted** from `copy.ts`, from `alpha-parts.mjs` and from `al
 
 <!-- decision: worker-edits-orchestrator-verifies | status: adopted | supersedes: worker-shell-access-restored -->
 
-## What you can run, and what you cannot
+## First, find out which kind of worker you are
 
-**Measured on the first two live dispatches, 2026-09-09.** You have a shell, and it is sandboxed.
-Three things fail in it, and none of them is your fault:
-
-| Command | What happens | Why |
-| --- | --- | --- |
-| `node scripts/alpha-catalogue.mjs` | `Error: spawnSync git EPERM` | The alpha scripts shell out to `git`; the sandbox denies spawning it |
-| `node scripts/check-no-emoji.mjs` | `Error: spawnSync git EPERM` | Same |
-| `npx tsc -b --force`, `npx vitest run` | times out with no output | They exceed the sandbox's execution window |
-| `git commit` | `Unable to create index.lock: Read-only file system` | Git's metadata is in the MAIN repo's `.git`, outside your writable root |
-
-**So: you make the edits. The orchestrator runs every gate and regenerates every artifact.**
-Do not spend your run fighting the sandbox, and do not report a gate as passing that you could not
-run. Write `COULD NOT RUN: <command>, <the exact error>` instead. That is a useful answer.
-
-Your shell is still good for reading: `git grep`, `git diff`, `git log`, `sed`, `cat`, `ls`. Use it
-to find call sites before you rename something, and to check your own diff before you report.
-
-**Write your work to a patch before you report**, so it survives independently of the working tree:
+Two kinds of agent run these briefs and their shells differ. **Do not guess: run the probe.**
 
 ```
-git diff > MY-BRIEF-<letter>.patch      # `git add --intent-to-add` also fails: index.lock
-git status --short                      # list untracked NEW files in your report explicitly
+node scripts/check-no-emoji.mjs
 ```
 
-`git diff` alone does not include files you CREATED. If you added a file, say so by name in section
-1 of your report, or the orchestrator will not know to stage it.
+- **It prints `OK - N file(s) clean`.** You have a full shell. Run every gate in the block below,
+  regenerate the catalogue yourself when you touch copy, and COMMIT your work with a pathspec:
+  `git add -- <the exact files>` then `git commit`. Never `git add -A`; other agents share this
+  tree and a bare stage has already swept another agent's half-written work into an unrelated
+  commit.
+- **It dies with `Error: spawnSync git EPERM`.** You are in a sandbox that forbids spawning `git`.
+  Measured 2026-09-09: `git commit` also fails with `Unable to create index.lock: Read-only file
+  system`, and long `npx tsc` / `npx vitest` runs exceed the execution window. **Do not fight it.**
+  Make the edits, run what you can (`npx eslint ./src ./scripts` usually works), and write
+  `COULD NOT RUN: <command>, <exact error>` for the rest. Then save your diff so it survives
+  independently of the working tree:
 
-## Write code that passes these, because the orchestrator will run them
+  ```
+  git diff > MY-BRIEF-<letter>.patch      # `git add --intent-to-add` also fails
+  git status --short                      # name any NEW file in your report; git diff omits them
+  ```
+
+  The orchestrator runs your gates and commits your work.
+
+**Never report a gate as passing that you could not run.** "COULD NOT RUN" is a useful answer; a
+claimed pass that was never executed is the single failure this project has been burned by most.
+
+## The gates, whoever ends up running them
 
 ```
 npx tsc -b --force               # expect: no output, exit 0
