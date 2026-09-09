@@ -53,9 +53,9 @@ export const STAGES = [
       {
         id: 'w1.01',
         title: 'The intro sequence',
-        do: 'Open the app for the very first time. Tap anywhere, or press any key, to move past the first four slides.',
-        see: 'A caveat slide types itself out, with a small ascii figure and "click to continue" at the foot. Each tap replaces it with the next.',
-        keys: ['advice.clickToContinue'],
+        do: 'Open the app for the very first time. Tap anywhere, or press any key, to move through the slides. At the tl;dr, tick the acknowledgement box, then press the control that appears beneath it.',
+        see: 'Each slide fades in, its heading whole and its bullets typing themselves out beneath it. There is no Skip control. The tl;dr arrives as a warning modal over the previous slide, and its continue control stays disabled until the box is ticked.',
+        keys: ['advice.clickToContinue', 'button.introContinue'],
         parts: ['intro.sequence'],
       },
       {

@@ -68,8 +68,13 @@ describe('the alpha catalogue', () => {
     // P10 Brief C added two: intro.sequence and intro.skip, the same shape as boot.sequence and
     // boot.skip, for the intro sequence shown once ahead of the boot sequence. P10 Brief D added
     // one more: shell.footer, for the site footer at the foot of the app shell.
-    expect(catalogue.counts.parts).toBe(102);
-    expect(live).toHaveLength(102);
+    //
+    // ROUND 2, BRIEF J removed intro.skip, taking the count from 102 to 101. The owner asked for
+    // the intro's Skip control to go (r2.01): `ui.introSeen` already stops the sequence returning,
+    // so the control only ever let a first-time reader skip the caveats, which is the one thing it
+    // must not do. boot.skip is a DIFFERENT part on a different screen and still ships.
+    expect(catalogue.counts.parts).toBe(101);
+    expect(live).toHaveLength(101);
   });
 
   it('gives every part an id in the grammar, under a known screen', () => {

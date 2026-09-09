@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "1506f92",
+  "generatedFrom": "8703a18",
   "counts": {
     "screens": 14,
     "parts": 101,
     "keys": 543,
     "notRendered": 3,
-    "table": 545
+    "table": 546
   },
   "parts": [
     {
@@ -13,7 +13,7 @@
       "screen": "intro",
       "order": 1,
       "title": "Intro sequence",
-      "what": "The four caveat slides, the disclaimer and the final slide, shown once before setup.",
+      "what": "The caveat slides, and the tl;dr acknowledgement modal that gates the end of the sequence.",
       "components": [
         "src/ui/intro/IntroSequence.tsx"
       ],
@@ -32,7 +32,7 @@
           "refusalGroup": null
         },
         {
-          "key": "button.continue",
+          "key": "button.introContinue",
           "default": "Next",
           "limelight": "same",
           "board": "PROCEED",

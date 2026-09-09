@@ -55,6 +55,7 @@ export type CopyKey =
   | 'group.personal'
   | 'group.goal'
   | 'button.continue'
+  | 'button.introContinue'
   | 'button.back'
   | 'button.confirmStart'
   | 'label.units'
@@ -663,6 +664,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'group.personal': 'Personal Information',
   'group.goal': 'Fitness Goal & Schedule',
   'button.continue': 'Next',
+  /*
+   * The intro's own advance control, deliberately NOT `button.continue`. A copy key may be
+   * claimed by exactly one part in scripts/alpha-parts.mjs, and `button.continue` belongs to
+   * `setup.nav`; the intro screen rendering the same key left it unassignable on the intro screen
+   * (round 2, brief J, the acknowledgement modal). Same label, separate key, so the two controls
+   * can also diverge without one screen dragging the other.
+   */
+  'button.introContinue': 'Next', // R1: 1 word
   'button.back': 'Previous',
   'button.confirmStart': 'Confirm and start',
   'label.units': 'Units on the weight plates',

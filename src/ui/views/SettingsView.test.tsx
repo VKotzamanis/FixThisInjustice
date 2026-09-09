@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsView } from './SettingsView';
 import { FORMAT, copy, copyFor } from '../../content/copy';
@@ -333,7 +333,13 @@ describe('the time zone control in Settings (C1.04.3)', () => {
 
   it('uses the setup picker label construction for the selected zone', () => {
     render(<SettingsView />);
-    const option = screen.getByRole('option', { selected: true });
+    /*
+     * SCOPED to the time-zone control. This screen renders several selects (units, activity,
+     * experience, goal) and each has a selected option, so an unscoped
+     * getByRole('option', { selected: true }) matches all of them and throws.
+     */
+    const control = screen.getByLabelText(copy('label.timezone'));
+    const option = within(control).getByRole('option', { selected: true });
     const group = groupTimeZones(Intl.supportedValuesOf('timeZone'), Date.now()).find((candidate) =>
       candidate.members.includes(PROFILE.timezone),
     );
