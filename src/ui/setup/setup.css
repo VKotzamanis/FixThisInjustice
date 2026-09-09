@@ -1009,3 +1009,206 @@
   width: 100%;
   box-sizing: border-box;
 }
+
+/* ==================================================================== *
+ * The guidance step, round 2 claim r2.18.
+ *
+ * The step used to render four sections of running prose and had NO styles of its own at all:
+ * `guidance-*` appeared in no stylesheet in the repository, so every class the component named
+ * was inert. That is a large part of why it read as a wall. It is now eight collapsible topic
+ * boxes and one references box, and this block is the whole of their styling.
+ *
+ * R14 IS SERVED HERE, NOT IN THE COPY. The owner's sketch spelled the topic headings upper case.
+ * That is `text-transform: uppercase` below, applied at render, so the copy table keeps readable
+ * Title Case noun phrases and a skin can drop the shouting without an edit to the content.
+ *
+ * WHY NO `--accent` TYPE ANYWHERE IN THIS BLOCK, measured rather than assumed. On limelight
+ * `--accent` is `--pink` #ff5fcb and the ground is `--lime` #8ace00, which is 1.41:1: illegible.
+ * tokens.css says so itself, allowing pink type in exactly one place, inside the black panel
+ * where it measures 7.75:1. Headings therefore take `--text`, which is ink on lime at 10.91:1
+ * and near-white on the clinical ground. `--text-3` is avoided for anything a reader must read:
+ * it is 2.95:1 on the clinical `--bg-2`, so `--text-2` (6.14:1) carries the secondary prose.
+ *
+ * FOR THE SAME REASON NOTHING HERE PAINTS `--bg-3`. On limelight that token is the black panel
+ * while `--text` is black ink, so a panel-coloured strip with ordinary type on it would be black
+ * on black. The reader's own dose is set apart with a rule and a monospace face instead of a
+ * fill, which costs nothing and cannot invert.
+ *
+ * OPEN STATE IS NEVER "DARKER". It is a border colour change, a rule under the heading, and the
+ * disclosure glyph flipping from "+" to "-": one colour cue and two that survive without colour.
+ * ==================================================================== */
+
+/*
+ * The topic box. `--line` for the border so a closed box reads as a row in a menu rather than as
+ * a heavy card: eight heavy cards would be the same wall in a different shape.
+ */
+.guidance-topic {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  margin: 0 0 8px;
+  background: var(--bg-2);
+}
+
+/*
+ * The summary IS the control, so it carries the 44 px tap-target floor every control in this file
+ * carries. Two classes deep on purpose: `.wiz summary` above sets a quiet 0.8rem `--text-2` for
+ * the `why?` disclosures, and a topic heading is the opposite of quiet.
+ */
+.guidance-topic > .guidance-topic-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem; /* 44 px at the 16 px root */
+  padding: 0 12px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.guidance-topic[open] {
+  border-color: var(--text-2);
+}
+
+.guidance-topic[open] > .guidance-topic-summary {
+  border-bottom: 1px solid var(--line);
+}
+
+/*
+ * `.wiz summary` is `display: flex`, which suppresses the native disclosure triangle, so the box
+ * would otherwise give no sign that it opens. A plain ASCII "+" and "-" restore that. They are
+ * generated content and so are already out of the accessibility tree, which is correct: the
+ * <details> element announces its own expanded state and does not need a second voice.
+ */
+.guidance-topic > .guidance-topic-summary::after {
+  content: '+';
+  margin-left: auto;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text-2);
+}
+
+.guidance-topic[open] > .guidance-topic-summary::after {
+  content: '-';
+}
+
+/* The <h3> is a heading for the document outline, not a second type scale. */
+.guidance-topic-heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* The superscript into the reference list at the foot. Quieter than the heading, still legible. */
+.guidance-topic-markers {
+  font-size: 0.7em;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-2);
+}
+
+/*
+ * The one-line answer, first thing inside the box. It is the only line in a topic set in
+ * `--text`, so a reader who opens a box and reads exactly one line has read the point of it.
+ */
+.guidance-answer {
+  margin: 12px 12px 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+/*
+ * The reader's own dose. A rule and a monospace face rather than a filled strip: see the block
+ * header for why nothing here paints `--bg-3`.
+ */
+.guidance-topic .guidance-dose {
+  margin: 10px 12px 0;
+  padding: 2px 0 2px 10px;
+  border-left: 3px solid var(--text-2);
+  font-family: var(--mono, monospace);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.guidance-points {
+  margin: 8px 0 12px;
+  padding-left: 30px;
+  padding-right: 12px;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.guidance-points > li {
+  margin-bottom: 6px;
+}
+
+/*
+ * A safety statement. `--warn` is amber on clinical and ink on limelight, which is that skin's
+ * own rule: "state colours are ink, not hues". The border means the cue is never colour alone,
+ * and the badge spells the word "Caution" besides.
+ */
+.guidance-caution {
+  margin: 0 12px 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--warn);
+  border-radius: 4px;
+}
+
+.guidance-caution .guidance-points {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  padding-right: 0;
+}
+
+.guidance-caution-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+/*
+ * THE MARKED PLACEHOLDER, on the face of the box. A claim with no source is not an error and not
+ * a danger, so it is neither `--danger` nor `--warn`: it is a DASHED border with a `--text`
+ * badge, which reads as "deliberately empty". The dash is the load-bearing part, because it is
+ * the one cue that survives a reader who cannot separate the greys.
+ */
+.guidance-gap {
+  margin: 0 12px 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--line-2, var(--line));
+  border-radius: 4px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+.guidance-gap-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+/* The references box sits below the topics, so it takes the separating rule rather than a box. */
+.guidance-refs {
+  margin-top: 18px;
+}
+
+/* An unsourced row in the reference list, marked the same way the in-box placeholder is. */
+.guidance-cite-none {
+  padding-left: 8px;
+  border-left: 1px dashed var(--line-2, var(--line));
+  font-family: var(--sans, inherit);
+  color: var(--text-2);
+}
