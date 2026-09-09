@@ -60,6 +60,17 @@ git -C "$WT" log --oneline -1      # RECORD THIS
 `739b88e`, the session's starting commit, not from `main`, so it began without brief K. It caught
 this itself and fast-forwarded, but it cost an hour. Do not assume isolation branches from `HEAD`.
 
+**It happened again on 2026-09-09, and the detail that matters is this: it is not deterministic.**
+Briefs G and L were dispatched in the SAME message with `isolation: "worktree"` while `main` was at
+`fdc8cea`. L's worktree branched from `fdc8cea`, correctly. G's branched from `739b88e` — the same
+stale commit as brief N, twenty commits behind, missing K, N, O and J. Two worktrees created
+seconds apart, one right and one wrong.
+
+So you cannot infer one agent's base from another's, and you cannot skip the check because the last
+one was fine. **Check every worktree, immediately after dispatch, before the agent has written
+anything.** At that point the recovery is one message telling it to `git merge main` and re-read its
+brief. After it has built against a model that no longer exists, most of the work is wasted.
+
 ## 3. The dispatch prompt
 
 Give every agent the same four things. Nothing else is reliably read.
