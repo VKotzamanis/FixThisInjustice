@@ -73,61 +73,62 @@ any more must be **deleted** from `copy.ts`, from `alpha-parts.mjs` and from `al
 
 ---
 
-<!-- decision: worker-shell-access-restored | status: adopted | supersedes: orchestrator-runs-all-checks -->
+<!-- decision: worker-edits-orchestrator-verifies | status: adopted | supersedes: worker-shell-access-restored -->
 
-## You DO run shell commands, and you must
+## What you can run, and what you cannot
 
-You have a sandboxed shell inside your own git worktree. **Run every check yourself.**
-`node_modules` resolves from the parent directory, so `npx` works with no install: do **not** run
-`npm install` or `npm ci`, and do not use the network.
+**Measured on the first two live dispatches, 2026-09-09.** You have a shell, and it is sandboxed.
+Three things fail in it, and none of them is your fault:
 
-## Verification you run before you report
+| Command | What happens | Why |
+| --- | --- | --- |
+| `node scripts/alpha-catalogue.mjs` | `Error: spawnSync git EPERM` | The alpha scripts shell out to `git`; the sandbox denies spawning it |
+| `node scripts/check-no-emoji.mjs` | `Error: spawnSync git EPERM` | Same |
+| `npx tsc -b --force`, `npx vitest run` | times out with no output | They exceed the sandbox's execution window |
+| `git commit` | `Unable to create index.lock: Read-only file system` | Git's metadata is in the MAIN repo's `.git`, outside your writable root |
+
+**So: you make the edits. The orchestrator runs every gate and regenerates every artifact.**
+Do not spend your run fighting the sandbox, and do not report a gate as passing that you could not
+run. Write `COULD NOT RUN: <command>, <the exact error>` instead. That is a useful answer.
+
+Your shell is still good for reading: `git grep`, `git diff`, `git log`, `sed`, `cat`, `ls`. Use it
+to find call sites before you rename something, and to check your own diff before you report.
+
+**Write your work to a patch before you report**, so it survives independently of the working tree:
+
+```
+git diff > MY-BRIEF-<letter>.patch      # `git add --intent-to-add` also fails: index.lock
+git status --short                      # list untracked NEW files in your report explicitly
+```
+
+`git diff` alone does not include files you CREATED. If you added a file, say so by name in section
+1 of your report, or the orchestrator will not know to stage it.
+
+## Write code that passes these, because the orchestrator will run them
 
 ```
 npx tsc -b --force               # expect: no output, exit 0
 npx eslint ./src ./scripts       # expect: no output, exit 0
 npx vitest run                   # expect: all files passed, 0 failed
 node scripts/check-no-emoji.mjs  # expect: OK - N file(s) clean
+node scripts/alpha-catalogue.mjs && node scripts/alpha-catalogue.mjs --check
+node scripts/alpha-walk-pages.mjs && node scripts/alpha-walk-pages.mjs --check
+npm run test:tz                  # four zones, for anything touching dates, zones or reminders
 ```
 
-Plus the catalogue block above if you touched copy.
+`npx eslint .` from your worktree root would also lint your own `worker/` copy, which has no
+`node_modules`, so every worker import resolves to `any` and you get 24 phantom `no-unsafe-*`
+errors that are nothing to do with you. Scope it to `./src ./scripts` as above.
 
-**Scope ESLint to `./src ./scripts` as written.** A bare `npx eslint .` reports 24 pre-existing
-errors under `worker/` that are not yours; measured on `main` at `0dd4435`, `./src ./scripts` is
-clean, so any failure it reports is genuinely yours.
+**If you add, edit or delete a copy key**, you cannot regenerate the catalogue yourself, but you
+must still do the parts that are source: add the key to `copy.ts`' union AND table, add a part in
+`scripts/alpha-parts.mjs`, and add exactly one step in `scripts/alpha-walk.mjs`. A key nothing
+renders any more must be deleted from all three. Say in your report that the catalogue needs
+regenerating; the orchestrator runs the four commands.
 
-**Run `npx vitest run` once BEFORE you edit anything** and record the file and test counts. A drop
-in either afterwards is a regression you caused.
-
-**You CANNOT commit, and that is expected. Do not try.**
-
-<!-- decision: orchestrator-commits-worker-output | status: adopted | supersedes: worker-commits-own-branch -->
-
-Measured 2026-09-09: `git commit` inside a nested worktree fails with
-`Unable to create .git/worktrees/<name>/index.lock: Read-only file system`. Git's metadata and its
-object store live in the MAIN repository's `.git`, outside the directory you can write to. Widening
-the sandbox to reach it would also hand you every other branch's refs, which is not a trade worth
-making for a convenience.
-
-**The orchestrator stages and commits your work after verifying it.** So instead, before you
-report, save your diff where it cannot be lost:
-
-```
-git add -A --intent-to-add . && git diff > MY-BRIEF-<letter>.patch
-git status --short
-```
-
-`--intent-to-add` makes new files show up in the diff; it stages nothing and writes only to a file
-inside your own worktree. Name the patch file in your report.
-
-If your brief asks you to DELETE a file, delete it with `rm` and list it under `DELETED` in your
-report, so the orchestrator stages the deletion.
-
-**A failing test is not "done with a caveat". Fix it or report the failure with its exact output.**
-If a test fails because it asserts the old behaviour your brief replaced, update the test and say
-which ones you changed and why. If a test fails for any other reason, stop and report.
-
----
+**A failing test is not "done with a caveat".** If a test fails because it asserted the behaviour
+your brief replaced, update it and say which and why. If it fails for any other reason, stop and
+report.
 
 ## Accessibility, because this ships to a phone
 

@@ -56,7 +56,16 @@ const restrictedGlobals = [
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'node_modules/**'],
+    /*
+     * `.claude/**` holds the agent worktrees, which are FULL COPIES of this tree. Without it,
+     * `npm run lint` at the repo root lints every worktree as well as the real source, and the
+     * copies fail in a way the real tree does not: their `worker/` has no `node_modules` (CI runs
+     * `npm ci --prefix worker`, a local worktree does not), so the type-aware rules resolve every
+     * worker import to `any` and emit 24 `no-unsafe-*` errors per worktree. Measured 2026-09-09:
+     * two worktrees produced 48 phantom errors while `eslint ./src ./scripts` and `eslint worker/`
+     * were both clean. CI never saw them because it checks out a tree with no worktrees in it.
+     */
+    ignores: ['dist/**', 'dev-dist/**', 'coverage/**', 'node_modules/**', '.claude/**'],
   },
   js.configs.recommended,
   {
