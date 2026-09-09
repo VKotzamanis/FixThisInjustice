@@ -12,6 +12,35 @@ findings **B21, B22 and B23**. Read those three too. They are short and they car
 
 ---
 
+## Files, and one ruling that stops you adding a field you do not need
+
+**Verified against the tree on 2026-09-09. Rule 5 stops you at the first unlisted file.**
+
+<!-- decision: goal-axes-derived-not-stored | status: adopted | supersedes: none -->
+
+**The two axes are DERIVED, not stored.** The mapping in Part 1 is a bijection: four axis
+combinations, four `GoalKind` members, total in both directions. So the chooser reads its state
+back OUT of `goal.kind` and writes only `goal.kind`. **Do not add `fatAxis`/`muscleAxis` to
+`Profile`, do not bump `schemaVersion`, and do not write a migration.** Two fields that must agree
+are two fields that can disagree, and this app already stores the answer.
+
+| File | What changes |
+| --- | --- |
+| `src/ui/setup/SetupWizard.tsx` | Steps 5 to 7. The step ids are at line 129 and their copy keys at 148-150. The two-axis chooser, the body-fat target, the target date and the feasibility calendar all live here |
+| `src/ui/setup/SetupWizard.test.tsx` | The four axis-combination tests and the uncoloured-muscle-gain test |
+| `src/domain/types.ts` | `goal` is at line 124 and ALREADY has the shape you need: `{ kind: GoalKind; targetMassKg: Kg \| null; targetBodyFatPct: number \| null; targetDate: LocalDate \| null }`. `targetBodyFatPct` exists and the wizard never fills it. **Collect it. Add no field.** `GoalKind` at line 54 is unchanged |
+| `src/domain/nutrition.ts` | Read only, unless the feasibility model needs a helper exported. `FAT_LOSS_RATE_BOUND` is already exported at line 258 as `{ loFraction: 0.005, hiFraction: 0.01 }`, and `rateKgPerWeek` returns `null` for muscle gain at line 448. **Change no coefficient** |
+| `src/domain/nutrition.test.ts` | The test that the fat-loss bands sit exactly on `FAT_LOSS_RATE_BOUND`. Read the bound from the module; do not restate 0.005 and 0.01 as literals |
+| `src/ui/styles/tokens.css` | The three pastel fills. The decision they bend is recorded at lines 160-163: "State colours are ink, not hues... an amber or a red invented here would ship an unmeasured contrast." **Update that comment to record the measurement in Part 4, do not leave it contradicting the code** |
+| `src/ui/setup/setup.css` | The calendar's layout, including the limelight panel constraint in Part 4 |
+| `src/content/copy.ts` | The four outcome sentences, the band words, the step rename to `Fitness Goal`. Union AND table |
+| `src/content/copy.test.ts` | `LENGTH_EXEMPT` (line 159) only if you add an R10 module |
+| `scripts/alpha-parts.mjs`, `scripts/alpha-walk.mjs` | A part and one step per new key |
+
+**Do NOT touch `src/domain/plan/`, `src/domain/schema.ts`, `src/domain/migrations/`,
+`src/ui/components/Boot.tsx` or `src/ui/components/TimeCapsule.tsx`.** Those belong to Part 5,
+which is another agent's brief. See the note at the head of Part 5.
+
 ## Part 1 — The goal is two axes, not four exclusive options (C1.10.2 to C1.10.6)
 
 > "The way the 'Goal' is seperated is exclusionary. Recomposition and fat loss are not
@@ -153,36 +182,17 @@ deficit by days, stop.
 3. **Say it is an estimate.** The bands come from a prescribed rate, not a prediction about this
    user. One line, in the same honest register the basis strings use.
 
-## Part 5 — The programme step disappears (C1.12.2, C1.12.4 to C1.12.6)
+## Part 5 — MOVED to brief I2, and not yours
 
-> "How many generated exercise days would be generated -like a Ahead Of Time compiler? if that's
-> the case NO. It would be much better if each day's program can be more like a JIT compiler."
+<!-- decision: brief-i-split-at-part-4 | status: adopted | supersedes: brief-i-single-pass -->
 
-Finding B25: the step sets one number, `PlanTemplate.weeks`, bounded 8 to 24. Derive it from the
-target date instead and DELETE the step. Two consumers keep reading `weeks` and must keep working:
-`src/ui/components/Boot.tsx` prints "week X of Y", and `src/ui/components/TimeCapsule.tsx:145`
-computes the capsule's opening date from it.
+The programme step, the just-in-time split and the autoregulated deload were Part 5 of this brief.
+They are now `docs/plans/subagent-briefs/I2-jit-scheduler.md`, reproduced there verbatim, and they
+are round 3's first brief.
 
-**The just-in-time change is a SPLIT, not a swap.** Finding B23. Three shipped features read the
-forward plan and all three break under pure JIT:
-
-- reminders send the instants of upcoming sessions to the Worker;
-- the `.ics` export exports upcoming sessions;
-- the Plan tab's whole content is the programme week by week.
-
-So: **generate the SCHEDULE ahead** — dates, session labels, target volume — and **generate the
-PRESCRIPTION just in time**, at session start, from what has actually been logged. Reminders, the
-export and the Plan tab all keep working against the schedule; the exercises, sets and loads are
-decided when the session begins.
-
-**The deload stops being a calendar position.** `src/domain/plan/generator.ts` already labels the
-four-week cadence a HEURISTIC and cites Bell 2023 (100 % panel agreement that pre-planned deloads
-"might not be necessary") and Coleman 2024 (no hypertrophy benefit from a mid-programme deload).
-The review's own recommendation is "autoregulate; keep a 4-8 week calendar backstop". Trigger the
-deload from accumulated volume and completion, and keep the backstop so a deload cannot be
-deferred for ever.
-
-**This part is large.** If it does not fit one pass, do Parts 1 to 4 and STOP, and say so. A
+**Implement Parts 1 to 4 and stop.** Do not delete the programme step, do not touch
+`src/domain/plan/`, `src/domain/schema.ts`, `src/domain/migrations/`, `src/ui/components/Boot.tsx`
+or `src/ui/components/TimeCapsule.tsx`. The split follows this brief's own instruction that a
 half-migrated scheduler is worse than none.
 
 ## Verification
