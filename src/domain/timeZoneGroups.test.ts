@@ -176,6 +176,16 @@ describe('grouping', () => {
 });
 
 describe('the representative', () => {
+  it('keeps canonical and Link spellings available for prominent zones', () => {
+    for (const pair of [
+      ['Asia/Kolkata', 'Asia/Calcutta'],
+      ['Asia/Yangon', 'Asia/Rangoon'],
+      ['America/Nuuk', 'America/Godthab'],
+    ]) {
+      expect(pair.some((zone) => PLATFORM_ZONES.includes(zone))).toBe(true);
+    }
+  });
+
   it('names the row after a member a reader is likely to know', () => {
     const groups = groupTimeZones(['Europe/Berlin', 'Europe/Paris', 'Europe/Vaduz'], JANUARY);
     expect(groups).toHaveLength(1);

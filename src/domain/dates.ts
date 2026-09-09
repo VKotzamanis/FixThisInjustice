@@ -378,14 +378,18 @@ const PROMINENT_ZONES: readonly string[] = [
   'Europe/London', 'Europe/Paris', 'Europe/Athens', 'Europe/Moscow', 'Europe/Lisbon',
   'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
   'America/Phoenix', 'America/Anchorage', 'America/Mexico_City', 'America/Bogota',
-  'America/Caracas', 'America/Halifax', 'America/Sao_Paulo', 'America/Godthab',
+  'America/Caracas', 'America/Halifax', 'America/Sao_Paulo', 'America/Nuuk', 'America/Godthab',
   'America/Noronha', 'Pacific/Honolulu', 'Pacific/Pago_Pago',
   'Africa/Lagos', 'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Abidjan', 'Africa/Casablanca',
-  'Asia/Dubai', 'Asia/Karachi', 'Asia/Calcutta', 'Asia/Dhaka', 'Asia/Rangoon', 'Asia/Jakarta',
+  'Asia/Dubai', 'Asia/Karachi', 'Asia/Kolkata', 'Asia/Calcutta', 'Asia/Dhaka',
+  'Asia/Yangon', 'Asia/Rangoon', 'Asia/Jakarta',
   'Asia/Shanghai', 'Asia/Tokyo',
   'Australia/Sydney', 'Australia/Brisbane', 'Australia/Adelaide',
   'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Apia', 'Pacific/Guadalcanal',
 ];
+
+// Canonical and Link spellings are both listed because ECMA-402 permits either spelling.
+// Brief O keeps the canonical name first so engines offering both prefer it.
 
 /**
  * The region a zone id names, which is the segment before the first `/`. `Europe/Amsterdam` is
@@ -434,7 +438,9 @@ function fallbackRepresentative(members: readonly string[]): string {
  *
  * WHAT IS COLLAPSED IS SAFE. Two zones with the same offset in every month of the year are
  * interchangeable for everything this app computes, which is civil dates and reminder instants.
- * Measured against the platform's own list on 2026-09-06: 418 zones, 59 behaviours.
+ * Measured against the platform's own list on 2026-09-06: 418 zones, 59 behaviours. Do not
+ * filter the 121 Link names from the 418 searchable zones: that leaves 297 canonical names,
+ * reduces the wrong number, removes capital-city searches, and breaks Link-only names.
  *
  * Sorted by offset from the most negative to the most positive, then by representative name
  * within an offset. Alphabetical order by IANA id is what r2.09 reports as the defect: it reads
