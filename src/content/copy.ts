@@ -608,7 +608,24 @@ export type CopyKey =
   | 'footer.repository'
   | 'footer.version'
   | 'footer.updated'
-  | 'footer.licence';
+  | 'footer.licence'
+  // --- round 2 brief N: the dynamic banner (r2-onboarding.general) ---
+  | 'status.bannerIntro'
+  | 'status.bannerSetup'
+  | 'status.bannerSetupNamed'
+  | 'status.bannerSetupAnonymous'
+  // --- round 2 brief N: reaching the skin picker during setup (r2.05) ---
+  | 'disclosure.skin'
+  // --- round 2 brief N: the time-zone picker (r2.09) ---
+  | 'label.timezoneSearch'
+  | 'advice.timezoneGrouped'
+  | 'advice.timezoneNoMatch'
+  | 'status.timezoneAlso'
+  | 'hero.timezoneWhy'
+  | 'label.timezoneDayBoundary'
+  | 'advice.timezoneDayBoundary'
+  | 'label.timezoneReminders'
+  | 'advice.timezoneReminders';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1699,6 +1716,60 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'footer.version': 'Version {version}. Build {commit}.', // template; FORMAT.footerVersion
   'footer.updated': 'Last updated {date}.', // template; FORMAT.footerUpdated
   'footer.licence': 'MIT licence.',
+
+  // --- round 2 brief N: the dynamic banner (r2-onboarding.general) ---
+  // "The banner of the web page (That now says FIX THIS INJUSTICE) is not dynamic. I would Like
+  // it to append some information as the user moves forward."
+  //
+  // `status.` AND NOT `hero.`, for two reasons that agree. The top bar's existing rows are
+  // already `advice.*Instruction` and `status.sessionCursor`: nothing in that bar is a `hero.`,
+  // because the bar reports where you are rather than heading the screen. And the naming
+  // families (`label.` `hero.` `step.` `group.` `button.`) are the ones scripts/check-title-case
+  // .mjs reads, where a `{slot}` counts as an uncapitalised word; putting the templated row here
+  // keeps R14's gate honest instead of adding a failure it cannot really diagnose.
+  'status.bannerIntro': 'Hi, How Are Ya',
+  'status.bannerSetup': 'Welcome Aboard',
+  // Template; FORMAT.bannerName fills it. The NAME IS THE USER'S OWN TEXT and is inserted
+  // verbatim: never title-cased, never trimmed into a different string. That is why it is a
+  // frame with a slot rather than a concatenation at the call site, and why the frame's
+  // `replace` takes a function (a name containing `$&` must survive as typed).
+  'status.bannerSetupNamed': 'Welcome Aboard: {name}',
+  // The joke fires at the END of setup, not the moment the field is empty: it is for someone who
+  // reached Review without giving a name, not for someone who has not typed it yet. The wizard's
+  // review step is what gates it (src/app/App.tsx), never a blank field.
+  'status.bannerSetupAnonymous': 'Welcome Aboard: Shy or Paranoid?',
+
+  // --- round 2 brief N: reaching the skin picker during setup (r2.05) ---
+  // "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any skin picker or any
+  // app settings." The tab strip does not render until a profile exists, so nothing in the whole
+  // wizard could reach the skin. This is the summary of the top-bar disclosure that now can,
+  // matching `disclosure.why` and `disclosure.examples`, which is the app's own idiom for a
+  // control that opens a panel in place.
+  'disclosure.skin': 'Choose Skin',
+
+  // --- round 2 brief N: the time-zone picker (r2.09) ---
+  // The list shows one row per BEHAVIOUR (59 of them) and the search reads every zone the
+  // platform has (418). Neither number is written here: both are computed in
+  // src/domain/dates.ts from the tz database, so a database update moves them without a copy
+  // edit, and a copy string can never claim a count the code does not produce.
+  'label.timezoneSearch': 'Search Time Zones',
+  'advice.timezoneGrouped': 'Zones with identical offsets all year are grouped; search finds all.',
+  'advice.timezoneNoMatch': 'No zone matches that search.',
+  // Template; FORMAT.timeZoneAlso. How many further zones a row stands for, when nothing has
+  // been typed to name one of them.
+  'status.timezoneAlso': '{count} more',
+  // The bordered box below the field. R14: a heading is Title Case AND a noun phrase.
+  'hero.timezoneWhy': 'Why the Time Zone Matters',
+  // Bullet one, the one the owner asked to stand out: "We need it for the day resets ... *make
+  // this bold/underlined/ make it stand out*". The emphasis is CSS on the list item
+  // (src/ui/setup/setup.css .wiz-tz-primary), never a mark inside the string.
+  'label.timezoneDayBoundary': 'The Day Boundary',
+  'advice.timezoneDayBoundary': 'Every date, streak and weekly close is computed in this zone.',
+  // Bullet two: "There is an option to send *NOTIFICATIONS* to you during the exercise day so
+  // you don't forget your gym bag at home". His meaning and his register, inside R3's twelve
+  // words; the label above carries the subject so the sentence does not have to repeat it.
+  'label.timezoneReminders': 'Reminders',
+  'advice.timezoneReminders': 'Turn them on and the gym bag stops staying at home.',
 };
 
 /**
@@ -2620,4 +2691,34 @@ export const FORMAT = {
   /** "Last updated 2026-09-04." `date` is `__BUILD_DATE__`, an ISO calendar date (YYYY-MM-DD). */
   footerUpdated: (date: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('footer.updated', overrides).replace('{date}', () => date),
+
+  // --- round 2 brief N: the banner and the time zone ---
+
+  /**
+   * "Welcome Aboard: Ada Lovelace". The banner once a name has been given.
+   *
+   * `name` IS THE USER'S OWN TEXT and reaches the string byte for byte: not trimmed, not
+   * title-cased, not truncated. A frame rather than a concatenation at the call site so a skin
+   * can rewrite everything around the slot and nothing inside it, and `replace` takes a function
+   * so a name containing `$&` or `` $` `` is inserted rather than expanded, exactly as
+   * `trainLabelToday` guards a user-typed session label.
+   */
+  bannerName: (name: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.bannerSetupNamed', overrides).replace('{name}', () => name),
+
+  /**
+   * "(UTC/GMT+05:45) Asia/Katmandu", or with a tail, "(UTC/GMT+01:00) Europe/Paris, Europe/Berlin".
+   *
+   * `offsetLabel` and `zone` both come from src/domain/dates.ts: the label is computed from the
+   * zone's offset in minutes, and the zone is an IANA identifier, so neither is wording a skin
+   * may retune and neither is stated here. `also` is what the row stands for beyond its own name,
+   * already built by the caller: the members a search matched, or `timeZoneAlso` below. Empty
+   * when the row stands for nothing but itself.
+   */
+  timeZoneOption: (offsetLabel: string, zone: string, also: string): string =>
+    also === '' ? `(${offsetLabel}) ${zone}` : `(${offsetLabel}) ${zone}, ${also}`,
+
+  /** "32 more": how many further zones a row covers, when no search has named one of them. */
+  timeZoneAlso: (count: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.timezoneAlso', overrides).replace('{count}', () => String(count)),
 } as const;

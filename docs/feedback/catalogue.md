@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `739b88e`. 102 parts across 14 screens, holding 529 of the table's 532 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `82e4a06`. 102 parts across 14 screens, holding 543 of the table's 546 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (2)
 
@@ -73,11 +73,11 @@ States: `visible`
 
 ### `shell.topbar`
 
-Top bar. The fixed brand and the moving instruction for the current view.
+Top bar. The fixed brand, the banner naming where the user is, the moving instruction for the current view, and the setup-only skin control.
 
-Renders: `src/app/App.tsx`, `src/ui/components/Marquee.tsx`
+Renders: `src/app/App.tsx`, `src/ui/components/Marquee.tsx`, `src/ui/setup/setupBanner.tsx`
 
-States: `scrolling`, `static-fallback`
+States: `scrolling`, `static-fallback`, `intro`, `setup`, `setup-named`, `setup-anonymous`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
@@ -90,6 +90,11 @@ States: `scrolling`, `static-fallback`
 | `advice.todayInstruction` | Start, resume, or skip the session assigned today. | same | same | yes |
 | `advice.trainInstruction` | Log sets, rest between them, and finish the session. | same | same | yes |
 | `button.pauseUpdates` | Pause updates | same | same | yes |
+| `disclosure.skin` | Choose Skin | same | same | yes |
+| `status.bannerIntro` | Hi, How Are Ya | same | same | yes |
+| `status.bannerSetup` | Welcome Aboard | same | same | yes |
+| `status.bannerSetupAnonymous` | Welcome Aboard: Shy or Paranoid? | same | same | yes |
+| `status.bannerSetupNamed` | Welcome Aboard: {name} | same | same | yes |
 
 ### `shell.session-indicator`
 
@@ -239,18 +244,27 @@ States: `default`
 
 ### `setup.timezone`
 
-Step 2, Time zone. The zone every civil date in the app is computed in.
+Step 2, Time zone. The zone every civil date in the app is computed in, chosen from a list grouped by year-round behaviour and ordered by offset, searchable across every zone the platform knows.
 
-Renders: `src/ui/setup/SetupWizard.tsx`
+Renders: `src/ui/setup/SetupWizard.tsx`, `src/domain/dates.ts`
 
-States: `default`
+States: `default`, `searching`, `no-match`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `advice.timezoneDayBoundary` | Every date, streak and weekly close is computed in this zone. | same | same | yes |
 | `advice.timezoneDetected` | Necessary for the notification bot and the week planner. | same | same | yes |
+| `advice.timezoneGrouped` | Zones with identical offsets all year are grouped; search finds all. | same | same | yes |
 | `advice.timezoneInvalid` | Not a recognised IANA time zone. | same | same | yes |
+| `advice.timezoneNoMatch` | No zone matches that search. | same | same | yes |
 | `advice.timezonePick` | Select from the drop down menu: | same | same | yes |
+| `advice.timezoneReminders` | Turn them on and the gym bag stops staying at home. | same | same | yes |
+| `hero.timezoneWhy` | Why the Time Zone Matters | same | same | yes |
 | `label.timezone` | Time zone | same | same | yes |
+| `label.timezoneDayBoundary` | The Day Boundary | same | same | yes |
+| `label.timezoneReminders` | Reminders | same | same | yes |
+| `label.timezoneSearch` | Search Time Zones | same | same | yes |
+| `status.timezoneAlso` | {count} more | same | same | yes |
 | `step.timezone` | Time zone | same | same | yes |
 
 ### `setup.body`
