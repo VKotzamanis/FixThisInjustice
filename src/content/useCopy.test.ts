@@ -14,7 +14,7 @@ describe('useCopy', () => {
   it('reads the clinical table under the clinical skin', () => {
     setSkin('clinical');
     const { result } = renderHook(() => useCopy());
-    expect(result.current('button.startSession')).toBe('Start session');
+    expect(result.current('button.startSession')).toBe('Start Session');
   });
 
   it('reads the override table under each skin that has one', () => {
