@@ -488,8 +488,8 @@ a{color:var(--text)}
 <section class="step" id="w1.10">
   <p class="stepno"><code>w1.10</code> step 10</p>
   <h3>Setup, step 3: body fat</h3>
-  <p class="do"><b>Do</b>Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open &quot;why?&quot;.</p>
-  <p class="see"><b>You see</b>Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot.</p>
+  <p class="do"><b>Do</b>Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open &quot;why?&quot;. Then clear the sex selection above and look at the three options again. At the foot of the step, read the weigh-in box and tick it.</p>
+  <p class="see"><b>You see</b>Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot. With no sex chosen, the tape and Not Measured options grey out and each says &quot;(Needs Biological Sex)&quot; in italic beside it. Below the body-fat box, the weigh-in opt-in, with a line saying what declining costs.</p>
   <p class="pids">covers setup.body</p>
   <ol class="strings">
 <li>
@@ -549,6 +549,10 @@ a{color:var(--text)}
 <p class="lime-str">Unavailable without a sex: the equations differ in form.</p>
 </li>
 <li>
+<code>label.needsBiologicalSex</code>
+<p class="lime-str">(Needs Biological Sex)</p>
+</li>
+<li>
 <code>advice.bodyFatRequiredND</code>
 <p class="lime-str">Required without a sex: the equation with no sex term needs it.</p>
 </li>
@@ -584,6 +588,18 @@ a{color:var(--text)}
 <code>advice.bodyFatOptional</code>
 <p class="lime-str">Optional. With it, RMR uses the Cunningham equation.</p>
 </li>
+<li>
+<code>label.weighIn</code>
+<p class="lime-str">Weigh in</p>
+</li>
+<li>
+<code>advice.weighIn</code>
+<p class="lime-str">Optional. Without it the 2 % fluid loss check cannot run.</p>
+</li>
+<li>
+<code>advice.weighInReassurance</code>
+<p class="lime-str">A number that looks bad today is one you enjoy watching move.</p>
+</li>
 </ol>
   <label class="box" for="c-w1.10">What needs to change here?</label>
   <textarea id="c-w1.10" data-step="w1.10" data-parts="setup.body" placeholder="What you saw. What you expected."></textarea>
@@ -592,8 +608,8 @@ a{color:var(--text)}
 <section class="step" id="w1.11">
   <p class="stepno"><code>w1.11</code> step 11</p>
   <h3>Setup, step 4: equipment &amp; availability</h3>
-  <p class="do"><b>Do</b>Move the Everyday Activity Level slider through all nine stops, opening the Examples disclosure, then open &quot;Where These Levels Come From&quot; and close it. Move the other two sliders through every position too. Then move the Equipment Access slider through Full gym, Home gym and Body weight only in turn to see the load increments box and each equipment question it reveals.</p>
-  <p class="see"><b>You see</b>Three sliders, each naming its current position in text and (for the first two) an Examples disclosure; under the Everyday Activity Level slider, a link opening a modal that names the three FAO/WHO/UNU bands and the nine stops with their PAL and example; a bordered box with the three load increments; then, depending on the Equipment Access position, a walk-to-the-gym question or an equipment multi-select.</p>
+  <p class="do"><b>Do</b>Move the Everyday Activity Level slider through all nine stops, opening the Examples disclosure, then open &quot;Where These Levels Come From&quot; and close it. Tap each of the three Gym Comfort boxes in turn. Then move the Equipment Access slider through Full gym, Home gym and Body weight only to see each equipment question it reveals, and the Load Step box that follows them.</p>
+  <p class="see"><b>You see</b>Two sliders, each naming its current position in text and each carrying a mark under every stop: nine on Everyday Activity Level, five on Equipment Access, of which the first, the middle and the last are empty dashed draft boxes where the artwork will go. Gym Comfort is three selectable boxes, not a slider. Under the Everyday Activity Level slider, a link opening a modal that names the three FAO/WHO/UNU bands and the nine stops with their PAL and example. Below every equipment question, on every position but Body weight only, a bordered Load Step box holding Dumbbell and Plates side by side.</p>
   <p class="pids">covers setup.training</p>
   <ol class="strings">
 <li>
@@ -675,24 +691,6 @@ a{color:var(--text)}
 <li>
 <code>option.accessFullGym</code>
 <p class="lime-str">Full Gym</p>
-</li>
-<li>
-<code>advice.loadSteps</code>
-<p class="lime-str">The smallest increment a suggested load uses.</p>
-<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
-</li>
-<li>
-<code>quantity.barbellStep</code>
-<p class="lime-str">Barbell step</p>
-<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
-</li>
-<li>
-<code>quantity.dumbbellStep</code>
-<p class="lime-str">Dumbbell step, per pair</p>
-</li>
-<li>
-<code>quantity.stackStep</code>
-<p class="lime-str">Weight-stack step</p>
 </li>
 <li>
 <code>advice.walkToGym</code>
@@ -777,6 +775,24 @@ a{color:var(--text)}
 <li>
 <code>option.bodyweightResistanceBands</code>
 <p class="lime-str">Resistance Bands</p>
+</li>
+<li>
+<code>label.loadStep</code>
+<p class="lime-str">Load Step</p>
+</li>
+<li>
+<code>quantity.dumbbellStep</code>
+<p class="lime-str">Dumbbell</p>
+</li>
+<li>
+<code>quantity.barbellStep</code>
+<p class="lime-str">Plates</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>advice.loadSteps</code>
+<p class="lime-str">The smallest increment a suggested load uses. Dumbbells step per pair.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 </ol>
   <label class="box" for="c-w1.11">What needs to change here?</label>
@@ -943,24 +959,6 @@ a{color:var(--text)}
 <code>advice.feasibilityEstimate</code>
 <p class="lime-str">An estimate from a prescribed rate, not a prediction about you.</p>
 </li>
-<li>
-<code>label.creatine</code>
-<p class="lime-str">Creatine Monohydrate</p>
-<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
-</li>
-<li>
-<code>advice.creatineOnly</code>
-<p class="lime-str">Dose scales with body mass.</p>
-<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
-</li>
-<li>
-<code>label.weighIn</code>
-<p class="lime-str">Weigh in</p>
-</li>
-<li>
-<code>advice.weighIn</code>
-<p class="lime-str">Optional. Compares body mass before and after.</p>
-</li>
 </ol>
   <label class="box" for="c-w1.12">What needs to change here?</label>
   <textarea id="c-w1.12" data-step="w1.12" data-parts="setup.goal" placeholder="What you saw. What you expected."></textarea>
@@ -968,9 +966,9 @@ a{color:var(--text)}
 
 <section class="step" id="w1.13">
   <p class="stepno"><code>w1.13</code> step 13</p>
-  <h3>Setup, step 6: availability</h3>
-  <p class="do"><b>Do</b>Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.</p>
-  <p class="see"><b>You see</b>A sessions-per-week field, then seven weekday rows, each with a time and a length.</p>
+  <h3>Setup, step 5: availability, at the top of the goal step</h3>
+  <p class="do"><b>Do</b>Before touching the goal controls above, scroll to the top of the same screen. Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.</p>
+  <p class="see"><b>You see</b>A sessions-per-week field, then seven weekday rows, each with a time and a length, above the goal axes and the target date rather than on a screen of their own.</p>
   <p class="pids">covers setup.availability</p>
   <ol class="strings">
 <li>
@@ -1077,13 +1075,23 @@ a{color:var(--text)}
 <section class="step" id="w1.16">
   <p class="stepno"><code>w1.16</code> step 16</p>
   <h3>Setup, step 9: review</h3>
-  <p class="do"><b>Do</b>Read the panels and the Your Data block, tick &quot;Looks Good&quot;, then tap &quot;Confirm and start&quot;.</p>
+  <p class="do"><b>Do</b>Read the panels and the Your Data block, tick the creatine box and watch the dose row appear below it, tick &quot;Looks Good&quot;, then tap &quot;Confirm and start&quot;.</p>
   <p class="see"><b>You see</b>The daily targets, the programme summary, a Your Data block naming where the document lives, how to move it, and how to start over, and the control that writes the profile, disabled until Looks Good is ticked.</p>
   <p class="pids">covers setup.review</p>
   <ol class="strings">
 <li>
 <code>step.review</code>
 <p class="lime-str">Review</p>
+</li>
+<li>
+<code>label.creatine</code>
+<p class="lime-str">Creatine Monohydrate</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
+</li>
+<li>
+<code>advice.creatineOnly</code>
+<p class="lime-str">Dose scales with body mass.</p>
+<p class="refusal">This string keeps its plain wording on every skin: THE QUANTITIES, THE UNITS AND THE INCREMENTS. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
 <code>hero.dailyTargets</code>

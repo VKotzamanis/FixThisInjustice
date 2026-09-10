@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `908d2ad`. 101 parts across 14 screens, holding 578 of the table's 581 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `af40b33`. 101 parts across 14 screens, holding 580 of the table's 583 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -278,6 +278,8 @@ States: `default`, `blocked`
 | `advice.tapeNeedMale` | Enter neck and abdomen II girths. | same | same | yes |
 | `advice.tapeNeedsSex` | Unavailable without a sex: the equations differ in form. | same | same | yes |
 | `advice.tapeOutOfDomain` | Girths outside the equation's domain. No estimate is shown. | same | same | yes |
+| `advice.weighIn` | Optional. Without it the 2 % fluid loss check cannot run. | same | same | yes |
+| `advice.weighInReassurance` | A number that looks bad today is one you enjoy watching move. | same | same | yes |
 | `button.closeModal` | Close | same | same | yes |
 | `disclosure.disclaimer` | Disclaimer | same | same | yes |
 | `disclosure.references` | References | same | same | yes |
@@ -295,11 +297,13 @@ States: `default`, `blocked`
 | `label.inches` | Inches | same | same | yes |
 | `label.metres` | Metres | same | same | yes |
 | `label.name` | How Should I Refer to You? | same | same | yes |
+| `label.needsBiologicalSex` | (Needs Biological Sex) | same | same | yes |
 | `label.sex` | Biological Sex | same | same | yes |
 | `label.sexFemale` | Female | same | same | yes |
 | `label.sexMale` | Male | same | same | yes |
 | `label.sexNotDisclosed` | Not Disclosed | same | same | yes |
 | `label.sexRationale` | Why Sex Is Asked | same | same | yes |
+| `label.weighIn` | Weigh in | same | same | yes |
 | `quantity.abdomenI` | Abdomen I | same | same | yes |
 | `quantity.abdomenII` | Abdomen II | same | same | yes |
 | `quantity.age` | Age | same | same | yes |
@@ -313,7 +317,7 @@ States: `default`, `blocked`
 
 ### `setup.training`
 
-Step 4, Equipment & Availability. Everyday activity, gym comfort and equipment access as sliders, the load increments, and the equipment questions the equipment access slider reveals (Brief F).
+Step 4, Equipment & Availability. Everyday activity and equipment access as sliders with stop markers, gym comfort as three option boxes, the equipment questions the equipment access slider reveals, and the two load increments below them (round 3 Tasks 5 to 8).
 
 Renders: `src/ui/setup/SetupWizard.tsx`
 
@@ -323,7 +327,7 @@ States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 | --- | --- | --- | --- | --- |
 | `advice.activityLevelsSource` | Where These Levels Come From | same | same | yes |
 | `advice.equipmentInventoryPrompt` | What equipment do you have? | same | same | yes |
-| `advice.loadSteps` | The smallest increment a suggested load uses. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `advice.loadSteps` | The smallest increment a suggested load uses. Dumbbells step per pair. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `advice.walkToGym` | Do you walk to and from the gym? | same | same | yes |
 | `button.no` | No | same | same | yes |
 | `button.yes` | Yes | same | same | yes |
@@ -335,6 +339,7 @@ States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 | `label.homeEquipmentAerobic` | Aerobic | same | same | yes |
 | `label.homeEquipmentDumbbells` | Dumbbells | same | same | yes |
 | `label.homeEquipmentMachines` | Machines | same | same | yes |
+| `label.loadStep` | Load Step | same | same | yes |
 | `option.accessBodyweight` | Body Weight Only | same | same | yes |
 | `option.accessFullAndHome` | Full Gym and Home Gym | same | same | yes |
 | `option.accessFullGym` | Full Gym | same | same | yes |
@@ -359,9 +364,8 @@ States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 | `option.homeSmithMachine` | Smith Machine | same | same | yes |
 | `option.homeSquatRack` | Squat Rack | same | same | yes |
 | `option.homeTreadmill` | Treadmill | same | same | yes |
-| `quantity.barbellStep` | Barbell step | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
-| `quantity.dumbbellStep` | Dumbbell step, per pair | same | same | yes |
-| `quantity.stackStep` | Weight-stack step | same | same | yes |
+| `quantity.barbellStep` | Plates | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `quantity.dumbbellStep` | Dumbbell | same | same | yes |
 | `quantity.walkMinutes` | Minutes each way | same | same | yes |
 | `step.training` | Equipment & Availability | same | same | yes |
 
@@ -375,7 +379,6 @@ States: `default`, `recomposition`, `no-bodyfat-estimate`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `advice.creatineOnly` | Dose scales with body mass. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `advice.feasibilityEstimate` | An estimate from a prescribed rate, not a prediction about you. | same | same | yes |
 | `advice.feasibilityMassHeld` | This goal holds body mass, so no weekly rate applies. | same | same | yes |
 | `advice.feasibilityNeedsFuture` | Pick a date after today before this can be judged. | same | same | yes |
@@ -392,16 +395,13 @@ States: `default`, `recomposition`, `no-bodyfat-estimate`
 | `advice.impliedComposition` | At that target: {fat} fat mass and {lean} lean mass. | same | same | yes |
 | `advice.targetBodyFatBasis` | The fat mass and lean mass shown assume lean mass is held while fat is lost, which is what the prescribed rate targets. A tape estimate carries a standard error of {see} percentage points of body fat, so read the target as a direction rather than as a number to hit. | same | same | yes |
 | `advice.targetBodyFatUnavailable` | No body-fat estimate yet, so the target is body mass. | same | same | yes |
-| `advice.weighIn` | Optional. Compares body mass before and after. | same | same | yes |
 | `button.nextMonth` | Next Month | same | same | yes |
 | `button.previousMonth` | Previous Month | same | same | yes |
-| `label.creatine` | Creatine Monohydrate | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `label.fatAxis` | Body Fat Goal | same | same | yes |
 | `label.feasibility` | Target Date Feasibility | same | same | yes |
 | `label.goal` | Goal | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `label.muscleAxis` | Muscle Goal | same | same | yes |
 | `label.targetDate` | Target Date (Optional) | same | same | yes |
-| `label.weighIn` | Weigh in | same | same | yes |
 | `option.fatHold` | Hold body fat | same | same | yes |
 | `option.fatLose` | Lose fat | same | same | yes |
 | `option.goalFatLoss` | Fat loss | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
@@ -419,7 +419,7 @@ States: `default`, `recomposition`, `no-bodyfat-estimate`
 
 ### `setup.availability`
 
-Step 4, Availability. The days and times you can train, stated on the training step before the goal asks for a target date.
+Step 5, Availability. The days and times you can train, stated at the top of the goal step, above the target date the feasibility calendar assesses (round 3 Task 9).
 
 Renders: `src/ui/setup/SetupWizard.tsx`
 
@@ -480,12 +480,14 @@ States: `ready`, `blocked`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.beverageRange` | The reference intake is published per sex, so both figures are shown. | same | same | yes |
+| `advice.creatineOnly` | Dose scales with body mass. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `button.confirmStart` | Confirm and Start | lock it in | same | yes |
 | `disclosure.why` | why? | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
 | `hero.dailyTargets` | Daily Targets | the numbers | same | yes |
 | `hero.programme` | Programme | same | same | yes |
 | `hero.yourAnswers` | What You Told Me | same | same | yes |
 | `hero.yourData` | Your Data | same | same | yes |
+| `label.creatine` | Creatine Monohydrate | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `label.creatineDose` | Creatine | same | same | yes |
 | `label.energy` | Energy | same | same | yes |
 | `label.expectedRate` | Expected Rate | same | same | yes |

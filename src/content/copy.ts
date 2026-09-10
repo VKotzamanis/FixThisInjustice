@@ -115,6 +115,7 @@ export type CopyKey =
   | 'label.bodyFatNone'
   | 'label.bodyFatKnown'
   | 'label.bodyFatTape'
+  | 'label.needsBiologicalSex'
   | 'label.activity'
   | 'label.activityLevelsSource'
   | 'label.experience'
@@ -146,7 +147,7 @@ export type CopyKey =
   | 'quantity.hip'
   | 'quantity.barbellStep'
   | 'quantity.dumbbellStep'
-  | 'quantity.stackStep'
+  | 'label.loadStep'
   | 'quantity.walkMinutes'
   | 'quantity.weeklySessionTarget'
   | 'quantity.programmeWeeks'
@@ -196,6 +197,7 @@ export type CopyKey =
   | 'weekday.sunday'
   | 'hero.programme'
   | 'advice.weighIn'
+  | 'advice.weighInReassurance'
   | 'advice.tapeOutOfDomain'
   | 'advice.bodyFatEstimate'
   | 'why.bodyFatEstimate'
@@ -744,7 +746,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.tapeMethod': 'US Navy circumference method. Keep the tape level and snug.',
   'advice.tapeNeedFemale': 'Enter neck, abdomen I and hip girths.',
   'advice.tapeNeedMale': 'Enter neck and abdomen II girths.',
-  'advice.loadSteps': 'The smallest increment a suggested load uses.',
+  /*
+   * Round 3 Task 8 shortened the two field labels to `Plates` and `Dumbbell`, the owner's own
+   * words. `Dumbbell` alone does not say whether the number is per dumbbell or per PAIR, and
+   * the stored quantity is `equipmentSteps.dumbbellPairKg`, so the basis moved into this line
+   * rather than being dropped with the old label. Eleven words, inside R3's twelve.
+   */
+  'advice.loadSteps': 'The smallest increment a suggested load uses. Dumbbells step per pair.',
   'advice.creatineOnly': 'Dose scales with body mass.',
   'advice.deloadEveryFourth': 'Every fourth week halves set counts, load unchanged.',
   'hero.yourAnswers': 'What You Told Me',
@@ -816,6 +824,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    */
   'label.bodyFatKnown': 'Percentage',
   'label.bodyFatTape': 'Body Measurements',
+  /*
+   * Round 3 Task 3, the owner's ruling on the open item. He first wrote "(Needs Gender)"; the
+   * control on that step is labelled `Biological Sex` (`label.sex`), and a hint naming a control
+   * the app does not have sends the user hunting for it. The parentheses are part of the string
+   * because it renders as an aside beside the option it disables, not as a sentence.
+   */
+  'label.needsBiologicalSex': '(Needs Biological Sex)',
   /* r2.13(i): the bordered box that now holds everything about body fat, including its sources. */
   'label.bodyFat': 'Body Fat',
   /*
@@ -865,9 +880,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'quantity.abdomenI': 'Abdomen I',
   'quantity.abdomenII': 'Abdomen II',
   'quantity.hip': 'Hip',
-  'quantity.barbellStep': 'Barbell step',
-  'quantity.dumbbellStep': 'Dumbbell step, per pair',
-  'quantity.stackStep': 'Weight-stack step',
+  /*
+   * Round 3 Task 8, his words: "below 'Dumbbell' and the other 'Plates'. We don't need 3.
+   * Machine increment is standardized anyways." The two survivors are renamed to exactly those
+   * words and `quantity.stackStep` is GONE from this table, because the field that rendered it
+   * is gone. `Profile.equipmentSteps.stackKg` is untouched: it keeps its existing default, so
+   * no stored document needs migrating and `schemaVersion` stays 3.
+   *
+   * These two names reach src/ui/views/SettingsView.tsx as well, which edits the same two
+   * stored increments. That is deliberate: R11 wants one name per quantity, not one per screen.
+   */
+  'quantity.barbellStep': 'Plates',
+  'quantity.dumbbellStep': 'Dumbbell',
+  /* The heading above the two of them, one row and two columns (round 3 Task 8). R14. */
+  'label.loadStep': 'Load Step',
   // Brief F Part 3: the walk-to-the-gym minutes field. hasMicroPlates/microPlateStep and this
   // table's old 'quantity.microPlateStep' row are gone -- the owner asked for the micro-plate
   // option to go, and only that.
@@ -936,7 +962,18 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'weekday.saturday': 'Saturday',
   'weekday.sunday': 'Sunday',
   'hero.programme': 'Programme',
-  'advice.weighIn': 'Optional. Compares body mass before and after.',
+  /*
+   * Round 3 Task 9. Weighing in is NOT decoration: src/ui/views/TrainView.tsx gates the pre-
+   * and post-session mass prompts on `hydration.weighInOptIn`, and src/domain/training/
+   * hydration.ts computes Sawka 2007's "> 2 % body mass" comparison only from those two
+   * entries. Declining therefore removes a check, and the line now says so instead of calling
+   * itself optional and stopping. It does NOT change the energy or macro targets, which
+   * re-derive from any body-mass entry whether or not this is on.
+   */
+  'advice.weighIn': 'Optional. Without it the 2 % fluid loss check cannot run.',
+  /* His reassurance, tightened rather than replaced: "a number that looks bad today is the one
+     he will enjoy watching move." Twelve words, at R3's cap. */
+  'advice.weighInReassurance': 'A number that looks bad today is one you enjoy watching move.',
   'advice.tapeOutOfDomain': "Girths outside the equation's domain. No estimate is shown.",
   'advice.bodyFatEstimate': '21.9 % body fat, ± 3.52 percentage points.', // formatted
   'why.bodyFatEstimate':
