@@ -1171,15 +1171,19 @@ describe('the top bar banner', () => {
    */
   function walkFromBodyToReview(): void {
     next(); // 3 body
-    next(); // 4 equipment and availability, every slider on its default
-    next(); // 5 goal
-    // 6 availability: four days for the default four-session split.
+    /*
+     * 4 equipment AND availability. The sliders all have valid defaults; the weekday selection
+     * does not, and it gates this step now. Availability was folded in here from a step of its
+     * own after the goal (finding B43), so that the target date is chosen only once the training
+     * frequency is known. Four days for the default four-session split.
+     */
     for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
     next();
-    next(); // 7 programme length, 12 weeks by default
-    next(); // 8 guidance
+    next(); // 5 goal
+    next(); // 6 programme length, 12 weeks by default
+    next(); // 7 guidance
   }
 
   it('greets on the intro, which is the first thing a fresh document shows', () => {

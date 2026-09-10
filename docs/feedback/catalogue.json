@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "4392155",
+  "generatedFrom": "0488587",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 574,
+    "keys": 573,
     "notRendered": 3,
-    "table": 577
+    "table": 576
   },
   "parts": [
     {
@@ -2259,8 +2259,8 @@
       "id": "setup.availability",
       "screen": "setup",
       "order": 7,
-      "title": "Step 6, Availability",
-      "what": "The days and the equipment the plan may use.",
+      "title": "Step 4, Availability",
+      "what": "The days and times you can train, stated on the training step before the goal asks for a target date.",
       "components": [
         "src/ui/setup/SetupWizard.tsx"
       ],
@@ -2307,15 +2307,6 @@
         {
           "key": "quantity.weeklySessionTarget",
           "default": "Weekly session target",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "step.availability",
-          "default": "Availability",
           "limelight": "same",
           "board": "same",
           "isControl": false,

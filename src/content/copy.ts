@@ -92,7 +92,6 @@ export type CopyKey =
   | 'step.body'
   | 'step.training'
   | 'step.goal'
-  | 'step.availability'
   | 'step.programme'
   | 'step.review'
   | 'label.unitsMetric'
@@ -763,7 +762,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Round 1 claim C1.10.2, first sentence: "Rename to Fitness Goal." R14: Title Case, and a
   // noun phrase.
   'step.goal': 'Fitness Goal',
-  'step.availability': 'Availability',
   'step.programme': 'Programme length',
   'step.review': 'Review',
   'label.unitsMetric': 'Kilograms (kg)',

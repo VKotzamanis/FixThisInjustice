@@ -114,8 +114,12 @@ function setValue(label: RegExp | string, value: string): void {
   fireEvent.change(screen.getByLabelText(label), { target: { value } });
 }
 
-/** Drive screens 1-5 with an imperial profile, leaving the goal screen on show. */
-function fillImperialWizardToGoal(): void {
+/**
+ * Drive screens 1-4 with an imperial profile, leaving the TRAINING screen on show with every one
+ * of its fields answered: the three sliders AND the availability fields, which render here now
+ * rather than on a step of their own after the goal (finding B43).
+ */
+function fillImperialWizardToTraining(): void {
   render(<SetupWizard />);
   // 1 - units
   fireEvent.click(screen.getByLabelText('Pounds (lb)'));
@@ -146,6 +150,28 @@ function fillImperialWizardToGoal(): void {
   fireEvent.change(screen.getByLabelText(/^equipment access$/i), {
     target: { value: '4' }, // full-gym
   });
+  /*
+   * The availability fields render on THIS step now, not on one of their own after the goal
+   * (finding B43): what you can provide is stated before what you want and by when, so the
+   * feasibility calendar on the next step knows the training frequency. Four weekdays for the
+   * four-session split.
+   */
+  setValue(/sessions per week/i, '4');
+  for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
+    fireEvent.click(screen.getByLabelText(day));
+  }
+}
+
+/**
+ * Availability is no longer a screen of its own; its fields are answered on the training screen.
+ * This name is kept because the tests that call it are about those fields, and it still leaves
+ * them on show.
+ */
+const fillImperialWizardToAvailability = fillImperialWizardToTraining;
+
+/** Drive screens 1-5, leaving the goal screen on show. */
+function fillImperialWizardToGoal(): void {
+  fillImperialWizardToTraining();
   next();
   /*
    * 5 - Fitness Goal. Brief I Part 1 replaced the exclusive goal menu with two axes, so the
@@ -158,22 +184,11 @@ function fillImperialWizardToGoal(): void {
   fireEvent.click(screen.getByLabelText('Hold muscle'));
 }
 
-/** Advance to availability, with four weekdays checked for the four-session split. */
-function fillImperialWizardToAvailability(): void {
-  fillImperialWizardToGoal();
-  next();
-  // 6 - availability
-  setValue(/sessions per week/i, '4');
-  for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
-    fireEvent.click(screen.getByLabelText(day));
-  }
-}
-
 /** Drive screens 1-8 with an imperial profile, leaving the review screen on show. */
 function fillImperialWizard(): void {
-  fillImperialWizardToAvailability();
+  fillImperialWizardToGoal();
   next();
-  // 7 - programme length
+  // 6 - programme length (was 7, before availability folded into training)
   setValue(/programme length/i, '12');
   next();
   // 8 - guidance
@@ -200,13 +215,19 @@ beforeEach(() => {
 
 describe('step order', () => {
   it('exposes an ordered STEPS array with the guidance step before Review', () => {
+    /*
+     * EIGHT STEPS, not nine. `availability` was folded into `training` (finding B43): one step
+     * asks what you can PROVIDE, equipment and the weekly slots, and the next asks what you WANT
+     * and by when. Before the fold, a target date was chosen before training frequency was known,
+     * which is the defect C1.10.8 raised. Brief F renamed the step to "Equipment & Availability"
+     * and moved no controls, so the rename made the fold look done when it was not.
+     */
     expect([...STEPS]).toEqual([
       'units',
       'timezone',
       'body',
       'training',
       'goal',
-      'availability',
       'programme',
       'guidance',
       'review',
@@ -302,9 +323,13 @@ describe('domain guards', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
-    next(); // training
-    next(); // goal
-    next(); // availability
+    next(); // training, which is where the weekday controls live now (finding B43)
+    /*
+     * Deliberately NO weekday is checked: that is the whole subject of this test. Since the fold,
+     * the block shows on the training step rather than on a step of its own, and training's own
+     * BLOCKED entry absorbed availability's guards -- so Next is disabled HERE.
+     */
+    setValue(/sessions per week/i, '2');
     expect(screen.getByText('Select at least one weekday.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
   });
@@ -368,14 +393,15 @@ describe('review screen', () => {
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next();
+    // Availability renders on the training step now (finding B43), before the goal asks for a
+    // target date, so it is answered here rather than after the next press.
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Wednesday'));
+    setValue(/sessions per week/i, '2');
     next();
     // Brief I Part 1: 'muscle-gain' is derived from hold-fat plus gain-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Hold body fat'));
     fireEvent.click(screen.getByLabelText('Gain muscle'));
-    next();
-    fireEvent.click(screen.getByLabelText('Monday'));
-    fireEvent.click(screen.getByLabelText('Wednesday'));
-    setValue(/sessions per week/i, '2');
     next();
     next();
     next();
@@ -466,12 +492,13 @@ describe('submission', () => {
     setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
     next();
-    next();
-    next();
+    // Availability renders on the training step now (finding B43), before the goal asks for a
+    // target date, so it is answered here rather than after the next press.
     setValue(/sessions per week/i, '3');
     for (const day of ['Monday', 'Wednesday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
+    next();
     next();
     next();
     next();
@@ -537,9 +564,10 @@ describe('no free-text medical field exists', () => {
     setValue(/^centimetres$/i, '80');
       setValue(/body mass \(kg\)/i, '80');
     }
-    if (STEPS[stepIndex] === 'availability') {
-      // The weekday count may not fall below sessions per week, and 2 is the lowest the
-      // sessions-per-week list offers, so the smallest passing selection is two days.
+    if (STEPS[stepIndex] === 'training') {
+      // The availability fields render on the training step now. The weekday count may not fall
+      // below sessions per week, and 2 is the lowest the sessions-per-week list offers, so the
+      // smallest passing selection is two days.
       setValue(/sessions per week/i, '2');
       fireEvent.click(screen.getByLabelText('Monday'));
       fireEvent.click(screen.getByLabelText('Tuesday'));
@@ -605,8 +633,14 @@ describe('no free-text medical field exists', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
-    next();
-    next();
+    next(); // training
+    // Availability renders on the training step now (finding B43) and gates it, so the slots are
+    // answered here before Next will advance.
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
+    next(); // goal, where the supplement toggle lives
     const names = screen.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent ?? '');
     expect(names.filter((t) => /creatine/i.test(t))).toHaveLength(1);
     expect(names.filter((t) => MEDICAL_PATTERN.test(t))).toHaveLength(0);
@@ -624,7 +658,8 @@ describe('copy rules', () => {
     setValue(/^centimetres$/i, '80');
         setValue(/body mass \(kg\)/i, '80');
       }
-      if (STEPS[stepIndex] === 'availability') {
+      if (STEPS[stepIndex] === 'training') {
+        // The availability fields render on the training step now (finding B43).
         setValue(/sessions per week/i, '2');
         fireEvent.click(screen.getByLabelText('Monday'));
         fireEvent.click(screen.getByLabelText('Tuesday'));
@@ -1003,8 +1038,9 @@ describe('entry aids and idempotency', () => {
  */
 describe('guidance step in wizard', () => {
   it('renders the guidance screen and advances without user input', () => {
-    fillImperialWizardToAvailability();
-    next();
+    fillImperialWizardToAvailability(); // stops on training; availability is answered there
+    next(); // goal
+    next(); // programme
     setValue(/programme length/i, '12');
     next();
 
@@ -1340,15 +1376,20 @@ describe('Brief F: the equipment sliders', () => {
 
   /** From the training step onward, complete and submit the wizard with whatever it holds. */
   function finishFromTraining(): void {
-    next(); // goal
-    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
-    fireEvent.click(screen.getByLabelText('Lose fat'));
-    fireEvent.click(screen.getByLabelText('Hold muscle'));
-    next(); // availability
+    /*
+     * The availability fields are answered HERE, before Next, because they render on the training
+     * step now (finding B43). They also gate it: training's BLOCKED entry absorbed availability's
+     * four guards when the step was folded in, so leaving them empty stops Next rather than
+     * failing later.
+     */
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
+    next(); // goal
+    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
     next(); // programme
     setValue(/programme length/i, '12');
     next(); // guidance
@@ -1761,15 +1802,16 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     reachBodyFilledWithoutSex();
     setValue(/body fat \(%\)/i, '20');
     next(); // training
-    next(); // goal
-    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
-    fireEvent.click(screen.getByLabelText('Lose fat'));
-    fireEvent.click(screen.getByLabelText('Hold muscle'));
-    next(); // availability
+    // Availability renders on the training step now (finding B43) and gates it, so the slots are
+    // answered here before Next will advance.
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
+    next(); // goal
+    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
     next(); // programme
     next(); // guidance
     next(); // review
@@ -1789,17 +1831,16 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
   it('reads the profile back as Not Disclosed rather than as a blank row', () => {
     reachBodyFilledWithoutSex();
     setValue(/body fat \(%\)/i, '20');
-    next();
-    next();
-    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
-    fireEvent.click(screen.getByLabelText('Lose fat'));
-    fireEvent.click(screen.getByLabelText('Hold muscle'));
-    next();
+    next(); // training
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next();
+    next(); // goal
+    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
+    next(); // programme
     next();
     next();
     expect(screen.getByTestId('review-sex')).toHaveTextContent('Not Disclosed');
@@ -2527,6 +2568,15 @@ describe('Brief I Part 2: the body-fat target', () => {
     setValue(/body mass \(kg\)/i, '80');
     setValue(/body fat \(%\)/i, pct);
     next(); // 3 body
+    /*
+     * The sliders all have valid defaults; the AVAILABILITY fields do not. No weekday is checked
+     * to begin with, and training's guard absorbed availability's four checks when the step was
+     * folded in (finding B43), so Next is blocked here until the slots are answered.
+     */
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
     next(); // 4 equipment and availability, every slider on its default
   }
 
@@ -2575,6 +2625,15 @@ describe('Brief I Part 2: the body-fat target', () => {
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next(); // 3 body, no body-fat percentage yet
+    /*
+     * The sliders all have valid defaults; the AVAILABILITY fields do not. No weekday is checked
+     * to begin with, and training's guard absorbed availability's four checks when the step was
+     * folded in (finding B43), so Next is blocked here until the slots are answered.
+     */
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
     next(); // 4 equipment and availability
 
     // The body-mass route is open, and an out-of-domain target blocks it, correctly.
@@ -2616,12 +2675,7 @@ describe('Brief I Part 2: the body-fat target', () => {
     reachGoalWithBodyFat('25');
     setValue(/target body fat \(%\)/i, '15');
     next(); // 5 goal
-    setValue(/sessions per week/i, '2');
-    fireEvent.click(screen.getByLabelText('Monday'));
-    fireEvent.click(screen.getByLabelText('Wednesday'));
-    setValue(/weekly session target/i, '2');
-    next(); // 6 availability
-    next(); // 7 programme length
+    next(); // 6 programme length
     next(); // 8 guidance
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 

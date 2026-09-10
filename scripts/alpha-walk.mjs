@@ -341,7 +341,6 @@ export const STAGES = [
         do: 'Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.',
         see: 'A sessions-per-week field, then seven weekday rows, each with a time and a length.',
         keys: [
-          'step.availability',
           'label.sessionsPerWeek',
           'weekday.monday',
           'weekday.tuesday',
