@@ -1,0 +1,247 @@
+/*
+ * Design Mode's own chrome.
+ *
+ * TWO COLOUR REGIMES, ON PURPOSE.
+ *
+ * 1. THE BODY OF THE PANEL takes the skin's own tokens - `--bg`, `--text`, `--line-2`. That is
+ *    the point of the tool: the panel is drawn in the palette being edited, so a pair that has
+ *    stopped working is visible in the panel itself rather than only in the app behind it.
+ *    NEVER `--accent` for type here: on limelight that is fuchsia on lime at 1.41:1, which is
+ *    the exact defect this tool exists to find. `--text` is the skin's body colour and is the
+ *    one pair every skin block is required to keep at AA.
+ *
+ * 2. THE RECOVERY STRIP - the launcher, the skin switcher, RESET and CLOSE - is white on black,
+ *    written as literals rather than tokens. This is the one place in the repository where a
+ *    colour literal in a stylesheet is correct, and the reason is specific: a control that
+ *    undoes a token edit must not be painted by the token it undoes. Set `--text` and `--bg` to
+ *    the same colour and every token-styled surface in the app becomes unreadable at once; the
+ *    strip that gets you back has to survive that. 21:1, on every skin, whatever the edits say.
+ *
+ * TAP TARGETS are 44 px minimum throughout: this is used on a phone, one-handed, at arm's
+ * length, and a 30 px swatch is a control the owner has to aim at twice.
+ */
+
+/* The launcher: present whenever ?design=1 is on, so the panel can be got out of the way. */
+.dm-launcher {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  z-index: 4000;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+/* The sheet. Bottom-anchored and height-capped, so the app stays visible above it: a design
+ * decision cannot be judged against a panel that covers the thing being judged. */
+.dm-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 4001;
+  max-height: 72vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  border-top: 2px solid var(--line-2);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.dm-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+  background: #000000;
+  color: #ffffff;
+  border-bottom: 2px solid #ffffff;
+}
+
+.dm-strip-title {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  margin-right: auto;
+  color: #ffffff;
+}
+
+.dm-strip button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  background: #000000;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Selection is a FILL INVERSION, never "darker": a darker-on-dark state disappears. */
+.dm-strip button[aria-pressed='true'] {
+  background: #ffffff;
+  color: #000000;
+  font-weight: 700;
+}
+
+.dm-body {
+  overflow-y: auto;
+  padding: 10px;
+  overscroll-behavior: contain;
+}
+
+.dm-section {
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.dm-section > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dm-section-body {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--line-2);
+}
+
+.dm-token {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.dm-token:last-child {
+  border-bottom: 0;
+}
+
+.dm-token-name {
+  flex: 1 1 100%;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.dm-token-name mark {
+  background: var(--highlight-bg);
+  color: var(--field-invalid-text);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.dm-token input[type='color'] {
+  min-height: 44px;
+  min-width: 56px;
+  padding: 2px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.dm-token input[type='text'] {
+  flex: 1 1 180px;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.dm-token button {
+  min-height: 44px;
+  min-width: 44px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dm-note {
+  flex: 1 1 100%;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.dm-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dm-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line-2);
+}
+
+.dm-row:last-child {
+  border-bottom: 0;
+}
+
+.dm-row-label {
+  flex: 1 1 160px;
+  color: var(--text);
+}
+
+.dm-ratio {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* PASS and FAIL carry the WORD, not only a colour (WCAG 1.4.1): a colour-only state is not a
+ * state on a skin whose --danger is ink. */
+.dm-verdict {
+  padding: 0 6px;
+  border-radius: 3px;
+  font-weight: 700;
+}
+
+.dm-verdict[data-pass='false'] {
+  background: var(--field-invalid-bg);
+  color: var(--field-invalid-text);
+  outline: 2px solid var(--danger);
+}
+
+.dm-export {
+  width: 100%;
+  min-height: 180px;
+  padding: 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre;
+}
