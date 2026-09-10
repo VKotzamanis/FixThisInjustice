@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "fcefb58",
+  "generatedFrom": "908d2ad",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 577,
+    "keys": 578,
     "notRendered": 3,
-    "table": 580
+    "table": 581
   },
   "parts": [
     {
@@ -19,7 +19,8 @@
       ],
       "states": [
         "running",
-        "finished"
+        "finished",
+        "final-slide"
       ],
       "keys": [
         {
@@ -37,6 +38,15 @@
           "limelight": "same",
           "board": "PROCEED",
           "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.changeVisualSettings",
+          "default": "Change Visual Settings Here",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
           "limelightRowPermitted": true,
           "refusalGroup": null
         }
