@@ -31,6 +31,7 @@ import { Spotlight } from '../ui/components/Spotlight';
 import { SpotlightButton } from '../ui/components/SpotlightButton';
 import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
+import { DesignGate } from '../design/DesignGate';
 import { MigrationGate } from '../ui/migration/MigrationGate';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
 import { SetupWizard } from '../ui/setup/SetupWizard';
@@ -778,6 +779,18 @@ export function App(): ReactElement {
        * announced unreliably.
        */}
       <ToastQueue />
+
+      {/*
+       * DESIGN MODE (docs/plans/2026-09-10-16-design-mode.md Task 1). Last, and outside the CRT
+       * root: it is a fixed overlay over the whole app, and it must not be inside the scanline
+       * and vignette layers, which would tint every swatch it draws and make a colour
+       * judgement wrong.
+       *
+       * It renders NULL and registers nothing without `?design=1`. It ships rather than being
+       * dead-stripped, because the owner designs on his phone against the deployed app; the
+       * decision and the safety argument are in src/design/designMode.ts.
+       */}
+      <DesignGate />
     </ToastProvider>
   );
 }

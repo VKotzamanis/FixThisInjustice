@@ -112,6 +112,23 @@ export default tseslint.config(
     },
   },
   {
+    /*
+     * Design Mode's own key, and the second and last exemption from the localStorage ban.
+     *
+     * The ban exists because the app's DOCUMENT must have exactly one writer. This module does
+     * not write the document: it holds one developer's uncommitted token edits under
+     * `fti.designMode.tokenEdits.v1`, nothing in the app reads it, and no profile is involved.
+     * Design Mode is unreachable without `?design=1` (src/design/designMode.ts records why it
+     * ships at all). Every other ban is restated, exactly as the two exemptions above do, so
+     * lifting this one never lifts those.
+     */
+    files: ['src/design/designStorage.ts'],
+    rules: {
+      'no-restricted-globals': ['error', { name: 'sessionStorage', message: sessionStorageMessage }],
+      'no-restricted-syntax': ['error', noToISOString, ...noQualifiedSessionStorage],
+    },
+  },
+  {
     // The only module allowed to touch sessionStorage.
     // The localStorage ban and the date ban are restated for the same reason.
     files: ['src/store/sessionMirror.ts'],
