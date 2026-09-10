@@ -27,11 +27,15 @@
  * skin's words are on screen, which file the edit is written to, and whether the row he is about
  * to edit exists in that file yet.
  *
- * WHAT IS OUT OF SCOPE, PERMANENTLY. Only `src/content/copy.ts` and the two skin override tables
- * are editable. The R10 modules - `bodyEquations.ts`, `guidanceReferences.ts`, `sexRationale.ts`,
- * `supplementGuidance.ts`, `reviewDataNotes.ts` and the rest - carry citations, DOIs, doses and
- * structure. They do not pass through `copy()`, they are never marked, and they must not be made
- * editable: a WYSIWYG is how a DOI gets mangled.
+ * WHAT THIS FILE COVERS, AND WHAT MOVED. `src/content/copy.ts` and the two skin override tables,
+ * and nothing else. This header used to end "the R10 modules ... must not be made editable: a
+ * WYSIWYG is how a DOI gets mangled", and that sentence protected the right thing with the wrong
+ * rule: `introSlides.ts` is R10 and holds five slides of the owner's own prose with no citation
+ * in them, so the ban excluded precisely the text he opened the tool to change. The rule is now
+ * "a module that CITES something is not editable", it is DERIVED from the words rather than kept
+ * as a list, and it lives in `src/content/r10Text.ts` with `src/design/r10Edits.ts` beside it.
+ * The clause about a DOI and a WYSIWYG survives intact; it is simply aimed at the modules that
+ * carry one.
  */
 import { BOARD_COPY, DEFAULT_COPY, LIMELIGHT_COPY } from '../content/copy';
 import type { CopyKey } from '../content/copy';

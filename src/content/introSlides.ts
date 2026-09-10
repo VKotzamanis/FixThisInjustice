@@ -18,6 +18,26 @@
 // instruction: the content remains his and must not be reworded, shortened or improved, but
 // round 2 changes the former walls of prose into headings, lead lines and bullets.
 //
+// SUPERSEDED AGAIN, AND THIS TIME THE RULE ITSELF GOES, NOT ONLY ITS SCOPE. Design Mode now edits
+// these five slides in place. The owner opens the deployed app with `?design=1`, taps a sentence,
+// retypes it, and exports a patch that `scripts/design-patch.mjs` applies back to the literals
+// below. "Copied verbatim from the brief, do not reword" was a rule for AGENTS and it still binds
+// them: nobody but the owner rewrites his own words, and an agent asked to shorten, improve or
+// tidy a slide should refuse and say so. What changed is that HE has a way to do it, so a
+// disagreement between this file and what is on screen is now a patch he has not applied yet
+// rather than a defect.
+//
+// <!-- decision: intro-slides-are-owner-editable-in-design-mode | status: adopted | supersedes: intro-slides-copied-verbatim-never-edited -->
+//
+// WHY THIS MODULE AND NOT ITS TEN SIBLINGS. It carries no citation, no DOI, no dose and no
+// coefficient: measured on this tree it holds zero of each, where `guidanceReferences.ts` holds
+// thirty DOIs and `specimenCards.ts` thirty-two. Design Mode's rule is "a module that CITES
+// something is not editable", not "R10 is not editable", and the gate is DERIVED from the words
+// rather than kept as a list: `src/content/r10Text.ts` re-reads these strings on every load and
+// locks the module the moment one of them acquires a DOI, a URL, an author list, a decimal or a
+// number with a unit. Adding a citation here tomorrow takes the editing away automatically, and
+// `src/content/r10Text.test.ts` proves that rather than trusting it.
+//
 // THE ASCII FIGURE IS ORIGINAL. The owner's note named a cartoon character for this spot; that is
 // third-party IP, and README.md's "Licences" section already states that this project's mascot
 // art originates with the project. INTRO_FIGURE below is a small stick figure flexing, authored
