@@ -380,8 +380,8 @@ export const STAGES = [
       {
         id: 'w1.16',
         title: 'Setup, step 9: review',
-        do: 'Read the two panels, then tap "lock it in".',
-        see: 'The daily targets, then the programme summary, then the control that writes the profile.',
+        do: 'Read the panels and the Your Data block, tick "Looks Good", then tap "Confirm and start".',
+        see: 'The daily targets, the programme summary, a Your Data block naming where the document lives, how to move it, and how to start over, and the control that writes the profile, disabled until Looks Good is ticked.',
         keys: [
           'step.review',
           'hero.dailyTargets',
@@ -398,8 +398,9 @@ export const STAGES = [
           'hero.programme',
           'label.inTargetRange',
           'label.maintenanceOnly',
+          'hero.yourData',
+          'label.looksGood',
           'button.confirmStart',
-        
           'hero.yourAnswers',
         ],
         parts: ['setup.review'],

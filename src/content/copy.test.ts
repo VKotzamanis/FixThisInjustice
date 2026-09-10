@@ -152,7 +152,8 @@ function unitSymbolsOf(value: string): readonly string[] {
  *
  * R10 exempts form cues, exercise notes and tips, Atlas card bodies and citations; none of those
  * live in this table (they are `src/content/formCues.ts` and `src/content/specimenCards.ts`, and,
- * as of Brief G, `src/content/activityLevels.ts` for the "Where These Levels Come From" modal).
+ * as of Brief G, `src/content/activityLevels.ts` for the "Where These Levels Come From" modal, and,
+ * as of Brief M, `src/content/reviewDataNotes.ts` for the review step's "Your Data" block).
  * What does live here is R9's other exemption: "text inside a disclosure is exempt from R1-R4".
  * A key earns a place below only by being rendered inside a `<details>`, and the call site is
  * named so the exemption can be revoked when the call site changes.
@@ -161,6 +162,11 @@ function unitSymbolsOf(value: string): readonly string[] {
  * (`label.` carries no R1-R4 length cap at all), need no entry here: neither is rendered inside a
  * `<details>`, and both comply with their own family's cap unaided, so an exemption would be
  * simply wrong rather than merely unnecessary.
+ *
+ * Brief M's two new keys, `hero.yourData` (2 words, under R2's 8-word cap) and `label.looksGood`
+ * (`label.` carries no cap), need no entry here for the same reason: the "Your Data" block itself
+ * is not a copy-table string at all (it is `src/content/reviewDataNotes.ts`, R10 content), and
+ * the two keys that ARE in this table comply with their own family's cap unaided.
  */
 const LENGTH_EXEMPT: ReadonlyMap<string, string> = new Map([
   [
