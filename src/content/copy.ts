@@ -660,7 +660,11 @@ export type CopyKey =
   | 'advice.feasibilityNeedsFuture'
   | 'advice.feasibilityNotALoss'
   | 'button.previousMonth'
-  | 'button.nextMonth';
+  | 'button.nextMonth'
+  // --- round 3: the two Settings switches gain a plain description (owner: "I have no idea
+  // what they do or if they even work") ---
+  | 'advice.soundsSilent'
+  | 'advice.hotkeysKeyboardOnly';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1916,6 +1920,26 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.feasibilityNotALoss': 'That target is not below your current body mass.',
   'button.previousMonth': 'Previous Month',
   'button.nextMonth': 'Next Month',
+
+  /* --- round 3: the two Settings switches gain a plain description ---
+   *
+   * The owner, on the preferences panel: switches "such as 'the noise', 'the shortcuts', which
+   * I have no idea what they do or if they even work." Both keys are deliberately NOT skinned
+   * (same treatment as `advice.hotkeysOff` and `advice.skinChanges` above): a fact about what
+   * ships and a fact about input hardware are the app's own rules, not its register, so every
+   * skin states them the same way.
+   *
+   * `advice.soundsSilent` must not promise sound will ever play: public/sfx/ holds a .gitkeep
+   * and nothing else (src/skins/sfx.ts), so this states the current, present-tense fact rather
+   * than a coming feature.
+   */
+  'advice.soundsSilent': 'Nothing plays.',
+  /*
+   * `advice.hotkeysKeyboardOnly`: src/ui/hotkeys.tsx binds the digit keys to the nav tabs and
+   * src/app/App.tsx reflects that in `aria-keyshortcuts`; neither has a touch equivalent, so on
+   * a phone with no keyboard attached this switch changes nothing the owner can reach.
+   */
+  'advice.hotkeysKeyboardOnly': 'Keyboard required.',
 };
 
 /**

@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `fb0757a`. 101 parts across 14 screens, holding 575 of the table's 578 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `fcefb58`. 101 parts across 14 screens, holding 577 of the table's 580 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -1280,6 +1280,7 @@ States: `on`, `off`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `advice.soundsSilent` | Nothing plays. | same | same | yes |
 | `label.settingsSounds` | Sounds | the noise | same | yes |
 
 ### `settings.skin.hotkeys`
@@ -1292,6 +1293,7 @@ States: `on`, `off`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
+| `advice.hotkeysKeyboardOnly` | Keyboard required. | same | same | yes |
 | `advice.hotkeysOff` | Off leaves Escape and the modifier shortcuts bound. | same | same | no: THE TWO SENTENCES ABOUT THE APP'S OWN RULES |
 | `label.settingsHotkeys` | Keyboard Shortcuts | the shortcuts | same | yes |
 

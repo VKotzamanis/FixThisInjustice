@@ -127,6 +127,16 @@ describe('SkinSettings', () => {
     expect(useAppStore.getState().ui.hotkeys).toBe(true);
   });
 
+  it('gives both switches a description of what they do (round 3, the owner: "I have no idea what they do")', () => {
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'clinical' }) }));
+    render(<SkinSettings />);
+
+    // Sounds: honest about there being no shipped audio, never a promise it will play.
+    expect(screen.getByText(copy('advice.soundsSilent'))).toBeInTheDocument();
+    // Hotkeys: honest that the switch changes nothing reachable without a keyboard.
+    expect(screen.getByText(copy('advice.hotkeysKeyboardOnly'))).toBeInTheDocument();
+  });
+
   it('writes the hotkeys field alone, and spends no audio gesture on it', async () => {
     const user = userEvent.setup();
     useAppStore.setState(
