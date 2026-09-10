@@ -13,6 +13,7 @@ import {
   isValidLocalDate,
   isValidTimeZone,
   isoWeekday,
+  matchedZoneCities,
   matchedZoneMembers,
   promoteSelectedZone,
   todayLocal,
@@ -1340,7 +1341,10 @@ export function SetupWizard(): JSX.Element {
         (group) => group.representative === draft.timezone || zoneGroupMatches(group, query),
       )
       .map((group) => {
-        const matched = matchedZoneMembers(group, query);
+        // matchedZoneMembers says which member ID matched ("berlin" -> Europe/Berlin);
+        // matchedZoneCities says which vendored city matched ("houston" -> Houston, under
+        // America/Chicago). Members first, so an existing zone-id match keeps its position.
+        const matched = [...matchedZoneMembers(group, query), ...matchedZoneCities(group, query)];
         const also =
           matched.length > 0
             ? matched.slice(0, MATCHED_ZONES_SHOWN).join(', ')

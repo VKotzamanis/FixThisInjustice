@@ -6,6 +6,7 @@ import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import {
   groupTimeZones,
   isValidTimeZone,
+  matchedZoneCities,
   matchedZoneMembers,
   promoteSelectedZone,
   zoneGroupMatches,
@@ -128,7 +129,13 @@ function TimeZoneSetting(props: { profile: Profile }): JSX.Element {
         (group) => group.representative === profile.timezone || zoneGroupMatches(group, zoneQuery),
       )
       .map((group) => {
-        const matched = matchedZoneMembers(group, zoneQuery);
+        // Same combination SetupWizard.tsx's own timezone step uses: a matched IANA id, or a
+        // matched vendored city (round 3, Task 4: "houston" has no IANA id, but is one of
+        // America/Chicago's tzdb cities).
+        const matched = [
+          ...matchedZoneMembers(group, zoneQuery),
+          ...matchedZoneCities(group, zoneQuery),
+        ];
         const also =
           matched.length > 0
             ? matched.join(', ')
