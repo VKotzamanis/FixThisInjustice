@@ -1,0 +1,387 @@
+<title>Round 3: Onboarding</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --lime:#8ace00; --ink:#000000; --pink:#ff5fcb; --fine:#454545;
+  --panel:#000000; --panel-text:#ffffff; --field:#ffffff;
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --chip:var(--pink); --chip-text:var(--ink);
+  --code:var(--fine);
+  --sans:'Archivo',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+    --line:rgba(255,255,255,.24); --line-2:var(--lime);
+    --code:var(--lime); --field:var(--panel);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:var(--panel); --text:var(--panel-text); --text-2:var(--panel-text);
+  --line:rgba(255,255,255,.24); --line-2:var(--lime);
+  --code:var(--lime); --field:var(--panel);
+  color-scheme:dark;
+}
+:root[data-theme="light"]{
+  --bg:var(--lime); --text:var(--ink); --text-2:var(--fine);
+  --line:rgba(0,0,0,.22); --line-2:var(--ink);
+  --code:var(--fine); --field:#ffffff;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.5;overflow-x:hidden}
+.wrap{max-width:44rem;margin:0 auto;padding:16px}
+header.page{padding:24px 16px 14px;border-bottom:2px solid var(--line-2)}
+header.page .wrapinner{max-width:44rem;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 6px}
+h1{font-weight:800;font-size:clamp(28px,7vw,40px);line-height:1.05;margin:0 0 10px;text-transform:lowercase;text-wrap:balance}
+h2{font-weight:800;font-size:22px;margin:34px 0 6px;text-transform:lowercase;border-top:2px solid var(--line-2);padding-top:14px}
+h3{font-weight:700;font-size:18px;margin:0 0 8px;text-wrap:balance}
+p{margin:0 0 10px}
+.lede{max-width:62ch}
+.small{font-size:13px;color:var(--text-2)}
+code{font-family:var(--mono);font-size:12.5px;color:var(--code);word-break:break-word}
+section.step{border:1px solid var(--line);border-radius:4px;padding:14px;margin:0 0 16px}
+.stepno{display:inline-block;font-family:var(--mono);font-size:12px;letter-spacing:.08em;margin:0 0 8px}
+.chip{display:inline-block;background:var(--chip);color:var(--chip-text);font-family:var(--mono);font-size:11px;letter-spacing:.06em;padding:2px 7px;border-radius:3px;margin-left:6px;text-transform:uppercase}
+.do,.see{margin:0 0 8px}
+.do b,.see b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);margin-bottom:2px}
+.was{border-left:3px solid var(--line-2);padding:8px 0 8px 12px;margin:12px 0;font-size:15px}
+.was b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--text-2);margin-bottom:4px}
+ol.strings{list-style:none;margin:10px 0;padding:0;display:flex;flex-direction:column;gap:6px}
+ol.strings li{border:1px dashed var(--line);border-radius:3px;padding:7px 9px}
+.lime-str{margin:3px 0 0;font-weight:600}
+label.box{display:block;font-weight:700;font-size:14px;margin:14px 0 5px}
+textarea{width:100%;min-height:72px;font-family:var(--sans);font-size:16px;padding:9px;border:2px solid var(--line-2);border-radius:3px;background:var(--field);color:var(--ink);resize:vertical}
+:root[data-theme="dark"] textarea,:root:not([data-theme="light"]) textarea{color:var(--panel-text)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) textarea{color:var(--ink)}}
+textarea:focus-visible{outline:3px solid var(--chip);outline-offset:1px}
+textarea.set{border-color:var(--chip)}
+.bar{position:sticky;bottom:0;background:var(--bg);border-top:2px solid var(--line-2);padding:10px 16px;margin-top:20px}
+.bar .wrapinner{max-width:44rem;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font-family:var(--sans);font-weight:700;font-size:15px;padding:9px 14px;border:2px solid var(--line-2);border-radius:3px;background:var(--chip);color:var(--chip-text);cursor:pointer}
+button:focus-visible{outline:3px solid var(--line-2);outline-offset:2px}
+#count{font-family:var(--mono);font-size:13px}
+#assembled{min-height:120px;font-family:var(--mono);font-size:13px;margin-top:10px}
+.gaps{border:2px solid var(--line-2);border-radius:4px;padding:14px;margin:0 0 16px}
+.gaps ul{margin:8px 0 0;padding-left:20px}
+.gaps li{margin-bottom:7px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<header class="page">
+  <div class="wrapinner">
+    <p class="eyebrow">Alpha walkthrough &middot; round 3 &middot; 2026-09-10</p>
+    <h1>onboarding, after round 2</h1>
+    <p class="lede">Seventeen things changed between the intro and the Confirm button. This page walks them in the order you will meet them, says what each one <em>was</em>, and gives you a box for what still needs to change.</p>
+    <p class="lede small">Quotes are the Limelight strings as shipped, taken from the catalogue, not from memory. Everything here is live at the deployed URL as of commit <code>2cee65e</code>.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+<h2>the intro</h2>
+
+<section class="step" id="r3.01">
+  <p class="stepno"><code>r3.01</code> step 1<span class="chip">r2.01</span></p>
+  <h3>The Skip control is gone</h3>
+  <p class="do"><b>Do</b>Open the app in a private tab, or after wiping data, so the intro runs. Try to leave it early: tap around, press keys.</p>
+  <p class="see"><b>You see</b>No way out but forward. Advancing is still a tap.</p>
+  <div class="was"><b>Was</b>A Skip control on every slide, which let a first-time reader skip the caveats.</div>
+  <p class="small">Your two reasons both held: the seen-flag already stops the intro returning, so the control only ever bought an escape from the warnings. The Boot screen's own Skip is a different control and still there.</p>
+  <label class="box" for="c-r3.01">What needs to change here?</label>
+  <textarea id="c-r3.01" data-step="r3.01" data-parts="intro.sequence" placeholder="What you saw. What you expected."></textarea>
+</section>
+
+<section class="step" id="r3.02">
+  <p class="stepno"><code>r3.02</code> step 2<span class="chip">r2.02</span></p>
+  <h3>Bullets, headings and emphasis</h3>
+  <p class="do"><b>Do</b>Read each slide. Look at where the emphasis falls.</p>
+  <p class="see"><b>You see</b>A heading, then two to four bullets, each led by an emphasised phrase. Your worked example is slide three: <em>Purpose of the App</em>, then <em>Simplify the fitness habit</em> and the sentence after it.</p>
+  <div class="was"><b>Was</b>Walls of prose. Your words: "You are being too corporate and neutral."</div>
+  <p class="small">The person deliberately shifts between slides: slide two speaks about the creator in the third person, slides three and four are your first person. Normalising it is the flattening you objected to. Your jokes are kept.</p>
+  <label class="box" for="c-r3.02">Does this read like you, or still like a brochure?</label>
+  <textarea id="c-r3.02" data-step="r3.02" data-parts="intro.sequence" placeholder="Which lines are still wrong. Rewrite one if it is faster."></textarea>
+</section>
+
+<section class="step" id="r3.03">
+  <p class="stepno"><code>r3.03</code> step 3<span class="chip">r2.03</span></p>
+  <h3>Fades, and the heading arrives whole</h3>
+  <p class="do"><b>Do</b>Watch one slide replace the next without touching anything. Then turn on Reduce Motion in your phone's accessibility settings and open it again.</p>
+  <p class="see"><b>You see</b>Slides fade in <em>and</em> out. The heading appears whole so you know what the slide is before the body arrives; the body types a character at a time. Under Reduce Motion everything prints at once.</p>
+  <div class="was"><b>Was</b>Fade in only, and the heading typed along with the body.</div>
+  <ol class="strings">
+    <li><code>advice.clickToContinue</code><p class="lime-str">Click to continue</p></li>
+  </ol>
+  <label class="box" for="c-r3.03">Speed, timing, anything that feels wrong?</label>
+  <textarea id="c-r3.03" data-step="r3.03" data-parts="intro.sequence" placeholder="Too fast, too slow, a slide that jumps."></textarea>
+</section>
+
+<section class="step" id="r3.04">
+  <p class="stepno"><code>r3.04</code> step 4<span class="chip">r2.03</span></p>
+  <h3>The tl;dr is now an acknowledgement</h3>
+  <p class="do"><b>Do</b>Reach the tl;dr. Try to dismiss it: tap outside it, press Escape, press keys. Then tick the box.</p>
+  <p class="see"><b>You see</b>A warning modal over the previous slide, close control upper right. Nothing dismisses it but the checkbox. The continue control stays disabled until you tick.</p>
+  <div class="was"><b>Was</b>Just another slide you could walk past.</div>
+  <ol class="strings">
+    <li><code>button.introContinue</code><p class="lime-str">Next</p></li>
+  </ol>
+  <p class="small">The checkbox sentence is yours, with only <em>I'm</em> expanded and <em>realize</em> set to the app's spelling. Nothing is stored: it is a gesture, not a consent record.</p>
+  <label class="box" for="c-r3.04">Is the wording and the gate right?</label>
+  <textarea id="c-r3.04" data-step="r3.04" data-parts="intro.sequence" placeholder="Wording, whether it is hard enough to get past."></textarea>
+</section>
+
+<h2>setup, steps 1 to 3</h2>
+
+<section class="step" id="r3.05">
+  <p class="stepno"><code>r3.05</code> step 5<span class="chip">r2.05</span></p>
+  <h3>The top bar follows your name as you type</h3>
+  <p class="do"><b>Do</b>On the body step, type a name into the name field and watch the top bar. Then clear it. Then type something with odd characters: <code>ada $&amp; LOVELACE</code>.</p>
+  <p class="see"><b>You see</b>The banner tracks what you have typed, not what you last committed. A blank name gets the joke instead. Odd characters render exactly as typed, nothing expanded or eaten.</p>
+  <div class="was"><b>Was</b>An empty top bar through the whole of setup.</div>
+  <label class="box" for="c-r3.05">Right words, right timing?</label>
+  <textarea id="c-r3.05" data-step="r3.05" data-parts="shell.topbar" placeholder="What the banner says, when it changes."></textarea>
+</section>
+
+<section class="step" id="r3.06">
+  <p class="stepno"><code>r3.06</code> step 6<span class="chip">r2.09</span></p>
+  <h3>The time-zone list is 59 rows, not 418</h3>
+  <p class="do"><b>Do</b>Open the time-zone control. Scroll the list. Then search for a city that is <em>not</em> a row name: try <code>Berlin</code>, then <code>Accra</code>.</p>
+  <p class="see"><b>You see</b>Rows sorted by offset, most negative first, each labelled <code>(UTC/GMT+03:00) Europe/Athens, 15 more</code>. Search still reaches all 418 zones and tells you which one matched. Your own zone names its own row.</p>
+  <div class="was"><b>Was</b>418 entries in alphabetical order, reading &minus;05:00, &minus;04:00, &minus;04:00, &minus;04:00, &minus;05:00. Your words: "That is confusing."</div>
+  <ol class="strings">
+    <li><code>label.timezone</code><p class="lime-str">Time Zone</p></li>
+    <li><code>advice.timezonePick</code><p class="lime-str">Select from the drop down menu:</p></li>
+  </ol>
+  <p class="small">One entry per UTC offset was refused, with the measurement: 37 offsets in January and 16 of them split by July, so New York and Panama would share a row and one of them would be wrong for eight months. Dropping alias entries was also refused: it would cut the searchable set from 418 to 297 while the visible list is already 59, and the names it would drop are capital cities.</p>
+  <label class="box" for="c-r3.06">Is 59 the right number to show?</label>
+  <textarea id="c-r3.06" data-step="r3.06" data-parts="setup.timezone" placeholder="Ordering, labels, whether search finds what you look for."></textarea>
+</section>
+
+<section class="step" id="r3.07">
+  <p class="stepno"><code>r3.07</code> step 7<span class="chip">r2.10&ndash;r2.16</span></p>
+  <h3>The body step, rebuilt</h3>
+  <p class="do"><b>Do</b>Work through the body step. Open the sex explainer. Leave the whole step blank and press Next. Then pick <em>Not Disclosed</em> and see what becomes required.</p>
+  <p class="see"><b>You see</b>A wider page. The sex control deselects and defaults to ND. The modal's close control is upper right. The body-fat box takes a percentage, a tape method or nothing. Every missing field is marked at once, not one per press.</p>
+  <div class="was"><b>Was</b>Close control upper left, one field flagged per attempt, and references scattered through the text.</div>
+  <ol class="strings">
+    <li><code>label.name</code><p class="lime-str">How Should I Refer to You?</p></li>
+    <li><code>label.sex</code><p class="lime-str">Biological Sex</p></li>
+  </ol>
+  <p class="small">The references moved to one collapsible list at the foot. Its control was fuchsia on lime at 1.41:1 &mdash; effectively invisible on this skin &mdash; and is now ink. Check it reads.</p>
+  <label class="box" for="c-r3.07">What is still wrong on this page?</label>
+  <textarea id="c-r3.07" data-step="r3.07" data-parts="setup.body" placeholder="Layout, wording, what the ND branch asks for."></textarea>
+</section>
+
+<h2>step 4: what you can provide</h2>
+
+<section class="step" id="r3.08">
+  <p class="stepno"><code>r3.08</code> step 8<span class="chip">C1.09.5</span><span class="chip">r2.17</span></p>
+  <h3>Nine stops, and each one says something different</h3>
+  <p class="do"><b>Do</b>Drag the activity slider one notch at a time, all nine. Read the line under it at every stop. Then open <em>Where These Levels Come From</em>.</p>
+  <p class="see"><b>You see</b>The band name, and beneath it a sentence belonging to that stop alone. Stop 1 is "Desk, car, sofa. You have wondered whether standing counts as cardio."</p>
+  <div class="was"><b>Was</b>Three positions. Then nine positions that still printed only three different readouts, so six of the nine were indistinguishable from a neighbour. That was found and fixed after you asked how the sliders were being treated.</div>
+  <ol class="strings">
+    <li><code>label.activity</code><p class="lime-str">Everyday Activity Level</p></li>
+    <li><code>label.experience</code><p class="lime-str">Gym Comfort</p></li>
+    <li><code>label.equipmentAccess</code><p class="lime-str">equipment access</p></li>
+    <li><code>advice.activityLevelsSource</code><p class="lime-str">Where These Levels Come From</p></li>
+  </ol>
+  <p class="small">Every one of the nine values is printed in FAO/WHO/UNU 2004 Table 5.3, three inside each published band. Nothing between bands was invented. Gym Comfort's three icons are still placeholder frames.</p>
+  <label class="box" for="c-r3.08">Do the nine stops feel distinct?</label>
+  <textarea id="c-r3.08" data-step="r3.08" data-parts="setup.training" placeholder="Whether you can tell them apart. Whether the sentences are right."></textarea>
+</section>
+
+<section class="step" id="r3.09">
+  <p class="stepno"><code>r3.09</code> step 9<span class="chip">C1.10.8</span></p>
+  <h3>Availability moved here, before the goal</h3>
+  <p class="do"><b>Do</b>Scroll down on this same step. Set sessions per week and pick your weekdays. Try pressing Next with no day selected.</p>
+  <p class="see"><b>You see</b>The weekly slots on the same page as the equipment, and Next refuses until at least one day is picked.</p>
+  <div class="was"><b>Was</b>A step of its own <em>after</em> the goal, so you set a target date before the app knew how often you could train. Your words: "if I choose an unrealistic goal and a 2 day target, who will tell me that im being delusional?"</div>
+  <ol class="strings">
+    <li><code>step.training</code><p class="lime-str">Equipment &amp; Availability</p></li>
+    <li><code>label.sessionsPerWeek</code><p class="lime-str">Sessions per Week</p></li>
+    <li><code>quantity.weeklySessionTarget</code><p class="lime-str">Weekly session target</p></li>
+  </ol>
+  <p class="small">The step had been <em>renamed</em> "Equipment &amp; Availability" in an earlier round without the controls ever moving, which is why it looked done. The wizard is eight steps now, not nine.</p>
+  <label class="box" for="c-r3.09">Does the page hold too much now?</label>
+  <textarea id="c-r3.09" data-step="r3.09" data-parts="setup.availability" placeholder="Whether equipment and availability belong together on one screen."></textarea>
+</section>
+
+<h2>step 5: what you want</h2>
+
+<section class="step" id="r3.10">
+  <p class="stepno"><code>r3.10</code> step 10<span class="chip">C1.10.2&ndash;6</span></p>
+  <h3>Two axes, not four exclusive options</h3>
+  <p class="do"><b>Do</b>Try each combination: lose fat with hold muscle, hold fat with gain muscle, lose fat with gain muscle, hold with hold. Then open the <em>why?</em> on the recomposition combination.</p>
+  <p class="see"><b>You see</b>A fat axis and a muscle axis, phrased as outcomes. All four pairings are valid. Recomposition says plainly that the content review does not cover it and its protein figure is an extrapolation.</p>
+  <div class="was"><b>Was</b>Four mutually exclusive options. Your words: "Recomposition and fat loss are not exclusionary. This WHOLE page needs to be reworked because the LOGIC is not nuanced and very basic."</div>
+  <ol class="strings">
+    <li><code>step.goal</code><p class="lime-str">Fitness Goal</p></li>
+  </ol>
+  <label class="box" for="c-r3.10">Do the four outcomes read the way you meant?</label>
+  <textarea id="c-r3.10" data-step="r3.10" data-parts="setup.goal" placeholder="The wording of each combination."></textarea>
+</section>
+
+<section class="step" id="r3.11">
+  <p class="stepno"><code>r3.11</code> step 11<span class="chip">C1.10.5</span></p>
+  <h3>Target body fat, not target body mass</h3>
+  <p class="do"><b>Do</b>Come back here having given a body-fat estimate on the body step, then again having given none.</p>
+  <p class="see"><b>You see</b>With an estimate: a percentage target, and the fat mass and lean mass it implies, so the number means something physical. Without one: it falls back to target body mass and says why the better option is unavailable.</p>
+  <div class="was"><b>Was</b>Target body mass only. Your words: "Target body mass can be muscle or fat. Dumb."</div>
+  <label class="box" for="c-r3.11">Is the implied fat/lean breakdown useful?</label>
+  <textarea id="c-r3.11" data-step="r3.11" data-parts="setup.goal" placeholder="Whether the numbers help or clutter."></textarea>
+</section>
+
+<section class="step" id="r3.12">
+  <p class="stepno"><code>r3.12</code> step 12<span class="chip">C1.11.2&ndash;5</span></p>
+  <h3>The feasibility calendar</h3>
+  <p class="do"><b>Do</b>Set a fat-loss target and a date two weeks out. Then push the date months away. Then switch to muscle gain only and look again.</p>
+  <p class="see"><b>You see</b>Pastel green, orange and red, each carrying its word as well as its colour: <em>Realistic</em>, <em>Improbable</em>, <em>Highly Improbable</em>. A muscle-gain-only date is <strong>not</strong> coloured at all, with a line saying no established weekly rate exists.</p>
+  <div class="was"><b>Was</b>Nothing. Your words: "the calendar should be pastel colored with green colors."</div>
+  <ol class="strings">
+    <li><code>label.targetDate</code><p class="lime-str">Target Date (Optional)</p></li>
+  </ol>
+  <p class="small">The bands come from a prescribed rate (0.5 to 1.0 % body mass per week), not a prediction about you, and the page says so. Muscle gain is uncoloured because no weekly rate can be derived from the review &mdash; inventing one would have been easy and wrong. On this skin the three fills sit on a black card: measured against the lime ground directly they were 1.04 to 1.37:1, invisible.</p>
+  <label class="box" for="c-r3.12">Do the three bands land where you would put them?</label>
+  <textarea id="c-r3.12" data-step="r3.12" data-parts="setup.goal" placeholder="Colours, thresholds, the uncoloured muscle-gain case."></textarea>
+</section>
+
+<h2>steps 6 to 8</h2>
+
+<section class="step" id="r3.13">
+  <p class="stepno"><code>r3.13</code> step 13<span class="chip">r2.18</span></p>
+  <h3>Guidance is eight collapsible topics</h3>
+  <p class="do"><b>Do</b>Open the guidance screen. Do not expand anything yet &mdash; just look. Then open two or three.</p>
+  <p class="see"><b>You see</b>A short menu of headings, nothing expanded. Inside each: a one-line answer, then bullets, no paragraph longer than three lines.</p>
+  <div class="was"><b>Was</b>Four sections of unbroken prose.</div>
+  <ol class="strings">
+    <li><code>step.guidance</code><p class="lime-str">Getting Started</p></li>
+  </ol>
+  <p class="small">Creatine, caffeine and protein keep their existing verified numbers unchanged &mdash; only the prose was restructured.</p>
+  <label class="box" for="c-r3.13">Does it read as a menu or still as a wall?</label>
+  <textarea id="c-r3.13" data-step="r3.13" data-parts="setup.guidance" placeholder="Topic names, ordering, what is missing."></textarea>
+</section>
+
+<section class="step" id="r3.14">
+  <p class="stepno"><code>r3.14</code> step 14<span class="chip">r2.18</span></p>
+  <h3>What the evidence actually said</h3>
+  <p class="do"><b>Do</b>Open <em>Cool-Down</em> and read the repetition-speed line. Then open the REFERENCES box at the foot.</p>
+  <p class="see"><b>You see</b>That a meta-analysis of eight trials found similar muscle growth across repetition durations of roughly 0.5 to 8 seconds, and that the gym truism about fast reps is <strong>not supported</strong>. In the references, five entries marked as having no source found.</p>
+  <div class="was"><b>Was</b>Nothing on this screen.</div>
+  <p class="small">Five claims ship as marked placeholders naming what is missing: in-session water volume, the electrolyte threshold, shoe sole compressibility, baby powder, and kit. You said you would supply your own recommendation where no reference exists &mdash; those five rows are waiting for it. The obvious electrolyte source was rejected as a superseded 1996 guideline whose replacement this app already cites.</p>
+  <label class="box" for="c-r3.14">The five unsourced claims: your wording?</label>
+  <textarea id="c-r3.14" data-step="r3.14" data-parts="setup.guidance" placeholder="Write what you want each placeholder to say."></textarea>
+</section>
+
+<section class="step" id="r3.15">
+  <p class="stepno"><code>r3.15</code> step 15<span class="chip">r2.19</span></p>
+  <h3>Review: Looks Good gates Confirm</h3>
+  <p class="do"><b>Do</b>Reach the review screen. Try Confirm without ticking. Then tick and confirm.</p>
+  <p class="see"><b>You see</b>Confirm disabled until the box is ticked.</p>
+  <ol class="strings">
+    <li><code>label.looksGood</code><p class="lime-str">Looks Good</p></li>
+    <li><code>button.confirmStart</code><p class="lime-str">lock it in</p></li>
+  </ol>
+  <p class="small">Nothing is stored: like the intro's acknowledgement, it is a gesture, not a record.</p>
+  <label class="box" for="c-r3.15">Right gate, right words?</label>
+  <textarea id="c-r3.15" data-step="r3.15" data-parts="setup.review" placeholder="Whether the gate helps or annoys."></textarea>
+</section>
+
+<section class="step" id="r3.16">
+  <p class="stepno"><code>r3.16</code> step 16<span class="chip">r2.19</span></p>
+  <h3>Review: Your Data</h3>
+  <p class="do"><b>Do</b>Read the block at the foot of the review screen. Then actually follow the move instructions in Settings and see whether the words match the controls.</p>
+  <p class="see"><b>You see</b>Three facts: everything stays in this browser on this device; how to export and import it; and that clearing cookies and site data erases it with no way back.</p>
+  <ol class="strings">
+    <li><code>hero.yourData</code><p class="lime-str">Your Data</p></li>
+  </ol>
+  <p class="small">The control names are read from the copy table at load, so this block cannot drift from the real Settings screen. The reset icon is a placeholder frame &mdash; it is yours to supply.</p>
+  <label class="box" for="c-r3.16">Does this explain it well enough?</label>
+  <textarea id="c-r3.16" data-step="r3.16" data-parts="setup.review" placeholder="Whether the three facts are the right three."></textarea>
+</section>
+
+<h2>across the whole flow</h2>
+
+<section class="step" id="r3.17">
+  <p class="stepno"><code>r3.17</code> step 17<span class="chip">R14</span></p>
+  <h3>Title Case everywhere, and Previous/Next</h3>
+  <p class="do"><b>Do</b>Walk the whole wizard again and look only at labels, headings and button names.</p>
+  <p class="see"><b>You see</b>Every label, heading and control name in Title Case. 240 of them.</p>
+  <div class="was"><b>Was</b>139 of them were not. You raised it three times.</div>
+  <ol class="strings">
+    <li><code>button.back</code><p class="lime-str">Previous</p></li>
+    <li><code>button.continue</code><p class="lime-str">Next</p></li>
+  </ol>
+  <p class="small">It is now checked automatically on every push, so it cannot drift back. The Limelight and Board skins keep their own deliberate lower and upper case registers &mdash; those were left alone on purpose.</p>
+  <label class="box" for="c-r3.17">Anything that reads wrong now it is capitalised?</label>
+  <textarea id="c-r3.17" data-step="r3.17" data-parts="setup.nav" placeholder="Strings that look worse in Title Case."></textarea>
+</section>
+
+<div class="gaps">
+  <h3>What is deliberately not done, so you are not hunting for it</h3>
+  <ul>
+    <li><b>Three assets are yours.</b> The subsection sprite, the reset icon on the review screen, and the Home Screen app icon &mdash; which is still the previous app's <code>W.CONSOLE</code> logo. All three ship as placeholder frames.</li>
+    <li><b>Ten strings are Title Case but still questions or sentences</b> rather than noun phrases, including "How Should I Refer to You?" and five headings on Today that carry your own full stops. Whether to reword them is a judgement call, so they were flagged rather than changed.</li>
+    <li><b>The programme step still asks for a length.</b> Deriving it from the target date, and the just-in-time split you asked for, is written up and deliberately held back &mdash; it rewrites the scheduler while reminders, the calendar export and the Plan tab all read the forward plan.</li>
+    <li><b>Sliders on the goal, availability and programme steps.</b> You asked for "a slider and a total revision". Step 4 now genuinely has three working sliders; the other three steps were revised without becoming sliders. Tell me if you meant it literally.</li>
+    <li><b>Nobody has read the 74 cited papers against the claims the app makes from them.</b> Every DOI was checked against the registry and every one resolves with matching metadata. That proves the citation is real, not that it supports the sentence next to it.</li>
+  </ul>
+</div>
+
+</div>
+
+<div class="bar">
+  <div class="wrapinner">
+    <button id="assemble" type="button">Assemble my comments</button>
+    <span id="count">0 of 17 commented</span>
+    <span id="status" class="small"></span>
+    <textarea id="assembled" readonly placeholder="Press Assemble, then copy this and paste it back."></textarea>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY='fti-walk-r3-onboarding';
+  var store={};
+  try{store=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){store={};}
+  function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+  var boxes=Array.prototype.slice.call(document.querySelectorAll('textarea[data-step]'));
+  var count=document.getElementById('count');
+  function tally(){
+    var n=0;
+    boxes.forEach(function(b){if((store[b.getAttribute('data-step')]||{}).text)n++;});
+    count.textContent=n+' of '+boxes.length+' commented';
+  }
+  boxes.forEach(function(b){
+    var id=b.getAttribute('data-step');
+    var rec=store[id]||{};
+    if(rec.text){b.value=rec.text;b.classList.add('set');}
+    b.addEventListener('input',function(){
+      var t=b.value.trim();
+      if(t){store[id]={text:b.value};b.classList.add('set');}
+      else{delete store[id];b.classList.remove('set');}
+      save();tally();
+    });
+  });
+  var out=document.getElementById('assembled'),status=document.getElementById('status');
+  document.getElementById('assemble').addEventListener('click',function(){
+    var lines=[];
+    boxes.forEach(function(b){
+      var id=b.getAttribute('data-step');
+      var rec=store[id];
+      if(rec&&rec.text&&rec.text.trim()){
+        lines.push('- ['+id+' | '+b.getAttribute('data-parts')+'] '+rec.text.trim().replace(/\s+/g,' '));
+      }
+    });
+    out.value=lines.length?lines.join('\n'):'(nothing written yet)';
+    status.textContent=lines.length+' comment'+(lines.length===1?'':'s')+' assembled';
+    out.focus();out.select();
+  });
+  tally();
+})();
+</script>
