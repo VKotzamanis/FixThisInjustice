@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "fb0757a",
+  "generatedFrom": "fcefb58",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 575,
+    "keys": 577,
     "notRendered": 3,
-    "table": 578
+    "table": 580
   },
   "parts": [
     {
@@ -5419,6 +5419,15 @@
       ],
       "keys": [
         {
+          "key": "advice.soundsSilent",
+          "default": "Nothing plays.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.settingsSounds",
           "default": "Sounds",
           "limelight": "the noise",
@@ -5444,6 +5453,15 @@
         "off"
       ],
       "keys": [
+        {
+          "key": "advice.hotkeysKeyboardOnly",
+          "default": "Keyboard required.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
         {
           "key": "advice.hotkeysOff",
           "default": "Off leaves Escape and the modifier shortcuts bound.",
