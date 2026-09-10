@@ -12,62 +12,80 @@ This file is the entry point. It replaces reading the whole history.
 
 ```
 git log --oneline -15          # what just happened
-npx vitest run                 # 126 files, 2561 tests as of 2026-09-09. Re-derive; do not quote
+npx vitest run                 # 128 files, 2605 tests as of 2026-09-09. Re-derive; do not quote
 cat docs/plans/2026-09-06-ORCHESTRATION.md
 git worktree list              # if any agent worktree exists, CHECK ITS BASE COMMIT first
 ```
 
-## 1a. Where round 2 actually stands, 2026-09-09
+## 1a. Round 2 is CLOSED and PUSHED, 2026-09-09
 
-All counts below were derived from `git log` and by running the scripts, not quoted. **Re-derive
-them yourself rather than trusting this table**: it has been wrong before, on seven rows at once.
+All ten briefs merged and pushed as `9544925`. Re-derive every number below rather than quoting
+it; this table has been wrong before, on seven rows at once.
 
-| Brief | Claims | State |
+| Brief | Claims | Merged as |
 | --- | --- | --- |
-| **F** | equipment sliders | Shipped, round 2 wave 0 |
-| **K** | r2.10 to r2.16, the body step | Merged `3f43e11` |
-| **N** | r2.05, r2.09, the banner and time zones | Merged `0f2383e` |
-| **O** | r2.09, the Settings half N could not reach | Merged `941614e` |
-| **J** | r2.01 to r2.03, the intro | Merged `8703a18` |
-| **L** | r2.18, the guidance screen | Merged `550f9f1` |
-| **G** | C1.09.5 reopened, the nine-stop slider | Merged `bda7398` |
-| **I** | C1.10.x to C1.12.x, Parts 1 to 4 ONLY | In flight |
-| **I2** | Part 5, the just-in-time scheduler | Written, NOT dispatched. Round 3's first brief |
-| **M** | r2.19, the review page | Not dispatched. **Must be last**: it restates what steps 5 to 7 collect, and brief I is rewriting those |
-| Title Case | 139 of 234 keys | Not started. Run when no other brief is live |
+| **F** | equipment sliders | round 2 wave 0 |
+| **K** | r2.10 to r2.16 | `3f43e11` |
+| **N** | r2.05, r2.09 | `0f2383e` |
+| **O** | r2.09, the Settings half | `941614e` |
+| **J** | r2.01 to r2.03 | `8703a18` |
+| **L** | r2.18 | `550f9f1` |
+| **G** | C1.09.5 reopened | `bda7398` |
+| **I** | C1.10.x to C1.12.x, Parts 1, 2, 4 | `0488587` |
+| **M** | r2.19 | `a89afa9` |
+| **P** | R14, the Title Case sweep | `fb0757a` |
 
-Suite at the time of writing: **126 files, 2561 tests**, all passing. `main` is 32 commits ahead of
-`origin` and **nothing is pushed**, so none of round 2 is live.
+Suite **128 files, 2605 tests**, green in all four zones. Title case **0 of 240**, and
+`check-title-case.mjs` is in CI for the first time.
 
-### Four defects fixed that belonged to no brief
+### Seven defects fixed that belonged to no brief
 
-Found by verifying, not by reading reports. Each is written up in its own commit.
+Found by re-running gates and checking claims against the tree, never by reading a report.
 
-1. **The Settings time-zone picker** still built 418 zones in IANA order with the old label. Brief N
-   found it and correctly refused to fix it (rule 5). Became brief O.
-2. **The REFERENCES control read at 1.41:1 on limelight**, fuchsia on lime, below even the non-text
-   floor. Pre-existing from brief K, doubled in reach by brief L. `tokens.css` records the rule it
-   broke, "pink is never type", and `alpha-walk-pages.mjs` ASSERTS that rule and was green
-   throughout, because it only reads the generated review pages and never the app's own stylesheets.
-   **That gap is still open.**
-3. **The round-trip property test ran unseeded**, the only nondeterministic test in the suite. Now
-   seeded at 20260909. No failing seed exists: 120 seeds and 60000 documents found nothing.
-4. **`schema.ts` restated the PAL bounds as literals** rather than deriving them from
-   `ACTIVITY_BAND`, one file away from a test written specifically to prevent that drift.
+1. **The Settings time-zone list** still built 418 zones in IANA order. Became brief O.
+2. **The REFERENCES control read at 1.41:1 on limelight**, fuchsia on lime. `tokens.css` records
+   the rule it broke, "pink is never type", and `alpha-walk-pages.mjs` ASSERTS that rule and was
+   green throughout, because it only reads the generated review pages and never the app's own
+   stylesheets. **THAT GAP IS STILL OPEN.**
+3. **The round-trip property test ran unseeded**, the only nondeterministic test here. Seeded at
+   20260909. No failing seed exists: 120 seeds and 60000 documents found nothing.
+4. **`schema.ts` restated the PAL bounds as literals** one file from the test written to stop that
+   drift. Now derived from `ACTIVITY_BAND`.
+5. **The nine-stop activity slider had three readouts.** Brief G widened the control and left the
+   feedback at band level, so six of nine positions were indistinguishable from a neighbour.
+6. **The target date was chosen before training frequency** (C1.10.8). `availability` is folded
+   into `training` now.
+7. **`REVIEW_DATA_HOW_TO_MOVE` quoted control names as literals** and went stale within hours when
+   the Title Case sweep renamed one. Now derived from `DEFAULT_COPY`.
 
-### Three things that cost time and will cost it again
+### The one defect shape that recurred all day
+
+**A value transcribed into a second place: correct when written, silently wrong later.** Numbers
+4, 5 and 7 above are all it, and so were the feasibility band thresholds and the slider examples
+keyed by index rather than by value. When you find a constant restated somewhere, derive it or
+add a test that reads both sides from the same source.
+
+### Three things that cost real time and will again
 
 - **Assume every agent worktree branches from a STALE commit.** Every agent dispatched on
-  2026-09-09 did, without exception, including two dispatched in the same message. One had already
-  self-corrected before the check ran, which made the snapshot read as "one of two". Put
+  2026-09-09 did, without exception, including two dispatched in the same message. Put
   `git merge main` in the agent's own prompt as step 1 and have it report both commits.
-- **A copy key may be claimed by exactly ONE part** in `alpha-parts.mjs`. Brief J's modal called
-  `button.continue`, which `setup.nav` owns; the intro screen is swept first, so it claimed the key
-  and setup collided. Two round trips. The fix is always a new key, never a second claim.
-- **A Codex worker cannot run this project's gates.** `alpha-catalogue.mjs` and `check-no-emoji.mjs`
-  both die on `spawnSync git EPERM`, `git commit` fails on a read-only index.lock, and long `tsc`
-  and `vitest` runs exceed its execution window. Claude subagents with `isolation: "worktree"` can
-  run everything. `00-CONTEXT.md` now probes for which kind of worker it is talking to.
+- **A copy key may be claimed by exactly ONE part** in `alpha-parts.mjs`. A collision always means
+  a new key, never a second claim.
+- **The wizard test fixtures navigate by COUNTING `next()` presses**, not by naming steps. Folding
+  one step out cost seven separate navigation routes across two files, and each failure surfaced
+  lines later as a missing control rather than as a navigation error.
+
+### Left for round 3
+
+- **Brief I2**, the just-in-time scheduler: written, deliberately not dispatched.
+- **r2.17's other half.** The training step now has three working sliders; `goal`, `availability`
+  and `programme` were revised without becoming sliders. The owner's call.
+- **The noun-phrase list** in brief P's report: about ten strings now Title Case but still
+  questions or sentences. R14's second clause is review, not automation.
+- **Nobody has read the 74 audited papers against the claims the code makes from them.** The audit
+  in `docs/review/2026-09-09-doi-audit.md` proves every DOI resolves and its metadata matches. It
+  proves nothing about whether the paper supports the claim.
 
 ## 2. The state, in one table
 
