@@ -28,7 +28,10 @@ export const PARTS = [
   // hazard the two-pass comment in alpha-catalogue.mjs records for boot.sequence and
   // button.skipBoot. Listing this part's own key leaves button.continue for setup.nav to claim.
   // Round 2, brief J: the acknowledgement modal is what introduced the shared control here.
-  { id: 'intro.sequence', title: 'Intro sequence', what: 'The caveat slides, and the tl;dr acknowledgement modal that gates the end of the sequence.', screen: 'intro', components: ['src/ui/intro/IntroSequence.tsx'], states: ['running', 'finished'], keys: ['advice.clickToContinue', 'button.introContinue'] },
+  // Round 3: `label.changeVisualSettings` added -- the caption on the arrow the final slide
+  // draws at the shell's skin-and-preferences control, added to this part's own explicit `keys`
+  // for the reason stated above rather than left to auto-derive.
+  { id: 'intro.sequence', title: 'Intro sequence', what: 'The caveat slides, and the tl;dr acknowledgement modal that gates the end of the sequence.', screen: 'intro', components: ['src/ui/intro/IntroSequence.tsx'], states: ['running', 'finished', 'final-slide'], keys: ['advice.clickToContinue', 'button.introContinue', 'label.changeVisualSettings'] },
 
   // --- boot ---
   { id: 'boot.sequence', title: 'Boot sequence', what: 'The dotted step lines that print on the first open.', screen: 'boot', components: ['src/ui/components/Boot.tsx'], states: ['running', 'finished'] },

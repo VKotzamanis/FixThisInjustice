@@ -53,9 +53,9 @@ export const STAGES = [
       {
         id: 'w1.01',
         title: 'The intro sequence',
-        do: 'Open the app for the very first time. Tap anywhere, or press any key, to move through the slides. At the tl;dr, tick the acknowledgement box, then press the control that appears beneath it.',
-        see: 'Each slide fades in, its heading whole and its bullets typing themselves out beneath it. There is no Skip control. The tl;dr arrives as a warning modal over the previous slide, and its continue control stays disabled until the box is ticked.',
-        keys: ['advice.clickToContinue', 'button.introContinue'],
+        do: 'Open the app for the very first time. Tap anywhere, or press any key, to move through the slides. At the tl;dr, tick the acknowledgement box, then press the control that appears beneath it. On the last slide, "What Setup Collects", look at the top right of the screen.',
+        see: 'Each slide fades in, its heading whole and its bullets typing themselves out beneath it. There is no Skip control. The tl;dr arrives as a warning modal over the previous slide, and its continue control stays disabled until the box is ticked. Only on the last slide, an arrow points at the top-right corner of the screen with the caption "Change Visual Settings Here": that corner is where the skin-and-preferences control sits once setup starts, and round 2 found the owner never located it.',
+        keys: ['advice.clickToContinue', 'button.introContinue', 'label.changeVisualSettings'],
         parts: ['intro.sequence'],
       },
       {

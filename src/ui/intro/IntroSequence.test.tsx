@@ -64,6 +64,22 @@ describe('IntroSequence', () => {
     expect(screen.getByRole('heading')).toHaveTextContent(INTRO_SLIDES[4]?.heading ?? '');
   });
 
+  it('draws the visual-settings arrow on the final slide, and no earlier one', () => {
+    render(<IntroSequence />);
+    expect(screen.queryByTestId('intro-settings-pointer')).toBeNull();
+    for (let index = 0; index < 4; index += 1) {
+      advance();
+      expect(screen.queryByTestId('intro-settings-pointer')).toBeNull();
+    }
+    // The 4th advance() opened the acknowledgement modal without changing slides (index still 3).
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
+    expect(screen.getByRole('heading')).toHaveTextContent(INTRO_SLIDES[4]?.heading ?? '');
+    expect(screen.getByTestId('intro-settings-pointer')).toHaveTextContent(
+      copy('label.changeVisualSettings'),
+    );
+  });
+
   it('does not apply animation under prefers-reduced-motion', () => {
     vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
       matches: query.includes('prefers-reduced-motion'), media: query,

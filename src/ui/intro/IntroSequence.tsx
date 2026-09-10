@@ -112,6 +112,47 @@ export function IntroSequence(): ReactElement {
         )}
         {showFigure && <><pre className="intro-figure" aria-hidden="true">{INTRO_FIGURE}</pre><p className="intro-continue">{t('advice.clickToContinue')}...</p></>}
       </div>
+      {/*
+       * The shell's skin-and-preferences control (TopbarSkinPicker, src/app/App.tsx) sits at the
+       * top right of the app and nothing pointed at it; the owner never found it. Drawn once, on
+       * this the LAST slide only ("What Setup Collects"), and never again: it is a sibling of
+       * `.intro-slide` rather than a child of it, so `position: absolute` in intro.css resolves
+       * against `.intro` -- the fixed, full-viewport shell stand-in -- and lands in the shell's
+       * own top-right corner, not against the slide's centred text column. Static: the brief
+       * calls a still arrow the safer choice, and a still element needs no
+       * `prefers-reduced-motion` branch. Colour is `--text` throughout, never `--accent`: this
+       * app's own tokens.css records `--accent` at 1.41:1 on limelight, effectively invisible,
+       * against `--text` at 10.91:1 there.
+       */}
+      {index === LAST_INDEX && (
+        <div className="intro-settings-pointer" data-testid="intro-settings-pointer">
+          <svg
+            className="intro-settings-pointer-arrow"
+            viewBox="0 0 64 64"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <defs>
+              <marker
+                id="introSettingsArrowhead"
+                markerWidth="8"
+                markerHeight="8"
+                refX="4"
+                refY="4"
+                orient="auto-start-reverse"
+              >
+                <path className="intro-settings-pointer-head" d="M0 0 L8 4 L0 8 Z" />
+              </marker>
+            </defs>
+            <path
+              className="intro-settings-pointer-shaft"
+              d="M6 56 C 20 56, 42 44, 54 10"
+              markerEnd="url(#introSettingsArrowhead)"
+            />
+          </svg>
+          <p className="intro-settings-pointer-label">{t('label.changeVisualSettings')}</p>
+        </div>
+      )}
       {acknowledgementOpen && (
         <ModalShell labelledBy={acknowledgementId} className="intro-modal" backdropClassName="intro-modal-bg" testId="intro-acknowledgement-backdrop" onClose={keepAcknowledgementOpen}>
           <h2 id={acknowledgementId} className="intro-modal-title">{INTRO_DISCLAIMER_HEADING}</h2>
