@@ -42,6 +42,9 @@ import {
   tableRow,
   validateCopyEdit,
 } from './copyEdits';
+import { describeR10Target, r10Blocked, r10Shipped, validateR10Edit, withoutNote } from './r10Edits';
+import type { DesignNote, NoteIntent } from './r10Edits';
+import { R10_MODULES, r10Field } from '../content/r10Text';
 import { buildPatch, patchSize } from './designPatch';
 import { clearStoredEdits, readStoredEdits, writeStoredEdits } from './designStorage';
 import type { StoredEdits } from './designStorage';
@@ -51,7 +54,7 @@ import type { TokenDecl } from './tokenSheet';
 import './design.css';
 
 /** An empty edit set. Also what RESET restores. */
-const NO_EDITS: StoredEdits = { version: 1, tokens: {}, copy: {} };
+const NO_EDITS: StoredEdits = { version: 1, tokens: {}, copy: {}, r10: {}, notes: [] };
 
 /** The tokens whose value is a font stack, which get the availability reading. */
 const FONT_TOKENS = new Set(['--mono', '--sans', '--disp', '--chrome']);
@@ -235,8 +238,8 @@ function CopySection({
         </p>
       )}
       <p className="dm-note">
-        Only copy.ts and the two skin tables are editable. The reference modules, which carry
-        citations and doses, are not marked and never will be.
+        This section is copy.ts and the two skin tables. The long-form modules are in their own
+        section below: the ones that cite or dose something are locked, and the rest take an edit.
       </p>
       {rows.length === 0 ? (
         <p className="dm-note" data-testid="dm-copy-empty">
@@ -297,6 +300,150 @@ function CopySection({
   );
 }
 
+interface R10SectionProps {
+  /** The R10 field ids the layer has seen render on this screen. */
+  readonly discovered: readonly string[];
+  readonly edits: Readonly<Record<string, string>>;
+  readonly onChange: (id: string, value: string) => void;
+  readonly onUndo: (id: string) => void;
+}
+
+/**
+ * The long-form half of the panel.
+ *
+ * IT STATES THE LOCK FOR EVERY MODULE, not only for the one under the finger. Tapping a locked
+ * paragraph opens the bubble that explains it, but the owner arrived here having been told the
+ * whole category was off limits, and a list he can read is how that gets corrected. Each row says
+ * which module, whether it is editable, and, when it is not, the evidence that locked it.
+ *
+ * WHY THE ROWS BELOW THE LIST ARE THE ONES THAT HAVE RENDERED. The registry holds several thousand
+ * strings across eleven modules; listing all of them would bury the five slides. The layer reports
+ * what is actually on the screen, exactly as the copy section already works.
+ */
+function R10Section({ discovered, edits, onChange, onUndo }: R10SectionProps): ReactElement {
+  const rows = [...new Set([...Object.keys(edits), ...discovered])].sort();
+  return (
+    <div className="dm-rows" data-testid="dm-r10">
+      <p className="dm-note" data-testid="dm-r10-target">
+        {describeR10Target()}
+      </p>
+      {R10_MODULES.map((module) => (
+        <div className="dm-row" key={module.id} data-testid={`dm-r10-module-${module.id}`}>
+          <span className="dm-row-label">{module.id}</span>
+          <span className="dm-verdict" data-pass={String(module.lock === null)}>
+            {module.lock === null ? 'EDITABLE' : 'LOCKED'}
+          </span>
+          {module.lock === null ? null : <span className="dm-note">{module.lock}</span>}
+        </div>
+      ))}
+      {rows.length === 0 ? (
+        <p className="dm-note" data-testid="dm-r10-empty">
+          No long-form text has rendered yet on this screen. The intro slides appear here once a
+          slide has finished typing itself out: half a sentence is not the row.
+        </p>
+      ) : null}
+      {rows.map((id) => {
+        const field = r10Field(id);
+        const blocked = r10Blocked(id);
+        const shipped = r10Shipped(id) ?? '';
+        const value = edits[id] ?? shipped;
+        const changed = edits[id] !== undefined && edits[id] !== shipped;
+        const violations = validateR10Edit(id, value);
+        return (
+          <div className="dm-token" key={id} data-testid={`dm-r10-${id}`}>
+            <span className="dm-token-name">{changed ? <mark>{id}</mark> : id}</span>
+            {blocked === null ? (
+              <input
+                type="text"
+                aria-label={id}
+                value={value}
+                spellCheck={false}
+                autoComplete="off"
+                onChange={(event) => {
+                  onChange(id, event.currentTarget.value);
+                }}
+              />
+            ) : (
+              <span className="dm-note" data-testid={`dm-r10-blocked-${id}`}>
+                {blocked.message}
+              </span>
+            )}
+            {changed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onUndo(id);
+                }}
+              >
+                Undo
+              </button>
+            ) : null}
+            {violations.map((violation) => (
+              <span
+                key={`${violation.rule}${violation.message}`}
+                className="dm-copy-violation"
+                data-severity={violation.severity}
+                data-testid={`dm-r10-rule-${id}-${violation.rule}`}
+              >
+                {violation.message}
+              </span>
+            ))}
+            {field === undefined ? null : <span className="dm-note">Shipped: {field.value}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * The notes: every structural change this tool records rather than applies.
+ *
+ * REMOVING ONE IS THE WHOLE OF "UNDO", and that is the point of choosing a note over an applier.
+ * Nothing was destroyed, so nothing has to be restored: he mis-taps Delete on a phone, presses
+ * Undo here, and the bullet was never touched. src/design/r10Edits.ts carries the argument.
+ */
+function NotesSection({
+  notes,
+  onUndo,
+}: {
+  readonly notes: readonly DesignNote[];
+  readonly onUndo: (index: number) => void;
+}): ReactElement {
+  return (
+    <div className="dm-rows" data-testid="dm-notes">
+      <p className="dm-note">
+        Make Heading, Make Bullet and Delete are recorded here and exported as instructions. They
+        do not change a file: rewriting a nested array literal would mean generating source lines
+        rather than replacing one, and a delete that lands on the wrong bullet destroys the only
+        copy of a sentence you wrote.
+      </p>
+      {notes.length === 0 ? (
+        <p className="dm-note" data-testid="dm-notes-empty">
+          No notes yet. Tap any text on the page and use the buttons in the bubble.
+        </p>
+      ) : null}
+      {notes.map((note, index) => (
+        <div className="dm-row" key={`${note.target}${note.intent}${String(index)}`} data-testid={`dm-note-row-${String(index)}`}>
+          <span className="dm-row-label">{note.target}</span>
+          <span className="dm-verdict" data-pass="false">
+            {note.intent}
+          </span>
+          <button
+            type="button"
+            data-testid={`dm-note-undo-${String(index)}`}
+            onClick={() => {
+              onUndo(index);
+            }}
+          >
+            Undo
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * The panel itself. Mounted only behind `?design=1`, so every hook and listener below exists
  * only in a session that asked for the tool.
@@ -310,6 +457,8 @@ export function DesignPanel(): ReactElement {
   const [storageFailed, setStorageFailed] = useState(false);
   /** The copy keys the layer has seen render on this screen. Stable identity per pass. */
   const [discovered, setDiscovered] = useState<readonly string[]>([]);
+  /** The R10 field ids the layer has seen render on this screen. */
+  const [discoveredR10, setDiscoveredR10] = useState<readonly string[]>([]);
   const exportRef = useRef<HTMLTextAreaElement | null>(null);
   const storeSkinRef = useRef<SkinId>(storeSkin);
 
@@ -416,6 +565,49 @@ export function DesignPanel(): ReactElement {
     [storeSkin],
   );
 
+  /*
+   * AN R10 EDIT IS FILED UNDER THE FIELD ALONE: no skin, and no `storeSkin` in sight. These
+   * modules export one version of each string and every skin renders it, so there is no table to
+   * route to. src/design/r10Edits.ts states the difference from the copy half, and the panel
+   * repeats it above the rows, because someone who has just read the copy section will reasonably
+   * expect a skin to be involved.
+   */
+  const setR10 = useCallback((id: string, value: string) => {
+    setEdits((previous) => {
+      const rows = { ...previous.r10 };
+      // Typing the shipped words back is not an edit. Dropping it keeps the patch reviewable.
+      if (value === r10Shipped(id) || value === '') delete rows[id];
+      else rows[id] = value;
+      return { ...previous, version: 1, r10: rows };
+    });
+  }, []);
+
+  const undoR10 = useCallback((id: string) => {
+    setEdits((previous) => {
+      const rows = { ...previous.r10 };
+      delete rows[id];
+      return { ...previous, version: 1, r10: rows };
+    });
+  }, []);
+
+  const addNote = useCallback((target: string, intent: NoteIntent) => {
+    setEdits((previous) => {
+      // One intent per element. Tapping Delete twice is a mis-tap, not two deletes.
+      const kept = previous.notes.filter(
+        (note) => !(note.target === target && note.intent === intent),
+      );
+      return { ...previous, version: 1, notes: [...kept, { target, intent, text: '' }] };
+    });
+  }, []);
+
+  const undoNote = useCallback((index: number) => {
+    setEdits((previous) => ({
+      ...previous,
+      version: 1,
+      notes: withoutNote(previous.notes, index),
+    }));
+  }, []);
+
   const resetAll = useCallback(() => {
     clearStoredEdits();
     setEdits(NO_EDITS);
@@ -442,8 +634,12 @@ export function DesignPanel(): ReactElement {
     <CopyEditLayer
       skin={storeSkin}
       edits={edits.copy}
+      r10Edits={edits.r10}
       onCommit={setCopy}
+      onR10Commit={setR10}
+      onNote={addNote}
       onDiscovered={setDiscovered}
+      onR10Discovered={setDiscoveredR10}
     />
   );
 
@@ -502,7 +698,7 @@ export function DesignPanel(): ReactElement {
           Previewing the {previewSkin} tokens. The switcher above flips &lt;html data-skin&gt;, so
           every colour, face and geometry re-renders in that skin. It does NOT change the app
           setting: nothing here is written to your saved data, and no profile is touched.{' '}
-          {changedCount} declaration{changedCount === 1 ? '' : 's'} changed.
+          {changedCount} change{changedCount === 1 ? '' : 's'} to export.
           {storageFailed ? ' Storage refused these edits: a reload will lose them.' : ''}
         </p>
 
@@ -517,6 +713,25 @@ export function DesignPanel(): ReactElement {
               onChange={setCopy}
               onUndo={undoCopy}
             />
+          </div>
+        </details>
+
+        <details className="dm-section" open>
+          <summary>Long-Form Text ({Object.keys(edits.r10).length})</summary>
+          <div className="dm-section-body">
+            <R10Section
+              discovered={discoveredR10}
+              edits={edits.r10}
+              onChange={setR10}
+              onUndo={undoR10}
+            />
+          </div>
+        </details>
+
+        <details className="dm-section" open>
+          <summary>Notes ({edits.notes.length})</summary>
+          <div className="dm-section-body">
+            <NotesSection notes={edits.notes} onUndo={undoNote} />
           </div>
         </details>
 
@@ -552,8 +767,10 @@ export function DesignPanel(): ReactElement {
           <summary>Export</summary>
           <div className="dm-section-body">
             <p className="dm-note">
-              Only changed declarations are exported. Apply it with: node scripts/design-patch.mjs
-              patch.json, which prints a diff and writes nothing until you add --write.
+              Only what you changed is exported: declarations, copy rows, long-form rows and notes.
+              Apply it with: node scripts/design-patch.mjs patch.json, which prints a diff and
+              writes nothing until you add --write. It applies the first three. The notes it
+              prints for a person to act on, because they are structural.
             </p>
             <div className="dm-row">
               <button type="button" onClick={exportPatch} data-testid="dm-export">

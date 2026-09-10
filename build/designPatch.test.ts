@@ -205,22 +205,29 @@ describe('the applier refuses rather than guesses', () => {
 });
 
 describe('the applier reports what it did not do', () => {
-  it('warns loudly about assets and notes rather than half applying them', () => {
-    // `copy` left this list when Task 2 implemented it. The two that remain belong to Tasks 3
-    // and 4 and are still refused loudly rather than half applied.
+  /*
+   * REPLACED, NOT DELETED. This case asserted that BOTH `assets` and `notes` were warned about as
+   * unimplemented, in the words "(Tasks 3 and 4)". `notes` are now implemented, in the only sense
+   * a note can be: they are PRINTED as `[part] text` for a person to act on, and nothing is
+   * written for them. src/design/r10Edits.ts records why a structural change is a note rather than
+   * a rewritten array literal. `assets` is still Task 3's and is still warned about, so the half
+   * of this case that still holds is kept verbatim and the half that was superseded says so.
+   */
+  it('warns about assets, and prints notes rather than warning about them', () => {
     const patch = writePatch('p.json', {
       version: 1,
       tokens: { clinical: { '--accent': '#ff0000' } },
       copy: {},
       assets: [{ registerRow: 'r1' }],
-      notes: ['[part] move it left'],
+      notes: [{ part: 'setup.step3', text: 'move it left' }],
     });
 
     const result = run([patch, '--tokens', sheet]);
 
-    expect(result.stdout).toContain('1 assets entries');
-    expect(result.stdout).toContain('1 notes entries');
-    expect(result.stdout).toContain('(Tasks 3 and 4)');
+    expect(result.stdout).toContain('1 asset entries');
+    expect(result.stdout).toContain('(Task 3)');
+    expect(result.stdout).toContain('[setup.step3] move it left');
+    expect(result.stdout).toContain('Nothing below was applied.');
   });
 });
 
@@ -234,7 +241,20 @@ describe('the applier reports what it did not do', () => {
  * brief added a key, which contract rule forced its wording - survive byte for byte.
  * ------------------------------------------------------------------------------------------
  */
-const CONTENT_FILES = ['copy.ts', 'copy.limelight.ts', 'copy.board.ts'] as const;
+/*
+ * The three copy tables, plus the two long-form modules the R10 cases below act on:
+ * `introSlides.ts` is the one module the registry reports editable, and
+ * `guidanceReferences.ts` is the one the applier must refuse because the file on disk
+ * carries thirty DOIs. Every case in this file asserts the files it did not name are
+ * unchanged, so widening this list widens that guarantee too.
+ */
+const CONTENT_FILES = [
+  'copy.ts',
+  'copy.limelight.ts',
+  'copy.board.ts',
+  'introSlides.ts',
+  'guidanceReferences.ts',
+] as const;
 const REAL_CONTENT = join(ROOT, 'src', 'content');
 
 /** A throwaway copy of the three tables, and the bytes they started with. */
@@ -492,5 +512,192 @@ describe('a copy change is not finished until the catalogue agrees', () => {
 
     expect(result.status).toBe(1);
     expect(result.stdout).toContain('The catalogue is now STALE');
+  });
+});
+
+/*
+ * ------------------------------------------------------------------------------------------
+ * THE R10 HALF: long-form text, in the modules `copy()` never reaches.
+ *
+ * The property that earns this block is the one the whole widening turns on. `introSlides.ts` is
+ * mostly a header recording why the slides read as they do, which brief supplied them, and which
+ * feature slide 4 promises that the repository does not yet build. A rewrite that lost any of
+ * that would be worse than not having the tool: the words could be retyped, the reasoning could
+ * not. So every case asserts the module byte for byte outside the single literal it changed.
+ * ------------------------------------------------------------------------------------------
+ */
+
+/** A bullet lead from slide 2. Long enough to be unambiguous, and the owner's own words. */
+const INTRO_LEAD = 'Still the guy who shows up';
+
+/** A header line that must survive every rewrite. */
+const INTRO_HEADER = 'THE ASCII FIGURE IS ORIGINAL.';
+
+function r10Patch(rows: readonly unknown[], notes: readonly unknown[] = []): unknown {
+  return {
+    version: 1,
+    generatedAt: '2026-09-10T00:00:00Z',
+    tokens: {},
+    copy: {},
+    r10: rows,
+    assets: [],
+    notes,
+  };
+}
+
+/** One row, so each case names only what it is varying. */
+function introRow(before: string, after: string): unknown {
+  return {
+    module: 'introSlides',
+    file: 'src/content/introSlides.ts',
+    field: 'INTRO_SLIDES.1.bullets.1.lead',
+    before,
+    after,
+  };
+}
+
+describe('the R10 half', () => {
+  it('prints the diff and changes no byte without --write', () => {
+    const { dir: content, before } = contentCopy();
+    expect(before.get('introSlides.ts')).toContain(`'${INTRO_LEAD}'`);
+    const patch = writePatch('p.json', r10Patch([introRow(INTRO_LEAD, 'Still the one who turns up')]));
+
+    const result = run([patch, '--tokens', sheet, '--content', content]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('introSlides  src/content/introSlides.ts');
+    expect(result.stdout).toContain(`- '${INTRO_LEAD}'`);
+    expect(result.stdout).toContain("+ 'Still the one who turns up'");
+    expect(result.stdout).toContain('DRY RUN. No file was written.');
+    for (const name of CONTENT_FILES) {
+      expect({ name, body: contentNow(content, name) }).toEqual({ name, body: before.get(name) });
+    }
+  });
+
+  it('rewrites the literal and leaves every comment in the module intact', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch('p.json', r10Patch([introRow(INTRO_LEAD, 'Still the one who turns up')]));
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+    const after = contentNow(content, 'introSlides.ts');
+
+    expect(result.status).toBe(0);
+    expect(after).toContain("{ lead: 'Still the one who turns up', rest:");
+    expect(after).not.toContain(`'${INTRO_LEAD}'`);
+    expect(after).toContain(INTRO_HEADER);
+    expect(after).toContain('decision: intro-slides-are-owner-editable-in-design-mode');
+    expect(after).toContain('/** One bullet: an emphasised lead phrase, then the rest of the sentence. */');
+    // The ONLY difference is that one literal.
+    const shipped = before.get('introSlides.ts') ?? '';
+    expect(after).toBe(shipped.replace(`'${INTRO_LEAD}'`, "'Still the one who turns up'"));
+    expect(contentNow(content, 'copy.ts')).toBe(before.get('copy.ts'));
+    expect(contentNow(content, 'guidanceReferences.ts')).toBe(before.get('guidanceReferences.ts'));
+  });
+
+  it('round-trips: the rewritten literal is what a second patch then finds as its before', () => {
+    const { dir: content, before } = contentCopy();
+    const first = writePatch('a.json', r10Patch([introRow(INTRO_LEAD, 'Still the one who turns up')]));
+    run([first, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    const second = writePatch('b.json', r10Patch([introRow('Still the one who turns up', INTRO_LEAD)]));
+    const back = run([second, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(back.status).toBe(0);
+    expect(contentNow(content, 'introSlides.ts')).toBe(before.get('introSlides.ts'));
+  });
+
+  /*
+   * THE LOCK, RE-DERIVED FROM THE FILE ON DISK. The panel derives it too, in the browser, from
+   * the module's own strings. This one answers a different question - "is the file I am about to
+   * WRITE one that cites something" - and it is the one that holds when a patch generated last
+   * week meets a module that gained a citation this morning.
+   */
+  it('refuses a module whose source carries a DOI, whatever the patch claims', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch(
+      'p.json',
+      r10Patch([
+        {
+          module: 'guidanceReferences',
+          file: 'src/content/guidanceReferences.ts',
+          field: 'GUIDANCE_REFERENCES.0.title',
+          before: 'anything',
+          after: 'anything else',
+        },
+      ]),
+    );
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('carries a DOI, so it is locked');
+    expect(contentNow(content, 'guidanceReferences.ts')).toBe(before.get('guidanceReferences.ts'));
+  });
+
+  it('refuses a shipped string it cannot find, rather than guessing which row was meant', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch(
+      'p.json',
+      r10Patch([introRow('a sentence that is not in the module', 'a replacement for it')]),
+    );
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('does not contain the shipped text');
+    expect(contentNow(content, 'introSlides.ts')).toBe(before.get('introSlides.ts'));
+  });
+
+  it('refuses a file outside src/content, and a module that disagrees with its file', () => {
+    const { dir: content } = contentCopy();
+    const outside = writePatch(
+      'a.json',
+      r10Patch([
+        { module: 'nutrition', file: 'src/domain/nutrition.ts', field: 'X', before: 'a', after: 'b' },
+      ]),
+    );
+    expect(run([outside, '--tokens', sheet, '--content', content]).stdout).toContain(
+      'Only a file directly under src/content may be rewritten.',
+    );
+
+    const mismatched = writePatch(
+      'b.json',
+      r10Patch([
+        { module: 'introSlides', file: 'src/content/copy.ts', field: 'X', before: 'a', after: 'b' },
+      ]),
+    );
+    expect(run([mismatched, '--tokens', sheet, '--content', content]).stdout).toContain('disagree');
+  });
+
+  it('refuses a replacement carrying a Design Mode marker or a newline', () => {
+    const { dir: content } = contentCopy();
+    const marker = writePatch('a.json', r10Patch([introRow(INTRO_LEAD, 'Still the guy\u{E0001}')]));
+    expect(run([marker, '--tokens', sheet, '--content', content]).stdout).toContain(
+      'Design Mode marker character',
+    );
+
+    const newline = writePatch('b.json', r10Patch([introRow(INTRO_LEAD, 'Still\nthe guy')]));
+    expect(run([newline, '--tokens', sheet, '--content', content]).stdout).toContain('one line');
+  });
+
+  /*
+   * NOTES ARE PRINTED AND NOTHING IS APPLIED FOR THEM. src/design/r10Edits.ts records why
+   * promoting a bullet to a heading and deleting one arrive as instructions: rewriting a nested
+   * array literal means GENERATING source lines, and a comment above a deleted bullet then has no
+   * defined destination.
+   */
+  it('prints a note as [part] text and writes nothing for it', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch(
+      'p.json',
+      r10Patch([], [{ part: 'introSlides:INTRO_SLIDES.3.bullets.1.lead', text: 'Delete this.' }]),
+    );
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout).toContain('[introSlides:INTRO_SLIDES.3.bullets.1.lead] Delete this.');
+    expect(result.stdout).toContain('Nothing below was applied.');
+    expect(contentNow(content, 'introSlides.ts')).toBe(before.get('introSlides.ts'));
   });
 });

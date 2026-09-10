@@ -9,6 +9,13 @@ import { useAppStore } from '../../store';
 export const INTRO_CHAR_INTERVAL_MS = 18;
 const INTRO_FADE_OUT_MS = 180;
 
+/**
+ * Between a bullet's lead phrase and the rest of its sentence. Declared once because both the
+ * typing budget in `bodyText` and the render below have to agree on its length to the character:
+ * a mismatch shifts every reveal offset after it.
+ */
+const BULLET_SEPARATOR = ': ';
+
 const FIGURE_SLIDE_COUNT = 4;
 const ACKNOWLEDGEMENT_INDEX = 3;
 const LAST_INDEX = INTRO_SLIDES.length - 1;
@@ -22,7 +29,7 @@ function bodyText(index: number): string {
   if (slide === undefined) return '';
   return [
     ...(slide.lead === null ? [] : [slide.lead]),
-    ...slide.bullets.map((bullet) => bullet.rest === null ? bullet.lead : `${bullet.lead}: ${bullet.rest}`),
+    ...slide.bullets.map((bullet) => bullet.rest === null ? bullet.lead : `${bullet.lead}${BULLET_SEPARATOR}${bullet.rest}`),
   ].join('\n');
 }
 
@@ -113,11 +120,31 @@ export function IntroSequence(): ReactElement {
         {slide.bullets.length > 0 && (
           <ul className="intro-bullets" data-testid={slide.lead === null ? 'intro-body' : undefined}>
             {slide.bullets.map((bullet) => {
-              const bulletText = bullet.rest === null ? bullet.lead : `${bullet.lead}: ${bullet.rest}`;
+              const bulletText = bullet.rest === null ? bullet.lead : `${bullet.lead}${BULLET_SEPARATOR}${bullet.rest}`;
               const visible = reveal(bulletText);
               const lead = visible.slice(0, bullet.lead.length);
-              const rest = visible.slice(bullet.lead.length);
-              return <li key={bullet.lead}><span className="intro-lead-phrase">{lead}</span>{rest}</li>;
+              const afterLead = visible.slice(bullet.lead.length);
+              /*
+               * THE REST GETS ITS OWN ELEMENT, and the separator sits between the two rather than
+               * at the head of the rest. The rendered characters are unchanged: this splits one
+               * text node into `<span>lead</span>`, `": "`, `<span>rest</span>`, which reads the
+               * same and measures the same.
+               *
+               * WHY. Design Mode recognises long-form text by matching an element's WHOLE text
+               * against src/content/r10Text.ts (src/design/CopyEditLayer.tsx's R10 pass). With
+               * the rest living loose in the `<li>`, the only element whose text was ever exactly
+               * one stored field was the lead phrase, so the sentence AFTER the colon - which is
+               * most of what the owner wrote - could not be tapped and edited. One span buys it.
+               */
+              const separator = afterLead.slice(0, BULLET_SEPARATOR.length);
+              const rest = afterLead.slice(BULLET_SEPARATOR.length);
+              return (
+                <li key={bullet.lead}>
+                  <span className="intro-lead-phrase">{lead}</span>
+                  {separator}
+                  {bullet.rest === null ? null : <span className="intro-bullet-rest">{rest}</span>}
+                </li>
+              );
             })}
           </ul>
         )}

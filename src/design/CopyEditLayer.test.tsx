@@ -15,6 +15,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { useCopy } from '../content/useCopy';
+import { INTRO_SLIDES } from '../content/introSlides';
+import { GUIDANCE_REFERENCES } from '../content/guidanceReferences';
 import { defaultState, useAppStore } from '../store';
 import { installFakeStorage } from '../store/testStorage';
 import { DesignGate } from './DesignGate';
@@ -364,5 +366,171 @@ describe('the store is still never written', () => {
     fireEvent.click(screen.getByTestId('dm-export'));
 
     expect(useAppStore.getState()).toBe(before);
+  });
+});
+
+/*
+ * ------------------------------------------------------------------------------------------
+ * LONG-FORM TEXT, the modules `copy()` never reaches.
+ *
+ * The defect these cases exist to prevent is the one that produced this work: the owner opened
+ * the tool on his own intro and found nothing would take an edit, because a rule aimed at
+ * `guidanceReferences.ts` had swept up `introSlides.ts` with it. So the two halves are asserted
+ * together and against each other - the intro takes an edit, the reference list does not and says
+ * why - because either one alone would pass while the rule was wrong.
+ * ------------------------------------------------------------------------------------------
+ */
+
+/** A slide heading and a bullet lead, rendered exactly as IntroSequence renders them. */
+function IntroPage(): ReactElement {
+  const slide = INTRO_SLIDES[1];
+  const bullet = slide?.bullets[1];
+  return (
+    <main>
+      <h2 data-testid="intro-heading">{slide?.heading}</h2>
+      <p data-testid="intro-lead">{slide?.lead}</p>
+      <span data-testid="intro-bullet-lead">{bullet?.lead}</span>
+    </main>
+  );
+}
+
+/** One reference lead line, rendered whole, exactly as GuidanceScreen renders it. */
+function ReferencePage(): ReactElement {
+  return <p data-testid="reference">{GUIDANCE_REFERENCES[0]?.lead}</p>;
+}
+
+/** The stored body's long-form half. */
+function storedR10(map: Map<string, string>): Record<string, string> {
+  const body = JSON.parse(map.get(DESIGN_STORAGE_KEY) ?? '{}') as { r10?: Record<string, string> };
+  return body.r10 ?? {};
+}
+
+describe('long-form text in design mode', () => {
+  beforeEach(() => {
+    setSearch('?design=1');
+    setCopyKeyMarking(true);
+  });
+
+  it('makes an intro slide editable, and names the module and field on the node', () => {
+    render(
+      <>
+        <IntroPage />
+        <DesignGate />
+      </>,
+    );
+
+    const lead = screen.getByTestId('intro-lead');
+    expect(lead.getAttribute('data-r10-field')).toBe('introSlides:INTRO_SLIDES.1.lead');
+    expect(lead.getAttribute('data-r10-editable')).toBe('true');
+    expect(lead.getAttribute('contenteditable')).toBe('plaintext-only');
+    // The heading too, and it is the kind R14 binds.
+    expect(screen.getByTestId('intro-heading').getAttribute('data-r10-field')).toBe(
+      'introSlides:INTRO_SLIDES.1.heading',
+    );
+  });
+
+  it('stores an edit to a slide under the field, with no skin involved', () => {
+    render(
+      <>
+        <IntroPage />
+        <DesignGate />
+      </>,
+    );
+
+    const lead = screen.getByTestId('intro-lead');
+    fireEvent.focusIn(lead);
+    typeInto(lead, 'The creator of this application:');
+    fireEvent.focusOut(lead);
+
+    expect(storedR10(store)).toEqual({
+      'introSlides:INTRO_SLIDES.1.lead': 'The creator of this application:',
+    });
+    // And nothing reached the copy half, which is where a skin would have appeared.
+    const body = JSON.parse(store.get(DESIGN_STORAGE_KEY) ?? '{}') as { copy?: unknown };
+    expect(body.copy).toEqual({});
+  });
+
+  it('refuses a guidanceReferences string and says why when it is tapped', () => {
+    render(
+      <>
+        <ReferencePage />
+        <DesignGate />
+      </>,
+    );
+
+    const reference = screen.getByTestId('reference');
+    expect(reference.getAttribute('data-r10-field')).toMatch(/^guidanceReferences:/);
+    expect(reference.getAttribute('data-r10-editable')).toBe('false');
+    expect(reference.hasAttribute('contenteditable')).toBe(false);
+
+    fireEvent.click(reference);
+
+    const lock = screen.getByTestId('dm-r10-lock');
+    expect(lock.textContent).toContain('guidanceReferences is locked');
+    expect(lock.textContent).toContain('DOI');
+  });
+
+  it('flags a heading retyped in lower case live, by rule id, as he types', () => {
+    render(
+      <>
+        <IntroPage />
+        <DesignGate />
+      </>,
+    );
+
+    const heading = screen.getByTestId('intro-heading');
+    fireEvent.focusIn(heading);
+    typeInto(heading, 'who i am');
+
+    expect(screen.getByTestId('dm-copy-violation-R14').textContent).toContain('Title Case');
+  });
+
+  it('flags an edit that would introduce a citation, because it would lock the module', () => {
+    render(
+      <>
+        <IntroPage />
+        <DesignGate />
+      </>,
+    );
+
+    const lead = screen.getByTestId('intro-lead');
+    fireEvent.focusIn(lead);
+    typeInto(lead, 'The creator of this app, see 10.1519/JSC.0000000000002200:');
+
+    expect(screen.getByTestId('dm-copy-violation-EVIDENCE').textContent).toContain('locks itself');
+  });
+
+  it('records a structural intent as a note, and the panel can take it back', () => {
+    render(
+      <>
+        <IntroPage />
+        <DesignGate />
+      </>,
+    );
+
+    const bullet = screen.getByTestId('intro-bullet-lead');
+    fireEvent.focusIn(bullet);
+    fireEvent.pointerDown(screen.getByTestId('dm-note-delete'));
+
+    expect(screen.getByTestId('dm-note-row-0').textContent).toContain(
+      'introSlides:INTRO_SLIDES.1.bullets.1.lead',
+    );
+    // Nothing was destroyed, so Undo is the whole of the reversal.
+    fireEvent.click(screen.getByTestId('dm-note-undo-0'));
+    expect(screen.queryByTestId('dm-note-row-0')).toBeNull();
+  });
+
+  it('leaves the page untouched with the parameter absent', () => {
+    setSearch('');
+    setCopyKeyMarking(false);
+    render(
+      <>
+        <IntroPage />
+        <DesignGate />
+      </>,
+    );
+
+    expect(document.querySelectorAll('[data-r10-field]')).toHaveLength(0);
+    expect(document.querySelectorAll('[contenteditable]')).toHaveLength(0);
   });
 });
