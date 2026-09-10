@@ -9,6 +9,13 @@ import {
   copyFor,
 } from './copy';
 import type { CopyKey } from './copy';
+import {
+  LENGTH_EXEMPT,
+  hasConnectorEnDash,
+  hasEmoji,
+  sentenceCount,
+  wordCount,
+} from './copyContract';
 
 /**
  * The copy contract, executed.
@@ -21,63 +28,15 @@ import type { CopyKey } from './copy';
  * at the bottom.
  */
 
-/**
- * Tokens that are a unit, not a word. The contract states the rule as "word counts exclude
- * numerals and units (`60 kg x 8` counts as one word)". A `{slot}` is excluded for the same
- * reason: at runtime it is a number the domain computed, so counting it as a word would charge a
- * sentence for a value it does not contain.
+/*
+ * R1 TO R6, R8 AND R14 LIVE IN `./copyContract.ts` AND ARE IMPORTED, NOT RESTATED.
+ *
+ * They were file-local helpers here until Design Mode Task 2, which needed to run the same rules
+ * in the browser as the owner types. A second implementation that disagreed with this one would
+ * be worse than no live check at all - the panel would pass a string this suite then failed at
+ * merge, which is precisely the hours-later, no-context failure the live check exists to remove.
+ * The bodies moved unchanged; `src/content/copyContract.ts` carries the reasoning for each.
  */
-const UNIT_TOKENS: ReadonlySet<string> = new Set([
-  's',
-  // 'S' WAS HERE, and it was the loophole that let the board write "+30 S DELAY" past the word
-  // count: `S` is the siemens, and this app measures no conductance. A capital S counts as a
-  // word now, so a table that shouts a unit symbol is charged for it (P8 review).
-  'kg',
-  'lb',
-  'mL',
-  'g',
-  'kcal',
-  'MiB',
-  'cm',
-  'mm',
-  'ms',
-  '%',
-  '×', // MULTIPLICATION SIGN, as in "60 kg x 8"
-]);
-
-function wordCount(value: string): number {
-  return value
-    .split(/\s+/)
-    .map((token) => token.replace(/\{[a-zA-Z]+\}/g, '').replace(/[.,:;!?()"'’]/g, ''))
-    .filter((bare) => bare !== '' && /\p{L}/u.test(bare) && !UNIT_TOKENS.has(bare)).length;
-}
-
-/** Emoji ranges from round-three verification criterion 5. R6 binds every skin. */
-function hasEmoji(value: string): boolean {
-  for (const character of value) {
-    const point = character.codePointAt(0) ?? 0;
-    if (point >= 0x1f300 && point <= 0x1faff) return true;
-    if (point >= 0x2600 && point <= 0x27bf) return true;
-    if (point === 0xfe0f) return true;
-    if (point >= 0x2b00 && point <= 0x2bff) return true;
-  }
-  return false;
-}
-
-/** R5: an en-dash is legal only between two digits (`6-8`). Anywhere else it is a connector. */
-function hasConnectorEnDash(value: string): boolean {
-  // A `{slot}` stands for a number a domain module computed, so it is scored as one digit here,
-  // for the reason `wordCount` gives for not scoring it as a word: `status.blockSessions` is a
-  // numeric range at runtime, and reading the brace as a letter would fail a legal string.
-  const rendered = value.replace(/\{[a-zA-Z]+\}/g, '0');
-  for (let i = 0; i < rendered.length; i += 1) {
-    if (rendered[i] !== '–') continue;
-    const before = rendered[i - 1] ?? '';
-    const after = rendered[i + 1] ?? '';
-    if (!/\d/.test(before) || !/\d/.test(after)) return true;
-  }
-  return false;
-}
 
 /** The `{slot}` names a string carries, as a sorted list. */
 function slotsOf(value: string): readonly string[] {
@@ -147,55 +106,11 @@ function unitSymbolsOf(value: string): readonly string[] {
     .sort();
 }
 
-/**
- * R10 and R9 exemptions, key by key, each with the position that earns it.
- *
- * R10 exempts form cues, exercise notes and tips, Atlas card bodies and citations; none of those
- * live in this table (they are `src/content/formCues.ts` and `src/content/specimenCards.ts`, and,
- * as of Brief G, `src/content/activityLevels.ts` for the "Where These Levels Come From" modal, and,
- * as of Brief M, `src/content/reviewDataNotes.ts` for the review step's "Your Data" block).
- * What does live here is R9's other exemption: "text inside a disclosure is exempt from R1-R4".
- * A key earns a place below only by being rendered inside a `<details>`, and the call site is
- * named so the exemption can be revoked when the call site changes.
- *
- * Brief G's two new keys, `advice.activityLevelsSource` (5 words) and `label.activityLevelsSource`
- * (`label.` carries no R1-R4 length cap at all), need no entry here: neither is rendered inside a
- * `<details>`, and both comply with their own family's cap unaided, so an exemption would be
- * simply wrong rather than merely unnecessary.
- *
- * Brief M's two new keys, `hero.yourData` (2 words, under R2's 8-word cap) and `label.looksGood`
- * (`label.` carries no cap), need no entry here for the same reason: the "Your Data" block itself
- * is not a copy-table string at all (it is `src/content/reviewDataNotes.ts`, R10 content), and
- * the two keys that ARE in this table comply with their own family's cap unaided.
+/*
+ * `LENGTH_EXEMPT` - R9's "text inside a disclosure is exempt from R1 to R4" carve-out, key by key
+ * with the call site that earns each one - now lives in `./copyContract.ts` beside the length
+ * rules it exempts, so Design Mode's live validator honours the same three keys this suite does.
  */
-const LENGTH_EXEMPT: ReadonlyMap<string, string> = new Map([
-  [
-    'advice.motivationClipLimit',
-    'rendered inside <details><summary>why?</summary> in src/ui/motivation/MotivationSettings.tsx',
-  ],
-  /*
-   * Brief I's two disclosure bodies, both on the goal step of src/ui/setup/SetupWizard.tsx and
-   * both earning the exemption the same way `advice.motivationClipLimit` does: they render
-   * inside a `<details><summary>why?</summary>`, which is R9's own carve-out from R1 to R4.
-   *
-   * Neither is decoration. The first is what choosing recomposition COSTS, in the same voice as
-   * the basis strings in src/domain/nutrition.ts, because that is the option the engine supports
-   * least. The second is the assumption the implied fat mass and lean mass rest on, plus the
-   * tape method's standard error. Both are load-bearing honesty, and both are longer than R3's
-   * twelve words because a hedge cut to twelve words stops being a hedge.
-   *
-   * Brief I's other new `advice.` keys need no entry: every one of them renders on the face of
-   * the step and complies with R3 unaided.
-   */
-  [
-    'advice.goalRecompositionCost',
-    'rendered inside <details><summary>why?</summary> on the goal step in src/ui/setup/SetupWizard.tsx',
-  ],
-  [
-    'advice.targetBodyFatBasis',
-    'rendered inside <details><summary>why?</summary> on the goal step in src/ui/setup/SetupWizard.tsx',
-  ],
-]);
 
 /**
  * The two aborts and the three commits. A skin may rename them; it may not swap them.
@@ -281,7 +196,7 @@ describe('copy contract, every table', () => {
     it(`${name}: R4, a banner is at most two sentences`, () => {
       for (const [key, value] of entriesOf(table)) {
         if (!key.startsWith('banner.')) continue;
-        const sentences = value.split(/(?<=[.?])\s+/).filter((part) => part !== '').length;
+        const sentences = sentenceCount(value);
         expect({ key, ok: sentences <= 2 }).toEqual({ key, ok: true });
       }
     });
