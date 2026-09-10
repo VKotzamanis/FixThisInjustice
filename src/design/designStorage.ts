@@ -17,6 +17,7 @@
  * taking the panel down. Losing an afternoon of edits is bad; a white screen is worse.
  */
 import type { SkinId } from '../domain/types';
+import type { DesignNote, NoteIntent } from './r10Edits';
 
 /** One namespaced key, versioned so a later shape change can be recognised rather than guessed. */
 export const DESIGN_STORAGE_KEY = 'fti.designMode.tokenEdits.v1';
@@ -38,9 +39,23 @@ export interface StoredEdits {
   readonly version: 1;
   readonly tokens: Partial<Record<SkinId, Record<string, string>>>;
   readonly copy: Partial<Record<SkinId, Record<string, string>>>;
+  /**
+   * R10 long-form text, `module:path` to the retyped string. NOT keyed by skin, and that is a
+   * property of the content rather than an omission: these modules export one version of each
+   * string and every skin renders it. src/design/r10Edits.ts carries the reasoning.
+   */
+  readonly r10: Record<string, string>;
+  /** Structural intents and free notes, one per element. src/design/r10Edits.ts says why. */
+  readonly notes: readonly DesignNote[];
 }
 
-const EMPTY: StoredEdits = { version: 1, tokens: {}, copy: {} };
+/**
+ * NO VERSION BUMP, for the same reason Task 2 did not bump when it added `copy`: a body stored
+ * before this change has no `r10` and no `notes`, an absent field reads as "none of those", and
+ * that is exactly what it means. Bumping would discard a developer's uncommitted colour work to
+ * add two fields that default correctly without it.
+ */
+const EMPTY: StoredEdits = { version: 1, tokens: {}, copy: {}, r10: {}, notes: [] };
 
 /** True when `value` is a flat object of string to string. */
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -72,7 +87,13 @@ export function readStoredEdits(): StoredEdits {
     return EMPTY;
   }
   if (typeof parsed !== 'object' || parsed === null) return EMPTY;
-  const body = parsed as { version?: unknown; tokens?: unknown; copy?: unknown };
+  const body = parsed as {
+    version?: unknown;
+    tokens?: unknown;
+    copy?: unknown;
+    r10?: unknown;
+    notes?: unknown;
+  };
   if (body.version !== 1) return EMPTY;
   if (typeof body.tokens !== 'object' || body.tokens === null) return EMPTY;
   return {
@@ -80,7 +101,27 @@ export function readStoredEdits(): StoredEdits {
     tokens: perSkin(body.tokens),
     // Absent before Task 2, and an absent field means no copy edits. See the interface above.
     copy: perSkin(body.copy),
+    r10: isStringRecord(body.r10) ? body.r10 : {},
+    notes: readNotes(body.notes),
   };
+}
+
+/** The four intents the panel writes. Anything else in storage is discarded, not repaired. */
+const INTENTS: ReadonlySet<string> = new Set<NoteIntent>(['heading', 'bullet', 'delete', 'note']);
+
+/** Stored notes, with every malformed entry dropped for the reason `readStoredEdits` gives. */
+function readNotes(value: unknown): readonly DesignNote[] {
+  if (!Array.isArray(value)) return [];
+  const out: DesignNote[] = [];
+  for (const entry of value) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const note = entry as { target?: unknown; intent?: unknown; text?: unknown };
+    if (typeof note.target !== 'string' || note.target === '') continue;
+    if (typeof note.intent !== 'string' || !INTENTS.has(note.intent)) continue;
+    if (typeof note.text !== 'string') continue;
+    out.push({ target: note.target, intent: note.intent as NoteIntent, text: note.text });
+  }
+  return out;
 }
 
 /** A `{ skin: { name: value } }` body, with every unrecognised skin and value discarded. */

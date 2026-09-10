@@ -49,9 +49,26 @@
  * change without regeneration is a red suite. After a successful copy write this runs
  * alpha-catalogue and alpha-walk-pages, generate then --check, and exits non-zero if it cannot.
  *
- * `assets` and `notes` belong to Tasks 3 and 4 and are not implemented. A patch carrying either
- * is applied for the rest and warned about loudly, so nothing is half applied without the
- * operator being told which half.
+ * THE R10 HALF rewrites long-form text in `src/content/`, under the same three rules again, plus
+ * one the copy half does not need. A copy row is found by its KEY, which the source writes out as
+ * `'button.continue':`. An R10 field has no key: it is the third string in the second object of an
+ * array literal. So the patch carries the SHIPPED string and this applier finds the row by
+ * matching that literal, refusing when it appears zero times or more than once. It never counts
+ * brackets, never walks the array and never re-serialises it, so every comment in a module whose
+ * headers carry recorded decisions survives byte for byte.
+ *
+ *   - it refuses a file outside `src/content/`, and any path with a segment of `..`;
+ *   - IT RE-DERIVES THE LOCK FROM THE FILE ON DISK and refuses any module whose source carries a
+ *     DOI. That check is deliberately independent of the panel that produced the patch: the panel
+ *     derives the same lock in the browser, and this one answers "is the file I am about to write
+ *     one that cites something", which is the question that actually matters. A patch generated
+ *     against yesterday's tree cannot mangle a citation added to that module this morning;
+ *   - it refuses a `before` it cannot find, or finds twice, naming the field either way;
+ *   - it refuses an `after` carrying a newline, a tab or a Design Mode marker character.
+ *
+ * `assets` belongs to Task 3 and is not implemented. `notes` are PRINTED rather than applied:
+ * promoting a bullet to a heading and deleting one are structural, and src/design/r10Edits.ts
+ * records why this tool records them as instructions instead of generating source lines.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
@@ -189,7 +206,44 @@ function readPatch(path) {
     }
   }
   readCopyPatch(patch);
+  readR10Patch(patch);
   return patch;
+}
+
+/** The DOI shape src/content/r10Text.ts derives its lock from. Restated, not imported: see below. */
+const DOI = /10\.\d{4,9}\/[^\s'"]+/;
+
+/**
+ * Validates `patch.r10`, an ARRAY of `{ module, file, field, before, after }`.
+ *
+ * WHY THE PATTERN ABOVE IS RESTATED HERE rather than loaded from src/content/r10Text.ts the way
+ * scripts/check-title-case.mjs loads the copy contract. That script loads a rule that decides
+ * whether a STRING is acceptable, and a second implementation of such a rule would disagree with
+ * the first. This is not that: it is a check on the FILE THIS PROCESS IS ABOUT TO WRITE, run
+ * against the bytes on disk, and its whole value is that it does not trust the module graph the
+ * panel reasoned from. Loading the registry would make the two checks one check with two names.
+ */
+function readR10Patch(patch) {
+  const rows = patch.r10 ?? [];
+  if (!Array.isArray(rows)) fail('patch.r10 must be an array of { module, file, field, before, after }');
+  rows.forEach((row, index) => {
+    const at = `patch.r10[${index}]`;
+    if (typeof row !== 'object' || row === null || Array.isArray(row)) fail(`${at} must be an object`);
+    for (const key of ['module', 'file', 'field', 'before', 'after']) {
+      if (typeof row[key] !== 'string' || row[key] === '') fail(`${at}.${key} must be a non-empty string`);
+    }
+    if (!/^src\/content\/[A-Za-z0-9_]+\.ts$/.test(row.file)) {
+      fail(`${at}.file is ${JSON.stringify(row.file)}. Only a file directly under src/content may be rewritten.`);
+    }
+    if (row.file !== `src/content/${row.module}.ts`) {
+      fail(`${at}: module ${JSON.stringify(row.module)} and file ${JSON.stringify(row.file)} disagree.`);
+    }
+    if (/[\n\r\t]/.test(row.after)) fail(`${at}.after: one line, and no tab.`);
+    if (/[\u{E0000}-\u{E007F}]/u.test(row.after)) {
+      fail(`${at}.after carries a Design Mode marker character.`);
+    }
+    if (row.before === row.after) fail(`${at}: before and after are identical.`);
+  });
 }
 
 /**
@@ -370,6 +424,74 @@ function quoteValue(value) {
   return `'${escaped.replace(/'/g, "\\'")}'`;
 }
 
+/* ------------------------------------------------------------------------------------------- *
+ * The R10 half.
+ * ------------------------------------------------------------------------------------------- */
+
+/**
+ * `value` as every source literal that could hold it, in the two quotings these modules use.
+ *
+ * Both are produced because the module chooses per string: `copy.limelight.ts` already writes
+ * "LET'S GO BABES" in double quotes rather than escaping the apostrophe, and the R10 modules do
+ * the same. Searching for both means an apostrophe in a sentence does not make the row invisible.
+ */
+function literalForms(value) {
+  const backslashed = value.replace(/\\/g, '\\\\');
+  const forms = [];
+  if (!backslashed.includes("'")) forms.push(`'${backslashed}'`);
+  else forms.push(`'${backslashed.replace(/'/g, "\\'")}'`);
+  if (!backslashed.includes('"')) forms.push(`"${backslashed}"`);
+  else forms.push(`"${backslashed.replace(/"/g, '\\"')}"`);
+  return [...new Set(forms)];
+}
+
+/** Every index at which `needle` occurs in `haystack`. */
+function occurrences(haystack, needle) {
+  const found = [];
+  let from = 0;
+  for (;;) {
+    const at = haystack.indexOf(needle, from);
+    if (at === -1) return found;
+    found.push(at);
+    from = at + needle.length;
+  }
+}
+
+/**
+ * Where one R10 row's literal sits in `source`, or a refusal.
+ *
+ * IT FINDS THE ROW BY THE STRING IT IS REPLACING, which is the only handle an R10 field has: the
+ * source names no key for it. The refusals are the interesting part and each is a real case.
+ *
+ *   - NOT FOUND. The shipped string in the patch is not in the file. Either someone has already
+ *     edited that row by hand, or the patch was generated against a different tree. Applying it
+ *     would need this tool to decide which row was MEANT, and it will not guess.
+ *   - FOUND TWICE. Two fields hold the same sentence. The panel already refuses to offer such a
+ *     string (src/content/r10Text.ts drops a value two fields share), so reaching here means the
+ *     duplicate appeared after the patch was made. Refusing is the only safe answer.
+ *   - FOUND AS PART OF A LONGER LITERAL. Handled by matching the QUOTES as well as the text, so a
+ *     sentence that is a prefix of a longer one cannot match it.
+ */
+function r10Row(source, row, index) {
+  const at = `patch.r10[${index}]`;
+  const hits = [];
+  for (const form of literalForms(row.before)) {
+    for (const start of occurrences(source, form)) hits.push({ start, end: start + form.length });
+  }
+  if (hits.length === 0) {
+    fail(
+      `${at}: ${row.file} does not contain the shipped text for ${row.field} as a single-line ` +
+        'literal. Either the row has already been changed, or the source wraps it across two ' +
+        'literals, which cannot be replaced without choosing where the line break goes. Edit ' +
+        'that row by hand.',
+    );
+  }
+  if (hits.length > 1) {
+    fail(`${at}: ${row.file} contains that exact literal ${hits.length} times. Refusing to guess which.`);
+  }
+  return hits[0];
+}
+
 /**
  * Runs the four commands a copy change obliges, or says exactly which four to run.
  *
@@ -483,22 +605,69 @@ function main() {
     }
   }
 
-  for (const field of ['assets', 'notes']) {
-    const carried = patch[field];
-    const size = Array.isArray(carried)
-      ? carried.length
-      : typeof carried === 'object' && carried !== null
-        ? Object.keys(carried).length
-        : 0;
-    if (size > 0) {
-      stdout.write(
-        `design-patch: WARNING. This patch carries ${size} ${field} entries and this applier ` +
-          `does NOT implement them (Tasks 3 and 4). They were NOT applied.\n`,
+  /*
+   * THE R10 ROWS. One file read per module, the lock re-derived from the bytes on disk, and every
+   * replacement made by offset so that nothing outside the literal moves.
+   */
+  const r10Files = new Map(); // absolute path -> source text
+  const r10Changes = [];
+  const r10Rows = patch.r10 ?? [];
+  r10Rows.forEach((row, index) => {
+    const path = `${args.content}${row.file.slice('src/content/'.length)}`;
+    if (!r10Files.has(path)) {
+      try {
+        r10Files.set(path, readFileSync(path, 'utf8'));
+      } catch (error) {
+        fail(`cannot read ${path}: ${error.message}`);
+      }
+    }
+    const source = r10Files.get(path);
+    if (DOI.test(source)) {
+      fail(
+        `${row.file} carries a DOI, so it is locked. A module that cites something is not ` +
+          'edited through this tool: a WYSIWYG is how a DOI gets mangled. This was re-derived ' +
+          'from the file on disk, not taken from the patch.',
       );
     }
+    const { start, end } = r10Row(source, row, index);
+    const after = source.slice(0, start) + quoteValue(row.after) + source.slice(end);
+    r10Files.set(path, after);
+    r10Changes.push({
+      module: row.module,
+      file: row.file,
+      path,
+      field: row.field,
+      line: source.slice(0, start).split('\n').length,
+      before: source.slice(start, end),
+      afterText: quoteValue(row.after),
+    });
+  });
+
+  const assets = Array.isArray(patch.assets) ? patch.assets.length : 0;
+  if (assets > 0) {
+    stdout.write(
+      `design-patch: WARNING. This patch carries ${assets} asset entries and this applier does ` +
+        'NOT implement them (Task 3). They were NOT applied.\n',
+    );
   }
 
-  if (changes.length === 0 && copyChanges.length === 0) {
+  /*
+   * NOTES ARE PRINTED, NOT APPLIED, and that is the design rather than a gap. They are structural
+   * changes - promote this to a heading, delete this bullet - and src/design/r10Edits.ts records
+   * why generating source lines for them is a worse answer than a sentence a person acts on.
+   */
+  const notes = Array.isArray(patch.notes) ? patch.notes : [];
+  if (notes.length > 0) {
+    stdout.write(`design-patch: ${notes.length} note(s), for a person. Nothing below was applied.\n\n`);
+    for (const note of notes) {
+      const part = typeof note?.part === 'string' ? note.part : '?';
+      const text = typeof note?.text === 'string' ? note.text : '';
+      stdout.write(`  [${part}] ${text}\n`);
+    }
+    stdout.write('\n');
+  }
+
+  if (changes.length === 0 && copyChanges.length === 0 && r10Changes.length === 0) {
     stdout.write('design-patch: nothing to change. Every patched value already matches the source.\n');
     exit(0);
   }
@@ -521,6 +690,15 @@ function main() {
     }
   }
 
+  if (r10Changes.length > 0) {
+    stdout.write(`design-patch: ${r10Changes.length} long-form row(s)\n\n`);
+    for (const change of r10Changes) {
+      stdout.write(`  ${change.module}  ${change.file}  line ${change.line}  ${change.field}\n`);
+      stdout.write(`  - ${change.before}\n`);
+      stdout.write(`  + ${change.afterText}\n\n`);
+    }
+  }
+
   if (!args.write) {
     stdout.write('design-patch: DRY RUN. No file was written. Re-run with --write to apply.\n');
     exit(0);
@@ -532,6 +710,21 @@ function main() {
     stdout.write(
       'design-patch: run npx vitest run src/skins/tokens.test.ts src/app/topbar.test.ts next.\n',
     );
+  }
+
+  /*
+   * R10 TEXT DOES NOT TOUCH THE CATALOGUE. `docs/feedback/catalogue.json` pins the COPY TABLES,
+   * and these modules are not in it, which is the whole reason R10 exists as a category. So this
+   * write is finished when the bytes are on disk, and the suite is what checks it: each module has
+   * its own test asserting R5, R6, R11 and the URL ban over its strings.
+   */
+  if (r10Changes.length > 0) {
+    const r10Touched = new Set(r10Changes.map((change) => change.path));
+    for (const path of r10Touched) writeFileSync(path, r10Files.get(path));
+    stdout.write(
+      `design-patch: wrote ${r10Changes.length} long-form row(s) to ${[...r10Touched].join(', ')}.\n`,
+    );
+    stdout.write('design-patch: run npx vitest run src/content, plus check-no-emoji, next.\n');
   }
 
   if (copyChanges.length === 0) return;

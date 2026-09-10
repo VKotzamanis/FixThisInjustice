@@ -17,6 +17,8 @@ import { SKIN_IDS } from '../skins/skinContext';
 import type { SkinId } from '../domain/types';
 import { shippedValues } from './tokenSheet';
 import { buildCopyPatch, copyPatchSize } from './copyEdits';
+import { buildNotes, buildR10Patch } from './r10Edits';
+import type { R10PatchEntry } from './r10Edits';
 import type { StoredEdits } from './designStorage';
 
 /** The only `version` `scripts/design-patch.mjs` accepts. Bump both together, never one. */
@@ -30,10 +32,26 @@ export interface DesignPatch {
   readonly tokens: Partial<Record<SkinId, Record<string, string>>>;
   /** Per skin, ONLY the keys whose value differs from that skin's own row. Task 2. */
   readonly copy: Partial<Record<SkinId, Record<string, string>>>;
+  /**
+   * The long-form modules `copy()` does not reach, one entry per rewritten string.
+   *
+   * AN ARRAY RATHER THAN A MAP, and it is the one field here that is shaped differently from its
+   * siblings. An entry has to name the module, the file, the field path, the shipped string and
+   * the new one: `tokens` and `copy` find their row by its KEY, which the source writes out, and
+   * an R10 field has no key in the source at all. It is the third string in the second object of
+   * an array literal, so the applier finds it by matching the literal it is about to replace.
+   * src/design/r10Edits.ts carries the decision in full.
+   */
+  readonly r10: readonly R10PatchEntry[];
   /** Task 3. Empty here. */
   readonly assets: readonly unknown[];
-  /** Task 4. Empty here. */
-  readonly notes: readonly unknown[];
+  /**
+   * Element-attached notes: the structural changes this tool deliberately does not apply, plus
+   * anything else the owner typed against a part. `[part] text`, the shape Task 4 reserved and
+   * the same one the walk pages already produce. src/design/r10Edits.ts says why promoting,
+   * demoting and deleting a bullet arrive as instructions rather than as a rewritten array.
+   */
+  readonly notes: ReadonlyArray<{ readonly part: string; readonly text: string }>;
 }
 
 /**
@@ -78,16 +96,17 @@ export function buildPatch(edits: StoredEdits, now: number): DesignPatch {
     generatedAt: utcStamp(now),
     tokens,
     copy: buildCopyPatch(edits.copy),
+    r10: buildR10Patch(edits.r10),
     assets: [],
-    notes: [],
+    notes: buildNotes(edits.notes),
   };
 }
 
-/** How many declarations and copy rows the patch would rewrite. Shown beside the button. */
+/** How many declarations, rows and notes the patch carries. Shown beside the button. */
 export function patchSize(patch: DesignPatch): number {
   const tokens = Object.values(patch.tokens).reduce(
     (total, map) => total + Object.keys(map).length,
     0,
   );
-  return tokens + copyPatchSize(patch.copy);
+  return tokens + copyPatchSize(patch.copy) + patch.r10.length + patch.notes.length;
 }

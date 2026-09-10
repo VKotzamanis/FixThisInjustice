@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { INTRO_ACKNOWLEDGEMENT, INTRO_DISCLAIMER, INTRO_FIGURE, INTRO_SLIDES } from './introSlides';
+import {
+  INTRO_ACKNOWLEDGEMENT,
+  INTRO_DISCLAIMER,
+  INTRO_DISCLAIMER_HEADING,
+  INTRO_FIGURE,
+  INTRO_SLIDES,
+} from './introSlides';
+import { titleCaseOffenders } from './copyContract';
 
 const TEXT = INTRO_SLIDES.flatMap((slide) => [
   ...(slide.heading === null ? [] : [slide.heading]),
@@ -39,5 +46,30 @@ describe('the ascii figure', () => {
     const lines = INTRO_FIGURE.split('\n');
     expect(lines.length).toBeLessThanOrEqual(8);
     for (const line of lines) expect(line.length).toBeLessThanOrEqual(20);
+  });
+});
+
+/*
+ * R14 OVER THE SLIDE HEADINGS, AT MERGE.
+ *
+ * Design Mode now lets the owner retype these headings on his phone, and it flags a lower-case one
+ * AS HE TYPES (src/content/r10Text.ts applies R14 to a field whose path ends in `heading`). That
+ * live check is the useful one, and it is not a gate: it warns, and he can export anyway.
+ *
+ * `scripts/check-title-case.mjs` scans `DEFAULT_COPY` and nothing else, by design, so it would
+ * never see these. Rather than widen that script - which would change the "0 of N" line CI reads
+ * and mix a copy-table gate with a content module - the gate for these four headings lives here,
+ * next to the strings it governs, exactly as this file's R5, R6, R11 and URL assertions already do.
+ */
+describe('the slide headings are Title Case, which the panel checks live and this checks at merge', () => {
+  it('has no lower-case word in any heading', () => {
+    for (const slide of INTRO_SLIDES) {
+      if (slide.heading === null) continue;
+      expect({ heading: slide.heading, bad: titleCaseOffenders(slide.heading) }).toEqual({
+        heading: slide.heading,
+        bad: [],
+      });
+    }
+    expect(titleCaseOffenders(INTRO_DISCLAIMER_HEADING)).toEqual([]);
   });
 });

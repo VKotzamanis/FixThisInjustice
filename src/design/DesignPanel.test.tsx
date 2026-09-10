@@ -105,12 +105,21 @@ describe('the panel never writes to the store or to a profile', () => {
 
     expect([...store.keys()]).toEqual([DESIGN_STORAGE_KEY]);
     const written: unknown = JSON.parse(store.get(DESIGN_STORAGE_KEY) ?? '{}');
-    // `copy` is the Task 2 half of the same key: one namespace holds both, and it is empty here
-    // because this test edits a token and types nothing.
+    /*
+     * `copy` is the Task 2 half of the same key, and `r10` and `notes` are the long-form half:
+     * ONE namespace holds all four, and the three besides `tokens` are empty here because this
+     * test edits a token and types nothing.
+     *
+     * The exhaustive shape is the assertion. A field added to the stored body without being added
+     * here is a field nobody decided to store, and this key is the one thing Design Mode is
+     * permitted to write.
+     */
     expect(written).toEqual({
       version: 1,
       tokens: { clinical: { '--bg': '#123456' } },
       copy: {},
+      r10: {},
+      notes: [],
     });
   });
 });
