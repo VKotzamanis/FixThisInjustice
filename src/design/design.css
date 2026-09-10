@@ -245,3 +245,117 @@
   font-size: 12px;
   white-space: pre;
 }
+
+/*
+ * ------------------------------------------------------------------------------------------
+ * TASK 2: IN-PLACE COPY EDITING.
+ *
+ * These rules paint nodes in the APP, not in the panel, so they cannot use a token: the whole
+ * point of the tool is that a token may currently be set to something unreadable. Two devices
+ * carry the whole design and both are immune to that.
+ *
+ *   - `currentColor`. An editable node's outline is drawn in the node's own text colour, which
+ *     is by construction the colour that already has to be legible against that node's ground.
+ *     No skin, and no token edit, can make it disappear without also making the words disappear.
+ *   - THE BUBBLE IS WHITE ON BLACK, written as literals, exactly as the recovery strip above is
+ *     and for the same reason: it is the surface that REPORTS a broken colour pair, so it may not
+ *     be painted by the pair it is reporting on. 21:1 on every skin, whatever the edits say.
+ *
+ * NEVER `--accent` for type here. On limelight that is fuchsia on lime at 1.41:1, which is the
+ * exact defect this tool exists to find.
+ * ------------------------------------------------------------------------------------------
+ */
+
+/* An editable string: a dashed rule around it, in its own ink. */
+[data-copy-editable='true'] {
+  outline: 2px dashed currentColor;
+  outline-offset: 2px;
+  cursor: text;
+  /* A caret needs somewhere to sit even when the string is emptied to one character. */
+  min-width: 1ch;
+}
+
+/* Focus is a WIDER, SOLID rule, never "darker": a darker-on-dark state disappears. */
+[data-copy-editable='true']:focus {
+  outline-style: solid;
+  outline-width: 3px;
+}
+
+/* A key the layer attributed but cannot make editable: a composed sentence, or a row this skin
+ * does not declare. Dotted rather than dashed, so the two states are distinguishable by SHAPE
+ * and not by colour alone (WCAG 1.4.1). */
+[data-copy-key][data-copy-editable='false'] {
+  outline: 1px dotted currentColor;
+  outline-offset: 2px;
+}
+
+/* A string that breaks the contract. The wavy underline is a second, independent channel: the
+ * bubble names the rule, and this says WHICH words it was about without relying on colour. */
+[data-copy-invalid] {
+  text-decoration: underline wavy currentColor;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+/* The inline readout, beside the string it is about. Above the panel, which is 4001. */
+.dm-copy-bubble {
+  position: fixed;
+  z-index: 4002;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: calc(100vw - 16px);
+  padding: 8px 10px;
+  border: 2px solid #ffffff;
+  border-radius: 6px;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.dm-copy-bubble-key {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.dm-copy-ok {
+  color: #ffffff;
+}
+
+/*
+ * A failure carries the WORD and the rule id, never a colour alone. In the bubble both severities
+ * are white on black; the ADVISORY one says so in its own text (`R11: ...`), and the border on the
+ * left is a third channel rather than the only one.
+ */
+.dm-copy-bubble .dm-copy-violation,
+.dm-copy-bubble .dm-copy-refusal {
+  border-left: 3px solid #ffffff;
+  padding-left: 6px;
+  color: #ffffff;
+}
+
+.dm-copy-bubble .dm-copy-violation[data-severity='advisory'] {
+  border-left-style: dotted;
+}
+
+/* Inside the PANEL the same finding takes the skin's own invalid tokens, which is what the
+ * contrast verdict beside it already does. */
+.dm-copy-violation {
+  flex: 1 1 100%;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--field-invalid-bg);
+  color: var(--field-invalid-text);
+  font-size: 12px;
+}
+
+.dm-copy-violation[data-severity='advisory'] {
+  background: transparent;
+  color: var(--text-2);
+  outline: 1px dotted var(--line-2);
+}

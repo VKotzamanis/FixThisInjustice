@@ -105,7 +105,13 @@ describe('the panel never writes to the store or to a profile', () => {
 
     expect([...store.keys()]).toEqual([DESIGN_STORAGE_KEY]);
     const written: unknown = JSON.parse(store.get(DESIGN_STORAGE_KEY) ?? '{}');
-    expect(written).toEqual({ version: 1, tokens: { clinical: { '--bg': '#123456' } } });
+    // `copy` is the Task 2 half of the same key: one namespace holds both, and it is empty here
+    // because this test edits a token and types nothing.
+    expect(written).toEqual({
+      version: 1,
+      tokens: { clinical: { '--bg': '#123456' } },
+      copy: {},
+    });
   });
 });
 
