@@ -139,7 +139,7 @@ function typeIntake(kcal: string, proteinG: string): void {
 }
 
 function recordIntake(): void {
-  fireEvent.click(screen.getByRole('button', { name: 'Record intake' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Record Intake' }));
 }
 
 /** Today's stored entry for the fixture profile, or null when nothing is recorded. */
@@ -193,7 +193,7 @@ describe('TargetsView', () => {
   it('records a daily intake check-in and shows progress against the target', () => {
     render(<TargetsView />);
     typeIntake(String(LOGGED_KCAL), String(LOGGED_PROTEIN_G));
-    fireEvent.click(screen.getByRole('button', { name: 'Record intake' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Record Intake' }));
 
     expect(useAppStore.getState().intake['p1']).toEqual([
       { profileId: 'p1', date: '2026-09-01', kcal: LOGGED_KCAL, proteinG: LOGGED_PROTEIN_G },
@@ -211,7 +211,7 @@ describe('TargetsView', () => {
   it('refuses a daily total the schema would reject, and stores nothing', () => {
     render(<TargetsView />);
     typeIntake('999999', '150');
-    fireEvent.click(screen.getByRole('button', { name: 'Record intake' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Record Intake' }));
 
     expect(useAppStore.getState().intake['p1']).toEqual([]);
     expect(screen.getByTestId('intake-error')).toBeInTheDocument();
@@ -343,7 +343,7 @@ describe('TargetsView', () => {
     expect(screen.getByLabelText(/energy consumed today \(kcal\)/i)).toHaveValue(2000);
 
     typeIntake('2100', '140');
-    fireEvent.click(screen.getByRole('button', { name: 'Record intake' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Record Intake' }));
 
     const list = useAppStore.getState().intake['p1'] ?? [];
     expect(list.length).toBe(1); // one entry per civil date, replaced not appended
@@ -370,7 +370,7 @@ describe('TargetsView', () => {
     useAppStore.getState().setPlan('p1', BENCH_ONLY_PLAN, '2026-09-01');
     render(<TargetsView />);
     const line = screen.getByTestId('maintenance-only');
-    expect(line).toHaveTextContent('Maintenance only:');
+    expect(line).toHaveTextContent('Maintenance Only:');
     // Bench press trains chest directly and front-delt and triceps indirectly. Nothing else
     // is trained at all, so the rest must be named.
     expect(line).toHaveTextContent('quads');
@@ -412,7 +412,7 @@ describe('App wiring', () => {
   it('reaches the settings view and switches the display unit without changing storage', () => {
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
-    fireEvent.change(screen.getByLabelText('Display unit'), { target: { value: 'imperial' } });
+    fireEvent.change(screen.getByLabelText('Display Unit'), { target: { value: 'imperial' } });
 
     // Display only: the stored baseline is still the canonical kilogram figure.
     expect(useAppStore.getState().profiles['p1']?.units).toBe('imperial');

@@ -632,19 +632,19 @@ describe('the board table', () => {
 
 describe('copy()', () => {
   it('returns the clinical string when no overlay is given', () => {
-    expect(copy('button.startSession')).toBe('Start session');
+    expect(copy('button.startSession')).toBe('Start Session');
     expect(copy('status.rest')).toBe('REST');
   });
 
   it('takes an overlay table, which is what the FORMAT frames pass through', () => {
     expect(copy('button.startSession', LIMELIGHT_COPY)).toBe("LET'S GO BABES");
-    expect(copy('button.startSession', {})).toBe('Start session');
+    expect(copy('button.startSession', {})).toBe('Start Session');
   });
 });
 
 describe('copyFor()', () => {
   it('returns the clinical string for the clinical skin', () => {
-    expect(copyFor('clinical', 'button.startSession')).toBe('Start session');
+    expect(copyFor('clinical', 'button.startSession')).toBe('Start Session');
   });
 
   it('returns the override when the skin has one', () => {
@@ -697,7 +697,7 @@ describe('the converted frames render the clinical string they replaced', () => 
     expect(FORMAT.nextSession('Wed', '07:00', 'Push')).toBe('Next: Wed 07:00 Push.');
     expect(FORMAT.pausedSince('2026-09-07')).toBe('Plan paused since 2026-09-07.');
     expect(FORMAT.skipReason('illness')).toBe('Reason: illness');
-    expect(FORMAT.trainLabelToday('Legs')).toBe('Train Legs today');
+    expect(FORMAT.trainLabelToday('Legs')).toBe('Train Legs Today');
     expect(FORMAT.blockLabel(2)).toBe('Block 2');
     expect(FORMAT.blockSessions(4, 6)).toBe('sessions 4\u20136');
     expect(FORMAT.deloadNote(50)).toBe('volume \u2212' + '50 %, load unchanged');
@@ -831,7 +831,7 @@ describe('the converted frames render the clinical string they replaced', () => 
 
   it('never expands a replacement pattern found in a value', () => {
     // The `$&` guard the frames record: a plan label the user typed is inserted verbatim.
-    expect(FORMAT.trainLabelToday('$& Legs')).toBe('Train $& Legs today');
+    expect(FORMAT.trainLabelToday('$& Legs')).toBe('Train $& Legs Today');
     expect(FORMAT.skipReason('$`illness')).toBe('Reason: $`illness');
   });
 });
