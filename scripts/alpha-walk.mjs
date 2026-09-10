@@ -1144,8 +1144,14 @@ export const STAGES = [
         id: 'w5.09',
         title: 'Sounds and shortcuts',
         do: 'Look at the two switches under the skin picker.',
-        see: 'One switch for the sounds, one for the single-key shortcuts, and a note under the second.',
-        keys: ['label.settingsSounds', 'label.settingsHotkeys', 'advice.hotkeysOff'],
+        see: 'One switch for the sounds, one for the single-key shortcuts, a description under each, and a note under the second.',
+        keys: [
+          'label.settingsSounds',
+          'advice.soundsSilent',
+          'label.settingsHotkeys',
+          'advice.hotkeysKeyboardOnly',
+          'advice.hotkeysOff',
+        ],
         parts: ['settings.skin.sounds', 'settings.skin.hotkeys'],
       },
       {

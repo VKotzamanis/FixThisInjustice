@@ -137,10 +137,18 @@ export function SkinSettings(): JSX.Element {
         <input type="checkbox" checked={sounds} onChange={onSoundsChange} />
         {c('label.settingsSounds')}
       </label>
+      {/*
+        * Round 3, the owner: the switch names alone did not say what either one does. Neither
+        * line is skinned (see the comment beside the keys in copy.ts): both state a fact about
+        * the app's own rules, not its register. This one must never promise sound will play,
+        * because public/sfx/ ships empty (src/skins/sfx.ts).
+        */}
+      <p className="view-note">{c('advice.soundsSilent')}</p>
       <label className="view-inline">
         <input type="checkbox" checked={hotkeys} onChange={onHotkeysChange} />
         {c('label.settingsHotkeys')}
       </label>
+      <p className="view-note">{c('advice.hotkeysKeyboardOnly')}</p>
       <p className="view-note">{c('advice.hotkeysOff')}</p>
     </>
   );
