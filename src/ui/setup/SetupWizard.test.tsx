@@ -240,7 +240,7 @@ describe('step order', () => {
     render(<SetupWizard />);
     expect(screen.getByText(FORMAT.stepOf(1, STEPS.length, 'Units'))).toBeInTheDocument();
     next();
-    expect(screen.getByText(FORMAT.stepOf(2, STEPS.length, 'Time zone'))).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.stepOf(2, STEPS.length, 'Time Zone'))).toBeInTheDocument();
   });
 });
 
@@ -370,7 +370,7 @@ describe('review screen', () => {
     expect(summary).toContain(SPLIT_TEMPLATES[4].name);
     expect(summary).toContain('12 weeks');
     expect(summary).toContain('48 sessions');
-    expect(summary).toContain('Maintenance only');
+    expect(summary).toContain('Maintenance Only');
     for (const muscle of report.maintenance) expect(summary).toContain(muscle);
   });
 
@@ -414,7 +414,7 @@ describe('review screen', () => {
 describe('submission', () => {
   it('converts imperial entries exactly and writes profile, availability and plan', () => {
     fillImperialWizard();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId;
@@ -472,7 +472,7 @@ describe('submission', () => {
 
   it('writes a document that passes parseState', () => {
     fillImperialWizard();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
 
     const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
     const result = parseState(raw);
@@ -502,7 +502,7 @@ describe('submission', () => {
     next();
     next();
     next();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';
@@ -526,7 +526,7 @@ describe('body fat by tape measure', () => {
     // implicit before, through initialDraft's old `sex: 'male'` default.
     pickSex();
     setValue(/body mass \(kg\)/i, '95.3');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     setValue(/^neck \(cm\)$/i, '40');
     setValue(/abdomen ii \(cm\)/i, '95');
     const estimate = screen.getByTestId('bodyfat-estimate').textContent ?? '';
@@ -545,7 +545,7 @@ describe('body fat by tape measure', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     setValue(/^neck \(cm\)$/i, '32');
     setValue(/abdomen i \(cm\)/i, '75');
     expect(screen.getByTestId('bodyfat-estimate').textContent).toMatch(/hip/i);
@@ -819,7 +819,7 @@ describe('whole-number counts', () => {
 
   it('writes a document that passes parseState once the fractions are corrected', () => {
     fillImperialWizard();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
     const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
     const result = parseState(raw);
     expect(result.ok ? null : result.error).toBeNull();
@@ -838,7 +838,7 @@ describe('focus, announcement and message binding', () => {
     expect(first).toHaveAttribute('tabindex', '-1');
     next();
     const second = screen.getByRole('heading', { level: 2 });
-    expect(second).toHaveTextContent('Time zone');
+    expect(second).toHaveTextContent('Time Zone');
     expect(document.activeElement).toBe(second);
   });
 
@@ -848,7 +848,7 @@ describe('focus, announcement and message binding', () => {
     expect(status).toHaveAttribute('aria-live', 'polite');
     expect(status).toHaveTextContent(FORMAT.stepOf(1, STEPS.length, 'Units'));
     next();
-    expect(status).toHaveTextContent(FORMAT.stepOf(2, STEPS.length, 'Time zone'));
+    expect(status).toHaveTextContent(FORMAT.stepOf(2, STEPS.length, 'Time Zone'));
   });
 
   /** The message an aria-describedby id points at, or null when the id resolves to nothing. */
@@ -885,7 +885,7 @@ describe('focus, announcement and message binding', () => {
     // implicit before, through initialDraft's old `sex: 'male'` default.
     pickSex();
     setValue(/body mass \(kg\)/i, '95.3');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     setValue(/^neck \(cm\)$/i, '40');
     setValue(/abdomen ii \(cm\)/i, '182'); // Navy estimate 60.1 %, above the 60 % ceiling
     for (const label of [/^neck \(cm\)$/i, /abdomen ii \(cm\)/i]) {
@@ -1004,7 +1004,7 @@ describe('entry aids and idempotency', () => {
 
   it('creates one profile however many times Confirm is clicked', () => {
     fillImperialWizard();
-    const button = screen.getByRole('button', { name: 'Confirm and start' });
+    const button = screen.getByRole('button', { name: 'Confirm and Start' });
     fireEvent.click(button);
     fireEvent.click(button);
     fireEvent.click(button);
@@ -1022,7 +1022,7 @@ describe('entry aids and idempotency', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     for (const label of [/^neck \(cm\)$/i, /^abdomen i \(cm\)$/i, /^hip \(cm\)$/i]) {
       expect(screen.getByLabelText(label)).toBeInTheDocument();
     }
@@ -1056,7 +1056,7 @@ describe('guidance step in wizard', () => {
 
   it('writes profile with default readiness on confirm', () => {
     fillImperialWizard();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
 
     const state = useAppStore.getState();
     const profile = state.profiles[state.activeProfileId ?? ''];
@@ -1122,7 +1122,7 @@ function reachBodyFilledWithoutSex(): void {
 }
 
 describe('Brief B: the body-fat control reorder (C1.08.1 to C1.08.4, C1.08.7)', () => {
-  it('pre-selects Percentage, in the order Percentage, Body measurements, Not measured', () => {
+  it('pre-selects Percentage, in the order Percentage, Body Measurements, Not Measured', () => {
     reachBody();
     const radios = screen.getAllByRole('radio', { name: /percentage|body measurements|not measured/i });
     // r2.13(ii) put a citation superscript on the Percentage label, his own example
@@ -1130,8 +1130,8 @@ describe('Brief B: the body-fat control reorder (C1.08.1 to C1.08.4, C1.08.7)', 
     // and the pre-selection are what this test is about and both are unchanged.
     expect(radios.map((r) => r.getAttribute('aria-label') ?? r.closest('label')?.textContent)).toEqual([
       'Percentage2',
-      'Body measurements',
-      'Not measured',
+      'Body Measurements',
+      'Not Measured',
     ]);
     expect(screen.getByLabelText('Percentage2')).toBeChecked();
   });
@@ -1284,7 +1284,7 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
     vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
     expect(useAppStore.getState().setupDraft).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
     expect(useAppStore.getState().setupDraft).toBeNull();
 
     // A keystroke's debounce pending at the moment of the click must not resurrect it.
@@ -1394,7 +1394,7 @@ describe('Brief F: the equipment sliders', () => {
     setValue(/programme length/i, '12');
     next(); // guidance
     next(); // review
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
   }
 
   /** The confirmed profile, or fails the test if none was created. */
@@ -1758,7 +1758,7 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
 
   it('shows the tape option, refuses it, and ANNOUNCES the refusal rather than only greying it', () => {
     reachBodyWithoutSex();
-    const tape = screen.getByLabelText('Body measurements');
+    const tape = screen.getByLabelText('Body Measurements');
     // "Show the option, disabled, with one line saying why. Do not hide it." (decision A1)
     expect(tape).toBeInTheDocument();
     expect(tape).toHaveAttribute('aria-disabled', 'true');
@@ -1777,17 +1777,17 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     expect(screen.queryByLabelText(/^neck \(cm\)$/i)).toBeNull();
   });
 
-  it('refuses Not measured on the same terms, and repairs the mode if the sex is cleared', () => {
+  it('refuses Not Measured on the same terms, and repairs the mode if the sex is cleared', () => {
     reachBodyWithoutSex();
     pickSex();
-    fireEvent.click(screen.getByLabelText('Not measured'));
-    expect(screen.getByLabelText('Not measured')).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Not Measured'));
+    expect(screen.getByLabelText('Not Measured')).toBeChecked();
 
     // Clearing the sex must not leave the screen holding a mode the rules forbid, not even for
     // one frame: selectSex repairs it on the click that caused it.
     pickSex();
     expect(screen.getByLabelText('Percentage2')).toBeChecked();
-    expect(screen.getByLabelText('Not measured')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByLabelText('Not Measured')).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('keeps a typed percentage when the sex is cleared, rather than throwing the number away', () => {
@@ -1845,7 +1845,7 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     next();
     expect(screen.getByTestId('review-sex')).toHaveTextContent('Not Disclosed');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';
     expect(state.profiles[id]?.body.sex).toBe('nd');
@@ -1859,7 +1859,7 @@ describe('r2.14: the tape fields follow the selected sex', () => {
   it('asks a male user for neck and abdomen II, and for no hip girth', () => {
     reachBodyWithoutSex();
     pickSex('Male');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     expect(screen.getByLabelText(/^neck \(cm\)$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/abdomen ii \(cm\)/i)).toBeInTheDocument();
     // The male Navy equation reads no hip girth at all, so the field is absent rather than
@@ -1872,7 +1872,7 @@ describe('r2.14: the tape fields follow the selected sex', () => {
   it('asks a female user for the hip girth and swaps the abdomen site', () => {
     reachBodyWithoutSex();
     pickSex('Female');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     expect(screen.getByLabelText(/^hip \(cm\)$/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/abdomen i \(cm\)/i)).toBeInTheDocument();
     expect(screen.queryByLabelText(/abdomen ii \(cm\)/i)).toBeNull();
@@ -1881,7 +1881,7 @@ describe('r2.14: the tape fields follow the selected sex', () => {
   it('renames the tape disclosure to Disclaimer and carries his text, not the old girth list', () => {
     reachBodyWithoutSex();
     pickSex('Male');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     // A NEW key, not a rename of disclosure.why: that key has six call sites across the app
     // (plan ruling D2.14.3).
     expect(screen.getByText('Disclaimer')).toBeInTheDocument();
@@ -1895,7 +1895,7 @@ describe('r2.14: the tape fields follow the selected sex', () => {
   it('puts a Body Fat Estimate subheading over the tape section', () => {
     reachBodyWithoutSex();
     pickSex('Male');
-    fireEvent.click(screen.getByLabelText('Body measurements'));
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
     expect(
       screen.getByRole('heading', { name: /^body fat estimate/i }),
     ).toBeInTheDocument();
@@ -1924,7 +1924,7 @@ describe('r2.15: one reference list, one numbering scheme', () => {
     expect(markers).toEqual(['1', '2', '3', '4', '5', '6', '7']);
 
     // And the numbers the fields carry point into that list rather than into a second one.
-    expect(screen.getByText('Biological sex').textContent).toContain('1');
+    expect(screen.getByText('Biological Sex').textContent).toContain('1');
     expect(screen.getByLabelText('Percentage2')).toBeInTheDocument();
     expect(screen.getByText('Height').textContent).toContain('4');
   });
@@ -2677,7 +2677,7 @@ describe('Brief I Part 2: the body-fat target', () => {
     next(); // 5 goal
     next(); // 6 programme length
     next(); // 8 guidance
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
 
     const state = useAppStore.getState();
     const profile = Object.values(state.profiles)[0];

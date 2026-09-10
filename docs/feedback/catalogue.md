@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `0488587`. 101 parts across 14 screens, holding 573 of the table's 576 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `18c493e`. 101 parts across 14 screens, holding 573 of the table's 576 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -36,7 +36,7 @@ States: `running`, `finished`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.boot` | Starting up | warming up | same | yes |
+| `hero.boot` | Starting Up | warming up | same | yes |
 | `status.bootConsole` | FTI CONSOLE v3 | limelight console v3 | same | yes |
 | `status.bootOk` | OK | yes | same | yes |
 | `status.bootPlan` | Loading plan | cueing the plan | same | yes |
@@ -78,7 +78,7 @@ States: `scrolling`, `static-fallback`, `intro`, `setup`, `setup-named`, `setup-
 | `advice.targetsInstruction` | Review daily energy, protein, fluid and creatine targets. | same | same | yes |
 | `advice.todayInstruction` | Start, resume, or skip the session assigned today. | same | same | yes |
 | `advice.trainInstruction` | Log sets, rest between them, and finish the session. | same | same | yes |
-| `button.pauseUpdates` | Pause updates | same | same | yes |
+| `button.pauseUpdates` | Pause Updates | same | same | yes |
 | `disclosure.skin` | Choose Skin | same | same | yes |
 | `status.bannerIntro` | Hi, How Are Ya | same | same | yes |
 | `status.bannerSetup` | Welcome Aboard | same | same | yes |
@@ -95,8 +95,8 @@ States: `no-plan`, `idle`, `in-progress`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.programmeComplete` | Programme complete. | the whole run. done. | same | yes |
-| `label.planPosition` | Plan position | same | same | yes |
+| `hero.programmeComplete` | Programme Complete. | the whole run. done. | same | yes |
+| `label.planPosition` | Plan Position | same | same | yes |
 | `status.planComplete` | complete | wrapped | same | yes |
 | `status.sessionCursor` | Session {shown} of {total} | ep. {shown} of {total} | SERVICE {shown} OF {total} | yes |
 
@@ -180,9 +180,9 @@ States: `hidden`, `raised`
 | `banner.saveQuota.tag` | STORAGE FULL | same | same | yes |
 | `banner.saveUnavailable.body` | Storage is unavailable here. Export now. | same | same | yes |
 | `banner.saveUnavailable.tag` | NO STORAGE | same | same | yes |
-| `button.exportData` | Export data | same | same | yes |
-| `button.exportStoredCopy` | Export stored copy | same | same | yes |
-| `button.retrySave` | Retry save | try again | same | yes |
+| `button.exportData` | Export Data | same | same | yes |
+| `button.exportStoredCopy` | Export Stored Copy | same | same | yes |
+| `button.retrySave` | Retry Save | try again | same | yes |
 
 ### `shell.load-error`
 
@@ -196,7 +196,7 @@ States: `hidden`, `raised`
 | --- | --- | --- | --- | --- |
 | `banner.loadInvalid.body` | Stored data did not validate: {reason}. Nothing was overwritten. | same | same | yes |
 | `banner.loadInvalid.tag` | INVALID DATA | same | same | yes |
-| `button.exportStoredData` | Export stored data | same | same | yes |
+| `button.exportStoredData` | Export Stored Data | same | same | yes |
 
 ## setup (11)
 
@@ -226,7 +226,7 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.unitsOnce` | Makes logging stuff easier. Change at any point in Settings. | same | same | yes |
-| `label.units` | Units on the weight plates | same | same | yes |
+| `label.units` | Units on the Weight Plates | same | same | yes |
 | `label.unitsImperial` | Pounds (lb) | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `label.unitsMetric` | Kilograms (kg) | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `step.units` | Units | same | same | yes |
@@ -249,12 +249,12 @@ States: `default`, `searching`, `no-match`
 | `advice.timezonePick` | Select from the drop down menu: | same | same | yes |
 | `advice.timezoneReminders` | Turn them on and the gym bag stops staying at home. | same | same | yes |
 | `hero.timezoneWhy` | Why the Time Zone Matters | same | same | yes |
-| `label.timezone` | Time zone | same | same | yes |
+| `label.timezone` | Time Zone | same | same | yes |
 | `label.timezoneDayBoundary` | The Day Boundary | same | same | yes |
 | `label.timezoneReminders` | Reminders | same | same | yes |
 | `label.timezoneSearch` | Search Time Zones | same | same | yes |
 | `status.timezoneAlso` | {count} more | same | same | yes |
-| `step.timezone` | Time zone | same | same | yes |
+| `step.timezone` | Time Zone | same | same | yes |
 
 ### `setup.body`
 
@@ -284,21 +284,21 @@ States: `default`, `blocked`
 | `error.valueRequired` | Enter a number. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `error.wholeNumber` | Enter a whole number. | same | same | yes |
 | `label.bodyFat` | Body Fat | same | same | yes |
-| `label.bodyFatChart` | Estimate visually | same | same | yes |
+| `label.bodyFatChart` | Estimate Visually | same | same | yes |
 | `label.bodyFatEstimate` | Body Fat Estimate | same | same | yes |
 | `label.bodyFatKnown` | Percentage | same | same | yes |
-| `label.bodyFatNone` | Not measured | same | same | yes |
-| `label.bodyFatTape` | Body measurements | same | same | yes |
+| `label.bodyFatNone` | Not Measured | same | same | yes |
+| `label.bodyFatTape` | Body Measurements | same | same | yes |
 | `label.centimetres` | Centimetres | same | same | yes |
 | `label.feet` | Feet | same | same | yes |
 | `label.inches` | Inches | same | same | yes |
 | `label.metres` | Metres | same | same | yes |
-| `label.name` | How should I refer to you? | same | same | yes |
-| `label.sex` | Biological sex | same | same | yes |
+| `label.name` | How Should I Refer to You? | same | same | yes |
+| `label.sex` | Biological Sex | same | same | yes |
 | `label.sexFemale` | Female | same | same | yes |
 | `label.sexMale` | Male | same | same | yes |
 | `label.sexNotDisclosed` | Not Disclosed | same | same | yes |
-| `label.sexRationale` | Why sex is asked | same | same | yes |
+| `label.sexRationale` | Why Sex Is Asked | same | same | yes |
 | `quantity.abdomenI` | Abdomen I | same | same | yes |
 | `quantity.abdomenII` | Abdomen II | same | same | yes |
 | `quantity.age` | Age | same | same | yes |
@@ -394,7 +394,7 @@ States: `default`, `recomposition`, `no-bodyfat-estimate`
 | `advice.weighIn` | Optional. Compares body mass before and after. | same | same | yes |
 | `button.nextMonth` | Next Month | same | same | yes |
 | `button.previousMonth` | Previous Month | same | same | yes |
-| `label.creatine` | Creatine monohydrate | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `label.creatine` | Creatine Monohydrate | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `label.fatAxis` | Body Fat Goal | same | same | yes |
 | `label.feasibility` | Target Date Feasibility | same | same | yes |
 | `label.goal` | Goal | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
@@ -427,9 +427,9 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `error.pickOneDay` | Select at least one weekday. | same | same | yes |
-| `label.duration` | duration | same | same | yes |
-| `label.sessionsPerWeek` | Sessions per week | same | same | yes |
-| `label.startTime` | start time | same | same | yes |
+| `label.duration` | Duration | same | same | yes |
+| `label.sessionsPerWeek` | Sessions per Week | same | same | yes |
+| `label.startTime` | Start Time | same | same | yes |
 | `quantity.weeklySessionTarget` | Weekly session target | same | same | yes |
 | `weekday.friday` | Friday | same | same | yes |
 | `weekday.monday` | Monday | same | same | yes |
@@ -450,9 +450,9 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.deloadEveryFourth` | Every fourth week halves set counts, load unchanged. | same | same | yes |
-| `label.includeCardio` | One conditioning block per week | same | same | yes |
+| `label.includeCardio` | One Conditioning Block per Week | same | same | yes |
 | `quantity.programmeWeeks` | Programme length | same | same | yes |
-| `step.programme` | Programme length | same | same | yes |
+| `step.programme` | Programme Length | same | same | yes |
 
 ### `setup.guidance`
 
@@ -464,9 +464,9 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.guidance` | A few things worth knowing | same | same | yes |
+| `hero.guidance` | A Few Things Worth Knowing | same | same | yes |
 | `label.caution` | Caution | same | same | yes |
-| `step.guidance` | Getting started | same | same | yes |
+| `step.guidance` | Getting Started | same | same | yes |
 
 ### `setup.review`
 
@@ -479,18 +479,18 @@ States: `ready`, `blocked`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.beverageRange` | The reference intake is published per sex, so both figures are shown. | same | same | yes |
-| `button.confirmStart` | Confirm and start | lock it in | same | yes |
+| `button.confirmStart` | Confirm and Start | lock it in | same | yes |
 | `disclosure.why` | why? | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
-| `hero.dailyTargets` | Daily targets | the numbers | same | yes |
+| `hero.dailyTargets` | Daily Targets | the numbers | same | yes |
 | `hero.programme` | Programme | same | same | yes |
-| `hero.yourAnswers` | What you told me | same | same | yes |
+| `hero.yourAnswers` | What You Told Me | same | same | yes |
 | `label.creatineDose` | Creatine | same | same | yes |
 | `label.energy` | Energy | same | same | yes |
-| `label.expectedRate` | Expected rate | same | same | yes |
-| `label.fluid` | Fluid (beverages) | same | same | yes |
-| `label.inTargetRange` | In the target set range | same | same | yes |
-| `label.maintenanceOnly` | Maintenance only | same | same | yes |
-| `label.none` | none | same | same | yes |
+| `label.expectedRate` | Expected Rate | same | same | yes |
+| `label.fluid` | Fluid (Beverages) | same | same | yes |
+| `label.inTargetRange` | In the Target Set Range | same | same | yes |
+| `label.maintenanceOnly` | Maintenance Only | same | same | yes |
+| `label.none` | None | same | same | yes |
 | `label.protein` | Protein | same | same | yes |
 | `status.rateUnknown` | Not established by the evidence base | same | same | yes |
 | `status.targetsNotEstimated` | Targets are not estimated for these entries. Check the body screen. | same | same | yes |
@@ -521,7 +521,7 @@ States: `scrolling`, `reduced-motion`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.pauseTicker` | Pause ticker | pause the ticker | PAUSE TICKER | yes |
+| `button.pauseTicker` | Pause Ticker | pause the ticker | PAUSE TICKER | yes |
 | `status.weekDeltaNegative` | Weekly target missed. {completed} of {target} sessions completed. | {completed} of {target}. flop era. | {completed} OF {target} DEPARTED. SERVICE DISRUPTED. | yes |
 | `status.weekDeltaPositive` | Weekly target exceeded. {completed} of {target} sessions completed. | {completed} of {target}. no crumbs. | {completed} OF {target} DEPARTED. EXTRA SERVICE. | yes |
 | `status.weekDeltaZero` | Weekly target met. {completed} of {target} sessions completed. | {completed} of {target}. she delivered. | {completed} OF {target} DEPARTED. ALL ON TIME. | yes |
@@ -558,11 +558,11 @@ States: `no-plan`, `scheduled`, `in-progress`, `paused`, `skipped`, `completed`,
 | `advice.completeSetup` | Complete setup to generate a plan. | no setup, no plan. sort it out. | same | yes |
 | `advice.nextSession` | Next: {weekday} {startTime} {label}. | same | same | yes |
 | `advice.noSessionIn14Days` | No sessions in the next 14 days. | nothing booked for 14 days. dry spell. | same | yes |
-| `hero.noPlan` | No plan. | no plan. tragic. | same | yes |
-| `hero.noSessionToday` | No session today. | day off, apparently. | same | yes |
-| `hero.sessionCompleted` | Session completed. | ate. | DEPARTED | yes |
-| `hero.sessionInProgress` | Session in progress. | the show is running. | same | yes |
-| `hero.sessionSkipped` | Session skipped. | skipped. next. | same | yes |
+| `hero.noPlan` | No Plan. | no plan. tragic. | same | yes |
+| `hero.noSessionToday` | No Session Today. | day off, apparently. | same | yes |
+| `hero.sessionCompleted` | Session Completed. | ate. | DEPARTED | yes |
+| `hero.sessionInProgress` | Session in Progress. | the show is running. | same | yes |
+| `hero.sessionSkipped` | Session Skipped. | skipped. next. | same | yes |
 
 ### `today.session-card`
 
@@ -586,8 +586,8 @@ States: `enabled`, `in-progress`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.returnToSession` | Return to session | back on stage | same | yes |
-| `button.startSession` | Start session | LET'S GO BABES | BOARD | yes |
+| `button.returnToSession` | Return to Session | back on stage | same | yes |
+| `button.startSession` | Start Session | LET'S GO BABES | BOARD | yes |
 
 ### `today.mark-completed`
 
@@ -599,7 +599,7 @@ States: `offered`, `hidden`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.markCompleted` | Mark completed | mark it done | MARK DEPARTED | yes |
+| `button.markCompleted` | Mark Completed | mark it done | MARK DEPARTED | yes |
 
 ### `today.label-picker`
 
@@ -611,8 +611,8 @@ States: `closed`, `open`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.trainLabelToday` | Train {label} today | same | same | yes |
-| `button.trainSomethingElse` | Train something else | plot twist | REBOOK | yes |
+| `button.trainLabelToday` | Train {Label} Today | same | same | yes |
+| `button.trainSomethingElse` | Train Something Else | plot twist | REBOOK | yes |
 | `status.remainingThisWeek` | Remaining this week | still to come this week | same | yes |
 
 ### `today.week-stamp`
@@ -638,7 +638,7 @@ States: `hidden`, `raised`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.interventionBody` | The week is over. The next session stands. | the week flopped, not you. the next slot still stands. | same | yes |
-| `hero.weeklyTargetMissed` | Weekly target missed | the intervention | IRREGULAR OPERATIONS | yes |
+| `hero.weeklyTargetMissed` | Weekly Target Missed | the intervention | IRREGULAR OPERATIONS | yes |
 
 ### `today.time-capsule`
 
@@ -652,10 +652,10 @@ States: `none`, `sealed`, `openable`, `opened`
 | --- | --- | --- | --- | --- |
 | `advice.capsuleOpenDatePassed` | The open date has passed. | same | same | yes |
 | `advice.timeCapsule` | A note to your future self, sealed until a date. | a note to future you, sealed until a date you pick. | same | yes |
-| `button.openCapsule` | Open capsule | open it | same | yes |
-| `button.readCapsule` | Read capsule | read it | same | yes |
-| `button.writeCapsule` | Write capsule | write it | same | yes |
-| `hero.timeCapsule` | Time capsule | a note for later | same | yes |
+| `button.openCapsule` | Open Capsule | open it | same | yes |
+| `button.readCapsule` | Read Capsule | read it | same | yes |
+| `button.writeCapsule` | Write Capsule | write it | same | yes |
+| `hero.timeCapsule` | Time Capsule | a note for later | same | yes |
 | `status.capsuleSealed` | Opens {date}, in {days}. | same | same | yes |
 | `status.capsuleWritten` | Sealed {date}. | same | same | yes |
 
@@ -669,7 +669,7 @@ States: `planned`, `live`, `served`, `no-show`, `on-hiatus`, `off`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.nextFourteenDays` | Next 14 days | the next 14 dates | same | yes |
+| `hero.nextFourteenDays` | Next 14 Days | the next 14 dates | same | yes |
 | `status.dayCompleted` | Completed | served | DEPARTED | yes |
 | `status.dayInProgress` | In progress | live | BOARDING | yes |
 | `status.dayPaused` | Paused | on hiatus | HELD | yes |
@@ -688,8 +688,8 @@ States: `pausable`, `paused`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.pauseHoldsCursor` | Paused days consume no session. | a hiatus costs you nothing. | same | yes |
-| `button.pausePlan` | Pause plan | on hiatus | HOLD SCHEDULE | yes |
-| `button.resumePlan` | Resume plan | comeback tour | same | yes |
+| `button.pausePlan` | Pause Plan | on hiatus | HOLD SCHEDULE | yes |
+| `button.resumePlan` | Resume Plan | comeback tour | same | yes |
 | `status.planPaused` | Plan paused since {date}. | same | same | yes |
 
 ### `today.skip`
@@ -703,9 +703,9 @@ States: `closed`, `open`, `skipped`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `button.cancel` | Cancel | never mind | CANCEL | yes |
-| `button.confirmSkip` | Confirm skip | yes skip it | same | yes |
-| `button.skipToday` | Skip today | not today satan | CANCEL SERVICE | yes |
-| `label.skipReason` | Reason (optional) | the story (optional) | same | yes |
+| `button.confirmSkip` | Confirm Skip | yes skip it | same | yes |
+| `button.skipToday` | Skip Today | not today satan | CANCEL SERVICE | yes |
+| `label.skipReason` | Reason (Optional) | the story (optional) | same | yes |
 | `status.skipReason` | Reason: {reason} | same | same | yes |
 
 ## train (8)
@@ -736,11 +736,11 @@ States: `pending`, `active`, `done`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.addSet` | Add set | one more | same | yes |
-| `button.formCues` | Form cues | same | same | no: THE TECHNIQUE REFERENCE |
-| `button.formReference` | Form reference | same | same | no: THE TECHNIQUE REFERENCE |
-| `label.noSuggestedLoad` | No load suggested | unscripted | same | yes |
-| `label.suggestedLoad` | Suggested {load}: {kind} | same | same | yes |
+| `button.addSet` | Add Set | one more | same | yes |
+| `button.formCues` | Form Cues | same | same | no: THE TECHNIQUE REFERENCE |
+| `button.formReference` | Form Reference | same | same | no: THE TECHNIQUE REFERENCE |
+| `label.noSuggestedLoad` | No Load Suggested | unscripted | same | yes |
+| `label.suggestedLoad` | Suggested {Load}: {Kind} | same | same | yes |
 | `status.adviceAddLoad` | Add load | same | same | no: THE PROGRESSION ADVICE KINDS |
 | `status.adviceDeload` | Deload | same | same | no: THE PROGRESSION ADVICE KINDS |
 | `status.adviceExtendReps` | Extend repetitions | same | same | no: THE PROGRESSION ADVICE KINDS |
@@ -806,7 +806,7 @@ States: `closed`, `open`, `refused`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `button.addExercise` | Add exercise | same | same | no: THE CUSTOM-EXERCISE FORM |
+| `button.addExercise` | Add Exercise | same | same | no: THE CUSTOM-EXERCISE FORM |
 | `button.saveExercise` | Add | same | same | no: THE CUSTOM-EXERCISE FORM |
 | `label.equipment` | Equipment | the gear | same | yes |
 | `label.modality.barbell` | Barbell | same | same | no: THE EQUIPMENT NAMES |
@@ -829,7 +829,7 @@ States: `empty`, `logged`, `fluid-loss`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.fluidLoss` | Fluid loss above 2 %. Replace over the next hours. | same | same | no: BODY MASS AND FLUID LOSS |
-| `button.logBodyMass` | Log body mass | same | same | no: BODY MASS AND FLUID LOSS |
+| `button.logBodyMass` | Log Body Mass | same | same | no: BODY MASS AND FLUID LOSS |
 | `quantity.postSessionBodyMass` | Post-session body mass | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `quantity.preSessionBodyMass` | Pre-session body mass | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 | `why.fluidLoss` | Loss of {loss} % of pre-session mass, above the {threshold} % threshold (ACSM 2007). | same | same | yes |
@@ -845,7 +845,7 @@ States: `incomplete`, `complete`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `button.backToToday` | Back to Today | same | same | no: CASE ALONE, OR THE LIMELIGHT WORD ALREADY |
-| `button.finishSession` | Finish session | that's a wrap | CLOSE SERVICE | yes |
+| `button.finishSession` | Finish Session | that's a wrap | CLOSE SERVICE | yes |
 
 ## plan (4)
 
@@ -859,8 +859,8 @@ States: `training`, `deload`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `label.block` | Block {number} | same | same | yes |
-| `label.blockStrip` | Training blocks | same | same | no: THE TWO TRAINING TERMS |
+| `label.block` | Block {Number} | same | same | yes |
+| `label.blockStrip` | Training Blocks | same | same | no: THE TWO TRAINING TERMS |
 | `status.blockSessions` | sessions {from}–{to} | same | same | yes |
 | `status.deloadNote` | volume −{cutPct} %, load unchanged | same | same | yes |
 | `status.deloadTag` | DELOAD | same | same | no: THE TWO TRAINING TERMS |
@@ -877,7 +877,7 @@ States: `first-week`, `middle`, `last-week`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `label.week` | Week | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
-| `label.weekOfCount` | Week {shown} of {total} | same | same | yes |
+| `label.weekOfCount` | Week {Shown} of {Total} | same | same | yes |
 
 ### `plan.session-cards`
 
@@ -963,8 +963,8 @@ States: `closed`, `open`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `label.rmr` | Resting metabolic rate | same | same | yes |
-| `label.tdee` | Total daily energy expenditure | same | same | yes |
+| `label.rmr` | Resting Metabolic Rate | same | same | yes |
+| `label.tdee` | Total Daily Energy Expenditure | same | same | yes |
 | `why.beverageDefault` | IOM 2005 beverage share of the total-water adequate intake, DOI 10.17226/10925. The adequate intake for total water is 3.7 L per day for men and 2.7 L for women, of which beverages supply 3.0 L and 2.2 L. Water in food supplies the rest and is not counted here, because an app cannot measure it. | same | same | yes |
 
 ### `targets.intake-check-in`
@@ -978,10 +978,10 @@ States: `empty`, `partial`, `met`, `error`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.intakeRejected` | Daily total outside the accepted range. | same | same | yes |
-| `button.recordIntake` | Record intake | same | same | yes |
-| `hero.intakeCheckIn` | Intake check-in | same | same | yes |
-| `label.energyProgress` | Energy against target | same | same | yes |
-| `label.proteinProgress` | Protein against the lower bound | same | same | yes |
+| `button.recordIntake` | Record Intake | same | same | yes |
+| `hero.intakeCheckIn` | Intake Check-in | same | same | yes |
+| `label.energyProgress` | Energy Against Target | same | same | yes |
+| `label.proteinProgress` | Protein Against the Lower Bound | same | same | yes |
 | `quantity.energyIntake` | Energy consumed today | same | same | yes |
 | `quantity.proteinIntake` | Protein consumed today | same | same | yes |
 
@@ -1010,7 +1010,7 @@ States: `empty`, `plotted`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.noBodyMassLogged` | No body mass logged. | same | same | yes |
-| `hero.bodyMass` | Body mass | same | same | yes |
+| `hero.bodyMass` | Body Mass | same | same | yes |
 
 ### `log.compliance-grid`
 
@@ -1024,7 +1024,7 @@ States: `empty`, `plotted`
 | --- | --- | --- | --- | --- |
 | `advice.noWeeksYet` | No weeks to show. | same | same | yes |
 | `hero.compliance` | Compliance | the attendance | same | yes |
-| `label.complianceGrid` | Session compliance by week | same | same | yes |
+| `label.complianceGrid` | Session Compliance by Week | same | same | yes |
 | `status.complianceWeek` | Week of {monday}: {completed} of {target} completed | same | same | yes |
 | `status.markCompleted` | Completed | same | same | yes |
 | `status.markMissed` | Missed | same | same | yes |
@@ -1042,7 +1042,7 @@ States: `empty`, `plotted`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.repsPerWeek` | Best reps per week | same | same | yes |
+| `hero.repsPerWeek` | Best Reps per Week | same | same | yes |
 | `status.amrapBest` | {name}: best {reps} reps in one set | same | same | yes |
 
 ### `log.records`
@@ -1056,7 +1056,7 @@ States: `empty`, `listed`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.noSetsLogged` | No sets logged. | no sets yet. start something. | same | yes |
-| `hero.personalRecords` | Personal records | the highlight reel | same | yes |
+| `hero.personalRecords` | Personal Records | the highlight reel | same | yes |
 | `status.estimated1RM` | {load} estimated 1RM | same | same | yes |
 | `status.noEstimated1RM` | No estimated 1RM | same | same | yes |
 
@@ -1161,8 +1161,8 @@ States: `default`, `invalid`
 | `advice.storedUnitsUnchanged` | Stored values never change. Mass is held in kg. | same | same | no: RULE 4, a control whose misreading costs data |
 | `error.outsideAccepted` | Outside the accepted range. | same | same | no: THE NUMBER-ENTRY ERRORS |
 | `hero.profile` | Profile | who you are | same | yes |
-| `label.activeProfile` | Active profile | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `label.displayUnit` | Display unit | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `label.activeProfile` | Active Profile | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
+| `label.displayUnit` | Display Unit | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 
 ### `settings.equipment-steps`
 
@@ -1174,7 +1174,7 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.equipmentSteps` | Equipment steps | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `hero.equipmentSteps` | Equipment Steps | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
 
 ### `settings.hydration`
 
@@ -1203,7 +1203,7 @@ States: `not-configured`, `unsupported`, `needs-install`, `denied`, `off`, `need
 | `advice.reminderSubscribeFailed` | The browser refused to register this device. | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
 | `advice.reminderSyncFailed` | The schedule did not reach the server. | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
 | `hero.reminders` | Reminders | call times | same | yes |
-| `label.remindersEnable` | Enable reminders | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
+| `label.remindersEnable` | Enable Reminders | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
 | `status.remindersActive` | Reminders are on. Schedule last sent at {time}. | same | same | yes |
 | `status.remindersDenied` | Notifications are blocked. Allow them in browser site settings. | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
 | `status.remindersNeedInstall` | Add this app to the Home Screen first. | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
@@ -1223,9 +1223,9 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `label.reminderDayOfTime` | Day-of reminder time | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
-| `label.reminderLead` | {minutes} minutes before | same | same | yes |
-| `label.reminderLeadTimes` | Before each session | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
+| `label.reminderDayOfTime` | Day-of Reminder Time | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
+| `label.reminderLead` | {Minutes} Minutes Before | same | same | yes |
+| `label.reminderLeadTimes` | Before Each Session | same | same | no: THE REMINDER STATE AND ITS CONTROLS |
 
 ### `settings.motivation-clip`
 
@@ -1241,10 +1241,10 @@ States: `none`, `stored`, `too-large`, `clear-failed`
 | `advice.motivationClipLimit` | The limit is {bytes} bytes. MiB means {mib} bytes. A clip of 25 MiB or less plays back reliably on a phone. | same | same | yes |
 | `advice.motivationClipStorage` | Stored on this device, never uploaded. | same | same | yes |
 | `button.motivationClipPreview` | Preview | sneak peek | same | yes |
-| `button.motivationClipRemove` | Remove clip | same | same | yes |
-| `hero.motivationVideo` | Motivation video | same | same | yes |
-| `label.motivationClipChoose` | Choose a clip | same | same | yes |
-| `label.motivationClipReplace` | Replace the clip | same | same | yes |
+| `button.motivationClipRemove` | Remove Clip | same | same | yes |
+| `hero.motivationVideo` | Motivation Video | same | same | yes |
+| `label.motivationClipChoose` | Choose a Clip | same | same | yes |
+| `label.motivationClipReplace` | Replace the Clip | same | same | yes |
 | `status.motivationClipNone` | No clip chosen. The bundled clip plays. | same | same | yes |
 | `status.motivationClipNotStored` | The clip was not stored. | same | same | yes |
 | `status.motivationClipNotVideo` | That file is not a video. | same | same | yes |
@@ -1262,7 +1262,7 @@ States: `clinical`, `limelight`, `board`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.skinChanges` | A skin changes wording and colour, never numbers or units. | same | same | no: THE TWO SENTENCES ABOUT THE APP'S OWN RULES |
-| `hero.skin` | Look and sound | the look and the noise | same | yes |
+| `hero.skin` | Look and Sound | the look and the noise | same | yes |
 | `label.settingsSkin` | Skin | the look | DISPLAY | yes |
 | `option.skinBoard` | Board | same | same | no: THE THREE SKIN NAMES |
 | `option.skinClinical` | Clinical | same | same | no: THE THREE SKIN NAMES |
@@ -1291,7 +1291,7 @@ States: `on`, `off`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.hotkeysOff` | Off leaves Escape and the modifier shortcuts bound. | same | same | no: THE TWO SENTENCES ABOUT THE APP'S OWN RULES |
-| `label.settingsHotkeys` | Keyboard shortcuts | the shortcuts | same | yes |
+| `label.settingsHotkeys` | Keyboard Shortcuts | the shortcuts | same | yes |
 
 ### `settings.data.export`
 
@@ -1307,10 +1307,10 @@ States: `ready`, `no-profile`
 | `advice.exportUnavailable` | The data could not be read. Nothing downloaded. | same | same | yes |
 | `advice.jsonIsBackup` | The JSON file is the complete backup. | same | same | yes |
 | `advice.targetsNotEstimatedForProfile` | Targets are not estimated for this profile. | same | same | yes |
-| `button.downloadCalendar` | Download calendar .ics | same | same | yes |
+| `button.downloadCalendar` | Download Calendar .Ics | same | same | yes |
 | `button.downloadJson` | Download JSON | same | same | yes |
-| `button.downloadSummary` | Download summary .txt | same | same | yes |
-| `hero.exportImport` | Export and import | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.downloadSummary` | Download Summary .Txt | same | same | yes |
+| `hero.exportImport` | Export and Import | same | same | no: RULE 4, a control whose misreading costs data |
 | `label.downloads` | Downloads | same | same | yes |
 
 ### `settings.data.import`
@@ -1327,13 +1327,13 @@ States: `idle`, `invalid`, `done`
 | `advice.importInvalidNoChange` | An invalid file changes nothing. | same | same | yes |
 | `advice.importParseFailed` | That text is not JSON. Nothing changed. | same | same | yes |
 | `advice.importReplaces` | Importing replaces everything on this device. | same | same | yes |
-| `button.checkImport` | Check import | same | same | yes |
-| `button.downloadBackup` | Download backup | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.replaceData` | Replace data | same | same | yes |
-| `label.chooseExportFile` | Choose an export file | same | same | yes |
-| `label.confirmReplace` | Confirm replace | same | same | yes |
+| `button.checkImport` | Check Import | same | same | yes |
+| `button.downloadBackup` | Download Backup | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.replaceData` | Replace Data | same | same | yes |
+| `label.chooseExportFile` | Choose an Export File | same | same | yes |
+| `label.confirmReplace` | Confirm Replace | same | same | yes |
 | `label.importSection` | Import | same | same | yes |
-| `label.pasteExport` | Paste a previous export | same | same | yes |
+| `label.pasteExport` | Paste a Previous Export | same | same | yes |
 | `status.importOk` | Imported. The state was replaced. | same | same | yes |
 
 ### `settings.data.on-device`
@@ -1346,7 +1346,7 @@ States: `default`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `hero.dataOnDevice` | Data on this device | same | same | no: RULE 4, a control whose misreading costs data |
+| `hero.dataOnDevice` | Data on This Device | same | same | no: RULE 4, a control whose misreading costs data |
 
 ### `settings.data.wipe`
 
@@ -1359,9 +1359,9 @@ States: `idle`, `confirming`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.wipeRemoves` | Removes every profile, plan, session, set and note on this device. | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.wipeAll` | Wipe all data | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.wipeConfirm` | Delete everything | same | same | no: RULE 4, a control whose misreading costs data |
-| `label.confirmWipe` | Confirm wipe | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.wipeAll` | Wipe All Data | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.wipeConfirm` | Delete Everything | same | same | no: RULE 4, a control whose misreading costs data |
+| `label.confirmWipe` | Confirm Wipe | same | same | no: RULE 4, a control whose misreading costs data |
 
 ### `settings.data.legacy-delete`
 
@@ -1375,11 +1375,11 @@ States: `absent`, `present`, `confirming`
 | --- | --- | --- | --- | --- |
 | `advice.deleteLegacy` | Removes the old app data. Anything not imported is lost. | same | same | no: RULE 4, a control whose misreading costs data |
 | `advice.legacyOldDataKept` | The old app data was kept. | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.deleteLegacy` | Delete legacy data | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.downloadLegacyJson` | Download legacy JSON | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.legacyDeleteOld` | Delete old data | same | same | no: RULE 4, a control whose misreading costs data |
-| `button.legacyReopen` | Import old data | same | same | no: RULE 4, a control whose misreading costs data |
-| `label.confirmDeleteLegacy` | Confirm legacy delete | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.deleteLegacy` | Delete Legacy Data | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.downloadLegacyJson` | Download Legacy JSON | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.legacyDeleteOld` | Delete Old Data | same | same | no: RULE 4, a control whose misreading costs data |
+| `button.legacyReopen` | Import Old Data | same | same | no: RULE 4, a control whose misreading costs data |
+| `label.confirmDeleteLegacy` | Confirm Legacy Delete | same | same | no: RULE 4, a control whose misreading costs data |
 
 ## install (3)
 
@@ -1394,7 +1394,7 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.installOnlyInstalledApp` | Only an installed app receives notifications. | same | same | no: THE INSTALL GUIDE |
-| `hero.installHomeScreen` | Install the app | same | same | no: THE INSTALL GUIDE |
+| `hero.installHomeScreen` | Install the App | same | same | no: THE INSTALL GUIDE |
 
 ### `install.ios`
 
@@ -1407,7 +1407,7 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.installIosVersion` | Requires iOS 18.4 or later. | same | same | no: THE INSTALL GUIDE |
-| `label.installIos` | iPhone and iPad | same | same | no: THE INSTALL GUIDE |
+| `label.installIos` | IPhone and IPad | same | same | no: THE INSTALL GUIDE |
 | `status.installIosAdd` | Scroll down, tap Add to Home Screen, then tap Add. | same | same | no: THE INSTALL GUIDE |
 | `status.installIosOpen` | Open the app from the Home Screen icon. | same | same | no: THE INSTALL GUIDE |
 | `status.installIosSafari` | Open this page in Safari. | same | same | no: THE INSTALL GUIDE |
@@ -1445,7 +1445,7 @@ States: `muted`, `unmuted`, `no-clip`
 | `advice.tapToMute` | Tap the video to mute. | same | same | yes |
 | `advice.weekMissed` | Week of {monday}: {completed} of {target} sessions completed. | same | same | yes |
 | `advice.weekMissedNone` | Week of {monday}: no sessions completed. | same | same | yes |
-| `hero.motivationPreview` | Video preview | same | same | yes |
+| `hero.motivationPreview` | Video Preview | same | same | yes |
 
 ### `popup.phase-transition`
 
@@ -1457,10 +1457,10 @@ States: `entering`, `shown`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
-| `label.blockMassMoved` | mass moved | same | same | yes |
-| `label.blockSessionsCompleted` | sessions completed | same | same | yes |
-| `label.blockSetsLogged` | sets logged | same | same | yes |
-| `label.blockSpecimens` | specimens collected | same | same | yes |
+| `label.blockMassMoved` | Mass Moved | same | same | yes |
+| `label.blockSessionsCompleted` | Sessions Completed | same | same | yes |
+| `label.blockSetsLogged` | Sets Logged | same | same | yes |
+| `label.blockSpecimens` | Specimens Collected | same | same | yes |
 | `status.blockTransition` | Block {from} to Block {to} | same | same | yes |
 
 ### `popup.spotlight`
@@ -1476,8 +1476,8 @@ States: `open`, `no-results`
 | `advice.noSpotlightMatch` | No matches. | nothing. | same | yes |
 | `hero.spotlight` | Search | find it | same | yes |
 | `label.spotlightExercise` | Exercise | same | same | yes |
-| `label.spotlightQuery` | Search views and exercises | same | same | yes |
-| `label.spotlightResults` | Search results | same | same | yes |
+| `label.spotlightQuery` | Search Views and Exercises | same | same | yes |
+| `label.spotlightResults` | Search Results | same | same | yes |
 | `label.spotlightView` | View | same | same | yes |
 
 ### `popup.konami`
@@ -1506,9 +1506,9 @@ States: `empty`, `too-short`, `too-long`, `date-out-of-range`
 | `advice.capsuleDefaultMoved` | The suggested date moved into the allowed range. | same | same | yes |
 | `advice.capsuleNoteLong` | Longer than {count} characters. | same | same | yes |
 | `advice.capsuleNoteShort` | Write at least {count} characters. | same | same | yes |
-| `button.sealCapsule` | Seal capsule | seal it | same | yes |
-| `label.capsuleNote` | Note to your future self | same | same | yes |
-| `label.capsuleOpensOn` | Opens on | same | same | yes |
+| `button.sealCapsule` | Seal Capsule | seal it | same | yes |
+| `label.capsuleNote` | Note to Your Future Self | same | same | yes |
+| `label.capsuleOpensOn` | Opens On | same | same | yes |
 
 ### `popup.capsule-read`
 
@@ -1556,16 +1556,16 @@ States: `explain`
 | `advice.legacyFound` | The old app has data on this device. | same | same | yes |
 | `advice.legacyNothingDeleted` | Nothing is deleted until you ask. | same | same | yes |
 | `advice.legacyUnitRequired` | Choose a unit. A wrong unit rescales every load. | same | same | yes |
-| `button.legacyDismiss` | Start clean | same | same | yes |
-| `button.legacyPreview` | Preview import | same | same | yes |
+| `button.legacyDismiss` | Start Clean | same | same | yes |
+| `button.legacyPreview` | Preview Import | same | same | yes |
 | `disclosure.legacyBodyMassEvidence` | The old body-mass field was labelled lb, refused values outside the pound range, and its text export reported pounds. The load field carried no such evidence, so that unit is asked for. | same | same | yes |
 | `disclosure.legacyTransfers` | Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, collected specimen cards, and a sealed time capsule. Anything the import cannot read is listed with its reason first. | same | same | yes |
 | `disclosure.whatTransfers` | What transfers | same | same | yes |
-| `hero.legacyImport` | Import from the old app | same | same | yes |
-| `label.legacyBodyMassUnit` | Body mass unit in the old app | same | same | yes |
-| `label.legacyLoadUnit` | Load unit in the old app | same | same | yes |
-| `label.legacyMassUnitKg` | Kilograms (kg), body mass | same | same | yes |
-| `label.legacyMassUnitLb` | Pounds (lb), body mass | same | same | yes |
+| `hero.legacyImport` | Import from the Old App | same | same | yes |
+| `label.legacyBodyMassUnit` | Body Mass Unit in the Old App | same | same | yes |
+| `label.legacyLoadUnit` | Load Unit in the Old App | same | same | yes |
+| `label.legacyMassUnitKg` | Kilograms (kg), Body Mass | same | same | yes |
+| `label.legacyMassUnitLb` | Pounds (lb), Body Mass | same | same | yes |
 | `label.legacyUnitKg` | Kilograms (kg) | same | same | yes |
 | `label.legacyUnitLb` | Pounds (lb) | same | same | yes |
 
@@ -1581,10 +1581,10 @@ States: `preview`, `refused`
 | --- | --- | --- | --- | --- |
 | `advice.legacyApplyFailed` | The import was refused. Nothing changed. | same | same | yes |
 | `advice.legacyRefused` | The old data could not be read. Nothing changed. | same | same | yes |
-| `button.legacyApply` | Keep import | same | same | yes |
+| `button.legacyApply` | Keep Import | same | same | yes |
 | `disclosure.whatWasNotMatched` | Days with no session match | same | same | yes |
 | `disclosure.whatWasRefused` | What was refused, and why | same | same | yes |
-| `hero.legacyPreview` | What the import writes | same | same | yes |
+| `hero.legacyPreview` | What the Import Writes | same | same | yes |
 
 ### `popup.migration.applied`
 
@@ -1600,8 +1600,8 @@ States: `applied`
 | `advice.legacyStoreUnconfirmed` | The write was not confirmed. The old data stays. | same | same | yes |
 | `advice.legacyStored` | The import is stored. The old data is untouched. | same | same | yes |
 | `button.legacyClose` | Close | same | same | yes |
-| `button.legacyKeepOld` | Keep old data | same | same | yes |
-| `hero.legacyDone` | Import complete | same | same | yes |
+| `button.legacyKeepOld` | Keep Old Data | same | same | yes |
+| `hero.legacyDone` | Import Complete | same | same | yes |
 
 ### `popup.form-cues`
 
@@ -1615,10 +1615,10 @@ States: `open`
 | --- | --- | --- | --- | --- |
 | `advice.noFormCues` | No form cues for this exercise. | same | same | yes |
 | `label.cueExecution` | Execution | same | same | yes |
-| `label.cueMistakes` | Common mistakes | same | same | yes |
+| `label.cueMistakes` | Common Mistakes | same | same | yes |
 | `label.cueSetup` | Setup | same | same | yes |
 | `label.cueTip` | Tip | same | same | yes |
-| `label.formCues` | Form cues and common mistakes | same | same | yes |
+| `label.formCues` | Form Cues and Common Mistakes | same | same | yes |
 
 ### `popup.video`
 
@@ -1631,10 +1631,10 @@ States: `open`, `failed`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.noClipRecorded` | No clip for this exercise. | same | same | yes |
-| `button.nextInstance` | Next instance | same | same | yes |
-| `button.openClip` | Open clip | same | same | yes |
-| `button.searchInstance` | Search instance | same | same | yes |
-| `label.formReference` | Form reference | same | same | yes |
+| `button.nextInstance` | Next Instance | same | same | yes |
+| `button.openClip` | Open Clip | same | same | yes |
+| `button.searchInstance` | Search Instance | same | same | yes |
+| `label.formReference` | Form Reference | same | same | yes |
 | `label.videoSearch` | Search | same | same | yes |
 | `status.videoInstance` | instance {shown} of {total} | same | same | yes |
 

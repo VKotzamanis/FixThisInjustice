@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "0488587",
+  "generatedFrom": "18c493e",
   "counts": {
     "screens": 14,
     "parts": 101,
@@ -72,7 +72,7 @@
       "keys": [
         {
           "key": "hero.boot",
-          "default": "Starting up",
+          "default": "Starting Up",
           "limelight": "warming up",
           "board": "same",
           "isControl": false,
@@ -286,7 +286,7 @@
         },
         {
           "key": "button.pauseUpdates",
-          "default": "Pause updates",
+          "default": "Pause Updates",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -358,7 +358,7 @@
       "keys": [
         {
           "key": "hero.programmeComplete",
-          "default": "Programme complete.",
+          "default": "Programme Complete.",
           "limelight": "the whole run. done.",
           "board": "same",
           "isControl": false,
@@ -367,7 +367,7 @@
         },
         {
           "key": "label.planPosition",
-          "default": "Plan position",
+          "default": "Plan Position",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -711,7 +711,7 @@
         },
         {
           "key": "button.exportData",
-          "default": "Export data",
+          "default": "Export Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -720,7 +720,7 @@
         },
         {
           "key": "button.exportStoredCopy",
-          "default": "Export stored copy",
+          "default": "Export Stored Copy",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -729,7 +729,7 @@
         },
         {
           "key": "button.retrySave",
-          "default": "Retry save",
+          "default": "Retry Save",
           "limelight": "try again",
           "board": "same",
           "isControl": true,
@@ -773,7 +773,7 @@
         },
         {
           "key": "button.exportStoredData",
-          "default": "Export stored data",
+          "default": "Export Stored Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -876,7 +876,7 @@
         },
         {
           "key": "label.units",
-          "default": "Units on the weight plates",
+          "default": "Units on the Weight Plates",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1003,7 +1003,7 @@
         },
         {
           "key": "label.timezone",
-          "default": "Time zone",
+          "default": "Time Zone",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1048,7 +1048,7 @@
         },
         {
           "key": "step.timezone",
-          "default": "Time zone",
+          "default": "Time Zone",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1236,7 +1236,7 @@
         },
         {
           "key": "label.bodyFatChart",
-          "default": "Estimate visually",
+          "default": "Estimate Visually",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1263,7 +1263,7 @@
         },
         {
           "key": "label.bodyFatNone",
-          "default": "Not measured",
+          "default": "Not Measured",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1272,7 +1272,7 @@
         },
         {
           "key": "label.bodyFatTape",
-          "default": "Body measurements",
+          "default": "Body Measurements",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1317,7 +1317,7 @@
         },
         {
           "key": "label.name",
-          "default": "How should I refer to you?",
+          "default": "How Should I Refer to You?",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1326,7 +1326,7 @@
         },
         {
           "key": "label.sex",
-          "default": "Biological sex",
+          "default": "Biological Sex",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1362,7 +1362,7 @@
         },
         {
           "key": "label.sexRationale",
-          "default": "Why sex is asked",
+          "default": "Why Sex Is Asked",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2065,7 +2065,7 @@
         },
         {
           "key": "label.creatine",
-          "default": "Creatine monohydrate",
+          "default": "Creatine Monohydrate",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2279,7 +2279,7 @@
         },
         {
           "key": "label.duration",
-          "default": "duration",
+          "default": "Duration",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2288,7 +2288,7 @@
         },
         {
           "key": "label.sessionsPerWeek",
-          "default": "Sessions per week",
+          "default": "Sessions per Week",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2297,7 +2297,7 @@
         },
         {
           "key": "label.startTime",
-          "default": "start time",
+          "default": "Start Time",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2403,7 +2403,7 @@
         },
         {
           "key": "label.includeCardio",
-          "default": "One conditioning block per week",
+          "default": "One Conditioning Block per Week",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2421,7 +2421,7 @@
         },
         {
           "key": "step.programme",
-          "default": "Programme length",
+          "default": "Programme Length",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2447,7 +2447,7 @@
       "keys": [
         {
           "key": "hero.guidance",
-          "default": "A few things worth knowing",
+          "default": "A Few Things Worth Knowing",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2465,7 +2465,7 @@
         },
         {
           "key": "step.guidance",
-          "default": "Getting started",
+          "default": "Getting Started",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2500,7 +2500,7 @@
         },
         {
           "key": "button.confirmStart",
-          "default": "Confirm and start",
+          "default": "Confirm and Start",
           "limelight": "lock it in",
           "board": "same",
           "isControl": true,
@@ -2518,7 +2518,7 @@
         },
         {
           "key": "hero.dailyTargets",
-          "default": "Daily targets",
+          "default": "Daily Targets",
           "limelight": "the numbers",
           "board": "same",
           "isControl": false,
@@ -2536,7 +2536,7 @@
         },
         {
           "key": "hero.yourAnswers",
-          "default": "What you told me",
+          "default": "What You Told Me",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2563,7 +2563,7 @@
         },
         {
           "key": "label.expectedRate",
-          "default": "Expected rate",
+          "default": "Expected Rate",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2572,7 +2572,7 @@
         },
         {
           "key": "label.fluid",
-          "default": "Fluid (beverages)",
+          "default": "Fluid (Beverages)",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2581,7 +2581,7 @@
         },
         {
           "key": "label.inTargetRange",
-          "default": "In the target set range",
+          "default": "In the Target Set Range",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2590,7 +2590,7 @@
         },
         {
           "key": "label.maintenanceOnly",
-          "default": "Maintenance only",
+          "default": "Maintenance Only",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2599,7 +2599,7 @@
         },
         {
           "key": "label.none",
-          "default": "none",
+          "default": "None",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2711,7 +2711,7 @@
       "keys": [
         {
           "key": "button.pauseTicker",
-          "default": "Pause ticker",
+          "default": "Pause Ticker",
           "limelight": "pause the ticker",
           "board": "PAUSE TICKER",
           "isControl": true,
@@ -2886,7 +2886,7 @@
         },
         {
           "key": "hero.noPlan",
-          "default": "No plan.",
+          "default": "No Plan.",
           "limelight": "no plan. tragic.",
           "board": "same",
           "isControl": false,
@@ -2895,7 +2895,7 @@
         },
         {
           "key": "hero.noSessionToday",
-          "default": "No session today.",
+          "default": "No Session Today.",
           "limelight": "day off, apparently.",
           "board": "same",
           "isControl": false,
@@ -2904,7 +2904,7 @@
         },
         {
           "key": "hero.sessionCompleted",
-          "default": "Session completed.",
+          "default": "Session Completed.",
           "limelight": "ate.",
           "board": "DEPARTED",
           "isControl": false,
@@ -2913,7 +2913,7 @@
         },
         {
           "key": "hero.sessionInProgress",
-          "default": "Session in progress.",
+          "default": "Session in Progress.",
           "limelight": "the show is running.",
           "board": "same",
           "isControl": false,
@@ -2922,7 +2922,7 @@
         },
         {
           "key": "hero.sessionSkipped",
-          "default": "Session skipped.",
+          "default": "Session Skipped.",
           "limelight": "skipped. next.",
           "board": "same",
           "isControl": false,
@@ -2974,7 +2974,7 @@
       "keys": [
         {
           "key": "button.returnToSession",
-          "default": "Return to session",
+          "default": "Return to Session",
           "limelight": "back on stage",
           "board": "same",
           "isControl": true,
@@ -2983,7 +2983,7 @@
         },
         {
           "key": "button.startSession",
-          "default": "Start session",
+          "default": "Start Session",
           "limelight": "LET'S GO BABES",
           "board": "BOARD",
           "isControl": true,
@@ -3009,7 +3009,7 @@
       "keys": [
         {
           "key": "button.markCompleted",
-          "default": "Mark completed",
+          "default": "Mark Completed",
           "limelight": "mark it done",
           "board": "MARK DEPARTED",
           "isControl": true,
@@ -3035,7 +3035,7 @@
       "keys": [
         {
           "key": "button.trainLabelToday",
-          "default": "Train {label} today",
+          "default": "Train {Label} Today",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -3044,7 +3044,7 @@
         },
         {
           "key": "button.trainSomethingElse",
-          "default": "Train something else",
+          "default": "Train Something Else",
           "limelight": "plot twist",
           "board": "REBOOK",
           "isControl": true,
@@ -3114,7 +3114,7 @@
         },
         {
           "key": "hero.weeklyTargetMissed",
-          "default": "Weekly target missed",
+          "default": "Weekly Target Missed",
           "limelight": "the intervention",
           "board": "IRREGULAR OPERATIONS",
           "isControl": false,
@@ -3160,7 +3160,7 @@
         },
         {
           "key": "button.openCapsule",
-          "default": "Open capsule",
+          "default": "Open Capsule",
           "limelight": "open it",
           "board": "same",
           "isControl": true,
@@ -3169,7 +3169,7 @@
         },
         {
           "key": "button.readCapsule",
-          "default": "Read capsule",
+          "default": "Read Capsule",
           "limelight": "read it",
           "board": "same",
           "isControl": true,
@@ -3178,7 +3178,7 @@
         },
         {
           "key": "button.writeCapsule",
-          "default": "Write capsule",
+          "default": "Write Capsule",
           "limelight": "write it",
           "board": "same",
           "isControl": true,
@@ -3187,7 +3187,7 @@
         },
         {
           "key": "hero.timeCapsule",
-          "default": "Time capsule",
+          "default": "Time Capsule",
           "limelight": "a note for later",
           "board": "same",
           "isControl": false,
@@ -3235,7 +3235,7 @@
       "keys": [
         {
           "key": "hero.nextFourteenDays",
-          "default": "Next 14 days",
+          "default": "Next 14 Days",
           "limelight": "the next 14 dates",
           "board": "same",
           "isControl": false,
@@ -3324,7 +3324,7 @@
         },
         {
           "key": "button.pausePlan",
-          "default": "Pause plan",
+          "default": "Pause Plan",
           "limelight": "on hiatus",
           "board": "HOLD SCHEDULE",
           "isControl": true,
@@ -3333,7 +3333,7 @@
         },
         {
           "key": "button.resumePlan",
-          "default": "Resume plan",
+          "default": "Resume Plan",
           "limelight": "comeback tour",
           "board": "same",
           "isControl": true,
@@ -3378,7 +3378,7 @@
         },
         {
           "key": "button.confirmSkip",
-          "default": "Confirm skip",
+          "default": "Confirm Skip",
           "limelight": "yes skip it",
           "board": "same",
           "isControl": true,
@@ -3387,7 +3387,7 @@
         },
         {
           "key": "button.skipToday",
-          "default": "Skip today",
+          "default": "Skip Today",
           "limelight": "not today satan",
           "board": "CANCEL SERVICE",
           "isControl": true,
@@ -3396,7 +3396,7 @@
         },
         {
           "key": "label.skipReason",
-          "default": "Reason (optional)",
+          "default": "Reason (Optional)",
           "limelight": "the story (optional)",
           "board": "same",
           "isControl": false,
@@ -3513,7 +3513,7 @@
       "keys": [
         {
           "key": "button.addSet",
-          "default": "Add set",
+          "default": "Add Set",
           "limelight": "one more",
           "board": "same",
           "isControl": true,
@@ -3522,7 +3522,7 @@
         },
         {
           "key": "button.formCues",
-          "default": "Form cues",
+          "default": "Form Cues",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -3531,7 +3531,7 @@
         },
         {
           "key": "button.formReference",
-          "default": "Form reference",
+          "default": "Form Reference",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -3540,7 +3540,7 @@
         },
         {
           "key": "label.noSuggestedLoad",
-          "default": "No load suggested",
+          "default": "No Load Suggested",
           "limelight": "unscripted",
           "board": "same",
           "isControl": false,
@@ -3549,7 +3549,7 @@
         },
         {
           "key": "label.suggestedLoad",
-          "default": "Suggested {load}: {kind}",
+          "default": "Suggested {Load}: {Kind}",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -3820,7 +3820,7 @@
       "keys": [
         {
           "key": "button.addExercise",
-          "default": "Add exercise",
+          "default": "Add Exercise",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -3946,7 +3946,7 @@
         },
         {
           "key": "button.logBodyMass",
-          "default": "Log body mass",
+          "default": "Log Body Mass",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -4008,7 +4008,7 @@
         },
         {
           "key": "button.finishSession",
-          "default": "Finish session",
+          "default": "Finish Session",
           "limelight": "that's a wrap",
           "board": "CLOSE SERVICE",
           "isControl": true,
@@ -4049,7 +4049,7 @@
       "keys": [
         {
           "key": "label.block",
-          "default": "Block {number}",
+          "default": "Block {Number}",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4058,7 +4058,7 @@
         },
         {
           "key": "label.blockStrip",
-          "default": "Training blocks",
+          "default": "Training Blocks",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4130,7 +4130,7 @@
         },
         {
           "key": "label.weekOfCount",
-          "default": "Week {shown} of {total}",
+          "default": "Week {Shown} of {Total}",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4288,7 +4288,7 @@
       "keys": [
         {
           "key": "label.rmr",
-          "default": "Resting metabolic rate",
+          "default": "Resting Metabolic Rate",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4297,7 +4297,7 @@
         },
         {
           "key": "label.tdee",
-          "default": "Total daily energy expenditure",
+          "default": "Total Daily Energy Expenditure",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4343,7 +4343,7 @@
         },
         {
           "key": "button.recordIntake",
-          "default": "Record intake",
+          "default": "Record Intake",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -4352,7 +4352,7 @@
         },
         {
           "key": "hero.intakeCheckIn",
-          "default": "Intake check-in",
+          "default": "Intake Check-in",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4361,7 +4361,7 @@
         },
         {
           "key": "label.energyProgress",
-          "default": "Energy against target",
+          "default": "Energy Against Target",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4370,7 +4370,7 @@
         },
         {
           "key": "label.proteinProgress",
-          "default": "Protein against the lower bound",
+          "default": "Protein Against the Lower Bound",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4462,7 +4462,7 @@
         },
         {
           "key": "hero.bodyMass",
-          "default": "Body mass",
+          "default": "Body Mass",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4506,7 +4506,7 @@
         },
         {
           "key": "label.complianceGrid",
-          "default": "Session compliance by week",
+          "default": "Session Compliance by Week",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4586,7 +4586,7 @@
       "keys": [
         {
           "key": "hero.repsPerWeek",
-          "default": "Best reps per week",
+          "default": "Best Reps per Week",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4630,7 +4630,7 @@
         },
         {
           "key": "hero.personalRecords",
-          "default": "Personal records",
+          "default": "Personal Records",
           "limelight": "the highlight reel",
           "board": "same",
           "isControl": false,
@@ -4917,7 +4917,7 @@
         },
         {
           "key": "label.activeProfile",
-          "default": "Active profile",
+          "default": "Active Profile",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4926,7 +4926,7 @@
         },
         {
           "key": "label.displayUnit",
-          "default": "Display unit",
+          "default": "Display Unit",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -4951,7 +4951,7 @@
       "keys": [
         {
           "key": "hero.equipmentSteps",
-          "default": "Equipment steps",
+          "default": "Equipment Steps",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5052,7 +5052,7 @@
         },
         {
           "key": "label.remindersEnable",
-          "default": "Enable reminders",
+          "default": "Enable Reminders",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5149,7 +5149,7 @@
       "keys": [
         {
           "key": "label.reminderDayOfTime",
-          "default": "Day-of reminder time",
+          "default": "Day-of Reminder Time",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5158,7 +5158,7 @@
         },
         {
           "key": "label.reminderLead",
-          "default": "{minutes} minutes before",
+          "default": "{Minutes} Minutes Before",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5167,7 +5167,7 @@
         },
         {
           "key": "label.reminderLeadTimes",
-          "default": "Before each session",
+          "default": "Before Each Session",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5232,7 +5232,7 @@
         },
         {
           "key": "button.motivationClipRemove",
-          "default": "Remove clip",
+          "default": "Remove Clip",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5241,7 +5241,7 @@
         },
         {
           "key": "hero.motivationVideo",
-          "default": "Motivation video",
+          "default": "Motivation Video",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5250,7 +5250,7 @@
         },
         {
           "key": "label.motivationClipChoose",
-          "default": "Choose a clip",
+          "default": "Choose a Clip",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5259,7 +5259,7 @@
         },
         {
           "key": "label.motivationClipReplace",
-          "default": "Replace the clip",
+          "default": "Replace the Clip",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5340,7 +5340,7 @@
         },
         {
           "key": "hero.skin",
-          "default": "Look and sound",
+          "default": "Look and Sound",
           "limelight": "the look and the noise",
           "board": "same",
           "isControl": false,
@@ -5437,7 +5437,7 @@
         },
         {
           "key": "label.settingsHotkeys",
-          "default": "Keyboard shortcuts",
+          "default": "Keyboard Shortcuts",
           "limelight": "the shortcuts",
           "board": "same",
           "isControl": false,
@@ -5500,7 +5500,7 @@
         },
         {
           "key": "button.downloadCalendar",
-          "default": "Download calendar .ics",
+          "default": "Download Calendar .Ics",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5518,7 +5518,7 @@
         },
         {
           "key": "button.downloadSummary",
-          "default": "Download summary .txt",
+          "default": "Download Summary .Txt",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5527,7 +5527,7 @@
         },
         {
           "key": "hero.exportImport",
-          "default": "Export and import",
+          "default": "Export and Import",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5599,7 +5599,7 @@
         },
         {
           "key": "button.checkImport",
-          "default": "Check import",
+          "default": "Check Import",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5608,7 +5608,7 @@
         },
         {
           "key": "button.downloadBackup",
-          "default": "Download backup",
+          "default": "Download Backup",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5617,7 +5617,7 @@
         },
         {
           "key": "button.replaceData",
-          "default": "Replace data",
+          "default": "Replace Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5626,7 +5626,7 @@
         },
         {
           "key": "label.chooseExportFile",
-          "default": "Choose an export file",
+          "default": "Choose an Export File",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5635,7 +5635,7 @@
         },
         {
           "key": "label.confirmReplace",
-          "default": "Confirm replace",
+          "default": "Confirm Replace",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5653,7 +5653,7 @@
         },
         {
           "key": "label.pasteExport",
-          "default": "Paste a previous export",
+          "default": "Paste a Previous Export",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5687,7 +5687,7 @@
       "keys": [
         {
           "key": "hero.dataOnDevice",
-          "default": "Data on this device",
+          "default": "Data on This Device",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5722,7 +5722,7 @@
         },
         {
           "key": "button.wipeAll",
-          "default": "Wipe all data",
+          "default": "Wipe All Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5731,7 +5731,7 @@
         },
         {
           "key": "button.wipeConfirm",
-          "default": "Delete everything",
+          "default": "Delete Everything",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5740,7 +5740,7 @@
         },
         {
           "key": "label.confirmWipe",
-          "default": "Confirm wipe",
+          "default": "Confirm Wipe",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5785,7 +5785,7 @@
         },
         {
           "key": "button.deleteLegacy",
-          "default": "Delete legacy data",
+          "default": "Delete Legacy Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5794,7 +5794,7 @@
         },
         {
           "key": "button.downloadLegacyJson",
-          "default": "Download legacy JSON",
+          "default": "Download Legacy JSON",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5803,7 +5803,7 @@
         },
         {
           "key": "button.legacyDeleteOld",
-          "default": "Delete old data",
+          "default": "Delete Old Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5812,7 +5812,7 @@
         },
         {
           "key": "button.legacyReopen",
-          "default": "Import old data",
+          "default": "Import Old Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5821,7 +5821,7 @@
         },
         {
           "key": "label.confirmDeleteLegacy",
-          "default": "Confirm legacy delete",
+          "default": "Confirm Legacy Delete",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5873,7 +5873,7 @@
         },
         {
           "key": "hero.installHomeScreen",
-          "default": "Install the app",
+          "default": "Install the App",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -5907,7 +5907,7 @@
         },
         {
           "key": "label.installIos",
-          "default": "iPhone and iPad",
+          "default": "IPhone and IPad",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6082,7 +6082,7 @@
         },
         {
           "key": "hero.motivationPreview",
-          "default": "Video preview",
+          "default": "Video Preview",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6108,7 +6108,7 @@
       "keys": [
         {
           "key": "label.blockMassMoved",
-          "default": "mass moved",
+          "default": "Mass Moved",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6117,7 +6117,7 @@
         },
         {
           "key": "label.blockSessionsCompleted",
-          "default": "sessions completed",
+          "default": "Sessions Completed",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6126,7 +6126,7 @@
         },
         {
           "key": "label.blockSetsLogged",
-          "default": "sets logged",
+          "default": "Sets Logged",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6135,7 +6135,7 @@
         },
         {
           "key": "label.blockSpecimens",
-          "default": "specimens collected",
+          "default": "Specimens Collected",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6197,7 +6197,7 @@
         },
         {
           "key": "label.spotlightQuery",
-          "default": "Search views and exercises",
+          "default": "Search Views and Exercises",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6206,7 +6206,7 @@
         },
         {
           "key": "label.spotlightResults",
-          "default": "Search results",
+          "default": "Search Results",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6304,7 +6304,7 @@
         },
         {
           "key": "button.sealCapsule",
-          "default": "Seal capsule",
+          "default": "Seal Capsule",
           "limelight": "seal it",
           "board": "same",
           "isControl": true,
@@ -6313,7 +6313,7 @@
         },
         {
           "key": "label.capsuleNote",
-          "default": "Note to your future self",
+          "default": "Note to Your Future Self",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6322,7 +6322,7 @@
         },
         {
           "key": "label.capsuleOpensOn",
-          "default": "Opens on",
+          "default": "Opens On",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6443,7 +6443,7 @@
         },
         {
           "key": "button.legacyDismiss",
-          "default": "Start clean",
+          "default": "Start Clean",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6452,7 +6452,7 @@
         },
         {
           "key": "button.legacyPreview",
-          "default": "Preview import",
+          "default": "Preview Import",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6488,7 +6488,7 @@
         },
         {
           "key": "hero.legacyImport",
-          "default": "Import from the old app",
+          "default": "Import from the Old App",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6497,7 +6497,7 @@
         },
         {
           "key": "label.legacyBodyMassUnit",
-          "default": "Body mass unit in the old app",
+          "default": "Body Mass Unit in the Old App",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6506,7 +6506,7 @@
         },
         {
           "key": "label.legacyLoadUnit",
-          "default": "Load unit in the old app",
+          "default": "Load Unit in the Old App",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6515,7 +6515,7 @@
         },
         {
           "key": "label.legacyMassUnitKg",
-          "default": "Kilograms (kg), body mass",
+          "default": "Kilograms (kg), Body Mass",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6524,7 +6524,7 @@
         },
         {
           "key": "label.legacyMassUnitLb",
-          "default": "Pounds (lb), body mass",
+          "default": "Pounds (lb), Body Mass",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6586,7 +6586,7 @@
         },
         {
           "key": "button.legacyApply",
-          "default": "Keep import",
+          "default": "Keep Import",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6613,7 +6613,7 @@
         },
         {
           "key": "hero.legacyPreview",
-          "default": "What the import writes",
+          "default": "What the Import Writes",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6674,7 +6674,7 @@
         },
         {
           "key": "button.legacyKeepOld",
-          "default": "Keep old data",
+          "default": "Keep Old Data",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6683,7 +6683,7 @@
         },
         {
           "key": "hero.legacyDone",
-          "default": "Import complete",
+          "default": "Import Complete",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6726,7 +6726,7 @@
         },
         {
           "key": "label.cueMistakes",
-          "default": "Common mistakes",
+          "default": "Common Mistakes",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6753,7 +6753,7 @@
         },
         {
           "key": "label.formCues",
-          "default": "Form cues and common mistakes",
+          "default": "Form Cues and Common Mistakes",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -6788,7 +6788,7 @@
         },
         {
           "key": "button.nextInstance",
-          "default": "Next instance",
+          "default": "Next Instance",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6797,7 +6797,7 @@
         },
         {
           "key": "button.openClip",
-          "default": "Open clip",
+          "default": "Open Clip",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6806,7 +6806,7 @@
         },
         {
           "key": "button.searchInstance",
-          "default": "Search instance",
+          "default": "Search Instance",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -6815,7 +6815,7 @@
         },
         {
           "key": "label.formReference",
-          "default": "Form reference",
+          "default": "Form Reference",
           "limelight": "same",
           "board": "same",
           "isControl": false,
