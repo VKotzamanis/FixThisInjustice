@@ -37,6 +37,40 @@ export const ACTIVITY_LEVEL_EXAMPLES: readonly string[] = [
 ];
 
 /**
+ * Brief G. ONE SENTENCE PER STOP, for the nine-stop widening of the activity slider.
+ *
+ * <!-- decision: activity-stop-examples-keyed-by-pal | status: adopted | supersedes: activity-examples-band-list -->
+ *
+ * WHY THIS EXISTS. Brief G widened the slider from three positions to nine and left the feedback
+ * at three: the readout renders the BAND label, and `ACTIVITY_LEVEL_EXAMPLES` above is a
+ * three-entry list rendered whole. So moving between the three stops INSIDE a band changed
+ * nothing a user could see, and six of the nine positions were indistinguishable from a
+ * neighbour. A stop the user cannot tell apart from its neighbour is not a stop.
+ *
+ * KEYED BY PAL, not by index, for the reason `EQUIPMENT_ACCESS_EXAMPLES` below already gives: an
+ * array kept in slider order silently desyncs if a position is ever reordered or inserted. The
+ * PAL IS the position's identity, so the key is the value and not its place in a list.
+ * `setupSliderExamples.test.ts` asserts this Record and `ACTIVITY_STOPS` cover each other
+ * exactly, so a tenth stop cannot ship without its sentence and a removed stop cannot leave one
+ * behind.
+ *
+ * The words are verbatim from docs/plans/subagent-briefs/G-activity-slider.md's own table, the
+ * same table that supplies the nine PAL values. R5: no em dash. R11: these describe behaviour,
+ * not a quantity, so no unit appears in them.
+ */
+export const ACTIVITY_STOP_EXAMPLES: Record<number, string> = {
+  1.4: 'Desk, car, sofa. You have wondered whether standing counts as cardio.',
+  1.55: 'Desk job, but you walk somewhere most days and take the stairs when the lift is slow.',
+  1.69: 'Desk job with a commute on foot, and weekends that involve leaving the house.',
+  1.7: 'You train a couple of times a week and are on your feet more than you sit.',
+  1.85: 'Three or four sessions a week, or a job that keeps you moving all day.',
+  1.99: 'Training most days, or an active job with training on top.',
+  2.0: 'Hard training most days, and a job that does not let you sit down.',
+  2.2: 'Two sessions most days, or manual work plus serious training.',
+  2.4: 'Athlete, or your job is brutal and you train as well.',
+};
+
+/**
  * Brief F Part 1c. Shown for the selected slider position only, one sentence at a time -- not a
  * list, so a `Record` keyed by the position rather than an array kept in slider order, which
  * would silently desync if a position were ever reordered.

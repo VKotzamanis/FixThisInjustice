@@ -402,6 +402,24 @@
   font-weight: 600;
 }
 
+/*
+ * The selected stop's own sentence, under the band name. Brief G widened the activity slider to
+ * nine stops and left the readout showing only the band, so the three stops inside a band looked
+ * identical. This is the line that differs from one stop to the next.
+ *
+ * Block, so it wraps under the band rather than running on from it, and lighter than the band so
+ * the two read as heading-then-detail. `--text-2` is #454545 on limelight's lime ground, measured
+ * 4.98:1, which clears WCAG 1.4.3's 4.5:1 for body text; on clinical and board it is the same
+ * secondary ink every other note on this screen uses. Never --accent here: that is the 1.41:1
+ * pink-on-lime failure the references control already shipped once.
+ */
+.wiz-slider-stop {
+  display: block;
+  margin-top: 2px;
+  font-weight: 400;
+  color: var(--text-2);
+}
+
 .wiz-slider-icons {
   display: flex;
   gap: 10px;

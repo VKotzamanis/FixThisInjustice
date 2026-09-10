@@ -103,6 +103,7 @@ import { GuidanceScreen } from './GuidanceScreen';
 import { usePublishSetupBanner } from './setupBanner';
 import {
   ACTIVITY_LEVEL_EXAMPLES,
+  ACTIVITY_STOP_EXAMPLES,
   EQUIPMENT_ACCESS_EXAMPLES,
 } from '../../content/setupSliderExamples';
 
@@ -2601,6 +2602,12 @@ export function SetupWizard(): JSX.Element {
                 patch({ activity: level, activityPal: pal });
               }}
             />
+            {/* THE BAND AND THE STOP, both. Brief G widened this control to nine stops and
+                left the readout showing only the band, so the three stops inside a band were
+                indistinguishable and six of nine positions changed nothing a user could see.
+                The band still names the FAO/WHO/UNU category the number comes from; the sentence
+                below it is what actually differs from one stop to the next. Both sit in the one
+                live region so a screen reader announces the change once, not twice. */}
             <p className="wiz-slider-position" aria-live="polite">
               {t(
                 ACTIVITY_LEVEL_LABEL_KEY[
@@ -2609,6 +2616,9 @@ export function SetupWizard(): JSX.Element {
                   ]?.level ?? 'moderate'
                 ],
               )}
+              <span className="wiz-slider-stop">
+                {ACTIVITY_STOP_EXAMPLES[draft.activityPal ?? ACTIVITY_FACTOR.moderate] ?? ''}
+              </span>
             </p>
             <details>
               <summary>{t('disclosure.examples')}</summary>
