@@ -85,15 +85,16 @@ string and never concatenates it into the message.
 **R10. Exempt content.** Two halves, and only one of them is mechanical.
 
 Exercise form cues, exercise notes and tips, Atlas card bodies and citations, the body-step
-equation list, the sex-field rationale, supplement guidance, the body-fat chart text, and the
-reminders runbook
+equation list, the sex-field rationale, supplement guidance, the body-fat chart text, the review
+step's data explainer, and the reminders runbook
 (`docs/RUNBOOK-reminders.md`) are exempt from R1 to R4
 and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
 None of them lives in a copy table: they are `src/content/formCues.ts`,
 `src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
 `src/content/supplementGuidance.ts`, `src/content/guidanceReferences.ts`,
 `src/content/bodyFatChart.ts`, `src/content/introSlides.ts`,
-`src/content/setupSliderExamples.ts`, `src/content/activityLevels.ts` and that runbook.
+`src/content/setupSliderExamples.ts`, `src/content/activityLevels.ts`,
+`src/content/reviewDataNotes.ts` and that runbook.
 
 <!-- decision: r10-body-equations-module | status: adopted | supersedes: none -->
 `src/content/bodyEquations.ts` was added to that list on 2026-09-04, for alpha round 1 claim
@@ -159,6 +160,21 @@ content module is data, with no runtime import from `src/domain/nutrition.ts`, a
 own suite, `src/content/activityLevels.test.ts`, cross-checks every PAL and band bound against
 that engine file's own source text (the same `?raw` technique `bodyEquations.test.ts` uses for
 its DOIs), asserting R5, R6 and R11 alongside it.
+
+<!-- decision: r10-review-data-notes-module | status: adopted | supersedes: none -->
+`src/content/reviewDataNotes.ts` was added to that list on 2026-09-09, for round 2 claim r2.19:
+the review step's "Your Data" block, three facts read on the last screen before Confirm writes
+the profile (where the document lives, how to carry it to another device, and what clearing the
+browser's cookies and site data does). The brief's own draft of the second fact, "Settings, then
+Data, then export the JSON backup", named no control `src/ui/views/ExportView.tsx` actually
+renders; this module quotes the real ones instead (`hero.exportImport`, `label.downloads`,
+`button.downloadJson`, `label.importSection`), and its own suite,
+`src/content/reviewDataNotes.test.ts`, imports `DEFAULT_COPY` from `src/content/copy.ts` and
+asserts the module still contains each one verbatim, so a control renamed there fails here rather
+than leaving this module's wording to drift. The third fact states plainly that clearing site
+data cannot be undone, which the owner asked for by name: it is the one destructive action
+reachable from outside the app, where no in-app gate (`ConfirmDestructive`'s export-then-typed-word
+pattern) can reach it.
 
 Inside the tables the exemption list is one key long, and the suite holds it as `LENGTH_EXEMPT`:
 
