@@ -32,6 +32,16 @@ import { SKIN_IDS, useSkin } from '../skins/skinContext';
 import type { SkinId } from '../domain/types';
 import { formatRatio, parseColour, toHex } from './colour';
 import { readAllPairs } from './contrastPairs';
+import { CopyEditLayer } from './CopyEditLayer';
+import {
+  TABLE_FILE,
+  blockedReason,
+  describeTarget,
+  renderedRow,
+  tableIdForSkin,
+  tableRow,
+  validateCopyEdit,
+} from './copyEdits';
 import { buildPatch, patchSize } from './designPatch';
 import { clearStoredEdits, readStoredEdits, writeStoredEdits } from './designStorage';
 import type { StoredEdits } from './designStorage';
@@ -41,7 +51,7 @@ import type { TokenDecl } from './tokenSheet';
 import './design.css';
 
 /** An empty edit set. Also what RESET restores. */
-const NO_EDITS: StoredEdits = { version: 1, tokens: {} };
+const NO_EDITS: StoredEdits = { version: 1, tokens: {}, copy: {} };
 
 /** The tokens whose value is a font stack, which get the availability reading. */
 const FONT_TOKENS = new Set(['--mono', '--sans', '--disp', '--chrome']);
@@ -176,6 +186,117 @@ function ContrastReadout({
   );
 }
 
+interface CopySectionProps {
+  /** The skin whose WORDS are on screen: `ui.skin`, never the token preview. */
+  readonly skin: SkinId;
+  readonly previewSkin: SkinId;
+  readonly discovered: readonly string[];
+  readonly edits: Readonly<Record<string, string>>;
+  readonly onChange: (key: string, value: string) => void;
+  readonly onUndo: (key: string) => void;
+}
+
+/**
+ * The copy half of the panel.
+ *
+ * IT STATES THE TARGET TABLE BEFORE HE TYPES, rather than leaving it to be inferred from which
+ * skin's colours happen to be previewed. That is the trap Task 2 exists to avoid: limelight is
+ * deliberately lower case and the board deliberately upper, and scripts/check-title-case.mjs
+ * skips both, so a misrouted edit would destroy a recorded design decision with nothing to catch
+ * it at merge.
+ *
+ * IT ALSO CARRIES THE KEYS THE PAGE CANNOT MAKE EDITABLE IN PLACE: a string a FORMAT frame
+ * substituted a number into, and a key rendered as part of a longer sentence. Editing the ROW is
+ * always possible even where editing the rendered words is not, so nothing on screen is beyond
+ * reach; it is reached through a field instead of through the page.
+ */
+function CopySection({
+  skin,
+  previewSkin,
+  discovered,
+  edits,
+  onChange,
+  onUndo,
+}: CopySectionProps): ReactElement {
+  const editedKeys = Object.keys(edits).sort();
+  const rows = [...new Set([...editedKeys, ...discovered])].sort();
+
+  return (
+    <div className="dm-rows" data-testid="dm-copy">
+      <p className="dm-note" data-testid="dm-copy-target">
+        {describeTarget(skin)}
+      </p>
+      {previewSkin === skin ? null : (
+        <p className="dm-note" data-testid="dm-copy-preview-warning">
+          The token preview above is set to {previewSkin}, and that changes COLOURS only. The words
+          on this page are still {skin}&apos;s, so an edit lands in{' '}
+          {TABLE_FILE[tableIdForSkin(skin)]}. To edit {previewSkin}&apos;s words, set the app to
+          that skin in Settings.
+        </p>
+      )}
+      <p className="dm-note">
+        Only copy.ts and the two skin tables are editable. The reference modules, which carry
+        citations and doses, are not marked and never will be.
+      </p>
+      {rows.length === 0 ? (
+        <p className="dm-note" data-testid="dm-copy-empty">
+          No copy key has rendered yet on this screen. Close the panel, move to a screen with
+          words on it, and they will appear here.
+        </p>
+      ) : null}
+      {rows.map((key) => {
+        const blocked = blockedReason(skin, key);
+        const row = tableRow(skin, key);
+        const value = edits[key] ?? row ?? renderedRow(skin, key) ?? '';
+        const changed = row !== undefined && edits[key] !== undefined && edits[key] !== row;
+        const violations = validateCopyEdit(skin, key, value);
+        return (
+          <div className="dm-token" key={key} data-testid={`dm-copy-${key}`}>
+            <span className="dm-token-name">{changed ? <mark>{key}</mark> : key}</span>
+            {blocked === null ? (
+              <input
+                type="text"
+                aria-label={key}
+                value={value}
+                spellCheck={false}
+                autoComplete="off"
+                onChange={(event) => {
+                  onChange(key, event.currentTarget.value);
+                }}
+              />
+            ) : (
+              <span className="dm-note" data-testid={`dm-copy-blocked-${key}`}>
+                {blocked.message}
+              </span>
+            )}
+            {changed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onUndo(key);
+                }}
+              >
+                Undo
+              </button>
+            ) : null}
+            {violations.map((violation) => (
+              <span
+                key={`${violation.rule}${violation.message}`}
+                className="dm-copy-violation"
+                data-severity={violation.severity}
+                data-testid={`dm-copy-rule-${key}-${violation.rule}`}
+              >
+                {violation.message}
+              </span>
+            ))}
+            {row === undefined ? null : <span className="dm-note">Shipped: {row}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * The panel itself. Mounted only behind `?design=1`, so every hook and listener below exists
  * only in a session that asked for the tool.
@@ -187,6 +308,8 @@ export function DesignPanel(): ReactElement {
   const [edits, setEdits] = useState<StoredEdits>(() => readStoredEdits());
   const [exportText, setExportText] = useState<string>('');
   const [storageFailed, setStorageFailed] = useState(false);
+  /** The copy keys the layer has seen render on this screen. Stable identity per pass. */
+  const [discovered, setDiscovered] = useState<readonly string[]>([]);
   const exportRef = useRef<HTMLTextAreaElement | null>(null);
   const storeSkinRef = useRef<SkinId>(storeSkin);
 
@@ -238,6 +361,7 @@ export function DesignPanel(): ReactElement {
   const setToken = useCallback(
     (name: string, value: string) => {
       setEdits((previous) => ({
+        ...previous,
         version: 1,
         tokens: {
           ...previous.tokens,
@@ -253,10 +377,43 @@ export function DesignPanel(): ReactElement {
       setEdits((previous) => {
         const skinEdits = { ...(previous.tokens[previewSkin] ?? {}) };
         delete skinEdits[name];
-        return { version: 1, tokens: { ...previous.tokens, [previewSkin]: skinEdits } };
+        return { ...previous, version: 1, tokens: { ...previous.tokens, [previewSkin]: skinEdits } };
       });
     },
     [previewSkin],
+  );
+
+  /*
+   * A COPY EDIT IS FILED UNDER `storeSkin`, NOT `previewSkin`, AND THE DIFFERENCE IS THE WHOLE
+   * POINT. The switcher above previews TOKENS: it flips `<html data-skin>` and does not write
+   * `ui.skin`. The WORDS on screen never move with it, because `useCopy()` reads the store. So an
+   * edit typed while the board's colours are previewed and the app is set to clinical is an edit
+   * to a CLINICAL sentence, and belongs in `DEFAULT_COPY`. src/design/copyEdits.ts states the
+   * rule in full; the note under the Copy section states it to the owner before he types.
+   */
+  const setCopy = useCallback(
+    (key: string, value: string) => {
+      setEdits((previous) => {
+        const row = tableRow(storeSkin, key);
+        const rows = { ...(previous.copy[storeSkin] ?? {}) };
+        // Typing the shipped words back is not an edit. Dropping it keeps the patch reviewable.
+        if (row === undefined || value === row || value === '') delete rows[key];
+        else rows[key] = value;
+        return { ...previous, version: 1, copy: { ...previous.copy, [storeSkin]: rows } };
+      });
+    },
+    [storeSkin],
+  );
+
+  const undoCopy = useCallback(
+    (key: string) => {
+      setEdits((previous) => {
+        const rows = { ...(previous.copy[storeSkin] ?? {}) };
+        delete rows[key];
+        return { ...previous, version: 1, copy: { ...previous.copy, [storeSkin]: rows } };
+      });
+    },
+    [storeSkin],
   );
 
   const resetAll = useCallback(() => {
@@ -276,23 +433,41 @@ export function DesignPanel(): ReactElement {
 
   const changedCount = useMemo(() => patchSize(buildPatch(edits, 0)), [edits]);
 
+  /*
+   * The layer is mounted in BOTH branches. Closing the panel is how the owner gets it out of the
+   * way to see the screen he is editing, so closing it must not also stop the words being
+   * editable; the bubble is the only feedback he has while the sheet is down.
+   */
+  const layer = (
+    <CopyEditLayer
+      skin={storeSkin}
+      edits={edits.copy}
+      onCommit={setCopy}
+      onDiscovered={setDiscovered}
+    />
+  );
+
   if (!open) {
     return (
-      <button
-        type="button"
-        className="dm-launcher"
-        data-testid="dm-launcher"
-        onClick={() => {
-          setOpen(true);
-        }}
-      >
-        Design
-      </button>
+      <>
+        {layer}
+        <button
+          type="button"
+          className="dm-launcher"
+          data-testid="dm-launcher"
+          onClick={() => {
+            setOpen(true);
+          }}
+        >
+          Design
+        </button>
+      </>
     );
   }
 
   return (
     <section className="dm-panel" data-testid="dm-panel" aria-label="Design Mode">
+      {layer}
       <div className="dm-strip">
         <span className="dm-strip-title">Design Mode</span>
         {SKIN_IDS.map((skin) => (
@@ -330,6 +505,20 @@ export function DesignPanel(): ReactElement {
           {changedCount} declaration{changedCount === 1 ? '' : 's'} changed.
           {storageFailed ? ' Storage refused these edits: a reload will lose them.' : ''}
         </p>
+
+        <details className="dm-section" open>
+          <summary>Copy ({Object.keys(edits.copy[storeSkin] ?? {}).length})</summary>
+          <div className="dm-section-body">
+            <CopySection
+              skin={storeSkin}
+              previewSkin={previewSkin}
+              discovered={discovered}
+              edits={edits.copy[storeSkin] ?? {}}
+              onChange={setCopy}
+              onUndo={undoCopy}
+            />
+          </div>
+        </details>
 
         <details className="dm-section" open>
           <summary>Contrast</summary>

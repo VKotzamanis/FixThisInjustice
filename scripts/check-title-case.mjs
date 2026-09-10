@@ -27,57 +27,21 @@ import { createServer } from 'vite';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 
-/** Lower-case unless first or last: articles, coordinating conjunctions, short prepositions. */
-const SMALL = new Set([
-  'a', 'an', 'the',
-  'and', 'but', 'or', 'nor', 'for', 'so', 'yet',
-  'of', 'in', 'on', 'at', 'to', 'with', 'from', 'by', 'as', 'per', 'vs',
-]);
-
 /*
- * EXACT-CASED TOKENS, which pass whatever their first letter. Same principle as UNIT below, one
- * step wider: there the case IS the quantity, here the case IS the identity.
+ * THE RULE ITSELF LIVES IN src/content/copyContract.ts AND IS LOADED, NOT RESTATED HERE.
  *
- * Added 2026-09-09 after the sweep mechanically produced "IPhone and IPad", "Download Summary
- * .Txt" and "Download Calendar .Ics". Every one satisfied the rule as written and every one was
- * wrong on screen: `iPhone` and `iPad` are trademarks with a fixed lower-case initial, and `.txt`
- * and `.ics` are file extensions a user types verbatim. A rule that forces a visible defect is an
- * incomplete rule, so the rule moved rather than the copy.
+ * `titleCaseOffenders`, the small-word list, the fixed-case list and the unit list were all
+ * defined in this file until Design Mode Task 2, which needed to run R14 in the BROWSER as the
+ * owner types a label. A `.mjs` script that imports `vite` and calls `process.exit` cannot be
+ * imported by an app bundle, so the choice was to move the rule or to write it a second time.
+ *
+ * A second R14 that disagreed with this one is worse than no live check at all: the panel would
+ * pass a label this gate then failed at merge, hours later, with no context - which is the exact
+ * failure the live check exists to remove. So the rule moved to a module with no imports at all,
+ * and this script loads it through the Vite server it already had to create for `copy.ts`.
+ *
+ * The output format, the exit code and what is scanned are unchanged.
  */
-const FIXED = new Set(['iphone', 'ipad', 'ios', 'ipados', 'macos', '.txt', '.ics', '.json', '.csv']);
-
-/** R12's guarded symbols, plus the ones the setup wizard writes. Case is the quantity. */
-const UNIT = new Set([
-  's', 'kg', 'lb', 'ml', 'min', 'g', 'kcal', 'mib', 'cm', 'mm', 'ms', 'm', 'ft', 'in', 'h', 'oz', 'fl',
-]);
-
-/** The key families that name something rather than say something. */
-const NAMING = ['label.', 'hero.', 'step.', 'group.', 'button.'];
-
-/** The words in `value` that R14 says should have been capitalised and were not. */
-export function titleCaseOffenders(value) {
-  const words = value.split(/\s+/).filter(Boolean);
-  const bad = [];
-  words.forEach((word, i) => {
-    const bare = word.replace(/[^A-Za-z-]/g, '');
-    if (bare === '') return;
-    /*
-     * A PLACEHOLDER SLOT IS NOT A WORD. `{volume}` is a substitution key: capitalising it renames
-     * the slot and the substitution silently stops matching, which is a functional break dressed
-     * as a style fix. Skipped outright.
-     */
-    if (/^\{.*\}$/.test(word)) return;
-    if (FIXED.has(word.toLowerCase()) || FIXED.has(bare.toLowerCase())) return;
-    if (/^[A-Z]/.test(bare)) return;
-    if (bare === bare.toUpperCase() && bare.length > 1) return; // an acronym
-    if (UNIT.has(bare.toLowerCase())) return; // R12
-    const isSmall = SMALL.has(bare.toLowerCase());
-    const isEdge = i === 0 || i === words.length - 1;
-    if (isSmall && !isEdge) return;
-    bad.push(word);
-  });
-  return bad;
-}
 
 const server = await createServer({
   configFile: false,
@@ -87,10 +51,13 @@ const server = await createServer({
   logLevel: 'error',
 });
 const { DEFAULT_COPY } = await server.ssrLoadModule('/src/content/copy.ts');
+const { NAMING_PREFIXES, titleCaseOffenders } = await server.ssrLoadModule(
+  '/src/content/copyContract.ts',
+);
 await server.close();
 
 const scanned = Object.entries(DEFAULT_COPY).filter(
-  ([key, value]) => NAMING.some((p) => key.startsWith(p)) && typeof value === 'string',
+  ([key, value]) => NAMING_PREFIXES.some((p) => key.startsWith(p)) && typeof value === 'string',
 );
 const failures = scanned
   .map(([key, value]) => ({ key, value, bad: titleCaseOffenders(value) }))

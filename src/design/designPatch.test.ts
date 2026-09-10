@@ -15,6 +15,7 @@ describe('buildPatch', () => {
     expect(shippedValues('limelight').get('--lime')).toBe('#8ace00');
     const edits: StoredEdits = {
       version: 1,
+      copy: {},
       tokens: {
         // --accent was changed. --lime was touched and put back to exactly what ships.
         limelight: { '--accent': '#ff0000', '--lime': '#8ace00' },
@@ -27,13 +28,18 @@ describe('buildPatch', () => {
   it('drops a token edited back to its shipped value, whitespace and all', () => {
     const edits: StoredEdits = {
       version: 1,
+      copy: {},
       tokens: { clinical: { '--accent': '  #a3e635  ', '--bg': '#000000' } },
     };
     expect(buildPatch(edits, 0).tokens.clinical).toEqual({ '--bg': '#000000' });
   });
 
   it('drops a skin left with nothing, rather than emitting an empty object', () => {
-    const edits: StoredEdits = { version: 1, tokens: { clinical: { '--accent': '#a3e635' } } };
+    const edits: StoredEdits = {
+      version: 1,
+      copy: {},
+      tokens: { clinical: { '--accent': '#a3e635' } },
+    };
     expect(buildPatch(edits, 0).tokens).toEqual({});
   });
 
@@ -42,13 +48,16 @@ describe('buildPatch', () => {
     // applier would refuse it, and a patch that cannot be applied is worse than one that is short.
     const edits: StoredEdits = {
       version: 1,
+      copy: {},
       tokens: { clinical: { '--lime': '#00ff00', '--invented': '#ffffff' } },
     };
     expect(buildPatch(edits, 0).tokens).toEqual({});
   });
 
-  it('emits the empty copy, assets and notes fields Tasks 2 to 4 will fill', () => {
-    const patch = buildPatch({ version: 1, tokens: {} }, 0);
+  it('emits the empty assets and notes fields Tasks 3 and 4 will fill', () => {
+    // `copy` was one of these three until Task 2 filled it; src/design/copyEdits.ts carries the
+    // shape and the reason it is keyed by skin rather than flat.
+    const patch = buildPatch({ version: 1, tokens: {}, copy: {} }, 0);
     expect(patch.copy).toEqual({});
     expect(patch.assets).toEqual([]);
     expect(patch.notes).toEqual([]);
@@ -58,6 +67,7 @@ describe('buildPatch', () => {
   it('counts the declarations it would rewrite, across every skin', () => {
     const edits: StoredEdits = {
       version: 1,
+      copy: {},
       tokens: {
         clinical: { '--bg': '#111111', '--text': '#eeeeee' },
         board: { '--amber': '#ffaa00' },
