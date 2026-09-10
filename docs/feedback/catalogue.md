@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `4392155`. 101 parts across 14 screens, holding 574 of the table's 577 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `0488587`. 101 parts across 14 screens, holding 573 of the table's 576 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -418,7 +418,7 @@ States: `default`, `recomposition`, `no-bodyfat-estimate`
 
 ### `setup.availability`
 
-Step 6, Availability. The days and the equipment the plan may use.
+Step 4, Availability. The days and times you can train, stated on the training step before the goal asks for a target date.
 
 Renders: `src/ui/setup/SetupWizard.tsx`
 
@@ -431,7 +431,6 @@ States: `default`
 | `label.sessionsPerWeek` | Sessions per week | same | same | yes |
 | `label.startTime` | start time | same | same | yes |
 | `quantity.weeklySessionTarget` | Weekly session target | same | same | yes |
-| `step.availability` | Availability | same | same | yes |
 | `weekday.friday` | Friday | same | same | yes |
 | `weekday.monday` | Monday | same | same | yes |
 | `weekday.saturday` | Saturday | same | same | yes |

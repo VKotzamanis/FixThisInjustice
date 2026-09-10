@@ -151,7 +151,6 @@ export const STEPS = [
   'body',
   'training',
   'goal',
-  'availability',
   'programme',
   'guidance',
   'review',
@@ -170,7 +169,6 @@ const STEP_TITLE_KEY: Record<StepId, CopyKey> = {
   body: 'step.body',
   training: 'step.training',
   goal: 'step.goal',
-  availability: 'step.availability',
   programme: 'step.programme',
   guidance: 'step.guidance',
   review: 'step.review',
@@ -201,7 +199,6 @@ const STEP_GROUP: Record<StepId, SetupGroup | null> = {
   body: 'personal',
   training: 'goal',
   goal: 'goal',
-  availability: 'goal',
   programme: 'goal',
   guidance: 'personal',
   review: null,
@@ -1803,7 +1800,19 @@ export function SetupWizard(): JSX.Element {
       tapeDomainError !== null ||
       tapeIncomplete ||
       tapeWithheld,
-    training: Object.values(stepErrors).some((e) => e !== null) || walkMinutesError !== null,
+    /*
+     * TRAINING NOW GUARDS THE AVAILABILITY FIELDS TOO, because they render on this step (finding
+     * B43). Folding the two guards is not cosmetic: leaving the availability errors on a step id
+     * that no longer exists would let Next through on an invalid weekly slot, since nothing would
+     * ever evaluate them.
+     */
+    training:
+      Object.values(stepErrors).some((e) => e !== null) ||
+      walkMinutesError !== null ||
+      weekdayError !== null ||
+      availabilityDaysError !== null ||
+      weeklyTargetError !== null ||
+      Object.values(durationErrors).some((e) => e !== null),
     /*
      * Only the target that is ON SCREEN can block the step. The two are alternatives, never both
      * (Brief I Part 2), so gating on whichever is hidden would stop Next on a message the user
@@ -1814,11 +1823,6 @@ export function SetupWizard(): JSX.Element {
     goal:
       (bodyFatTargetAvailable ? targetBodyFatError : targetMassError) !== null ||
       targetDateError !== null,
-    availability:
-      weekdayError !== null ||
-      availabilityDaysError !== null ||
-      weeklyTargetError !== null ||
-      Object.values(durationErrors).some((e) => e !== null),
     programme: weeksError !== null,
     guidance: false,
     review: false,
@@ -3128,6 +3132,117 @@ export function SetupWizard(): JSX.Element {
         </fieldset>
       )}
 
+      {/*
+       * AVAILABILITY, folded into the training step. Finding B43 settles the order as TWO
+       * steps: this one asks what you can PROVIDE (equipment and the weekly slots), the next
+       * asks what you WANT and by when. Brief F renamed this step to
+       * "Equipment & Availability" and left these controls in a step of their own AFTER the
+       * goal, so a target date was still chosen before training frequency was known. That is
+       * C1.10.8 exactly: "if I choose an unrealistic goal and a 2 day target, who will tell me
+       * that im being delusional?". Brief I asserted the move had already happened; it had
+       * not, and its own agent proved that against the tree rather than trusting the brief.
+       *
+       * A SECOND `step === 'training'` block rather than one merged fieldset, so each group
+       * keeps its own <fieldset> and legend and the equipment controls above are untouched.
+       */}
+      {step === 'training' && (
+        <fieldset>
+
+          <div className="wiz-field">
+            <label htmlFor="f-sessions">{t('label.sessionsPerWeek')}</label>
+            <select
+              id="f-sessions"
+              value={String(draft.sessionsPerWeek)}
+              onChange={(e) => {
+                const sessions = pickSessionsPerWeek(e.target.value);
+                patch({ sessionsPerWeek: sessions, weeklySessionTarget: String(sessions) });
+              }}
+            >
+              {SESSIONS_PER_WEEK_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+          <p className="wiz-note">{SPLIT_TEMPLATES[draft.sessionsPerWeek].note}</p>
+
+          {WEEKDAYS.map((d) => (
+            <div key={d.value}>
+              <label className="wiz-inline">
+                <input
+                  type="checkbox"
+                  checked={draft.days[d.value].enabled}
+                  aria-invalid={weekdayError !== null || availabilityDaysError !== null}
+                  aria-describedby={describedBy(
+                    weekdayError === null ? null : WEEKDAY_ERROR_ID,
+                    availabilityDaysError === null ? null : AVAILABILITY_DAYS_ERROR_ID,
+                  )}
+                  onChange={(e) => {
+                    patchDay(d.value, { enabled: e.target.checked });
+                  }}
+                />
+                {t(d.labelKey)}
+              </label>
+              {draft.days[d.value].enabled && (
+                <div className="wiz-row">
+                  <div className="wiz-field">
+                    <label htmlFor={`f-start-${d.value}`}>
+                      {FORMAT.slotField(t(d.labelKey), t('label.startTime'))}
+                    </label>
+                    <input
+                      id={`f-start-${d.value}`}
+                      type="time"
+                      value={draft.days[d.value].startTime}
+                      onChange={(e) => {
+                        patchDay(d.value, { startTime: e.target.value });
+                      }}
+                    />
+                  </div>
+                  <UnitInput
+                    id={`f-duration-${d.value}`}
+                    quantity={FORMAT.slotField(t(d.labelKey), t('label.duration'))}
+                    unit={UNIT.minutes}
+                    step="1"
+                    value={draft.days[d.value].durationMin}
+                    error={durationErrors[d.value] ?? null}
+                    onChange={(v) => {
+                      patchDay(d.value, { durationMin: v });
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+          {/*
+           * Both messages are about the SET of checked days, so every weekday control describes
+           * them: there is no single control that owns the fault.
+           */}
+          {weekdayError !== null && (
+            <p className="wiz-error" id={WEEKDAY_ERROR_ID}>
+              {weekdayError}
+            </p>
+          )}
+          {availabilityDaysError !== null && (
+            <p className="wiz-error" id={AVAILABILITY_DAYS_ERROR_ID}>
+              {availabilityDaysError}
+            </p>
+          )}
+
+          <UnitInput
+            id="f-weekly-target"
+            quantity={t('quantity.weeklySessionTarget')}
+            unit={null}
+            step="1"
+            value={draft.weeklySessionTarget}
+            error={weeklyTargetError}
+            onChange={(v) => {
+              patch({ weeklySessionTarget: v });
+            }}
+          />
+        </fieldset>
+      )}
+
       {step === 'goal' && (
         <fieldset>
           <StepHeading title={t(STEP_TITLE_KEY.goal)} headingRef={headingRef} />
@@ -3460,104 +3575,6 @@ export function SetupWizard(): JSX.Element {
         </fieldset>
       )}
 
-      {step === 'availability' && (
-        <fieldset>
-          <StepHeading title={t(STEP_TITLE_KEY.availability)} headingRef={headingRef} />
-
-          <div className="wiz-field">
-            <label htmlFor="f-sessions">{t('label.sessionsPerWeek')}</label>
-            <select
-              id="f-sessions"
-              value={String(draft.sessionsPerWeek)}
-              onChange={(e) => {
-                const sessions = pickSessionsPerWeek(e.target.value);
-                patch({ sessionsPerWeek: sessions, weeklySessionTarget: String(sessions) });
-              }}
-            >
-              {SESSIONS_PER_WEEK_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </div>
-          <p className="wiz-note">{SPLIT_TEMPLATES[draft.sessionsPerWeek].note}</p>
-
-          {WEEKDAYS.map((d) => (
-            <div key={d.value}>
-              <label className="wiz-inline">
-                <input
-                  type="checkbox"
-                  checked={draft.days[d.value].enabled}
-                  aria-invalid={weekdayError !== null || availabilityDaysError !== null}
-                  aria-describedby={describedBy(
-                    weekdayError === null ? null : WEEKDAY_ERROR_ID,
-                    availabilityDaysError === null ? null : AVAILABILITY_DAYS_ERROR_ID,
-                  )}
-                  onChange={(e) => {
-                    patchDay(d.value, { enabled: e.target.checked });
-                  }}
-                />
-                {t(d.labelKey)}
-              </label>
-              {draft.days[d.value].enabled && (
-                <div className="wiz-row">
-                  <div className="wiz-field">
-                    <label htmlFor={`f-start-${d.value}`}>
-                      {FORMAT.slotField(t(d.labelKey), t('label.startTime'))}
-                    </label>
-                    <input
-                      id={`f-start-${d.value}`}
-                      type="time"
-                      value={draft.days[d.value].startTime}
-                      onChange={(e) => {
-                        patchDay(d.value, { startTime: e.target.value });
-                      }}
-                    />
-                  </div>
-                  <UnitInput
-                    id={`f-duration-${d.value}`}
-                    quantity={FORMAT.slotField(t(d.labelKey), t('label.duration'))}
-                    unit={UNIT.minutes}
-                    step="1"
-                    value={draft.days[d.value].durationMin}
-                    error={durationErrors[d.value] ?? null}
-                    onChange={(v) => {
-                      patchDay(d.value, { durationMin: v });
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
-          {/*
-           * Both messages are about the SET of checked days, so every weekday control describes
-           * them: there is no single control that owns the fault.
-           */}
-          {weekdayError !== null && (
-            <p className="wiz-error" id={WEEKDAY_ERROR_ID}>
-              {weekdayError}
-            </p>
-          )}
-          {availabilityDaysError !== null && (
-            <p className="wiz-error" id={AVAILABILITY_DAYS_ERROR_ID}>
-              {availabilityDaysError}
-            </p>
-          )}
-
-          <UnitInput
-            id="f-weekly-target"
-            quantity={t('quantity.weeklySessionTarget')}
-            unit={null}
-            step="1"
-            value={draft.weeklySessionTarget}
-            error={weeklyTargetError}
-            onChange={(v) => {
-              patch({ weeklySessionTarget: v });
-            }}
-          />
-        </fieldset>
-      )}
 
       {step === 'programme' && (
         <fieldset>
