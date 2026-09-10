@@ -1228,3 +1228,163 @@
   font-family: var(--sans, inherit);
   color: var(--text-2);
 }
+
+/* ------------------------------------------------------------------------------------------ *
+ * The goal step: the derived goal and the feasibility calendar (Brief I Parts 1 and 4)
+ * ------------------------------------------------------------------------------------------ */
+
+/*
+ * The read-back of what the two axis radio groups derived. An <output>, so it is announced when
+ * it changes without the focus moving, and a fill rather than a colour so it reads as a value
+ * on all three skins (selection state is a fill inversion or a border, never "darker").
+ */
+.wiz .wiz-derived-goal {
+  display: inline-block;
+  padding: 4px 10px;
+  border: 1px solid var(--line-2, var(--line));
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/*
+ * THE CALENDAR'S SURFACE IS THE MEASURED CONSTRAINT, not a style choice.
+ *
+ * `--band-surface` is `--bg` on clinical, `--board` on board, and the INVERTED PANEL (#000000)
+ * on limelight. The three band fills measure 14.05 / 12.56 / 9.84:1 on clinical's ground and
+ * 1.37 / 1.23 / 1.04:1 on limelight's lime ground, which is below WCAG 1.4.11's 3:1 non-text
+ * floor: on that skin the fills are invisible on the bare page and legible only on the panel.
+ * The measured table and its sources are in src/ui/styles/tokens.css.
+ *
+ * So this rule paints the card, and every band fill below is drawn inside it. Moving a band fill
+ * out of this container puts it back on a ground it was never measured against.
+ */
+.wiz .wiz-calendar {
+  padding: 10px;
+  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  border-radius: 6px;
+  background: var(--band-surface, #0a0b0c);
+  color: var(--band-surface-text, #dde3ea);
+}
+
+.wiz .wiz-calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* 44 px minimum, as every other tapped control in this file. */
+.wiz .wiz-calendar-nav {
+  min-height: 2.75rem;
+  padding: 0 10px;
+  border: 1px solid var(--line-2, var(--line));
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.wiz .wiz-calendar-nav[disabled] {
+  opacity: 0.45;
+}
+
+.wiz .wiz-calendar-month {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.wiz .wiz-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+}
+
+.wiz .wiz-calendar-weekday {
+  padding: 2px 0;
+  font-size: 0.7rem;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.wiz .wiz-calendar-blank {
+  min-height: 2.75rem;
+}
+
+/*
+ * One day. 44 px minimum in BOTH directions, so the grid is tappable on a 320 px phone at seven
+ * columns (320 px less the wizard's padding leaves about 41 px per column, so the cells sit
+ * shoulder to shoulder with no gap to spare; `gap` is 2 px rather than 0 for that reason).
+ */
+.wiz .wiz-calendar-day {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The three measured fills. Ink on any of them clears 10.49:1 at worst (tokens.css). */
+.wiz .wiz-band-realistic {
+  background: var(--band-realistic, #a4eab0);
+  color: var(--band-ink, #000000);
+}
+
+.wiz .wiz-band-improbable {
+  background: var(--band-improbable, #eac9a4);
+  color: var(--band-ink, #000000);
+}
+
+.wiz .wiz-band-highly-improbable {
+  background: var(--band-highly-improbable, #eaa6a4);
+  color: var(--band-ink, #000000);
+}
+
+/*
+ * A day with no band: a muscle-gain or maintenance goal, a date with no target to reach, or a
+ * date in the past. Uncoloured is the honest rendering, and the line under the grid says which
+ * rule is missing rather than colouring the cell on a rate nobody has published.
+ */
+.wiz .wiz-band-none {
+  background: transparent;
+  color: inherit;
+}
+
+.wiz .wiz-calendar-past {
+  opacity: 0.35;
+}
+
+/* Selection is a border, never "darker": darker-on-dark disappears, and on a pastel fill a
+ * darker fill would also destroy the ink contrast the fill was measured for. */
+.wiz .wiz-calendar-day[aria-pressed='true'] {
+  border-color: currentcolor;
+  border-width: 2px;
+  font-weight: 700;
+}
+
+.wiz .wiz-calendar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+}
+
+.wiz .wiz-calendar-legend > li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.wiz .wiz-calendar-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}

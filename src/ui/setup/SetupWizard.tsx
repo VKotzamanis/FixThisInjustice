@@ -5,10 +5,14 @@ import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { NAVY_SEE_PCT, NAVY_SITE_LABEL, estimateBodyFatNavy } from '../../domain/bodyfat';
 import {
+  addDays,
+  compareLocalDate,
+  daysBetween,
   deviceTimeZone,
   groupTimeZones,
   isValidLocalDate,
   isValidTimeZone,
+  isoWeekday,
   matchedZoneMembers,
   promoteSelectedZone,
   todayLocal,
@@ -22,6 +26,10 @@ import {
   computeTargets,
   isInDomain,
   seedBeverageTargetML,
+  targetDateFeasibility,
+  type Feasibility,
+  type FeasibilityBand,
+  type FeasibilityGap,
   type NutritionInput,
 } from '../../domain/nutrition';
 import { EXERCISES } from '../../domain/plan/library';
@@ -36,6 +44,8 @@ import {
   DEFAULT_BARBELL_STEP,
   DEFAULT_DUMBBELL_STEP,
   DEFAULT_STACK_STEP,
+  GOAL_AXES_BY_KIND,
+  GOAL_KIND_BY_AXES,
   KG_PER_LB,
   type ActivityLevel,
   type Availability,
@@ -43,9 +53,12 @@ import {
   type BodyweightEquipmentItem,
   type EquipmentAccess,
   type Experience,
+  type FatAxis,
   type GoalKind,
   type HomeEquipmentItem,
   type IsoWeekday,
+  type LocalDate,
+  type MuscleAxis,
   type Profile,
   type SetupAnswers,
   type Sex,
@@ -53,6 +66,7 @@ import {
   type UnitSystem,
 } from '../../domain/types';
 import { displayMass, formatBeverageTarget, formatMass } from '../../domain/units';
+import { WEEKDAY_ABBR, formatDayOfMonth } from '../format/plan';
 import {
   UnitInput,
   girthUnit,
@@ -395,12 +409,96 @@ function showsGymCommute(equipment: EquipmentAccess): boolean {
   return equipment === 'full-gym' || equipment === 'full-and-home';
 }
 
+/**
+ * The four goals, by their engine names. Still rendered, as the read-back of what the two axes
+ * below derived, so the setup screen and the Targets screen call the same goal the same thing.
+ * The chooser itself is `FAT_AXIS_OPTIONS` and `MUSCLE_AXIS_OPTIONS`.
+ */
 const GOAL_OPTIONS: { value: GoalKind; labelKey: CopyKey }[] = [
   { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
   { value: 'muscle-gain', labelKey: 'option.goalMuscleGain' },
   { value: 'recomposition', labelKey: 'option.goalRecomposition' },
   { value: 'maintenance', labelKey: 'option.goalMaintenance' },
 ];
+
+/**
+ * The two axes the goal step actually asks about (Brief I Part 1, claims C1.10.2 to C1.10.6).
+ *
+ * DERIVED, NEVER STORED. Neither axis is a draft field: the pair maps onto `GoalKind` and back
+ * through `GOAL_KIND_BY_AXES` / `GOAL_AXES_BY_KIND` in src/domain/types.ts, so `draft.goalKind`
+ * IS the state of both controls and there is no second copy of it that could disagree.
+ */
+const FAT_AXIS_OPTIONS: { value: FatAxis; labelKey: CopyKey }[] = [
+  { value: 'lose', labelKey: 'option.fatLose' },
+  { value: 'hold', labelKey: 'option.fatHold' },
+];
+
+const MUSCLE_AXIS_OPTIONS: { value: MuscleAxis; labelKey: CopyKey }[] = [
+  { value: 'gain', labelKey: 'option.muscleGain' },
+  { value: 'hold', labelKey: 'option.muscleHold' },
+];
+
+/** The plain-sentence outcome for each derived goal, in the owner's register rather than the engine's. */
+const GOAL_OUTCOME_KEY: Record<GoalKind, CopyKey> = {
+  'fat-loss': 'advice.goalOutcomeFatLoss',
+  'muscle-gain': 'advice.goalOutcomeMuscleGain',
+  recomposition: 'advice.goalOutcomeRecomposition',
+  maintenance: 'advice.goalOutcomeMaintenance',
+};
+
+/** The band word that ships beside every band fill. WCAG 1.4.1: colour is never the only carrier. */
+const BAND_WORD_KEY: Record<FeasibilityBand, CopyKey> = {
+  realistic: 'status.bandRealistic',
+  improbable: 'status.bandImprobable',
+  'highly-improbable': 'status.bandHighlyImprobable',
+};
+
+/**
+ * The line shown when a date carries NO band, one per reason the model can give.
+ *
+ * `Record<FeasibilityGap, CopyKey>` is total by type, so a reason added to the model without a
+ * sentence to explain it is a compile error rather than a blank panel. Every one of these names
+ * a rule or an input that is MISSING; not one of them states a rate.
+ */
+const FEASIBILITY_GAP_KEY: Record<FeasibilityGap, CopyKey> = {
+  'no-weekly-rate': 'advice.feasibilityNoWeeklyRate',
+  'mass-held': 'advice.feasibilityMassHeld',
+  'not-a-loss': 'advice.feasibilityNotALoss',
+  'no-horizon': 'advice.feasibilityNeedsFuture',
+  'no-target': 'advice.feasibilityNeedsTarget',
+};
+
+/** The token class that paints one band fill. The hexes and their measured ratios are in tokens.css. */
+const BAND_CLASS: Record<FeasibilityBand, string> = {
+  realistic: 'wiz-band-realistic',
+  improbable: 'wiz-band-improbable',
+  'highly-improbable': 'wiz-band-highly-improbable',
+};
+
+/**
+ * How far ahead the calendar will page. A guard on the month arrows, not a claim about how far
+ * out a target date may be: the date INPUT beside the grid accepts any valid date, and
+ * `targetDateFeasibility` bands whatever it is given.
+ */
+const CALENDAR_MAX_MONTHS_AHEAD = 60; // [month], five years
+
+/** Days in the calendar month containing `date`, as LocalDates, Monday-aligned by the caller. */
+function monthDays(date: LocalDate): LocalDate[] {
+  const first = `${date.slice(0, 7)}-01`;
+  const days: LocalDate[] = [];
+  for (let d = first; d.slice(0, 7) === first.slice(0, 7); d = addDays(d, 1)) days.push(d);
+  return days;
+}
+
+/** The first of the month `n` months from `date`'s month. Clamped to day 01, so no month is skipped. */
+function shiftMonth(date: LocalDate, n: number): LocalDate {
+  const year = Number(date.slice(0, 4));
+  const month = Number(date.slice(5, 7));
+  const zero = year * 12 + (month - 1) + n;
+  const y = Math.floor(zero / 12);
+  const m = (zero % 12) + 1;
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-01`;
+}
 
 const SESSIONS_PER_WEEK_OPTIONS: readonly SessionsPerWeek[] = [2, 3, 4, 5, 6];
 
@@ -526,6 +624,8 @@ function initialDraft(): Draft {
     bodyweightEquipment: [],
     goalKind: 'fat-loss',
     targetMass: '',
+    // Brief I Part 2. Empty, not null: an empty text field, exactly like targetMass beside it.
+    targetBodyFat: '',
     targetDate: '',
     creatine: false,
     weighInOptIn: false,
@@ -545,11 +645,13 @@ function initialDraft(): Draft {
   };
 }
 
-/* Select values are parsed against their closed option list, never cast (master plan section 3). */
-function pick<T extends string>(options: readonly { value: T }[], raw: string, fallback: T): T {
-  return options.find((o) => o.value === raw)?.value ?? fallback;
-}
-
+/*
+ * `pick` lived here: it parsed a <select>'s raw string value against its closed option list
+ * rather than casting it (master plan section 3). Brief I replaced the goal <select>, its last
+ * caller, with two radio groups, and a radio's handler closes over the already-typed option
+ * value, so there is no raw string left to parse. `pickSessionsPerWeek` below is the same guard
+ * for the one select that remains, and it still parses rather than casting.
+ */
 function pickSessionsPerWeek(raw: string): SessionsPerWeek {
   const value = Number(raw);
   return (
@@ -1062,6 +1164,14 @@ export function SetupWizard(): JSX.Element {
   const [zoneQuery, setZoneQuery] = useState('');
 
   /*
+   * Which month the feasibility calendar is showing, as an offset from the month of the day the
+   * wizard was opened (Brief I Part 4). NOT part of the draft, for the same reason `zoneQuery`
+   * is not: it is a view of the calendar, not an answer, and the answer itself is
+   * `draft.targetDate`, which the grid writes and reads like any other control.
+   */
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  /*
    * Persists the draft on change, debounced (C1.G.1). `draftSaveTimer` is read from `confirm()`
    * too, below, so a keystroke's pending write cannot land a few hundred milliseconds AFTER
    * Confirm has already cleared the draft and created the profile - the two clearTimeout sites
@@ -1525,10 +1635,118 @@ export function SetupWizard(): JSX.Element {
           overrides,
         );
 
+  /*
+   * Brief I Part 2, round 1 claim C1.10.5. Same shape as targetMassError above and for the same
+   * reason: optional, so an empty box is not an error, and bounded by NUTRITION_DOMAIN when it
+   * holds a value, so the profile never stores a percentage the engine would refuse.
+   */
+  const targetBodyFatText = draft.targetBodyFat ?? '';
+  const targetBodyFatError =
+    targetBodyFatText.trim() === ''
+      ? null
+      : requiredInRange(
+          copy('quantity.targetBodyFat', overrides),
+          targetBodyFatText,
+          NUTRITION_DOMAIN.bodyFatPct,
+          overrides,
+          UNIT.pct,
+        );
+
   const targetDateError =
     draft.targetDate === '' || isValidLocalDate(draft.targetDate)
       ? null
       : t('error.valueRequired');
+
+  /* ---- the goal step's derived model (Brief I Parts 1, 2 and 4) ---------------------------- */
+
+  /**
+   * The two axes, READ BACK OUT of the goal rather than stored beside it, and the goal the pair
+   * derives. `GOAL_AXES_BY_KIND` and `GOAL_KIND_BY_AXES` are total in both directions, so this
+   * round trip cannot produce a goal the engine has no rule for.
+   */
+  const axes = GOAL_AXES_BY_KIND[draft.goalKind];
+  function setAxes(next: { fat?: FatAxis; muscle?: MuscleAxis }): void {
+    const fat = next.fat ?? axes.fat;
+    const muscle = next.muscle ?? axes.muscle;
+    patch({ goalKind: GOAL_KIND_BY_AXES[fat][muscle] });
+  }
+
+  /**
+   * Current fat mass and lean mass, from the body step's own body-fat percentage.
+   *
+   * Both are null unless BOTH inputs exist: a percentage with no mass beside it, or a mass with
+   * no percentage, describes no composition at all. `bodyFatPct` is whichever route the body
+   * step took, typed or tape, exactly as `Profile.body.baselineBodyFatPct` will store it.
+   */
+  const currentFatKg = massKg !== null && bodyFatPct !== null ? massKg * (bodyFatPct / 100) : null; // [kg]
+  const currentLeanKg = massKg !== null && currentFatKg !== null ? massKg - currentFatKg : null; // [kg]
+
+  /**
+   * Brief I Part 2: the target is a BODY-FAT PERCENTAGE where an estimate exists to set it
+   * against, and target body mass only where none does.
+   *
+   * "instead of having a 'target body mass' which is stupid... Target body mass can be muscle or
+   * fat." It can, which is why the percentage is the better question, and why the fat mass and
+   * lean mass it implies are shown beside it.
+   */
+  const bodyFatTargetAvailable = currentLeanKg !== null;
+  const targetBodyFatPct = targetBodyFatError === null ? parseDecimal(targetBodyFatText) : null; // [%]
+
+  /**
+   * The body mass a body-fat target implies, HOLDING LEAN MASS.
+   *
+   *   target mass = current lean mass / (1 - target body fat / 100)      [kg]
+   *
+   * The assumption is stated, not hidden: lean mass held is what the prescribed fat-loss rate
+   * targets in the first place (Garthe 2011's 0.7 %BW/week arm is the one that PRESERVED lean
+   * body mass, at +2.1 +/- 0.4 %, where 1.4 %/wk lost it). It is algebra on that assumption and
+   * on the definition of a percentage, not a coefficient: nothing here is fitted, borrowed or
+   * interpolated, and `advice.targetBodyFatBasis` says so on the screen.
+   *
+   * Null at 100 % and above, where the expression has no positive root and the field's own
+   * NUTRITION_DOMAIN bound has already rejected the value anyway.
+   */
+  const impliedTargetMassKg =
+    currentLeanKg !== null && targetBodyFatPct !== null && targetBodyFatPct < 100
+      ? currentLeanKg / (1 - targetBodyFatPct / 100)
+      : null; // [kg]
+  const impliedTargetFatKg =
+    impliedTargetMassKg !== null && currentLeanKg !== null ? impliedTargetMassKg - currentLeanKg : null; // [kg]
+
+  /**
+   * The target the calendar measures a date against: the body-fat target's implied mass where
+   * that route is open, the typed target body mass where it is not. One quantity, never both.
+   */
+  const typedTargetMassKg = targetMassError === null ? storedMassKg(draft.targetMass, draft.units) : null; // [kg]
+  const effectiveTargetMassKg = bodyFatTargetAvailable ? impliedTargetMassKg : typedTargetMassKg; // [kg]
+
+  /**
+   * The band for one date, or the reason it has none. Every rule is in
+   * `targetDateFeasibility` (src/domain/nutrition.ts), which reads FAT_LOSS_RATE_BOUND and
+   * converts no kcal into any kg; this closure only supplies the horizon.
+   *
+   * Weeks are whole calendar days divided by seven, through `daysBetween`, which is zone-free
+   * and DST-free. A fractional week is kept rather than rounded: rounding 3 days to 0 weeks
+   * would make a required rate infinite, and rounding it to 1 would make a three-day target
+   * look like a week's work.
+   */
+  function feasibilityOf(date: LocalDate): Feasibility {
+    if (massKg === null) return { assessable: false, gap: 'no-target' };
+    return targetDateFeasibility({
+      goal: draft.goalKind,
+      currentMassKg: massKg, // [kg]
+      targetMassKg: effectiveTargetMassKg, // [kg] or null
+      weeks: daysBetween(today, date) / 7, // [week]
+    });
+  }
+
+  const targetDateFeasibilityResult: Feasibility | null =
+    draft.targetDate !== '' && targetDateError === null ? feasibilityOf(draft.targetDate) : null;
+
+  /** The month the grid is showing, and the days in it, Monday-aligned by leading blanks. */
+  const calendarMonthStart = shiftMonth(today, monthOffset);
+  const calendarDays = monthDays(calendarMonthStart);
+  const calendarLeadingBlanks = isoWeekday(calendarMonthStart) - 1;
 
   const weekdayError = enabledDays.length === 0 ? t('error.pickOneDay') : null;
 
@@ -1585,7 +1803,16 @@ export function SetupWizard(): JSX.Element {
       tapeIncomplete ||
       tapeWithheld,
     training: Object.values(stepErrors).some((e) => e !== null) || walkMinutesError !== null,
-    goal: targetMassError !== null || targetDateError !== null,
+    /*
+     * Only the target that is ON SCREEN can block the step. The two are alternatives, never both
+     * (Brief I Part 2), so gating on whichever is hidden would stop Next on a message the user
+     * cannot see or correct: a target body mass typed before a body-fat estimate existed stays
+     * in the draft, and the field it belongs to is no longer rendered. Same re-gating rule
+     * `gymCommute` and `homeEquipment` already follow at confirm, applied to the guard as well.
+     */
+    goal:
+      (bodyFatTargetAvailable ? targetBodyFatError : targetMassError) !== null ||
+      targetDateError !== null,
     availability:
       weekdayError !== null ||
       availabilityDaysError !== null ||
@@ -1778,7 +2005,15 @@ export function SetupWizard(): JSX.Element {
     const barbellKg = storedLoadKg(draft.barbellStep, draft.units); // [kg]
     const dumbbellPairKg = storedLoadKg(draft.dumbbellStep, draft.units); // [kg]
     const stackKg = storedLoadKg(draft.stackStep, draft.units); // [kg]
-    const targetMassKg = storedMassKg(draft.targetMass, draft.units); // [kg]
+    /*
+     * Brief I Part 2. Where the body-fat route was open, the stored target mass is the one that
+     * percentage IMPLIES at held lean mass, so the two stored fields describe one target rather
+     * than two that can disagree. Where it was not, the typed target body mass is stored as
+     * before and `targetBodyFatPct` stays null.
+     */
+    const targetMassKg = bodyFatTargetAvailable
+      ? impliedTargetMassKg
+      : storedMassKg(draft.targetMass, draft.units); // [kg]
     // [min] one way, stored only (Brief F Part 3). "0" whenever the field is not shown or the
     // answer is No, matching draft.walkMinutes's own reset on a No click.
     const walkMinutesTyped = parseDecimal(draft.walkMinutes);
@@ -1834,11 +2069,23 @@ export function SetupWizard(): JSX.Element {
       homeEquipment: showsHomeEquipment(draft.equipment) ? draft.homeEquipment : [],
       bodyweightEquipment: draft.equipment === 'bodyweight' ? draft.bodyweightEquipment : [],
       goal: {
+        /*
+         * The DERIVED goal, and the only place either axis is recorded (Brief I Part 1,
+         * decision goal-axes-derived-not-stored). The chooser reads its own two positions back
+         * out of this field through GOAL_AXES_BY_KIND, so no axis is stored beside it.
+         */
         kind: draft.goalKind,
         targetMassKg, // [kg] or null
-        // No target body-fat percentage is collected: the tape estimate's standard error is
-        // larger than any target a user would set against it (src/domain/bodyfat.ts).
-        targetBodyFatPct: null,
+        /*
+         * Brief I Part 2, claim C1.10.5. This field has existed since the schema was written and
+         * the wizard wrote null into it until now; the note that used to stand here said the
+         * tape estimate's standard error is larger than any target a user would set against it.
+         * That is still TRUE and it is now stated to the user instead of used to withhold the
+         * field: `advice.targetBodyFatBasis` prints NAVY_SEE_PCT for the stated sex, live from
+         * src/domain/bodyfat.ts, beside the target itself. The owner's objection is that a
+         * target body mass cannot say whether it means muscle or fat, and a percentage can.
+         */
+        targetBodyFatPct: bodyFatTargetAvailable ? targetBodyFatPct : null, // [%] or null
         targetDate: draft.targetDate === '' ? null : draft.targetDate,
       },
       supplements: { creatine: draft.creatine },
@@ -2875,33 +3122,146 @@ export function SetupWizard(): JSX.Element {
         <fieldset>
           <StepHeading title={t(STEP_TITLE_KEY.goal)} headingRef={headingRef} />
 
+          {/*
+            Brief I Part 1, round 1 claims C1.10.2 to C1.10.6. The owner: "The way the 'Goal' is
+            seperated is exclusionary. Recomposition and fat loss are not exclusionary."
+
+            They are not, so the exclusive menu is gone and the two questions underneath it are
+            asked instead. Radios, not a select: the whole point is that the user sees both axes
+            at once and reads the pair, which a collapsed menu hides. Each group is a
+            `radiogroup` labelled by its own heading, and the label element around each radio is
+            the 44 px tap target (setup.css, `.wiz-inline`).
+          */}
           <div className="wiz-field">
-            <label htmlFor="f-goal">{t('label.goal')}</label>
-            <select
-              id="f-goal"
-              value={draft.goalKind}
-              onChange={(e) => {
-                patch({ goalKind: pick(GOAL_OPTIONS, e.target.value, 'fat-loss') });
-              }}
-            >
-              {GOAL_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
+            <p className="wiz-label" id="f-fat-axis-label">
+              {t('label.fatAxis')}
+            </p>
+            <div role="radiogroup" aria-labelledby="f-fat-axis-label">
+              {FAT_AXIS_OPTIONS.map((o) => (
+                <label className="wiz-inline" key={o.value}>
+                  <input
+                    type="radio"
+                    name="f-fat-axis"
+                    value={o.value}
+                    checked={axes.fat === o.value}
+                    onChange={() => {
+                      setAxes({ fat: o.value });
+                    }}
+                  />
                   {t(o.labelKey)}
-                </option>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
-          <UnitInput
-            id="f-target-mass"
-            quantity={t('quantity.targetBodyMass')}
-            unit={massLabelUnit}
-            value={draft.targetMass}
-            error={targetMassError}
-            onChange={(v) => {
-              patch({ targetMass: v });
-            }}
-          />
+          <div className="wiz-field">
+            <p className="wiz-label" id="f-muscle-axis-label">
+              {t('label.muscleAxis')}
+            </p>
+            <div role="radiogroup" aria-labelledby="f-muscle-axis-label">
+              {MUSCLE_AXIS_OPTIONS.map((o) => (
+                <label className="wiz-inline" key={o.value}>
+                  <input
+                    type="radio"
+                    name="f-muscle-axis"
+                    value={o.value}
+                    checked={axes.muscle === o.value}
+                    onChange={() => {
+                      setAxes({ muscle: o.value });
+                    }}
+                  />
+                  {t(o.labelKey)}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/*
+            The read-back: the outcome in the owner's register, then the goal's engine name, so
+            the setup screen and the Targets screen call the same goal the same thing. `output`
+            rather than a `<p>` because it is the computed result of the two controls above it,
+            and `aria-live` because it changes without the focus moving.
+          */}
+          <p className="wiz-note">{t(GOAL_OUTCOME_KEY[draft.goalKind])}</p>
+          <div className="wiz-field">
+            <p className="wiz-label">{t('label.goal')}</p>
+            <output className="wiz-derived-goal" aria-live="polite" data-testid="derived-goal">
+              {t(GOAL_OPTIONS.find((o) => o.value === draft.goalKind)?.labelKey ?? 'option.goalFatLoss')}
+            </output>
+          </div>
+
+          {/*
+            Brief I Part 1, last paragraph: where recomposition is chosen, say what it costs.
+            R9 puts the reasoning behind a disclosure; the sentence itself restates what
+            src/domain/nutrition.ts already says in its own basis strings.
+          */}
+          {draft.goalKind === 'recomposition' && (
+            <details>
+              <summary>{t('disclosure.why')}</summary>
+              <p className="wiz-note">{t('advice.goalRecompositionCost')}</p>
+            </details>
+          )}
+
+          {/*
+            Brief I Part 2, claim C1.10.5: "instead of having a 'target body mass' which is
+            stupid... Target body mass can be muscle or fat."
+
+            One target, never two. Where a body-fat estimate exists the target is a PERCENTAGE
+            and the fat mass and lean mass it implies are printed beside it, so the number means
+            something physical. Where none exists the old target body mass stands, with a line
+            saying why the better question could not be asked.
+          */}
+          {bodyFatTargetAvailable ? (
+            <>
+              <UnitInput
+                id="f-target-bodyfat"
+                quantity={t('quantity.targetBodyFat')}
+                unit={UNIT.pct}
+                value={targetBodyFatText}
+                error={targetBodyFatError}
+                onChange={(v) => {
+                  patch({ targetBodyFat: v });
+                }}
+              />
+              {impliedTargetFatKg !== null && currentLeanKg !== null && (
+                <p className="wiz-note" data-testid="implied-composition">
+                  {FORMAT.impliedComposition(
+                    formatMass(impliedTargetFatKg, draft.units),
+                    formatMass(currentLeanKg, draft.units),
+                    overrides,
+                  )}
+                </p>
+              )}
+              <details>
+                <summary>{t('disclosure.why')}</summary>
+                <p className="wiz-note">
+                  {/*
+                    The tape method's standard error for the STATED sex, read live from
+                    src/domain/bodyfat.ts. Under `nd` the tape route is closed and the estimate
+                    can only have been typed in, so the male figure is not a defensible stand-in;
+                    the female figure is the larger of the two (3.72 against 3.52 percentage
+                    points), so quoting it is the conservative reading rather than an invented
+                    average of two equations that differ in form.
+                  */}
+                  {FORMAT.targetBodyFatBasis(NAVY_SEE_PCT[statedSex ?? 'female'], overrides)}
+                </p>
+              </details>
+            </>
+          ) : (
+            <>
+              <UnitInput
+                id="f-target-mass"
+                quantity={t('quantity.targetBodyMass')}
+                unit={massLabelUnit}
+                value={draft.targetMass}
+                error={targetMassError}
+                onChange={(v) => {
+                  patch({ targetMass: v });
+                }}
+              />
+              <p className="wiz-note">{t('advice.targetBodyFatUnavailable')}</p>
+            </>
+          )}
 
           <div className="wiz-field">
             <label htmlFor="f-target-date">{t('label.targetDate')}</label>
@@ -2920,6 +3280,148 @@ export function SetupWizard(): JSX.Element {
                 {targetDateError}
               </p>
             )}
+          </div>
+
+          {/*
+            THE FEASIBILITY CALENDAR (Brief I Part 4, claims C1.11.2 to C1.11.5).
+
+            The owner: "if I choose an unrealistic goal and a 2 day target, who will tell me that
+            im being delusional?" This does, at the moment the date is picked, and it does it in
+            three colours he specified with the word beside each one.
+
+            THE SURFACE IS A LAYOUT CONSTRAINT, NOT A STYLE. `.wiz-calendar` paints
+            `--band-surface`, which is `--bg` in clinical, `--board` in board, and the INVERTED
+            PANEL (#000000) in limelight. All three pastels measure 1.0 to 1.4:1 against
+            limelight's lime `--bg`, below even WCAG 1.4.11's 3:1 non-text floor, so on that skin
+            the fills would be invisible on the bare page. tokens.css carries the measured table.
+          */}
+          <div className="wiz-field">
+            <p className="wiz-label" id="f-feasibility-label">
+              {t('label.feasibility')}
+            </p>
+            <div className="wiz-calendar" aria-labelledby="f-feasibility-label">
+              <div className="wiz-calendar-head">
+                <button
+                  type="button"
+                  className="wiz-calendar-nav"
+                  disabled={monthOffset <= 0}
+                  onClick={() => {
+                    setMonthOffset((n) => Math.max(0, n - 1));
+                  }}
+                >
+                  {t('button.previousMonth')}
+                </button>
+                {/*
+                  The month as its ISO prefix, "2027-03". Deliberately not a month NAME: a name
+                  is either a string literal in a component, which the copy contract forbids, or
+                  twelve more copy keys for words the rest of this wizard already writes as ISO
+                  dates in `label.targetDate`'s own field. ISO is also unambiguous in every
+                  locale, which a three-letter abbreviation is not.
+                */}
+                <span className="wiz-calendar-month" data-testid="calendar-month">
+                  {calendarMonthStart.slice(0, 7)}
+                </span>
+                <button
+                  type="button"
+                  className="wiz-calendar-nav"
+                  disabled={monthOffset >= CALENDAR_MAX_MONTHS_AHEAD}
+                  onClick={() => {
+                    setMonthOffset((n) => Math.min(CALENDAR_MAX_MONTHS_AHEAD, n + 1));
+                  }}
+                >
+                  {t('button.nextMonth')}
+                </button>
+              </div>
+
+              <div className="wiz-calendar-grid">
+                {/*
+                  WEEKDAY_ABBR comes from src/ui/format/plan.ts, the same constant the Plan view
+                  labels its rows with. A format constant, not copy: it is not retunable by a
+                  skin, and reusing it keeps one spelling of "Mon" in the app rather than two.
+                  `aria-hidden` because each day cell already names its own full date.
+                */}
+                {([1, 2, 3, 4, 5, 6, 7] as const).map((wd) => (
+                  <span key={wd} className="wiz-calendar-weekday" aria-hidden="true">
+                    {WEEKDAY_ABBR[wd]}
+                  </span>
+                ))}
+                {Array.from({ length: calendarLeadingBlanks }, (_unused, i) => (
+                  <span key={`blank-${String(i)}`} className="wiz-calendar-blank" aria-hidden="true" />
+                ))}
+                {calendarDays.map((date) => {
+                  const result = feasibilityOf(date);
+                  const bandWord = result.assessable ? t(BAND_WORD_KEY[result.band]) : '';
+                  const past = compareLocalDate(date, today) < 0;
+                  return (
+                    <button
+                      type="button"
+                      key={date}
+                      className={[
+                        'wiz-calendar-day',
+                        result.assessable ? BAND_CLASS[result.band] : 'wiz-band-none',
+                        past ? 'wiz-calendar-past' : '',
+                      ]
+                        .filter((c) => c !== '')
+                        .join(' ')}
+                      disabled={past}
+                      aria-pressed={date === draft.targetDate}
+                      aria-label={FORMAT.calendarDay(date, bandWord)}
+                      onClick={() => {
+                        patch({ targetDate: date });
+                      }}
+                    >
+                      {formatDayOfMonth(date)}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/*
+                WCAG 1.4.1: the three fills never carry the meaning alone. The legend prints each
+                band's word beside its own swatch, and every day cell repeats the word in its
+                accessible name.
+              */}
+              <ul className="wiz-calendar-legend">
+                {(['realistic', 'improbable', 'highly-improbable'] as const).map((band) => (
+                  <li key={band}>
+                    <span className={`wiz-calendar-swatch ${BAND_CLASS[band]}`} aria-hidden="true" />
+                    {t(BAND_WORD_KEY[band])}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/*
+              What the chosen date means, in words. `targetDateFeasibilityResult` is null until a
+              valid date is picked; after that it either carries a band or names the rule that is
+              MISSING, never a rate that was guessed at.
+            */}
+            <div data-testid="feasibility-verdict">
+              {targetDateFeasibilityResult !== null && targetDateFeasibilityResult.assessable && (
+                <>
+                  <p className="wiz-note">
+                    {t(BAND_WORD_KEY[targetDateFeasibilityResult.band])}
+                  </p>
+                  <p className="wiz-note">
+                    {FORMAT.feasibilityRate(
+                      `${(targetDateFeasibilityResult.requiredFraction * 100).toFixed(2)} ${UNIT.pct}`,
+                      overrides,
+                    )}
+                  </p>
+                  {targetDateFeasibilityResult.belowBound && (
+                    <p className="wiz-note">{t('advice.feasibilitySlow')}</p>
+                  )}
+                </>
+              )}
+              {targetDateFeasibilityResult !== null && !targetDateFeasibilityResult.assessable && (
+                <p className="wiz-note">
+                  {t(FEASIBILITY_GAP_KEY[targetDateFeasibilityResult.gap])}
+                </p>
+              )}
+              {/* Brief I Part 4, point 3: say it is an estimate, in the register the basis
+                  strings use. Always on show, not only once a date is picked. */}
+              <p className="wiz-note">{t('advice.feasibilityEstimate')}</p>
+            </div>
           </div>
 
           <label className="wiz-inline">

@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `aa9fe7a`. 101 parts across 14 screens, holding 545 of the table's 548 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `bda7398`. 101 parts across 14 screens, holding 574 of the table's 577 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -366,26 +366,55 @@ States: `default`, `walk-to-gym`, `home-equipment`, `bodyweight-equipment`
 
 ### `setup.goal`
 
-Step 5, Goal. Fat loss, maintenance, muscle gain or recomposition.
+Step 5, Fitness Goal. The two axes the goal is derived from, the body-fat or body-mass target, and the target date with its feasibility calendar (Brief I).
 
 Renders: `src/ui/setup/SetupWizard.tsx`
 
-States: `default`
+States: `default`, `recomposition`, `no-bodyfat-estimate`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.creatineOnly` | Dose scales with body mass. | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `advice.feasibilityEstimate` | An estimate from a prescribed rate, not a prediction about you. | same | same | yes |
+| `advice.feasibilityMassHeld` | This goal holds body mass, so no weekly rate applies. | same | same | yes |
+| `advice.feasibilityNeedsFuture` | Pick a date after today before this can be judged. | same | same | yes |
+| `advice.feasibilityNeedsTarget` | Set a target above before these dates can be judged. | same | same | yes |
+| `advice.feasibilityNoWeeklyRate` | No established weekly rate exists for muscle gain. | same | same | yes |
+| `advice.feasibilityNotALoss` | That target is not below your current body mass. | same | same | yes |
+| `advice.feasibilityRate` | That date needs about {rate} of body mass per week. | same | same | yes |
+| `advice.feasibilitySlow` | Slower than the prescribed rate, and realistic. | same | same | yes |
+| `advice.goalOutcomeFatLoss` | Lose fat and keep the muscle you already have. | same | same | yes |
+| `advice.goalOutcomeMaintenance` | Hold your body composition and build better training habits. | same | same | yes |
+| `advice.goalOutcomeMuscleGain` | Build muscle, and accept some fat gain alongside it. | same | same | yes |
+| `advice.goalOutcomeRecomposition` | Lose fat and build muscle at the same time. | same | same | yes |
+| `advice.goalRecompositionCost` | Energy is held at maintenance for this goal. The content review does not cover recomposition, so holding maintenance energy introduces no coefficient the report does not supply, and the protein range is an extrapolation from the muscle-gain row rather than a figure the review states. | same | same | yes |
+| `advice.impliedComposition` | At that target: {fat} fat mass and {lean} lean mass. | same | same | yes |
+| `advice.targetBodyFatBasis` | The fat mass and lean mass shown assume lean mass is held while fat is lost, which is what the prescribed rate targets. A tape estimate carries a standard error of {see} percentage points of body fat, so read the target as a direction rather than as a number to hit. | same | same | yes |
+| `advice.targetBodyFatUnavailable` | No body-fat estimate yet, so the target is body mass. | same | same | yes |
 | `advice.weighIn` | Optional. Compares body mass before and after. | same | same | yes |
+| `button.nextMonth` | Next Month | same | same | yes |
+| `button.previousMonth` | Previous Month | same | same | yes |
 | `label.creatine` | Creatine monohydrate | same | same | no: THE QUANTITIES, THE UNITS AND THE INCREMENTS |
+| `label.fatAxis` | Body Fat Goal | same | same | yes |
+| `label.feasibility` | Target Date Feasibility | same | same | yes |
 | `label.goal` | Goal | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `label.targetDate` | Target date (optional) | same | same | yes |
+| `label.muscleAxis` | Muscle Goal | same | same | yes |
+| `label.targetDate` | Target Date (Optional) | same | same | yes |
 | `label.weighIn` | Weigh in | same | same | yes |
+| `option.fatHold` | Hold body fat | same | same | yes |
+| `option.fatLose` | Lose fat | same | same | yes |
 | `option.goalFatLoss` | Fat loss | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `option.goalMaintenance` | Maintenance | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `option.goalMuscleGain` | Muscle gain | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
 | `option.goalRecomposition` | Recomposition | same | same | no: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM |
-| `quantity.targetBodyMass` | Target body mass | same | same | yes |
-| `step.goal` | Goal | same | same | yes |
+| `option.muscleGain` | Gain muscle | same | same | yes |
+| `option.muscleHold` | Hold muscle | same | same | yes |
+| `quantity.targetBodyFat` | Target Body Fat | same | same | yes |
+| `quantity.targetBodyMass` | Target Body Mass | same | same | yes |
+| `status.bandHighlyImprobable` | Highly Improbable | same | same | yes |
+| `status.bandImprobable` | Improbable | same | same | yes |
+| `status.bandRealistic` | Realistic | same | same | yes |
+| `step.goal` | Fitness Goal | same | same | yes |
 
 ### `setup.availability`
 
