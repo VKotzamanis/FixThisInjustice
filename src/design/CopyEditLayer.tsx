@@ -1,11 +1,19 @@
 /**
- * DESIGN MODE, IN-PLACE COPY EDITING.
+ * DESIGN MODE, IN-PLACE TEXT EDITING.
  *
- * Task 2 of docs/plans/2026-09-10-16-design-mode.md. `copy()` marks its return value with the key
- * that produced it (src/design/copyMarkers.ts records why the marker is invisible tag characters
- * rather than a readable sentinel). This layer turns each marked run into a `data-copy-key`
- * element, makes the ones it can attribute exactly `contenteditable`, runs the copy contract as
- * the owner types, and hands every committed string back to the panel.
+ * Task 2 of docs/plans/2026-09-10-16-design-mode.md, widened to the long-form modules. `copy()`
+ * marks its return value with the key that produced it (src/design/copyMarkers.ts records why the
+ * marker is invisible tag characters rather than a readable sentinel). This layer turns each
+ * marked run into a `data-copy-key` element, makes the ones it can attribute exactly
+ * `contenteditable`, runs the copy contract as the owner types, and hands every committed string
+ * back to the panel.
+ *
+ * IT ALSO REACHES THE R10 MODULES, WHICH `copy()` DOES NOT. Task 2 shipped saying they were out of
+ * scope permanently, and the sentence that ruled them out - "they carry citations, DOIs and doses"
+ * - was true of some of them and false of the one the owner opened the tool to edit.
+ * `src/content/introSlides.ts` holds five slides of his own prose and not one citation.
+ * `src/content/r10Text.ts` carries the restated rule, the derived lock and the reasoning; this
+ * file only decorates what that registry reports.
  *
  * <!-- decision: decorate-the-existing-element-never-insert-one | status: adopted | supersedes: none -->
  *
@@ -15,8 +23,8 @@
  * not a child of this node`. So this layer does two things only, both of which React tolerates:
  *
  *   1. it sets ATTRIBUTES on an element React already rendered (`data-copy-key`,
- *      `contenteditable`, `data-copy-invalid`). React 19 writes only the props it was given, so
- *      an attribute it never set is not diffed and not removed;
+ *      `contenteditable`, `data-copy-invalid`, and the `data-r10-*` equivalents). React 19 writes
+ *      only the props it was given, so an attribute it never set is not diffed and not removed;
  *   2. it assigns `nodeValue` on a text node React already created, which mutates the node in
  *      place and leaves React's own reference to it valid.
  *
@@ -33,11 +41,6 @@
  * this file, and src/design/pasteGuard.ts refuses a paste that carries markup rather than
  * stripping it silently.
  *
- * ONLY `copy.ts` AND THE TWO SKIN TABLES ARE IN SCOPE. The R10 modules - `bodyEquations.ts`,
- * `guidanceReferences.ts`, `sexRationale.ts`, `supplementGuidance.ts`, `reviewDataNotes.ts` and
- * the rest - carry citations, DOIs and doses. They do not pass through `copy()`, so they are
- * never marked and never editable. Do not "fix" that.
- *
  * A KNOWN LIMITATION, in design mode only: a marked string handed to an ATTRIBUTE rather than to
  * a text node (`aria-label`, `title`, `placeholder`) keeps its markers, because there is no text
  * node to decorate. The characters are Default_Ignorable_Code_Point so nothing draws them, but a
@@ -49,17 +52,37 @@ import type { SkinId } from '../domain/types';
 import { findCopyMarks, hasCopyMarker, stripCopyMarkers } from './copyMarkers';
 import { blockedReason, renderedRow, validateCopyEdit } from './copyEdits';
 import type { CopyEdits } from './copyEdits';
+import { r10Blocked, validateR10Edit } from './r10Edits';
+import type { NoteIntent, R10Edits } from './r10Edits';
+import { r10Field, r10FieldForValue } from '../content/r10Text';
 import { judgePaste, normaliseEditedText } from './pasteGuard';
 import type { CopyViolation } from '../content/copyContract';
 
-/** Panel chrome is not app copy, so it is never decorated. */
+/** Panel chrome is not app text, so it is never decorated. */
 const PANEL_SELECTORS = '.dm-panel, .dm-copy-bubble, .dm-launcher';
 
-/** The editable host, if the event happened inside one. */
-const EDITABLE = '[data-copy-editable="true"]';
+/** The editable host, if the event happened inside one. Either kind. */
+const EDITABLE = '[data-copy-editable="true"], [data-r10-editable="true"]';
+
+/** Anything this layer has attributed, editable or not. A locked node is still tappable. */
+const ATTRIBUTED = '[data-copy-key], [data-r10-field]';
 
 /**
- * The `inputType` values an editable copy node accepts.
+ * Elements whose own click means something to the user.
+ *
+ * A click inside a decorated node is STOPPED before it reaches the app, because the intro is a
+ * `<section onClick={advance}>` and tapping a sentence to place the caret would otherwise turn
+ * the slide over. It is NOT stopped inside one of these: `button.introContinue` renders inside a
+ * real `<button>`, and a design mode that made the app's buttons stop working would be a tool
+ * nobody could use to reach the second screen.
+ */
+const INTERACTIVE = 'button, a, summary, label, input, select, textarea, [role="button"]';
+
+/** Never decorated: their text is not prose a reader sees. */
+const NEVER_DECORATE = new Set(['SCRIPT', 'STYLE', 'TEXTAREA', 'TITLE', 'OPTION']);
+
+/**
+ * The `inputType` values an editable node accepts.
  *
  * A whitelist rather than a blacklist: a new formatting command added to a browser next year is
  * refused by default instead of silently producing a `<b>` in a copy string. `insertFromPaste`
@@ -84,18 +107,31 @@ export interface CopyEditLayerProps {
   /** The skin whose WORDS are on screen: the app's saved `ui.skin`, never the token preview. */
   readonly skin: SkinId;
   readonly edits: CopyEdits;
-  /** A committed string. The panel decides whether it is a change or a revert. */
+  /** R10 long-form edits, `module:path` to the retyped string. Not per skin: see r10Edits.ts. */
+  readonly r10Edits: R10Edits;
+  /** A committed copy string. The panel decides whether it is a change or a revert. */
   readonly onCommit: (key: string, value: string) => void;
-  /** Every key found on the current screen, so the panel can list the ones it cannot decorate. */
+  /** A committed R10 string. */
+  readonly onR10Commit: (id: string, value: string) => void;
+  /** A structural intent or free note against one element. */
+  readonly onNote: (target: string, intent: NoteIntent) => void;
+  /** Every copy key found on the current screen, so the panel can list what it cannot decorate. */
   readonly onDiscovered: (keys: readonly string[]) => void;
+  /** Every R10 field found on the current screen. */
+  readonly onR10Discovered: (ids: readonly string[]) => void;
 }
 
 /** What the bubble is currently saying about one node. */
 interface FocusState {
-  readonly key: string;
+  /** `copy.ts` and its skin tables, or one of the long-form modules. */
+  readonly kind: 'copy' | 'r10';
+  /** A `CopyKey`, or an R10 `module:path`. */
+  readonly target: string;
   readonly value: string;
   readonly violations: readonly CopyViolation[];
   readonly editable: boolean;
+  /** Why this text cannot be edited, or null. Shown in place of the contract readout. */
+  readonly lock: string | null;
   readonly top: number;
   readonly left: number;
   readonly above: boolean;
@@ -111,6 +147,14 @@ function hostOf(target: EventTarget | null): HTMLElement | null {
   return element === null ? null : element.closest<HTMLElement>(EDITABLE);
 }
 
+/** Any decorated host, editable or locked. A locked one still opens the bubble that explains it. */
+function attributedHost(target: EventTarget | null): HTMLElement | null {
+  const node = target instanceof Node ? target : null;
+  if (node === null) return null;
+  const element = node instanceof HTMLElement ? node : node.parentElement;
+  return element === null ? null : element.closest<HTMLElement>(ATTRIBUTED);
+}
+
 /** Where the bubble sits relative to `host`, clamped so it is reachable on a phone. */
 function placeBubble(host: HTMLElement): { top: number; left: number; above: boolean } {
   const rect = host.getBoundingClientRect();
@@ -124,20 +168,28 @@ function placeBubble(host: HTMLElement): { top: number; left: number; above: boo
   };
 }
 
+/** What one decoration pass saw, so the panel can list the rows the page could not decorate. */
+interface Discovered {
+  readonly copyKeys: readonly string[];
+  readonly r10Ids: readonly string[];
+}
+
 /**
- * Decorates every marked run under `root`.
+ * Decorates every marked run and every recognised R10 paragraph under `document.body`.
  *
- * Returns the keys it saw, so the panel can offer the ones it could not make editable. Mutates
- * only attributes and `nodeValue`, for the reason the file header gives.
+ * Mutates only attributes and `nodeValue`, for the reason the file header gives.
  */
-function decorate(skin: SkinId, edits: CopyEdits): readonly string[] {
+function decorate(skin: SkinId, edits: CopyEdits, r10: R10Edits): Discovered {
   const seen = new Set<string>();
+  const seenR10 = new Set<string>();
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   const marked: Text[] = [];
+  const plain: Text[] = [];
   let node = walker.nextNode();
   while (node !== null) {
     const text = node as Text;
     if (hasCopyMarker(text.data)) marked.push(text);
+    else if (text.data.trim().length > 1) plain.push(text);
     node = walker.nextNode();
   }
 
@@ -191,11 +243,52 @@ function decorate(skin: SkinId, edits: CopyEdits): readonly string[] {
   }
 
   /*
+   * THE R10 PASS. These strings carry no marker: they never go through `copy()`, and four of the
+   * eleven modules render ONLY from a file this work is not allowed to touch. They are recognised
+   * by their VALUE instead, from an index that DROPS any string two fields share, so a collision
+   * makes a paragraph un-editable rather than misrouting an edit. src/content/r10Text.ts states
+   * that decision against copyMarkers.ts's own rejection of value matching for copy keys.
+   */
+  for (const text of plain) {
+    const parent = text.parentElement;
+    if (parent === null) continue;
+    if (NEVER_DECORATE.has(parent.tagName)) continue;
+    if (parent.closest(PANEL_SELECTORS) !== null) continue;
+    if (parent.hasAttribute('data-copy-key') || parent.hasAttribute('data-r10-field')) continue;
+    /*
+     * THE TEXT MUST BE THE ELEMENT'S ONLY CHILD, and this is a correctness rule rather than an
+     * optimisation. The intro's acknowledgement renders as `<label><input type=checkbox />TEXT
+     * </label>`, whose `textContent` is exactly the stored string. Decorating it would put
+     * `contenteditable` on a label that owns a form control, and the focusout repair below
+     * assigns `textContent` when it does not find a single text child - which would delete the
+     * checkbox. One child, or nothing.
+     */
+    if (parent.childNodes.length !== 1) continue;
+
+    const field = r10FieldForValue(parent.textContent ?? '');
+    if (field === undefined) continue;
+    seenR10.add(field.id);
+
+    parent.setAttribute('data-r10-field', field.id);
+    const blocked = r10Blocked(field.id);
+    if (blocked === null) {
+      parent.setAttribute('data-r10-editable', 'true');
+      parent.setAttribute('contenteditable', 'plaintext-only');
+      parent.setAttribute('spellcheck', 'false');
+      syncR10(parent, field.id, r10);
+    } else {
+      parent.setAttribute('data-r10-editable', 'false');
+      parent.removeAttribute('contenteditable');
+    }
+  }
+
+  /*
    * THE SECOND PASS EXISTS BECAUSE THE FIRST ONE CONSUMES ITS OWN INPUT. Stripping the markers
-   * from a text node means the walk above will not find that node again, so an edit made after
-   * the words were decorated - typed into the panel's field rather than into the page - would
-   * never reach the screen, and an Undo would never put the shipped words back. The attributes
-   * survive where the markers do not, so they are what the page is re-synchronised from.
+   * from a text node means the walk above will not find that node again, and an R10 paragraph
+   * that has already been retyped no longer matches the value index. So an edit made after the
+   * words were decorated - typed into the panel's field rather than into the page - would never
+   * reach the screen, and an Undo would never put the shipped words back. The attributes survive
+   * where the markers and the matches do not, so they are what the page is re-synchronised from.
    */
   for (const element of document.querySelectorAll<HTMLElement>('[data-copy-key]')) {
     const key = element.getAttribute('data-copy-key');
@@ -203,8 +296,14 @@ function decorate(skin: SkinId, edits: CopyEdits): readonly string[] {
     seen.add(key);
     if (element.getAttribute('data-copy-editable') === 'true') syncEdited(element, skin, key, edits);
   }
+  for (const element of document.querySelectorAll<HTMLElement>('[data-r10-field]')) {
+    const id = element.getAttribute('data-r10-field');
+    if (id === null) continue;
+    seenR10.add(id);
+    if (element.getAttribute('data-r10-editable') === 'true') syncR10(element, id, r10);
+  }
 
-  return [...seen].sort();
+  return { copyKeys: [...seen].sort(), r10Ids: [...seenR10].sort() };
 }
 
 /**
@@ -216,12 +315,7 @@ function decorate(skin: SkinId, edits: CopyEdits): readonly string[] {
 function syncEdited(element: HTMLElement, skin: SkinId, key: string, edits: CopyEdits): void {
   const edited = edits[skin]?.[key];
   const shown = edited ?? renderedRow(skin, key) ?? element.textContent ?? '';
-  if (document.activeElement !== element) {
-    const only = element.childNodes.length === 1 ? element.firstChild : null;
-    if (only !== null && only.nodeType === Node.TEXT_NODE && only.nodeValue !== shown) {
-      only.nodeValue = shown;
-    }
-  }
+  writeIfIdle(element, shown);
   const failing = validateCopyEdit(skin, key, shown).filter(
     (violation) => violation.severity === 'error',
   );
@@ -232,30 +326,64 @@ function syncEdited(element: HTMLElement, skin: SkinId, key: string, edits: Copy
   }
 }
 
+/** The same, for one R10 field. Separate because the rules and the lookup differ, not the shape. */
+function syncR10(element: HTMLElement, id: string, edits: R10Edits): void {
+  const shown = edits[id] ?? r10Field(id)?.value ?? element.textContent ?? '';
+  writeIfIdle(element, shown);
+  const failing = validateR10Edit(id, shown).filter((violation) => violation.severity === 'error');
+  if (failing.length > 0) {
+    element.setAttribute('data-r10-invalid', failing.map((v) => v.rule).join(' '));
+  } else {
+    element.removeAttribute('data-r10-invalid');
+  }
+}
+
+/** Assigns `shown` to the element's single text child, unless the caret is in it. */
+function writeIfIdle(element: HTMLElement, shown: string): void {
+  if (document.activeElement === element) return;
+  const only = element.childNodes.length === 1 ? element.firstChild : null;
+  if (only !== null && only.nodeType === Node.TEXT_NODE && only.nodeValue !== shown) {
+    only.nodeValue = shown;
+  }
+}
+
 export function CopyEditLayer({
   skin,
   edits,
+  r10Edits,
   onCommit,
+  onR10Commit,
+  onNote,
   onDiscovered,
+  onR10Discovered,
 }: CopyEditLayerProps): ReactElement | null {
   const [focus, setFocus] = useState<FocusState | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
   const skinRef = useRef<SkinId>(skin);
   const editsRef = useRef<CopyEdits>(edits);
+  const r10Ref = useRef<R10Edits>(r10Edits);
   const applyingRef = useRef(false);
   const lastDiscoveredRef = useRef<string>('');
+  const lastR10Ref = useRef<string>('');
 
   skinRef.current = skin;
   editsRef.current = edits;
+  r10Ref.current = r10Edits;
 
   const publishDiscovered = useCallback(
-    (keys: readonly string[]) => {
-      const signature = keys.join('\n');
-      if (signature === lastDiscoveredRef.current) return;
-      lastDiscoveredRef.current = signature;
-      onDiscovered(keys);
+    (found: Discovered) => {
+      const copySignature = found.copyKeys.join('\n');
+      if (copySignature !== lastDiscoveredRef.current) {
+        lastDiscoveredRef.current = copySignature;
+        onDiscovered(found.copyKeys);
+      }
+      const r10Signature = found.r10Ids.join('\n');
+      if (r10Signature !== lastR10Ref.current) {
+        lastR10Ref.current = r10Signature;
+        onR10Discovered(found.r10Ids);
+      }
     },
-    [onDiscovered],
+    [onDiscovered, onR10Discovered],
   );
 
   /* The decoration pass, plus the observer that repeats it after every React commit. */
@@ -263,9 +391,9 @@ export function CopyEditLayer({
     const run = (): void => {
       if (applyingRef.current) return;
       applyingRef.current = true;
-      let keys: readonly string[];
+      let found: Discovered;
       try {
-        keys = decorate(skinRef.current, editsRef.current);
+        found = decorate(skinRef.current, editsRef.current, r10Ref.current);
       } finally {
         // Our own attribute and text writes queued records. Discard them, or the next callback
         // decorates again for no reason and the two chase each other for as long as the panel
@@ -273,7 +401,7 @@ export function CopyEditLayer({
         observer.takeRecords();
         applyingRef.current = false;
       }
-      publishDiscovered(keys);
+      publishDiscovered(found);
     };
     const observer = new MutationObserver(run);
     run();
@@ -281,20 +409,35 @@ export function CopyEditLayer({
     return () => {
       observer.disconnect();
     };
-  }, [skin, edits, publishDiscovered]);
+  }, [skin, edits, r10Edits, publishDiscovered]);
 
-  /* Everything the owner does to an editable node. Delegated, so no per-node listener exists. */
+  /* Everything the owner does to a decorated node. Delegated, so no per-node listener exists. */
   useEffect(() => {
     const refreshBubble = (host: HTMLElement): void => {
-      const key = host.getAttribute('data-copy-key');
-      if (key === null) return;
+      const copyKey = host.getAttribute('data-copy-key');
       // textContent, NEVER innerHTML. See the file header.
       const value = normaliseEditedText(host.textContent ?? '');
+      if (copyKey !== null) {
+        setFocus({
+          kind: 'copy',
+          target: copyKey,
+          value,
+          violations: validateCopyEdit(skinRef.current, copyKey, value),
+          editable: true,
+          lock: null,
+          ...placeBubble(host),
+        });
+        return;
+      }
+      const id = host.getAttribute('data-r10-field');
+      if (id === null) return;
       setFocus({
-        key,
+        kind: 'r10',
+        target: id,
         value,
-        violations: validateCopyEdit(skinRef.current, key, value),
+        violations: validateR10Edit(id, value),
         editable: true,
+        lock: null,
         ...placeBubble(host),
       });
     };
@@ -317,8 +460,6 @@ export function CopyEditLayer({
     const onFocusOut = (event: FocusEvent): void => {
       const host = hostOf(event.target);
       if (host === null) return;
-      const key = host.getAttribute('data-copy-key');
-      if (key === null) return;
       const value = normaliseEditedText(host.textContent ?? '');
       /*
        * A repair, not a rewrite. `plaintext-only` and the `beforeinput` whitelist should leave a
@@ -333,14 +474,28 @@ export function CopyEditLayer({
         host.textContent = value;
       }
       setFocus(null);
-      onCommit(key, value);
+      const copyKey = host.getAttribute('data-copy-key');
+      if (copyKey !== null) {
+        onCommit(copyKey, value);
+        return;
+      }
+      const id = host.getAttribute('data-r10-field');
+      if (id !== null) onR10Commit(id, value);
     };
 
+    /*
+     * KEYS ARE STOPPED AT `document` BEFORE THE APP SEES THEM, and this is not tidiness.
+     * `src/ui/intro/IntroSequence.tsx` listens for keydown on `window` and turns the slide over on
+     * ANY key. Without this, typing a single character into a slide advances it, which makes the
+     * intro - the one screen this widening exists for - the one screen that cannot be edited. The
+     * default action is untouched, so the character is still inserted.
+     */
     const onKeyDown = (event: KeyboardEvent): void => {
       const host = hostOf(event.target);
       if (host === null) return;
+      event.stopPropagation();
       if (event.key === 'Enter') {
-        // A copy string is one line. Enter commits rather than opening a second one.
+        // One line. Enter commits rather than opening a second one.
         event.preventDefault();
         host.blur();
       }
@@ -349,6 +504,44 @@ export function CopyEditLayer({
         setFocus(null);
         host.blur();
       }
+    };
+
+    /*
+     * A CLICK ON DECORATED TEXT DOES NOT REACH THE APP, for the same reason and with one carve-out
+     * that matters. The intro is a `<section onClick={advance}>`, so tapping a sentence to place
+     * the caret would turn the page. But `button.introContinue` renders INSIDE a real `<button>`,
+     * and a design mode whose buttons do not work cannot reach the second screen at all. So the
+     * stop applies only outside an interactive element.
+     */
+    const onClickCapture = (event: MouseEvent): void => {
+      const host = attributedHost(event.target);
+      if (host === null) {
+        setFocus((current) => (current !== null && current.lock !== null ? null : current));
+        return;
+      }
+      /*
+       * ONLY A NODE THE TAP IS ACTUALLY FOR. A `data-copy-editable="false"` run - a FORMAT frame,
+       * a partial string - takes no caret and opens no bubble, so swallowing its click would cost
+       * the app a click for nothing. The stop is for a node that will take an edit, and for a
+       * locked long-form paragraph, which needs the tap in order to say why it is locked.
+       */
+      const wanted =
+        host.matches(EDITABLE) || host.getAttribute('data-r10-editable') === 'false';
+      if (wanted && host.closest(INTERACTIVE) === null) event.stopPropagation();
+      if (host.getAttribute('data-r10-editable') !== 'false') return;
+      // A locked paragraph takes no focus, so the tap is the only way it can say why.
+      const id = host.getAttribute('data-r10-field');
+      if (id === null) return;
+      const blocked = r10Blocked(id);
+      setFocus({
+        kind: 'r10',
+        target: id,
+        value: normaliseEditedText(host.textContent ?? ''),
+        violations: [],
+        editable: false,
+        lock: blocked === null ? 'This text is not editable here.' : blocked.message,
+        ...placeBubble(host),
+      });
     };
 
     const onBeforeInput = (event: InputEvent): void => {
@@ -364,12 +557,12 @@ export function CopyEditLayer({
       }
       if (event.inputType.startsWith('format')) {
         setRefusal(
-          `Refused: ${event.inputType}. A copy string is plain text, so the formatting would not survive.`,
+          `Refused: ${event.inputType}. This text is plain, so the formatting would not survive.`,
         );
         return;
       }
       if (event.inputType === 'insertParagraph' || event.inputType === 'insertLineBreak') {
-        setRefusal('Refused: a copy string is one line.');
+        setRefusal('Refused: one line. Use the panel to add a second.');
       }
     };
 
@@ -410,26 +603,31 @@ export function CopyEditLayer({
     document.addEventListener('focusin', onFocusIn);
     document.addEventListener('focusout', onFocusOut);
     document.addEventListener('input', onInput);
-    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('keydown', onKeyDown, true);
+    document.addEventListener('click', onClickCapture, true);
     document.addEventListener('beforeinput', onBeforeInput as EventListener, true);
     document.addEventListener('paste', onPaste as EventListener, true);
     return () => {
       document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('focusout', onFocusOut);
       document.removeEventListener('input', onInput);
-      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('keydown', onKeyDown, true);
+      document.removeEventListener('click', onClickCapture, true);
       document.removeEventListener('beforeinput', onBeforeInput as EventListener, true);
       document.removeEventListener('paste', onPaste as EventListener, true);
     };
-  }, [onCommit]);
+  }, [onCommit, onR10Commit]);
 
   /* Every attribute this layer wrote comes off when the panel closes. */
   useEffect(
     () => () => {
-      for (const element of document.querySelectorAll<HTMLElement>('[data-copy-key]')) {
+      for (const element of document.querySelectorAll<HTMLElement>(ATTRIBUTED)) {
         element.removeAttribute('data-copy-key');
         element.removeAttribute('data-copy-editable');
         element.removeAttribute('data-copy-invalid');
+        element.removeAttribute('data-r10-field');
+        element.removeAttribute('data-r10-editable');
+        element.removeAttribute('data-r10-invalid');
         element.removeAttribute('contenteditable');
       }
     },
@@ -437,6 +635,28 @@ export function CopyEditLayer({
   );
 
   if (focus === null && refusal === null) return null;
+
+  /*
+   * THE NOTE BUTTONS TAKE `pointerdown` AND PREVENT ITS DEFAULT, so focus never leaves the text
+   * being annotated. A plain click would blur the node first, `focusout` would tear the bubble
+   * down, and the button would be gone before the finger landed on it.
+   */
+  const noteButton = (intent: NoteIntent, label: string, target: string): ReactElement => (
+    <button
+      type="button"
+      className="dm-note-intent"
+      data-testid={`dm-note-${intent}`}
+      onPointerDown={(event) => {
+        event.preventDefault();
+        onNote(target, intent);
+      }}
+      onClick={(event) => {
+        event.preventDefault();
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div
@@ -454,9 +674,13 @@ export function CopyEditLayer({
       {focus === null ? null : (
         <>
           <span className="dm-copy-bubble-key" data-testid="dm-copy-bubble-key">
-            {focus.key}
+            {focus.target}
           </span>
-          {focus.violations.length === 0 ? (
+          {focus.lock !== null ? (
+            <span className="dm-copy-violation" data-severity="error" data-testid="dm-r10-lock">
+              {focus.lock}
+            </span>
+          ) : focus.violations.length === 0 ? (
             <span className="dm-copy-ok" data-testid="dm-copy-ok">
               Contract: PASS
             </span>
@@ -472,6 +696,15 @@ export function CopyEditLayer({
               </span>
             ))
           )}
+          <span className="dm-note-row" data-testid="dm-note-row">
+            {noteButton('heading', 'Make Heading', focus.target)}
+            {noteButton('bullet', 'Make Bullet', focus.target)}
+            {noteButton('delete', 'Delete', focus.target)}
+          </span>
+          <span className="dm-note">
+            These three do not change the file. They export as an instruction beside the edits, and
+            the panel can take any of them back. src/design/r10Edits.ts says why.
+          </span>
         </>
       )}
       {refusal === null ? null : (

@@ -16,6 +16,8 @@ describe('buildPatch', () => {
     const edits: StoredEdits = {
       version: 1,
       copy: {},
+      r10: {},
+      notes: [],
       tokens: {
         // --accent was changed. --lime was touched and put back to exactly what ships.
         limelight: { '--accent': '#ff0000', '--lime': '#8ace00' },
@@ -29,6 +31,8 @@ describe('buildPatch', () => {
     const edits: StoredEdits = {
       version: 1,
       copy: {},
+      r10: {},
+      notes: [],
       tokens: { clinical: { '--accent': '  #a3e635  ', '--bg': '#000000' } },
     };
     expect(buildPatch(edits, 0).tokens.clinical).toEqual({ '--bg': '#000000' });
@@ -38,6 +42,8 @@ describe('buildPatch', () => {
     const edits: StoredEdits = {
       version: 1,
       copy: {},
+      r10: {},
+      notes: [],
       tokens: { clinical: { '--accent': '#a3e635' } },
     };
     expect(buildPatch(edits, 0).tokens).toEqual({});
@@ -49,16 +55,20 @@ describe('buildPatch', () => {
     const edits: StoredEdits = {
       version: 1,
       copy: {},
+      r10: {},
+      notes: [],
       tokens: { clinical: { '--lime': '#00ff00', '--invented': '#ffffff' } },
     };
     expect(buildPatch(edits, 0).tokens).toEqual({});
   });
 
-  it('emits the empty assets and notes fields Tasks 3 and 4 will fill', () => {
+  it('emits the empty copy, r10, assets and notes fields when nothing was edited', () => {
     // `copy` was one of these three until Task 2 filled it; src/design/copyEdits.ts carries the
-    // shape and the reason it is keyed by skin rather than flat.
-    const patch = buildPatch({ version: 1, tokens: {}, copy: {} }, 0);
+    // shape and the reason it is keyed by skin rather than flat. `r10` and `notes` were filled by
+    // the widening to the long-form modules; `assets` is still Task 3's.
+    const patch = buildPatch({ version: 1, tokens: {}, copy: {}, r10: {}, notes: [] }, 0);
     expect(patch.copy).toEqual({});
+    expect(patch.r10).toEqual([]);
     expect(patch.assets).toEqual([]);
     expect(patch.notes).toEqual([]);
     expect(patch.version).toBe(PATCH_VERSION);
@@ -68,6 +78,8 @@ describe('buildPatch', () => {
     const edits: StoredEdits = {
       version: 1,
       copy: {},
+      r10: {},
+      notes: [],
       tokens: {
         clinical: { '--bg': '#111111', '--text': '#eeeeee' },
         board: { '--amber': '#ffaa00' },

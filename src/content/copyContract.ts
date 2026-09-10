@@ -266,7 +266,24 @@ export function quantityAdvisories(value: string): ReadonlyArray<{ wrong: string
 /** The three tables a copy edit can land in. Named by their exported binding, not by skin. */
 export type CopyTableId = 'DEFAULT_COPY' | 'LIMELIGHT_COPY' | 'BOARD_COPY';
 
-export type CopyRuleId = 'R1' | 'R2' | 'R3' | 'R4' | 'R5' | 'R6' | 'R8' | 'R11' | 'R14' | 'URL';
+/**
+ * `EVIDENCE` is not one of R1 to R14. It belongs to `src/content/r10Text.ts`, which reuses this
+ * violation shape rather than declaring a second one so that the panel can render a copy-table
+ * finding and an R10 finding through the same component. The rule it names is that module's:
+ * long-form text that acquires a DOI, a dose or a citation locks itself against further editing.
+ */
+export type CopyRuleId =
+  | 'R1'
+  | 'R2'
+  | 'R3'
+  | 'R4'
+  | 'R5'
+  | 'R6'
+  | 'R8'
+  | 'R11'
+  | 'R14'
+  | 'URL'
+  | 'EVIDENCE';
 
 export interface CopyViolation {
   readonly rule: CopyRuleId;

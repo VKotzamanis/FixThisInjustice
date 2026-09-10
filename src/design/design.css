@@ -359,3 +359,62 @@
   color: var(--text-2);
   outline: 1px dotted var(--line-2);
 }
+
+/*
+ * THE NOTE BUTTONS, in the bubble.
+ *
+ * The bubble itself is `pointer-events: none` so it never swallows a tap meant for the words
+ * underneath it. These three have to take a tap, so they take pointer events back, and only they
+ * do. 44 px in both directions: this is used on a phone, and a mis-tap on Delete is the exact
+ * failure the notes design exists to make harmless.
+ *
+ * WHITE ON BLACK, like the rest of the bubble, and deliberately NOT `--accent`: tokens.css
+ * measures `--accent` at 1.41:1 on limelight, which is invisible. The bubble is skin-independent
+ * for that reason and these follow it at 21:1.
+ */
+.dm-note-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.dm-note-intent {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 4px 10px;
+  border: 2px solid #ffffff;
+  border-radius: 4px;
+  background: #000000;
+  color: #ffffff;
+  font-family: var(--mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Selection is a FILL INVERSION, never "darker": darker-on-dark disappears. */
+.dm-note-intent:active,
+.dm-note-intent:focus-visible {
+  background: #ffffff;
+  color: #000000;
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
+/* A paragraph this tool will not take an edit to. The cue is a border, not a colour alone. */
+[data-r10-editable='false'] {
+  outline: 1px dotted var(--line-2);
+  outline-offset: 2px;
+}
+
+[data-r10-editable='true'] {
+  outline: 1px dashed var(--line-2);
+  outline-offset: 2px;
+}
+
+/* A live contract failure on long-form text, the same cue the copy layer already draws. */
+[data-r10-invalid] {
+  text-decoration: underline wavy currentColor;
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
