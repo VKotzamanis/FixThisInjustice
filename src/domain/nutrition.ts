@@ -332,6 +332,125 @@ const FAT_LOSS_RATE_FRACTION = 0.007; // 0.7 %BW/week, dimensionless
 export const FAT_LOSS_RATE_BOUND = { loFraction: 0.005, hiFraction: 0.01 }; // 0.5-1.0 %BW/week
 
 /* ------------------------------------------------------------------ *
+ * Target-date feasibility
+ * ------------------------------------------------------------------ */
+
+/**
+ * How plausible a target date is, as the three bands the setup calendar colours.
+ *
+ * Round 1 claim C1.11.2 to C1.11.5, Brief I Part 4, finding B22. The owner asked for a calendar
+ * that says whether a date is "Realistic", "Improbable" or "Highly Improbable" so that a
+ * two-day target for a ten-kilogram loss is contradicted at the moment it is picked.
+ *
+ * THIS MODEL NEVER CONVERTS KCAL TO KG. The content review rejects the 3500 kcal/lb rule
+ * (Hall 2011, DOI 10.1016/S0140-6736(11)60812-X) and supplies no replacement, which is why
+ * `energyPlan` reports `targetKcal` and `rateKgPerWeek` as independent estimates and says so in
+ * `INDEPENDENT_ESTIMATE_NOTE`. The only input here is the RATE rule: a required rate of body-mass
+ * change is compared against the same Helms 2014 bound the fat-loss goal is already prescribed
+ * from. Multiplying a daily deficit by a number of days would be the defect this comment exists
+ * to prevent.
+ */
+export type FeasibilityBand = 'realistic' | 'improbable' | 'highly-improbable';
+
+/**
+ * Why a target date carries no band at all. Each value names a rule that is ABSENT, never a
+ * rate that has been guessed at.
+ *
+ *   `no-weekly-rate`  muscle gain. `energyPlan` returns `rateKgPerWeek: null` for it and its
+ *                     `rateRule` says why: Garthe 2011 gives a total gain (+4.3 +/- 0.9 % body
+ *                     mass) but the content review does not state the study duration, so no
+ *                     kg/week figure can be derived. Reporting nothing is the honest value, and
+ *                     borrowing the fat-loss bound would be inventing a coefficient.
+ *   `mass-held`       maintenance and recomposition. `energyPlan` holds energy at TDEE and
+ *                     returns `rateKgPerWeek: 0` for both, by construction: neither goal targets
+ *                     a change in body mass, so there is no rate to test a date against.
+ *   `not-a-loss`      the target is at or above current body mass under a fat-loss goal, so the
+ *                     bound below, which is stated for LOSS, does not apply to it.
+ *   `no-horizon`      the date is today or already past, so the required rate is not finite.
+ *   `no-target`       no target has been given yet, so there is nothing to reach.
+ */
+export type FeasibilityGap =
+  | 'no-weekly-rate'
+  | 'mass-held'
+  | 'not-a-loss'
+  | 'no-horizon'
+  | 'no-target';
+
+/**
+ * Where the `improbable` band ends and `highly-improbable` begins, as a MULTIPLE of the upper
+ * bound rather than as a rate of its own.
+ *
+ * HEURISTIC, and labelled one. The content review bounds a prescribed fat-loss rate at 0.5 to
+ * 1.0 %BW/week (Helms 2014) and states nothing about how far past 1.0 a date stops being merely
+ * ambitious and starts being fiction. 1.5 is a PRESENTATION threshold that divides the region
+ * outside the bound into two, exactly as Brief I Part 4 specifies it; it carries no evidence
+ * claim of its own and no coefficient depends on it. It is written as a multiple so that it
+ * cannot drift away from the cited bound: move `FAT_LOSS_RATE_BOUND.hiFraction` and this moves
+ * with it.
+ */
+export const FEASIBILITY_IMPROBABLE_MULTIPLE = 1.5; // dimensionless
+
+export interface FeasibilityInput {
+  goal: GoalKind;
+  currentMassKg: Kg; // [kg]
+  targetMassKg: Kg | null; // [kg], null while no target has been given
+  weeks: number; // [week] from today to the target date; may be zero or negative
+}
+
+export type Feasibility =
+  | { assessable: false; gap: FeasibilityGap }
+  | {
+      assessable: true;
+      band: FeasibilityBand;
+      /** [1/week] required change as a fraction of CURRENT body mass per week, positive = loss. */
+      requiredFraction: number;
+      /** True below `FAT_LOSS_RATE_BOUND.loFraction`: realistic, and slower than prescribed. */
+      belowBound: boolean;
+    };
+
+/**
+ * The band a target date falls in, or the reason it has none.
+ *
+ * Required rate = (current mass - target mass) / current mass / weeks, a fraction of body mass
+ * per week, which is the unit `FAT_LOSS_RATE_BOUND` is already stated in. Both thresholds are
+ * READ from that constant, never restated: a band written as a literal 0.005 is a band that
+ * drifts off the cited number the first time someone edits one of the two and not the other.
+ *
+ * Sign convention: `requiredFraction` is POSITIVE for a loss, the opposite of `energyPlan`'s
+ * `rateKgPerWeek`, which is negative for a loss. The two are never compared as signed numbers;
+ * this one is compared against the fractions in `FAT_LOSS_RATE_BOUND`, which are unsigned.
+ *
+ * Below the lower bound is `realistic` with `belowBound` set, not a warning band. A date further
+ * out than the prescription needs is not a risk to the user; it is slower than it has to be, and
+ * Brief I Part 4 says to state that in words rather than to colour it.
+ */
+export function targetDateFeasibility(input: FeasibilityInput): Feasibility {
+  switch (input.goal) {
+    case 'muscle-gain':
+      return { assessable: false, gap: 'no-weekly-rate' };
+    case 'maintenance':
+    case 'recomposition':
+      return { assessable: false, gap: 'mass-held' };
+    case 'fat-loss':
+      break;
+  }
+  if (input.targetMassKg === null) return { assessable: false, gap: 'no-target' };
+  if (!(input.weeks > 0)) return { assessable: false, gap: 'no-horizon' };
+  const lossKg = input.currentMassKg - input.targetMassKg; // [kg], positive = a loss
+  if (!(lossKg > 0)) return { assessable: false, gap: 'not-a-loss' };
+
+  const requiredFraction = lossKg / input.currentMassKg / input.weeks; // [1/week]
+  const { loFraction, hiFraction } = FAT_LOSS_RATE_BOUND;
+  const band: FeasibilityBand =
+    requiredFraction <= hiFraction
+      ? 'realistic'
+      : requiredFraction <= hiFraction * FEASIBILITY_IMPROBABLE_MULTIPLE
+        ? 'improbable'
+        : 'highly-improbable';
+  return { assessable: true, band, requiredFraction, belowBound: requiredFraction < loFraction };
+}
+
+/* ------------------------------------------------------------------ *
  * Protein
  * ------------------------------------------------------------------ */
 

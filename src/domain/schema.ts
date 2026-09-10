@@ -734,6 +734,16 @@ const SetupAnswersShapeSchema = z.object({
   bodyweightEquipment: z.array(BodyweightEquipmentItemSchema),
   goalKind: GoalKindSchema,
   targetMass: z.string().max(MAX_DRAFT_TEXT_CHARS),
+  // Additive (Brief I Part 2): a draft saved before the body-fat target existed lacks this key.
+  // `.catch('').optional()` rather than a bare `.default('')`, for the reason ActivityPalSchema
+  // above records at length: `.default()` would make the OUTPUT field always present, which
+  // would force `SetupAnswers.targetBodyFat` in types.ts to be required to keep
+  // schema.test.ts's `schemaInfersAppState` type-identity check passing, and a required field
+  // would in turn force every SetupAnswers/SetupDraft-typed fixture in the tree to be edited.
+  // `.optional()` on the OUTSIDE resolves a missing key to plain absence, not a defined value.
+  // No schemaVersion bump and no migration: an absent optional key is already a valid document
+  // under this schema, which is the whole point of the pattern.
+  targetBodyFat: z.string().max(MAX_DRAFT_TEXT_CHARS).catch('').optional(), // [%], as typed
   targetDate: z.string().max(MAX_DRAFT_TEXT_CHARS),
   creatine: z.boolean(),
   weighInOptIn: z.boolean(),
