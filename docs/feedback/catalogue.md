@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `fb0757a`. 101 parts across 14 screens, holding 575 of the table's 578 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `fcefb58`. 101 parts across 14 screens, holding 576 of the table's 579 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -17,12 +17,13 @@ Intro sequence. The caveat slides, and the tl;dr acknowledgement modal that gate
 
 Renders: `src/ui/intro/IntroSequence.tsx`
 
-States: `running`, `finished`
+States: `running`, `finished`, `final-slide`
 
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.clickToContinue` | Click to continue | same | same | yes |
 | `button.introContinue` | Next | same | PROCEED | yes |
+| `label.changeVisualSettings` | Change Visual Settings Here | same | same | yes |
 
 ## boot (2)
 

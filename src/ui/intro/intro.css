@@ -144,6 +144,68 @@
   }
 }
 
+/*
+ * The arrow at the shell's skin-and-preferences control, final slide only (IntroSequence.tsx).
+ *
+ * `position: absolute` against `.intro`, which is itself `position: fixed; inset: 0` above --
+ * the fixed, full-viewport shell stand-in, not `.intro-slide`'s centred, max-width text column.
+ * `top`/`right` echo appShell.css's own `.topbar { padding: 10px 18px }` and
+ * `.topbar-skin { margin-left: 12px }`, which puts the real control in this same corner, one
+ * `z-index` layer below this whole overlay (30 against this file's 56) and so invisible while
+ * this sequence runs; the arrow stands in for it rather than pointing at pixels no one can see.
+ *
+ * `pointer-events: none`: purely a label, so a tap here still reaches `.intro`'s own `onClick`
+ * (`advance`), exactly as a tap anywhere else on the screen does.
+ *
+ * Every colour is `--text`, the same token `.intro-body` and `.intro-bullets` already render on
+ * `.intro`'s own `--bg`, at the ratios tokens.css records for all three skins (10.91:1 on
+ * limelight). NEVER `--accent` here: on limelight that is fuchsia on lime at 1.41:1, and the
+ * headings above only get away with `--accent` because `.intro-highlight` first lays a
+ * `--highlight-bg` (white) card under it. This arrow carries no such card, so it stays on
+ * `--text` throughout, stroke and fill alike.
+ *
+ * Static, no animation: a still arrow needs no `prefers-reduced-motion` branch, and the brief
+ * calls that the safer choice over a moving one.
+ */
+.intro-settings-pointer {
+  position: absolute;
+  top: 4.25rem;
+  right: 1.25rem;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  width: 9.5rem;
+  text-align: right;
+  pointer-events: none;
+}
+
+.intro-settings-pointer-arrow {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+
+.intro-settings-pointer-shaft {
+  fill: none;
+  stroke: var(--text, #dde3ea);
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
+.intro-settings-pointer-head {
+  fill: var(--text, #dde3ea);
+}
+
+.intro-settings-pointer-label {
+  margin: 0;
+  color: var(--text, #dde3ea);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+}
+
 .intro-modal-bg {
   position: fixed;
   inset: 0;

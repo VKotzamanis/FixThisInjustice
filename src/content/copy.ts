@@ -596,6 +596,10 @@ export type CopyKey =
   | 'label.noSuggestedLoad'
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   | 'advice.clickToContinue'
+  // Round 3: the app shell's skin-and-preferences control (top right, TopbarSkinPicker in
+  // src/app/App.tsx) had nothing pointing at it and the owner never found it. This labels the
+  // arrow drawn on the intro's final slide only (src/ui/intro/IntroSequence.tsx).
+  | 'label.changeVisualSettings'
   | 'advice.setupInstruction'
   // --- the top bar's per-view instruction, one per ViewId (P10 Brief D) ---
   | 'advice.todayInstruction'
@@ -1745,8 +1749,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   // The long-form slide text lives in src/content/introSlides.ts (R10 reference text, not this
-  // table); this is the only string the sequence's own controls draw from copy.ts.
+  // table); these are the two strings the sequence's own controls draw from copy.ts.
   'advice.clickToContinue': 'Click to continue', // R3: 3 words
+  // The arrow's caption on the final slide ("What Setup Collects"), pointing at the shell's
+  // top-right skin-and-preferences control. `label.` carries no R1-R4 word cap; R14 still
+  // applies, and this is Title Case as written, a control name rather than a sentence.
+  'label.changeVisualSettings': 'Change Visual Settings Here',
   'advice.setupInstruction': 'Answer each step. Nothing leaves this device.',
 
   // --- the top bar's per-view instruction (P10 Brief D) ---
