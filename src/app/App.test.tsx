@@ -1171,19 +1171,19 @@ describe('the top bar banner', () => {
    */
   function walkFromBodyToReview(): void {
     next(); // 3 body
+    next(); // 4 equipment, every slider and the Gym Comfort picker on a valid default
     /*
-     * 4 equipment AND availability. The sliders all have valid defaults; the weekday selection
-     * does not, and it gates this step now. Availability was folded in here from a step of its
-     * own after the goal (finding B43), so that the target date is chosen only once the training
-     * frequency is known. Four days for the default four-session split.
+     * 5 goal, which AVAILABILITY now opens (round 3 Task 9): the weekday selection has no valid
+     * default and BLOCKED.goal carries its guards, so the days are chosen here, above the target
+     * date the feasibility calendar assesses. C1.10.8 still holds -- the training frequency is
+     * stated before the date, on the same screen. Four days for the default four-session split.
      */
     for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
-    next();
-    next(); // 5 goal
     next(); // 6 programme length, 12 weeks by default
     next(); // 7 guidance
+    next(); // 8 review
   }
 
   it('greets on the intro, which is the first thing a fresh document shows', () => {

@@ -527,6 +527,33 @@ export function SettingsView(): JSX.Element {
         </p>
       </details>
 
+      {/*
+       * THE WEIGH-IN OPT-IN, POST-SETUP. Round 3 Task 9 moved the setup control off the goal
+       * step; this is a separate defect it exposed, and it is fixed here rather than filed:
+       * before this, `hydration.weighInOptIn` was set once in the wizard and there was NO route
+       * to change it afterwards, so a user who declined at setup was frozen out of the check
+       * permanently.
+       *
+       * It sits under Hydration because that is the sub-object it lives in and the feature it
+       * feeds: src/domain/training/hydration.ts computes Sawka 2007's "> 2 % body mass"
+       * comparison only from the pre- and post-session entries this flag lets TrainView.tsx
+       * prompt for. The whole sub-object is spread because `updateProfile` merges shallowly.
+       */}
+      <label className="view-inline">
+        <input
+          type="checkbox"
+          checked={profile.hydration.weighInOptIn}
+          onChange={(e) => {
+            updateProfile({
+              hydration: { ...profile.hydration, weighInOptIn: e.target.checked },
+            });
+          }}
+        />
+        {t('label.weighIn')}
+      </label>
+      <p className="view-note">{t('advice.weighIn')}</p>
+      <p className="view-note">{t('advice.weighInReassurance')}</p>
+
       {SETTINGS_ROWS.map((row) => (
         <Fragment key={row.id}>{row.render(profile)}</Fragment>
       ))}
