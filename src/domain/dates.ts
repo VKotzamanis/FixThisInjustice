@@ -1,4 +1,5 @@
 import { TZDate, tzOffset } from '@date-fns/tz';
+import { TIMEZONE_CITIES } from './timeZoneCities.generated';
 import type { EpochMs, IsoWeekday, LocalDate, LocalTime, TimeZone } from './types';
 
 /** Milliseconds in one calendar day measured on the UTC line, where no DST exists. */
@@ -504,24 +505,57 @@ export function promoteSelectedZone(
 }
 
 /**
- * Whether a row answers a search, matched against EVERY member and against the offset label.
+ * Whether a row answers a search, matched against EVERY member, against the offset label, and
+ * against the vendored city list (src/domain/timeZoneCities.generated.ts) for every member.
  *
  * Search reaches all 418 zones while the list shows 59, which is the whole reason the reduction
  * is safe to ship: someone typing "Amsterdam" finds their group even though the row is named
  * after Paris. The underscore in an IANA id is folded to a space, so "New York" finds
  * America/New_York, which is how a person writes the name.
+ *
+ * THE CITY CHECK IS THE ROUND-3 FIX (owner's question iii, "houston" found nothing). No IANA
+ * identifier contains "houston": Houston keeps America/Chicago, and IANA names roughly 418
+ * representative places, not cities. The zone-id and offset-label checks above are UNCHANGED by
+ * this: a query that used to find a row still finds it exactly the same way. The city list only
+ * ever adds matches, never removes one.
  */
 export function zoneGroupMatches(group: TimeZoneGroup, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (needle === '') return true;
   if (group.offsetLabel.toLowerCase().includes(needle)) return true;
-  return group.members.some((zone) => zoneNameMatches(zone, needle));
+  if (group.members.some((zone) => zoneNameMatches(zone, needle))) return true;
+  return group.members.some((zone) => zoneCities(zone).some((city) => cityMatches(city, needle)));
 }
 
 /** One zone id against an already-lowercased, already-trimmed needle. */
 function zoneNameMatches(zone: string, needle: string): boolean {
   const name = zone.toLowerCase();
   return name.includes(needle) || name.replace(/_/g, ' ').includes(needle);
+}
+
+/**
+ * The vendored tzdb city list for one zone id, or empty when the vendored file records none for
+ * it (most of the platform's ~418 do not: tzdb ships about 315 entries, see the generated file's
+ * own header). Never invented here: every city that can come back is a value already present in
+ * src/domain/timeZoneCities.generated.ts, itself a verbatim copy of @vvo/tzdb's `mainCities`.
+ */
+function zoneCities(zone: string): readonly string[] {
+  return TIMEZONE_CITIES[zone] ?? [];
+}
+
+/** One city name against an already-lowercased, already-trimmed needle. */
+function cityMatches(city: string, needle: string): boolean {
+  return city.toLowerCase().includes(needle);
+}
+
+/**
+ * The last path segment of an IANA id, underscores folded to spaces: "America/Chicago" to
+ * "Chicago". Used only to keep a matched CITY from restating the row's own representative, the
+ * same principle matchedZoneMembers already applies to a matched zone id.
+ */
+function zoneLocalName(zone: string): string {
+  const slash = zone.lastIndexOf('/');
+  return (slash === -1 ? zone : zone.slice(slash + 1)).replace(/_/g, ' ');
 }
 
 /**
@@ -537,4 +571,29 @@ export function matchedZoneMembers(group: TimeZoneGroup, query: string): readonl
   return group.members.filter(
     (zone) => zone !== group.representative && zoneNameMatches(zone, needle),
   );
+}
+
+/**
+ * The vendored cities a search matched, across every member of `group`, deduplicated and
+ * alphabetical. This is the OTHER half of the round-3 fix: `matchedZoneMembers` says which IANA
+ * id matched, this says which CITY matched, so a row surfaced only because "houston" is one of
+ * America/Chicago's tzdb cities SAYS Houston rather than surfacing silently.
+ *
+ * A city equal to the representative's own local name is excluded, mirroring
+ * matchedZoneMembers's exclusion of the representative itself: the row already reads
+ * "America/Chicago", so echoing "Chicago" back adds nothing. A DIFFERENT city on the same zone
+ * (Houston, San Antonio, Dallas) is exactly the information the row is missing without this.
+ */
+export function matchedZoneCities(group: TimeZoneGroup, query: string): readonly string[] {
+  const needle = query.trim().toLowerCase();
+  if (needle === '') return [];
+  const ownName = zoneLocalName(group.representative).toLowerCase();
+  const hits = new Set<string>();
+  for (const zone of group.members) {
+    for (const city of zoneCities(zone)) {
+      if (city.toLowerCase() === ownName) continue;
+      if (cityMatches(city, needle)) hits.add(city);
+    }
+  }
+  return [...hits].sort();
 }
