@@ -21,13 +21,26 @@ import type { SkinId } from '../domain/types';
 /** One namespaced key, versioned so a later shape change can be recognised rather than guessed. */
 export const DESIGN_STORAGE_KEY = 'fti.designMode.tokenEdits.v1';
 
-/** The stored shape: per skin, the tokens the owner has changed and what he changed them to. */
+/**
+ * The stored shape: per skin, what the owner changed.
+ *
+ * `copy` was added by Task 2 and shares this key rather than taking a second one, because the two
+ * halves are one afternoon's work and are exported as one patch. It is keyed by skin for the same
+ * reason `tokens` is: an edit made while limelight's words are on screen belongs in
+ * `copy.limelight.ts`, and a flat map would leave the applier to guess which of the three tables
+ * a key came from. src/design/copyEdits.ts carries that decision in full.
+ *
+ * NO VERSION BUMP. A stored body written before Task 2 has no `copy` field, and an absent field
+ * reads as "no copy edits", which is exactly what it means. Bumping would have discarded a
+ * developer's uncommitted colour work to add a field that defaults correctly without it.
+ */
 export interface StoredEdits {
   readonly version: 1;
   readonly tokens: Partial<Record<SkinId, Record<string, string>>>;
+  readonly copy: Partial<Record<SkinId, Record<string, string>>>;
 }
 
-const EMPTY: StoredEdits = { version: 1, tokens: {} };
+const EMPTY: StoredEdits = { version: 1, tokens: {}, copy: {} };
 
 /** True when `value` is a flat object of string to string. */
 function isStringRecord(value: unknown): value is Record<string, string> {
@@ -59,16 +72,27 @@ export function readStoredEdits(): StoredEdits {
     return EMPTY;
   }
   if (typeof parsed !== 'object' || parsed === null) return EMPTY;
-  const body = parsed as { version?: unknown; tokens?: unknown };
+  const body = parsed as { version?: unknown; tokens?: unknown; copy?: unknown };
   if (body.version !== 1) return EMPTY;
   if (typeof body.tokens !== 'object' || body.tokens === null) return EMPTY;
-  const tokens: Partial<Record<SkinId, Record<string, string>>> = {};
-  for (const [skin, values] of Object.entries(body.tokens as Record<string, unknown>)) {
+  return {
+    version: 1,
+    tokens: perSkin(body.tokens),
+    // Absent before Task 2, and an absent field means no copy edits. See the interface above.
+    copy: perSkin(body.copy),
+  };
+}
+
+/** A `{ skin: { name: value } }` body, with every unrecognised skin and value discarded. */
+function perSkin(value: unknown): Partial<Record<SkinId, Record<string, string>>> {
+  const out: Partial<Record<SkinId, Record<string, string>>> = {};
+  if (typeof value !== 'object' || value === null) return out;
+  for (const [skin, values] of Object.entries(value as Record<string, unknown>)) {
     if (skin !== 'clinical' && skin !== 'limelight' && skin !== 'board') continue;
     if (!isStringRecord(values)) continue;
-    tokens[skin] = values;
+    out[skin] = values;
   }
-  return { version: 1, tokens };
+  return out;
 }
 
 /** Writes the edits. Returns false when storage refused them, so the panel can say so. */

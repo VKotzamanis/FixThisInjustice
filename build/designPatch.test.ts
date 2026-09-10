@@ -11,7 +11,7 @@
 // tsconfig.app.json pins `types` to the vite client. build/ is the node-side project, and
 // build/cspPlugin.test.ts already sets that precedent.
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -205,19 +205,292 @@ describe('the applier refuses rather than guesses', () => {
 });
 
 describe('the applier reports what it did not do', () => {
-  it('warns loudly about copy, assets and notes rather than half applying them', () => {
+  it('warns loudly about assets and notes rather than half applying them', () => {
+    // `copy` left this list when Task 2 implemented it. The two that remain belong to Tasks 3
+    // and 4 and are still refused loudly rather than half applied.
     const patch = writePatch('p.json', {
       version: 1,
       tokens: { clinical: { '--accent': '#ff0000' } },
-      copy: { 'button.start': 'Go' },
+      copy: {},
       assets: [{ registerRow: 'r1' }],
       notes: ['[part] move it left'],
     });
 
     const result = run([patch, '--tokens', sheet]);
 
-    expect(result.stdout).toContain('1 copy entries and this applier does NOT implement them');
     expect(result.stdout).toContain('1 assets entries');
     expect(result.stdout).toContain('1 notes entries');
+    expect(result.stdout).toContain('(Tasks 3 and 4)');
+  });
+});
+
+/*
+ * ------------------------------------------------------------------------------------------
+ * THE COPY HALF (Task 2).
+ *
+ * Every case below acts on a COPY of src/content, never on the tree itself, for the reason the
+ * token half already gives. The property that earns the suite is the same one: the applier
+ * rewrites a string literal and nothing else, so the 3000 lines of reasoning around it - which
+ * brief added a key, which contract rule forced its wording - survive byte for byte.
+ * ------------------------------------------------------------------------------------------
+ */
+const CONTENT_FILES = ['copy.ts', 'copy.limelight.ts', 'copy.board.ts'] as const;
+const REAL_CONTENT = join(ROOT, 'src', 'content');
+
+/** A throwaway copy of the three tables, and the bytes they started with. */
+function contentCopy(): { dir: string; before: ReadonlyMap<string, string> } {
+  const target = join(dir, 'content');
+  mkdirSync(target, { recursive: true });
+  const before = new Map<string, string>();
+  for (const name of CONTENT_FILES) {
+    const body = readFileSync(join(REAL_CONTENT, name), 'utf8');
+    before.set(name, body);
+    writeFileSync(join(target, name), body);
+  }
+  return { dir: target, before };
+}
+
+/** The current bytes of one file in the throwaway copy. */
+function contentNow(target: string, name: string): string {
+  return readFileSync(join(target, name), 'utf8');
+}
+
+describe('the copy half, without --write', () => {
+  it('prints the diff and changes no byte of any table', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      generatedAt: '2026-09-10T00:00:00Z',
+      tokens: {},
+      copy: { clinical: { 'button.reload': 'Reload Now' } },
+      assets: [],
+      notes: [],
+    });
+
+    const result = run([patch, '--tokens', sheet, '--content', content]);
+
+    expect(result.status).toBe(0);
+    // The row's own two-space indent is inside the diff line, which is the point: the indent is
+    // carried through rather than reconstructed.
+    expect(result.stdout).toContain("-   'button.reload': 'Reload',");
+    expect(result.stdout).toContain("+   'button.reload': 'Reload Now',");
+    expect(result.stdout).toContain('DRY RUN. No file was written.');
+    for (const name of CONTENT_FILES) {
+      expect({ name, body: contentNow(content, name) }).toEqual({ name, body: before.get(name) });
+    }
+  });
+});
+
+describe('the copy half, with --write', () => {
+  it('rewrites one row and leaves every other line identical', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { clinical: { 'button.reload': 'Reload Now' } },
+      assets: [],
+      notes: [],
+    });
+
+    // --no-regen: the catalogue scripts each start a Vite server, and this suite is about the
+    // rewrite. The regeneration itself is asserted separately, below.
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+    const after = contentNow(content, 'copy.ts');
+
+    expect(after).toContain("  'button.reload': 'Reload Now',");
+    const beforeLines = (before.get('copy.ts') ?? '').split('\n');
+    const afterLines = after.split('\n');
+    expect(afterLines.length).toBe(beforeLines.length);
+    const differing = afterLines
+      .map((line, i) => (line === beforeLines[i] ? null : i))
+      .filter((i): i is number => i !== null);
+    expect(differing.length).toBe(1);
+    // The other two tables were not opened for writing at all.
+    expect(contentNow(content, 'copy.limelight.ts')).toBe(before.get('copy.limelight.ts'));
+    expect(result.stdout).toContain('wrote 1 copy row(s)');
+  });
+
+  it('keeps the trailing comment on a row that carries one', () => {
+    const { dir: content } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { clinical: { 'banner.loadInvalid.body': 'Stored data failed: {reason}.' } },
+      assets: [],
+      notes: [],
+    });
+
+    run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(contentNow(content, 'copy.ts')).toContain(
+      "    'Stored data failed: {reason}.', // template; FORMAT.loadInvalid",
+    );
+  });
+
+  it('writes a skin edit to that skin table and never to the default', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { limelight: { 'status.rest': 'take five babes' } },
+      assets: [],
+      notes: [],
+    });
+
+    run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(contentNow(content, 'copy.limelight.ts')).toContain(
+      "  'status.rest': 'take five babes',",
+    );
+    // The clinical row is untouched: the two registers are separate decisions.
+    expect(contentNow(content, 'copy.ts')).toBe(before.get('copy.ts'));
+  });
+
+  it('quotes a value carrying an apostrophe the way the tables already do', () => {
+    const { dir: content } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { limelight: { 'status.rest': "catch ur breath, it's fine" } },
+      assets: [],
+      notes: [],
+    });
+
+    run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(contentNow(content, 'copy.limelight.ts')).toContain(
+      '  \'status.rest\': "catch ur breath, it\'s fine",',
+    );
+  });
+});
+
+describe('the copy half refuses rather than guesses', () => {
+  it('refuses a key that is not already a row in the default table', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { clinical: { 'button.notAKeyAtAll': 'Go' } },
+      assets: [],
+      notes: [],
+    });
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("does not declare 'button.notAKeyAtAll'");
+    expect(result.stdout).toContain('a new CopyKey also needs a union entry');
+    expect(contentNow(content, 'copy.ts')).toBe(before.get('copy.ts'));
+  });
+
+  it('refuses a real key the SKIN table does not already override', () => {
+    const { dir: content, before } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { limelight: { 'button.reload': 'reload babes' } },
+      assets: [],
+      notes: [],
+    });
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain("copy.limelight.ts does not declare 'button.reload'");
+    expect(contentNow(content, 'copy.limelight.ts')).toBe(before.get('copy.limelight.ts'));
+  });
+
+  it('refuses a row built by concatenating two literals', () => {
+    const { dir: content } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { clinical: { 'advice.motivationClipLimit': 'The limit is {bytes} bytes.' } },
+      assets: [],
+      notes: [],
+    });
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('built by concatenating literals');
+  });
+
+  it('refuses a value carrying a newline, an empty value and an unknown skin', () => {
+    const { dir: content } = contentCopy();
+    const cases: ReadonlyArray<readonly [unknown, string]> = [
+      [{ clinical: { 'button.reload': 'one\ntwo' } }, 'one line'],
+      [{ clinical: { 'button.reload': '' } }, 'value is empty'],
+      [{ mystery: { 'button.reload': 'x' } }, 'unknown skin'],
+      [{ clinical: { notAKey: 'x' } }, 'is not a copy key'],
+      [[], 'must be an object'],
+    ];
+    for (const [copy, expected] of cases) {
+      const patch = writePatch('p.json', { version: 1, tokens: {}, copy, assets: [], notes: [] });
+      const result = run([patch, '--tokens', sheet, '--content', content]);
+      expect({ expected, status: result.status }).toEqual({ expected, status: 1 });
+      expect({ expected, ok: result.stdout.includes(expected) }).toEqual({ expected, ok: true });
+    }
+    // Five refusals means five real child processes, which is the point: each is a property of
+    // the COMMAND, not of an imported function. The explicit budget is because five spawns on a
+    // loaded machine can exceed the 20 s default, and a timeout here would read as a refusal that
+    // stopped working rather than as a busy laptop.
+  }, 60_000);
+
+  it('refuses a value carrying a Design Mode marker character', () => {
+    const { dir: content } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      // U+E0041 is a tag character: invisible, and never legitimately part of a copy string.
+      copy: { clinical: { 'button.reload': `Reload${String.fromCodePoint(0xe0041)}` } },
+      assets: [],
+      notes: [],
+    });
+
+    const result = run([patch, '--tokens', sheet, '--content', content]);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('Design Mode marker character');
+  });
+});
+
+describe('a copy change is not finished until the catalogue agrees', () => {
+  it('refuses to exit clean when it could not regenerate, and prints the four commands', () => {
+    const { dir: content } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { clinical: { 'button.reload': 'Reload Now' } },
+      assets: [],
+      notes: [],
+    });
+
+    // A throwaway content tree is not the shipped one, so regenerating against it would be
+    // meaningless. The applier says so and exits non-zero rather than reporting success.
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('the catalogue was not regenerated');
+    expect(result.stdout).toContain('node scripts/alpha-catalogue.mjs');
+    expect(result.stdout).toContain('node scripts/alpha-catalogue.mjs --check');
+    expect(result.stdout).toContain('node scripts/alpha-walk-pages.mjs');
+    expect(result.stdout).toContain('node scripts/alpha-walk-pages.mjs --check');
+  });
+
+  it('says the catalogue is stale when --no-regen was passed', () => {
+    const { dir: content } = contentCopy();
+    const patch = writePatch('p.json', {
+      version: 1,
+      tokens: {},
+      copy: { clinical: { 'button.reload': 'Reload Now' } },
+      assets: [],
+      notes: [],
+    });
+
+    const result = run([patch, '--tokens', sheet, '--content', content, '--write', '--no-regen']);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toContain('The catalogue is now STALE');
   });
 });

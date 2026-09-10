@@ -1,5 +1,6 @@
 import { BOARD_COPY } from './copy.board';
 import { LIMELIGHT_COPY } from './copy.limelight';
+import { isMarkingCopyKeys, markCopyValue } from '../design/copyMarkers';
 import type { SkinId } from '../domain/types';
 
 /**
@@ -1996,7 +1997,26 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
  * therefore reaches a skin without being touched.
  */
 export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string {
-  return overrides?.[key] ?? DEFAULT_COPY[key];
+  const value = overrides?.[key] ?? DEFAULT_COPY[key];
+  /*
+   * DESIGN MODE, AND NOTHING ELSE, TAKES THE SECOND BRANCH.
+   *
+   * `isMarkingCopyKeys()` is a module-level boolean decided once from `?design=1`
+   * (src/design/copyMarkers.ts records why it is not React state). Outside Design Mode this is
+   * one predictable branch and the IDENTICAL string: same value, same nodes, no wrapper, nothing
+   * added to the DOM. Inside it, the key rides along as Unicode tag characters, which a renderer
+   * draws nothing for, and src/design/CopyEditLayer.tsx turns the marked run into a
+   * `data-copy-key` element the owner can type into.
+   *
+   * WHAT IS DELIBERATELY NOT MARKED. `src/content/bodyEquations.ts`,
+   * `src/content/guidanceReferences.ts`, `src/content/sexRationale.ts`,
+   * `src/content/supplementGuidance.ts`, `src/content/reviewDataNotes.ts` and every other R10
+   * module carry citations, DOIs and structure rather than loose strings, and none of them goes
+   * through this function. They are NOT editable in Design Mode and must not be made so: a
+   * WYSIWYG is how a DOI gets mangled. Only this table and the two skin override tables are in
+   * scope for in-place editing.
+   */
+  return isMarkingCopyKeys() ? markCopyValue(key, value) : value;
 }
 
 /**
