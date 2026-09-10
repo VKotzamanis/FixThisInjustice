@@ -1122,12 +1122,29 @@
  * per step. `--accent` rather than `--text` so the box reads as a callout on all three skins;
  * a token, never a hex literal, because lime on lime and black on black are both invisible.
  */
+/*
+ * MEASURED 2026-09-10. `--accent` here is fuchsia on the LIME page ground: 1.41:1, against
+ * WCAG 1.4.3's 4.5:1 for text. `.wiz-box` sets no background of its own, so this heading
+ * inherits `--bg`, which on the default skin is the lime. `--text` is 10.91:1 there.
+ *
+ * <!-- decision: box-title-is-ink-not-accent | status: adopted | supersedes: box-title-accent -->
+ *
+ * THE THIRD INSTANCE of this exact defect. The references control shipped at 1.41:1 and was fixed
+ * in aa9fe7a; the feasibility bands were caught at 1.04:1 before shipping. `tokens.css` states the
+ * rule -- "state colours are ink, not hues" -- and `alpha-walk-pages.mjs` ASSERTS "pink is never
+ * type" and stayed green through all three, because it reads only the generated review pages and
+ * never the app's own stylesheets. That gap is the actual defect; this is a symptom.
+ *
+ * NOT every `color: var(--accent)` is wrong, which is why a blanket ban would be the wrong fix:
+ * `.wiz-modal-hrt` a few rules down is fuchsia on an explicit white highlight, and that is the
+ * owner's own instruction from r2.02. The ground is what decides it.
+ */
 .wiz-box-title {
   margin: 0 0 8px;
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 0.04em;
-  color: var(--accent);
+  color: var(--text);
 }
 
 .wiz-tz-why-list {
