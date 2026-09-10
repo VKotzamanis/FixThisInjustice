@@ -167,6 +167,28 @@ const LENGTH_EXEMPT: ReadonlyMap<string, string> = new Map([
     'advice.motivationClipLimit',
     'rendered inside <details><summary>why?</summary> in src/ui/motivation/MotivationSettings.tsx',
   ],
+  /*
+   * Brief I's two disclosure bodies, both on the goal step of src/ui/setup/SetupWizard.tsx and
+   * both earning the exemption the same way `advice.motivationClipLimit` does: they render
+   * inside a `<details><summary>why?</summary>`, which is R9's own carve-out from R1 to R4.
+   *
+   * Neither is decoration. The first is what choosing recomposition COSTS, in the same voice as
+   * the basis strings in src/domain/nutrition.ts, because that is the option the engine supports
+   * least. The second is the assumption the implied fat mass and lean mass rest on, plus the
+   * tape method's standard error. Both are load-bearing honesty, and both are longer than R3's
+   * twelve words because a hedge cut to twelve words stops being a hedge.
+   *
+   * Brief I's other new `advice.` keys need no entry: every one of them renders on the face of
+   * the step and complies with R3 unaided.
+   */
+  [
+    'advice.goalRecompositionCost',
+    'rendered inside <details><summary>why?</summary> on the goal step in src/ui/setup/SetupWizard.tsx',
+  ],
+  [
+    'advice.targetBodyFatBasis',
+    'rendered inside <details><summary>why?</summary> on the goal step in src/ui/setup/SetupWizard.tsx',
+  ],
 ]);
 
 /**

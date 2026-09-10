@@ -44,6 +44,42 @@
   --danger: #f87171;
   --info: #67e8f9;
 
+  /*
+   * THE FEASIBILITY CALENDAR'S THREE BAND FILLS (round 1 claim C1.11.2, Brief I Part 4).
+   *
+   * The owner asked for "pastel red, pastel orange, and pastel green" on the target-date
+   * calendar, one per band: Highly Improbable, Improbable, Realistic. One HSL family with
+   * hue-only variation (S 62 %, L 78 %), so the three read as siblings rather than as three
+   * unrelated colours.
+   *
+   * MEASURED 2026-09-06, WCAG 2.1 relative luminance, sRGB. Not recomputed here:
+   *
+   *   band                hex        clinical --bg   limelight --bg   board --board   #000000
+   *   realistic           #a4eab0    14.05:1         1.37:1 FAILS     14.03:1         14.97:1
+   *   improbable          #eac9a4    12.56:1         1.23:1 FAILS     12.54:1         13.39:1
+   *   highly improbable   #eaa6a4     9.84:1         1.04:1 FAILS      9.83:1         10.49:1
+   *
+   * The last column is also black INK on the fill, which is the same arithmetic, so type on a
+   * band clears 10.49:1 at worst and is never the constraint. The constraint is the FILL against
+   * its own page ground, and it fails on exactly one of the three: limelight, whose ground is
+   * lime, where a light pastel sits at 1.0 to 1.4:1, below even WCAG 1.4.11's 3:1 non-text
+   * minimum. The band would be functionally invisible there.
+   *
+   * `--band-surface` is the resolution and it is a LAYOUT constraint, not a colour change: these
+   * fills render inside a dark card, never on the bare page. In limelight that card is `--panel`
+   * (#000000), the same inversion `.ll-panel` and the top bar already make for the identical
+   * lime-ground problem. Clinical and board are near-black already, so each takes the ground the
+   * table above measured. Re-deriving the palette to suit lime is NOT the fix: a pastel light
+   * enough to read as green on black would not read as distinct from lime, and pastel on pastel
+   * is the failure this measurement exists to catch.
+   */
+  --band-realistic: #a4eab0;
+  --band-improbable: #eac9a4;
+  --band-highly-improbable: #eaa6a4;
+  --band-ink: #000000;
+  --band-surface: #0a0b0c; /* this skin's own --bg, the ground the table above measured */
+  --band-surface-text: #dde3ea;
+
   --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
   --sans: 'Geist Variable', -apple-system, system-ui, sans-serif;
 
@@ -160,10 +196,40 @@ body {
    * State colours are ink, not hues. Section 2.3 computed a ratio for five colours on this
    * ground and for no others; an amber or a red invented here would ship an unmeasured
    * contrast. This skin carries state with the inverted panel, the pink fill and the word.
+   *
+   * ONE MEASURED EXCEPTION, added by Brief I Part 4 rather than left to contradict the code
+   * below it. The feasibility calendar's three band fills ARE hues, and they are the first
+   * colours in this skin that are neither ink nor pink. They earn the exception the only way
+   * this rule allows: by being measured, on all three grounds, before they shipped. The table
+   * is in the `:root` block above.
+   *
+   * What the measurement found is that this rule was RIGHT about the lime ground. All three
+   * pastels fail on `--bg` here, at 1.04 to 1.37:1, which is why they never touch it: they
+   * render on `--band-surface`, which in this skin is the inverted panel the sentence above
+   * already names as how this skin carries state. So the exception is narrower than it looks.
+   * The hue is new; the surface it sits on is not, and the WORD still ships beside the fill
+   * (WCAG 1.4.1), exactly as this rule asks.
    */
   --warn: var(--ink);
   --danger: var(--ink);
   --info: var(--ink);
+
+  /*
+   * The three fills are the SAME hexes on every skin, and deliberately so: the measurement in
+   * the `:root` block is one HSL family against three grounds, not three palettes. They are
+   * restated here rather than left to inherit because src/skins/tokens.test.ts requires every
+   * clinical token to carry a value in both attribute blocks, and that rule is worth keeping
+   * even where the value is unchanged: it is what stops a clinical colour leaking silently onto
+   * a lime page.
+   */
+  --band-realistic: #a4eab0;
+  --band-improbable: #eac9a4;
+  --band-highly-improbable: #eaa6a4;
+  --band-ink: #000000;
+  /* The inverted panel, per the exception recorded above. #000000, measured at 14.97 / 13.39 /
+   * 10.49:1 for the three fills, against 1.37 / 1.23 / 1.04:1 on the bare lime ground. */
+  --band-surface: var(--panel);
+  --band-surface-text: var(--panel-text);
 
   /* One family at two widths, as a one-Pantone flyer would have had (section 2.1). */
   --mono: 'Archivo Variable', Archivo, ui-monospace, monospace;
@@ -288,6 +354,19 @@ body {
   --warn: var(--amber);
   --danger: var(--alert);
   --info: var(--paper);
+
+  /* The same three fills as every other skin, restated for the reason the limelight block
+   * records: one HSL family measured against three grounds, not three palettes. */
+  --band-realistic: #a4eab0;
+  --band-improbable: #eac9a4;
+  --band-highly-improbable: #eaa6a4;
+  --band-ink: #000000;
+  /* The feasibility calendar's band fills sit on the board's own darkest ground, which is the
+   * one the Brief I measurement in the `:root` block quotes: 14.03 / 12.54 / 9.83:1. The page
+   * ground (#141517) is a shade lighter and was not the measured surface, so the card names
+   * `--board` rather than inheriting `--bg`. */
+  --band-surface: var(--board);
+  --band-surface-text: var(--paper);
 
   --mono: var(--chrome);
   --sans: var(--disp);

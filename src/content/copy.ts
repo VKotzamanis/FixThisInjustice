@@ -627,7 +627,39 @@ export type CopyKey =
   | 'label.timezoneDayBoundary'
   | 'advice.timezoneDayBoundary'
   | 'label.timezoneReminders'
-  | 'advice.timezoneReminders';
+  | 'advice.timezoneReminders'
+  // --- round 2 brief I: the two-axis goal chooser (C1.10.2 to C1.10.6) ---
+  | 'label.fatAxis'
+  | 'label.muscleAxis'
+  | 'option.fatLose'
+  | 'option.fatHold'
+  | 'option.muscleGain'
+  | 'option.muscleHold'
+  | 'advice.goalOutcomeFatLoss'
+  | 'advice.goalOutcomeMuscleGain'
+  | 'advice.goalOutcomeRecomposition'
+  | 'advice.goalOutcomeMaintenance'
+  | 'advice.goalRecompositionCost'
+  // --- round 2 brief I: the body-fat target (C1.10.5) ---
+  | 'quantity.targetBodyFat'
+  | 'advice.targetBodyFatUnavailable'
+  | 'advice.targetBodyFatBasis'
+  | 'advice.impliedComposition'
+  // --- round 2 brief I: the feasibility calendar (C1.11.2 to C1.11.5) ---
+  | 'label.feasibility'
+  | 'status.bandRealistic'
+  | 'status.bandImprobable'
+  | 'status.bandHighlyImprobable'
+  | 'advice.feasibilityEstimate'
+  | 'advice.feasibilityRate'
+  | 'advice.feasibilitySlow'
+  | 'advice.feasibilityNoWeeklyRate'
+  | 'advice.feasibilityMassHeld'
+  | 'advice.feasibilityNeedsTarget'
+  | 'advice.feasibilityNeedsFuture'
+  | 'advice.feasibilityNotALoss'
+  | 'button.previousMonth'
+  | 'button.nextMonth';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -728,7 +760,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'step.timezone': 'Time zone',
   'step.body': 'Body',
   'step.training': 'Equipment & Availability',
-  'step.goal': 'Goal',
+  // Round 1 claim C1.10.2, first sentence: "Rename to Fitness Goal." R14: Title Case, and a
+  // noun phrase.
+  'step.goal': 'Fitness Goal',
   'step.availability': 'Availability',
   'step.programme': 'Programme length',
   'step.review': 'Review',
@@ -789,7 +823,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.equipment': 'Equipment',
   'label.equipmentAccess': 'Equipment Access',
   'label.goal': 'Goal',
-  'label.targetDate': 'Target date (optional)',
+  // R14, and scripts/check-title-case.mjs scans the `label.` family: both words were lower case
+  // and both are now capitalised. The string is otherwise unchanged.
+  'label.targetDate': 'Target Date (Optional)',
   'label.creatine': 'Creatine monohydrate',
   'label.weighIn': 'Weigh in',
   'label.sessionsPerWeek': 'Sessions per week',
@@ -807,7 +843,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // R11: quantity names, composed with the profile's unit by FORMAT.quantityWithUnit.
   'quantity.height': 'Height',
   'quantity.bodyMass': 'Body mass',
-  'quantity.targetBodyMass': 'Target body mass',
+  // Title Case to match `quantity.targetBodyFat` beside it on the same step (R14). The quantity
+  // itself is unchanged: R11 still names body MASS, never "weight".
+  'quantity.targetBodyMass': 'Target Body Mass',
   'quantity.bodyFat': 'Body fat',
   'quantity.neck': 'Neck',
   'quantity.abdomenI': 'Abdomen I',
@@ -1788,6 +1826,90 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // words; the label above carries the subject so the sentence does not have to repeat it.
   'label.timezoneReminders': 'Reminders',
   'advice.timezoneReminders': 'Turn them on and the gym bag stops staying at home.',
+
+  /* --- round 2 brief I: the two-axis goal chooser (C1.10.2 to C1.10.6) ---
+   *
+   * The owner: "The way the 'Goal' is seperated is exclusionary. Recomposition and fat loss are
+   * not exclusionary." They are not, so the page stops offering them as alternatives and asks
+   * the two questions underneath instead. GoalKind is derived from the pair
+   * (src/domain/types.ts GOAL_KIND_BY_AXES) and is unchanged: its four members are the key into
+   * every cited energy and protein rule.
+   *
+   * The four outcome lines are written as OUTCOMES in the owner's own register ("Build better
+   * habits? Lose fat and regain muscle?"), not as the engine's nouns. `option.goalFatLoss` and
+   * its three siblings keep the engine's nouns, and both render: the sentence says what happens,
+   * the noun names the goal the targets screen will call it by.
+   */
+  'label.fatAxis': 'Body Fat Goal',
+  'label.muscleAxis': 'Muscle Goal',
+  'option.fatLose': 'Lose fat',
+  'option.fatHold': 'Hold body fat',
+  'option.muscleGain': 'Gain muscle',
+  'option.muscleHold': 'Hold muscle',
+  'advice.goalOutcomeFatLoss': 'Lose fat and keep the muscle you already have.',
+  'advice.goalOutcomeMuscleGain': 'Build muscle, and accept some fat gain alongside it.',
+  'advice.goalOutcomeRecomposition': 'Lose fat and build muscle at the same time.',
+  'advice.goalOutcomeMaintenance': 'Hold your body composition and build better training habits.',
+  /*
+   * R9's disclosure exemption (copy.test.ts LENGTH_EXEMPT): rendered inside the goal step's
+   * `<details><summary>why?</summary>`.
+   *
+   * Recomposition is the option the owner singled out and the one the engine supports least, so
+   * choosing it says what it costs. Both halves restate what src/domain/nutrition.ts already
+   * says in code, in the same voice as its own basis strings: energyPlan's recomposition branch
+   * holds energy at TDEE and says the content review does not cover recomposition, and the
+   * protein row for it is labelled EXTRAPOLATION rather than a figure the review states.
+   */
+  'advice.goalRecompositionCost':
+    'Energy is held at maintenance for this goal. The content review does not cover recomposition, so holding maintenance energy introduces no coefficient the report does not supply, and the protein range is an extrapolation from the muscle-gain row rather than a figure the review states.',
+
+  /* --- round 2 brief I: the body-fat target (C1.10.5) ---
+   *
+   * The owner: "instead of having a 'target body mass' which is stupid... Target body mass can
+   * be muscle or fat." Profile.goal.targetBodyFatPct has always existed and the wizard has
+   * always written null into it. It is collected here, and target body mass stays as the
+   * fallback for the path where no body-fat estimate exists to set a target against.
+   */
+  'quantity.targetBodyFat': 'Target Body Fat',
+  'advice.targetBodyFatUnavailable': 'No body-fat estimate yet, so the target is body mass.',
+  /*
+   * R9's disclosure exemption, as above: rendered inside the target's own
+   * `<details><summary>why?</summary>`. `{see}` is NAVY_SEE_PCT for the stated sex, read live
+   * from src/domain/bodyfat.ts through FORMAT.targetBodyFatBasis and never restated here.
+   */
+  'advice.targetBodyFatBasis':
+    'The fat mass and lean mass shown assume lean mass is held while fat is lost, which is what the prescribed rate targets. A tape estimate carries a standard error of {see} percentage points of body fat, so read the target as a direction rather than as a number to hit.',
+  'advice.impliedComposition': 'At that target: {fat} fat mass and {lean} lean mass.',
+
+  /* --- round 2 brief I: the feasibility calendar (C1.11.2 to C1.11.5) ---
+   *
+   * The owner: "the calendar should be pastel colored... each color would mean 'Highly
+   * Improbable', 'Improbable', and 'Realistic'." WCAG 1.4.1: colour is never the only carrier,
+   * so each band ships its WORD beside its fill and the three words are these.
+   *
+   * The bands come from src/domain/nutrition.ts's targetDateFeasibility, which reads
+   * FAT_LOSS_RATE_BOUND and converts no kcal into any kg.
+   */
+  'label.feasibility': 'Target Date Feasibility',
+  'status.bandRealistic': 'Realistic',
+  'status.bandImprobable': 'Improbable',
+  'status.bandHighlyImprobable': 'Highly Improbable',
+  'advice.feasibilityEstimate': 'An estimate from a prescribed rate, not a prediction about you.',
+  'advice.feasibilityRate': 'That date needs about {rate} of body mass per week.',
+  'advice.feasibilitySlow': 'Slower than the prescribed rate, and realistic.',
+  'advice.feasibilityNoWeeklyRate': 'No established weekly rate exists for muscle gain.',
+  'advice.feasibilityMassHeld': 'This goal holds body mass, so no weekly rate applies.',
+  'advice.feasibilityNeedsTarget': 'Set a target above before these dates can be judged.',
+  /*
+   * The two states the date INPUT can reach that the grid cannot: the grid disables a past cell
+   * and offers no cell without a target, but the field beside it accepts any valid date. Each
+   * names its own missing input rather than borrowing the line above, which would tell a user
+   * who HAS set a target to go and set one.
+   */
+  'advice.feasibilityNeedsFuture': 'Pick a date after today before this can be judged.',
+  'advice.feasibilityNotALoss': 'That target is not below your current body mass.',
+  'button.previousMonth': 'Previous Month',
+  'button.nextMonth': 'Next Month',
 };
 
 /**
@@ -2739,4 +2861,61 @@ export const FORMAT = {
   /** "32 more": how many further zones a row covers, when no search has named one of them. */
   timeZoneAlso: (count: number, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.timezoneAlso', overrides).replace('{count}', () => String(count)),
+
+  // --- setup, the goal step (round 2 brief I) ---
+
+  /**
+   * "At that target: 14.2 kg fat mass and 65.8 kg lean mass."
+   *
+   * Both operands arrive already formatted in the profile's own unit, by the same
+   * `formatMass` every other mass on the screen goes through, so this frame states no unit of
+   * its own and a skin reaches every word it prints.
+   *
+   * R9 is not engaged: the frame states two quantities and performs no arithmetic the user has
+   * to follow. The arithmetic that produced them, and the assumption it rests on, are in the
+   * `why?` disclosure beside it (`targetBodyFatBasis` below).
+   */
+  impliedComposition: (
+    fat: string,
+    lean: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy('advice.impliedComposition', overrides)
+      .replace('{fat}', () => fat)
+      .replace('{lean}', () => lean),
+
+  /**
+   * The basis line under the body-fat target, with the tape method's standard error in it.
+   *
+   * `seePct` is NAVY_SEE_PCT for the user's stated sex, read live from src/domain/bodyfat.ts by
+   * the caller (3.52 percentage points for men, 3.72 for women, both from the same reports the
+   * equation itself comes from). It is a slot rather than a literal for the reason every
+   * coefficient in this project is: a number restated in a copy table is a number that drifts
+   * off its source the first time the source is corrected.
+   */
+  targetBodyFatBasis: (seePct: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('advice.targetBodyFatBasis', overrides).replace('{see}', () => String(seePct)),
+
+  /**
+   * "That date needs about 1.2 % of body mass per week."
+   *
+   * `rate` arrives already formatted as a percentage by the caller. The frame exists so the
+   * sentence lives in the table rather than being assembled beside the calendar, and so a skin
+   * can rewrite the sentence without touching the number.
+   */
+  feasibilityRate: (rate: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('advice.feasibilityRate', overrides).replace('{rate}', () => rate),
+
+  /**
+   * "2027-03-14, Realistic": the accessible name of one calendar cell.
+   *
+   * Both halves arrive already resolved, as in `atlasLockedName` and `bootStep`, so this frame
+   * states nothing of its own and a skin reaches every word it prints. A COMMA and not a dash,
+   * for the reason `atlasLockedName` gives: contract R5 bans a dash as a connector in every
+   * skin, and these are a date and a state rather than a clause and its aside.
+   *
+   * The band WORD is in the name, not only in the fill, which is what satisfies WCAG 1.4.1 for
+   * a screen reader as well as for a viewer who cannot separate the three pastels.
+   */
+  calendarDay: (date: string, band: string): string => (band === '' ? date : `${date}, ${band}`),
 } as const;

@@ -781,14 +781,54 @@ a{color:var(--text)}
 
 <section class="step" id="w1.12">
   <p class="stepno"><code>w1.12</code> step 12</p>
-  <h3>Setup, step 5: goal</h3>
-  <p class="do"><b>Do</b>Pick a goal, then read down to the two checkboxes.</p>
-  <p class="see"><b>You see</b>A goal menu, a target mass, a target date, and two options with a note under each.</p>
+  <h3>Setup, step 5: fitness goal</h3>
+  <p class="do"><b>Do</b>Set both axes, and try each of the four combinations. Set a target, then pick a date on the calendar close to today and again far out.</p>
+  <p class="see"><b>You see</b>Two radio groups, the goal they derive, a target, and a pastel calendar whose colours change with the date.</p>
   <p class="pids">covers setup.goal</p>
   <ol class="strings">
 <li>
 <code>step.goal</code>
-<p class="lime-str">Goal</p>
+<p class="lime-str">Fitness Goal</p>
+</li>
+<li>
+<code>label.fatAxis</code>
+<p class="lime-str">Body Fat Goal</p>
+</li>
+<li>
+<code>option.fatLose</code>
+<p class="lime-str">Lose fat</p>
+</li>
+<li>
+<code>option.fatHold</code>
+<p class="lime-str">Hold body fat</p>
+</li>
+<li>
+<code>label.muscleAxis</code>
+<p class="lime-str">Muscle Goal</p>
+</li>
+<li>
+<code>option.muscleGain</code>
+<p class="lime-str">Gain muscle</p>
+</li>
+<li>
+<code>option.muscleHold</code>
+<p class="lime-str">Hold muscle</p>
+</li>
+<li>
+<code>advice.goalOutcomeFatLoss</code>
+<p class="lime-str">Lose fat and keep the muscle you already have.</p>
+</li>
+<li>
+<code>advice.goalOutcomeMuscleGain</code>
+<p class="lime-str">Build muscle, and accept some fat gain alongside it.</p>
+</li>
+<li>
+<code>advice.goalOutcomeRecomposition</code>
+<p class="lime-str">Lose fat and build muscle at the same time.</p>
+</li>
+<li>
+<code>advice.goalOutcomeMaintenance</code>
+<p class="lime-str">Hold your body composition and build better training habits.</p>
 </li>
 <li>
 <code>label.goal</code>
@@ -816,12 +856,88 @@ a{color:var(--text)}
 <p class="refusal">This string keeps its plain wording on every skin: THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM. A word change here is out of scope; a layout or behaviour change is not.</p>
 </li>
 <li>
+<code>advice.goalRecompositionCost</code>
+<p class="lime-str">Energy is held at maintenance for this goal. The content review does not cover recomposition, so holding maintenance energy introduces no coefficient the report does not supply, and the protein range is an extrapolation from the muscle-gain row rather than a figure the review states.</p>
+</li>
+<li>
+<code>quantity.targetBodyFat</code>
+<p class="lime-str">Target Body Fat</p>
+</li>
+<li>
+<code>advice.impliedComposition</code>
+<p class="lime-str">At that target: {fat} fat mass and {lean} lean mass.</p>
+</li>
+<li>
+<code>advice.targetBodyFatBasis</code>
+<p class="lime-str">The fat mass and lean mass shown assume lean mass is held while fat is lost, which is what the prescribed rate targets. A tape estimate carries a standard error of {see} percentage points of body fat, so read the target as a direction rather than as a number to hit.</p>
+</li>
+<li>
 <code>quantity.targetBodyMass</code>
-<p class="lime-str">Target body mass</p>
+<p class="lime-str">Target Body Mass</p>
+</li>
+<li>
+<code>advice.targetBodyFatUnavailable</code>
+<p class="lime-str">No body-fat estimate yet, so the target is body mass.</p>
 </li>
 <li>
 <code>label.targetDate</code>
-<p class="lime-str">Target date (optional)</p>
+<p class="lime-str">Target Date (Optional)</p>
+</li>
+<li>
+<code>label.feasibility</code>
+<p class="lime-str">Target Date Feasibility</p>
+</li>
+<li>
+<code>button.previousMonth</code>
+<p class="lime-str">Previous Month</p>
+</li>
+<li>
+<code>button.nextMonth</code>
+<p class="lime-str">Next Month</p>
+</li>
+<li>
+<code>status.bandRealistic</code>
+<p class="lime-str">Realistic</p>
+</li>
+<li>
+<code>status.bandImprobable</code>
+<p class="lime-str">Improbable</p>
+</li>
+<li>
+<code>status.bandHighlyImprobable</code>
+<p class="lime-str">Highly Improbable</p>
+</li>
+<li>
+<code>advice.feasibilityRate</code>
+<p class="lime-str">That date needs about {rate} of body mass per week.</p>
+</li>
+<li>
+<code>advice.feasibilitySlow</code>
+<p class="lime-str">Slower than the prescribed rate, and realistic.</p>
+</li>
+<li>
+<code>advice.feasibilityNoWeeklyRate</code>
+<p class="lime-str">No established weekly rate exists for muscle gain.</p>
+</li>
+<li>
+<code>advice.feasibilityMassHeld</code>
+<p class="lime-str">This goal holds body mass, so no weekly rate applies.</p>
+</li>
+<li>
+<code>advice.feasibilityNeedsTarget</code>
+<p class="lime-str">Set a target above before these dates can be judged.</p>
+</li>
+<li>
+<code>advice.feasibilityNeedsFuture</code>
+<p class="lime-str">Pick a date after today before this can be judged.</p>
+</li>
+<li>
+<code>advice.feasibilityNotALoss</code>
+<p class="lime-str">That target is not below your current body mass.</p>
+</li>
+<li>
+<code>advice.feasibilityEstimate</code>
+<p class="lime-str">An estimate from a prescribed rate, not a prediction about you.</p>
 </li>
 <li>
 <code>label.creatine</code>

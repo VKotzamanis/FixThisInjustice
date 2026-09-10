@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "bda7398",
+  "generatedFrom": "4392155",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 545,
+    "keys": 574,
     "notRendered": 3,
-    "table": 548
+    "table": 577
   },
   "parts": [
     {
@@ -1872,13 +1872,15 @@
       "id": "setup.goal",
       "screen": "setup",
       "order": 6,
-      "title": "Step 5, Goal",
-      "what": "Fat loss, maintenance, muscle gain or recomposition.",
+      "title": "Step 5, Fitness Goal",
+      "what": "The two axes the goal is derived from, the body-fat or body-mass target, and the target date with its feasibility calendar (Brief I).",
       "components": [
         "src/ui/setup/SetupWizard.tsx"
       ],
       "states": [
-        "default"
+        "default",
+        "recomposition",
+        "no-bodyfat-estimate"
       ],
       "keys": [
         {
@@ -1891,11 +1893,173 @@
           "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
         },
         {
+          "key": "advice.feasibilityEstimate",
+          "default": "An estimate from a prescribed rate, not a prediction about you.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilityMassHeld",
+          "default": "This goal holds body mass, so no weekly rate applies.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilityNeedsFuture",
+          "default": "Pick a date after today before this can be judged.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilityNeedsTarget",
+          "default": "Set a target above before these dates can be judged.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilityNoWeeklyRate",
+          "default": "No established weekly rate exists for muscle gain.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilityNotALoss",
+          "default": "That target is not below your current body mass.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilityRate",
+          "default": "That date needs about {rate} of body mass per week.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.feasibilitySlow",
+          "default": "Slower than the prescribed rate, and realistic.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.goalOutcomeFatLoss",
+          "default": "Lose fat and keep the muscle you already have.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.goalOutcomeMaintenance",
+          "default": "Hold your body composition and build better training habits.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.goalOutcomeMuscleGain",
+          "default": "Build muscle, and accept some fat gain alongside it.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.goalOutcomeRecomposition",
+          "default": "Lose fat and build muscle at the same time.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.goalRecompositionCost",
+          "default": "Energy is held at maintenance for this goal. The content review does not cover recomposition, so holding maintenance energy introduces no coefficient the report does not supply, and the protein range is an extrapolation from the muscle-gain row rather than a figure the review states.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.impliedComposition",
+          "default": "At that target: {fat} fat mass and {lean} lean mass.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.targetBodyFatBasis",
+          "default": "The fat mass and lean mass shown assume lean mass is held while fat is lost, which is what the prescribed rate targets. A tape estimate carries a standard error of {see} percentage points of body fat, so read the target as a direction rather than as a number to hit.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.targetBodyFatUnavailable",
+          "default": "No body-fat estimate yet, so the target is body mass.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "advice.weighIn",
           "default": "Optional. Compares body mass before and after.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "button.nextMonth",
+          "default": "Next Month",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "button.previousMonth",
+          "default": "Previous Month",
+          "limelight": "same",
+          "board": "same",
+          "isControl": true,
           "limelightRowPermitted": true,
           "refusalGroup": null
         },
@@ -1909,6 +2073,24 @@
           "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
         },
         {
+          "key": "label.fatAxis",
+          "default": "Body Fat Goal",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.feasibility",
+          "default": "Target Date Feasibility",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.goal",
           "default": "Goal",
           "limelight": "same",
@@ -1918,8 +2100,17 @@
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
         },
         {
+          "key": "label.muscleAxis",
+          "default": "Muscle Goal",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.targetDate",
-          "default": "Target date (optional)",
+          "default": "Target Date (Optional)",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1929,6 +2120,24 @@
         {
           "key": "label.weighIn",
           "default": "Weigh in",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.fatHold",
+          "default": "Hold body fat",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.fatLose",
+          "default": "Lose fat",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1972,8 +2181,62 @@
           "refusalGroup": "THE PROFILE FIELDS THE TARGETS ARE COMPUTED FROM"
         },
         {
+          "key": "option.muscleGain",
+          "default": "Gain muscle",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "option.muscleHold",
+          "default": "Hold muscle",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "quantity.targetBodyFat",
+          "default": "Target Body Fat",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "quantity.targetBodyMass",
-          "default": "Target body mass",
+          "default": "Target Body Mass",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bandHighlyImprobable",
+          "default": "Highly Improbable",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bandImprobable",
+          "default": "Improbable",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "status.bandRealistic",
+          "default": "Realistic",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1982,7 +2245,7 @@
         },
         {
           "key": "step.goal",
-          "default": "Goal",
+          "default": "Fitness Goal",
           "limelight": "same",
           "board": "same",
           "isControl": false,

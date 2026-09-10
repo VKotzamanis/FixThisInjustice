@@ -6,6 +6,7 @@ import {
   ACTIVITY_STOPS,
   BEVERAGE_TARGET_RANGE_ML,
   FAT_LOSS_RATE_BOUND,
+  FEASIBILITY_IMPROBABLE_MULTIPLE,
   NUTRITION_DOMAIN,
   caffeineDoseMg,
   computeTargets,
@@ -15,6 +16,7 @@ import {
   isInDomain,
   seedBeverageTargetML,
   statedBeverageTargetML,
+  targetDateFeasibility,
   type NutritionInput,
 } from './nutrition';
 import type { ActivityLevel, GoalKind, Sex } from './types';
@@ -707,5 +709,169 @@ describe('the basis strings disclose the conservative bias and the independence 
     expect(t.expectedRateKgPerWeek).toBeNull();
     expect(t.basis.rateRule).toMatch(/no weekly rate/i);
     expect(t.basis.rateRule).toMatch(/study duration/);
+  });
+});
+
+/**
+ * Brief I Part 4: the target-date feasibility bands.
+ *
+ * EVERY THRESHOLD IN THIS SUITE IS READ FROM THE MODULE, never restated as 0.005 or 0.01. That
+ * is the whole point of the suite: a band written as a literal here would keep passing after
+ * someone edited `FAT_LOSS_RATE_BOUND` and silently stop testing the cited number. The one
+ * assertion that DOES quote a figure is the existing `FAT_LOSS_RATE_BOUND` identity test above,
+ * which is where the constant is pinned to Helms 2014 on purpose.
+ *
+ * The rates are constructed from the bound rather than from a chosen date: for a 100 kg body
+ * mass over 10 weeks, a required fraction f needs a loss of f * 100 * 10 kg, so a target mass of
+ * 100 * (1 - 10f) puts the required rate exactly on f.
+ */
+describe('targetDateFeasibility', () => {
+  const CURRENT_KG = 100; // [kg]
+  const WEEKS = 10; // [week]
+
+  /** The target body mass whose required rate is `fraction` of body mass per week. */
+  function targetForFraction(fraction: number): number {
+    return CURRENT_KG * (1 - fraction * WEEKS); // [kg]
+  }
+
+  function bandAt(fraction: number): string {
+    const result = targetDateFeasibility({
+      goal: 'fat-loss',
+      currentMassKg: CURRENT_KG,
+      targetMassKg: targetForFraction(fraction),
+      weeks: WEEKS,
+    });
+    return result.assessable ? result.band : `gap:${result.gap}`;
+  }
+
+  it('puts the band edges exactly on FAT_LOSS_RATE_BOUND, read from the module', () => {
+    const { loFraction, hiFraction } = FAT_LOSS_RATE_BOUND;
+    // A rate a thousandth of the upper bound: far inside double precision, far outside the
+    // rounding error of the target-mass round trip above.
+    const step = hiFraction / 1000;
+
+    // The prescribed window is REALISTIC at both of its own endpoints, inclusive.
+    expect(bandAt(loFraction)).toBe('realistic');
+    expect(bandAt(hiFraction)).toBe('realistic');
+    expect(bandAt((loFraction + hiFraction) / 2)).toBe('realistic');
+
+    // Below the lower bound is still realistic, and is flagged as slower than prescribed rather
+    // than coloured as a warning: a date further out than the prescription needs is not a risk.
+    const slow = targetDateFeasibility({
+      goal: 'fat-loss',
+      currentMassKg: CURRENT_KG,
+      targetMassKg: targetForFraction(loFraction - step),
+      weeks: WEEKS,
+    });
+    expect(slow.assessable).toBe(true);
+    expect(slow.assessable && slow.band).toBe('realistic');
+    expect(slow.assessable && slow.belowBound).toBe(true);
+    expect(slow.assessable && slow.requiredFraction).toBeCloseTo(loFraction - step, 12);
+
+    // AT the lower bound it is not flagged: the endpoint is inside the window, not below it.
+    const atBound = targetDateFeasibility({
+      goal: 'fat-loss',
+      currentMassKg: CURRENT_KG,
+      targetMassKg: targetForFraction(loFraction),
+      weeks: WEEKS,
+    });
+    expect(atBound.assessable && atBound.belowBound).toBe(false);
+
+    // The first rate ABOVE the upper bound is improbable, and the last rate at or below
+    // FEASIBILITY_IMPROBABLE_MULTIPLE times it still is.
+    expect(bandAt(hiFraction + step)).toBe('improbable');
+    expect(bandAt(hiFraction * FEASIBILITY_IMPROBABLE_MULTIPLE)).toBe('improbable');
+    expect(bandAt(hiFraction * FEASIBILITY_IMPROBABLE_MULTIPLE + step)).toBe('highly-improbable');
+  });
+
+  it('reports the required rate as a fraction of CURRENT body mass per week', () => {
+    // 5 kg off 100 kg over 10 weeks is 0.5 %BW/week, which is the lower bound exactly.
+    const result = targetDateFeasibility({
+      goal: 'fat-loss',
+      currentMassKg: 100,
+      targetMassKg: 95,
+      weeks: 10,
+    });
+    expect(result.assessable && result.requiredFraction).toBeCloseTo(
+      FAT_LOSS_RATE_BOUND.loFraction,
+      12,
+    );
+  });
+
+  it('never colours a muscle-gain target date, at any horizon or target', () => {
+    /*
+     * `energyPlan` returns rateKgPerWeek: null for muscle gain because Garthe 2011 gives a total
+     * gain and the content review does not state the study duration. There is therefore no
+     * weekly rate to test a date against, and borrowing the fat-loss bound would be inventing a
+     * coefficient. Asserted over the whole input space, not at one date: no combination of mass,
+     * target and horizon may produce a band.
+     */
+    fc.assert(
+      fc.property(
+        fc.double({ min: 40, max: 200, noNaN: true }),
+        fc.double({ min: 40, max: 200, noNaN: true }),
+        fc.double({ min: -50, max: 500, noNaN: true }),
+        (currentMassKg, targetMassKg, weeks) => {
+          expect(
+            targetDateFeasibility({ goal: 'muscle-gain', currentMassKg, targetMassKg, weeks }),
+          ).toEqual({ assessable: false, gap: 'no-weekly-rate' });
+        },
+      ),
+    );
+    // And with no target at all, which is the state a fresh wizard opens the calendar in.
+    expect(
+      targetDateFeasibility({
+        goal: 'muscle-gain',
+        currentMassKg: 80,
+        targetMassKg: null,
+        weeks: 12,
+      }),
+    ).toEqual({ assessable: false, gap: 'no-weekly-rate' });
+  });
+
+  it('colours neither maintenance nor recomposition, because both hold body mass', () => {
+    for (const goal of ['maintenance', 'recomposition'] as const) {
+      expect(
+        targetDateFeasibility({ goal, currentMassKg: 100, targetMassKg: 90, weeks: 10 }),
+      ).toEqual({ assessable: false, gap: 'mass-held' });
+    }
+  });
+
+  it('names the missing input rather than banding a date it cannot assess', () => {
+    const base = { goal: 'fat-loss', currentMassKg: 100, weeks: 10 } as const;
+    expect(targetDateFeasibility({ ...base, targetMassKg: null })).toEqual({
+      assessable: false,
+      gap: 'no-target',
+    });
+    // Today, and a date already past: neither gives a finite required rate.
+    expect(targetDateFeasibility({ ...base, targetMassKg: 90, weeks: 0 })).toEqual({
+      assessable: false,
+      gap: 'no-horizon',
+    });
+    expect(targetDateFeasibility({ ...base, targetMassKg: 90, weeks: -1 })).toEqual({
+      assessable: false,
+      gap: 'no-horizon',
+    });
+    // A target at or above current mass under a fat-loss goal: the bound is stated for LOSS.
+    expect(targetDateFeasibility({ ...base, targetMassKg: 100 })).toEqual({
+      assessable: false,
+      gap: 'not-a-loss',
+    });
+    expect(targetDateFeasibility({ ...base, targetMassKg: 110 })).toEqual({
+      assessable: false,
+      gap: 'not-a-loss',
+    });
+  });
+
+  it('states the improbable edge as a multiple of the cited bound, not as its own rate', () => {
+    /*
+     * The guard against the defect this model exists to avoid: had the edge been hard-coded as
+     * 0.015, moving the cited bound would leave the band behind. The assertion is that the edge
+     * MOVES with the bound, and that it sits outside the prescribed window rather than inside it.
+     */
+    const edge = FAT_LOSS_RATE_BOUND.hiFraction * FEASIBILITY_IMPROBABLE_MULTIPLE;
+    expect(bandAt(edge)).toBe('improbable');
+    expect(bandAt(edge * 1.001)).toBe('highly-improbable');
+    expect(edge).toBeGreaterThan(FAT_LOSS_RATE_BOUND.hiFraction);
   });
 });
