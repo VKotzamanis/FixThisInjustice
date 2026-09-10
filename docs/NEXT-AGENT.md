@@ -12,80 +12,32 @@ This file is the entry point. It replaces reading the whole history.
 
 ```
 git log --oneline -15          # what just happened
-npx vitest run                 # 128 files, 2605 tests as of 2026-09-09. Re-derive; do not quote
+npx vitest run --maxWorkers=1  # 140 test files as of 2026-09-10. Re-derive; do not quote.
+                               # A full run is killed by the MATLAB job in another session:
+                               # run by directory, and a timeout is NOT an assertion failure
 cat docs/plans/2026-09-06-ORCHESTRATION.md
 git worktree list              # if any agent worktree exists, CHECK ITS BASE COMMIT first
 ```
 
-## 1a. Round 2 is CLOSED and PUSHED, 2026-09-09
+## 1a. START HERE: `docs/HANDOFF-2026-09-10.md`
 
-All ten briefs merged and pushed as `9544925`. Re-derive every number below rather than quoting
-it; this table has been wrong before, on seven rows at once.
+**Round 2 is closed and pushed. Round 3 is eight of nine done.** The state, the open items and the
+next steps live in `docs/HANDOFF-2026-09-10.md`; this file holds the standing rules that do not
+change between rounds.
 
-| Brief | Claims | Merged as |
-| --- | --- | --- |
-| **F** | equipment sliders | round 2 wave 0 |
-| **K** | r2.10 to r2.16 | `3f43e11` |
-| **N** | r2.05, r2.09 | `0f2383e` |
-| **O** | r2.09, the Settings half | `941614e` |
-| **J** | r2.01 to r2.03 | `8703a18` |
-| **L** | r2.18 | `550f9f1` |
-| **G** | C1.09.5 reopened | `bda7398` |
-| **I** | C1.10.x to C1.12.x, Parts 1, 2, 4 | `0488587` |
-| **M** | r2.19 | `a89afa9` |
-| **P** | R14, the Title Case sweep | `fb0757a` |
+Do not re-derive round 3's status from this file. It is not here, on purpose: a status table that
+lives in two places is the exact defect that produced four bugs in these rounds.
 
-Suite **128 files, 2605 tests**, green in all four zones. Title case **0 of 240**, and
-`check-title-case.mjs` is in CI for the first time.
+### The one habit this codebase rewards most
 
-### Seven defects fixed that belonged to no brief
+**A value transcribed into a second place is correct where it came from and silently wrong where it
+landed.** Nine defects were fixed across rounds 2 and 3 that belonged to no brief, and most were
+that shape: PAL bounds restated in the schema one file from the test written to prevent it; slider
+examples keyed by index instead of by value; a data-explainer sentence quoting control names as
+literals; a published contrast figure copied from the row above it.
 
-Found by re-running gates and checking claims against the tree, never by reading a report.
-
-1. **The Settings time-zone list** still built 418 zones in IANA order. Became brief O.
-2. **The REFERENCES control read at 1.41:1 on limelight**, fuchsia on lime. `tokens.css` records
-   the rule it broke, "pink is never type", and `alpha-walk-pages.mjs` ASSERTS that rule and was
-   green throughout, because it only reads the generated review pages and never the app's own
-   stylesheets. **THAT GAP IS STILL OPEN.**
-3. **The round-trip property test ran unseeded**, the only nondeterministic test here. Seeded at
-   20260909. No failing seed exists: 120 seeds and 60000 documents found nothing.
-4. **`schema.ts` restated the PAL bounds as literals** one file from the test written to stop that
-   drift. Now derived from `ACTIVITY_BAND`.
-5. **The nine-stop activity slider had three readouts.** Brief G widened the control and left the
-   feedback at band level, so six of nine positions were indistinguishable from a neighbour.
-6. **The target date was chosen before training frequency** (C1.10.8). `availability` is folded
-   into `training` now.
-7. **`REVIEW_DATA_HOW_TO_MOVE` quoted control names as literals** and went stale within hours when
-   the Title Case sweep renamed one. Now derived from `DEFAULT_COPY`.
-
-### The one defect shape that recurred all day
-
-**A value transcribed into a second place: correct when written, silently wrong later.** Numbers
-4, 5 and 7 above are all it, and so were the feasibility band thresholds and the slider examples
-keyed by index rather than by value. When you find a constant restated somewhere, derive it or
-add a test that reads both sides from the same source.
-
-### Three things that cost real time and will again
-
-- **Assume every agent worktree branches from a STALE commit.** Every agent dispatched on
-  2026-09-09 did, without exception, including two dispatched in the same message. Put
-  `git merge main` in the agent's own prompt as step 1 and have it report both commits.
-- **A copy key may be claimed by exactly ONE part** in `alpha-parts.mjs`. A collision always means
-  a new key, never a second claim.
-- **The wizard test fixtures navigate by COUNTING `next()` presses**, not by naming steps. Folding
-  one step out cost seven separate navigation routes across two files, and each failure surfaced
-  lines later as a missing control rather than as a navigation error.
-
-### Left for round 3
-
-- **Brief I2**, the just-in-time scheduler: written, deliberately not dispatched.
-- **r2.17's other half.** The training step now has three working sliders; `goal`, `availability`
-  and `programme` were revised without becoming sliders. The owner's call.
-- **The noun-phrase list** in brief P's report: about ten strings now Title Case but still
-  questions or sentences. R14's second clause is review, not automation.
-- **Nobody has read the 74 audited papers against the claims the code makes from them.** The audit
-  in `docs/review/2026-09-09-doi-audit.md` proves every DOI resolves and its metadata matches. It
-  proves nothing about whether the paper supports the claim.
+**When you find a constant restated somewhere, derive it, or make one test read both sides from the
+same source.**
 
 ## 2. The state, in one table
 
