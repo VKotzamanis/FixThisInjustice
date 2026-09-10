@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "0488587",
+  "generatedFrom": "18c493e",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 573,
+    "keys": 575,
     "notRendered": 3,
-    "table": 576
+    "table": 578
   },
   "parts": [
     {
@@ -2544,6 +2544,15 @@
           "refusalGroup": null
         },
         {
+          "key": "hero.yourData",
+          "default": "Your Data",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.creatineDose",
           "default": "Creatine",
           "limelight": "same",
@@ -2582,6 +2591,15 @@
         {
           "key": "label.inTargetRange",
           "default": "In the target set range",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.looksGood",
+          "default": "Looks Good",
           "limelight": "same",
           "board": "same",
           "isControl": false,

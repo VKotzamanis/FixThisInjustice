@@ -94,6 +94,16 @@ function next(): void {
 }
 
 /**
+ * Ticks the review step's "Looks Good" acknowledgement (Brief M, claim r2.19), which every
+ * fixture below that reaches Confirm must do exactly once now that Confirm is disabled until it
+ * is checked. Not folded into `fillImperialWizard` or `finishFromTraining` themselves: the
+ * "disabled until ticked" tests below need a review screen that has NOT been acknowledged yet.
+ */
+function tickLooksGood(): void {
+  fireEvent.click(screen.getByLabelText('Looks Good'));
+}
+
+/**
  * Choose a stated sex on the body step.
  *
  * ROUND 2 CHANGED THE PRECONDITION EVERY TEST BELOW WAS WRITTEN UNDER. `initialDraft` used to
@@ -414,6 +424,7 @@ describe('review screen', () => {
 describe('submission', () => {
   it('converts imperial entries exactly and writes profile, availability and plan', () => {
     fillImperialWizard();
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
     const state = useAppStore.getState();
@@ -472,6 +483,7 @@ describe('submission', () => {
 
   it('writes a document that passes parseState', () => {
     fillImperialWizard();
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
     const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
@@ -502,6 +514,7 @@ describe('submission', () => {
     next();
     next();
     next();
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
     const state = useAppStore.getState();
@@ -819,6 +832,7 @@ describe('whole-number counts', () => {
 
   it('writes a document that passes parseState once the fractions are corrected', () => {
     fillImperialWizard();
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
     const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
     const result = parseState(raw);
@@ -1004,6 +1018,7 @@ describe('entry aids and idempotency', () => {
 
   it('creates one profile however many times Confirm is clicked', () => {
     fillImperialWizard();
+    tickLooksGood();
     const button = screen.getByRole('button', { name: 'Confirm and start' });
     fireEvent.click(button);
     fireEvent.click(button);
@@ -1056,6 +1071,7 @@ describe('guidance step in wizard', () => {
 
   it('writes profile with default readiness on confirm', () => {
     fillImperialWizard();
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
     const state = useAppStore.getState();
@@ -1284,6 +1300,7 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
     vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
     expect(useAppStore.getState().setupDraft).not.toBeNull();
 
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
     expect(useAppStore.getState().setupDraft).toBeNull();
 
@@ -1348,6 +1365,64 @@ describe('review reads the answers back', () => {
 });
 
 /**
+ * Brief M, claim r2.19: the "Looks Good" acknowledgement and the "Your Data" block, the last
+ * screen before Confirm writes the profile.
+ */
+describe('review acknowledgement and Your Data', () => {
+  it('keeps Confirm disabled until Looks Good is ticked, then enables it', () => {
+    fillImperialWizard();
+    const confirmButton = screen.getByRole('button', { name: 'Confirm and start' });
+    // Not ticked yet: fillImperialWizard leaves the review screen on show, nothing more.
+    expect(confirmButton).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('Looks Good'));
+    expect(confirmButton).toBeEnabled();
+    // Unticking closes the gate again, rather than latching open on the first click.
+    fireEvent.click(screen.getByLabelText('Looks Good'));
+    expect(confirmButton).toBeDisabled();
+  });
+
+  it('does not write the acknowledgement anywhere: it is a gesture, not a record', () => {
+    fillImperialWizard();
+    tickLooksGood();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+
+    const state = useAppStore.getState();
+    const id = state.activeProfileId ?? '';
+    // No field named after the acknowledgement exists on the written profile at all.
+    expect(JSON.stringify(state.profiles[id])).not.toContain('ooksGood');
+    expect(JSON.stringify(state.profiles[id])).not.toContain('cknowledg');
+  });
+
+  /*
+   * The brief's own draft of the "how to move it" fact read "Settings, then Data, then export
+   * the JSON backup", which src/ui/views/ExportView.tsx renders no such control for. This test
+   * imports the same strings ExportView itself resolves through `t(...)` (via `copyFor`, the
+   * function useCopy() wraps) rather than retyping them, so a control renamed in copy.ts fails
+   * here instead of leaving the review step's wording to drift.
+   */
+  it('names the export and import controls with the same strings ExportView renders', () => {
+    fillImperialWizard();
+    const review = screen.getByTestId('review').textContent ?? '';
+    expect(review).toContain(copyFor('clinical', 'hero.exportImport'));
+    expect(review).toContain(copyFor('clinical', 'label.downloads'));
+    expect(review).toContain(copyFor('clinical', 'button.downloadJson'));
+    expect(review).toContain(copyFor('clinical', 'label.importSection'));
+  });
+
+  it('names the icon-register row rather than drawing a substitute', () => {
+    fillImperialWizard();
+    const review = screen.getByTestId('review');
+    expect(review.querySelector('[data-icon-row="reset-cookies-icon"]')).not.toBeNull();
+  });
+
+  it('says plainly that clearing site data cannot be undone', () => {
+    fillImperialWizard();
+    const review = screen.getByTestId('review').textContent ?? '';
+    expect(review).toContain('no way back');
+  });
+});
+
+/**
  * Brief F: the three step-4 sliders (Everyday Activity Level, Gym Comfort, Equipment Access),
  * the load-increments box, and the equipment-access-gated questions (walk to the gym, home
  * equipment, body weight equipment). Claims C1.09.2, .3, .6, .7, .8, .10, .11, .12, .15, .16,
@@ -1394,6 +1469,7 @@ describe('Brief F: the equipment sliders', () => {
     setValue(/programme length/i, '12');
     next(); // guidance
     next(); // review
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
   }
 
@@ -1845,6 +1921,7 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     next();
     expect(screen.getByTestId('review-sex')).toHaveTextContent('Not Disclosed');
 
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';
@@ -2677,6 +2754,7 @@ describe('Brief I Part 2: the body-fat target', () => {
     next(); // 5 goal
     next(); // 6 programme length
     next(); // 8 guidance
+    tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
 
     const state = useAppStore.getState();

@@ -83,6 +83,11 @@ import {
   BODY_EQUATIONS_LEAD,
   BODY_TAPE_DISCLAIMER,
 } from '../../content/bodyEquations';
+import {
+  REVIEW_DATA_HOW_TO_MOVE,
+  REVIEW_DATA_HOW_TO_RESET,
+  REVIEW_DATA_WHERE_IT_LIVES,
+} from '../../content/reviewDataNotes';
 import { BODY_FAT_CHART_INTRO, BODY_FAT_CHART_PERCENTAGES } from '../../content/bodyFatChart';
 import {
   SEX_RATIONALE_CUNNINGHAM,
@@ -1138,6 +1143,12 @@ export function SetupWizard(): JSX.Element {
   const draft: Draft = buffer ?? committed;
   /** Latched by the first successful confirm; the profile is created exactly once. */
   const [submitted, setSubmitted] = useState(false);
+  /*
+   * Brief M, claim r2.19: the review step's "Looks Good" acknowledgement. A gesture, not a
+   * record, exactly like the intro sequence's own acknowledgement (src/ui/intro/IntroSequence.tsx)
+   * -- it gates BLOCKED.review below and is never written to the store or to setupDraft.
+   */
+  const [reviewAcknowledged, setReviewAcknowledged] = useState(false);
   const [sexRationaleOpen, setSexRationaleOpen] = useState(false);
   const [bodyFatChartOpen, setBodyFatChartOpen] = useState(false);
   const [activityLevelsOpen, setActivityLevelsOpen] = useState(false);
@@ -1825,7 +1836,13 @@ export function SetupWizard(): JSX.Element {
       targetDateError !== null,
     programme: weeksError !== null,
     guidance: false,
-    review: false,
+    /*
+     * Brief M, claim r2.19: Confirm (gated through `confirmBlocked` below, which is
+     * `STEPS.some((s) => BLOCKED[s])`) stays disabled until "Looks Good" is ticked. Review has no
+     * Next button (it is the last step), so this reaches only `confirmBlocked` and the guard
+     * `confirm()` itself repeats, never a Next control.
+     */
+    review: !reviewAcknowledged,
   };
 
   /*
@@ -3754,6 +3771,48 @@ export function SetupWizard(): JSX.Element {
             </p>
             <p className="wiz-note">{SPLIT_TEMPLATES[draft.sessionsPerWeek].note}</p>
           </fieldset>
+
+          {/*
+           * Brief M, claim r2.19: three facts about the document itself, on the last screen
+           * before Confirm writes it. The words are src/content/reviewDataNotes.ts (R10 content,
+           * not a copy table): the middle fact names the real ExportView controls rather than
+           * the guessed "Settings, then Data" path, and the third states plainly that clearing
+           * site data cannot be undone.
+           */}
+          <fieldset className="wiz-review-data">
+            <legend>{t('hero.yourData')}</legend>
+            <p className="wiz-note">{REVIEW_DATA_WHERE_IT_LIVES}</p>
+            <p className="wiz-note">{REVIEW_DATA_HOW_TO_MOVE}</p>
+            <p className="wiz-note wiz-review-reset-row">
+              {/*
+               * THE ICON IS THE OWNER'S. docs/design/2026-09-04-icon-register.csv row
+               * `reset-cookies-icon` is marked owner-supplied on every column; this is the frame
+               * it will sit in, and nothing here draws, generates or substitutes one.
+               */}
+              <span
+                className="wiz-review-reset-icon"
+                data-icon-row="reset-cookies-icon"
+                aria-hidden="true"
+              />
+              {REVIEW_DATA_HOW_TO_RESET}
+            </p>
+          </fieldset>
+
+          {/*
+           * Brief M, claim r2.19: an acknowledgement before Confirm, exactly like the intro
+           * sequence's own gesture (src/ui/intro/IntroSequence.tsx) -- stored nowhere, and it
+           * gates BLOCKED.review above rather than the store.
+           */}
+          <label className="wiz-inline">
+            <input
+              type="checkbox"
+              checked={reviewAcknowledged}
+              onChange={(e) => {
+                setReviewAcknowledged(e.target.checked);
+              }}
+            />
+            {t('label.looksGood')}
+          </label>
         </div>
       )}
 

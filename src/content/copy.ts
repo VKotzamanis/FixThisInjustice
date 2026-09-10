@@ -79,6 +79,8 @@ export type CopyKey =
   | 'advice.deloadEveryFourth'
   | 'hero.yourAnswers'
   | 'hero.dailyTargets'
+  | 'hero.yourData'
+  | 'label.looksGood'
   | 'status.rateUnknown'
   | 'button.recordIntake'
   | 'advice.storedUnitsUnchanged'
@@ -739,6 +741,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.deloadEveryFourth': 'Every fourth week halves set counts, load unchanged.',
   'hero.yourAnswers': 'What you told me',
   'hero.dailyTargets': 'Daily targets',
+  /*
+   * Brief M, claim r2.19: the review step's own acknowledgement and its "Your Data" block, the
+   * last screen before Confirm writes the profile.
+   */
+  'hero.yourData': 'Your Data',
+  'label.looksGood': 'Looks Good',
   'status.rateUnknown': 'Not established by the evidence base',
   'button.recordIntake': 'Record intake',
   'advice.storedUnitsUnchanged': 'Stored values never change. Mass is held in kg.',
