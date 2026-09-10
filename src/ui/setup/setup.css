@@ -649,6 +649,39 @@
 }
 
 /*
+ * Brief M, claim r2.19: the review step's "Your Data" block. The fieldset border and spacing
+ * are the shared `.wiz fieldset` rule above; this only removes the bottom margin `.wiz-note`
+ * carries on its last line, so the block does not open a gap before the "Looks Good" row below.
+ */
+.wiz-review-data .wiz-note:last-child {
+  margin-bottom: 0;
+}
+
+/* The reset-instruction line and its icon slot sit on one row, the icon beside the words. */
+.wiz-review-reset-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+/*
+ * A labelled frame for `reset-cookies-icon` in docs/design/2026-09-04-icon-register.csv, marked
+ * owner-supplied on every column there (r2.19): the artwork is his, and this is the space it
+ * will take, sized so the row does not reflow when it lands. Same dashed-frame-on-token pattern
+ * as `.wiz-placeholder-frame` and `.wiz-sprite-slot` above, sized between the two: bigger than a
+ * text-height marker, because this icon stands beside a whole paragraph rather than one heading.
+ */
+.wiz-review-reset-icon {
+  flex: none;
+  width: 1.5em;
+  height: 1.5em;
+  margin-top: 0.15em;
+  border: 1px dashed var(--line-2);
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+
+/*
  * The two body-step popups (Part 2). Both draw their own close control at the UPPER RIGHT, and
  * `ModalShell` renders none of its own to break.
  *
