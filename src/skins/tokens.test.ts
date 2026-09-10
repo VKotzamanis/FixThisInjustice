@@ -36,10 +36,18 @@ describe('the skin attribute blocks', () => {
     // alpha round 2, which added --field-invalid-bg, --field-invalid-text and --highlight-bg for
     // r2.16's white-fill-and-red-border mark and r2.12(iv)'s white highlight. Both are colours a
     // component stylesheet would otherwise have had to write as a literal.
+    //
+    // 34 from round 2 Brief I, which added the feasibility calendar's three measured band fills
+    // plus --band-ink, and the surface pair --band-surface / --band-surface-text that decides
+    // WHICH GROUND those fills are drawn on. The surface pair is the one that actually varies by
+    // skin: all three pastels measure 1.0 to 1.4:1 against limelight's lime --bg, below WCAG
+    // 1.4.11's 3:1 non-text floor, so on that skin they render on the inverted panel instead.
     expect(BASE).toContain('--topbar-bg');
     expect(BASE).toContain('--field-invalid-bg');
     expect(BASE).toContain('--highlight-bg');
-    expect(BASE.length).toBe(28);
+    expect(BASE).toContain('--band-realistic');
+    expect(BASE).toContain('--band-surface');
+    expect(BASE.length).toBe(34);
     expect(tokens).toContain('--accent: #a3e635');
   });
 

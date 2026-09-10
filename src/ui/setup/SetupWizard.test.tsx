@@ -12,7 +12,15 @@ import { defaultState, parseState } from '../../domain/schema';
 import { EXERCISES } from '../../domain/plan/library';
 import { generatePlan, volumeReport } from '../../domain/plan/generator';
 import { SPLIT_TEMPLATES } from '../../domain/plan/templates';
-import { KG_PER_LB } from '../../domain/types';
+import {
+  GOAL_AXES_BY_KIND,
+  GOAL_KIND_BY_AXES,
+  KG_PER_LB,
+  type FatAxis,
+  type GoalKind,
+  type MuscleAxis,
+} from '../../domain/types';
+import { NAVY_SEE_PCT } from '../../domain/bodyfat';
 import { isValidTimeZone } from '../../domain/dates';
 import { toStoredMass } from '../../domain/units';
 import {
@@ -139,8 +147,15 @@ function fillImperialWizardToGoal(): void {
     target: { value: '4' }, // full-gym
   });
   next();
-  // 5 - goal
-  setValue(/^goal$/i, 'fat-loss');
+  /*
+   * 5 - Fitness Goal. Brief I Part 1 replaced the exclusive goal menu with two axes, so the
+   * fixture picks the PAIR that derives 'fat-loss' rather than selecting that name directly.
+   * Both are clicked explicitly even though `initialDraft` already opens on 'fat-loss', for the
+   * same reason the sliders above are set explicitly: the fixture's intent should not depend on
+   * a default staying what it is today.
+   */
+  fireEvent.click(screen.getByLabelText('Lose fat'));
+  fireEvent.click(screen.getByLabelText('Hold muscle'));
 }
 
 /** Advance to availability, with four weekdays checked for the four-session split. */
@@ -354,7 +369,9 @@ describe('review screen', () => {
     setValue(/body mass \(kg\)/i, '80');
     next();
     next();
-    setValue(/^goal$/i, 'muscle-gain');
+    // Brief I Part 1: 'muscle-gain' is derived from hold-fat plus gain-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Hold body fat'));
+    fireEvent.click(screen.getByLabelText('Gain muscle'));
     next();
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Wednesday'));
@@ -700,7 +717,8 @@ describe('the converted value is what the domain gate tests', () => {
   it('holds an optional target body mass to the same kg bound', () => {
     fillImperialWizardToGoal();
     setValue(/target body mass \(lb\)/i, FLOOR_LB);
-    expect(screen.getByText('Target body mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
+    // Title Case, Brief I: the quantity name is 'Target Body Mass' now, and only the case moved.
+    expect(screen.getByText('Target Body Mass must be 66.2 to 661.3 lb.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
     setValue(/target body mass \(lb\)/i, '120');
     expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
@@ -845,7 +863,12 @@ describe('focus, announcement and message binding', () => {
 
   it('binds the target-date message to its control', () => {
     fillImperialWizardToGoal();
-    const control = screen.getByLabelText(/target date/i);
+    /*
+     * Anchored, Brief I: the feasibility calendar beside this field is labelled "Target Date
+     * Feasibility", so an unanchored /target date/i now matches the grid as well as the input.
+     * The assertion is about the INPUT and its message, so it names the input exactly.
+     */
+    const control = screen.getByLabelText(/^target date \(optional\)$/i);
     // jsdom and every conforming browser sanitise an invalid entry in <input type="date"> to
     // "", so the message is only reachable in a user agent that falls back to a text field.
     // Switching the type here is exactly that fallback, not a way around the component.
@@ -1318,7 +1341,9 @@ describe('Brief F: the equipment sliders', () => {
   /** From the training step onward, complete and submit the wizard with whatever it holds. */
   function finishFromTraining(): void {
     next(); // goal
-    setValue(/^goal$/i, 'fat-loss');
+    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
     next(); // availability
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
@@ -1737,7 +1762,9 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     setValue(/body fat \(%\)/i, '20');
     next(); // training
     next(); // goal
-    setValue(/^goal$/i, 'fat-loss');
+    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
     next(); // availability
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
@@ -1764,7 +1791,9 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     setValue(/body fat \(%\)/i, '20');
     next();
     next();
-    setValue(/^goal$/i, 'fat-loss');
+    // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
     next();
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
@@ -2204,5 +2233,404 @@ describe('r2.09: the time-zone list', () => {
     expect(block).toContain('var(--text)');
     // Never a hex literal in a component stylesheet: every colour is a token.
     expect(block).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+});
+
+/**
+ * Brief I Part 1: the goal is two axes, and the four combinations are total.
+ *
+ * Round 1 claim C1.10.2: "The way the 'Goal' is seperated is exclusionary. Recomposition and fat
+ * loss are not exclusionary." The fix is a chooser in FRONT of `GoalKind`, not a change to it,
+ * and the property that makes the fix safe is that the mapping is a BIJECTION: four axis
+ * combinations, four members, total in both directions. If it were not total the chooser could
+ * produce a goal the cited energy and protein rules have no row for.
+ */
+describe('Brief I Part 1: the two-axis goal chooser', () => {
+  /** The four goals the engine has rules for, restated so a member added upstream fails here. */
+  const GOAL_KINDS: readonly GoalKind[] = [
+    'fat-loss',
+    'muscle-gain',
+    'recomposition',
+    'maintenance',
+  ];
+
+  it('maps every one of the four axis combinations onto a real GoalKind, and back', () => {
+    const combinations: { fat: FatAxis; muscle: MuscleAxis }[] = [
+      { fat: 'lose', muscle: 'hold' },
+      { fat: 'hold', muscle: 'gain' },
+      { fat: 'lose', muscle: 'gain' },
+      { fat: 'hold', muscle: 'hold' },
+    ];
+
+    // Every combination lands on a goal the engine has a rule for.
+    const derived = combinations.map(({ fat, muscle }) => GOAL_KIND_BY_AXES[fat][muscle]);
+    for (const goal of derived) expect(GOAL_KINDS).toContain(goal);
+
+    // The four are DISTINCT, so the mapping is injective, and there are four of them, so it is
+    // onto: together that is the bijection, and it means no goal is unreachable and no
+    // combination is ambiguous.
+    expect(new Set(derived).size).toBe(4);
+    expect([...derived].sort()).toEqual([...GOAL_KINDS].sort());
+
+    // The brief's own table, asserted literally rather than derived from the code under test.
+    expect(GOAL_KIND_BY_AXES.lose.hold).toBe('fat-loss');
+    expect(GOAL_KIND_BY_AXES.hold.gain).toBe('muscle-gain');
+    expect(GOAL_KIND_BY_AXES.lose.gain).toBe('recomposition');
+    expect(GOAL_KIND_BY_AXES.hold.hold).toBe('maintenance');
+
+    // And the inverse round-trips, which is what lets the chooser read its own state back OUT of
+    // `goal.kind` instead of storing the two axes beside it (decision
+    // goal-axes-derived-not-stored: two fields that must agree are two fields that can disagree).
+    for (const goal of GOAL_KINDS) {
+      const axes = GOAL_AXES_BY_KIND[goal];
+      expect(GOAL_KIND_BY_AXES[axes.fat][axes.muscle]).toBe(goal);
+    }
+    for (const { fat, muscle } of combinations) {
+      expect(GOAL_AXES_BY_KIND[GOAL_KIND_BY_AXES[fat][muscle]]).toEqual({ fat, muscle });
+    }
+  });
+
+  it('derives and reads back each of the four goals from the two radio groups on screen', () => {
+    const cases: { fat: string; muscle: string; shows: string }[] = [
+      { fat: 'Lose fat', muscle: 'Hold muscle', shows: 'Fat loss' },
+      { fat: 'Hold body fat', muscle: 'Gain muscle', shows: 'Muscle gain' },
+      { fat: 'Lose fat', muscle: 'Gain muscle', shows: 'Recomposition' },
+      { fat: 'Hold body fat', muscle: 'Hold muscle', shows: 'Maintenance' },
+    ];
+    fillImperialWizardToGoal();
+    for (const c of cases) {
+      fireEvent.click(screen.getByLabelText(c.fat));
+      fireEvent.click(screen.getByLabelText(c.muscle));
+      expect(screen.getByTestId('derived-goal')).toHaveTextContent(c.shows);
+      // The chooser's own state is the goal, so both radios read back checked from it alone.
+      expect(screen.getByLabelText(c.fat)).toBeChecked();
+      expect(screen.getByLabelText(c.muscle)).toBeChecked();
+    }
+  });
+
+  it('says what recomposition costs, and only when recomposition is chosen', () => {
+    fillImperialWizardToGoal();
+    // fat-loss: no cost note, because the engine has a cited rule for it.
+    expect(screen.queryByText(/does not cover recomposition/i)).toBeNull();
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Gain muscle'));
+    expect(screen.getByTestId('derived-goal')).toHaveTextContent('Recomposition');
+    // Both halves of the honest disclosure: maintenance energy, and an extrapolated protein row.
+    const cost = screen.getByText(/does not cover recomposition/i);
+    expect(cost).toHaveTextContent('Energy is held at maintenance');
+    expect(cost).toHaveTextContent('extrapolation from the muscle-gain row');
+  });
+});
+
+/**
+ * Brief I Part 4: the feasibility calendar.
+ *
+ * The band rules themselves are tested in src/domain/nutrition.test.ts against
+ * FAT_LOSS_RATE_BOUND read from the module. What is tested HERE is the rendering: that the fills
+ * appear where a rate exists, that they do NOT appear where none does, and that the word ships
+ * beside the fill (WCAG 1.4.1).
+ */
+describe('Brief I Part 4: the feasibility calendar', () => {
+  /** Every day cell in the rendered grid, in document order. */
+  function dayCells(): HTMLElement[] {
+    return [...document.querySelectorAll<HTMLElement>('.wiz-calendar-day')];
+  }
+
+  /** The cells carrying one of the three band fills, whichever band it is. */
+  function colouredCells(): HTMLElement[] {
+    return dayCells().filter((cell) =>
+      ['wiz-band-realistic', 'wiz-band-improbable', 'wiz-band-highly-improbable'].some((c) =>
+        cell.classList.contains(c),
+      ),
+    );
+  }
+
+  it('colours the grid under a fat-loss goal, which is the positive control for the next test', () => {
+    /*
+     * Without this, the muscle-gain test below would pass just as well against a calendar that
+     * never coloured anything at all. The clock is pinned to 2026-09-01 (FIXED_NOW), so the grid
+     * opens on 2026-09 and every day in it is in the future.
+     */
+    fillImperialWizardToGoal();
+    setValue(/target body mass \(lb\)/i, '120'); // [lb] a real loss from the fixture's 135 lb
+    expect(colouredCells().length).toBeGreaterThan(0);
+    // And the word is on the cell, not only its colour: the accessible name carries the band.
+    const named = dayCells().filter((cell) =>
+      /Realistic|Improbable|Highly Improbable/.test(cell.getAttribute('aria-label') ?? ''),
+    );
+    expect(named.length).toBe(colouredCells().length);
+    // The legend prints all three words whatever the goal is.
+    for (const word of ['Realistic', 'Improbable', 'Highly Improbable']) {
+      expect(screen.getAllByText(word).length).toBeGreaterThan(0);
+    }
+  });
+
+  it('leaves a muscle-gain-only target date UNCOLOURED, and says no weekly rate exists', () => {
+    /*
+     * `energyPlan` returns rateKgPerWeek: null for muscle gain and its rule string says why:
+     * Garthe 2011 gives a total gain but the content review does not state the study duration,
+     * so no kg/week figure can be derived. Reporting nothing is the honest value. Colouring this
+     * grid would mean borrowing the fat-loss bound, which is inventing a coefficient.
+     */
+    fillImperialWizardToGoal();
+    fireEvent.click(screen.getByLabelText('Hold body fat'));
+    fireEvent.click(screen.getByLabelText('Gain muscle'));
+    expect(screen.getByTestId('derived-goal')).toHaveTextContent('Muscle gain');
+
+    // A target and a date are both given, so nothing is missing except the RATE RULE itself.
+    setValue(/target body mass \(lb\)/i, '150'); // [lb] a gain from the fixture's 135 lb
+    const dateInput = screen.getByLabelText(/^target date \(optional\)$/i);
+    fireEvent.change(dateInput, { target: { value: '2026-10-01' } });
+
+    expect(dayCells().length).toBeGreaterThan(0); // the grid did render
+    expect(colouredCells()).toEqual([]); // and not one cell carries a band
+    for (const cell of dayCells()) {
+      expect(cell.className).toContain('wiz-band-none');
+      /*
+       * No band word smuggled into the accessible name either. The name is the ISO date alone
+       * (FORMAT.calendarDay with an empty band appends nothing), which is what a screen reader
+       * should hear for a date that carries no verdict.
+       */
+      expect(cell.getAttribute('aria-label')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(cell.getAttribute('aria-label')).not.toMatch(/Realistic|Improbable/);
+    }
+
+    // And the reason is stated, in the register the basis strings use.
+    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+      'No established weekly rate exists for muscle gain.',
+    );
+    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+      'An estimate from a prescribed rate, not a prediction about you.',
+    );
+  });
+
+  it('leaves maintenance and recomposition uncoloured too, because both hold body mass', () => {
+    fillImperialWizardToGoal();
+    setValue(/target body mass \(lb\)/i, '120');
+    const dateInput = screen.getByLabelText(/^target date \(optional\)$/i);
+    fireEvent.change(dateInput, { target: { value: '2027-06-01' } });
+
+    fireEvent.click(screen.getByLabelText('Hold body fat'));
+    fireEvent.click(screen.getByLabelText('Hold muscle'));
+    expect(colouredCells()).toEqual([]);
+    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+      'This goal holds body mass, so no weekly rate applies.',
+    );
+
+    fireEvent.click(screen.getByLabelText('Lose fat'));
+    fireEvent.click(screen.getByLabelText('Gain muscle'));
+    expect(colouredCells()).toEqual([]);
+    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+      'This goal holds body mass, so no weekly rate applies.',
+    );
+  });
+
+  it('names the input that is missing, and never tells a user with a target to set one', () => {
+    /*
+     * The date FIELD accepts any valid date, including one in the past and one that needs a
+     * GAIN under a fat-loss goal. The grid cannot reach either state (it disables a past cell
+     * and offers no cell without a target), so these two lines exist only for the field, and
+     * each names its own missing input. Reusing "Set a target above" for them would tell a user
+     * who has already set one to go and set one.
+     */
+    fillImperialWizardToGoal();
+    const dateInput = screen.getByLabelText(/^target date \(optional\)$/i);
+    const verdict = (): HTMLElement => screen.getByTestId('feasibility-verdict');
+
+    // No target yet, but a valid future date.
+    fireEvent.change(dateInput, { target: { value: '2027-01-01' } });
+    expect(verdict()).toHaveTextContent('Set a target above before these dates can be judged.');
+
+    // A target that is a GAIN, under a goal whose only cited rate rule is stated for loss.
+    setValue(/target body mass \(lb\)/i, '150'); // [lb] above the fixture's 135 lb
+    expect(verdict()).toHaveTextContent('That target is not below your current body mass.');
+
+    // A real loss, but a date that is not in the future: the required rate is not finite.
+    setValue(/target body mass \(lb\)/i, '120');
+    fireEvent.change(dateInput, { target: { value: '2026-09-01' } }); // FIXED_NOW's own date
+    expect(verdict()).toHaveTextContent('Pick a date after today before this can be judged.');
+    fireEvent.change(dateInput, { target: { value: '2020-01-01' } });
+    expect(verdict()).toHaveTextContent('Pick a date after today before this can be judged.');
+  });
+
+  it('renders the three fills inside the card that carries --band-surface, never on the page', () => {
+    /*
+     * The measured constraint, asserted against the stylesheet rather than a computed style:
+     * jsdom resolves no custom property through an attribute selector, so the RULE is what can
+     * be checked here (the same reasoning src/skins/tokens.test.ts records). All three pastels
+     * measure 1.0 to 1.4:1 against limelight's lime --bg, below WCAG 1.4.11's 3:1 non-text
+     * floor, so a band fill drawn on the bare page would be invisible on that skin.
+     */
+    expect(setupCss).toContain('background: var(--band-surface');
+    for (const token of [
+      '--band-realistic',
+      '--band-improbable',
+      '--band-highly-improbable',
+      '--band-ink',
+    ]) {
+      expect(setupCss).toContain(token);
+    }
+    // And every band fill is scoped inside `.wiz .wiz-band-*`, which only ever renders within
+    // `.wiz-calendar`. No hex literal: the colour comes from a token in tokens.css.
+    fillImperialWizardToGoal();
+    setValue(/target body mass \(lb\)/i, '120');
+    for (const cell of colouredCells()) {
+      expect(cell.closest('.wiz-calendar')).not.toBeNull();
+    }
+  });
+
+  it('pages the month forward and back, and never before the month it opened on', () => {
+    fillImperialWizardToGoal();
+    // FIXED_NOW is 2026-09-01T12:00Z, so the grid opens on this month.
+    expect(screen.getByTestId('calendar-month')).toHaveTextContent('2026-09');
+    expect(screen.getByRole('button', { name: 'Previous Month' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Next Month' }));
+    expect(screen.getByTestId('calendar-month')).toHaveTextContent('2026-10');
+    // Across a year boundary, which is where a naive month + 1 would produce "2026-13".
+    for (let i = 0; i < 3; i += 1) {
+      fireEvent.click(screen.getByRole('button', { name: 'Next Month' }));
+    }
+    expect(screen.getByTestId('calendar-month')).toHaveTextContent('2027-01');
+    fireEvent.click(screen.getByRole('button', { name: 'Previous Month' }));
+    expect(screen.getByTestId('calendar-month')).toHaveTextContent('2026-12');
+  });
+
+  it('writes the picked day into the target date, and marks that one cell selected', () => {
+    fillImperialWizardToGoal();
+    const cell = screen.getByRole('button', { name: /^2026-09-20/ });
+    fireEvent.click(cell);
+    expect(screen.getByLabelText(/^target date \(optional\)$/i)).toHaveValue('2026-09-20');
+    const pressed = dayCells().filter((c) => c.getAttribute('aria-pressed') === 'true');
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0]?.textContent?.trim()).toBe('20');
+  });
+});
+
+/**
+ * Brief I Part 2: the target is a body-fat percentage where an estimate exists.
+ *
+ * Round 1 claim C1.10.5: "instead of having a 'target body mass' which is stupid... Target body
+ * mass can be muscle or fat." `Profile.goal.targetBodyFatPct` has existed since the schema was
+ * written and the wizard wrote null into it until now.
+ */
+describe('Brief I Part 2: the body-fat target', () => {
+  /** The metric fixture, through the body step, with a body-fat percentage given. */
+  function reachGoalWithBodyFat(pct: string): void {
+    render(<SetupWizard />);
+    next(); // 1 units, metric by default
+    setValue(/^time zone$/i, 'America/New_York');
+    next(); // 2 time zone
+    pickSex();
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    setValue(/body fat \(%\)/i, pct);
+    next(); // 3 body
+    next(); // 4 equipment and availability, every slider on its default
+  }
+
+  it('offers the percentage instead of a target body mass, and shows what it implies', () => {
+    reachGoalWithBodyFat('25');
+    // The better question replaces the worse one; there is one target on screen, not two.
+    expect(screen.getByLabelText(/target body fat \(%\)/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/target body mass/i)).toBeNull();
+
+    /*
+     * 80 kg at 25 % body fat is 20 kg fat and 60 kg lean. Holding lean mass, a 15 % target needs
+     *   target mass = 60 / (1 - 0.15) = 60 / 0.85 = 70.588... kg
+     *   target fat  = 70.588... - 60   = 10.588... kg
+     * Both formatted by the same formatMass every other mass on the screen goes through, which
+     * rounds to 0.1 kg: "10.6 kg" and "60.0 kg".
+     */
+    setValue(/target body fat \(%\)/i, '15');
+    const implied = screen.getByTestId('implied-composition');
+    expect(implied).toHaveTextContent('10.6 kg fat mass');
+    expect(implied).toHaveTextContent('60.0 kg lean mass');
+  });
+
+  it('states the assumption and the tape method standard error behind a why disclosure', () => {
+    reachGoalWithBodyFat('25');
+    setValue(/target body fat \(%\)/i, '15');
+    const basis = screen.getByText(/assume lean mass is held/i);
+    // NAVY_SEE_PCT, read live from src/domain/bodyfat.ts rather than restated here.
+    expect(basis).toHaveTextContent(`standard error of ${String(NAVY_SEE_PCT.male)} percentage points`);
+    // R9: the arithmetic and its caveat are inside a <details>, not on the face of the step.
+    expect(basis.closest('details')).not.toBeNull();
+  });
+
+  it('never blocks Next on the target that is not on screen', () => {
+    /*
+     * The two targets are alternatives. A target body mass typed while no body-fat estimate
+     * existed stays in the draft when one arrives, and its field stops being rendered; gating
+     * the step on its error would stop Next on a message the user cannot see or correct.
+     */
+    render(<SetupWizard />);
+    next();
+    setValue(/^time zone$/i, 'America/New_York');
+    next();
+    pickSex();
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    next(); // 3 body, no body-fat percentage yet
+    next(); // 4 equipment and availability
+
+    // The body-mass route is open, and an out-of-domain target blocks it, correctly.
+    setValue(/target body mass \(kg\)/i, '5');
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+
+    // Back to the body step to give a percentage, which opens the better route.
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
+    setValue(/body fat \(%\)/i, '25');
+    next();
+    next();
+
+    // The invalid body mass is still in the draft and its field is gone. Next is free again.
+    expect(screen.queryByLabelText(/target body mass/i)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+  });
+
+  it('holds the percentage to the same domain the body step uses', () => {
+    reachGoalWithBodyFat('25');
+    setValue(/target body fat \(%\)/i, String(NUTRITION_DOMAIN.bodyFatPct.hi + 1));
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+    setValue(/target body fat \(%\)/i, '15');
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
+  });
+
+  it('falls back to target body mass and says why, where no estimate exists', () => {
+    // fillImperialWizardToGoal leaves the body-fat box empty, so there is no estimate to set a
+    // percentage target against.
+    fillImperialWizardToGoal();
+    expect(screen.getByLabelText(/target body mass \(lb\)/i)).toBeInTheDocument();
+    expect(screen.queryByLabelText(/target body fat/i)).toBeNull();
+    expect(
+      screen.getByText('No body-fat estimate yet, so the target is body mass.'),
+    ).toBeInTheDocument();
+  });
+
+  it('stores the percentage AND the body mass it implies, so the two cannot disagree', () => {
+    reachGoalWithBodyFat('25');
+    setValue(/target body fat \(%\)/i, '15');
+    next(); // 5 goal
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Wednesday'));
+    setValue(/weekly session target/i, '2');
+    next(); // 6 availability
+    next(); // 7 programme length
+    next(); // 8 guidance
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+
+    const state = useAppStore.getState();
+    const profile = Object.values(state.profiles)[0];
+    expect(profile?.goal.targetBodyFatPct).toBe(15);
+    // 60 kg lean / 0.85, the same arithmetic the screen printed.
+    expect(profile?.goal.targetMassKg).toBeCloseTo(60 / 0.85, 9);
+    // And the derived goal is the only record of either axis.
+    expect(profile?.goal.kind).toBe('fat-loss');
   });
 });

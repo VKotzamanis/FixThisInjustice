@@ -52,6 +52,50 @@ export type Sex = "male" | "female" | "nd";                 // "nd" = non-disclo
 export type StatedSex = Exclude<Sex, "nd">;
 export type ActivityLevel = "sedentary" | "moderate" | "vigorous"; // the three FAO/WHO/UNU 2004 PAL bands the content review verified; no invented midpoints
 export type GoalKind = "fat-loss" | "muscle-gain" | "recomposition" | "maintenance";
+
+/**
+ * The two axes the setup wizard asks about, and the bijection onto `GoalKind` above.
+ *
+ * Round 1 claim C1.10.2, Brief I Part 1: "Recomposition and fat loss are not exclusionary."
+ * They are not. They are the SAME fat axis with a different muscle axis beside it, and a menu
+ * of four mutually exclusive rows says otherwise. The chooser asks the two questions the user
+ * can actually answer and derives the goal from the pair.
+ *
+ * DERIVED, NEVER STORED (decision goal-axes-derived-not-stored). Two axes with two positions
+ * each give four combinations; `GoalKind` has four members; the mapping below is total in both
+ * directions. So the answer is already in `Profile.goal.kind` and the chooser reads its own
+ * state back out of it through `GOAL_AXES_BY_KIND`. Neither `Profile` nor `SetupAnswers` gains
+ * an axis field: two fields that must agree are two fields that can disagree.
+ *
+ * `GoalKind` itself is untouched. Its four members are the key into every energy and protein
+ * rule in src/domain/nutrition.ts, all of which carry verified citations, so renaming or
+ * adding a member would mean changing a coefficient.
+ */
+export type FatAxis = "lose" | "hold";
+export type MuscleAxis = "gain" | "hold";
+
+/**
+ * Axes -> goal. `Record<FatAxis, Record<MuscleAxis, GoalKind>>` is total by TYPE, so a fifth
+ * axis position added above without a goal beside it is a compile error rather than a runtime
+ * `undefined` reaching the energy rules.
+ */
+export const GOAL_KIND_BY_AXES: Record<FatAxis, Record<MuscleAxis, GoalKind>> = {
+  lose: { hold: "fat-loss", gain: "recomposition" },
+  hold: { gain: "muscle-gain", hold: "maintenance" },
+};
+
+/**
+ * Goal -> axes, the inverse of `GOAL_KIND_BY_AXES`. Total by type for the same reason, in the
+ * other direction: a fifth `GoalKind` member could not be added without stating its axes.
+ * The round trip through both tables is asserted in src/ui/setup/SetupWizard.test.tsx.
+ */
+export const GOAL_AXES_BY_KIND: Record<GoalKind, { fat: FatAxis; muscle: MuscleAxis }> = {
+  "fat-loss": { fat: "lose", muscle: "hold" },
+  "muscle-gain": { fat: "hold", muscle: "gain" },
+  recomposition: { fat: "lose", muscle: "gain" },
+  maintenance: { fat: "hold", muscle: "hold" },
+};
+
 export type Experience = "novice" | "intermediate" | "advanced";
 /** What an EXERCISE needs. library.ts tags every entry with the tiers it is available in. */
 export type Equipment = "full-gym" | "dumbbells-only" | "bodyweight";
@@ -312,6 +356,21 @@ export interface SetupAnswers {
   bodyweightEquipment: BodyweightEquipmentItem[];
   goalKind: GoalKind;
   targetMass: string; // [kg] or [lb], as typed
+  /**
+   * Brief I Part 2, round 1 claim C1.10.5: "instead of having a 'target body mass' which is
+   * stupid... Target body mass can be muscle or fat." `Profile.goal.targetBodyFatPct` has
+   * always existed and the wizard has always written `null` into it; this is the field that
+   * fills it. Offered only where a body-fat estimate exists to measure the target against;
+   * `targetMass` stays for the path where none does.
+   *
+   * Optional, and `| undefined` written out, for exactly the reasons `activityPal` above
+   * gives: the schema row is `.catch('').optional()`, schema.test.ts's `schemaInfersAppState`
+   * asserts type IDENTITY with z.infer rather than assignability, and a REQUIRED field would
+   * force every SetupAnswers-typed fixture in the tree (arbitraries.ts's `anySetupDraft` first
+   * among them) to be edited just to keep compiling. A draft saved before this field existed
+   * resolves to plain absence, and SetupWizard.tsx reads it as the empty string.
+   */
+  targetBodyFat?: string | undefined; // [%] of body mass, as typed
   targetDate: string; // [YYYY-MM-DD], as typed
   creatine: boolean;
   weighInOptIn: boolean;
