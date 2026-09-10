@@ -95,7 +95,18 @@ export function IntroSequence(): ReactElement {
   const showFigure = index < FIGURE_SLIDE_COUNT;
 
   return (
-    <section className="intro" onClick={advance}>
+    <section
+      className="intro"
+      onClick={advance}
+      /*
+       * THE POINTER NEEDS THE CONTROL VISIBLE, or it points at nothing. The topbar is z-index 30
+       * (appShell.css) and this overlay is 56, so the skin control the arrow indicates is COVERED
+       * for the whole intro. An arrow aimed at blank space teaches a location the user cannot see,
+       * which is worse than no arrow. This attribute lets appShell.css lift the topbar above the
+       * overlay for the one slide that draws the pointer, and only that slide.
+       */
+      data-pointing-at-settings={index === LAST_INDEX ? 'true' : undefined}
+    >
       <div className={reduced ? 'intro-slide intro-no-motion' : leaving ? 'intro-slide intro-fade-out' : 'intro-slide'} key={index}>
         {slide.heading !== null && <h2 className="intro-heading intro-subsection-title intro-highlight">{slide.heading}</h2>}
         {slide.lead !== null && <p className="intro-body" data-testid="intro-body">{reveal(slide.lead)}</p>}
