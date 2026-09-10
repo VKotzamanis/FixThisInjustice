@@ -32,6 +32,24 @@ The generator is deterministic: two runs on one tree produce byte-identical file
 | `w5-settings.html` | 5, settings and data | 16 | https://claude.ai/code/artifact/2bbc42f4-3606-4d1c-9935-45ab35eb223f |
 | `w6-extras.html` | 6, extras and rare states | 11 | https://claude.ai/code/artifact/e9f5b735-5b02-43bf-9d2c-24837bbee94d |
 
+### Round pages
+
+A round page walks only what CHANGED, in the order the tester meets it, so the feedback is about
+the deltas rather than the whole app again. It is written by hand, not generated: which changes
+matter and what each one WAS is a judgement the generator cannot make. It still quotes the
+Limelight strings from `catalogue.json` rather than from memory, and it carries the same
+localStorage persistence and paste-back assembly the generated pages use.
+
+| Page | Round | Steps | Published |
+| --- | --- | --- | --- |
+| `r2-onboarding.html` | 2 | 20 | https://claude.ai/code/artifact/7aef9f95-c092-4bb2-babd-cf3d71152349 |
+| `r3-onboarding.html` | 3 | 17 | https://claude.ai/code/artifact/09d04fba-46d3-427e-92ed-12cf5463c806 |
+
+Round 3's page also carries a closing block naming what is deliberately NOT done, so the tester is
+not hunting for it: the three owner-supplied assets, the ten Title Case strings that are still
+questions, the deferred just-in-time scheduler, r2.17's unresolved half, and the fact that the DOI
+audit proves citations resolve and not that they support the sentences beside them.
+
 89 steps over six walked stages. Every one of the 491 copy keys the catalogue places appears in
 exactly one step, and all 102 live parts are covered.
 
