@@ -34,6 +34,18 @@ const SMALL = new Set([
   'of', 'in', 'on', 'at', 'to', 'with', 'from', 'by', 'as', 'per', 'vs',
 ]);
 
+/*
+ * EXACT-CASED TOKENS, which pass whatever their first letter. Same principle as UNIT below, one
+ * step wider: there the case IS the quantity, here the case IS the identity.
+ *
+ * Added 2026-09-09 after the sweep mechanically produced "IPhone and IPad", "Download Summary
+ * .Txt" and "Download Calendar .Ics". Every one satisfied the rule as written and every one was
+ * wrong on screen: `iPhone` and `iPad` are trademarks with a fixed lower-case initial, and `.txt`
+ * and `.ics` are file extensions a user types verbatim. A rule that forces a visible defect is an
+ * incomplete rule, so the rule moved rather than the copy.
+ */
+const FIXED = new Set(['iphone', 'ipad', 'ios', 'ipados', 'macos', '.txt', '.ics', '.json', '.csv']);
+
 /** R12's guarded symbols, plus the ones the setup wizard writes. Case is the quantity. */
 const UNIT = new Set([
   's', 'kg', 'lb', 'ml', 'min', 'g', 'kcal', 'mib', 'cm', 'mm', 'ms', 'm', 'ft', 'in', 'h', 'oz', 'fl',
@@ -49,6 +61,13 @@ export function titleCaseOffenders(value) {
   words.forEach((word, i) => {
     const bare = word.replace(/[^A-Za-z-]/g, '');
     if (bare === '') return;
+    /*
+     * A PLACEHOLDER SLOT IS NOT A WORD. `{volume}` is a substitution key: capitalising it renames
+     * the slot and the substitution silently stops matching, which is a functional break dressed
+     * as a style fix. Skipped outright.
+     */
+    if (/^\{.*\}$/.test(word)) return;
+    if (FIXED.has(word.toLowerCase()) || FIXED.has(bare.toLowerCase())) return;
     if (/^[A-Z]/.test(bare)) return;
     if (bare === bare.toUpperCase() && bare.length > 1) return; // an acronym
     if (UNIT.has(bare.toLowerCase())) return; // R12

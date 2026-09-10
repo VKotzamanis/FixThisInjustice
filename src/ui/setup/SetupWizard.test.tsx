@@ -1371,7 +1371,7 @@ describe('review reads the answers back', () => {
 describe('review acknowledgement and Your Data', () => {
   it('keeps Confirm disabled until Looks Good is ticked, then enables it', () => {
     fillImperialWizard();
-    const confirmButton = screen.getByRole('button', { name: 'Confirm and start' });
+    const confirmButton = screen.getByRole('button', { name: 'Confirm and Start' });
     // Not ticked yet: fillImperialWizard leaves the review screen on show, nothing more.
     expect(confirmButton).toBeDisabled();
     fireEvent.click(screen.getByLabelText('Looks Good'));
@@ -1384,7 +1384,7 @@ describe('review acknowledgement and Your Data', () => {
   it('does not write the acknowledgement anywhere: it is a gesture, not a record', () => {
     fillImperialWizard();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and start' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';

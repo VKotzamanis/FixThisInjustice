@@ -31,6 +31,8 @@
 // placeholder frame naming that row and draws nothing.
 
 /** Fact 1: where the document lives. */
+import { DEFAULT_COPY } from './copy';
+
 export const REVIEW_DATA_WHERE_IT_LIVES =
   'Everything stays in this browser, on this device. Nothing is sent anywhere.';
 
@@ -39,10 +41,22 @@ export const REVIEW_DATA_WHERE_IT_LIVES =
  * `src/ui/views/ExportView.tsx` actually renders (`hero.exportImport`, `label.downloads`,
  * `button.downloadJson`, `label.importSection`), not the guessed "Settings, then Data" path.
  */
+/*
+ * DERIVED FROM THE TABLE, not transcribed from it. This sentence held the four control names as
+ * literals and broke within hours: the Title Case sweep renamed `hero.exportImport` from
+ * "Export and import" to "Export and Import", and a sentence that quotes a control by copying
+ * its words is stale the moment anyone edits that control. Reading DEFAULT_COPY at module load
+ * makes the drift impossible rather than merely detectable.
+ *
+ * The contract suite still asserts the four names appear here verbatim; it now cannot fail for
+ * a rename, only for a key that stopped being referenced at all, which is the thing worth
+ * catching.
+ */
 export const REVIEW_DATA_HOW_TO_MOVE =
-  'To move it to another device: on this one, open Settings, then Export and import, then ' +
-  'Downloads, and press Download JSON. On the other device, open Settings, then Export and ' +
-  'import, then Import, and load that file there.';
+  `To move it to another device: on this one, open Settings, then ${DEFAULT_COPY['hero.exportImport']}, ` +
+  `then ${DEFAULT_COPY['label.downloads']}, and press ${DEFAULT_COPY['button.downloadJson']}. ` +
+  `On the other device, open Settings, then ${DEFAULT_COPY['hero.exportImport']}, then ` +
+  `${DEFAULT_COPY['label.importSection']}, and load that file there.`;
 
 /**
  * Fact 3: what clearing the browser's cookies and site data does, stated plainly as

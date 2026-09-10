@@ -84,6 +84,14 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # R14: labels, headings and control names are Title Case. Added to CI 2026-09-09, the first
+      # time this gate has been green: it sat outside CI while 139 of the naming keys failed it.
+      # It must run AFTER Install, unlike check-no-emoji, because it imports vite to read the
+      # copy tables. It checks the DEFAULT table only -- the limelight and board tables are
+      # deliberately lower and upper case, and the script never looks at them.
+      - name: Title Case on labels, headings and control names
+        run: node scripts/check-title-case.mjs
+
       # Civil dates are zone-sensitive: the suite runs under UTC, Europe/Athens, America/New_York, America/Los_Angeles.
       - name: Test in four time zones
         run: npm run test:tz
