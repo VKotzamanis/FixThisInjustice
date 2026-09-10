@@ -3,6 +3,7 @@
   position: sticky;
   top: 0;
   z-index: 30;
+  /* see the intro-pointer rule below, which lifts this for one slide */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -335,4 +336,25 @@ main {
 .viewnav button[aria-current='true'] {
   color: var(--accent, #a3e635);
   border-color: var(--accent, #a3e635);
+}
+
+/*
+ * THE INTRO'S SETTINGS POINTER NEEDS ITS TARGET VISIBLE.
+ *
+ * <!-- decision: topbar-lifts-for-the-intro-pointer | status: adopted | supersedes: none -->
+ *
+ * The intro overlay is z-index 56 (intro.css) and this bar is 30, so for the whole intro the skin
+ * and preferences control sits BEHIND it. The final slide draws an arrow at that corner, and an
+ * arrow aimed at a covered control points at blank space: it teaches a location the user cannot
+ * see, which is worse than not pointing at all. The owner's ask was to be SHOWN where the button
+ * is, not told where it will be.
+ *
+ * So for that one slide the intro marks itself, and the bar rises above the overlay. 57 rather
+ * than 56 because 57 is what intro.css already uses for its own modal layer, and the bar must
+ * clear the overlay without covering that modal's own backdrop on the tl;dr slide -- which cannot
+ * collide in practice, since the acknowledgement modal and the final slide are different slides.
+ */
+.intro[data-pointing-at-settings='true'] ~ .app .topbar,
+body:has(.intro[data-pointing-at-settings='true']) .topbar {
+  z-index: 57;
 }
