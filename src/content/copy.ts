@@ -682,10 +682,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // rewrite the sentence around a reason no skin may rewrite.
   'banner.loadInvalid.body':
     'Stored data did not validate: {reason}. Nothing was overwritten.', // template; FORMAT.loadInvalid
-  'button.exportData': 'Export data',
-  'button.retrySave': 'Retry save',
-  'button.exportStoredCopy': 'Export stored copy',
-  'button.exportStoredData': 'Export stored data',
+  'button.exportData': 'Export Data',
+  'button.retrySave': 'Retry Save',
+  'button.exportStoredCopy': 'Export Stored Copy',
+  'button.exportStoredData': 'Export Stored Data',
 
   // --- setup wizard, targets, check-in (P2) ---
   'setup.hero': 'Setup',
@@ -708,8 +708,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    */
   'button.introContinue': 'Next', // R1: 1 word
   'button.back': 'Previous',
-  'button.confirmStart': 'Confirm and start',
-  'label.units': 'Units on the weight plates',
+  'button.confirmStart': 'Confirm and Start',
+  'label.units': 'Units on the Weight Plates',
   'advice.unitsOnce': 'Makes logging stuff easier. Change at any point in Settings.',
   'advice.timezoneDetected': 'Necessary for the notification bot and the week planner.',
   'advice.timezonePick': 'Select from the drop down menu:',
@@ -739,8 +739,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.loadSteps': 'The smallest increment a suggested load uses.',
   'advice.creatineOnly': 'Dose scales with body mass.',
   'advice.deloadEveryFourth': 'Every fourth week halves set counts, load unchanged.',
-  'hero.yourAnswers': 'What you told me',
-  'hero.dailyTargets': 'Daily targets',
+  'hero.yourAnswers': 'What You Told Me',
+  'hero.dailyTargets': 'Daily Targets',
   /*
    * Brief M, claim r2.19: the review step's own acknowledgement and its "Your Data" block, the
    * last screen before Confirm writes the profile.
@@ -748,7 +748,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.yourData': 'Your Data',
   'label.looksGood': 'Looks Good',
   'status.rateUnknown': 'Not established by the evidence base',
-  'button.recordIntake': 'Record intake',
+  'button.recordIntake': 'Record Intake',
   'advice.storedUnitsUnchanged': 'Stored values never change. Mass is held in kg.',
   'advice.noProfileSetupFirst': 'No profile. Complete setup first.',
 
@@ -764,25 +764,25 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   /* r2.15(i): the one collapsible box holding every citation the body step prints. */
   'disclosure.references': 'References',
   'step.units': 'Units',
-  'step.timezone': 'Time zone',
+  'step.timezone': 'Time Zone',
   'step.body': 'Body',
   'step.training': 'Equipment & Availability',
   // Round 1 claim C1.10.2, first sentence: "Rename to Fitness Goal." R14: Title Case, and a
   // noun phrase.
   'step.goal': 'Fitness Goal',
-  'step.programme': 'Programme length',
+  'step.programme': 'Programme Length',
   'step.review': 'Review',
   'label.unitsMetric': 'Kilograms (kg)',
   'label.unitsImperial': 'Pounds (lb)',
-  'label.timezone': 'Time zone',
-  'label.name': 'How should I refer to you?',
+  'label.timezone': 'Time Zone',
+  'label.name': 'How Should I Refer to You?',
   /*
    * Round 1 claim C1.07.8 proposed "Biological Sex for RMR". The label names the quantity and
    * the footnote names what reads it, because RMR is not the only consumer: the tape body-fat
    * equations differ by sex in FORM, not only in coefficient, and the beverage target is
    * sex-specific too. A label naming one of three would be wrong in the direction that matters.
    */
-  'label.sex': 'Biological sex',
+  'label.sex': 'Biological Sex',
   'label.metres': 'Metres',
   'label.centimetres': 'Centimetres',
   'label.sexMale': 'Male',
@@ -796,18 +796,18 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.sexNotDisclosed': 'Not Disclosed',
   // Accessible titles for the two body-step popups, drawn as layout labels rather than as
   // evidence (00-CONTEXT: "Layout, labels and control names you may write").
-  'label.sexRationale': 'Why sex is asked',
-  'label.bodyFatChart': 'Estimate visually',
+  'label.sexRationale': 'Why Sex Is Asked',
+  'label.bodyFatChart': 'Estimate Visually',
   'label.feet': 'Feet',
   'label.inches': 'Inches',
-  'label.bodyFatNone': 'Not measured',
+  'label.bodyFatNone': 'Not Measured',
   /*
    * Round 1 claims C1.08.2 and C1.08.3: "Percentage %" and "Body Measurements" replace "Known
    * percentage" and "Estimate from tape measurements". The radio order changes with them
    * (SetupWizard.tsx): known is now first and pre-selected, tape second, none last.
    */
   'label.bodyFatKnown': 'Percentage',
-  'label.bodyFatTape': 'Body measurements',
+  'label.bodyFatTape': 'Body Measurements',
   /* r2.13(i): the bordered box that now holds everything about body fat, including its sources. */
   'label.bodyFat': 'Body Fat',
   /*
@@ -832,20 +832,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // R14, and scripts/check-title-case.mjs scans the `label.` family: both words were lower case
   // and both are now capitalised. The string is otherwise unchanged.
   'label.targetDate': 'Target Date (Optional)',
-  'label.creatine': 'Creatine monohydrate',
+  'label.creatine': 'Creatine Monohydrate',
   'label.weighIn': 'Weigh in',
-  'label.sessionsPerWeek': 'Sessions per week',
-  'label.startTime': 'start time',
-  'label.duration': 'duration',
-  'label.includeCardio': 'One conditioning block per week',
+  'label.sessionsPerWeek': 'Sessions per Week',
+  'label.startTime': 'Start Time',
+  'label.duration': 'Duration',
+  'label.includeCardio': 'One Conditioning Block per Week',
   'label.energy': 'Energy',
   'label.protein': 'Protein',
-  'label.fluid': 'Fluid (beverages)',
-  'label.expectedRate': 'Expected rate',
+  'label.fluid': 'Fluid (Beverages)',
+  'label.expectedRate': 'Expected Rate',
   'label.creatineDose': 'Creatine',
-  'label.maintenanceOnly': 'Maintenance only',
-  'label.inTargetRange': 'In the target set range',
-  'label.none': 'none',
+  'label.maintenanceOnly': 'Maintenance Only',
+  'label.inTargetRange': 'In the Target Set Range',
+  'label.none': 'None',
   // R11: quantity names, composed with the profile's unit by FORMAT.quantityWithUnit.
   'quantity.height': 'Height',
   'quantity.bodyMass': 'Body mass',
@@ -939,19 +939,19 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'error.wholeNumber': 'Enter a whole number.',
 
   // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
-  'hero.intakeCheckIn': 'Intake check-in',
+  'hero.intakeCheckIn': 'Intake Check-in',
   'hero.profile': 'Profile',
-  'hero.equipmentSteps': 'Equipment steps',
+  'hero.equipmentSteps': 'Equipment Steps',
   'hero.hydration': 'Hydration',
-  'label.displayUnit': 'Display unit',
-  'label.activeProfile': 'Active profile',
+  'label.displayUnit': 'Display Unit',
+  'label.activeProfile': 'Active Profile',
   // Intermediate quantities. They live inside the why? disclosure (R9), never on the face.
-  'label.rmr': 'Resting metabolic rate',
-  'label.tdee': 'Total daily energy expenditure',
+  'label.rmr': 'Resting Metabolic Rate',
+  'label.tdee': 'Total Daily Energy Expenditure',
   // Accessible names for the two bars. The glyphs read out as punctuation, so the name is
   // what says which quantity the bar is about, and against which bound.
-  'label.energyProgress': 'Energy against target',
-  'label.proteinProgress': 'Protein against the lower bound',
+  'label.energyProgress': 'Energy Against Target',
+  'label.proteinProgress': 'Protein Against the Lower Bound',
   'quantity.energyIntake': 'Energy consumed today',
   'quantity.proteinIntake': 'Protein consumed today',
   'quantity.dailyBeverageTarget': 'Daily beverage target',
@@ -968,27 +968,27 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'nav.settings': 'Settings',
 
   // --- today and plan (P3) ---
-  'hero.noPlan': 'No plan.',
+  'hero.noPlan': 'No Plan.',
   'advice.completeSetup': 'Complete setup to generate a plan.',
-  'hero.programmeComplete': 'Programme complete.',
-  'hero.sessionCompleted': 'Session completed.',
-  'hero.sessionSkipped': 'Session skipped.',
-  'hero.sessionInProgress': 'Session in progress.',
-  'hero.noSessionToday': 'No session today.',
+  'hero.programmeComplete': 'Programme Complete.',
+  'hero.sessionCompleted': 'Session Completed.',
+  'hero.sessionSkipped': 'Session Skipped.',
+  'hero.sessionInProgress': 'Session in Progress.',
+  'hero.noSessionToday': 'No Session Today.',
   'advice.nextSession': 'Next: {weekday} {startTime} {label}.', // template; FORMAT.nextSession
   'advice.noSessionIn14Days': 'No sessions in the next 14 days.',
   'status.planPaused': 'Plan paused since {date}.', // template; FORMAT.pausedSince
   'status.skipReason': 'Reason: {reason}', // template; FORMAT.skipReason
-  'button.startSession': 'Start session',
-  'button.returnToSession': 'Return to session',
-  'button.markCompleted': 'Mark completed',
-  'button.skipToday': 'Skip today',
-  'button.confirmSkip': 'Confirm skip',
+  'button.startSession': 'Start Session',
+  'button.returnToSession': 'Return to Session',
+  'button.markCompleted': 'Mark Completed',
+  'button.skipToday': 'Skip Today',
+  'button.confirmSkip': 'Confirm Skip',
   'button.cancel': 'Cancel',
-  'button.trainSomethingElse': 'Train something else',
-  'button.trainLabelToday': 'Train {label} today', // template; FORMAT.trainLabelToday
-  'button.pausePlan': 'Pause plan',
-  'button.resumePlan': 'Resume plan',
+  'button.trainSomethingElse': 'Train Something Else',
+  'button.trainLabelToday': 'Train {Label} Today', // template; FORMAT.trainLabelToday
+  'button.pausePlan': 'Pause Plan',
+  'button.resumePlan': 'Resume Plan',
   'status.deloadNote': 'volume −{cutPct} %, load unchanged', // template; FORMAT.deloadNote
 
   // --- training session (P4) ---
@@ -1000,16 +1000,16 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.logSet': 'Log',
   'button.deleteSet': 'Delete',
   'button.undo': 'Undo',
-  'button.addSet': 'Add set',
-  'button.addExercise': 'Add exercise',
+  'button.addSet': 'Add Set',
+  'button.addExercise': 'Add Exercise',
   'button.saveExercise': 'Add',
-  'button.finishSession': 'Finish session',
-  'button.logBodyMass': 'Log body mass',
-  'button.formReference': 'Form reference',
-  'button.formCues': 'Form cues',
-  'button.nextInstance': 'Next instance',
-  'button.openClip': 'Open clip',
-  'button.searchInstance': 'Search instance',
+  'button.finishSession': 'Finish Session',
+  'button.logBodyMass': 'Log Body Mass',
+  'button.formReference': 'Form Reference',
+  'button.formCues': 'Form Cues',
+  'button.nextInstance': 'Next Instance',
+  'button.openClip': 'Open Clip',
+  'button.searchInstance': 'Search Instance',
   'advice.noClipRecorded': 'No clip for this exercise.',
   'advice.drinkToThirst': 'Drink to thirst.',
   // template; FORMAT.beverageShortfall. Both volumes arrive formatted by src/domain/units.ts, so
@@ -1076,31 +1076,31 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.remindersActive': 'Reminders are on. Schedule last sent at {time}.',
 
   // --- motivation video (P6) ---
-  'hero.weeklyTargetMissed': 'Weekly target missed',
-  'hero.motivationPreview': 'Video preview',
+  'hero.weeklyTargetMissed': 'Weekly Target Missed',
+  'hero.motivationPreview': 'Video Preview',
   'advice.motivationPreview': 'Preview. No week is reported.',
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
 
   // --- log, export, migration, settings (P7) ---
-  'button.downloadLegacyJson': 'Download legacy JSON',
+  'button.downloadLegacyJson': 'Download Legacy JSON',
   'advice.noWeeksYet': 'No weeks to show.',
   'advice.noSetsLogged': 'No sets logged.',
-  'hero.exportImport': 'Export and import',
+  'hero.exportImport': 'Export and Import',
   'button.downloadJson': 'Download JSON',
-  'button.downloadSummary': 'Download summary .txt',
-  'button.downloadCalendar': 'Download calendar .ics',
+  'button.downloadSummary': 'Download Summary .Txt',
+  'button.downloadCalendar': 'Download Calendar .Ics',
   'advice.jsonIsBackup': 'The JSON file is the complete backup.',
   'advice.calendarAlarms': 'An imported alarm may not fire.',
   'advice.importReplaces': 'Importing replaces everything on this device.',
   'status.importOk': 'Imported. The state was replaced.',
   'advice.importParseFailed': 'That text is not JSON. Nothing changed.',
   'advice.fileUnreadable': 'The file could not be read.',
-  'hero.dataOnDevice': 'Data on this device',
+  'hero.dataOnDevice': 'Data on This Device',
   'advice.dataOnDevice': 'Everything stays on this device. No account.',
-  'button.wipeAll': 'Wipe all data',
-  'button.deleteLegacy': 'Delete legacy data',
+  'button.wipeAll': 'Wipe All Data',
+  'button.deleteLegacy': 'Delete Legacy Data',
   'advice.deleteLegacy': 'Removes the old app data. Anything not imported is lost.',
 
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
@@ -1108,11 +1108,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.atlas': 'Every logged set may add a card.',
   'advice.noCardsMatch': 'No cards match this filter.',
   'status.undiscovered': 'UNDISCOVERED',
-  'hero.timeCapsule': 'Time capsule',
+  'hero.timeCapsule': 'Time Capsule',
   'advice.timeCapsule': 'A note to your future self, sealed until a date.',
   'advice.capsuleOpenDatePassed': 'The open date has passed.',
-  'button.sealCapsule': 'Seal capsule',
-  'button.openCapsule': 'Open capsule',
+  'button.sealCapsule': 'Seal Capsule',
+  'button.openCapsule': 'Open Capsule',
   'button.skipBoot': 'Skip',
 
   // --- setup wizard, review fixes (P2 Task 7) ---
@@ -1126,11 +1126,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'nav.label': 'Views',
 
   // --- guidance step (replaces readiness screening) ---
-  'step.guidance': 'Getting started',
-  'hero.guidance': 'A few things worth knowing',
+  'step.guidance': 'Getting Started',
+  'hero.guidance': 'A Few Things Worth Knowing',
 
   // --- Today view (P3 Task 5; appended by that task) ---
-  'hero.nextFourteenDays': 'Next 14 days',
+  'hero.nextFourteenDays': 'Next 14 Days',
   'status.remainingThisWeek': 'Remaining this week',
   // The six day states the 14-day strip can be in. They are the accessible NAME of each
   // glyph: the glyph itself is drawn (SVG), so it has no text for a screen reader to read.
@@ -1142,26 +1142,26 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.dayRest': 'Rest',
   // A short free-text field, and deliberately not a medical one: it is stored verbatim in
   // SessionAssignment.skipReason and never interpreted, so the label states no category.
-  'label.skipReason': 'Reason (optional)',
+  'label.skipReason': 'Reason (Optional)',
   'advice.pauseHoldsCursor': 'Paused days consume no session.',
   // A refusal left the document exactly as it was; the tag says so before the reason does.
   'banner.actionRefused.tag': 'NOT APPLIED',
   // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
-  'label.planPosition': 'Plan position',
+  'label.planPosition': 'Plan Position',
   'status.planComplete': 'complete',
 
   // --- Plan view (P3 Task 6; appended by that task) ---
   // The accessible name of the block strip. The chips are buttons that move the week
   // scrubber, so the group needs a name of its own for the list they form.
-  'label.blockStrip': 'Training blocks',
-  'label.block': 'Block {number}', // template; FORMAT.blockLabel
+  'label.blockStrip': 'Training Blocks',
+  'label.block': 'Block {Number}', // template; FORMAT.blockLabel
   'status.blockSessions': 'sessions {from}–{to}', // template; FORMAT.blockSessions
   // The flag on a deload chip. Set beside `status.deloadNote`, which states the size of the
   // cut: this word says only that the block is one, so a skin can reword it without touching
   // the quantity beside it.
   'status.deloadTag': 'DELOAD',
   'label.week': 'Week',
-  'label.weekOfCount': 'Week {shown} of {total}', // template; FORMAT.weekOfCount
+  'label.weekOfCount': 'Week {Shown} of {Total}', // template; FORMAT.weekOfCount
   // The cursor marker on the session the plan will serve next. Lower case: it is a mark on a
   // row, not a heading.
   'status.nextSession': 'next',
@@ -1174,17 +1174,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The accessible name of the video dialog and the eyebrow above the exercise name. Set in
   // sentence case; the eyebrow's capitals are a text-transform in train.css, so a skin
   // rewriting this string does not have to shout.
-  'label.formReference': 'Form reference',
+  'label.formReference': 'Form Reference',
   // The heading over the search panel shown when no clip id is recorded for the exercise.
   'label.videoSearch': 'Search',
   'status.videoInstance': 'instance {shown} of {total}', // template; FORMAT.videoInstanceOf
   // The accessible name of the close control on both dialogs. The glyph itself is the token
   // set's mark, which copy contract R6 admits; this is what a screen reader says instead.
   'button.closeModal': 'Close',
-  'label.formCues': 'Form cues and common mistakes',
+  'label.formCues': 'Form Cues and Common Mistakes',
   'label.cueSetup': 'Setup',
   'label.cueExecution': 'Execution',
-  'label.cueMistakes': 'Common mistakes',
+  'label.cueMistakes': 'Common Mistakes',
   'label.cueTip': 'Tip',
   // Prefixes the one cue that carries a safety note (the braced breath hold of a heavy squat).
   // The word is load-bearing: colour alone must not be what marks the line as a warning.
@@ -1208,7 +1208,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // beside it. `{kind}` arrives already resolved from one of the `status.advice*` rows, so this
   // row states no decision of its own. It held the bare word 'Suggested' and nothing resolved
   // it, while the frame assembled the whole sentence in English (P8 close-out B).
-  'label.suggestedLoad': 'Suggested {load}: {kind}',
+  'label.suggestedLoad': 'Suggested {Load}: {Kind}',
   // What the progression engine decided, one label per ProgressionAdvice.kind. These name the
   // ACTION, never the arithmetic behind it; that lives in the why? disclosure (contract R9).
   'status.adviceHold': 'Hold load',
@@ -1253,14 +1253,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- Log view (P7 Task 4; appended by that task) ---
   // Section headings. Separate keys from the `quantity.*` field labels that carry the same
   // words: a skin retitles a section without also relabelling the input the user types into.
-  'hero.bodyMass': 'Body mass',
+  'hero.bodyMass': 'Body Mass',
   'hero.compliance': 'Compliance',
   // "Personal records", not "PRs": R11 names the quantity, and the list also carries an
   // estimated one-repetition maximum, which is not a record at all.
-  'hero.personalRecords': 'Personal records',
-  'hero.repsPerWeek': 'Best reps per week',
+  'hero.personalRecords': 'Personal Records',
+  'hero.repsPerWeek': 'Best Reps per Week',
   // The accessible name of the compliance grid itself; each cell names its own day and mark.
-  'label.complianceGrid': 'Session compliance by week',
+  'label.complianceGrid': 'Session Compliance by Week',
   // States what is absent, not what the user should have done (R7): the Log view reports
   // history and asks for nothing. `advice.noWeeksYet` and `advice.noSetsLogged`, which the
   // grid and the records list also need, are already in the table above.
@@ -1289,12 +1289,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.importSection': 'Import',
   // The textarea's label. The file picker beside it carries `label.chooseExportFile`, so
   // neither control has to name the other.
-  'label.pasteExport': 'Paste a previous export',
-  'label.chooseExportFile': 'Choose an export file',
+  'label.pasteExport': 'Paste a Previous Export',
+  'label.chooseExportFile': 'Choose an Export File',
   // Two phases, two words. Checking validates and writes nothing; replacing is the
   // destructive step and says which of the two it is (master plan section 3).
-  'button.checkImport': 'Check import',
-  'button.replaceData': 'Replace data',
+  'button.checkImport': 'Check Import',
+  'button.replaceData': 'Replace Data',
   'advice.importInvalidNoChange': 'An invalid file changes nothing.',
   'advice.exportUnavailable': 'The data could not be read. Nothing downloaded.',
   // The summary document's stand-in for the targets block when the profile falls outside the
@@ -1309,10 +1309,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.openSpotlight': 'Search',
   // The combobox's accessible name, and its placeholder. It states what the palette searches,
   // so the empty field is not a guess: views and the exercises the plan prescribes.
-  'label.spotlightQuery': 'Search views and exercises',
+  'label.spotlightQuery': 'Search Views and Exercises',
   // The listbox's accessible name. Separate from the field's, because a screen reader reads
   // the two in different places and 'Search views and exercises' is not what the list IS.
-  'label.spotlightResults': 'Search results',
+  'label.spotlightResults': 'Search Results',
   // The kind of one result, shown on the row and read as part of it. A view and an exercise
   // can carry the same word (a 'Plan' view beside a planned exercise), so the row says which.
   'label.spotlightView': 'View',
@@ -1321,9 +1321,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.noSpotlightMatch': 'No matches.',
 
   // --- legacy migration wizard (P7 Task 3; appended by that task) ---
-  'hero.legacyImport': 'Import from the old app',
-  'hero.legacyPreview': 'What the import writes',
-  'hero.legacyDone': 'Import complete',
+  'hero.legacyImport': 'Import from the Old App',
+  'hero.legacyPreview': 'What the Import Writes',
+  'hero.legacyDone': 'Import Complete',
   // The offer. It states the fact and the one guarantee that makes accepting it safe; it asks
   // for nothing (R7).
   'advice.legacyFound': 'The old app has data on this device.',
@@ -1350,22 +1350,22 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'The old body-mass field was labelled lb, refused values outside the pound range, and its ' +
     'text export reported pounds. The load field carried no such evidence, so that unit is ' +
     'asked for.',
-  'label.legacyLoadUnit': 'Load unit in the old app',
-  'label.legacyBodyMassUnit': 'Body mass unit in the old app',
+  'label.legacyLoadUnit': 'Load Unit in the Old App',
+  'label.legacyBodyMassUnit': 'Body Mass Unit in the Old App',
   'label.legacyUnitKg': 'Kilograms (kg)',
   'label.legacyUnitLb': 'Pounds (lb)',
   // The body-mass radios carry their own labels rather than reusing the two above: both pairs
   // are in the document at once, so identical labels would name two controls each.
-  'label.legacyMassUnitKg': 'Kilograms (kg), body mass',
-  'label.legacyMassUnitLb': 'Pounds (lb), body mass',
+  'label.legacyMassUnitKg': 'Kilograms (kg), Body Mass',
+  'label.legacyMassUnitLb': 'Pounds (lb), Body Mass',
   'disclosure.whatTransfers': 'What transfers',
   'disclosure.whatWasRefused': 'What was refused, and why',
   'disclosure.whatWasNotMatched': 'Days with no session match',
-  'button.legacyPreview': 'Preview import',
-  'button.legacyApply': 'Keep import',
-  'button.legacyDismiss': 'Start clean',
-  'button.legacyDeleteOld': 'Delete old data',
-  'button.legacyKeepOld': 'Keep old data',
+  'button.legacyPreview': 'Preview Import',
+  'button.legacyApply': 'Keep Import',
+  'button.legacyDismiss': 'Start Clean',
+  'button.legacyDeleteOld': 'Delete Old Data',
+  'button.legacyKeepOld': 'Keep Old Data',
   'button.legacyClose': 'Close',
   // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
   // The gate, stated before it is met. The word itself is not named here: FORMAT.typeToConfirm
@@ -1374,20 +1374,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.exportTaken': 'Backup downloaded.',
   // --- reminders and Home Screen install (P5 Task 8) ---
   'hero.reminders': 'Reminders',
-  'label.remindersEnable': 'Enable reminders',
+  'label.remindersEnable': 'Enable Reminders',
   // "Day-of" is hyphenated, not dashed: R5 bans the dash as a CONNECTOR, and this is one word.
-  'label.reminderDayOfTime': 'Day-of reminder time',
-  'label.reminderLeadTimes': 'Before each session',
+  'label.reminderDayOfTime': 'Day-of Reminder Time',
+  'label.reminderLeadTimes': 'Before Each Session',
   // template; FORMAT.reminderLead fills it from LEAD_MINUTE_CHOICES. [min] before the slot.
-  'label.reminderLead': '{minutes} minutes before',
+  'label.reminderLead': '{Minutes} Minutes Before',
   // The two failures the user can see. Neither carries the underlying message: an HTTP status
   // or a push endpoint is not something the user can act on, and the endpoint is a credential.
   'advice.reminderSubscribeFailed': 'The browser refused to register this device.',
   'advice.reminderSyncFailed': 'The schedule did not reach the server.',
-  'hero.installHomeScreen': 'Install the app',
+  'hero.installHomeScreen': 'Install the App',
   'advice.installOnlyInstalledApp': 'Only an installed app receives notifications.',
   'advice.installIosVersion': 'Requires iOS 18.4 or later.',
-  'label.installIos': 'iPhone and iPad',
+  'label.installIos': 'IPhone and IPad',
   'status.installIosSafari': 'Open this page in Safari.',
   'status.installIosShare': 'Tap Share, the square with an upward arrow.',
   'status.installIosAdd': 'Scroll down, tap Add to Home Screen, then tap Add.',
@@ -1436,12 +1436,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- motivation clip in Settings (P6 Task 6) ---
   // The section heading. "Video" rather than "clip" so it matches the popup this previews
   // ('hero.motivationPreview'); the FILE the user picks is a clip throughout.
-  'hero.motivationVideo': 'Motivation video',
+  'hero.motivationVideo': 'Motivation Video',
   // The picker's label, which is also the replace control: one clip is stored per profile, so
   // choosing a second one is the replacement. Two labels rather than one, because "Choose a
   // clip" over a section that already holds one would be asking for a second.
-  'label.motivationClipChoose': 'Choose a clip',
-  'label.motivationClipReplace': 'Replace the clip',
+  'label.motivationClipChoose': 'Choose a Clip',
+  'label.motivationClipReplace': 'Replace the Clip',
   // The two states with no file name to show. Neither is the ordinary reload any more: an
   // effect keyed on the stored asset id reads the record's own name and size back through
   // getCustomVideoMeta (src/domain/motivation/assets.ts), so a reloaded section prints the clip
@@ -1459,7 +1459,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'The limit is {bytes} bytes. MiB means {mib} bytes. ' +
     'A clip of 25 MiB or less plays back reliably on a phone.', // template
   'button.motivationClipPreview': 'Preview',
-  'button.motivationClipRemove': 'Remove clip',
+  'button.motivationClipRemove': 'Remove Clip',
   // The two refusals src/domain/motivation/assets.ts mints, mapped by key in
   // MotivationSettings.tsx. Neither repeats what the thrown message says: the browser's MIME
   // type and the limit in bytes are not things the user can act on, and the limit is one
@@ -1497,7 +1497,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- generic boot sequence (P8 Task 6) ---
   // The accessible name of the boot screen. The screen is not a live region: its text changes
   // every 90 ms and a live region would read the whole block again on every line.
-  'hero.boot': 'Starting up',
+  'hero.boot': 'Starting Up',
   // The three step labels. Each one names something the app is doing to its own stored
   // document and nothing about the person using it. The legacy sequence printed a named
   // individual's body composition and a medication line; content review section 7 removed
@@ -1523,10 +1523,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The two controls the P8 block above did not name: the one that reaches the writing
   // dialog, and the one that reaches an already opened capsule again. Sealing and opening are
   // 'button.sealCapsule' and 'button.openCapsule'.
-  'button.writeCapsule': 'Write capsule',
-  'button.readCapsule': 'Read capsule',
-  'label.capsuleNote': 'Note to your future self',
-  'label.capsuleOpensOn': 'Opens on',
+  'button.writeCapsule': 'Write Capsule',
+  'button.readCapsule': 'Read Capsule',
+  'label.capsuleNote': 'Note to Your Future Self',
+  'label.capsuleOpensOn': 'Opens On',
   // The sealed card. It states the open date and how far off it is, and carries no part of
   // the note: a sealed capsule that leaked a word of its contents would not be sealed.
   // {days} arrives from FORMAT.capsuleSealed already carrying its unit. [d]
@@ -1559,12 +1559,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The wipe panel's own export control. Named apart from `button.downloadJson`, which
   // ExportView carries in the same section: two controls sharing one accessible name cannot
   // be told apart by a screen reader, and the gate depends on pressing THIS one.
-  'button.downloadBackup': 'Download backup',
+  'button.downloadBackup': 'Download Backup',
   // The armed action, worded as what it does rather than repeating the disclosure that opened
   // it. 'Wipe all data' names the trigger above; the two must not read alike.
-  'button.wipeConfirm': 'Delete everything',
+  'button.wipeConfirm': 'Delete Everything',
   // Puts the legacy import offer back in front of a user who dismissed it or finished one.
-  'button.legacyReopen': 'Import old data',
+  'button.legacyReopen': 'Import Old Data',
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
   'advice.wipeRemoves': 'Removes every profile, plan, session, set and note on this device.',
@@ -1572,7 +1572,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The row's heading. It names both controls under it, so neither the picker's legend nor
   // the toggle's label repeats it: two controls in one region sharing an accessible name
   // cannot be told apart by a screen reader.
-  'hero.skin': 'Look and sound',
+  'hero.skin': 'Look and Sound',
   // The radio group's legend, which is also the group's accessible name.
   'label.settingsSkin': 'Skin',
   // The three names are proper nouns, and they are deliberately NOT skinned. A skin that
@@ -1596,10 +1596,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The four statistics the cutscene reads out, each naming what was counted rather than how
   // it felt (R11). 'mass moved' rather than 'tonnage': the number beside it carries the
   // profile's own mass unit, and tonnage names a unit the app never shows.
-  'label.blockSessionsCompleted': 'sessions completed',
-  'label.blockSetsLogged': 'sets logged',
-  'label.blockMassMoved': 'mass moved',
-  'label.blockSpecimens': 'specimens collected',
+  'label.blockSessionsCompleted': 'Sessions Completed',
+  'label.blockSetsLogged': 'Sets Logged',
+  'label.blockMassMoved': 'Mass Moved',
+  'label.blockSpecimens': 'Specimens Collected',
 
   // --- the wipe covers the clip store, and every panel names itself (P7 Task 6 review) ---
   // Security review 10 / M5: the wipe now clears the motivation clip's records before it
@@ -1613,9 +1613,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // above it), and both carry a field labelled 'Type DELETE to confirm' and a 'Cancel': without
   // these, a screen reader offers two identical-looking controls that destroy different things.
   // Each names the decision rather than repeating the trigger's own wording.
-  'label.confirmWipe': 'Confirm wipe',
-  'label.confirmDeleteLegacy': 'Confirm legacy delete',
-  'label.confirmReplace': 'Confirm replace',
+  'label.confirmWipe': 'Confirm Wipe',
+  'label.confirmDeleteLegacy': 'Confirm Legacy Delete',
+  'label.confirmReplace': 'Confirm Replace',
 
   // --- the week review, the personal-record stamp and the skinned status lines (P8 Task 11) ---
   // The three week rows are TEMPLATES, not formatted examples. The round-three and
@@ -1636,7 +1636,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // is a string a skin can reach. The visible short form (FORMAT.planPosition, "S 12/48") is an
   // abbreviation of the same two counts and carries no words to skin.
   'status.sessionCursor': 'Session {shown} of {total}',
-  'hero.weekReview': 'Week review',
+  'hero.weekReview': 'Week Review',
   // R9 and round three section 3.3: the body of the missed-week screen states the fact and the
   // next action and carries no verdict on the person. The count of missed sessions is absent
   // because the compliance row beside it already prints the two counts.
@@ -1646,7 +1646,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The accessible name of the marquee strip, which is a real button so the moving line can
   // be stopped (round three section 2.4). It names what activating it DOES; whether it is
   // currently stopped is aria-pressed's job, so the name stays the same in both states.
-  'button.pauseTicker': 'Pause ticker',
+  'button.pauseTicker': 'Pause Ticker',
 
   // --- the week stamp's own word (P8 close-out B) ---
   // A MET WEEK IS NOT A PERSONAL RECORD, and until now src/ui/components/WeekStamp.tsx said it
@@ -1665,7 +1665,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // "Keyboard shortcuts" is the criterion's own vocabulary, not a coined phrase, and it names
   // what the switch governs rather than what switching it does, because the control is a
   // checkbox whose state says the rest.
-  'label.settingsHotkeys': 'Keyboard shortcuts',
+  'label.settingsHotkeys': 'Keyboard Shortcuts',
   // What the switch does NOT take away, said once, beside it. SC 2.1.4 scopes itself to a
   // shortcut a single character key fires on its own, so src/ui/hotkeys.tsx leaves `mod+k` and
   // Escape bound whatever this preference says. A user who turned the shortcuts off and then
@@ -1741,7 +1741,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // "No suggestion yet" was the first draft and is rejected: `yet` is a promise, and for a
   // bodyweight exercise it is a false one — `isBodyweight` returns null forever, so the load
   // suggestion the word implies is never coming. The shipped form is true in all four branches.
-  'label.noSuggestedLoad': 'No load suggested',
+  'label.noSuggestedLoad': 'No Load Suggested',
 
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   // The long-form slide text lives in src/content/introSlides.ts (R10 reference text, not this
@@ -1764,7 +1764,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The marquee's own pause control, distinct from `button.pauseTicker`: both a today.marquee
   // strip and this one can be on screen together (the Today tab shows both), and two controls
   // named "Pause ticker" at once is an ambiguous accessible name.
-  'button.pauseUpdates': 'Pause updates', // R1: 2 words
+  'button.pauseUpdates': 'Pause Updates', // R1: 2 words
 
   // --- the site footer (P10 Brief D) ---
   // Quiet, and rendered once at the foot of the app shell, from every view. The repository URL,
@@ -2141,7 +2141,7 @@ export const FORMAT = {
 
   /** "Train Legs today". The label is one of remainingLabelsThisWeek. */
   trainLabelToday: (label: string, overrides?: Partial<Record<CopyKey, string>>): string =>
-    copy('button.trainLabelToday', overrides).replace('{label}', () => label),
+    copy('button.trainLabelToday', overrides).replace(/\{label\}/i, () => label),
 
   /** "6 of 6 sessions closed on 2026-09-07." The date is PlanCursor.completedOn. */
   programmeClosed: (total: number, date: string): string =>
@@ -2184,7 +2184,7 @@ export const FORMAT = {
 
   /** "Block 2". `blockNumber` is 1-based; `PlanBlock.index` is 0-based, so the view adds one. */
   blockLabel: (blockNumber: number, overrides?: Partial<Record<CopyKey, string>>): string =>
-    copy('label.block', overrides).replace('{number}', () => String(blockNumber)),
+    copy('label.block', overrides).replace(/\{number\}/i, () => String(blockNumber)),
 
   /**
    * "sessions 4–6": the plan positions a block covers, 1-based and inclusive. The en dash is a
@@ -2217,8 +2217,8 @@ export const FORMAT = {
     overrides?: Partial<Record<CopyKey, string>>,
   ): string =>
     copy('label.weekOfCount', overrides)
-      .replace('{shown}', () => String(shown))
-      .replace('{total}', () => String(total)),
+      .replace(/\{shown\}/i, () => String(shown))
+      .replace(/\{total\}/i, () => String(total)),
 
   /**
    * R9's disclosure body for a deload week: the multiplication behind the set counts printed
@@ -2352,8 +2352,8 @@ export const FORMAT = {
     overrides?: Partial<Record<CopyKey, string>>,
   ): string =>
     copy('label.suggestedLoad', overrides)
-      .replace('{load}', () => load)
-      .replace('{kind}', () => kind),
+      .replace(/\{load\}/i, () => load)
+      .replace(/\{kind\}/i, () => kind),
 
   /**
    * "2:00" — a clock readout, not a sentence. Seconds are zero-padded to two digits so the
@@ -2618,7 +2618,7 @@ export const FORMAT = {
    * from LEAD_MINUTE_CHOICES in src/config/reminders.ts. [min] before the slot start.
    */
   reminderLead: (minutes: number, overrides?: Partial<Record<CopyKey, string>>): string =>
-    copy('label.reminderLead', overrides).replace('{minutes}', () => String(minutes)),
+    copy('label.reminderLead', overrides).replace(/\{minutes\}/i, () => String(minutes)),
 
   /**
    * "Reminders are on. Schedule last sent at 17:00." The time is a local wall clock in the
