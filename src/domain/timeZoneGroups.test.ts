@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   groupTimeZones,
+  matchedZoneCities,
   matchedZoneMembers,
   promoteSelectedZone,
   utcGmtOffsetLabel,
@@ -253,6 +254,7 @@ describe('search reaches every zone the list collapsed', () => {
       expect(zoneGroupMatches(group, '')).toBe(true);
       expect(zoneGroupMatches(group, '   ')).toBe(true);
       expect(matchedZoneMembers(group, '')).toEqual([]);
+      expect(matchedZoneCities(group, '')).toEqual([]);
     }
   });
 
@@ -262,6 +264,64 @@ describe('search reaches every zone the list collapsed', () => {
     if (paris === undefined) return;
     expect(matchedZoneMembers(paris, 'paris')).toEqual([]);
     expect(zoneGroupMatches(paris, 'paris')).toBe(true);
+  });
+
+  it('matches nothing, on any row, for a string no IANA id, offset or vendored city carries', () => {
+    // The domain-level half of "typing a city that is in no list surfaces nothing and says so"
+    // (round 3, Task 4). The UI half is advice.timezoneNoMatch, unchanged by this brief.
+    expect(groups.some((g) => zoneGroupMatches(g, 'not-a-real-place-zzz'))).toBe(false);
+  });
+});
+
+/*
+ * ROUND 3, TASK 4: the owner typed "houston" and nothing appeared, because no IANA identifier
+ * contains it -- Houston keeps America/Chicago. src/domain/timeZoneCities.generated.ts vendors
+ * @vvo/tzdb's `mainCities` for exactly this reason.
+ */
+describe('search also reaches a vendored city, not only an IANA id', () => {
+  it('finds America/Chicago by "houston", which is a tzdb city and not an IANA id', () => {
+    const groups = groupTimeZones(['America/Chicago', 'America/Denver'], JANUARY);
+    const chicago = groupFor(groups, 'America/Chicago');
+    expect(chicago).toBeDefined();
+    if (chicago === undefined) return;
+    expect(chicago.representative).toBe('America/Chicago');
+    expect(zoneGroupMatches(chicago, 'houston')).toBe(true);
+    expect(matchedZoneCities(chicago, 'houston')).toEqual(['Houston']);
+    // Houston is a vendored CITY, not a member zone id: the existing member-matching path finds
+    // nothing, which is exactly why matchedZoneCities has to exist.
+    expect(matchedZoneMembers(chicago, 'houston')).toEqual([]);
+  });
+
+  it('names every vendored city a search matches, not only the first', () => {
+    const groups = groupTimeZones(['America/Chicago'], JANUARY);
+    const chicago = groupFor(groups, 'America/Chicago');
+    expect(chicago).toBeDefined();
+    if (chicago === undefined) return;
+    // America/Chicago's vendored cities are Chicago, Houston, San Antonio, Dallas; "a" is in
+    // Dallas and San Antonio (and Chicago, excluded below), not in Houston.
+    expect(matchedZoneCities(chicago, 'a')).toEqual(['Dallas', 'San Antonio']);
+  });
+
+  it('excludes a city that only restates the row\'s own representative', () => {
+    const groups = groupTimeZones(['America/Chicago'], JANUARY);
+    const chicago = groupFor(groups, 'America/Chicago');
+    expect(chicago).toBeDefined();
+    if (chicago === undefined) return;
+    // "chicago" still finds the row, through the IANA id itself; matchedZoneCities does not also
+    // echo "Chicago" back, the same principle matchedZoneMembers applies to the representative.
+    expect(zoneGroupMatches(chicago, 'chicago')).toBe(true);
+    expect(matchedZoneCities(chicago, 'chicago')).toEqual([]);
+  });
+
+  it('is additive: nothing the old member and offset checks matched stops matching', () => {
+    const groups = groupTimeZones(SAMPLE, JANUARY);
+    const paris = groupFor(groups, 'Europe/Paris');
+    const nepal = groupFor(groups, 'Asia/Katmandu');
+    expect(paris).toBeDefined();
+    expect(nepal).toBeDefined();
+    if (paris === undefined || nepal === undefined) return;
+    expect(zoneGroupMatches(paris, 'berlin')).toBe(true);
+    expect(zoneGroupMatches(nepal, '+05:45')).toBe(true);
   });
 });
 
