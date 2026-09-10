@@ -302,7 +302,13 @@ body {
  * section 5 (Direction H, Palette), not recomputed here:
  *   #FFB000 on #0B0B0C = 10.74:1  scheduled, on time, primary action
  *   #FFB000 on #17181A =  9.70:1  the same amber on a flap face
- *   #000000 on #FFB000 = 10.74:1  black type on an amber fill
+ *   #000000 on #FFB000 = 11.46:1  black type on an amber fill
+ *     (was recorded as 10.74:1 until 2026-09-10: that is the figure from the #FFB000 on #0B0B0C
+ *      line two above, copied down a row. Recomputed and corrected. The error was in the SAFE
+ *      direction, so nothing shipped against it was wrong, but a measurement record that cannot
+ *      be trusted is worse than none: someone would have used 10.74 as a floor. Found by the
+ *      Design Mode contrast panel, whose arithmetic reproduces the other 25 published pairs here
+ *      exactly.)
  *   #E8E4DA on #17181A = 13.99:1  departed services, body type
  *   #7C8288 on #0B0B0C =  5.06:1  held services, column headers, fine print
  *   #FF6B4A on #0B0B0C =  6.98:1  cancelled services
