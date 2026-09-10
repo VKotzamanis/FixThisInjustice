@@ -7,7 +7,7 @@ Regenerate after any change to a copy table or a component:
 node scripts/alpha-catalogue.mjs
 ```
 
-Built from `f5809c8`. 101 parts across 14 screens, holding 575 of the table's 578 copy keys; 3 have no surface and are excused by name at the foot.
+Built from `fb0757a`. 101 parts across 14 screens, holding 575 of the table's 578 copy keys; 3 have no surface and are excused by name at the foot.
 
 ## intro (1)
 
@@ -1309,9 +1309,9 @@ States: `ready`, `no-profile`
 | `advice.exportUnavailable` | The data could not be read. Nothing downloaded. | same | same | yes |
 | `advice.jsonIsBackup` | The JSON file is the complete backup. | same | same | yes |
 | `advice.targetsNotEstimatedForProfile` | Targets are not estimated for this profile. | same | same | yes |
-| `button.downloadCalendar` | Download Calendar .Ics | same | same | yes |
+| `button.downloadCalendar` | Download Calendar .ics | same | same | yes |
 | `button.downloadJson` | Download JSON | same | same | yes |
-| `button.downloadSummary` | Download Summary .Txt | same | same | yes |
+| `button.downloadSummary` | Download Summary .txt | same | same | yes |
 | `hero.exportImport` | Export and Import | same | same | no: RULE 4, a control whose misreading costs data |
 | `label.downloads` | Downloads | same | same | yes |
 
@@ -1409,7 +1409,7 @@ States: `default`
 | Key | Clinical | Limelight | Board | Limelight row allowed |
 | --- | --- | --- | --- | --- |
 | `advice.installIosVersion` | Requires iOS 18.4 or later. | same | same | no: THE INSTALL GUIDE |
-| `label.installIos` | IPhone and IPad | same | same | no: THE INSTALL GUIDE |
+| `label.installIos` | iPhone and iPad | same | same | no: THE INSTALL GUIDE |
 | `status.installIosAdd` | Scroll down, tap Add to Home Screen, then tap Add. | same | same | no: THE INSTALL GUIDE |
 | `status.installIosOpen` | Open the app from the Home Screen icon. | same | same | no: THE INSTALL GUIDE |
 | `status.installIosSafari` | Open this page in Safari. | same | same | no: THE INSTALL GUIDE |

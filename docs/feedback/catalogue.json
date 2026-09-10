@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "f5809c8",
+  "generatedFrom": "fb0757a",
   "counts": {
     "screens": 14,
     "parts": 101,
@@ -5518,7 +5518,7 @@
         },
         {
           "key": "button.downloadCalendar",
-          "default": "Download Calendar .Ics",
+          "default": "Download Calendar .ics",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5536,7 +5536,7 @@
         },
         {
           "key": "button.downloadSummary",
-          "default": "Download Summary .Txt",
+          "default": "Download Summary .txt",
           "limelight": "same",
           "board": "same",
           "isControl": true,
@@ -5925,7 +5925,7 @@
         },
         {
           "key": "label.installIos",
-          "default": "IPhone and IPad",
+          "default": "iPhone and iPad",
           "limelight": "same",
           "board": "same",
           "isControl": false,
