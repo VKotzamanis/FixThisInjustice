@@ -420,10 +420,56 @@
   color: var(--text-2);
 }
 
-.wiz-slider-icons {
+/*
+ * STOP MARKERS UNDER A SLIDER (round 3 Tasks 5 and 7). One row of marks, one mark per stop,
+ * aligned to the THUMB CENTRES rather than to the track's edges.
+ *
+ * WHY THE 14 px SIDE PADDING IS THE WHOLE ALIGNMENT. A range input's thumb travels between
+ * thumb-width/2 and (track width - thumb-width/2): at the minimum its CENTRE sits half a thumb
+ * in from the left edge, not at the edge. The thumb is 28 px above, so half of it is 14 px, and
+ * padding the row by that much before distributing the marks with `space-between` puts the first
+ * and last mark under the thumb's two extremes and every mark between them on the same pitch the
+ * thumb steps in. `space-between` rather than a computed percentage so the count comes from the
+ * option list: a tenth stop grows a tenth mark and re-spaces the row with no number to update.
+ *
+ * TOKENS, AND `--text-2` SPECIFICALLY. Measured in src/ui/styles/tokens.css: on limelight that
+ * is #454545 on the lime ground at 4.98:1, which clears WCAG 1.4.11's 3:1 floor for a graphic
+ * with room to spare. `--accent` would be the 1.41:1 fuchsia-on-lime failure this file has
+ * shipped once already, and `--line` (0.22 alpha black) is a hairline that disappears at 2 px
+ * wide on all three grounds.
+ */
+.wiz-slider-ticks {
   display: flex;
-  gap: 10px;
-  margin: 4px 0 0.75rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0 14px; /* half the 28 px thumb: see above */
+  margin: -8px 0 8px;
+}
+
+.wiz-slider-tick {
+  flex: none;
+  width: 2px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--text-2);
+}
+
+/*
+ * The three marked stops on the equipment slider (round 3 Task 7): a DRAFT BOX, not a drawing.
+ * The artwork is the owner's, each frame names its docs/design/2026-09-04-icon-register.csv row
+ * in `data-icon-row`, and nothing here draws, generates or substitutes a character for it. Same
+ * dashed-frame-on-token pattern as `.wiz-placeholder-frame`, at marker scale. The frame is
+ * centred on the same pitch as a plain tick because it is laid out by the same row: its extra
+ * width is split evenly either side of the tick position by `space-between`'s own arithmetic
+ * only at the ends, so the two end frames are nudged inward by half their own width.
+ */
+.wiz-slider-tick-icon {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border: 1px dashed var(--line-2);
+  border-radius: 3px;
+  background: var(--bg-2);
 }
 
 /*
@@ -520,6 +566,51 @@
 .wiz-glyph:has(input:focus-visible) {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
+}
+
+/*
+ * GYM COMFORT AS OPTION BOXES (round 3 Task 6). The owner: "just like the gender option", so
+ * this adds nothing to `.wiz-glyph` above except a column direction and a wider basis: the
+ * border, the 44 px minimum, the fill-inversion selection state and the focus ring are the sex
+ * control's, unchanged, and there is no second selected-state rule to drift from the first.
+ *
+ * `flex-basis: 30%` so three options sit on one row on a phone and still wrap rather than
+ * squeezing below a readable width; `.wiz-choice .wiz-glyph`'s 45% basis above would force two
+ * per row and leave the third alone underneath.
+ */
+.wiz-glyph-boxed {
+  flex: 1 1 30%;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  text-align: center;
+}
+
+/*
+ * The option's placeholder frame. THE ARTWORK IS THE OWNER'S and does not exist: this is the
+ * space it will take, named by its docs/design/2026-09-04-icon-register.csv row in
+ * `data-icon-row`, so the layout does not reflow when the drawn asset lands. 44 px square, which
+ * is also the tap-target floor, so the frame alone satisfies it before the label is counted.
+ */
+.wiz-option-frame {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px dashed var(--line-2);
+  border-radius: 4px;
+  background: var(--bg-2);
+}
+
+/*
+ * The hint beside a control refused for a missing answer (round 3 Task 3, "(Needs Biological
+ * Sex)"). Italic because the owner asked for italic, and `--text-2` rather than a state colour:
+ * limelight carries no measured amber or red (tokens.css says so in as many words), so a warning
+ * hue invented here would ship an unmeasured contrast on the skin he tests on.
+ */
+.wiz-needs {
+  margin-left: 6px;
+  font-style: italic;
+  color: var(--text-2);
 }
 
 /* The mark itself: a ring with a tail, rotated for male and dropped for female. */

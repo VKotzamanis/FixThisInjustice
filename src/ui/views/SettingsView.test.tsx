@@ -167,7 +167,10 @@ describe('SettingsView numeric settings', () => {
 
   it('holds the same commit contract for the equipment step field', async () => {
     render(<SettingsView />);
-    const step = screen.getByLabelText('Barbell step (kg)');
+    // Round 3 Task 8 renamed this quantity to the owner's own word, `Plates`, in the one place
+    // the name is written (src/content/copy.ts). Settings edits the same stored increment as the
+    // wizard, so it takes the same name: R11 wants one name per quantity, not one per screen.
+    const step = screen.getByLabelText('Plates (kg)');
 
     await userEvent.clear(step);
     await userEvent.type(step, '1.25');
@@ -179,6 +182,27 @@ describe('SettingsView numeric settings', () => {
     expect(updateProfile).toHaveBeenCalledTimes(1);
     // [kg] total on the bar; metric profile, so the display value is the stored value.
     expect(useAppStore.getState().profiles['p1']?.equipmentSteps.barbellKg).toBe(1.25);
+  });
+
+  /*
+   * ROUND 3 TASK 9, the half of it that is not the owner's feedback. Before this there was NO
+   * post-setup route to `hydration.weighInOptIn`: it was set once in the wizard and frozen. The
+   * flag is load-bearing -- src/ui/views/TrainView.tsx gates the pre- and post-session mass
+   * prompts on it, and src/domain/training/hydration.ts computes Sawka 2007's "> 2 % body mass"
+   * comparison only from those two entries -- so being unable to turn it back on meant being
+   * unable to reach the check at all.
+   */
+  it('offers the weigh-in opt-in after setup, and writes it to the profile', async () => {
+    render(<SettingsView />);
+    const optIn = screen.getByLabelText('Weigh in');
+    expect(optIn).not.toBeChecked(); // the fixture profile declined
+
+    await userEvent.click(optIn);
+
+    expect(useAppStore.getState().profiles['p1']?.hydration.weighInOptIn).toBe(true);
+    // The rest of the sub-object survives the shallow merge.
+    expect(useAppStore.getState().profiles['p1']?.hydration.dailyTargetML).toBe(3000);
+    expect(useAppStore.getState().profiles['p1']?.hydration.cupSizeML).toBe(250);
   });
 });
 

@@ -1,11 +1,11 @@
 {
-  "generatedFrom": "fcefb58",
+  "generatedFrom": "908d2ad",
   "counts": {
     "screens": 14,
     "parts": 101,
-    "keys": 577,
+    "keys": 579,
     "notRendered": 3,
-    "table": 580
+    "table": 582
   },
   "parts": [
     {
@@ -1172,6 +1172,24 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.weighIn",
+          "default": "Optional. Without it the 2 % fluid loss check cannot run.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "advice.weighInReassurance",
+          "default": "A number that looks bad today is one you enjoy watching move.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "button.closeModal",
           "default": "Close",
           "limelight": "same",
@@ -1325,6 +1343,15 @@
           "refusalGroup": null
         },
         {
+          "key": "label.needsBiologicalSex",
+          "default": "(Needs Biological Sex)",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
           "key": "label.sex",
           "default": "Biological Sex",
           "limelight": "same",
@@ -1363,6 +1390,15 @@
         {
           "key": "label.sexRationale",
           "default": "Why Sex Is Asked",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.weighIn",
+          "default": "Weigh in",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1467,7 +1503,7 @@
       "screen": "setup",
       "order": 5,
       "title": "Step 4, Equipment & Availability",
-      "what": "Everyday activity, gym comfort and equipment access as sliders, the load increments, and the equipment questions the equipment access slider reveals (Brief F).",
+      "what": "Everyday activity and equipment access as sliders with stop markers, gym comfort as three option boxes, the equipment questions the equipment access slider reveals, and the two load increments below them (round 3 Tasks 5 to 8).",
       "components": [
         "src/ui/setup/SetupWizard.tsx"
       ],
@@ -1498,7 +1534,7 @@
         },
         {
           "key": "advice.loadSteps",
-          "default": "The smallest increment a suggested load uses.",
+          "default": "The smallest increment a suggested load uses. Dumbbells step per pair.",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1598,6 +1634,15 @@
         {
           "key": "label.homeEquipmentMachines",
           "default": "Machines",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": true,
+          "refusalGroup": null
+        },
+        {
+          "key": "label.loadStep",
+          "default": "Load Step",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1822,7 +1867,7 @@
         },
         {
           "key": "quantity.barbellStep",
-          "default": "Barbell step",
+          "default": "Plates",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1831,16 +1876,7 @@
         },
         {
           "key": "quantity.dumbbellStep",
-          "default": "Dumbbell step, per pair",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "quantity.stackStep",
-          "default": "Weight-stack step",
+          "default": "Dumbbell",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -1883,15 +1919,6 @@
         "no-bodyfat-estimate"
       ],
       "keys": [
-        {
-          "key": "advice.creatineOnly",
-          "default": "Dose scales with body mass.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
-        },
         {
           "key": "advice.feasibilityEstimate",
           "default": "An estimate from a prescribed rate, not a prediction about you.",
@@ -2037,15 +2064,6 @@
           "refusalGroup": null
         },
         {
-          "key": "advice.weighIn",
-          "default": "Optional. Compares body mass before and after.",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
           "key": "button.nextMonth",
           "default": "Next Month",
           "limelight": "same",
@@ -2062,15 +2080,6 @@
           "isControl": true,
           "limelightRowPermitted": true,
           "refusalGroup": null
-        },
-        {
-          "key": "label.creatine",
-          "default": "Creatine Monohydrate",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": false,
-          "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
         },
         {
           "key": "label.fatAxis",
@@ -2111,15 +2120,6 @@
         {
           "key": "label.targetDate",
           "default": "Target Date (Optional)",
-          "limelight": "same",
-          "board": "same",
-          "isControl": false,
-          "limelightRowPermitted": true,
-          "refusalGroup": null
-        },
-        {
-          "key": "label.weighIn",
-          "default": "Weigh in",
           "limelight": "same",
           "board": "same",
           "isControl": false,
@@ -2259,8 +2259,8 @@
       "id": "setup.availability",
       "screen": "setup",
       "order": 7,
-      "title": "Step 4, Availability",
-      "what": "The days and times you can train, stated on the training step before the goal asks for a target date.",
+      "title": "Step 5, Availability",
+      "what": "The days and times you can train, stated at the top of the goal step, above the target date the feasibility calendar assesses (round 3 Task 9).",
       "components": [
         "src/ui/setup/SetupWizard.tsx"
       ],
@@ -2499,6 +2499,15 @@
           "refusalGroup": null
         },
         {
+          "key": "advice.creatineOnly",
+          "default": "Dose scales with body mass.",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": false,
+          "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
+        },
+        {
           "key": "button.confirmStart",
           "default": "Confirm and Start",
           "limelight": "lock it in",
@@ -2551,6 +2560,15 @@
           "isControl": false,
           "limelightRowPermitted": true,
           "refusalGroup": null
+        },
+        {
+          "key": "label.creatine",
+          "default": "Creatine Monohydrate",
+          "limelight": "same",
+          "board": "same",
+          "isControl": false,
+          "limelightRowPermitted": false,
+          "refusalGroup": "THE QUANTITIES, THE UNITS AND THE INCREMENTS"
         },
         {
           "key": "label.creatineDose",

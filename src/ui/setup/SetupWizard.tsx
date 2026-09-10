@@ -356,12 +356,32 @@ const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey; iconRow: strin
  * (src/domain/plan/templates.ts). This is why library.ts needed no retagging: see that type's own
  * comment for the proof that a combination resolves identically to its dominant pure tier.
  */
-const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey }[] = [
-  { value: 'bodyweight', labelKey: 'option.accessBodyweight' },
-  { value: 'home-and-bodyweight', labelKey: 'option.accessHomeAndBodyweight' },
-  { value: 'home', labelKey: 'option.accessHome' },
-  { value: 'full-and-home', labelKey: 'option.accessFullAndHome' },
-  { value: 'full-gym', labelKey: 'option.accessFullGym' },
+const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey; iconRow: string }[] = [
+  { value: 'bodyweight', labelKey: 'option.accessBodyweight', iconRow: 'equip-1-bodyweight' },
+  {
+    value: 'home-and-bodyweight',
+    labelKey: 'option.accessHomeAndBodyweight',
+    iconRow: 'equip-2-home-bodyweight',
+  },
+  { value: 'home', labelKey: 'option.accessHome', iconRow: 'equip-3-home' },
+  { value: 'full-and-home', labelKey: 'option.accessFullAndHome', iconRow: 'equip-4-full-home' },
+  { value: 'full-gym', labelKey: 'option.accessFullGym', iconRow: 'equip-5-full-gym' },
+];
+
+/**
+ * Round 3 Task 7, his words: "can we have a slider with 5 markers and 3 of them (start, middle,
+ * and end) have icons instead of markers?"
+ *
+ * DERIVED, not written out as [0, 2, 4]. The middle of a five-stop slider is index 2; the middle
+ * of a list that grows to seven would be index 3, and a literal would silently mark the wrong
+ * stop. `Math.floor` picks the LOWER of the two middles on an even-length list, which is a
+ * choice rather than an accident: a list with no true middle has no middle marker to be right
+ * about, and the lower one keeps the three icons in ascending order.
+ */
+const EQUIPMENT_ICON_INDICES: readonly number[] = [
+  0,
+  Math.floor((EQUIPMENT_ACCESS_OPTIONS.length - 1) / 2),
+  EQUIPMENT_ACCESS_OPTIONS.length - 1,
 ];
 
 /** Brief F Part 3: the aerobic row of the "What equipment do you have?" multi-select. */
@@ -410,6 +430,21 @@ function showsHomeEquipment(equipment: EquipmentAccess): boolean {
 /** Brief F Part 3: `Full gym`, or `Full gym and home gym`. */
 function showsGymCommute(equipment: EquipmentAccess): boolean {
   return equipment === 'full-gym' || equipment === 'full-and-home';
+}
+
+/**
+ * Round 3 Task 8: the load-step fields, "ONLY when home gym and above is selected".
+ *
+ * THE CUT IS AT THE FIRST POSITION THAT INCLUDES A GYM, not at the position literally spelled
+ * `Home gym`. The reason the task gives for the gate is that "below that there are no plates and
+ * no dumbbells to step", and `Home gym and body weight` -- the stop immediately BELOW `Home gym`
+ * on the slider -- has both. Reading "home gym and above" as index >= 2 would therefore hide the
+ * plate and dumbbell increments from a user who owns the plates and dumbbells the fields are
+ * about, which is the opposite of the stated reason. `Body weight only` is the one position with
+ * no external load at all, so it is the one position the fields are hidden on.
+ */
+function showsLoadSteps(equipment: EquipmentAccess): boolean {
+  return equipment !== 'bodyweight';
 }
 
 /**
@@ -1608,12 +1643,13 @@ export function SetupWizard(): JSX.Element {
       draft.units,
       overrides,
     ),
-    stack: stepError(
-      copy('quantity.stackStep', overrides),
-      draft.stackStep,
-      draft.units,
-      overrides,
-    ),
+    /*
+     * NO `stack` ENTRY, round 3 Task 8. The weight-stack field is off the screen, so an error
+     * about it would block Next on a message with no field to correct it in -- the exact defect
+     * BLOCKED.goal's own comment records for the two alternative body-mass targets. `stackStep`
+     * itself stays in the draft at its default and `confirm` still writes it; a default that
+     * nothing can edit cannot become invalid.
+     */
   };
 
   /**
@@ -1812,28 +1848,32 @@ export function SetupWizard(): JSX.Element {
       tapeIncomplete ||
       tapeWithheld,
     /*
-     * TRAINING NOW GUARDS THE AVAILABILITY FIELDS TOO, because they render on this step (finding
-     * B43). Folding the two guards is not cosmetic: leaving the availability errors on a step id
-     * that no longer exists would let Next through on an invalid weekly slot, since nothing would
-     * ever evaluate them.
+     * THE AVAILABILITY GUARDS MOVED OFF THIS STEP WITH THEIR FIELDS (round 3 Task 9). What is
+     * left is the equipment half: the two load steps and the walk-to-the-gym minutes. A guard
+     * has to sit on the step that RENDERS the field it guards, or Next is blocked by a message
+     * the user cannot see -- which is what leaving these on `training` would now do.
      */
     training:
       Object.values(stepErrors).some((e) => e !== null) ||
-      walkMinutesError !== null ||
-      weekdayError !== null ||
-      availabilityDaysError !== null ||
-      weeklyTargetError !== null ||
-      Object.values(durationErrors).some((e) => e !== null),
+      walkMinutesError !== null,
     /*
      * Only the target that is ON SCREEN can block the step. The two are alternatives, never both
      * (Brief I Part 2), so gating on whichever is hidden would stop Next on a message the user
      * cannot see or correct: a target body mass typed before a body-fat estimate existed stays
      * in the draft, and the field it belongs to is no longer rendered. Same re-gating rule
      * `gymCommute` and `homeEquipment` already follow at confirm, applied to the guard as well.
+     *
+     * THE AVAILABILITY GUARDS ARE HERE NOW, because the weekday, duration and weekly-target
+     * fields render at the top of this step (round 3 Task 9). They keep the same rule they had
+     * on the training step; only the step id changed.
      */
     goal:
       (bodyFatTargetAvailable ? targetBodyFatError : targetMassError) !== null ||
-      targetDateError !== null,
+      targetDateError !== null ||
+      weekdayError !== null ||
+      availabilityDaysError !== null ||
+      weeklyTargetError !== null ||
+      Object.values(durationErrors).some((e) => e !== null),
     programme: weeksError !== null,
     guidance: false,
     /*
@@ -2602,6 +2642,16 @@ export function SetupWizard(): JSX.Element {
                   }}
                 />
                 {t('label.bodyFatTape')}
+                {/*
+                 * Round 3 Task 3, the owner: "it just seems unresponsive." `aria-disabled` alone
+                 * is announced but not SEEN, so the refusal had no visible cause. This is the
+                 * cause, in italic, beside the control it refuses. It is not aria-hidden: read
+                 * out, it turns the option's accessible name into "Body Measurements (Needs
+                 * Biological Sex)", which is the same sentence the sighted user gets.
+                 */}
+                {bodyFatRequired && (
+                  <em className="wiz-needs">{t('label.needsBiologicalSex')}</em>
+                )}
               </label>
               <label className="wiz-inline" aria-disabled={bodyFatRequired}>
                 <input
@@ -2616,6 +2666,12 @@ export function SetupWizard(): JSX.Element {
                   }}
                 />
                 {t('label.bodyFatNone')}
+                {/* The same hint on the same terms: decision A1 refuses this option under `nd`
+                    for the identical reason, so leaving it greyed and unexplained would leave
+                    half of the owner's complaint standing. */}
+                {bodyFatRequired && (
+                  <em className="wiz-needs">{t('label.needsBiologicalSex')}</em>
+                )}
               </label>
             </div>
             {/* The one line saying why, wired to both refused controls by aria-describedby so it
@@ -2792,6 +2848,31 @@ export function SetupWizard(): JSX.Element {
           </div>
 
           {/*
+           * THE WEIGH-IN OPT-IN, round 3 Task 9. It sat on the goal step, beside a target date;
+           * it belongs here, on the step the user is already measuring themselves on.
+           *
+           * IT IS NOT DECORATION, and the copy says so rather than calling itself optional and
+           * stopping. src/ui/views/TrainView.tsx gates the pre- and post-session mass prompts on
+           * `hydration.weighInOptIn`, and src/domain/training/hydration.ts computes Sawka 2007's
+           * "> 2 % body mass" comparison from exactly those two entries: with the opt-in off the
+           * prompts never appear and the flag can never be raised. It does NOT touch the energy
+           * or macro targets, which re-derive from any body-mass entry either way.
+           */}
+          <label className="wiz-inline">
+            <input
+              type="checkbox"
+              checked={draft.weighInOptIn}
+              onChange={(e) => {
+                patch({ weighInOptIn: e.target.checked });
+              }}
+            />
+            {t('label.weighIn')}
+          </label>
+          <p className="wiz-note">{t('advice.weighIn')}</p>
+          {/* His own reassurance, tightened rather than replaced. */}
+          <p className="wiz-note">{t('advice.weighInReassurance')}</p>
+
+          {/*
            * THE REFERENCE LIST, r2.15. One collapsible box at the foot of the step, in the
            * pattern the `why?` disclosures already use, holding every citation the step prints.
            *
@@ -2870,6 +2951,22 @@ export function SetupWizard(): JSX.Element {
                 patch({ activity: level, activityPal: pal });
               }}
             />
+            {/*
+             * ROUND 3 TASK 5: a tick at each of the nine stops, aligned to the THUMB centres.
+             *
+             * One span per member of ACTIVITY_STOP_OPTIONS, so the count is the slider's own and
+             * a tenth stop added to src/domain/nutrition.ts's ACTIVITY_STOPS grows a tenth tick
+             * rather than leaving nine ticks under ten positions.
+             *
+             * `aria-hidden`, and no live region of its own: the position this control is at is
+             * already announced by `.wiz-slider-position` below, which is the live region. A
+             * second announcement of the same state is noise, not access.
+             */}
+            <div className="wiz-slider-ticks" aria-hidden="true">
+              {ACTIVITY_STOP_OPTIONS.map((option) => (
+                <span key={option.value} className="wiz-slider-tick" />
+              ))}
+            </div>
             {/* THE BAND AND THE STOP, both. Brief G widened this control to nine stops and
                 left the readout showing only the band, so the three stops inside a band were
                 indistinguishable and six of nine positions changed nothing a user could see.
@@ -2909,39 +3006,46 @@ export function SetupWizard(): JSX.Element {
             </button>
           </div>
 
-          {/* Brief F Part 1b: Gym Comfort, renamed from Experience IN THE UI ONLY -- the
-              underlying Experience type and its three values are unchanged. Each position's
-              icon does not exist yet; the placeholder names its docs/design/2026-09-04-icon-
-              register.csv row rather than rendering generated art. */}
-          <div className="wiz-field wiz-slider">
-            <label htmlFor="f-experience">{t('label.experience')}</label>
-            <input
-              id="f-experience"
-              type="range"
-              min={0}
-              max={EXPERIENCE_OPTIONS.length - 1}
-              step={1}
-              value={sliderIndexOf(EXPERIENCE_OPTIONS, draft.experience)}
-              onChange={(e) => {
-                patch({
-                  experience: sliderValueAt(EXPERIENCE_OPTIONS, e.target.value, 'novice'),
-                });
-              }}
-            />
-            <p className="wiz-slider-position" aria-live="polite">
-              {t(EXPERIENCE_OPTIONS[sliderIndexOf(EXPERIENCE_OPTIONS, draft.experience)]?.labelKey ?? 'option.experienceNovice')}
+          {/*
+           * GYM COMFORT, round 3 Task 6. The owner: "Gym comfort should not a slider, I think it
+           * should just be a selection of image boxes, just like the gender option."
+           *
+           * SO IT IS THE SEX CONTROL'S SHAPE, not a second picker pattern invented beside it:
+           * `.wiz-choice[role=radiogroup]` labelled by its own `.wiz-label`, one `.wiz-glyph`
+           * label per option, the mark as an `aria-hidden` <span> before the text. A <span> and
+           * not `ArtworkPlaceholder`, which renders a <div> and a <p>: a <label>'s content model
+           * is phrasing content, so a paragraph inside it is invalid markup, and the sex control
+           * puts a bare <span> there for the same reason. The option's own text is the caption.
+           *
+           * `Experience` is untouched. This is a CONTROL change: the stored type still has its
+           * three values and `draft.experience` still holds one of them.
+           *
+           * The artwork does not exist and is the owner's to draw. Each frame names its
+           * docs/design/2026-09-04-icon-register.csv row in `data-icon-row` and draws nothing:
+           * comfort-1-starting, comfort-2-machines, comfort-3-freeweights.
+           */}
+          <div className="wiz-field">
+            <p className="wiz-label" id="experience-label">
+              {t('label.experience')}
             </p>
-            <div className="wiz-slider-icons">
+            <div className="wiz-choice" role="radiogroup" aria-labelledby="experience-label">
               {EXPERIENCE_OPTIONS.map((o) => (
-                // Icon row per docs/design/2026-09-04-icon-register.csv, named here because the
-                // artwork does not exist yet (Brief F Part 1b): comfort-1-starting,
-                // comfort-2-machines, comfort-3-freeweights.
-                <ArtworkPlaceholder
-                  key={o.value}
-                  label={t(o.labelKey)}
-                  className="wiz-site"
-                  iconRow={o.iconRow}
-                />
+                <label key={o.value} className="wiz-glyph wiz-glyph-boxed">
+                  <input
+                    type="radio"
+                    name="experience"
+                    checked={draft.experience === o.value}
+                    onChange={() => {
+                      patch({ experience: o.value });
+                    }}
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="wiz-option-frame"
+                    data-icon-row={o.iconRow}
+                  />
+                  {t(o.labelKey)}
+                </label>
               ))}
             </div>
           </div>
@@ -2963,48 +3067,31 @@ export function SetupWizard(): JSX.Element {
                 });
               }}
             />
+            {/*
+             * ROUND 3 TASK 7: one marker per position, and the start, the middle and the end
+             * carry a placeholder icon frame instead of a plain marker (EQUIPMENT_ICON_INDICES
+             * above derives which three). The frames are empty: the artwork is the owner's, and
+             * each names its docs/design/2026-09-04-icon-register.csv row in `data-icon-row`
+             * rather than drawing, generating or substituting a character for it.
+             *
+             * `aria-hidden` for the same reason the activity ticks are: the position is already
+             * announced by the live region below.
+             */}
+            <div className="wiz-slider-ticks" aria-hidden="true">
+              {EQUIPMENT_ACCESS_OPTIONS.map((o, i) =>
+                EQUIPMENT_ICON_INDICES.includes(i) ? (
+                  <span key={o.value} className="wiz-slider-tick-icon" data-icon-row={o.iconRow} />
+                ) : (
+                  <span key={o.value} className="wiz-slider-tick" />
+                ),
+              )}
+            </div>
             <p className="wiz-slider-position" aria-live="polite">
               {t(EQUIPMENT_ACCESS_OPTIONS[sliderIndexOf(EQUIPMENT_ACCESS_OPTIONS, draft.equipment)]?.labelKey ?? 'option.accessFullGym')}
             </p>
+            {/* Round 3 Task 7, last point: the per-position example sentence stays, and still
+                changes with the position. */}
             <p className="wiz-note">{EQUIPMENT_ACCESS_EXAMPLES[draft.equipment]}</p>
-          </div>
-
-          {/* Brief F Part 3: the three load-increment fields, moved into their own bordered box
-              so they read as visually separate from the sliders above -- the owner's own words,
-              "another box... so that they are visually separated but still in the same page."
-              hasMicroPlates/microPlateStep are gone entirely, and only that. */}
-          <div className="wiz-box">
-            <p className="wiz-note">{t('advice.loadSteps')}</p>
-            <UnitInput
-              id="f-barbell-step"
-              quantity={t('quantity.barbellStep')}
-              unit={loadLabelUnit}
-              value={draft.barbellStep}
-              error={stepErrors.barbell}
-              onChange={(v) => {
-                patch({ barbellStep: v });
-              }}
-            />
-            <UnitInput
-              id="f-dumbbell-step"
-              quantity={t('quantity.dumbbellStep')}
-              unit={loadLabelUnit}
-              value={draft.dumbbellStep}
-              error={stepErrors.dumbbell}
-              onChange={(v) => {
-                patch({ dumbbellStep: v });
-              }}
-            />
-            <UnitInput
-              id="f-stack-step"
-              quantity={t('quantity.stackStep')}
-              unit={loadLabelUnit}
-              value={draft.stackStep}
-              error={stepErrors.stack}
-              onChange={(v) => {
-                patch({ stackStep: v });
-              }}
-            />
           </div>
 
           {/* Brief F Part 3: "Do you walk to and from the gym?", Full gym or Full gym and home
@@ -3146,24 +3233,74 @@ export function SetupWizard(): JSX.Element {
               </div>
             </div>
           )}
+
+          {/*
+           * THE LOAD-STEP FIELDS, round 3 Task 8. His paragraph, in six parts:
+           *
+           *   1. "should appear ONLY when home gym and above is selected" -- `showsLoadSteps`
+           *      above, and see its comment for why the cut sits where it does.
+           *   2. "should come after the 'what equipment do you have'" -- they are last on the
+           *      step now, below every equipment question, rather than above all of them.
+           *   3. "Right now the three textboxes are 1 column, 3 rows. remake it so it is 1 row 2
+           *      columns" -- `.wiz-row-tight`, which is the one row rule that stays two columns
+           *      below the 560 px breakpoint (a bare `.wiz-row` collapses to one there).
+           *   4. "Just have a title above them 'Load Step'" -- `label.loadStep`, R14.
+           *   5. "below 'Dumbbell' and the other 'Plates'" -- in that order, left to right.
+           *   6. "We don't need 3. Machine increment is standardized anyways." The weight-stack
+           *      field is GONE. `Profile.equipmentSteps.stackKg` is NOT: it is a stored field,
+           *      it keeps its existing default (`initialDraft`, and the unit reseed above), and
+           *      `confirm` still writes it. Removing a stored field nothing will write is a
+           *      migration, and `schemaVersion` stays 3.
+           */}
+          {showsLoadSteps(draft.equipment) && (
+            <div className="wiz-box">
+              <p className="wiz-label">{t('label.loadStep')}</p>
+              <div className="wiz-row wiz-row-tight">
+                <UnitInput
+                  id="f-dumbbell-step"
+                  quantity={t('quantity.dumbbellStep')}
+                  unit={loadLabelUnit}
+                  value={draft.dumbbellStep}
+                  error={stepErrors.dumbbell}
+                  onChange={(v) => {
+                    patch({ dumbbellStep: v });
+                  }}
+                />
+                <UnitInput
+                  id="f-barbell-step"
+                  quantity={t('quantity.barbellStep')}
+                  unit={loadLabelUnit}
+                  value={draft.barbellStep}
+                  error={stepErrors.barbell}
+                  onChange={(v) => {
+                    patch({ barbellStep: v });
+                  }}
+                />
+              </div>
+              <p className="wiz-note">{t('advice.loadSteps')}</p>
+            </div>
+          )}
         </fieldset>
       )}
 
       {/*
-       * AVAILABILITY, folded into the training step. Finding B43 settles the order as TWO
-       * steps: this one asks what you can PROVIDE (equipment and the weekly slots), the next
-       * asks what you WANT and by when. Brief F renamed this step to
-       * "Equipment & Availability" and left these controls in a step of their own AFTER the
-       * goal, so a target date was still chosen before training frequency was known. That is
-       * C1.10.8 exactly: "if I choose an unrealistic goal and a 2 day target, who will tell me
-       * that im being delusional?". Brief I asserted the move had already happened; it had
-       * not, and its own agent proved that against the tree rather than trusting the brief.
+       * AVAILABILITY, now the FIRST thing on the goal step (round 3 Task 9). The owner asked
+       * what step 4 still holds; this is the half that left it.
        *
-       * A SECOND `step === 'training'` block rather than one merged fieldset, so each group
-       * keeps its own <fieldset> and legend and the equipment controls above are untouched.
+       * THIS DOES NOT UNDO C1.10.8, which is "if I choose an unrealistic goal and a 2 day
+       * target, who will tell me that im being delusional?". What that claim requires is that
+       * the training frequency is KNOWN before the target date is chosen, and it still is: this
+       * block renders above the target-date field and the feasibility calendar on the same
+       * screen, and `feasibilityOf` reads `draft.sessionsPerWeek` at render, not at step change.
+       * The step COUNT is unchanged; the wizard is still the eight steps STEPS declares.
+       *
+       * A SEPARATE `step === 'goal'` block rather than one merged fieldset, and it carries the
+       * step's heading because it is now the first thing on the step: each group keeps its own
+       * <fieldset>, exactly as the training step's two groups did.
        */}
-      {step === 'training' && (
+      {step === 'goal' && (
         <fieldset>
+          <StepHeading title={t(STEP_TITLE_KEY.goal)} headingRef={headingRef} />
 
           <div className="wiz-field">
             <label htmlFor="f-sessions">{t('label.sessionsPerWeek')}</label>
@@ -3259,11 +3396,9 @@ export function SetupWizard(): JSX.Element {
           />
         </fieldset>
       )}
-
+      {/* The goal itself, below the availability block that now opens this step. */}
       {step === 'goal' && (
         <fieldset>
-          <StepHeading title={t(STEP_TITLE_KEY.goal)} headingRef={headingRef} />
-
           {/*
             Brief I Part 1, round 1 claims C1.10.2 to C1.10.6. The owner: "The way the 'Goal' is
             seperated is exclusionary. Recomposition and fat loss are not exclusionary."
@@ -3566,29 +3701,6 @@ export function SetupWizard(): JSX.Element {
             </div>
           </div>
 
-          <label className="wiz-inline">
-            <input
-              type="checkbox"
-              checked={draft.creatine}
-              onChange={(e) => {
-                patch({ creatine: e.target.checked });
-              }}
-            />
-            {t('label.creatine')}
-          </label>
-          <p className="wiz-note">{t('advice.creatineOnly')}</p>
-
-          <label className="wiz-inline">
-            <input
-              type="checkbox"
-              checked={draft.weighInOptIn}
-              onChange={(e) => {
-                patch({ weighInOptIn: e.target.checked });
-              }}
-            />
-            {t('label.weighIn')}
-          </label>
-          <p className="wiz-note">{t('advice.weighIn')}</p>
         </fieldset>
       )}
 
@@ -3698,6 +3810,28 @@ export function SetupWizard(): JSX.Element {
               <dd data-testid="review-timezone">{draft.timezone}</dd>
             </dl>
           </fieldset>
+
+          {/*
+           * CREATINE, round 3 Task 9 and his closing instruction: "Put the monohydrate on the
+           * last page." It sat on the goal step; this is the last page.
+           *
+           * It is placed here, between the read-back above and the Daily Targets panel below,
+           * because the panel is what it changes: ticking it adds the `label.creatineDose` row
+           * a few lines further down the same screen, so the control and its consequence are
+           * visible together. `computeTargets` reads `creatine` and nothing else on this step
+           * does.
+           */}
+          <label className="wiz-inline">
+            <input
+              type="checkbox"
+              checked={draft.creatine}
+              onChange={(e) => {
+                patch({ creatine: e.target.checked });
+              }}
+            />
+            {t('label.creatine')}
+          </label>
+          <p className="wiz-note">{t('advice.creatineOnly')}</p>
 
           <fieldset>
             <legend>{t('hero.dailyTargets')}</legend>
