@@ -12,43 +12,62 @@ This file is the entry point. It replaces reading the whole history.
 
 ```
 git log --oneline -15          # what just happened
-npx vitest run                 # 123 files, 2462 tests, all passing. If not, stop and find out why
+npx vitest run                 # 126 files, 2561 tests as of 2026-09-09. Re-derive; do not quote
 cat docs/plans/2026-09-06-ORCHESTRATION.md
+git worktree list              # if any agent worktree exists, CHECK ITS BASE COMMIT first
 ```
 
-**Wave 2 is half dispatched. Read section 2.1 before you do anything with it.**
+## 1a. Where round 2 actually stands, 2026-09-09
 
-Wave 1 is done. Brief K merged on 2026-09-06 as `3f43e11`; it went first and alone because it
-changed the `Sex` type and the wizard's draft model, and anything landing before it would have been
-rewritten against it.
+All counts below were derived from `git log` and by running the scripts, not quoted. **Re-derive
+them yourself rather than trusting this table**: it has been wrong before, on seven rows at once.
 
-Everything you need is already written. **Do not re-plan the round.** Six briefs remain, every open
-question is ruled, and the dispatch order is set.
+| Brief | Claims | State |
+| --- | --- | --- |
+| **F** | equipment sliders | Shipped, round 2 wave 0 |
+| **K** | r2.10 to r2.16, the body step | Merged `3f43e11` |
+| **N** | r2.05, r2.09, the banner and time zones | Merged `0f2383e` |
+| **O** | r2.09, the Settings half N could not reach | Merged `941614e` |
+| **J** | r2.01 to r2.03, the intro | Merged `8703a18` |
+| **L** | r2.18, the guidance screen | Merged `550f9f1` |
+| **G** | C1.09.5 reopened, the nine-stop slider | Merged `bda7398` |
+| **I** | C1.10.x to C1.12.x, Parts 1 to 4 ONLY | In flight |
+| **I2** | Part 5, the just-in-time scheduler | Written, NOT dispatched. Round 3's first brief |
+| **M** | r2.19, the review page | Not dispatched. **Must be last**: it restates what steps 5 to 7 collect, and brief I is rewriting those |
+| Title Case | 139 of 234 keys | Not started. Run when no other brief is live |
 
-### 2.1 Where wave 2 actually stands, 2026-09-06
+Suite at the time of writing: **126 files, 2561 tests**, all passing. `main` is 32 commits ahead of
+`origin` and **nothing is pushed**, so none of round 2 is live.
 
-| Brief | State |
-| --- | --- |
-| **N** | **Finished, committed, NOT verified and NOT merged.** Branch `worktree-agent-af85b546ca8c9a7ac`, commit `53db114`, parent `82e4a06`. Its report is captured in `docs/review/2026-09-06-brief-N-report.md` |
-| **J** | **NOT dispatched.** Three launch attempts failed on a harness rate limit, not on the task |
+### Four defects fixed that belonged to no brief
 
-**Your first job is to verify N, not to merge it.** Nothing in its report has been checked. Run all
-seven gates in its worktree, then the checks no gate can make — that `PROMINENT_ZONES` contains no
-invented population data, that the banner never alters the user's own text, that the new CSS uses
-tokens, and that 59 and 418 in the code match the ruling. The report lists what it changed outside
-its brief; read that section before reading the diff.
+Found by verifying, not by reading reports. Each is written up in its own commit.
 
-**N found a live defect it was right not to fix.** `src/ui/views/SettingsView.tsx:110-117` still
-builds all 418 zones in IANA alphabetical order with the old `(UTC+02:00)` label — the r2.09 defect,
-still shipping on the Settings screen. Brief N does not list that file and rule 5 says stop.
-`groupTimeZones` is ready for it. It needs a claim of its own or a line in a later brief.
+1. **The Settings time-zone picker** still built 418 zones in IANA order with the old label. Brief N
+   found it and correctly refused to fix it (rule 5). Became brief O.
+2. **The REFERENCES control read at 1.41:1 on limelight**, fuchsia on lime, below even the non-text
+   floor. Pre-existing from brief K, doubled in reach by brief L. `tokens.css` records the rule it
+   broke, "pink is never type", and `alpha-walk-pages.mjs` ASSERTS that rule and was green
+   throughout, because it only reads the generated review pages and never the app's own stylesheets.
+   **That gap is still open.**
+3. **The round-trip property test ran unseeded**, the only nondeterministic test in the suite. Now
+   seeded at 20260909. No failing seed exists: 120 seeds and 60000 documents found nothing.
+4. **`schema.ts` restated the PAL bounds as literals** rather than deriving them from
+   `ACTIVITY_BAND`, one file away from a test written specifically to prevent that drift.
 
-**The worktree base trap, which cost this round an hour.** N's worktree branched from `739b88e`,
-the session's starting commit, **not from current `main`**, so it began without K. It caught this
-itself, read this section, and fast-forwarded onto `main` — so the merge-main-in step is already
-done for N, and its work is against K's real code. **Do not assume isolation branches from `HEAD`.**
-Run `git worktree list` immediately after dispatch and record the base commit. Dispatch J from
-current `main` and check its base the same way.
+### Three things that cost time and will cost it again
+
+- **Assume every agent worktree branches from a STALE commit.** Every agent dispatched on
+  2026-09-09 did, without exception, including two dispatched in the same message. One had already
+  self-corrected before the check ran, which made the snapshot read as "one of two". Put
+  `git merge main` in the agent's own prompt as step 1 and have it report both commits.
+- **A copy key may be claimed by exactly ONE part** in `alpha-parts.mjs`. Brief J's modal called
+  `button.continue`, which `setup.nav` owns; the intro screen is swept first, so it claimed the key
+  and setup collided. Two round trips. The fix is always a new key, never a second claim.
+- **A Codex worker cannot run this project's gates.** `alpha-catalogue.mjs` and `check-no-emoji.mjs`
+  both die on `spawnSync git EPERM`, `git commit` fails on a read-only index.lock, and long `tsc`
+  and `vitest` runs exceed its execution window. Claude subagents with `isolation: "worktree"` can
+  run everything. `00-CONTEXT.md` now probes for which kind of worker it is talking to.
 
 ## 2. The state, in one table
 
@@ -56,8 +75,8 @@ current `main` and check its base the same way.
 | --- | --- |
 | Live | https://vkotzamanis.github.io/FixThisInjustice/ |
 | Round 1 | Closed. 80 of 127 claims shipped |
-| Round 2 | Open. 91 claims ledgered, every ruling taken, briefs F and K shipped, six waiting |
-| Suite | 123 files, 2462 tests, green |
+| Round 2 | Open. 91 claims ledgered, every ruling taken. F, K, N, O, J, L, G merged; I in flight; M and the Title Case sweep waiting. See section 1a |
+| Suite | 126 files, 2561 tests, green, 2026-09-09 |
 | Failing on purpose | `scripts/check-title-case.mjs`, 139 of 229 naming keys. Not in CI until they are fixed. Run it rather than quoting this row: the count moves with every key added |
 
 ## 3. The five rules that get work rejected
