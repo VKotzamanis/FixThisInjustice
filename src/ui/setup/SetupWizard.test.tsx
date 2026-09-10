@@ -13,6 +13,7 @@ import { EXERCISES } from '../../domain/plan/library';
 import { generatePlan, volumeReport } from '../../domain/plan/generator';
 import { SPLIT_TEMPLATES } from '../../domain/plan/templates';
 import {
+  DEFAULT_STACK_STEP,
   GOAL_AXES_BY_KIND,
   GOAL_KIND_BY_AXES,
   KG_PER_LB,
@@ -126,8 +127,12 @@ function setValue(label: RegExp | string, value: string): void {
 
 /**
  * Drive screens 1-4 with an imperial profile, leaving the TRAINING screen on show with every one
- * of its fields answered: the three sliders AND the availability fields, which render here now
- * rather than on a step of their own after the goal (finding B43).
+ * of its fields answered.
+ *
+ * ROUND 3 TASK 9 TOOK THE AVAILABILITY FIELDS OFF THIS STEP. They open the GOAL step now, above
+ * the target date the feasibility calendar assesses, so answering them belongs to
+ * `fillImperialWizardToGoal` below and no longer to this fixture. What is left here is the
+ * equipment half: the two sliders, the Gym Comfort picker and the load steps.
  */
 function fillImperialWizardToTraining(): void {
   render(<SetupWizard />);
@@ -154,44 +159,54 @@ function fillImperialWizardToTraining(): void {
   fireEvent.change(screen.getByLabelText(/^everyday activity level$/i), {
     target: { value: '3' }, // moderate floor, PAL 1.70 (stop 4 of 9)
   });
-  fireEvent.change(screen.getByLabelText(/^gym comfort$/i), {
-    target: { value: '1' }, // intermediate
-  });
+  // Gym Comfort is three option boxes now, not a slider (round 3 Task 6), so the middle value is
+  // CLICKED by its own words rather than set as an index.
+  fireEvent.click(screen.getByLabelText('Regular at the gym, mostly the machines'));
   fireEvent.change(screen.getByLabelText(/^equipment access$/i), {
     target: { value: '4' }, // full-gym
   });
-  /*
-   * The availability fields render on THIS step now, not on one of their own after the goal
-   * (finding B43): what you can provide is stated before what you want and by when, so the
-   * feasibility calendar on the next step knows the training frequency. Four weekdays for the
-   * four-session split.
-   */
+}
+
+/**
+ * Answer the availability fields, wherever they are. They open the goal step (round 3 Task 9).
+ * Four weekdays for the four-session split.
+ */
+function fillAvailability(): void {
   setValue(/sessions per week/i, '4');
   for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
     fireEvent.click(screen.getByLabelText(day));
   }
 }
 
-/**
- * Availability is no longer a screen of its own; its fields are answered on the training screen.
- * This name is kept because the tests that call it are about those fields, and it still leaves
- * them on show.
- */
-const fillImperialWizardToAvailability = fillImperialWizardToTraining;
-
-/** Drive screens 1-5, leaving the goal screen on show. */
+/** Drive screens 1-5, leaving the goal screen on show with the availability fields answered. */
 function fillImperialWizardToGoal(): void {
   fillImperialWizardToTraining();
   next();
   /*
-   * 5 - Fitness Goal. Brief I Part 1 replaced the exclusive goal menu with two axes, so the
-   * fixture picks the PAIR that derives 'fat-loss' rather than selecting that name directly.
-   * Both are clicked explicitly even though `initialDraft` already opens on 'fat-loss', for the
-   * same reason the sliders above are set explicitly: the fixture's intent should not depend on
-   * a default staying what it is today.
+   * 5 - Fitness Goal. Availability comes FIRST on this step now: what you can provide is stated
+   * above the target date, so the feasibility calendar below it knows the training frequency
+   * (round 3 Task 9, which keeps C1.10.8 satisfied without a step of its own).
+   */
+  fillAvailability();
+  /*
+   * Brief I Part 1 replaced the exclusive goal menu with two axes, so the fixture picks the PAIR
+   * that derives 'fat-loss' rather than selecting that name directly. Both are clicked explicitly
+   * even though `initialDraft` already opens on 'fat-loss', for the same reason the sliders above
+   * are set explicitly: the fixture's intent should not depend on a default staying what it is
+   * today.
    */
   fireEvent.click(screen.getByLabelText('Lose fat'));
   fireEvent.click(screen.getByLabelText('Hold muscle'));
+}
+
+/**
+ * The goal screen with the availability fields answered and nothing else touched. The tests that
+ * call this are about those fields; the goal axes are left on their defaults.
+ */
+function fillImperialWizardToAvailability(): void {
+  fillImperialWizardToTraining();
+  next();
+  fillAvailability();
 }
 
 /** Drive screens 1-8 with an imperial profile, leaving the review screen on show. */
@@ -285,8 +300,13 @@ describe('unit labelling', () => {
     setValue(/^inches$/i, '11');
     setValue(/body mass \(lb\)/i, String(IMPERIAL_MASS_LB));
     next();
-    expect(screen.getByLabelText(/barbell step \(lb\)/i)).toHaveValue(5);
-    expect(screen.getByLabelText(/dumbbell step, per pair \(lb\)/i)).toHaveValue(10);
+    /*
+     * ROUND 3 TASK 8 RENAMED BOTH FIELDS to the owner's own words, `Plates` and `Dumbbell`, and
+     * dropped the weight-stack field ("Machine increment is standardized anyways"). The seeded
+     * NUMBERS are unchanged, which is what this test is about; only the labels moved.
+     */
+    expect(screen.getByLabelText(/^plates \(lb\)$/i)).toHaveValue(5);
+    expect(screen.getByLabelText(/^dumbbell \(lb\)$/i)).toHaveValue(10);
   });
 });
 
@@ -333,11 +353,12 @@ describe('domain guards', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
-    next(); // training, which is where the weekday controls live now (finding B43)
+    next(); // training
+    next(); // goal, which is where the weekday controls live now (round 3 Task 9)
     /*
-     * Deliberately NO weekday is checked: that is the whole subject of this test. Since the fold,
-     * the block shows on the training step rather than on a step of its own, and training's own
-     * BLOCKED entry absorbed availability's guards -- so Next is disabled HERE.
+     * Deliberately NO weekday is checked: that is the whole subject of this test. Round 3 Task 9
+     * moved the block to the TOP OF THE GOAL STEP and BLOCKED.goal absorbed availability's
+     * guards with it, so Next is disabled HERE.
      */
     setValue(/sessions per week/i, '2');
     expect(screen.getByText('Select at least one weekday.')).toBeInTheDocument();
@@ -402,13 +423,13 @@ describe('review screen', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
-    next();
-    // Availability renders on the training step now (finding B43), before the goal asks for a
-    // target date, so it is answered here rather than after the next press.
+    next(); // training
+    next(); // goal
+    // Availability OPENS the goal step now (round 3 Task 9), above the target date the calendar
+    // assesses, so it is answered here rather than one step earlier.
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Wednesday'));
     setValue(/sessions per week/i, '2');
-    next();
     // Brief I Part 1: 'muscle-gain' is derived from hold-fat plus gain-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Hold body fat'));
     fireEvent.click(screen.getByLabelText('Gain muscle'));
@@ -503,14 +524,14 @@ describe('submission', () => {
     setValue(/^metres$/i, '1');
     setValue(/^centimetres$/i, '65');
     setValue(/body mass \(kg\)/i, '62.5');
-    next();
-    // Availability renders on the training step now (finding B43), before the goal asks for a
-    // target date, so it is answered here rather than after the next press.
+    next(); // training
+    next(); // goal
+    // Availability OPENS the goal step now (round 3 Task 9), above the target date the calendar
+    // assesses, so it is answered here rather than one step earlier.
     setValue(/sessions per week/i, '3');
     for (const day of ['Monday', 'Wednesday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
-    next();
     next();
     next();
     next();
@@ -577,10 +598,10 @@ describe('no free-text medical field exists', () => {
     setValue(/^centimetres$/i, '80');
       setValue(/body mass \(kg\)/i, '80');
     }
-    if (STEPS[stepIndex] === 'training') {
-      // The availability fields render on the training step now. The weekday count may not fall
-      // below sessions per week, and 2 is the lowest the sessions-per-week list offers, so the
-      // smallest passing selection is two days.
+    if (STEPS[stepIndex] === 'goal') {
+      // The availability fields open the GOAL step now (round 3 Task 9). The weekday count may
+      // not fall below sessions per week, and 2 is the lowest the sessions-per-week list offers,
+      // so the smallest passing selection is two days.
       setValue(/sessions per week/i, '2');
       fireEvent.click(screen.getByLabelText('Monday'));
       fireEvent.click(screen.getByLabelText('Tuesday'));
@@ -647,13 +668,14 @@ describe('no free-text medical field exists', () => {
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next(); // training
-    // Availability renders on the training step now (finding B43) and gates it, so the slots are
-    // answered here before Next will advance.
+    next(); // goal, where availability now opens the step and gates it
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // goal, where the supplement toggle lives
+    next(); // programme
+    next(); // guidance
+    next(); // review, where the supplement toggle lives now (round 3 Task 9)
     const names = screen.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent ?? '');
     expect(names.filter((t) => /creatine/i.test(t))).toHaveLength(1);
     expect(names.filter((t) => MEDICAL_PATTERN.test(t))).toHaveLength(0);
@@ -671,8 +693,8 @@ describe('copy rules', () => {
     setValue(/^centimetres$/i, '80');
         setValue(/body mass \(kg\)/i, '80');
       }
-      if (STEPS[stepIndex] === 'training') {
-        // The availability fields render on the training step now (finding B43).
+      if (STEPS[stepIndex] === 'goal') {
+        // The availability fields open the goal step now (round 3 Task 9).
         setValue(/sessions per week/i, '2');
         fireEvent.click(screen.getByLabelText('Monday'));
         fireEvent.click(screen.getByLabelText('Tuesday'));
@@ -1053,8 +1075,7 @@ describe('entry aids and idempotency', () => {
  */
 describe('guidance step in wizard', () => {
   it('renders the guidance screen and advances without user input', () => {
-    fillImperialWizardToAvailability(); // stops on training; availability is answered there
-    next(); // goal
+    fillImperialWizardToAvailability(); // stops on the goal step, availability answered
     next(); // programme
     setValue(/programme length/i, '12');
     next();
@@ -1451,17 +1472,17 @@ describe('Brief F: the equipment sliders', () => {
 
   /** From the training step onward, complete and submit the wizard with whatever it holds. */
   function finishFromTraining(): void {
+    next(); // goal
     /*
-     * The availability fields are answered HERE, before Next, because they render on the training
-     * step now (finding B43). They also gate it: training's BLOCKED entry absorbed availability's
-     * four guards when the step was folded in, so leaving them empty stops Next rather than
-     * failing later.
+     * The availability fields are answered HERE, at the top of the goal step, because that is
+     * where they render now (round 3 Task 9). They also gate it: BLOCKED.goal absorbed
+     * availability's four guards with them, so leaving them empty stops Next rather than failing
+     * later.
      */
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // goal
     // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
@@ -1485,20 +1506,69 @@ describe('Brief F: the equipment sliders', () => {
     return profile;
   }
 
-  it('renders three range sliders, one closed list each, never a free number', () => {
+  /*
+   * TWO SLIDERS NOW, NOT THREE. Round 3 Task 6 turned Gym Comfort into three option boxes, so
+   * this test asserts what is left as a slider AND that Gym Comfort is no longer one: an
+   * assertion that only counted the survivors would still pass if the picker silently reverted.
+   */
+  it('renders two range sliders, one closed list each, never a free number', () => {
     toTrainingStep();
     const activity = screen.getByLabelText(/^everyday activity level$/i);
-    const comfort = screen.getByLabelText(/^gym comfort$/i);
     const access = screen.getByLabelText(/^equipment access$/i);
-    for (const slider of [activity, comfort, access]) {
+    for (const slider of [activity, access]) {
       expect(slider).toHaveAttribute('type', 'range');
       expect(slider).toHaveAttribute('step', '1');
     }
     // Brief G widened Everyday Activity Level from 3 positions to 9 (three per FAO/WHO/UNU 2004
-    // band); the other two sliders are unchanged by that brief.
+    // band); Equipment Access is unchanged by that brief.
     expect(activity).toHaveAttribute('max', '8'); // 9 positions, index 0-8
-    expect(comfort).toHaveAttribute('max', '2'); // 3 positions, index 0-2
     expect(access).toHaveAttribute('max', '4'); // 5 positions, index 0-4
+    // Round 3 Task 6: no range input is left on the step besides those two.
+    expect(screen.getAllByRole('slider')).toHaveLength(2);
+  });
+
+  /*
+   * ROUND 3 TASK 5: a stop marker at every stop of the activity slider, aligned to the thumb
+   * positions. Nine of them, read from ACTIVITY_STOPS rather than typed as 9, so a stop added to
+   * the engine's table fails this test rather than leaving the control short of a tick.
+   */
+  it('draws one tick per activity stop, decorative and silent', () => {
+    toTrainingStep();
+    const ticks = [...document.querySelectorAll('.wiz-field.wiz-slider .wiz-slider-ticks')][0];
+    expect(ticks).toBeDefined();
+    expect(ticks?.querySelectorAll('.wiz-slider-tick')).toHaveLength(ACTIVITY_STOPS.length);
+    expect(ACTIVITY_STOPS).toHaveLength(9);
+    // Decoration for a control that already announces its own position: no second announcement.
+    expect(ticks?.getAttribute('aria-hidden')).toBe('true');
+    // The alignment is the 14 px side padding, which is half the 28 px thumb: a rule, since
+    // jsdom renders no geometry to measure.
+    expect(setupCss).toMatch(/\.wiz-slider-ticks\s*\{[^}]*padding:\s*0\s+14px/);
+    // Tokens only, and never the 1.41:1 fuchsia-on-lime accent.
+    expect(setupCss).toMatch(/\.wiz-slider-tick\s*\{[^}]*background:\s*var\(--text-2\)/);
+  });
+
+  /*
+   * ROUND 3 TASK 7: five markers on the equipment slider, of which the start, the middle and the
+   * end are placeholder icon frames naming their icon-register rows. The artwork is the owner's
+   * and does not exist, so the frames must be EMPTY.
+   */
+  it('marks all five equipment stops, three of them as named draft boxes', () => {
+    toTrainingStep();
+    const access = screen.getByLabelText(/^equipment access$/i);
+    const row = access.parentElement?.querySelector('.wiz-slider-ticks') ?? null;
+    expect(row).not.toBeNull();
+    expect(row?.children).toHaveLength(5);
+    expect(row?.getAttribute('aria-hidden')).toBe('true');
+    const frames = [...(row?.querySelectorAll('.wiz-slider-tick-icon') ?? [])];
+    expect(frames.map((el) => el.getAttribute('data-icon-row'))).toEqual([
+      'equip-1-bodyweight',
+      'equip-3-home',
+      'equip-5-full-gym',
+    ]);
+    // Empty: no character, no drawing, no generated asset stands in for the owner's artwork.
+    for (const frame of frames) expect(frame.textContent).toBe('');
+    // The two between are plain markers.
+    expect(row?.querySelectorAll('.wiz-slider-tick')).toHaveLength(2);
   });
 
   it('defaults Everyday Activity Level to Moderate and Equipment Access to Full Gym', () => {
@@ -1590,23 +1660,45 @@ describe('Brief F: the equipment sliders', () => {
     });
   });
 
-  it("renders the Gym Comfort slider's three positions as the owner's own words, each with a placeholder icon", () => {
+  /*
+   * ROUND 3 TASK 6. This test asserted a SLIDER; the owner replaced the slider with option boxes
+   * ("just like the gender option"), so the assertion was updated to the control that replaced
+   * it rather than deleted. What it still guards is unchanged: the owner's own three sets of
+   * words, and a named placeholder frame per option with no substitute artwork inside it.
+   */
+  it('renders Gym Comfort as three option boxes, each a named draft frame, and no slider', () => {
     toTrainingStep();
-    // Each position's words appear twice while it is selected: once as the current-position
-    // readout, once as its icon's caption (the three icons are a static legend, always shown).
-    expect(screen.getAllByText('Starting out').length).toBeGreaterThan(0);
-    const icons = [...document.querySelectorAll('.wiz-site[data-icon-row]')];
-    expect(icons.map((el) => el.getAttribute('data-icon-row'))).toEqual([
+    const group = screen.getByRole('radiogroup', { name: 'Gym Comfort' });
+    const options = within(group).getAllByRole('radio');
+    expect(options).toHaveLength(3);
+    // No range input is left behind under this label. `queryByLabelText` would match the
+    // radiogroup itself, which IS labelled "Gym Comfort", so the assertion is about the role.
+    for (const option of options) expect(option).toHaveAttribute('type', 'radio');
+    expect(within(group).queryAllByRole('slider')).toHaveLength(0);
+
+    const frames = [...group.querySelectorAll('.wiz-option-frame')];
+    expect(frames.map((el) => el.getAttribute('data-icon-row'))).toEqual([
       'comfort-1-starting',
       'comfort-2-machines',
       'comfort-3-freeweights',
     ]);
-    fireEvent.change(screen.getByLabelText(/^gym comfort$/i), { target: { value: '1' } });
-    expect(
-      screen.getAllByText('Regular at the gym, mostly the machines').length,
-    ).toBeGreaterThan(0);
-    fireEvent.change(screen.getByLabelText(/^gym comfort$/i), { target: { value: '2' } });
-    expect(screen.getAllByText('Free weights for three years or more').length).toBeGreaterThan(0);
+    // The artwork is the owner's and does not exist: every frame is empty and hidden from the
+    // accessibility tree, and the option's own words are its caption.
+    for (const frame of frames) {
+      expect(frame.textContent).toBe('');
+      expect(frame.getAttribute('aria-hidden')).toBe('true');
+    }
+
+    // The owner's own words, and each one selects its own stored Experience value.
+    expect(screen.getByLabelText('Starting out')).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Regular at the gym, mostly the machines'));
+    expect(screen.getByLabelText('Regular at the gym, mostly the machines')).toBeChecked();
+    fireEvent.click(screen.getByLabelText('Free weights for three years or more'));
+    expect(screen.getByLabelText('Free weights for three years or more')).toBeChecked();
+    // 44 px tap targets: the shared `.wiz-glyph` minimum the sex control already sets, plus a
+    // 44 px frame of its own. jsdom renders no geometry, so the rule is what can be asserted.
+    expect(setupCss).toMatch(/\.wiz-glyph\s*\{[^}]*min-height:\s*44px/);
+    expect(setupCss).toMatch(/\.wiz-option-frame\s*\{[^}]*width:\s*44px/);
   });
 
   it('shows exactly one Equipment Access example, matching the selected position', () => {
@@ -1832,9 +1924,16 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     expect(screen.getByRole('button', { name: 'Next' })).toHaveAttribute('aria-disabled', 'true');
   });
 
+  /*
+   * ROUND 3 TASK 3 CHANGED THE ACCESSIBLE NAME OF BOTH REFUSED OPTIONS. The visible italic hint
+   * sits inside the <label>, so it is part of what the label reads: "Body Measurements(Needs
+   * Biological Sex)". That is deliberate, not an accident of markup -- the hint is not
+   * aria-hidden, so the sighted user and the screen-reader user get the same sentence -- and the
+   * queries below name the whole label rather than being loosened to a substring match.
+   */
   it('shows the tape option, refuses it, and ANNOUNCES the refusal rather than only greying it', () => {
     reachBodyWithoutSex();
-    const tape = screen.getByLabelText('Body Measurements');
+    const tape = screen.getByLabelText('Body Measurements(Needs Biological Sex)');
     // "Show the option, disabled, with one line saying why. Do not hide it." (decision A1)
     expect(tape).toBeInTheDocument();
     expect(tape).toHaveAttribute('aria-disabled', 'true');
@@ -1851,6 +1950,45 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     fireEvent.click(tape);
     expect(tape).not.toBeChecked();
     expect(screen.queryByLabelText(/^neck \(cm\)$/i)).toBeNull();
+
+    /*
+     * ROUND 3 TASK 3, the owner: "it just seems unresponsive." aria-disabled is announced but not
+     * SEEN, so the refusal had no visible cause. The hint is the cause, in italic, beside the
+     * control it refuses. `<em>` is the italic, asserted as an element rather than as a CSS rule
+     * because the emphasis is semantic here and not only visual.
+     */
+    const hints = screen.getAllByText('(Needs Biological Sex)');
+    expect(hints.length).toBeGreaterThan(0);
+    for (const hint of hints) expect(hint.tagName).toBe('EM');
+    expect(tape.closest('label')?.querySelector('em')).not.toBeNull();
+  });
+
+  it('drops the hint, and the refusal, as soon as a sex is stated', () => {
+    reachBodyWithoutSex();
+    pickSex();
+    expect(screen.queryByText('(Needs Biological Sex)')).toBeNull();
+    const tape = screen.getByLabelText('Body Measurements');
+    expect(tape).not.toHaveAttribute('aria-disabled', 'true');
+    fireEvent.click(tape);
+    expect(tape).toBeChecked();
+    // The girth fields the method needs are on screen, so the control is genuinely live.
+    expect(screen.getByLabelText(/^neck \(cm\)$/i)).toBeInTheDocument();
+  });
+
+  /*
+   * THE PERCENTAGE PATH NEEDS NO SEX AND MUST STAY LIVE (round 3 Task 3, last point).
+   * src/domain/bodyfat.ts takes `StatedSex` only for the tape equations; a typed percentage
+   * reaches Cunningham, which has no sex term.
+   */
+  it('leaves the percentage path enabled with no sex stated, and takes a number', () => {
+    reachBodyWithoutSex();
+    const known = screen.getByLabelText('Percentage2');
+    expect(known).toBeChecked();
+    expect(known).not.toHaveAttribute('aria-disabled', 'true');
+    expect(known).not.toBeDisabled();
+    expect(known.closest('label')?.querySelector('em')).toBeNull();
+    setValue(/body fat \(%\)/i, '22');
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(22);
   });
 
   it('refuses Not Measured on the same terms, and repairs the mode if the sex is cleared', () => {
@@ -1863,7 +2001,10 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     // one frame: selectSex repairs it on the click that caused it.
     pickSex();
     expect(screen.getByLabelText('Percentage2')).toBeChecked();
-    expect(screen.getByLabelText('Not Measured')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByLabelText('Not Measured(Needs Biological Sex)')).toHaveAttribute(
+      'aria-disabled',
+      'true',
+    );
   });
 
   it('keeps a typed percentage when the sex is cleared, rather than throwing the number away', () => {
@@ -1878,13 +2019,11 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     reachBodyFilledWithoutSex();
     setValue(/body fat \(%\)/i, '20');
     next(); // training
-    // Availability renders on the training step now (finding B43) and gates it, so the slots are
-    // answered here before Next will advance.
+    next(); // goal, which availability now opens and which gates it
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // goal
     // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
@@ -1908,11 +2047,11 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     reachBodyFilledWithoutSex();
     setValue(/body fat \(%\)/i, '20');
     next(); // training
+    next(); // goal
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // goal
     // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
@@ -2645,16 +2784,16 @@ describe('Brief I Part 2: the body-fat target', () => {
     setValue(/body mass \(kg\)/i, '80');
     setValue(/body fat \(%\)/i, pct);
     next(); // 3 body
+    next(); // 4 equipment, every slider on its default
     /*
-     * The sliders all have valid defaults; the AVAILABILITY fields do not. No weekday is checked
-     * to begin with, and training's guard absorbed availability's four checks when the step was
-     * folded in (finding B43), so Next is blocked here until the slots are answered.
+     * The sliders all have valid defaults; the AVAILABILITY fields do not, and they open the
+     * GOAL step now (round 3 Task 9). No weekday is checked to begin with and BLOCKED.goal
+     * carries their four checks, so the goal step is where they have to be answered.
      */
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // 4 equipment and availability, every slider on its default
   }
 
   it('offers the percentage instead of a target body mass, and shows what it implies', () => {
@@ -2702,16 +2841,15 @@ describe('Brief I Part 2: the body-fat target', () => {
     setValue(/^centimetres$/i, '80');
     setValue(/body mass \(kg\)/i, '80');
     next(); // 3 body, no body-fat percentage yet
+    next(); // 4 equipment
     /*
-     * The sliders all have valid defaults; the AVAILABILITY fields do not. No weekday is checked
-     * to begin with, and training's guard absorbed availability's four checks when the step was
-     * folded in (finding B43), so Next is blocked here until the slots are answered.
+     * The sliders all have valid defaults; the AVAILABILITY fields do not, and they open the
+     * GOAL step now (round 3 Task 9), which is the step this test is about.
      */
     setValue(/sessions per week/i, '2');
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // 4 equipment and availability
 
     // The body-mass route is open, and an out-of-domain target blocks it, correctly.
     setValue(/target body mass \(kg\)/i, '5');
@@ -2723,6 +2861,18 @@ describe('Brief I Part 2: the body-fat target', () => {
     setValue(/body fat \(%\)/i, '25');
     next();
     next();
+
+    /*
+     * THE AVAILABILITY FIELDS ARE ANSWERED AGAIN, and this is decision A2 rather than a defect:
+     * "Back discards the step in progress instead of committing it." The answers above were made
+     * on the goal step and Next was never pressed on it, so Back discarded them along with the
+     * out-of-domain target this test is really about. That was true of the goal step's own fields
+     * before round 3 too; the only change is that availability is now among them.
+     */
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
 
     // The invalid body mass is still in the draft and its field is gone. Next is free again.
     expect(screen.queryByLabelText(/target body mass/i)).toBeNull();
@@ -2764,5 +2914,189 @@ describe('Brief I Part 2: the body-fat target', () => {
     expect(profile?.goal.targetMassKg).toBeCloseTo(60 / 0.85, 9);
     // And the derived goal is the only record of either axis.
     expect(profile?.goal.kind).toBe('fat-loss');
+  });
+});
+
+/**
+ * ROUND 3, the onboarding revision: what moved between steps, and what now gates what.
+ *
+ * These are placement tests, deliberately. Every control below already had a behaviour test
+ * somewhere in this file; what round 3 changed is WHICH SCREEN each one is on, and a suite that
+ * navigates by counting Next presses cannot notice a control that quietly moved back.
+ */
+describe('round 3: the load-step gate and the three controls that moved', () => {
+  /** Metric, body step filled, sitting on the equipment step. */
+  function toEquipmentStep(): void {
+    render(<SetupWizard />);
+    next(); // units
+    setValue(/^time zone$/i, 'America/New_York');
+    next(); // time zone
+    pickSex();
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    next(); // body
+  }
+
+  /*
+   * ROUND 3 TASK 8, his first sentence: the fields "should appear ONLY when home gym and above
+   * is selected". The cut sits at the first position that includes a gym of any kind, not at the
+   * position spelled `Home gym`, because the reason given for the gate is that below it there
+   * are "no plates and no dumbbells to step" -- and `Home gym and body weight`, the stop
+   * immediately below `Home gym`, has both. See `showsLoadSteps` in SetupWizard.tsx.
+   */
+  it('hides the load steps on Body Weight Only and shows them everywhere else', () => {
+    toEquipmentStep();
+    const access = screen.getByLabelText(/^equipment access$/i);
+
+    fireEvent.change(access, { target: { value: '0' } }); // Body weight only
+    expect(screen.queryByText('Load Step')).toBeNull();
+    expect(screen.queryByLabelText(/^plates \(kg\)$/i)).toBeNull();
+    expect(screen.queryByLabelText(/^dumbbell \(kg\)$/i)).toBeNull();
+
+    for (const index of ['1', '2', '3', '4']) {
+      fireEvent.change(access, { target: { value: index } });
+      expect(screen.getByText('Load Step')).toBeInTheDocument();
+      expect(screen.getByLabelText(/^dumbbell \(kg\)$/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/^plates \(kg\)$/i)).toBeInTheDocument();
+    }
+  });
+
+  /*
+   * The rest of Task 8: two fields and not three, in one row of two columns, under one heading,
+   * and AFTER the equipment question rather than above it.
+   */
+  it('shows two load-step fields, not three, below the equipment question', () => {
+    toEquipmentStep();
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '2' } });
+
+    // The third field is gone: "We don't need 3. Machine increment is standardized anyways."
+    expect(screen.queryByLabelText(/stack/i)).toBeNull();
+    expect(screen.queryByText(/weight-stack/i)).toBeNull();
+
+    // One row, two columns. `.wiz-row-tight` is the rule that stays two columns below 560 px;
+    // a bare `.wiz-row` collapses to one there, which is the shape he asked to leave behind.
+    const heading = screen.getByText('Load Step');
+    const row = heading.parentElement?.querySelector('.wiz-row.wiz-row-tight') ?? null;
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getAllByRole('spinbutton')).toHaveLength(2);
+    expect(setupCss).toMatch(
+      /\.wiz-row-tight\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\)/,
+    );
+
+    // After the equipment question, not before it. compareDocumentPosition, so the assertion is
+    // about document order rather than about a class name that could be reordered underneath it.
+    const prompt = screen.getByText('What equipment do you have?');
+    expect(
+      prompt.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  /*
+   * ROUND 3 TASK 9, first point. Availability opens the goal step. C1.10.8 asks that the
+   * training frequency be known before the target date is chosen, and it still is: the days sit
+   * ABOVE the date field on the same screen, which is what this test pins.
+   */
+  it('opens the goal step with availability, above the target date', () => {
+    toEquipmentStep();
+    next(); // goal
+
+    const days = screen.getByLabelText('Monday');
+    const sessions = screen.getByLabelText(/sessions per week/i);
+    const date = screen.getByLabelText('Target Date (Optional)');
+    for (const control of [days, sessions]) {
+      expect(
+        control.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
+    // The step count did not change with the move.
+    expect(STEPS).toHaveLength(8);
+    expect(screen.getByText(FORMAT.stepOf(5, STEPS.length, 'Fitness Goal'))).toBeInTheDocument();
+
+    // And the guard moved with the fields: no weekday checked blocks THIS step.
+    expect(screen.getByText('Select at least one weekday.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
+  });
+
+  /*
+   * ROUND 3 TASK 9, his closing instruction: "Put the monohydrate on the last page." It is on
+   * the review step and nowhere else, and the dose row it produces is on the same screen.
+   */
+  it('puts creatine on the review step, and nowhere before it', () => {
+    fillImperialWizardToGoal();
+    expect(screen.queryByLabelText(/creatine/i)).toBeNull();
+    next(); // programme
+    expect(screen.queryByLabelText(/creatine/i)).toBeNull();
+    next(); // guidance
+    next(); // review
+
+    const creatine = screen.getByLabelText('Creatine Monohydrate');
+    expect(creatine).toBeInTheDocument();
+    expect(creatine).not.toBeChecked();
+    expect(screen.queryByTestId('target-creatine')).toBeNull();
+
+    fireEvent.click(creatine);
+    expect(screen.getByTestId('target-creatine')).toBeInTheDocument();
+  });
+
+  /*
+   * ROUND 3 TASK 9, third point. The weigh-in opt-in moved to the BODY step, and its copy now
+   * says what declining costs instead of calling itself optional and stopping: with it off,
+   * TrainView.tsx never prompts for the pre- and post-session masses and hydration.ts can never
+   * raise Sawka 2007's "> 2 % body mass" flag.
+   */
+  it('asks about weighing in on the body step, saying what declining costs', () => {
+    reachBodyWithoutSex();
+    expect(screen.getByLabelText('Weigh in')).toBeInTheDocument();
+    expect(
+      screen.getByText('Optional. Without it the 2 % fluid loss check cannot run.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('A number that looks bad today is one you enjoy watching move.'),
+    ).toBeInTheDocument();
+  });
+
+  /* And it is not on the goal step any more. */
+  it('no longer asks about weighing in on the goal step', () => {
+    fillImperialWizardToTraining();
+    next(); // goal
+    expect(screen.queryByLabelText('Weigh in')).toBeNull();
+  });
+
+  /* And it reaches the store, from its new home, as the opt-in it always was. */
+  it('writes the weigh-in opt-in chosen on the body step', () => {
+    render(<SetupWizard />);
+    next();
+    setValue(/^time zone$/i, 'America/New_York');
+    next();
+    pickSex();
+    setValue(/^age \(years\)$/i, '30');
+    setValue(/^metres$/i, '1');
+    setValue(/^centimetres$/i, '80');
+    setValue(/body mass \(kg\)/i, '80');
+    fireEvent.click(screen.getByLabelText('Weigh in'));
+    next(); // training
+    next(); // goal
+    setValue(/sessions per week/i, '2');
+    fireEvent.click(screen.getByLabelText('Monday'));
+    fireEvent.click(screen.getByLabelText('Tuesday'));
+    setValue(/weekly session target/i, '2');
+    next(); // programme
+    next(); // guidance
+    next(); // review
+    tickLooksGood();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+
+    const state = useAppStore.getState();
+    const id = state.activeProfileId ?? '';
+    expect(state.profiles[id]?.hydration.weighInOptIn).toBe(true);
+    /*
+     * THE DROPPED FIELD STILL REACHES THE DOCUMENT. Round 3 Task 8 stops COLLECTING the
+     * weight-stack increment; the ruling is that `Profile.equipmentSteps.stackKg` keeps its
+     * existing default so no stored document needs migrating and `schemaVersion` stays 3.
+     * DEFAULT_STACK_STEP.metric, read live rather than restated here.
+     */
+    expect(state.profiles[id]?.equipmentSteps.stackKg).toBe(DEFAULT_STACK_STEP.metric);
   });
 });

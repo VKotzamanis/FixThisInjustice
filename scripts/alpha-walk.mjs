@@ -196,8 +196,8 @@ export const STAGES = [
       {
         id: 'w1.10',
         title: 'Setup, step 3: body fat',
-        do: 'Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open "why?".',
-        see: 'Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot.',
+        do: 'Scroll down the same screen. Percentage is pre-selected; open the estimate-chart link, then pick the tape option and open "why?". Then clear the sex selection above and look at the three options again. At the foot of the step, read the weigh-in box and tick it.',
+        see: 'Three options with percentage first, an estimate link above the percentage box, the tape fields under the second, and the note and why disclosure at the foot. With no sex chosen, the tape and Not Measured options grey out and each says "(Needs Biological Sex)" in italic beside it. Below the body-fat box, the weigh-in opt-in, with a line saying what declining costs.',
         keys: [
           'label.bodyFatKnown',
           'label.bodyFatTape',
@@ -213,6 +213,7 @@ export const STAGES = [
           'label.bodyFat',
           'label.bodyFatEstimate',
           'advice.tapeNeedsSex',
+          'label.needsBiologicalSex',
           'advice.bodyFatRequiredND',
           'disclosure.disclaimer',
           'disclosure.references',
@@ -222,6 +223,9 @@ export const STAGES = [
           'advice.bodyFatEstimate',
           'why.bodyFatEstimate',
           'advice.bodyFatOptional',
+          'label.weighIn',
+          'advice.weighIn',
+          'advice.weighInReassurance',
         ],
         parts: ['setup.body'],
       },
@@ -229,15 +233,18 @@ export const STAGES = [
         id: 'w1.11',
         title: 'Setup, step 4: equipment & availability',
         do: 'Move the Everyday Activity Level slider through all nine stops, opening the ' +
-          'Examples disclosure, then open "Where These Levels Come From" and close it. Move ' +
-          'the other two sliders through every position too. Then move the Equipment Access ' +
-          'slider through Full gym, Home gym and Body weight only in turn to see the load ' +
-          'increments box and each equipment question it reveals.',
-        see: 'Three sliders, each naming its current position in text and (for the first two) ' +
-          'an Examples disclosure; under the Everyday Activity Level slider, a link opening a ' +
-          'modal that names the three FAO/WHO/UNU bands and the nine stops with their PAL and ' +
-          'example; a bordered box with the three load increments; then, depending on the ' +
-          'Equipment Access position, a walk-to-the-gym question or an equipment multi-select.',
+          'Examples disclosure, then open "Where These Levels Come From" and close it. Tap ' +
+          'each of the three Gym Comfort boxes in turn. Then move the Equipment Access ' +
+          'slider through Full gym, Home gym and Body weight only to see each equipment ' +
+          'question it reveals, and the Load Step box that follows them.',
+        see: 'Two sliders, each naming its current position in text and each carrying a mark ' +
+          'under every stop: nine on Everyday Activity Level, five on Equipment Access, of ' +
+          'which the first, the middle and the last are empty dashed draft boxes where the ' +
+          'artwork will go. Gym Comfort is three selectable boxes, not a slider. Under the ' +
+          'Everyday Activity Level slider, a link opening a modal that names the three ' +
+          'FAO/WHO/UNU bands and the nine stops with their PAL and example. Below every ' +
+          'equipment question, on every position but Body weight only, a bordered Load Step ' +
+          'box holding Dumbbell and Plates side by side.',
         keys: [
           'step.training',
           'label.activity',
@@ -257,10 +264,6 @@ export const STAGES = [
           'option.accessHome',
           'option.accessFullAndHome',
           'option.accessFullGym',
-          'advice.loadSteps',
-          'quantity.barbellStep',
-          'quantity.dumbbellStep',
-          'quantity.stackStep',
           'advice.walkToGym',
           'button.yes',
           'button.no',
@@ -282,6 +285,10 @@ export const STAGES = [
           'option.bodyweightSkippingRope',
           'option.bodyweightPullUpBar',
           'option.bodyweightResistanceBands',
+          'label.loadStep',
+          'quantity.dumbbellStep',
+          'quantity.barbellStep',
+          'advice.loadSteps',
         ],
         parts: ['setup.training'],
       },
@@ -328,18 +335,14 @@ export const STAGES = [
           'advice.feasibilityNeedsFuture',
           'advice.feasibilityNotALoss',
           'advice.feasibilityEstimate',
-          'label.creatine',
-          'advice.creatineOnly',
-          'label.weighIn',
-          'advice.weighIn',
         ],
         parts: ['setup.goal'],
       },
       {
         id: 'w1.13',
-        title: 'Setup, step 6: availability',
-        do: 'Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.',
-        see: 'A sessions-per-week field, then seven weekday rows, each with a time and a length.',
+        title: 'Setup, step 5: availability, at the top of the goal step',
+        do: 'Before touching the goal controls above, scroll to the top of the same screen. Pick your training days and set a start time and a length for one of them. Then clear every day to see the error.',
+        see: 'A sessions-per-week field, then seven weekday rows, each with a time and a length, above the goal axes and the target date rather than on a screen of their own.',
         keys: [
           'label.sessionsPerWeek',
           'weekday.monday',
@@ -380,10 +383,12 @@ export const STAGES = [
       {
         id: 'w1.16',
         title: 'Setup, step 9: review',
-        do: 'Read the panels and the Your Data block, tick "Looks Good", then tap "Confirm and start".',
+        do: 'Read the panels and the Your Data block, tick the creatine box and watch the dose row appear below it, tick "Looks Good", then tap "Confirm and start".',
         see: 'The daily targets, the programme summary, a Your Data block naming where the document lives, how to move it, and how to start over, and the control that writes the profile, disabled until Looks Good is ticked.',
         keys: [
           'step.review',
+          'label.creatine',
+          'advice.creatineOnly',
           'hero.dailyTargets',
           'status.targetsNotEstimated',
           'label.energy',
@@ -1058,9 +1063,9 @@ export const STAGES = [
       },
       {
         id: 'w5.03',
-        title: 'The beverage target',
-        do: 'Scroll to the hydration block and open the "why?" under it.',
-        see: 'A daily target, and the default it started from.',
+        title: 'The beverage target, and the weigh-in opt-in',
+        do: 'Scroll to the hydration block, open the "why?" under it, then toggle the weigh-in box beneath.',
+        see: 'A daily target, the default it started from, and the weigh-in opt-in you set during setup, changeable here for the first time. Its three keys are reviewed on the setup body step (w1.10), which renders them first.',
         keys: ['hero.hydration', 'quantity.dailyBeverageTarget', 'advice.beverageDefault'],
         parts: ['settings.hydration'],
       },
