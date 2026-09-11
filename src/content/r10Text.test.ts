@@ -145,6 +145,13 @@ describe('the merge gate over the source, which the value scan cannot see', () =
    * builds by joining two literals across two lines cannot be replaced in place, and
    * scripts/design-patch.mjs refuses it. A module declared editable whose rows fail this would
    * hand the owner an afternoon of edits that no one can apply.
+   *
+   * THE LOCATOR MIRRORS `literalForms` (scripts/design-patch.mjs:435-442) rather than guessing a
+   * subset of it, so the two sides stay in step: each quote style, escaped when the value already
+   * contains that quote. The third form is the one this test used to miss - a value holding BOTH
+   * an apostrophe and a double quote can only be written single-quoted with `\'` escapes, which is
+   * exactly what `quoteValue` (:417-424) emits for it, so the source holds no unescaped form at
+   * all and searching for only the two unescaped forms scored the row 0 times.
    */
   it('can locate every editable field as exactly one single-line literal', () => {
     const unlocatable: string[] = [];
@@ -152,10 +159,13 @@ describe('the merge gate over the source, which the value scan cannot see', () =
       if (module.lock !== null) continue;
       const source = sourceOf(module.file);
       for (const field of module.fields) {
-        const single = `'${field.value.replace(/\\/g, '\\\\')}'`;
-        const double = `"${field.value.replace(/\\/g, '\\\\')}"`;
-        const hits =
-          source.split(single).length - 1 + (single === double ? 0 : source.split(double).length - 1);
+        const backslashed = field.value.replace(/\\/g, '\\\\');
+        const forms = new Set([
+          backslashed.includes("'") ? `'${backslashed.replace(/'/g, "\\'")}'` : `'${backslashed}'`,
+          backslashed.includes('"') ? `"${backslashed.replace(/"/g, '\\"')}"` : `"${backslashed}"`,
+        ]);
+        let hits = 0;
+        for (const form of forms) hits += source.split(form).length - 1;
         if (hits !== 1) unlocatable.push(`${field.id} appears ${String(hits)} times`);
       }
     }

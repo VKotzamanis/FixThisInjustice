@@ -24,19 +24,42 @@ describe('the intro slides obey the rules R10 does not exempt', () => {
   });
 });
 
+/*
+ * STRUCTURE, NOT WORDING. Both tests here used to pin the headings, the warning and the
+ * acknowledgement verbatim, which was the right guard while only an agent could change them.
+ * The owner now rewrites these same strings himself in Design Mode, so a verbatim pin would fail
+ * on every save he makes; what still has to hold is the shape the sequence renders and the
+ * single-line form scripts/design-patch.mjs can rewrite.
+ */
 describe('the restructured slides', () => {
-  it('has five slides with heading, optional lead, and bullets', () => {
+  it('has five slides: no heading on the first, a heading and led bullets on the rest', () => {
     expect(INTRO_SLIDES).toHaveLength(5);
     expect(INTRO_SLIDES[0]?.heading).toBeNull();
-    expect(INTRO_SLIDES[1]?.heading).toBe('Who I Am');
-    expect(INTRO_SLIDES[2]?.heading).toBe('Purpose of the App');
-    expect(INTRO_SLIDES[3]?.heading).toBe('Motivation');
-    expect(INTRO_SLIDES[4]?.heading).toBe('What Setup Collects');
+    for (const [index, slide] of INTRO_SLIDES.entries()) {
+      // Slide 1 carries the greeting: a lead and no bullets, which is how INTRO_SLIDES declares it.
+      if (index === 0) continue;
+      expect({
+        index,
+        blankHeading: (slide.heading ?? '').trim() === '',
+        hasBullet: slide.bullets.length > 0,
+        blankLeads: slide.bullets.filter((bullet) => bullet.lead.trim() === '').length,
+      }).toEqual({ index, blankHeading: false, hasBullet: true, blankLeads: 0 });
+    }
   });
 
-  it('keeps the supplied warning and acknowledgement verbatim', () => {
-    expect(INTRO_DISCLAIMER).toBe('Tl;dr: do not be MJT attempting what looks like a pull-up. If you are unsure of an exercise, skip it and ask someone who works at your gym to show you. Consider yourself warned and me not liable.');
-    expect(INTRO_ACKNOWLEDGEMENT).toBe('I realise that asking for help from an actual human is necessary when I am unsure about my form. I agree to use common sense and stop being shy to the detriment of my own health.');
+  it('keeps the warning, its heading and the acknowledgement non-empty and on one line', () => {
+    for (const [name, value] of [
+      ['INTRO_DISCLAIMER', INTRO_DISCLAIMER],
+      ['INTRO_DISCLAIMER_HEADING', INTRO_DISCLAIMER_HEADING],
+      ['INTRO_ACKNOWLEDGEMENT', INTRO_ACKNOWLEDGEMENT],
+    ] as const) {
+      expect({
+        name,
+        type: typeof value,
+        blank: value.trim() === '',
+        newline: /\n/.test(value),
+      }).toEqual({ name, type: 'string', blank: false, newline: false });
+    }
   });
 });
 
