@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { INTRO_CHAR_INTERVAL_MS, IntroGate, IntroSequence } from './IntroSequence';
-import { INTRO_SLIDES } from '../../content/introSlides';
+import { INTRO_DISCLAIMER, INTRO_SLIDES } from '../../content/introSlides';
 import { copy } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
@@ -78,6 +78,42 @@ describe('IntroSequence', () => {
     expect(screen.getByTestId('intro-settings-pointer')).toHaveTextContent(
       copy('label.changeVisualSettings'),
     );
+  });
+
+  it('renders a marked word bold, showing no asterisk, part-typed and whole', () => {
+    render(<IntroSequence />);
+    advance();
+    advance(); // Slide 3: the only slide whose lead carries a mark today.
+    const lead = INTRO_SLIDES[2]?.lead ?? '';
+    expect(lead).toContain('*habit*');
+
+    // A prefix that stops INSIDE the marked word: the state every marked word types through.
+    const cut = lead.indexOf('*habit*') + '*hab'.length;
+    act(() => void vi.advanceTimersByTime(cut * INTRO_CHAR_INTERVAL_MS));
+    const body = screen.getByTestId('intro-body');
+    expect(body.textContent).not.toContain('*');
+    expect(body.querySelector('strong')?.textContent).toBe('hab');
+
+    act(() => void vi.advanceTimersByTime(lead.length * INTRO_CHAR_INTERVAL_MS));
+    expect(body.textContent).not.toContain('*');
+    expect(body.querySelector('strong')?.textContent).toBe('habit');
+    expect(body.textContent).toContain('the habit of exercising');
+    expect(body.textContent).toContain('~fun~'); // A tilde is not a mark.
+  });
+
+  it('renders the marked phrases of the disclaimer bold inside the modal', () => {
+    const { container } = render(<IntroSequence />);
+    for (let index = 0; index < 4; index += 1) advance();
+    const warning = container.querySelector('.intro-modal-warning');
+    expect(warning?.textContent).not.toContain('*');
+    // The phrases are read back from the string, never named here: the owner rewrites this
+    // sentence in the design editor, and a named phrase makes his edit look like a defect.
+    const bold = Array.from(warning?.querySelectorAll('strong') ?? []).map((node) => node.textContent ?? '');
+    expect(bold.length).toBeGreaterThan(0);
+    for (const phrase of bold) {
+      const wrapped = INTRO_DISCLAIMER.includes(`**${phrase}**`) || INTRO_DISCLAIMER.includes(`*${phrase}*`);
+      expect(wrapped).toBe(true);
+    }
   });
 
   it('does not apply animation under prefers-reduced-motion', () => {

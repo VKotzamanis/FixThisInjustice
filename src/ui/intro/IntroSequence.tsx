@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import './intro.css';
+import { emphasise } from './emphasis';
 import { INTRO_ACKNOWLEDGEMENT, INTRO_DISCLAIMER, INTRO_DISCLAIMER_HEADING, INTRO_FIGURE, INTRO_SLIDES } from '../../content/introSlides';
 import { useCopy } from '../../content/useCopy';
 import { ModalShell } from '../components/ModalShell';
@@ -15,6 +16,16 @@ const INTRO_FADE_OUT_MS = 180;
  * a mismatch shifts every reveal offset after it.
  */
 const BULLET_SEPARATOR = ': ';
+
+/*
+ * THE REVEAL STILL COUNTS RAW CHARACTERS, MARKS INCLUDED, so each of the owner's marks costs one
+ * silent tick of the typewriter: 18 ms in which nothing new appears. Accepted rather than
+ * corrected. The fix would be a second length for every field, the marked one for the typing
+ * budget and the shown one for the slice, and `bodyText`, `reveal`'s running offset and
+ * BULLET_SEPARATOR all have to agree to the character or every later offset shifts. A pair of
+ * marks is two ticks, 36 ms, in a paragraph that types for several seconds. `emphasise` and the
+ * mark rules live in src/ui/intro/emphasis.ts.
+ */
 
 const FIGURE_SLIDE_COUNT = 4;
 const ACKNOWLEDGEMENT_INDEX = 3;
@@ -116,7 +127,7 @@ export function IntroSequence(): ReactElement {
     >
       <div className={reduced ? 'intro-slide intro-no-motion' : leaving ? 'intro-slide intro-fade-out' : 'intro-slide'} key={index}>
         {slide.heading !== null && <h2 className="intro-heading intro-subsection-title intro-highlight">{slide.heading}</h2>}
-        {slide.lead !== null && <p className="intro-body" data-testid="intro-body">{reveal(slide.lead)}</p>}
+        {slide.lead !== null && <p className="intro-body" data-testid="intro-body">{emphasise(reveal(slide.lead))}</p>}
         {slide.bullets.length > 0 && (
           <ul className="intro-bullets" data-testid={slide.lead === null ? 'intro-body' : undefined}>
             {slide.bullets.map((bullet) => {
@@ -140,9 +151,9 @@ export function IntroSequence(): ReactElement {
               const rest = afterLead.slice(BULLET_SEPARATOR.length);
               return (
                 <li key={bullet.lead}>
-                  <span className="intro-lead-phrase">{lead}</span>
+                  <span className="intro-lead-phrase">{emphasise(lead)}</span>
                   {separator}
-                  {bullet.rest === null ? null : <span className="intro-bullet-rest">{rest}</span>}
+                  {bullet.rest === null ? null : <span className="intro-bullet-rest">{emphasise(rest)}</span>}
                 </li>
               );
             })}
@@ -194,10 +205,10 @@ export function IntroSequence(): ReactElement {
       {acknowledgementOpen && (
         <ModalShell labelledBy={acknowledgementId} className="intro-modal" backdropClassName="intro-modal-bg" testId="intro-acknowledgement-backdrop" onClose={keepAcknowledgementOpen}>
           <h2 id={acknowledgementId} className="intro-modal-title">{INTRO_DISCLAIMER_HEADING}</h2>
-          <p className="intro-modal-warning">{INTRO_DISCLAIMER}</p>
+          <p className="intro-modal-warning">{emphasise(INTRO_DISCLAIMER)}</p>
           <label className="intro-acknowledgement">
             <input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledged(event.target.checked)} />
-            {INTRO_ACKNOWLEDGEMENT}
+            {emphasise(INTRO_ACKNOWLEDGEMENT)}
           </label>
           <button type="button" className="intro-acknowledgement-continue" disabled={!acknowledged} onClick={() => { setAcknowledgementOpen(false); setIndex((current) => current + 1); }}>
             {t('button.introContinue')}

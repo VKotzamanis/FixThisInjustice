@@ -25,6 +25,7 @@
 import type { ReactElement } from 'react';
 import './siteFooter.css';
 import { INTRO_DISCLAIMER } from '../../content/introSlides';
+import { emphasise } from '../intro/emphasis';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { useHydrated } from '../../store/selectors';
@@ -56,7 +57,12 @@ export function SiteFooter(): ReactElement {
        */}
       <p>{t(hydrated ? 'shell.status.loaded' : 'shell.status.loading')}</p>
       <p>{t('advice.dataOnDevice')}</p>
-      <p>{DISCLAIMER}</p>
+      {/*
+       * The owner's asterisks mean bold (his decision, 2026-09-11), and this paragraph is the
+       * SAME string the intro shows, so it reads them through the same module the intro uses
+       * rather than a second copy of the rule. Marks never reach the screen here either.
+       */}
+      <p>{emphasise(DISCLAIMER)}</p>
       <p>{t('footer.licence')}</p>
     </footer>
   );

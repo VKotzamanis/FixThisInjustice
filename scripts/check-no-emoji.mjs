@@ -7,10 +7,21 @@
  * for, so the scan is over whole files: markup, string literals and comments alike. An emoji in a
  * comment is not shipped, but it is a tone rule that has already started to slip.
  *
- * SCOPE: every tracked src/content/copy*.ts and every tracked src/**\/*.tsx. The copy tables hold
- * the strings and the .tsx files hold everything rendered around them. Generated asset modules
- * (src/skins/limelight/icons.ts, illustrations.ts) are .ts files of base64 and are outside this
- * scope by construction.
+ * SCOPE: every tracked src/content/*.ts module that is not a test, and every tracked
+ * src/**\/*.tsx. The content modules hold the strings and the .tsx files hold everything rendered
+ * around them. Generated asset modules (src/skins/limelight/icons.ts, illustrations.ts) are .ts
+ * files of base64 and are outside this scope by construction.
+ *
+ * WIDENED 2026-09-11, FROM copy*.ts TO THE WHOLE DIRECTORY. Only the two copy tables were scanned,
+ * so an emoji typed into one of the eleven R10 long-form modules -- src/content/introSlides.ts is
+ * the one the owner edits, through src/designEditor -- passed this gate and failed hours later in
+ * src/content/introSlides.test.ts instead. The point of a gate is to answer before the work is
+ * filed, not after.
+ *
+ * THE TESTS ARE EXCLUDED, AND THAT IS NOT A LOOPHOLE. src/content/r10Text.test.ts:216 feeds a sun
+ * emoji to the live R6 check ON PURPOSE: it is this rule's negative control, the fixture that
+ * proves the rule can fail. Scanning it would fail the build for the presence of the very
+ * evidence that the rule works. A test module ships nothing.
  *
  * THE BLIND SPOT IS LOCAL, AND IT IS THE WORD "TRACKED". The file list comes from `git ls-files`,
  * which reports the index, so a component or copy table that has never been added is not scanned
@@ -34,7 +45,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const PATHSPECS = ['src/content/copy*.ts', ':(glob)src/**/*.tsx'];
+const PATHSPECS = ['src/content/*.ts', ':(exclude)src/content/*.test.ts', ':(glob)src/**/*.tsx'];
 
 const PICTOGRAPHIC = /\p{Extended_Pictographic}/u;
 const VARIATION_SELECTOR_16 = 0xfe0f;

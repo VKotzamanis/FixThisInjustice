@@ -88,6 +88,19 @@
   line-height: 1.6;
 }
 
+/*
+ * The words the owner wrapped in asterisks (src/ui/intro/emphasis.ts). Weight is the ONLY
+ * difference: same token, same size, same face. The browser's own default for `strong` is
+ * `font-weight: bolder`, which is relative, so inside `.intro-modal-warning` -- a paragraph that
+ * is already 700 -- it would compute to 900 and emphasise by whatever that font happens to
+ * substitute. 700 stated here is the same weight everywhere in the intro, which also means a
+ * marked phrase inside that one already-bold paragraph reads no differently from the rest of it.
+ */
+.intro strong {
+  color: inherit;
+  font-weight: 700;
+}
+
 .intro-bullets {
   display: flex;
   flex-direction: column;
