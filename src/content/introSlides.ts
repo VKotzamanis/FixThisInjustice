@@ -76,33 +76,33 @@ export interface IntroSlide {
 export const INTRO_SLIDES: readonly IntroSlide[] = [
   {
     heading: null,
-    lead: "Hey. You probably got access to this page & repo from V, after him talking to you about a fitness pal that he's been working on. If not, let's get some caveats out of the way:",
+    lead: "Hai. You probably got access to this page & repo from V, after him talking to you about a fitness app that he's been working on. Let's get some caveats out of the way:",
     bullets: [],
   },
   {
-    heading: 'Humble Brag?',
-    lead: 'Not really, here are my credentials:',
+    heading: 'Who the Fuck Is V?',
+    lead: 'Credentials:',
     bullets: [
-      { lead: 'Is an academic, not a big tits bodybuilder influencer:', rest: 'That being said, I was actively doing body-building since I was 17 (i.e., gym everyday, track macros, journal plateaus and all that). I stopped at 27 to focus on my PhD and I am just getting back to it.' },
-      { lead: 'The guy who shows up:', rest: "I introduced a lot of my friends to the 'going to the gym' concept and I enjoyed very much helping them with their fitness goals. My favorite thing was pinpointing which 'part'of their body should feel what during a lift." },
+      { lead: 'Former Gymrat, Lately an Academic', rest: 'I was swimming competitively until college. I have been heavy-lifting seriously since I was 17 (i.e., gym everyday, track macros, journal plateaus and all that). I stopped at 27 to focus on my PhD and I am just getting back to it. That being said, I am not an expert and I highly encourage anyone to hire a (legit pls) personal trainer if you have the $$.' },
+      { lead: 'Mansplaining', rest: "Since highschool, I've introduced a lot of my friends to the 'going to the gym' concept, and I enjoyed very much helping them with their fitness goals. My favorite thing was pinpointing which 'part'of their body should feel what during a lift (yes, I asked for consent because i'm  wokie)." },
     ],
   },
   {
-    heading: 'Goal of This Fitness Pal',
-    lead: 'The fitness pal (i.e., current webpage), exists to make the *habit* of exercising: (a) stress-free, (b) ~fun~, and your fitness goals attainable.',
+    heading: 'SOMETHING NEW, SOMETHING FRESH',
+    lead: 'This fitness app (i.e., current webpage), exists to help make the *habit* of exercising stress-free and ~fun~. For example:',
     bullets: [
-      { lead: 'Week! Automate!', rest: 'you get a day-to-day plan of the combined exercises you complete, along with recommended reps and sets. This plan takes into account the availability of your equipment and your preferred split.' },
-      { lead: 'Dear Diary:', rest: "The webpage saves the daily logged daily on your browser cache (i.e., completely private). Your data is then used to prepare the next week's plan with your previous lifting score, weighted differently for de-load periods etc." },
-      { lead: 'No ADHD Allowed:', rest: 'You are able to make the webpage (optionally) send you notifs. in your gym days (e.g., pack your gym bag). When you successfully complete workout days, you will unlock facts and debunked fitness myths in your Atlas, and in the days where you flop, you will. be. dealt. with.' },
+      { lead: 'Week! Automate!', rest: "It generates a detailed plan of the exercises you'd need to do per day, along with their recommended reps and sets. The plan is different for everyone and takes into account stuff like equipment availability, fitness goal, and lifting experience." },
+      { lead: 'Dear Diary', rest: "The webpage saves the daily logged daily on your browser cache (i.e., completely private). Your data is then used to prepare the next week's plan with your previous lifting score, weighted differently for de-load periods etc. Your personal progress can be viewed in ✨ cute ✨ graphs." },
+      { lead: 'ADHD Unfriendly', rest: 'There is an optional feature that allows a clouflare bot to send you notifications and reminders (e.g., leg day today, pray). There are also other optional features, such as: (a) when you successfully complete workout sessions, your spent calories are gained as currency used to unlock cool stuff. In the days where you flop and skip gym, You Will. Be. Dealt. With. 😡' },
     ],
   },
   {
-    heading: 'Why and How',
-    lead: 'Two reasons.',
+    heading: 'Some Exposé',
+    lead: "Feel free to skip this slide, but here's why I made this:",
     bullets: [
-      { lead: 'We Hate Cashgrabs', rest: "Most beginner gymrats don't have 150$/session for personal training. Fitness help is kind of gatekept and it's hard to distinguish what's true and what's bullshit. This webpage will always be free, open-source, and provide valid references for every claim that's made (i.e., 'broscience' isn't peer-reviewed -> classified as tiktok tarot readings). " },
-      { lead: 'Coach, not Couch:', rest: "If you lift alone, you know it's hard to actually pace yourself and maintain proper rest times between sets. To that end, I included some small-form games to keep us company while we wait. Other examples of gamification include: (a) a gatcha game where your time spent in the gym functions as currency and (b) an Atlas with unlockable trivia." },
-      { lead: 'Credits:', rest: 'So this is a solo project that I made for myself in order to get back to shape. I planned the webpage, its functionalities and used Agentic Coding to get it up and running. Everything produced was reviewed by me and two of my gymrat friends (if u see this i </3 u).' },
+      { lead: 'Death to Cashgrabs', rest: "Realistically, most beginners don't have 150$/session to drop for personal training. Access to a structured fitness plan is kind of gatekept, which makes it hard for anyone to distinguish what's true out there and what's bullshit. There's a LOT of bullshit (i.e., 'broscience' isn't peer-reviewed -> trash 🧹, garbage 🗑️, dumpster 🚮). The goal here is to make something free & open-source that can provide anyone with the tools and frameworks needed to take fitness in their own hands. Every claim has been scientifically verified and my reference sources are provided in the footer of the corresponding page. " },
+      { lead: 'Coach, not Couch', rest: "If you lift alone, you know it's hard to actually pace yourself and maintain proper rest time between sets. To that end, I included fast-paced games to keep you company while you wait. Other examples of gamification include: (a) a gatcha game and (b) an Atlas with unlockable trivia." },
+      { lead: 'Credits', rest: 'This has (mostly) been a solo project and was originally meant to be used only by me, so it might feel a bit personalized at times (sry & please leave feedback).  Everything here was reviewed by me and some kind souls who currently do personal training for a living (if u see this i </3 u). In terms of asset credits: I created the development plan, features and hand-drew the pixelart. Agentic Coding was used to get it up and running.' },
     ],
   },
   {
@@ -116,11 +116,11 @@ export const INTRO_SLIDES: readonly IntroSlide[] = [
   },
 ];
 
-export const INTRO_DISCLAIMER: string = 'Do not trust yourself or a webpage to perfect your form. Ask the assholes that work there to help you if you are unsure. Be mindful and try to "map" the muscles you feel in each exercise. If you don\'t feel anything while lifting at your max, *you\'re doing something wrong*. **So, Basically.** You don\'t want to be doing MTG\'s version of a pull-up. Start slow and steady and take care of yourself luv (also go get some blood work done and an annual checkup).';
+export const INTRO_DISCLAIMER: string = 'Do not trust yourself or a webpage to tell you what you\'re doing wrong. Ask the sexy assholes that work there to help you if you are unsure. During free-weight lifting, be mindful and try to "map" the muscles you feel at each part of your motion. If you don\'t feel your muscles straining, you\'re doing something wrong! **So, Basically.** You don\'t want to be doing MTG\'s version of a pull-up. Start slow and steady and take care of yourself luv xoxo';
 
 export const INTRO_DISCLAIMER_HEADING = 'IMPORTANT, PLS READ';
 
-export const INTRO_ACKNOWLEDGEMENT = 'TL;DR: By using this webpage, you acknowledge and realize that asking for help from an actual human is good and necessary for your well-being and for those around you. You agree to use common sense and stop being shy to the detriment of your own health. ';
+export const INTRO_ACKNOWLEDGEMENT = 'TL;DR: By using this webpage, you acknowledge and realize that asking for help from an actual human is good and necessary for the well-being of yourself and those around you. You agree to use common sense and stop being shy to the detriment of your own health. ';
 
 /**
  * A small original stick figure, flexing. Four lines by seven columns: well inside the brief's
