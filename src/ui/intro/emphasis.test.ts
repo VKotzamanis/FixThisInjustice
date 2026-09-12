@@ -94,8 +94,9 @@ describe('emphasisRuns', () => {
     ]);
   });
 
-  it('reads the marks the owner wrote into slide 3', () => {
-    const lead = INTRO_SLIDES[2]?.lead ?? '';
+  it('reads the marks the owner wrote into the slide whose lead says *habit*', () => {
+    // By content, not position: the owner reorders slides in the editor.
+    const lead = INTRO_SLIDES.find((slide) => slide.lead?.includes('*habit*'))?.lead ?? '';
     expect(lead).toContain('*habit*');
     const text = shown(lead);
     expect(text).not.toContain('*');
@@ -103,8 +104,8 @@ describe('emphasisRuns', () => {
     expect(strongRanges(lead)).toEqual([rangeOf(text, 'habit')]);
   });
 
-  it('reads the marks the owner wrote into slide 5', () => {
-    const lead = INTRO_SLIDES[4]?.lead ?? '';
+  it('reads the marks the owner wrote into the slide whose lead carries a double pair', () => {
+    const lead = INTRO_SLIDES.find((slide) => slide.lead?.includes('**'))?.lead ?? '';
     const sentence = 'Again, no data is collected at all, ever.';
     expect(lead).toContain(`**${sentence}**`);
     const text = shown(lead);

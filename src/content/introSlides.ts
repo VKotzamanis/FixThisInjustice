@@ -44,7 +44,8 @@
 // for this file: four lines by seven columns, well inside the 8-line by 20-column ceiling the
 // brief sets.
 //
-// A FEATURE SLIDE 4 PROMISES AND THE REPOSITORY DOES NOT YET BUILD. Its second sentence, "there
+// A FEATURE SLIDE 3 PROMISES AND THE REPOSITORY DOES NOT YET BUILD (slide 4 until the owner
+// moved it forward on 2026-09-12). Its second sentence, "there
 // are small games to play during the rest between hard sets", names a mechanic that does not
 // exist anywhere in this tree today (grep src/domain and src/ui/views/train for "game" or "rest
 // game" and nothing answers). The owner confirmed this is a decision already taken, not a defect
@@ -70,8 +71,9 @@ export interface IntroSlide {
 }
 
 /**
- * The five slides, in the order the sequence shows them. The acknowledgement is a modal over
- * slide 4, rather than a slide of its own.
+ * The five slides, in the order the sequence shows them: the greeting, who V is, the exposé, what
+ * is new, and what setup collects. The owner set that order on 2026-09-12. The acknowledgement is
+ * a modal over the last slide, rather than a slide of its own.
  */
 export const INTRO_SLIDES: readonly IntroSlide[] = [
   {
@@ -88,21 +90,21 @@ export const INTRO_SLIDES: readonly IntroSlide[] = [
     ],
   },
   {
-    heading: 'SOMETHING NEW, SOMETHING FRESH',
-    lead: 'This fitness app (i.e., current webpage), exists to help make the *habit* of exercising stress-free and ~fun~. For example:',
-    bullets: [
-      { lead: 'Week! Automate!', rest: "It generates a detailed plan of the exercises you'd need to do per day, along with their recommended reps and sets. The plan is different for everyone and takes into account stuff like equipment availability, fitness goal, and lifting experience." },
-      { lead: 'Dear Diary', rest: "The webpage saves the daily logged daily on your browser cache (i.e., completely private). Your data is then used to prepare the next week's plan with your previous lifting score, weighted differently for de-load periods etc. Your personal progress can be viewed in ✨ cute ✨ graphs." },
-      { lead: 'ADHD Unfriendly', rest: 'There is an optional feature that allows a clouflare bot to send you notifications and reminders (e.g., leg day today, pray). There are also other optional features, such as: (a) when you successfully complete workout sessions, your spent calories are gained as currency used to unlock cool stuff. In the days where you flop and skip gym, You Will. Be. Dealt. With. 😡' },
-    ],
-  },
-  {
     heading: 'Some Exposé',
     lead: "Feel free to skip this slide, but here's why I made this:",
     bullets: [
       { lead: 'Death to Cashgrabs', rest: "Realistically, most beginners don't have 150$/session to drop for personal training. Access to a structured fitness plan is kind of gatekept, which makes it hard for anyone to distinguish what's true out there and what's bullshit. There's a LOT of bullshit (i.e., 'broscience' isn't peer-reviewed -> trash 🧹, garbage 🗑️, dumpster 🚮). The goal here is to make something free & open-source that can provide anyone with the tools and frameworks needed to take fitness in their own hands. Every claim has been scientifically verified and my reference sources are provided in the footer of the corresponding page. " },
       { lead: 'Coach, not Couch', rest: "If you lift alone, you know it's hard to actually pace yourself and maintain proper rest time between sets. To that end, I included fast-paced games to keep you company while you wait. Other examples of gamification include: (a) a gatcha game and (b) an Atlas with unlockable trivia." },
       { lead: 'Credits', rest: 'This has (mostly) been a solo project and was originally meant to be used only by me, so it might feel a bit personalized at times (sry & please leave feedback).  Everything here was reviewed by me and some kind souls who currently do personal training for a living (if u see this i </3 u). In terms of asset credits: I created the development plan, features and hand-drew the pixelart. Agentic Coding was used to get it up and running.' },
+    ],
+  },
+  {
+    heading: 'SOMETHING NEW, SOMETHING FRESH',
+    lead: 'This fitness app (i.e., current webpage), exists to help make the *habit* of exercising stress-free and ~fun~. For example:',
+    bullets: [
+      { lead: 'Week! Automate!', rest: "It generates a detailed plan of the exercises you'd need to do per day, along with their recommended reps and sets. The plan is different for everyone and takes into account stuff like equipment availability, fitness goal, and lifting experience." },
+      { lead: 'Dear Diary', rest: "The webpage saves the daily logged daily on your browser cache (i.e., completely private). Your data is then used to prepare the next week's plan with your previous lifting score, weighted differently for de-load periods etc. Your personal progress can be viewed in ✨ cute ✨ graphs." },
+      { lead: 'ADHD Unfriendly', rest: 'There is an optional feature that allows a clouflare bot to send you notifications and reminders (e.g., leg day today, pray). There are also other optional features, such as: (a) when you successfully complete workout sessions, your spent calories are gained as currency used to unlock cool stuff. In the days where you flop and skip gym, You Will. Be. Dealt. With. 😡' },
     ],
   },
   {

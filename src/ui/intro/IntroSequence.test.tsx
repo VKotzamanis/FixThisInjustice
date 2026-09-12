@@ -82,10 +82,11 @@ describe('IntroSequence', () => {
 
   it('renders a marked word bold, showing no asterisk, part-typed and whole', () => {
     render(<IntroSequence />);
-    advance();
-    advance(); // Slide 3: the only slide whose lead carries a mark today.
-    const lead = INTRO_SLIDES[2]?.lead ?? '';
-    expect(lead).toContain('*habit*');
+    // By content, not position: the owner reorders slides in the editor.
+    const target = INTRO_SLIDES.findIndex((slide) => slide.lead?.includes('*habit*') ?? false);
+    expect(target).toBeGreaterThan(0);
+    for (let i = 0; i < target; i += 1) advance();
+    const lead = INTRO_SLIDES[target]?.lead ?? '';
 
     // A prefix that stops INSIDE the marked word: the state every marked word types through.
     const cut = lead.indexOf('*habit*') + '*hab'.length;
