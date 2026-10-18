@@ -59,8 +59,10 @@
   outline: none;
 }
 
+/* Ink focus rings in this file, where they were pink: a pink ring on the lime page is 1.41:1, under
+ * SC 1.4.11's 3:1 for the mark that shows focus; ink is 10.91:1. Outlines take no layout space. */
 .wiz .wiz-heading:focus-visible {
-  outline: 2px solid var(--accent, #a3e635);
+  outline: 2px solid var(--line-2);
   outline-offset: 2px;
 }
 
@@ -168,12 +170,14 @@
   margin-top: 1.5rem;
 }
 
+/* The 1 px edge is ink, where it was pink: pink on the lime page is 1.41:1, under SC 1.4.11's 3:1
+ * for a control's boundary; ink is 10.91:1. Same width, so nothing moves. */
 .wiz button {
   flex: 1 1 0;
   min-height: 2.75rem;
   color: inherit;
   background: var(--bg-2, #13161a);
-  border: 1px solid var(--accent, #a3e635);
+  border: 1px solid var(--line-2);
   font-family: inherit;
   font-size: 16px;
   letter-spacing: 0.06em;
@@ -301,7 +305,7 @@
 }
 
 .rq label.rq-answer:focus-within {
-  outline: 2px solid var(--accent, #a3e635);
+  outline: 2px solid var(--line-2);
   outline-offset: 2px;
 }
 
@@ -341,7 +345,7 @@
   min-height: 2.75rem; /* 44 px */
   color: inherit;
   background: var(--bg-2, #13161a);
-  border: 1px solid var(--accent, #a3e635);
+  border: 1px solid var(--line-2); /* ink, as `.wiz button`: pink was 1.41:1 on lime */
   font: inherit;
   font-size: 16px;
   letter-spacing: 0.06em;
@@ -562,14 +566,20 @@
   cursor: pointer;
 }
 
+/*
+ * Selected: the pink fill inside the same 2 px ink edge, with ink type. The edge and the type were
+ * pink and lime before: a pink edge on the lime page and lime type on the pink fill are both
+ * 1.41:1. Ink on pink is 7.75:1 and the ink edge on lime 10.91:1. The fill is not the only cue:
+ * the native radio or checkbox inside the label shows its own checked mark.
+ */
 .wiz-glyph:has(input:checked) {
-  border-color: var(--accent);
+  border-color: var(--line-2);
   background: var(--accent);
-  color: var(--bg);
+  color: var(--ink);
 }
 
 .wiz-glyph:has(input:focus-visible) {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--line-2);
   outline-offset: 2px;
 }
 
@@ -711,8 +721,13 @@
   padding: 0.25rem 0;
   background: none;
   border: none;
-  color: var(--accent, #a3e635);
+  /* Ink type with a pink underline, as train.css's `.vmod-link`: pink type on lime is 1.41:1. The
+     underline, not the colour, is what marks the link (SC 1.4.1). */
+  color: var(--ink);
   text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.25em;
   text-align: left;
   letter-spacing: normal;
   cursor: pointer;
@@ -721,9 +736,9 @@
 /*
  * One inlined drawing (src/ui/setup/setupArt.tsx). The art paints with `currentColor`, so its
  * colour is set here, once, as ink: 10.9:1 on the lime ground (tokens.css --lime against --ink).
- * Set explicitly rather than inherited because a selected `.wiz-glyph` turns its own text to
- * `--bg` on `--accent` (lime on pink, 1.41:1), and a drawing that followed it would all but
- * vanish on selection; ink on the pink fill is 7.75:1. The box sizes come from the frame each
+ * Set explicitly rather than inherited: a selected `.wiz-glyph` once turned its own text to `--bg`
+ * on `--accent` (lime on pink, 1.41:1; ink since 2026-10-18), and a drawing that followed it
+ * would have all but vanished; ink on the pink fill is 7.75:1. The box sizes come from the frame each
  * drawing sits in; the SVG fills it, centred and letterboxed by its default
  * preserveAspectRatio (xMidYMid meet).
  */
@@ -829,16 +844,18 @@
   line-height: 1.5;
 }
 
+/* A 2 px ink ring 4 px inside the edge: a 1 px lime gap keeps it apart from the 1 px ink border, so
+ * focus reads as a second line rather than one pixel more border. It was 1 px pink, 1.41:1. */
 .wiz-modal:focus-visible {
-  outline: 1px solid var(--accent, #a3e635);
-  outline-offset: -2px;
+  outline: 2px solid var(--line-2);
+  outline-offset: -4px;
 }
 
 /*
  * High contrast by fill inversion, never a brightness shift (00-CONTEXT accessibility rule).
- * `right`, not `left`, per r2.12(i). "Bold and stand out" is the 3 px border and the 700 weight:
- * the fill was already the accent and the ink already the page ground, which is the highest
- * contrast pair each skin has.
+ * `right`, not `left`, per r2.12(i). "Bold and stand out" is the 3 px border and the 700 weight.
+ * The glyph is ink on the pink fill, 7.75:1. It was `--bg`, which was ink on the retired dark
+ * skins and is lime on limelight: lime on pink, 1.41:1.
  */
 .wiz-modal-close {
   position: absolute;
@@ -847,7 +864,7 @@
   min-width: 2.75rem; /* 44 px */
   min-height: 2.75rem; /* 44 px */
   background: var(--accent, #a3e635);
-  color: var(--bg, #0a0b0c);
+  color: var(--ink);
   border: 3px solid var(--text, #dde3ea);
   font-size: 1.25rem;
   font-weight: 700;
@@ -894,9 +911,11 @@
   margin-top: 0;
 }
 
-/* The sex term, highlighted per the brief. var(--accent), never a hex literal. */
+/* The sex term, highlighted per the brief: ink on a pink highlight fill, 7.75:1. It was pink type on
+ * the lime modal, 1.41:1. The weight carries the highlight where an engine paints no MathML fill. */
 .wiz-mathml-term {
-  color: var(--accent, #a3e635);
+  color: var(--ink);
+  background: var(--accent);
   font-weight: 700;
 }
 
@@ -995,18 +1014,20 @@
  * r2.11: the name box takes the skin's own theme, "just to distinguish it aesthetically and make
  * it more 'fun'." STYLE ONLY: nothing here alters the value, which is the user's own text.
  *
- * The display face is `--sans`, which is the skin's display cut (Archivo on limelight, Space Mono
- * on board, Geist on clinical), and the outline is `--accent`, which is that skin's own accent
- * rather than a colour named here. Never a hex literal, for the reason every other rule in this
- * file gives: a colour that reads on one ground can be invisible on another.
+ * The display face is `--sans`, the skin's display cut (Archivo on limelight). The theme is the
+ * skin's hard pink offset block, the one `.ll-display` and the rest game carry; the type and the
+ * 2 px edge are ink. They were pink: pink type and a pink edge on the lime page are both 1.41:1,
+ * under 4.5:1 for the typed name and SC 1.4.11's 3:1 for the box's boundary. Ink is 10.91:1. A
+ * shadow takes no layout space, so the box keeps its size.
  */
 .wiz input.wiz-name {
   font-family: var(--sans, ui-sans-serif, system-ui, sans-serif);
   font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
   font-weight: 700;
   letter-spacing: 0.02em;
-  color: var(--accent);
-  border: 2px solid var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--line-2);
+  box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0 var(--pink);
 }
 
 /*

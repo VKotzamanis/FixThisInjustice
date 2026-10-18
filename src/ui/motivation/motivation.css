@@ -25,9 +25,11 @@
   font-family: var(--mono);
 }
 
+/* Ink focus rings on the lime card, where they were pink (1.41:1, under SC 1.4.11's 3:1); ink is
+ * 10.91:1. The card's own ring sits 4 px inside its 1 px ink edge, so a lime gap separates the two. */
 .mmod:focus-visible {
-  outline: 1px solid var(--accent);
-  outline-offset: -2px;
+  outline: 2px solid var(--line-2);
+  outline-offset: -4px;
 }
 
 /*
@@ -68,7 +70,7 @@
 }
 
 .mmod-video:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--line-2);
   outline-offset: 2px;
 }
 
@@ -95,6 +97,6 @@
 }
 
 .mmod-dismiss:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--line-2);
   outline-offset: 2px;
 }

@@ -97,6 +97,10 @@ export default defineConfig({
         // foil's reduced-motion rule are CSS guarantees, so src/ui/views/AtlasView.test.tsx reads
         // the sheet as text through ?raw. Unanchored for the query, as the tokens.css entry above.
         /atlas\.css(\?|$)/,
+        // Any sheet read as TEXT (2026-10-18, the pink-on-lime sweep): src/ui/styles/
+        // limeContrast.test.ts globs every stylesheet under src through ?raw. Anchored on the
+        // query, so a plain `import './x.css'` stays stubbed and no suite gains injected styles.
+        /\.css\?raw$/,
       ],
     },
   },

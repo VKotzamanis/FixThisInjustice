@@ -112,12 +112,15 @@
   flex: none;
 }
 
+/* The 1 px edge is ink, where it was pink: pink on the lime ground is 1.41:1, under SC 1.4.11's
+ * 3:1 for a control's boundary; ink is 10.91:1. Same width, so no button changes size. Buttons on
+ * the black panels (rest sign, rest game, Atlas) set their own edges. */
 .view button {
   width: 100%;
   min-height: 2.75rem;
   color: inherit;
   background: var(--bg-2, #13161a);
-  border: 1px solid var(--accent, #a3e635);
+  border: 1px solid var(--line-2);
   font-family: inherit;
   font-size: 16px;
   letter-spacing: 0.06em;
@@ -421,8 +424,10 @@
   border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
 }
 
+/* The next session's left rule is ink (10.91:1 on lime), where it was pink (1.41:1, under SC
+ * 1.4.11's 3:1 for a state mark). The pink "Next" sticker beside its name carries the word. */
 .view.plan .plan-session.is-next {
-  border-left: 2px solid var(--accent, #a3e635);
+  border-left: 2px solid var(--line-2);
   padding-left: 0.6rem;
 }
 

@@ -8,11 +8,11 @@
 // record below is typed `Record<SpecimenCategory, string>`, so a category added to
 // src/content/specimenCards.ts without a glyph is a compile error here, not a blank card.
 //
-// INLINED, NOT LINKED. Each file is imported as text (`?raw`) and placed in the DOM, so its
+// INLINED, NOT LINKED. Each file is imported as text (`?raw`) and placed in the DOM through
+// InlineArt (src/ui/components/InlineArt.tsx, shared with the setup wizard), so its
 // `fill="currentColor"` takes the colour of the element around it: the panel's lime on a card.
-// An <img> of the same file would paint the SVG's own black, because currentColor does not
-// cross an image boundary. The markup is the bundled file itself, fixed at build time; no
-// user-supplied or stored text ever reaches `dangerouslySetInnerHTML` here.
+// The markup is the bundled file itself, fixed at build time; no user-supplied or stored text
+// ever reaches it.
 //
 // The specimen toast (src/ui/components/ToastQueue.tsx) is meant to carry the same glyph
 // (styling survey item 8); it is not wired from this file's task and imports CategoryGlyph when
@@ -28,6 +28,7 @@ import nutrition from '../../assets/art/glyph-nutrition.svg?raw';
 import recovery from '../../assets/art/glyph-recovery.svg?raw';
 import supplements from '../../assets/art/glyph-supplements.svg?raw';
 import training from '../../assets/art/glyph-training.svg?raw';
+import { InlineArt } from '../components/InlineArt';
 
 /** Each category's glyph, as SVG markup (viewBox 0 0 480 480, currentColor). */
 export const CATEGORY_GLYPH: Readonly<Record<SpecimenCategory, string>> = {
@@ -51,11 +52,10 @@ export function CategoryGlyph(props: {
   className: string;
 }): ReactElement {
   return (
-    <span
+    <InlineArt
+      markup={CATEGORY_GLYPH[props.category]}
+      data={{ 'data-glyph': props.category }}
       className={props.className}
-      data-glyph={props.category}
-      aria-hidden="true"
-      dangerouslySetInnerHTML={{ __html: CATEGORY_GLYPH[props.category] }}
     />
   );
 }

@@ -52,9 +52,16 @@
   cursor: not-allowed;
 }
 
+/*
+ * The seal is the pink sticker (stylize survey item 2): pink fill, ink type, ink edge. It was pink
+ * type and a pink border on the lime panel, 1.41:1 for both. Ink on pink is 7.75:1 and the ink
+ * edge meets the lime panel at 10.91:1, so the button is told from Cancel by its fill and its word,
+ * and its boundary clears SC 1.4.11's 3:1. The border width is `.capsule-action`'s, unchanged.
+ */
 .capsule-seal {
-  border-color: var(--accent, #a3e635);
-  color: var(--accent, #a3e635);
+  background: var(--accent);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 
 .capsule-panel-bg {

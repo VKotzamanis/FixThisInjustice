@@ -54,20 +54,26 @@
   animation: intro-fade-out 180ms ease-in both;
 }
 
+/*
+ * The slide heading always carries `.intro-highlight` (IntroSequence.tsx), so its type sits on
+ * the white --highlight-bg. Both rules were --accent: pink on white is 2.71:1 (computed in
+ * src/ui/styles/limeContrast.test.ts), under the 4.5:1 this 1rem type needs, and pink on the lime
+ * page around it is 1.41:1. Ink on white is 21:1.
+ */
 .intro-heading {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--accent, #a3e635);
+  color: var(--ink);
 }
 
 .intro-highlight {
   display: inline-block;
   width: fit-content;
   padding: 0.2rem 0.35rem;
-  color: var(--accent);
+  color: var(--ink);
   background: var(--highlight-bg);
 }
 

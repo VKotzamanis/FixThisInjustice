@@ -12,14 +12,15 @@ import tapeNeck from '../../assets/art/tape-neck.svg?raw';
 import tapeAbdomenMale from '../../assets/art/tape-abdomen-male.svg?raw';
 import tapeAbdomenFemale from '../../assets/art/tape-abdomen-female.svg?raw';
 import tapeHip from '../../assets/art/tape-hip.svg?raw';
+import { InlineArt } from '../components/InlineArt';
 
 /*
  * The setup wizard's art: the owner's drawings in src/assets/art/ (approved 2026-10-18, survey
  * item 4; rows in docs/design/2026-09-04-icon-register.csv). Each file is inlined as text (`?raw`)
- * so its `fill="currentColor"` takes the colour of the element it sits in; an <img> would paint
- * it black whatever the theme. The markup is the build's own file, never user input, which is why
- * it may go through dangerouslySetInnerHTML (setupArt.test.ts asserts it carries no script, event
- * handler or link).
+ * through InlineArt (src/ui/components/InlineArt.tsx, shared with the Atlas) so its
+ * `fill="currentColor"` takes the colour of the element it sits in; an <img> would paint it black
+ * whatever the theme. The markup is the build's own file, never user input (setupArt.test.ts
+ * asserts it carries no script, event handler or link).
  */
 
 /** Every named icon the wizard draws, keyed by its icon-register row id. */
@@ -115,13 +116,12 @@ export function SetupArt(props: {
   style?: CSSProperties | undefined;
 }): JSX.Element {
   return (
-    <span
-      className={props.className === undefined ? 'wiz-art' : `wiz-art ${props.className}`}
-      data-art={props.id}
-      aria-hidden="true"
-      style={props.style}
+    <InlineArt
       // Trimmed: the files end in whitespace after </svg>, which would add a text node.
-      dangerouslySetInnerHTML={{ __html: props.markup.trim() }}
+      markup={props.markup.trim()}
+      data={{ 'data-art': props.id }}
+      className={props.className === undefined ? 'wiz-art' : `wiz-art ${props.className}`}
+      style={props.style}
     />
   );
 }
