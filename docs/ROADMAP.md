@@ -48,6 +48,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - S3 `@media (max-width:560px) .wiz-row` never applies (`.wiz .wiz-row` outranks it); wizard radios keep browser blue.
 - S4 Fixture `scripts/alpha-fixture.mjs:134` puts sessions off slot weekdays (Fri/Sun/Tue vs Mon/Wed/Fri), so review screenshots of Log look empty. Log grid shows an unopened past slot day as "not planned", not "missed": owner call.
 - S5 Precache grew to ~1,030 KiB (+141) mostly from inlined SVG; lazy-load the chart art if size matters.
+- S7 2026-10-18 later: her sprite sheets replace the pink blob (Today, week stamp); Train/Log decluttered; warm-up notice once per profile; per-card Atlas icons (37, lazy, precache now ~1.19 MB). Atlas shows no category since the glyphs left (needs owner wording for a text label); glyph-*.svg kept unused.
 - S6 Specimen toast could show the category glyph (`CategoryGlyph`). `INTRO_FIGURE` in `src/content/introSlides.ts` is now unrendered: owner decides whether to delete it.
 
 ## 4. Fun (want, all)
