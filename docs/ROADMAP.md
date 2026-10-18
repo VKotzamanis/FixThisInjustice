@@ -21,7 +21,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - L5 Programme follows Settings: changing equipment, days, goal or experience regenerates/updates the plan. Today `generatePlan` has one caller, the wizard (`src/ui/setup/SetupWizard.tsx`), reachable only via Wipe All.
 - L6 (design) Open-ended programme, no length input. Owner ask: build the next block from what was logged ("one training ends -> create the next one based on the data logged"). Prior design `docs/design/programme-horizon.md` (copy cycle 1 forward) does NOT meet that ask; `docs/design/jit-scheduler-brief.md` is closer. Remove the wizard `programme` step; wizard tests navigate by counting `next()` presses.
 - L7 (design) After the goal: switch to maintenance. Keep the gym habit, stop weight loss (energy target to maintenance).
-- L8 RPE, one tap per set (e.g. Easy / Solid / Hard / Max), and progression uses it. Anchor: Zourdos 2016, RPE 10 = 0 reps in reserve, 9 = 1 (`docs/private/evidence/content-peer-review.md` line ~399). Schema field exists (`src/domain/schema.ts`, `rpe`), nothing writes it (`src/ui/views/train/ExerciseCard.tsx` `rpe: null`).
+- L8 DONE 2026-10-18: one tap per set (Easy 7 / Solid 8 / Hard 9 / Max 10, `src/domain/training/effort.ts`); a top-of-range set marked Max holds the load (ACSM 2009 + Zourdos 2016, `src/domain/training/progression.ts` `showsRepetitionInReserve`). Not yet shown in LogView, export summary or last-session line.
 - L9 Form videos that play. All 40 `videoQuery` in `src/domain/plan/library.ts` are search text, none an 11-char id, so the embed never runs. 9 of 40 exercises lack form cues.
 - L10 Re-measure body fat after setup (only writer of `baselineBodyFatPct` is the wizard).
 

@@ -56,3 +56,5 @@ Agent doc. Change today's session while training: edit a logged set (L1), swap (
 
 ## Not in scope
 - RPE (L8), plan regeneration (L5), editing past sessions from Log, logged-volume tally.
+
+- Update 2026-10-18: L8 shipped. Effort (`rpe`) is set by one tap after logging and edited via the L1 Edit flow; see ROADMAP L8.
