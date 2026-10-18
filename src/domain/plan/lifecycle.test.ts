@@ -6,10 +6,18 @@ import { describe, expect, it } from 'vitest';
 import { EXERCISES } from './library';
 import { CARDIO_EXERCISE_IDS, generatePlan, PLAN_WEEKS_MAX, PLAN_WEEKS_MIN } from './generator';
 import { SPLIT_TEMPLATES, type SessionsPerWeek } from './templates';
-import { planIncludesCardio, programmeInput, sameProgramme } from './lifecycle';
+import {
+  massDirection,
+  massTargetReached,
+  nextProgrammeGoal,
+  planIncludesCardio,
+  programmeInput,
+  sameProgramme,
+} from './lifecycle';
 import { makeProfile } from '../../test/fixtures';
+import { targetDateFeasibility } from '../nutrition';
 import { PlanTemplateSchema } from '../schema';
-import type { EquipmentAccess, PlanTemplate } from '../types';
+import type { EquipmentAccess, GoalKind, PlanTemplate, Profile } from '../types';
 
 const DAY_COUNTS: SessionsPerWeek[] = [2, 3, 4, 5, 6];
 const ACCESS: EquipmentAccess[] = [
@@ -147,5 +155,75 @@ describe('sameProgramme', () => {
       });
     }
     expect(sameProgramme(stored, generatePlan(programmeInput(profile, stored), EXERCISES))).toBe(true);
+  });
+});
+
+/*
+ * ROADMAP L7: after the goal, maintenance. The rule is stated in docs/design/programme-lifecycle.md
+ * ("Goal reached") and uses no coefficient: the stored target mass, the latest logged mass, and
+ * the direction the goal moves body mass in.
+ */
+describe('massDirection', () => {
+  it('reads the direction off the goal axes: fat loss down, muscle gain up', () => {
+    expect(massDirection('fat-loss')).toBe('down');
+    expect(massDirection('muscle-gain')).toBe('up');
+    expect(massDirection('recomposition')).toBe('held');
+    expect(massDirection('maintenance')).toBe('held');
+  });
+
+  it('calls a goal mass-held exactly where the nutrition engine holds energy at TDEE', () => {
+    const goals: GoalKind[] = ['fat-loss', 'muscle-gain', 'recomposition', 'maintenance'];
+    for (const goal of goals) {
+      const feasibility = targetDateFeasibility({
+        goal,
+        currentMassKg: 90, // [kg]
+        targetMassKg: 80, // [kg]
+        weeks: 10, // [week]
+      });
+      const engineHolds = !feasibility.assessable && feasibility.gap === 'mass-held';
+      expect({ goal, held: massDirection(goal) === 'held' }).toEqual({ goal, held: engineHolds });
+    }
+  });
+});
+
+describe('massTargetReached and nextProgrammeGoal', () => {
+  const goalOf = (kind: GoalKind, targetMassKg: number | null): Profile['goal'] => ({
+    kind,
+    targetMassKg, // [kg]
+    targetBodyFatPct: null,
+    targetDate: null,
+  });
+
+  it('reaches a fat-loss target at or below it', () => {
+    expect(massTargetReached(goalOf('fat-loss', 85), 85)).toBe(true); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), 84.9)).toBe(true); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), 85.1)).toBe(false); // [kg]
+  });
+
+  it('reaches a muscle-gain target at or above it', () => {
+    expect(massTargetReached(goalOf('muscle-gain', 90), 90)).toBe(true); // [kg]
+    expect(massTargetReached(goalOf('muscle-gain', 90), 89.9)).toBe(false); // [kg]
+  });
+
+  it('never reaches a goal that holds mass, a missing target, or no weigh-in', () => {
+    expect(massTargetReached(goalOf('recomposition', 80), 70)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('maintenance', 80), 80)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', null), 70)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), null)).toBe(false);
+  });
+
+  it('defaults the next goal to maintenance only when the target was reached', () => {
+    expect(nextProgrammeGoal(goalOf('fat-loss', 85), 84)).toEqual({
+      goal: 'maintenance',
+      targetReached: true,
+    });
+    expect(nextProgrammeGoal(goalOf('fat-loss', 85), 86)).toEqual({
+      goal: 'fat-loss',
+      targetReached: false,
+    });
+    expect(nextProgrammeGoal(goalOf('recomposition', 85), 80)).toEqual({
+      goal: 'recomposition',
+      targetReached: false,
+    });
   });
 });

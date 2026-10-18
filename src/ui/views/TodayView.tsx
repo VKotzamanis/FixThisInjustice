@@ -3,7 +3,8 @@ import { FORMAT, type CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
 import { isAfterProgramme } from '../../domain/schedule/weekly';
-import type { PlanPause, WeeklyReview } from '../../domain/types';
+import { nextProgrammeGoal } from '../../domain/plan/lifecycle';
+import type { GoalKind, PlanPause, WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
 import { Illustration } from '../../skins/limelight/Illustration';
 import { useAppStore, type AppStore } from '../../store';
@@ -16,9 +17,10 @@ import {
   useUpcoming,
   useWeeklyReviews,
 } from '../../store/scheduleSelectors';
-import { useActiveProfile } from '../../store/selectors';
+import { latestBodyMassEntry, useActiveProfile } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
 import { Intervention } from '../components/Intervention';
+import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
 import { TimeCapsule } from '../components/TimeCapsule';
 import { WeekStamp } from '../components/WeekStamp';
@@ -178,6 +180,12 @@ export function TodayView(): JSX.Element {
   const [skipOpen, setSkipOpen] = useState(false);
   const [skipReason, setSkipReason] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
+  // ROADMAP B1b/L7: the goal chosen for the next programme while its panel is open, else null.
+  const [nextGoal, setNextGoal] = useState<GoalKind | null>(null);
+  // The stored entry itself (stable identity), so the selector cannot loop the subscription.
+  const latestWeighIn = useAppStore((s) =>
+    s.activeProfileId === null ? null : latestBodyMassEntry(s, s.activeProfileId),
+  );
 
   if (profile === null || plan === null || cursor === null || day === null) {
     return (
@@ -207,6 +215,11 @@ export function TodayView(): JSX.Element {
   const graded = reviews.filter((r) => !isAfterProgramme(r.weekStart, cursor));
   const lastReview: WeeklyReview | null =
     graded.length === 0 ? null : (graded[graded.length - 1] ?? null);
+  /*
+   * ROADMAP L7: the goal Start Next Programme preselects, maintenance once the body-mass target
+   * was reached (src/domain/plan/lifecycle.ts states the rule). Read only by the finished hero.
+   */
+  const suggestion = nextProgrammeGoal(profile.goal, latestWeighIn?.massKg ?? null); // [kg]
 
   /*
    * The ticker's lines (P8 Task 14, round-three plan section 2.4). Every line is a string a
@@ -515,7 +528,52 @@ export function TodayView(): JSX.Element {
             {c('button.resumePlan')}
           </button>
         )}
+        {/* ROADMAP B1b: a finished programme offers the next one, from today. */}
+        {finished && nextGoal === null && (
+          <button
+            type="button"
+            onClick={() => {
+              setNextGoal(suggestion.goal);
+            }}
+          >
+            {c('button.startNextProgramme')}
+          </button>
+        )}
       </div>
+
+      {finished && nextGoal !== null && (
+        <RestartProgramme
+          titleKey="button.startNextProgramme"
+          profileId={profileId}
+          today={today}
+          choice={{ goal: nextGoal }}
+          onClose={() => {
+            setNextGoal(null);
+          }}
+        >
+          <div className="view-field">
+            <label htmlFor="next-programme-goal">{c('label.goal')}</label>
+            <select
+              id="next-programme-goal"
+              value={nextGoal}
+              onChange={(e) => {
+                const next = GOAL_OPTIONS.find((o) => o.value === e.target.value);
+                if (next !== undefined) setNextGoal(next.value);
+              }}
+            >
+              {GOAL_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {c(o.labelKey)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* L7: one sentence, only when the default was moved to maintenance. */}
+          {suggestion.targetReached && (
+            <p className="view-note">{c('advice.targetReachedMaintenance')}</p>
+          )}
+        </RestartProgramme>
+      )}
 
       {skipOpen && (
         <div className="today-skip view-field">
@@ -579,9 +637,12 @@ export function TodayView(): JSX.Element {
        * answered. The two predicates are disjoint on the stored delta, so "one of them, never
        * both" is a property of the components rather than a branch here that could drift from
        * them. Both render nothing while the week is still owed its popup, which P6's modal owns.
+       *
+       * Not after Programme Complete (ROADMAP B1b): the last review stood there until a new plan
+       * started, which nothing on screen offered; Start Next Programme above takes its place.
        */}
-      <WeekStamp review={lastReview} />
-      <Intervention review={lastReview} />
+      {!finished && <WeekStamp review={lastReview} />}
+      {!finished && <Intervention review={lastReview} />}
 
       {/*
        * P8 Task 7's capsule, on the screen the user opens daily. `now` is this render's single

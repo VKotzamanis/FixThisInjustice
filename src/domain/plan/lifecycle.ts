@@ -3,7 +3,8 @@
 // The programme's lifecycle: replacing the running plan with one regenerated from today
 // (ROADMAP L5, B1b, L7; docs/design/programme-lifecycle.md). Pure; the store applies it.
 
-import type { AppState, GoalKind, PlannedSession, PlanTemplate, Profile } from '../types';
+import { GOAL_AXES_BY_KIND } from '../types';
+import type { AppState, GoalKind, Kg, PlannedSession, PlanTemplate, Profile } from '../types';
 import { CARDIO_EXERCISE_IDS, PLAN_WEEKS_MAX, PLAN_WEEKS_MIN, type PlanInput } from './generator';
 import { SPLIT_TEMPLATES, type SessionsPerWeek } from './templates';
 
@@ -83,6 +84,59 @@ function canonical(v: unknown): string {
       .join(',')}}`;
   }
   return JSON.stringify(v) ?? 'undefined';
+}
+
+/**
+ * Which way a goal moves body mass, read off the goal axes (GOAL_AXES_BY_KIND, types.ts): losing
+ * fat while holding muscle is down (fat loss), holding fat while gaining muscle is up (muscle
+ * gain). Recomposition and maintenance hold mass: nutrition.ts energyPlan holds energy at TDEE
+ * for both (lifecycle.test.ts checks the two agree goal by goal).
+ */
+export type MassDirection = 'down' | 'up' | 'held';
+
+export function massDirection(kind: GoalKind): MassDirection {
+  const { fat, muscle } = GOAL_AXES_BY_KIND[kind];
+  if (fat === 'lose' && muscle === 'hold') return 'down';
+  if (fat === 'hold' && muscle === 'gain') return 'up';
+  return 'held';
+}
+
+/**
+ * Has the body-mass target been reached (ROADMAP L7)?
+ *
+ * True only for a goal that moves mass, with a stored target, and a logged weigh-in at or past
+ * the target in the goal's direction: at or below it for fat loss, at or above it for muscle
+ * gain. `latestMassKg` is the latest logged entry (latestBodyMassEntry); the setup baseline is not
+ * a weigh-in. No tolerance band: the app has no sourced figure for one.
+ *
+ * @param latestMassKg [kg] the latest logged body mass, or null when nothing is logged.
+ */
+export function massTargetReached(goal: Profile['goal'], latestMassKg: Kg | null): boolean {
+  const target = goal.targetMassKg; // [kg]
+  if (target === null || latestMassKg === null) return false;
+  switch (massDirection(goal.kind)) {
+    case 'down':
+      return latestMassKg <= target;
+    case 'up':
+      return latestMassKg >= target;
+    case 'held':
+      return false;
+  }
+}
+
+/**
+ * The goal Start Next Programme preselects: maintenance once the body-mass target was reached
+ * (the owner: "it shift to maintenance ... habit of gym going but not losing weight"), otherwise
+ * the current goal. A default only; the user picks the goal the next programme runs on.
+ *
+ * @param latestMassKg [kg] the latest logged body mass, or null when nothing is logged.
+ */
+export function nextProgrammeGoal(
+  goal: Profile['goal'],
+  latestMassKg: Kg | null,
+): { goal: GoalKind; targetReached: boolean } {
+  const targetReached = massTargetReached(goal, latestMassKg);
+  return { goal: targetReached ? 'maintenance' : goal.kind, targetReached };
 }
 
 /** One session's content, without its id or position. */

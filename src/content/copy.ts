@@ -685,7 +685,9 @@ export type CopyKey =
   | 'button.startProgramme'
   | 'advice.programmeDiffers'
   | 'advice.programmeRestart'
-  | 'advice.programmeLockedInSession';
+  | 'advice.programmeLockedInSession'
+  | 'button.startNextProgramme'
+  | 'advice.targetReachedMaintenance';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -2027,6 +2029,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.programmeRestart': 'Starts a new programme today. Logged sets, records and body mass stay.',
   // setPlan refuses to replace the schedule a session is being logged against.
   'advice.programmeLockedInSession': 'Finish or skip the session in progress first.',
+  // B1b: replaces the last week's review on Today once the programme is complete.
+  'button.startNextProgramme': 'Start Next Programme',
+  // L7: the goal-reached rule (latest weigh-in at or past the target mass, in the goal's
+  // direction) preselected Maintenance. The user can still pick another goal.
+  'advice.targetReachedMaintenance':
+    'Target body mass reached, so the next programme defaults to maintenance.',
 };
 
 /**

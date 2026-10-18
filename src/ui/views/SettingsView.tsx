@@ -13,11 +13,12 @@ import {
 } from '../../domain/dates';
 import { dailyBeverageTargetML, statedBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
-import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
+import type { ActivityLevel, Experience, Profile, UnitSystem } from '../../domain/types';
 import { displayLoad, formatBeverageTarget, toStoredLoad } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
+import { GOAL_OPTIONS } from '../components/RestartProgramme';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { InteractionSettings } from '../settings/InteractionSettings';
@@ -43,13 +44,6 @@ const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey }[] = [
   { value: 'novice', labelKey: 'option.experienceNovice' },
   { value: 'intermediate', labelKey: 'option.experienceIntermediate' },
   { value: 'advanced', labelKey: 'option.experienceAdvanced' },
-];
-
-const GOAL_OPTIONS: { value: GoalKind; labelKey: CopyKey }[] = [
-  { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
-  { value: 'muscle-gain', labelKey: 'option.goalMuscleGain' },
-  { value: 'recomposition', labelKey: 'option.goalRecomposition' },
-  { value: 'maintenance', labelKey: 'option.goalMaintenance' },
 ];
 
 /**

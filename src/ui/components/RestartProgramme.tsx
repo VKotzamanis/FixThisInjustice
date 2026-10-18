@@ -2,8 +2,21 @@ import { useState, type JSX, type ReactNode } from 'react';
 import type { CopyKey } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
 import type { ProgrammeChoice } from '../../domain/plan/lifecycle';
-import type { LocalDate } from '../../domain/types';
+import type { GoalKind, LocalDate } from '../../domain/types';
 import { useAppStore } from '../../store';
+
+/**
+ * The four goals, each with the copy key that names it, in the order Settings and Today list
+ * them. One list: Settings' Goal field and Today's next-programme goal name the same profile
+ * field and must not disagree on its wording. The KEY is stored, not the string, so a skin
+ * reaches it per render.
+ */
+export const GOAL_OPTIONS: readonly { value: GoalKind; labelKey: CopyKey }[] = [
+  { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
+  { value: 'muscle-gain', labelKey: 'option.goalMuscleGain' },
+  { value: 'recomposition', labelKey: 'option.goalRecomposition' },
+  { value: 'maintenance', labelKey: 'option.goalMaintenance' },
+];
 
 /**
  * The confirmation in front of restartProgramme (ROADMAP L5 and B1b,

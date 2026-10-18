@@ -885,3 +885,142 @@ describe('TodayView: the limelight voice', () => {
     ).toBeGreaterThanOrEqual(2);
   });
 });
+
+/*
+ * ROADMAP B1b and L7 (docs/design/programme-lifecycle.md). Once the programme is complete, Today
+ * stops showing the last week's review and offers the next programme instead, from today, with
+ * the goal defaulting to maintenance when the body-mass target was reached.
+ */
+describe('TodayView: after Programme Complete (B1b, L7)', () => {
+  function finished(): void {
+    setState({
+      ...useAppStore.getState(),
+      cursors: {
+        [PROFILE_ID]: {
+          planId: 'plan-1',
+          nextSessionIndex: TOTAL, // [sessions] clamped at plan length
+          startedOn: PREV_MONDAY,
+          completedOn: MONDAY,
+        },
+      },
+    });
+  }
+
+  /** A fat-loss goal with an 80 kg target and one weigh-in of `massKg`. */
+  function fatLossWeighedAt(massKg: number): void {
+    const s = useAppStore.getState();
+    const profile = s.profiles[PROFILE_ID];
+    if (profile === undefined) throw new Error('fixture: profile missing');
+    setState({
+      ...s,
+      profiles: {
+        [PROFILE_ID]: {
+          ...profile,
+          goal: { kind: 'fat-loss', targetMassKg: 80, targetBodyFatPct: null, targetDate: null }, // [kg]
+        },
+      },
+      bodyMass: {
+        [PROFILE_ID]: [
+          {
+            id: 'bm-1',
+            profileId: PROFILE_ID,
+            date: PREV_FRIDAY,
+            massKg, // [kg]
+            enteredUnit: 'metric',
+            bodyFatPct: null, // [%]
+            loggedAt: NOW_MS - 3 * DAY_MS, // [ms] epoch, UTC
+          },
+        ],
+      },
+    });
+  }
+
+  const nextPanel = (): HTMLElement =>
+    screen.getByRole('group', { name: copyFor('limelight', 'button.startNextProgramme') });
+
+  it('replaces the last week review with Start Next Programme', () => {
+    withReview(MET_WEEK);
+    finished();
+    render(<TodayView />);
+
+    expect(screen.getByText(copyFor('limelight', 'hero.programmeComplete'))).toBeTruthy();
+    expect(screen.queryByTestId('week-stamp')).toBeNull();
+    expect(screen.queryByTestId('intervention')).toBeNull();
+    expect(button('button.startNextProgramme')).toBeTruthy();
+  });
+
+  it('still shows the last week review while the programme runs', () => {
+    withReview(MET_WEEK);
+    render(<TodayView />);
+    expect(screen.getByTestId('week-stamp')).toBeTruthy();
+    expect(
+      screen.queryByRole('button', { name: copyFor('limelight', 'button.startNextProgramme') }),
+    ).toBeNull();
+  });
+
+  it('starts the next programme today on the current goal, keeping the old plan', () => {
+    finished();
+    render(<TodayView />);
+    fireEvent.click(button('button.startNextProgramme'));
+
+    const panel = nextPanel();
+    const goal = within(panel).getByLabelText(copyFor('limelight', 'label.goal'));
+    expect((goal as HTMLSelectElement).value).toBe('recomposition'); // the fixture's goal
+    expect(screen.queryByText(copyFor('limelight', 'advice.targetReachedMaintenance'))).toBeNull();
+    expect(within(panel).getByText(copyFor('limelight', 'advice.programmeRestart'))).toBeTruthy();
+
+    fireEvent.click(within(panel).getByRole('button', { name: copyFor('limelight', 'button.startProgramme') }));
+
+    const s = useAppStore.getState();
+    expect(s.cursors[PROFILE_ID]).toMatchObject({
+      nextSessionIndex: 0,
+      startedOn: MONDAY,
+      completedOn: null,
+    });
+    expect(s.cursors[PROFILE_ID]?.planId).not.toBe('plan-1');
+    expect(s.plans['plan-1']).toBeDefined();
+    expect(s.profiles[PROFILE_ID]?.goal.kind).toBe('recomposition');
+    expect(screen.queryByText(copyFor('limelight', 'hero.programmeComplete'))).toBeNull();
+  });
+
+  it('Cancel closes the panel and starts nothing', () => {
+    finished();
+    render(<TodayView />);
+    fireEvent.click(button('button.startNextProgramme'));
+    fireEvent.click(within(nextPanel()).getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
+
+    expect(useAppStore.getState().cursors[PROFILE_ID]?.planId).toBe('plan-1');
+    expect(button('button.startNextProgramme')).toBeTruthy();
+  });
+
+  it('defaults to maintenance and says so once the target body mass is reached (L7)', () => {
+    finished();
+    fatLossWeighedAt(79.5); // [kg] below the 80 kg target
+    render(<TodayView />);
+    fireEvent.click(button('button.startNextProgramme'));
+
+    const panel = nextPanel();
+    const goalSelect = within(panel).getByLabelText(copyFor('limelight', 'label.goal'));
+    expect((goalSelect as HTMLSelectElement).value).toBe('maintenance');
+    expect(within(panel).getByText(copyFor('limelight', 'advice.targetReachedMaintenance'))).toBeTruthy();
+
+    fireEvent.click(within(panel).getByRole('button', { name: copyFor('limelight', 'button.startProgramme') }));
+    const goal = useAppStore.getState().profiles[PROFILE_ID]?.goal;
+    expect(goal).toEqual({ kind: 'maintenance', targetMassKg: 80, targetBodyFatPct: null, targetDate: null });
+  });
+
+  it('keeps the goal when the target is not reached, and lets the user override the default', () => {
+    finished();
+    fatLossWeighedAt(81); // [kg] above the 80 kg target
+    render(<TodayView />);
+    fireEvent.click(button('button.startNextProgramme'));
+    const panel = nextPanel();
+    const goal = within(panel).getByLabelText(copyFor('limelight', 'label.goal'));
+    expect((goal as HTMLSelectElement).value).toBe('fat-loss');
+    expect(screen.queryByText(copyFor('limelight', 'advice.targetReachedMaintenance'))).toBeNull();
+
+    fireEvent.change(goal, { target: { value: 'muscle-gain' } });
+    fireEvent.click(within(panel).getByRole('button', { name: copyFor('limelight', 'button.startProgramme') }));
+    expect(useAppStore.getState().profiles[PROFILE_ID]?.goal.kind).toBe('muscle-gain');
+  });
+});
