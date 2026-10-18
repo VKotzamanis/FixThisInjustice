@@ -27,7 +27,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 
 ## 3. Loose ends (want)
 - N3 Home Screen icon still the previous app's W.CONSOLE logo (`public/icons/`). Owner supplies art.
-- N5 Remove the old-console import (`src/domain/migrations/v2.ts`, `src/ui/migration/`, ~3,900 lines incl. tests) once the owner confirms he no longer needs it. Drop.
+- N5 DONE 2026-10-18: old-console import removed (~4,000 lines). A device still holding `fti.console.v2` is ignored, never deleted. `ui.legacyMigration` stays in the v3 schema, unused.
 - N4 Daily notes: stored (`AppState.notes`), no UI. Drop: remove field with a coercion so old documents load (rule 7).
 
 - N7 Skin-removal leftovers (2026-10-18), owner wording first:

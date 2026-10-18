@@ -128,9 +128,9 @@ export function applyDeleteSet(
    * down. A counter that only ever rose drifted above the set list on every log-delete-log,
    * and the drift was permanent.
    *
-   * Clamped at zero rather than allowed negative: a document migrated from the legacy store
-   * has its counter recomputed from the set list (src/domain/migrations/v2.ts), and a set
-   * logged before that recount could still be deleted afterwards.
+   * Clamped at zero rather than allowed negative: documents migrated from the old console (an
+   * import removed 2026-10-18, ROADMAP N5) had their counter recomputed from the set list, and a
+   * set logged before that recount can still be deleted afterwards.
    */
   const inventory = inventoryOf(state.specimens, removed.profileId);
   const specimens = {
