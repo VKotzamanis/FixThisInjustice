@@ -290,6 +290,26 @@ describe('LogView compliance', () => {
     expect(rows.at(-1)).toContain('2026-03-02');
   });
 
+  it('draws no row for a week after the programme completed (ROADMAP B1)', () => {
+    // Completed on Wednesday 2026-02-11. The three later weeks hold no session to miss, and a
+    // "0 of 3 completed" row for each read as three missed weeks.
+    useAppStore.setState(
+      seed({
+        cursors: {
+          [PROFILE_ID]: {
+            planId: PLAN.id,
+            nextSessionIndex: 2,
+            startedOn: STARTED_ON,
+            completedOn: '2026-02-11',
+          },
+        },
+      }),
+    );
+    render(<LogView />);
+    const rows = screen.getAllByRole('rowheader').map((n) => n.textContent);
+    expect(rows).toEqual([FORMAT.complianceWeek('2026-02-09', 1, TARGET)]);
+  });
+
   it('says so before any week exists', () => {
     // No cursor and no availability: nothing has been scheduled, so there is nothing to grade.
     useAppStore.setState(seed({ cursors: {}, availability: {}, assignments: {} }));

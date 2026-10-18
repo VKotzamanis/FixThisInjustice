@@ -784,6 +784,32 @@ describe('TodayView: the week that has just closed', () => {
     expect(screen.queryByTestId('intervention')).toBeNull();
     expect(screen.queryByTestId('week-stamp')).toBeNull();
   });
+
+  it('ignores a stored miss for a week after the programme completed (ROADMAP B1)', () => {
+    // Builds before the fix stored a miss for every week after Programme Complete, and the
+    // user may already have dismissed its popup. Completed Friday 2026-08-28, so the stored
+    // week of 2026-08-31 is after the programme.
+    withSkin('limelight');
+    withReview(MISSED_WEEK);
+    setState({
+      ...useAppStore.getState(),
+      cursors: {
+        [PROFILE_ID]: {
+          planId: 'plan-1',
+          nextSessionIndex: TOTAL, // [sessions] clamped at plan length
+          startedOn: '2026-08-24',
+          completedOn: '2026-08-28',
+        },
+      },
+    });
+    render(<TodayView />);
+
+    expect(screen.queryByTestId('intervention')).toBeNull();
+    const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
+    expect(lines.map((node) => node.textContent)).toEqual([
+      FORMAT.planPositionLabel(TOTAL, TOTAL, '', SKIN_COPY.limelight),
+    ]);
+  });
 });
 
 describe('TodayView: the time capsule', () => {

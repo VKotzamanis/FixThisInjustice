@@ -430,6 +430,54 @@ describe('closeWeeks — idempotence and bounds', () => {
   });
 });
 
+/*
+ * ROADMAP B1. A finished programme has no target left to miss: the cursor stamps completedOn
+ * and stops, so every week after the one it completed in used to close as completed 0 of
+ * target, a miss, and the motivation popup fired on each. The week the programme completed in
+ * is still graded, on the same rule as any other week.
+ */
+describe('closeWeeks — programme completion', () => {
+  it('grades the week the programme completed in, and no week after it', () => {
+    let s = seed(TZ_ATHENS); // six sessions on Mon/Wed/Fri from PREV_MONDAY, 3 sessions/week
+    s = completeSession(s, PROFILE_ID, PREV_MONDAY, NOW_MS - 7 * DAY_MS); // [ms]
+    s = completeSession(s, PROFILE_ID, PREV_WEDNESDAY, NOW_MS - 5 * DAY_MS); // [ms]
+    s = completeSession(s, PROFILE_ID, PREV_FRIDAY, NOW_MS - 3 * DAY_MS); // [ms]
+    s = completeSession(s, PROFILE_ID, MONDAY, NOW_MS); // [ms]
+    s = completeSession(s, PROFILE_ID, '2026-09-09', NOW_MS + 2 * DAY_MS); // Wednesday [ms]
+    s = completeSession(s, PROFILE_ID, '2026-09-11', NOW_MS + 4 * DAY_MS); // Friday [ms]
+    expect(s.cursors[PROFILE_ID]?.completedOn).toBe('2026-09-11');
+
+    const out = closeWeeks(s, PROFILE_ID, NOW_MS + 28 * DAY_MS); // [ms] four weeks on
+    expect(reviews(out).map((r) => [r.weekStart, r.delta])).toEqual([
+      [PREV_MONDAY, 0],
+      [MONDAY, 0],
+    ]);
+  });
+
+  it('grades the completion week against the full target, as a miss when it fell short', () => {
+    // Two sessions, finished on Wednesday of the first week: 2 of 3 is a miss like any other.
+    let s = seedState({
+      labels: ['Push', 'Legs'],
+      weekdays: [...MWF],
+      weeklySessionTarget: 3,
+      startedOn: PREV_MONDAY,
+      timezone: TZ_ATHENS,
+    });
+    s = completeSession(s, PROFILE_ID, PREV_MONDAY, NOW_MS - 7 * DAY_MS); // [ms]
+    s = completeSession(s, PROFILE_ID, PREV_WEDNESDAY, NOW_MS - 5 * DAY_MS); // [ms]
+    expect(s.cursors[PROFILE_ID]?.completedOn).toBe(PREV_WEDNESDAY);
+
+    const out = closeWeeks(s, PROFILE_ID, NOW_MS + 28 * DAY_MS); // [ms]
+    expect(reviews(out)).toHaveLength(1);
+    expect(reviews(out)[0]).toMatchObject({
+      weekStart: PREV_MONDAY,
+      completed: 2, // [sessions]
+      delta: -1, // [sessions/week] completed − target
+      missHandled: false,
+    });
+  });
+});
+
 describe('closeWeeks — persistence', () => {
   it('produces reviews that round-trip through parseState', () => {
     const out = closeWeeks(seed(TZ_ATHENS), PROFILE_ID, NOW_MS + 28 * DAY_MS); // [ms]

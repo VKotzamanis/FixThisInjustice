@@ -22,6 +22,7 @@ import { FORMAT } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
 import { addDays, compareLocalDate, daysBetween, weekStart } from '../../domain/dates';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
+import { finalProgrammeWeek } from '../../domain/schedule/weekly';
 import type {
   BodyMassEntry,
   Exercise,
@@ -117,11 +118,17 @@ export function LogView(): ReactElement {
   // Compliance is a fact about a RUNNING programme, so the weeks come from the cursor's own
   // start date and from nothing else. Before a plan is set there is no target to be compliant
   // with, and grading the weeks since the profile was created would invent one.
+  //
+  // The grid ends at the week the programme completed in (ROADMAP B1), the bound closeWeeks
+  // grades to. A later week holds no session, and its "0 of N completed" row read as a miss.
+  // Hidden rather than relabelled: one bound, and no new copy for a row nobody needs.
   const startedOn = cursor?.startedOn ?? null;
-  const weekStarts = useMemo<LocalDate[]>(
-    () => (startedOn === null ? [] : weeksBetween(startedOn, today)),
-    [startedOn, today],
-  );
+  const finalWeek = finalProgrammeWeek(cursor);
+  const weekStarts = useMemo<LocalDate[]>(() => {
+    if (startedOn === null) return [];
+    const last = finalWeek !== null && compareLocalDate(finalWeek, today) < 0 ? finalWeek : today;
+    return weeksBetween(startedOn, last);
+  }, [startedOn, finalWeek, today]);
 
   const slotWeekdays = useMemo<IsoWeekday[]>(() => {
     const seen = new Set<IsoWeekday>();

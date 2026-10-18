@@ -550,14 +550,25 @@ describe('legacy migration offer', () => {
  * asserted here is that the shell mounts it, and mounts it OUTSIDE <main>, as the last child
  * of the CRT root: it is a modal over the whole app, not a panel inside the view area.
  *
- * The real clock is used, not a fake one. `pendingMotivation` measures its 14 day window
- * through `useMinuteClock`, and the fixtures are anchored to the profile's civil today and
- * offset by 1 and 20 days, so a run that straddles midnight moves both anchors together and
- * neither crosses the threshold. The plan fixture starts on a day still ahead of that clock,
- * so `useWeeklyClose` has no finished week to close and cannot rewrite what is seeded here.
+ * The clock is pinned to NOW_MS, Monday 2026-09-07 09:30 in Athens (ROADMAP B6). Only `Date`
+ * is faked: `useMinuteClock` and `useWeeklyClose` read Date.now(), while testing-library's
+ * waitFor keeps real timers. On the real clock this suite broke once the date passed the
+ * fixture's fixed plan start (MONDAY): `useWeeklyClose` then graded every week since it as 0
+ * of target, a miss inside the 14 day window, and the popup opened over the "not missed" case.
+ * Pinned, the plan starts on the clock's own Monday, so no week has finished and the closure
+ * cannot add to what is seeded here; the seeded week is the ISO week that ended yesterday.
  */
 describe('weekly-miss popup', () => {
-  const TODAY: LocalDate = todayLocal(TZ_ATHENS);
+  const TODAY: LocalDate = todayLocal(TZ_ATHENS, NOW_MS); // MONDAY
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW_MS); // [ms] epoch, UTC
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   /** A closed week three sessions short of its target, ending on the given civil day. */
   function miss(end: LocalDate): WeeklyReview {
@@ -614,6 +625,8 @@ describe('weekly-miss popup', () => {
 
     render(<App />);
 
+    // Premise: the weekly closure added no week of its own, so the seeded one is all there is.
+    expect(useAppStore.getState().weeklyReviews[PROFILE_ID]).toHaveLength(1);
     expect(screen.queryByTestId('motivation-video')).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
   });

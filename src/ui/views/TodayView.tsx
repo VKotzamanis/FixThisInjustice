@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react';
 import { FORMAT, type CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
+import { isAfterProgramme } from '../../domain/schedule/weekly';
 import type { PlanPause, WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
 import { Illustration } from '../../skins/limelight/Illustration';
@@ -200,9 +201,12 @@ export function TodayView(): JSX.Element {
   const position = FORMAT.planPosition(shown, total, '');
   const canRun = status === 'planned' || status === 'in-progress';
   // The week that closed most recently, or null while the plan is in its first week. The array
-  // is the store's own, sorted oldest first by closeWeeks().
+  // is the store's own, sorted oldest first by closeWeeks(). A stored week after the one the
+  // programme completed in is skipped: builds before ROADMAP B1's fix graded those as misses,
+  // and documents saved then still hold them.
+  const graded = reviews.filter((r) => !isAfterProgramme(r.weekStart, cursor));
   const lastReview: WeeklyReview | null =
-    reviews.length === 0 ? null : (reviews[reviews.length - 1] ?? null);
+    graded.length === 0 ? null : (graded[graded.length - 1] ?? null);
 
   /*
    * The ticker's lines (P8 Task 14, round-three plan section 2.4). Every line is a string a
