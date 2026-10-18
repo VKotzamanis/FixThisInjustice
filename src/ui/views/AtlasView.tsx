@@ -35,11 +35,14 @@
 //  - Counts come from FORMAT.atlasCount rather than a literal `${a}/${b}` in the view.
 //
 // COLLECTIBLE FACES (styling survey 2026-10-18, item 8). A drawn card, and its dialog, is a black
-// `.ll-panel` carrying its category glyph (src/ui/views/atlasArt.tsx) in the panel's lime. The
-// tier is a SHAPE as well as the word (atlas.css): common plain, uncommon a double lime rule,
-// rare a pink rule with the pink offset block and a one-shot foil sweep. A locked slot gains a
-// pixel question mark and nothing else, so the rule above about what it may say is unchanged:
-// no glyph, no category, in the text or in the markup. No word, count or control changed.
+// `.ll-panel` carrying the card's own icon (owner ruling 2026-10-18; src/ui/views/atlasArt.tsx,
+// CardIcon) in the panel's lime, loaded on demand into a box that is already its final size. The
+// icon replaced the category glyph, which was the only place a category showed in this view: no
+// category word is printed here, before or after. The tier is a SHAPE as well as the word
+// (atlas.css): common plain, uncommon a double lime rule, rare a pink rule with the pink offset
+// block and a one-shot foil sweep. A locked slot gains a pixel question mark and nothing else,
+// so the rule above about what it may say is unchanged: no icon, no category, in the text or in
+// the markup, and no icon file is requested for it. No word, count or control changed.
 
 import { useCallback, useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -56,7 +59,7 @@ import type { SpecimenInventory } from '../../domain/types';
 import { ModalShell } from '../components/ModalShell';
 import { prefersReducedMotion } from '../hooks/reducedMotion';
 import { useAppStore } from '../../store';
-import { CategoryGlyph, UnknownMark } from './atlasArt';
+import { CardIcon, UnknownMark } from './atlasArt';
 import './views.css';
 import './atlas.css';
 
@@ -111,7 +114,7 @@ function AtlasCardDialog(props: {
       onClose={props.onClose}
     >
       <div className="atlas-modal-head">
-        <CategoryGlyph category={card.category} className="atlas-modal-art ll-panel-accent" />
+        <CardIcon id={card.id} className="atlas-modal-art ll-panel-accent" />
         <div className="atlas-modal-heading">
           <div className="atlas-modal-rarity ll-panel-accent">{t(RARITY_LABEL[card.rarity])}</div>
           {/* The dialog's accessible name is the card, so the title carries the id. */}
@@ -227,10 +230,7 @@ export function AtlasView(): ReactElement {
                       setOpenId(card.id);
                     }}
                   >
-                    <CategoryGlyph
-                      category={card.category}
-                      className="atlas-card-art ll-panel-accent"
-                    />
+                    <CardIcon id={card.id} className="atlas-card-art ll-panel-accent" />
                     <span className="atlas-card-rarity ll-panel-accent">
                       {t(RARITY_LABEL[card.rarity])}
                     </span>

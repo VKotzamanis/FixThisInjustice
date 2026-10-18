@@ -1,10 +1,10 @@
 // The one component that places a bundled SVG file's text in the DOM (build brief 2026-10-18,
-// art style: SVG art is inlined through `?raw` so `currentColor` works). The Atlas glyphs and the
-// setup wizard's drawings both render through it.
+// art style: SVG art is inlined through `?raw` so `currentColor` works). The Atlas card icons and
+// the setup wizard's drawings both render through it.
 import { describe, expect, it } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { InlineArt } from './InlineArt';
-import { CategoryGlyph } from '../views/atlasArt';
+import { CardIcon } from '../views/atlasArt';
 import { SetupArt, SetupIcon, SETUP_ICON_ART } from '../setup/setupArt';
 import atlasArtSource from '../views/atlasArt.tsx?raw';
 import setupArtSource from '../setup/setupArt.tsx?raw';
@@ -41,14 +41,16 @@ describe('the Atlas and the setup wizard share it', () => {
     }
   });
 
-  it('CategoryGlyph keeps its contract: span, class, data-glyph, aria-hidden, the file as is', () => {
-    const { container } = render(<CategoryGlyph category="anatomy" className="atlas-card-art" />);
+  it('CardIcon keeps its contract: span, class, data-card-icon, aria-hidden, the file as is', async () => {
+    const { container } = render(<CardIcon id="r001" className="atlas-card-art" />);
     const span = container.firstElementChild;
     expect(span?.tagName).toBe('SPAN');
     expect(span?.getAttribute('class')).toBe('atlas-card-art');
-    expect(span?.getAttribute('data-glyph')).toBe('anatomy');
+    expect(span?.getAttribute('data-card-icon')).toBe('r001');
     expect(span?.getAttribute('aria-hidden')).toBe('true');
-    expect(span?.querySelector('svg')).not.toBeNull();
+    await waitFor(() => {
+      expect(span?.querySelector('svg')).not.toBeNull();
+    });
   });
 
   it('SetupArt and SetupIcon keep theirs: wiz-art class first, data-art, trimmed markup', () => {

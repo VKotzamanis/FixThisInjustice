@@ -1,60 +1,95 @@
 // src/ui/views/atlasArt.tsx
 //
-// The Atlas's two pieces of art: the owner's category glyph on a drawn card, and the pixel
-// question mark on a slot that has not been drawn.
+// The Atlas's two pieces of art: the owner's icon for each drawn card (owner ruling 2026-10-18:
+// an icon for every card, replacing the eight category glyphs), and the pixel question mark on a
+// slot that has not been drawn.
 //
-// ONE MAP, KEYED BY THE CATEGORY TYPE. `SpecimenCard` carries no image field and gets none
-// (asset manifest 2026-09-06 section 8: the glyph is a UI concern, so no schema change). The
-// record below is typed `Record<SpecimenCategory, string>`, so a category added to
-// src/content/specimenCards.ts without a glyph is a compile error here, not a blank card.
+// ONE MAP, KEYED BY CARD ID, DERIVED FROM THE FOLDER. `SpecimenCard` carries no image field and
+// gets none (asset manifest 2026-09-06 section 8: art is a UI concern, so no schema change). The
+// glob below is the only list of icon files and the id is read from each file name
+// (`card-<id>.svg`); atlasArt.test.tsx holds that list equal to SPECIMEN_CARDS both ways, so a
+// card with no icon, or an icon with no card, fails a test rather than shipping a blank face.
 //
-// INLINED, NOT LINKED. Each file is imported as text (`?raw`) and placed in the DOM through
-// InlineArt (src/ui/components/InlineArt.tsx, shared with the setup wizard), so its
-// `fill="currentColor"` takes the colour of the element around it: the panel's lime on a card.
-// The markup is the bundled file itself, fixed at build time; no user-supplied or stored text
-// ever reaches it.
+// LOADED ON DEMAND, NOT IN THE MAIN BUNDLE. The glob is not eager: each icon is its own small
+// chunk, fetched when a card the profile holds is first drawn. The service worker precaches every
+// chunk (vite.config.ts, injectManifest.globPatterns `**/*.js`), so the Atlas still draws offline.
+// Until a file arrives its box is already in place and empty (CardIcon), so nothing reflows.
 //
-// The specimen toast (src/ui/components/ToastQueue.tsx) is meant to carry the same glyph
-// (styling survey item 8); it is not wired from this file's task and imports CategoryGlyph when
-// it is, so the map stays in one place.
+// INLINED, NOT LINKED. Each file is read as text (`?raw`) and placed in the DOM through InlineArt
+// (src/ui/components/InlineArt.tsx, shared with the setup wizard), so its `fill="currentColor"`
+// takes the colour of the element around it: the panel's lime on a card. The markup is the
+// build's own file, fixed at build time; no user-supplied or stored text ever reaches it.
+//
+// The specimen toast (src/ui/components/ToastQueue.tsx) prints the category as text and carries
+// no art; styling survey item 8 planned the category glyph there. Not wired by this file's task.
 
+import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
-import type { SpecimenCategory } from '../../content/specimenCards';
-import anatomy from '../../assets/art/glyph-anatomy.svg?raw';
-import biology from '../../assets/art/glyph-biology.svg?raw';
-import biomechanics from '../../assets/art/glyph-biomechanics.svg?raw';
-import history from '../../assets/art/glyph-history.svg?raw';
-import nutrition from '../../assets/art/glyph-nutrition.svg?raw';
-import recovery from '../../assets/art/glyph-recovery.svg?raw';
-import supplements from '../../assets/art/glyph-supplements.svg?raw';
-import training from '../../assets/art/glyph-training.svg?raw';
 import { InlineArt } from '../components/InlineArt';
 
-/** Each category's glyph, as SVG markup (viewBox 0 0 480 480, currentColor). */
-export const CATEGORY_GLYPH: Readonly<Record<SpecimenCategory, string>> = {
-  anatomy,
-  biology,
-  biomechanics,
-  history,
-  nutrition,
-  recovery,
-  supplements,
-  training,
-};
+/** Every card icon file, by path, as a loader of its SVG text (viewBox 0 0 480 480, currentColor). */
+const ICON_FILE_LOADERS = import.meta.glob<string>('../../assets/art/card-*.svg', {
+  query: '?raw',
+  import: 'default',
+});
+
+/** `../../assets/art/card-c001.svg` -> `c001`. A name it cannot read keeps its path as the key. */
+const ICON_FILE_NAME = /\/card-([^/]+)\.svg$/;
+
+/** Each card's icon loader, keyed by card id. The one map from a card to its art. */
+export const CARD_ICON_LOADERS: Readonly<Record<string, () => Promise<string>>> =
+  Object.fromEntries(
+    Object.entries(ICON_FILE_LOADERS).map(([path, load]) => [
+      ICON_FILE_NAME.exec(path)?.[1] ?? path,
+      load,
+    ]),
+  );
 
 /**
- * One category glyph, decorative: the card or dialog around it is named by its title, so the
- * art is hidden from assistive technology. Mount it only for a card the profile holds; a locked
- * slot must not learn its category (src/ui/views/AtlasView.tsx header).
+ * Icons already loaded this session, by card id. A card drawn again (the dialog after the grid,
+ * the Atlas reopened) is painted on its first frame instead of flashing the empty box.
  */
-export function CategoryGlyph(props: {
-  category: SpecimenCategory;
-  className: string;
-}): ReactElement {
+const loadedIcons = new Map<string, string>();
+
+/**
+ * One card's icon, decorative: the card or dialog around it is named by its title, so the art is
+ * hidden from assistive technology. Mount it only for a card the profile holds; a locked slot must
+ * not learn anything about its card (src/ui/views/AtlasView.tsx header).
+ *
+ * The SAME span is the placeholder and the icon: `data-icon-state` reads `loading`, then `ready`,
+ * and the file's markup is set into it in place. The box's size belongs to the caller's class
+ * (atlas.css fixes `.atlas-card-art` and `.atlas-modal-art`), so arriving art never moves a line.
+ * A file that fails to load leaves the box empty: the title still names the card.
+ */
+export function CardIcon(props: { id: string; className: string }): ReactElement {
+  const { id } = props;
+  const [arrived, setArrived] = useState<{ id: string; markup: string } | undefined>(undefined);
+  const markup = arrived?.id === id ? arrived.markup : loadedIcons.get(id);
+
+  useEffect(() => {
+    if (loadedIcons.has(id)) return undefined;
+    const load = CARD_ICON_LOADERS[id];
+    if (load === undefined) return undefined;
+    let mounted = true;
+    load().then(
+      (text) => {
+        loadedIcons.set(id, text);
+        if (mounted) setArrived({ id, markup: text });
+      },
+      () => {
+        // Nothing to show and nothing to report: the empty box stays, the card keeps its title,
+        // and the next mount tries again.
+      },
+    );
+    return () => {
+      mounted = false;
+    };
+  }, [id]);
+
   return (
     <InlineArt
-      markup={CATEGORY_GLYPH[props.category]}
-      data={{ 'data-glyph': props.category }}
+      markup={markup ?? ''}
+      data={{ 'data-card-icon': id, 'data-icon-state': markup === undefined ? 'loading' : 'ready' }}
       className={props.className}
     />
   );

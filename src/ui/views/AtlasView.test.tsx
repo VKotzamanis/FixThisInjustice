@@ -20,7 +20,7 @@
 // acquisition and never displayed here.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { FORMAT, copyFor } from '../../content/copy';
 import { DROPPED_CARD_IDS, SPECIMEN_BY_ID, SPECIMEN_CARDS } from '../../content/specimenCards';
 import type { SpecimenCard, SpecimenRarity } from '../../content/specimenCards';
@@ -28,7 +28,6 @@ import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { FUN_PROFILE_ID, makeAppState, makeInventory } from '../../test/funFixtures';
 import { AtlasView } from './AtlasView';
-import { CATEGORY_GLYPH } from './atlasArt';
 import type { SkinId } from '../../domain/types';
 // The sheet as TEXT: jsdom computes no style and evaluates no media query, so the tier shapes,
 // the token-only rule and the reduced-motion rule are asserted in the source. vitest.config.ts
@@ -263,16 +262,40 @@ describe('AtlasView under a skin', () => {
 });
 
 /*
- * The collectible treatment (styling survey 2026-10-18, item 8). What a slot REVEALS is the
- * contract above and does not move: an owned card adds its category glyph, a locked slot adds a
- * pixel question mark and nothing that names or draws its category.
+ * The collectible treatment (styling survey 2026-10-18, item 8; owner ruling 2026-10-18: an icon
+ * for every card). What a slot REVEALS is the contract above and does not move: an owned card adds
+ * its own icon, a locked slot adds a pixel question mark and nothing that names or draws its card
+ * or its category.
  */
 
-/** A glyph's markup as the DOM serialises it, so the comparison is not about whitespace. */
+/**
+ * The shipped icon files, read by file name, so the comparison does not go through the view's
+ * own map (atlasArt.tsx). Eager here only: the view loads each icon on demand.
+ */
+const ICON_FILES = import.meta.glob<string>('../../assets/art/card-*.svg', {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+
+function iconFile(id: string): string {
+  return ICON_FILES[`../../assets/art/card-${id}.svg`] ?? `missing icon file for ${id}`;
+}
+
+/** An icon's markup as the DOM serialises it, so the comparison is not about whitespace. */
 function serialised(markup: string): string {
   const host = document.createElement('span');
   host.innerHTML = markup;
   return host.innerHTML;
+}
+
+/** Waits until the icon inside `root` has arrived: the files load after the first render. */
+async function iconReady(root: HTMLElement): Promise<Element> {
+  return waitFor(() => {
+    const icon = root.querySelector('[data-card-icon]');
+    expect(icon?.getAttribute('data-icon-state')).toBe('ready');
+    return icon!;
+  });
 }
 
 /** Stubs matchMedia so the reduced-motion query answers `reduce`; the caller unstubs. */
@@ -286,42 +309,49 @@ function stubReducedMotion(reduce: boolean): void {
 }
 
 describe('AtlasView collectible faces', () => {
-  it('draws every owned card as a black panel carrying its own category glyph', () => {
+  it('draws every owned card as a black panel carrying its own icon, once the icon has loaded', async () => {
     render(<AtlasView />);
     for (const id of OWNED) {
       const card = SPECIMEN_BY_ID[id]!;
       const face = screen.getByTestId(`atlas-card-${id}`);
       expect(face.classList.contains('ll-panel')).toBe(true);
       expect(face.classList.contains('atlas-face')).toBe(true);
-      const glyph = face.querySelector('[data-glyph]');
-      expect(glyph?.getAttribute('data-glyph')).toBe(card.category);
-      expect(glyph?.getAttribute('aria-hidden')).toBe('true');
-      expect(glyph?.innerHTML).toBe(serialised(CATEGORY_GLYPH[card.category]));
-      // The glyph is decoration: the card is still named by its title alone.
+      const icon = await iconReady(face);
+      expect(icon.getAttribute('data-card-icon')).toBe(id);
+      expect(icon.getAttribute('aria-hidden')).toBe('true');
+      expect(icon.innerHTML).toBe(serialised(iconFile(id)));
+      // The category glyph it replaces is gone, not drawn beside it.
+      expect(face.querySelector('[data-glyph]')).toBeNull();
+      // The icon is decoration: the card is still named by its title alone.
       expect(face).toHaveAccessibleName(card.title);
     }
   });
 
-  it('carries the same glyph into the card dialog', () => {
+  it('carries the same icon into the card dialog', async () => {
     render(<AtlasView />);
-    const card = SPECIMEN_BY_ID['u003']!;
     fireEvent.click(screen.getByTestId('atlas-card-u003'));
     const dialog = screen.getByRole('dialog');
     expect(dialog.classList.contains('ll-panel')).toBe(true);
-    expect(dialog.querySelector('[data-glyph]')?.getAttribute('data-glyph')).toBe(card.category);
+    const icon = await iconReady(dialog);
+    expect(icon.getAttribute('data-card-icon')).toBe('u003');
+    expect(icon.innerHTML).toBe(serialised(iconFile('u003')));
+    expect(dialog.querySelector('[data-glyph]')).toBeNull();
   });
 
-  it('marks every locked slot with the question mark and with no glyph or category', () => {
+  it('marks every locked slot with the question mark and with no icon or category', async () => {
     render(<AtlasView />);
+    // Every owned icon has arrived first, so a load that lands late cannot land in a slot unseen.
+    for (const id of OWNED) await iconReady(screen.getByTestId(`atlas-card-${id}`));
     for (const card of SPECIMEN_CARDS) {
       if (OWNED.includes(card.id)) continue;
       const slot = screen.getByTestId(`atlas-card-${card.id}`);
       expect(slot.querySelector('[data-mark="unknown"]')).not.toBeNull();
+      expect(slot.querySelector('[data-card-icon]')).toBeNull();
       expect(slot.querySelector('[data-glyph]')).toBeNull();
       expect(slot.classList.contains('ll-panel')).toBe(false);
       // Not in an attribute, a class or a path either: the whole serialised slot is checked.
       expect(slot.outerHTML.toLowerCase()).not.toContain(card.category);
-      for (const markup of Object.values(CATEGORY_GLYPH)) {
+      for (const markup of Object.values(ICON_FILES)) {
         expect(slot.innerHTML).not.toContain(serialised(markup));
       }
     }
@@ -395,6 +425,16 @@ describe('atlas.css', () => {
     const rare = block(atlasCss, /\.atlas-face\.atlas-rare\s*/);
     expect(rare).toMatch(/var\(--shadow-offset[^)]*\)\s+var\(--shadow-offset[^)]*\)\s+0\s+0\s+var\(--pink\)/);
     expect(block(atlasCss, /\.atlas \.atlas-locked\s*/)).toMatch(/border:[^;]*dashed/);
+  });
+
+  it('gives each art box a fixed square size, so a loading icon and a loaded one take the same space', () => {
+    for (const selector of [/\.atlas \.atlas-card-art\s*/, /\.atlas \.atlas-modal-art\s*/]) {
+      const rule = block(atlasCss, selector);
+      const width = /(?:^|[;\s])width:\s*([\d.]+rem)/.exec(rule)?.[1];
+      const height = /(?:^|[;\s])height:\s*([\d.]+rem)/.exec(rule)?.[1];
+      expect(width, selector.source).toBeDefined();
+      expect(height, selector.source).toBe(width);
+    }
   });
 
   it('runs the foil once and cancels it under prefers-reduced-motion', () => {

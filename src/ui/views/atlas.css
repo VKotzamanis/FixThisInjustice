@@ -16,7 +16,7 @@
  *   uncommon  two lime rules inside the edge
  *   rare      one pink rule inside the edge, the pink offset block outside it, and the foil
  * Contrast, quoted from tokens.css (section 2.3 of the round-three plan): lime on black 10.91:1
- * (rarity word, glyph, rules), white on black 21:1 (title, body, citation), pink on black 7.75:1
+ * (rarity word, card icon, rules), white on black 21:1 (title, body, citation), pink on black 7.75:1
  * (the rare rule). The offset block meets the lime page at 1.41:1, which is why it is outlined
  * in ink (10.91:1 on lime); it is a fill, never type. Locked slots stay on the lime page: ink
  * dashes and mark at 10.91:1, the #454545 fine print at 4.98:1.
@@ -105,7 +105,9 @@
   border: 0;
 }
 
-/* 2.25rem = 36 px: an integer 3x of the question mark's 12-cell grid. */
+/* 2.25rem = 36 px: an integer 3x of the question mark's 12-cell grid. A fixed box, not sized by
+   its contents: a card icon loads after the first frame (atlasArt.tsx, CardIcon) and the empty
+   box it arrives in must already take its space. AtlasView.test.tsx holds width = height. */
 .atlas .atlas-card-art {
   grid-area: art;
   display: block;
@@ -266,6 +268,7 @@
   gap: 0.75rem;
 }
 
+/* 3rem = 48 px, fixed for the reason .atlas-card-art is. */
 .atlas .atlas-modal-art {
   flex: none;
   display: block;
