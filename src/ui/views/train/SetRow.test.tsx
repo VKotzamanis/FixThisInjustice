@@ -120,6 +120,24 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     expect(onEdit).toHaveBeenCalledWith(61.25, { reps: 7, durationS: null }, null); // [kg]
   });
 
+  /*
+   * Review R6. A set imported with no recorded load (loadKg null; this build never logs one)
+   * opened with an empty load field, and Save returned without a word: '' parses to no load.
+   */
+  it('saves an edit of a set with no recorded load, leaving the load unrecorded', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ loadKg: null }), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(null, { reps: 7, durationS: null }, null); // [kg] none, [repetitions]
+    expect(screen.queryByRole('button', { name: FORMAT.saveSetLabel(1) })).toBeNull();
+  });
+
   it('prefills the bodyweight toggle from a 0 kg set and can clear it', () => {
     withSkin('limelight');
     const onEdit = vi.fn(() => true);

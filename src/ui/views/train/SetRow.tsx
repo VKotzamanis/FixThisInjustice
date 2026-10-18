@@ -126,11 +126,12 @@ export interface SetRowProps {
    * Saves an edit of the logged set (ROADMAP L1). Returns false when the store refused it, so
    * the row stays open with what the user typed instead of claiming a save.
    *
-   * @param loadKg [kg] canonical; 0 when the bodyweight toggle is set (A60).
+   * @param loadKg [kg] canonical; 0 when the bodyweight toggle is set (A60); null only when the
+   *   record had no load and the edit left the field empty (review R6).
    * @param rpe [RPE] the effort the edit leaves on the set (ROADMAP L8): the record's own unless
    *   an effort control was tapped; null = none recorded.
    */
-  onEdit: (loadKg: Kg, entry: SetEntry, rpe: number | null) => boolean;
+  onEdit: (loadKg: Kg | null, entry: SetEntry, rpe: number | null) => boolean;
   /**
    * Records the effort of the logged set with one tap (ROADMAP L8). Returns false when the store
    * refused it. Called only on a logged row, never with the rest timer: the log already started it.
@@ -209,6 +210,27 @@ export function SetRow(props: SetRowProps): ReactElement {
     setLoadText(prefill(suggestedKg, units));
   }, [suggestedKg, units]);
 
+  /**
+   * [kg] The load an edit saves when its field still holds the text the edit opened with: the
+   * record's own, exactly, or null when the record has none. undefined otherwise (a new row, a
+   * changed field, or the bodyweight toggle, which decides by itself).
+   *
+   * Review R2: that text went through displayLoad's 0.1 rounding in the display unit, so
+   * converting it back moved the stored load (60 kg shown as 132.3 lb returned 60.0103 kg,
+   * outside progression's LOAD_EQ_TOL_KG). Review R6: a load never recorded (null, import-only)
+   * opens as an empty field, which parses to no load, so Save refused it in silence.
+   * A 0 kg set is excluded: it opens empty with the toggle set, and clearing the toggle while the
+   * field stays empty is no load at all.
+   */
+  const keptLoadKg = (): Kg | null | undefined =>
+    editing &&
+    logged !== null &&
+    !bodyweight &&
+    logged.loadKg !== 0 &&
+    loadText === loggedLoadText(logged.loadKg, units)
+      ? logged.loadKg
+      : undefined;
+
   const submit = (): void => {
     // Whole units in both modes: repetitions are counted and the model stores seconds as a
     // whole number, so "45.7" is read as 45 exactly as "8.5" reps has always been read as 8.
@@ -222,25 +244,9 @@ export function SetRow(props: SetRowProps): ReactElement {
     }
     // A bodyweight set stores 0, never null and never a dropped falsy value (master plan
     // section 8, code review A60): 0 kg is a real load, "not recorded" is a different fact.
-    let loadKg: Kg | null; // [kg]
-    if (bodyweight) {
-      loadKg = 0;
-    } else if (
-      editing &&
-      logged !== null &&
-      logged.loadKg !== null &&
-      logged.loadKg !== 0 &&
-      loadText === loggedLoadText(logged.loadKg, units)
-    ) {
-      // Review R2: the field still holds the text the edit opened with, which went through
-      // displayLoad's 0.1 rounding in the display unit. Converting it back would move the stored
-      // load (60 kg shown as 132.3 lb returns 60.0103 kg, outside progression's LOAD_EQ_TOL_KG),
-      // so an untouched load keeps the record's own kg exactly.
-      loadKg = logged.loadKg;
-    } else {
-      loadKg = storedLoadKg(loadText, units);
-    }
-    if (loadKg === null || loadKg < 0) return;
+    const kept = keptLoadKg(); // [kg], null = not recorded, undefined = not kept
+    const loadKg = kept !== undefined ? kept : bodyweight ? 0 : storedLoadKg(loadText, units); // [kg]
+    if (kept === undefined && (loadKg === null || loadKg < 0)) return;
     const entry: SetEntry = timed ? { reps: null, durationS: count } : { reps: count, durationS: null };
     if (editing) {
       // An edit is not a new set: no rest timer, no coach line (ExerciseCard owns both and
@@ -252,6 +258,8 @@ export function SetRow(props: SetRowProps): ReactElement {
       setEditing(false);
       setEditError(null);
     } else {
+      // Never null here: only an edit keeps a load its record left unrecorded.
+      if (loadKg === null) return;
       onLog(loadKg, entry);
     }
     setCountText('');
