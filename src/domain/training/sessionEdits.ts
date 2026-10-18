@@ -80,7 +80,9 @@ export type SessionEditOp =
   | { kind: 'swap'; key: string; exerciseId: string }
   | { kind: 'skip'; key: string }
   | { kind: 'restore'; key: string }
-  | { kind: 'move'; key: string; by: -1 | 1 };
+  | { kind: 'move'; key: string; by: -1 | 1 }
+  | { kind: 'add'; exerciseId: string }
+  | { kind: 'remove'; key: string };
 
 /** Slot keys in the order the plan (then the user's additions) gives them. */
 function defaultOrder(session: PlannedSession, e: SessionEdits): string[] {
@@ -178,6 +180,18 @@ export function sessionLineup(input: LineupInput): LineupEntry[] {
             skipped: skipped.has(planned.exerciseId),
           },
     );
+  }
+  for (const id of e.added) {
+    const exercise = library[id];
+    if (exercise === undefined || byKey.has(id)) continue;
+    byKey.set(id, {
+      key: id,
+      exerciseId: id,
+      planned: unplannedSlot(exercise),
+      kind: 'added',
+      replaces: null,
+      skipped: skipped.has(id),
+    });
   }
   const slots = effectiveOrder(session, e).flatMap((k) => {
     const entry = byKey.get(k);
@@ -291,7 +305,57 @@ export function applySessionEdit(
       // Back in default order: store none, so a restored day carries no `order` at all.
       return { ...e, order: sameOrder(moved, defaultOrder(session, e)) ? [] : moved };
     }
+    case 'add': {
+      if (library[op.exerciseId] === undefined) {
+        throw new Error(`add: "${op.exerciseId}" is not a known exercise`);
+      }
+      if (idsInUse(session, e).has(op.exerciseId) || plannedKeys.has(op.exerciseId)) {
+        throw new Error(`add: "${op.exerciseId}" is already in this session`);
+      }
+      return { ...e, added: [...e.added, op.exerciseId] };
+    }
+    case 'remove': {
+      if (plannedKeys.has(op.key)) {
+        throw new Error(`remove: "${op.key}" is a planned exercise; skip it instead`);
+      }
+      if (!e.added.includes(op.key)) throw new Error(`remove: "${op.key}" is not in this session`);
+      // Every trace goes, so the slot key cannot linger in the order or the skip list. A set
+      // already logged on it is untouched and keeps its own card (sessionLineup, `logged`).
+      const remaining: SessionEdits = {
+        ...e,
+        added: e.added.filter((k) => k !== op.key),
+        skipped: e.skipped.filter((k) => k !== op.key),
+        order: e.order.filter((k) => k !== op.key),
+      };
+      return {
+        ...remaining,
+        order: sameOrder(effectiveOrder(session, remaining), defaultOrder(session, remaining))
+          ? []
+          : remaining.order,
+      };
+    }
   }
+}
+
+export interface AddChoicesInput {
+  access: EquipmentAccess;
+  /** Shipped library plus the profile's custom exercises. */
+  library: readonly Exercise[];
+  /** Exercise ids the session already holds. */
+  inUse: ReadonlySet<string>;
+}
+
+/**
+ * What to offer when the user adds an exercise mid-session (ROADMAP L4): the exercises the
+ * equipment unlocks (ACCESS_UNLOCKS) first, then the rest of the library, custom ones
+ * included. Nothing the session already holds. The free-text custom form stays the fallback.
+ */
+export function addChoices(input: AddChoicesInput): { fits: Exercise[]; others: Exercise[] } {
+  const unlocked = ACCESS_UNLOCKS[input.access];
+  const open = input.library.filter((e) => !input.inUse.has(e.id));
+  const fits = open.filter((e) => e.equipment.some((tier) => unlocked.includes(tier)));
+  const fitIds = new Set(fits.map((e) => e.id));
+  return { fits, others: open.filter((e) => !fitIds.has(e.id)) };
 }
 
 /** True when the edits change nothing, so the store can drop the field entirely. */

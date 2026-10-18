@@ -675,7 +675,11 @@ export type CopyKey =
   | 'button.restoreExercise'
   | 'button.moveUp'
   | 'button.moveDown'
-  | 'label.skipped';
+  | 'label.skipped'
+  | 'button.addCustomExercise'
+  | 'button.addToSession'
+  | 'button.removeExercise'
+  | 'label.fitsEquipment';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1998,6 +2002,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.moveUp': 'Move Up',
   'button.moveDown': 'Move Down',
   'label.skipped': 'Skipped',
+  // L4: add from the library mid-session. `button.addExercise` above now opens the library
+  // picker; the free-text form is kept as the fallback behind `button.addCustomExercise`.
+  'button.addCustomExercise': 'Custom Exercise',
+  'button.addToSession': 'Add to Session',
+  // Offered only for an added exercise with no sets today; with sets the control is Skip.
+  'button.removeExercise': 'Remove Exercise',
+  'label.fitsEquipment': 'Fits Your Equipment',
 };
 
 /**

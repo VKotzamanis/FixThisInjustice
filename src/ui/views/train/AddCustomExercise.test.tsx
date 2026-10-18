@@ -19,13 +19,13 @@ import { AddCustomExercise } from './AddCustomExercise';
 
 function renderForm(skin: SkinId): void {
   useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin }) }));
-  render(<AddCustomExercise profile={makeProfile()} />);
+  render(<AddCustomExercise profile={makeProfile()} onAdd={() => true} />);
 }
 
 /** Opens the form, which is collapsed to a single control until it is pressed. */
 function openForm(skin: SkinId): void {
   renderForm(skin);
-  fireEvent.click(screen.getByRole('button', { name: copyFor(skin, 'button.addExercise') }));
+  fireEvent.click(screen.getByRole('button', { name: copyFor(skin, 'button.addCustomExercise') }));
 }
 
 beforeEach(() => {
@@ -35,9 +35,9 @@ beforeEach(() => {
 describe('AddCustomExercise: the limelight words', () => {
   it('names the opening control and the field from the default table', () => {
     renderForm('limelight');
-    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') }));
     expect(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') })).toBeInTheDocument();
   });

@@ -42,6 +42,7 @@ import { releaseAudio, unlockAudio } from '../audio/chime';
 import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { AddCustomExercise } from './train/AddCustomExercise';
+import { AddLibraryExercise } from './train/AddLibraryExercise';
 import { BodyMassQuickLog } from './train/BodyMassQuickLog';
 import { ExerciseCard } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
@@ -255,11 +256,16 @@ export function TrainView(): ReactElement {
     } catch {
       return false;
     }
-    // The card the user is working on stays open through a move, a swap or a restore. A skip
-    // means "done with this one", so the first card still to do opens instead (null).
-    setOpenId(op.kind === 'skip' ? null : op.key);
+    // The card the user is working on stays open through a move, a swap or a restore, and an
+    // added one opens. A skip or a removal means "done with this one", so the first card still
+    // to do opens instead (null).
+    setOpenId(
+      op.kind === 'add' ? op.exerciseId : op.kind === 'skip' || op.kind === 'remove' ? null : op.key,
+    );
     return true;
   };
+  const addExercise = (exerciseId: string): boolean => editSession({ kind: 'add', exerciseId });
+  const loggedIds = new Set(todaysSets.map((s) => s.exerciseId));
 
   // The first card the user still has to do opens by itself; a skipped one does not.
   const firstKey = lineup.find((e) => !e.skipped)?.key ?? null;
@@ -383,6 +389,7 @@ export function TrainView(): ReactElement {
                   inUse={inUse}
                   canMoveUp={slotIndex > 0}
                   canMoveDown={slotIndex >= 0 && slotIndex < slotKeys.length - 1}
+                  hasLoggedSets={loggedIds.has(entry.exerciseId)}
                   onEdit={editSession}
                 />
               )}
@@ -391,7 +398,21 @@ export function TrainView(): ReactElement {
         })}
       </div>
 
-      <AddCustomExercise profile={profile} />
+      {/*
+        * ROADMAP L4: the library picker first, the free-text form as the fallback. Both put the
+        * exercise on the day's persisted edits; neither is offered once the session is over.
+        */}
+      {editsOpen && (
+        <div className="ex-add">
+          <AddLibraryExercise
+            access={profile.equipment}
+            library={libraryList}
+            inUse={inUse}
+            onAdd={addExercise}
+          />
+          <AddCustomExercise profile={profile} onAdd={addExercise} />
+        </div>
+      )}
 
       {asksPreSessionMass && (
         <BodyMassQuickLog

@@ -1093,7 +1093,7 @@ describe('TrainView custom and bonus exercises', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') }));
     fireEvent.change(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName')), {
       target: { value: 'Cable crunch' },
     });
@@ -1107,6 +1107,9 @@ describe('TrainView custom and bonus exercises', () => {
     expect(
       screen.getByText(FORMAT.bonusExerciseName('Cable crunch'), { exact: false }),
     ).toBeInTheDocument();
+    // ROADMAP L4: on the day's persisted edits, like a library addition, not the session slice.
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.added).toEqual([custom[0]?.id]);
+    expect(useAppStore.getState().session.bonusExerciseIds).toEqual([]);
   });
 
   /*
@@ -1119,7 +1122,7 @@ describe('TrainView custom and bonus exercises', () => {
 
   /** Opens the form and returns the name field. */
   function openNameField(): HTMLElement {
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') }));
     return screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'));
   }
 
@@ -1682,6 +1685,72 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
     expect(cardTitles()).toEqual(['Barbell bench press', 'Lat pulldown']);
   });
 
+  /** Opens the library picker, chooses `exerciseId` and adds it. */
+  function addFromLibrary(exerciseId: string): void {
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.exerciseChoice')), {
+      target: { value: exerciseId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addToSession') }));
+  }
+
+  it('L4: adds a library exercise mid-session, equipment fits first, timer untouched', () => {
+    seedStore(seed({ exercise: BENCH }));
+    useAppStore.getState().setRestTimer({ startedAt: NOW, endsAt: NOW + 90_000, durationS: 90 });
+    const timer = useAppStore.getState().session.restTimer;
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'OPTGROUP');
+    expect(groups[0]?.getAttribute('label')).toBe(copyFor('limelight', 'label.fitsEquipment'));
+    // What the session already holds is not offered again.
+    expect(screen.queryByRole('option', { name: 'Barbell bench press' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
+
+    addFromLibrary('lateral-raise');
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.added).toEqual(['lateral-raise']);
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+    expect(screen.getByText(FORMAT.bonusExerciseName('Lateral raise'))).toBeInTheDocument();
+  });
+
+  it('L4: logs sets on an added exercise as bonus work, out of progression', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    addFromLibrary('lateral-raise');
+    // The added card opened itself; its first row is the only empty set-1 row on screen.
+    const rows = screen.getAllByLabelText(FORMAT.setRepsQuantity(1));
+    expect(rows).toHaveLength(1);
+    logRow(1, '8', '12');
+
+    const sets = Object.values(useAppStore.getState().sets);
+    expect(sets.map((s) => [s.exerciseId, s.isBonus])).toEqual([['lateral-raise', true]]);
+  });
+
+  it('L4: removes an added exercise with no sets, and offers Skip once it has some', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    addFromLibrary('lateral-raise');
+    const name = FORMAT.bonusExerciseName('Lateral raise');
+    expect(barButton(name, 'button.removeExercise')).toBeInTheDocument();
+
+    logRow(1, '8', '12');
+    expect(
+      within(editBar(name)).queryByRole('button', { name: copyFor('limelight', 'button.removeExercise') }),
+    ).toBeNull();
+    expect(barButton(name, 'button.skipExercise')).toBeInTheDocument();
+  });
+
+  it('L4: Remove takes the added card away', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    addFromLibrary('lateral-raise');
+    fireEvent.click(barButton(FORMAT.bonusExerciseName('Lateral raise'), 'button.removeExercise'));
+
+    const day = useAppStore.getState().assignments['profile-1']?.[0];
+    expect(day !== undefined && 'edits' in day).toBe(false);
+    expect(screen.queryByText(FORMAT.bonusExerciseName('Lateral raise'))).toBeNull();
+  });
+
   it('L3: offers no session edits once the session is finished', () => {
     const state = seedTwo();
     const day = state.assignments['profile-1']?.[0];
@@ -1695,5 +1764,6 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
     expect(
       screen.queryByRole('button', { name: copyFor('limelight', 'button.skipExercise') }),
     ).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.addExercise') })).toBeNull();
   });
 });

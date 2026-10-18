@@ -7,7 +7,15 @@ import { EXERCISES, EXERCISE_BY_ID } from '../plan/library';
 import { SPLIT_TEMPLATES, prescriptionFor, restSFor } from '../plan/templates';
 import { ACCESS_UNLOCKS } from '../types';
 import type { Exercise, PlannedSession, SessionEdits } from '../types';
-import { EMPTY_EDITS, applySessionEdit, sessionLineup, swapAlternatives } from './sessionEdits';
+import {
+  EMPTY_EDITS,
+  UNPLANNED_SETS,
+  addChoices,
+  applySessionEdit,
+  sessionLineup,
+  swapAlternatives,
+  unplannedSlot,
+} from './sessionEdits';
 
 function ex(id: string): Exercise {
   const e = EXERCISE_BY_ID[id];
@@ -234,6 +242,78 @@ describe('applySessionEdit: skip, restore, move (L3)', () => {
   it('refuses a key that names no slot', () => {
     expect(() => apply(undefined, { kind: 'skip', key: 'curl' })).toThrow(/skip: "curl" is not in this session/);
     expect(() => apply(undefined, { kind: 'move', key: 'curl', by: 1 })).toThrow(/move: "curl" is not in this session/);
+  });
+});
+
+describe('sessionLineup: added exercises (L4)', () => {
+  it('lists added exercises after the plan, in the order added, as bonus work', () => {
+    const l = lineup(edits({ added: ['lateral-raise', 'push-up'] }));
+    expect(l.slice(3).map((e) => [e.key, e.kind])).toEqual([
+      ['lateral-raise', 'added'],
+      ['push-up', 'added'],
+    ]);
+    // Prescribed by what the exercise is: a push-up is AMRAP, never "8-12 reps".
+    expect(l[4]?.planned).toEqual(unplannedSlot(ex('push-up')));
+    expect(l[4]?.planned.prescription).toEqual({ kind: 'amrap', minimum: null });
+    expect(l[4]?.planned.setsLo).toBe(UNPLANNED_SETS);
+  });
+
+  it('does not show an added exercise twice once sets are logged on it', () => {
+    const l = lineup(edits({ added: ['lateral-raise'] }), ['lateral-raise']);
+    expect(l.filter((e) => e.exerciseId === 'lateral-raise').map((e) => e.kind)).toEqual(['added']);
+  });
+
+  it('orders an added exercise like any slot', () => {
+    const l = lineup(edits({ added: ['lateral-raise'], order: ['lateral-raise'] }));
+    expect(l[0]?.key).toBe('lateral-raise');
+  });
+});
+
+describe('applySessionEdit: add and remove (L4)', () => {
+  const apply = (e: SessionEdits | undefined, op: Parameters<typeof applySessionEdit>[2]): SessionEdits =>
+    applySessionEdit(SESSION, e, op, EXERCISE_BY_ID);
+
+  it('adds a library exercise', () => {
+    expect(apply(undefined, { kind: 'add', exerciseId: 'lateral-raise' }).added).toEqual(['lateral-raise']);
+  });
+
+  it('refuses an exercise the session already holds, planned, swapped in or added', () => {
+    expect(() => apply(undefined, { kind: 'add', exerciseId: 'plank' })).toThrow(
+      /add: "plank" is already in this session/,
+    );
+    const swapped = edits({ swaps: { 'lat-pulldown': 'pull-up' } });
+    expect(() => apply(swapped, { kind: 'add', exerciseId: 'pull-up' })).toThrow(/already in this session/);
+    const added = edits({ added: ['lateral-raise'] });
+    expect(() => apply(added, { kind: 'add', exerciseId: 'lateral-raise' })).toThrow(/already in this session/);
+  });
+
+  it('refuses an exercise the library does not hold', () => {
+    expect(() => apply(undefined, { kind: 'add', exerciseId: 'nope' })).toThrow(/add: "nope" is not a known exercise/);
+  });
+
+  it('removes an added exercise and every trace of it', () => {
+    const state = edits({ added: ['lateral-raise'], skipped: ['lateral-raise'], order: ['lateral-raise', 'plank'] });
+    const next = apply(state, { kind: 'remove', key: 'lateral-raise' });
+    expect(next.added).toEqual([]);
+    expect(next.skipped).toEqual([]);
+    expect(next.order).not.toContain('lateral-raise');
+  });
+
+  it('refuses to remove a planned exercise: that is a skip, which can be restored', () => {
+    expect(() => apply(undefined, { kind: 'remove', key: 'plank' })).toThrow(
+      /remove: "plank" is a planned exercise; skip it instead/,
+    );
+  });
+});
+
+describe('addChoices (L4)', () => {
+  it('lists what the equipment unlocks first, then the rest, never what the session holds', () => {
+    const inUse = new Set(['barbell-bench-press', 'lat-pulldown', 'plank']);
+    const { fits, others } = addChoices({ access: 'home', library: EXERCISES, inUse });
+    for (const e of fits) expect(e.equipment.some((t) => ACCESS_UNLOCKS.home.includes(t))).toBe(true);
+    for (const e of others) expect(e.equipment.some((t) => ACCESS_UNLOCKS.home.includes(t))).toBe(false);
+    const all = [...fits, ...others].map((e) => e.id).sort();
+    expect(all).toEqual(EXERCISES.map((e) => e.id).filter((id) => !inUse.has(id)).sort());
   });
 });
 

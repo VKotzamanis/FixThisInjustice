@@ -38,15 +38,15 @@ Agent doc. Change today's session while training: edit a logged set (L1), swap (
 - Specimens, milestones: `updateSet` changes no count and draws nothing.
 
 ## Logged data
-- No edit deletes a set. Swap: original's sets stay under its `exerciseId`, shown on its own "Swapped Out" card. Skip: card collapses to a row with Restore; sets stay. Remove: offered only for an added exercise with no sets today; with sets the control is Skip.
+- No edit deletes a set. Swap: original's sets stay under its `exerciseId`, shown on its own "Swapped Out" card. Skip: the card stays in place, tagged Skipped, closed, its sets visible and editable when opened; Restore brings it back. Remove: offered only for an added exercise with no sets today; with sets the control is Skip.
 - `updateSet` keeps id and `loggedAt`.
 
 ## UI (one hand, phone)
 - Logged set row: [Edit] beside [Delete]. Edit reopens the row's own fields in place, prefilled (load, reps or seconds, bodyweight toggle), with [Save] [Cancel]. No rest-timer restart, no coach line.
 - Open card, session not finished, at the bottom of the card: 2-column grid of [Swap] [Skip Exercise | Remove Exercise] [Move Up] [Move Down], wrapped in a group named by the exercise. Swap opens an inline native `<select>` (OS picker, large rows) with optgroups Same Muscle / Other Exercises, then [Confirm Swap] [Cancel].
-- Skipped: compact row: name, Skipped, [Restore].
+- Skipped: the same card, tagged Skipped, not auto-opened; its bar offers only [Restore]. The card being moved, swapped or restored stays open; after Skip or Remove the first card still to do opens; an added card opens itself.
 - End of list: [Add Exercise] -> native `<select>` (Fits Your Equipment / Other Exercises) + [Add to Session] [Cancel]; [Custom Exercise] -> existing free-text form.
-- Every control is a `.view button` / `.view select`: 44 px min height, 16 px text (`src/ui/views/views.css`). No hover-only control, no drag, no swipe. Finished session: edit controls hidden, skipped rows read-only.
+- Every control is a `.view button` / `.view select`: 44 px min height, 16 px text (`src/ui/views/views.css`). No hover-only control, no drag, no swipe. Finished session: edit bar and both add controls hidden; skipped cards stay tagged.
 
 ## Copy keys added (base table, no limelight overrides; parity fixture extended)
 - `button.editSet`, `button.saveSet`, `button.swapExercise`, `button.confirmSwap`, `button.skipExercise`, `button.removeExercise`, `button.restoreExercise`, `button.moveUp`, `button.moveDown`, `button.addCustomExercise`, `button.addToSession`

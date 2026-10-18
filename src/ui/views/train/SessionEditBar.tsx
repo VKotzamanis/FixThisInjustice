@@ -36,13 +36,30 @@ export interface SessionEditBarProps {
   /** False on the first card (Move Up) or the last (Move Down): the control is disabled. */
   canMoveUp: boolean;
   canMoveDown: boolean;
+  /**
+   * True when sets are logged on this card today. An added exercise with none can be REMOVED;
+   * once it has sets it can only be skipped, so the control never suggests the sets go away.
+   */
+  hasLoggedSets: boolean;
   /** Applies the edit; false when the store refused it. */
   onEdit: (op: SessionEditOp) => boolean;
 }
 
 export function SessionEditBar(props: SessionEditBarProps): ReactElement {
-  const { t, entry, name, original, access, library, inUse, canMoveUp, canMoveDown, onEdit } =
-    props;
+  const {
+    t,
+    entry,
+    name,
+    original,
+    access,
+    library,
+    inUse,
+    canMoveUp,
+    canMoveDown,
+    hasLoggedSets,
+    onEdit,
+  } = props;
+  const removable = entry.kind === 'added' && !hasLoggedSets;
   const [swapping, setSwapping] = useState(false);
   const [choice, setChoice] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -148,14 +165,25 @@ export function SessionEditBar(props: SessionEditBarProps): ReactElement {
               {t('button.swapExercise')}
             </button>
           )}
-          <button
-            type="button"
-            onClick={() => {
-              run({ kind: 'skip', key: entry.key });
-            }}
-          >
-            {t('button.skipExercise')}
-          </button>
+          {removable ? (
+            <button
+              type="button"
+              onClick={() => {
+                run({ kind: 'remove', key: entry.key });
+              }}
+            >
+              {t('button.removeExercise')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                run({ kind: 'skip', key: entry.key });
+              }}
+            >
+              {t('button.skipExercise')}
+            </button>
+          )}
           <button
             type="button"
             disabled={!canMoveUp}
