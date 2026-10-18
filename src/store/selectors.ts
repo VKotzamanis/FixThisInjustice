@@ -350,10 +350,10 @@ export function useMinuteClock(): EpochMs {
  * The week that still owes the user a popup, or null.
  *
  * Returns the WeeklyReview object held in the store, so the reference is stable between
- * renders and cannot drive `useSyncExternalStore` into a loop. The four store fields
+ * renders and cannot drive `useSyncExternalStore` into a loop. The five store fields
  * `pendingMotivation` reads are selected separately, each of them a stable record reference,
  * and the derivation happens in `useMemo`; a selector that built `{ weeklyReviews, motivation,
- * profiles }` inside its own body would mint a new object on every notification and loop, which
+ * profiles, cursors }` inside its own body would mint a new object on every notification and loop, which
  * is the rule `useTodaysSets` above already follows.
  *
  * The active-session suppression is NOT here — it belongs to the gate that renders the modal,
@@ -364,13 +364,14 @@ export function usePendingMotivation(): WeeklyReview | null {
   const weeklyReviews = useAppStore((s) => s.weeklyReviews);
   const motivation = useAppStore((s) => s.motivation);
   const profiles = useAppStore((s) => s.profiles);
+  const cursors = useAppStore((s) => s.cursors);
   const now = useMinuteClock(); // [ms] epoch, UTC
 
   return useMemo(
     () =>
       profileId === null
         ? null
-        : pendingMotivation({ weeklyReviews, motivation, profiles }, profileId, now),
-    [weeklyReviews, motivation, profiles, profileId, now],
+        : pendingMotivation({ weeklyReviews, motivation, profiles, cursors }, profileId, now),
+    [weeklyReviews, motivation, profiles, cursors, profileId, now],
   );
 }

@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { addDays, instantOf } from '../dates';
 import { describeMiss, MOTIVATION_MISS_WINDOW_DAYS, pendingMotivation } from './trigger';
 import { makeProfile } from '../../test/fixtures';
-import type { AppState, EpochMs, MotivationState, TimeZone, WeeklyReview } from '../types';
+import type {
+  AppState,
+  EpochMs,
+  LocalDate,
+  MotivationState,
+  TimeZone,
+  WeeklyReview,
+} from '../types';
 
 /** One day as a duration on the timeline. Not a calendar day: no DST is involved here. */
 const DAY_MS = 86_400_000; // [ms/day]
@@ -37,11 +44,25 @@ function stateOf(
   reviews: WeeklyReview[],
   motivation?: MotivationState,
   timezone: TimeZone = 'UTC',
-): Pick<AppState, 'weeklyReviews' | 'motivation' | 'profiles'> {
+): Pick<AppState, 'weeklyReviews' | 'motivation' | 'profiles' | 'cursors'> {
   return {
     profiles: { p1: makeProfile({ id: 'p1', timezone }) },
     weeklyReviews: { p1: reviews },
     motivation: motivation === undefined ? {} : { p1: motivation },
+    cursors: {},
+  };
+}
+
+/** `state` with p1's programme finished on `completedOn` (PlanCursor.completedOn). */
+function finishedOn(
+  state: ReturnType<typeof stateOf>,
+  completedOn: LocalDate,
+): ReturnType<typeof stateOf> {
+  return {
+    ...state,
+    cursors: {
+      p1: { planId: 'plan-1', nextSessionIndex: 6, startedOn: '2026-08-03', completedOn },
+    },
   };
 }
 
@@ -98,6 +119,20 @@ describe('pendingMotivation', () => {
 
   it('returns null for a profile with no reviews', () => {
     expect(pendingMotivation(stateOf([review({})]), 'unknown-profile', NOW)).toBeNull();
+  });
+
+  // ROADMAP B1. Builds before the fix stored a miss for every week after Programme Complete;
+  // those records are still in users' documents, so the gate is applied when they are read.
+  it('ignores a stored miss for a week after the programme completed', () => {
+    // Completed on Wednesday 2026-08-19, so the week of 2026-08-24 is after the programme.
+    const state = finishedOn(stateOf([review({})]), '2026-08-19');
+    expect(pendingMotivation(state, 'p1', NOW)).toBeNull();
+  });
+
+  it('still offers a miss for the week the programme completed in', () => {
+    // Completed on Wednesday 2026-08-26, inside the week of 2026-08-24.
+    const state = finishedOn(stateOf([review({})]), '2026-08-26');
+    expect(pendingMotivation(state, 'p1', NOW)?.weekStart).toBe('2026-08-24');
   });
 });
 

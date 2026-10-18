@@ -1,4 +1,5 @@
 import { addDays, compareLocalDate, instantOf } from '../dates';
+import { isAfterProgramme } from '../schedule/weekly';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import type { AppState, EpochMs, LocalDate, TimeZone, WeeklyReview } from '../types';
@@ -38,7 +39,7 @@ function weekCloseInstant(weekEnd: LocalDate, timezone: TimeZone): EpochMs {
 /**
  * The most recent closed week that still deserves the motivation popup, or null.
  *
- * A week qualifies when all five hold:
+ * A week qualifies when all six hold:
  *   delta < 0        — sessions completed fell short of the weekly target
  *                      (delta = completed − target, in sessions; negative = sessions missed)
  *   paused === false — a week overlapping a PlanPause is not a miss (master plan §6.4)
@@ -47,6 +48,9 @@ function weekCloseInstant(weekEnd: LocalDate, timezone: TimeZone): EpochMs {
  *   now − weekClose < MOTIVATION_MISS_WINDOW_DAYS — the week closed recently enough to matter
  *                      (master plan §10.5; the window is half-open, so an age of exactly one
  *                      window is outside it)
+ *   not after the programme — the week does not begin after the week the cursor's programme
+ *                      completed in (isAfterProgramme, ROADMAP B1). `closeWeeks` no longer
+ *                      writes such a week, but documents saved before that fix still hold them.
  *
  * The fourth condition is deliberately redundant with the third: markMotivationShown sets both,
  * so either one alone is enough to stop the popup reappearing on the next app open.
@@ -58,7 +62,7 @@ function weekCloseInstant(weekEnd: LocalDate, timezone: TimeZone): EpochMs {
  * so the caller's single clock reading is the one the whole open sequence uses.
  */
 export function pendingMotivation(
-  state: Pick<AppState, 'weeklyReviews' | 'motivation' | 'profiles'>,
+  state: Pick<AppState, 'weeklyReviews' | 'motivation' | 'profiles' | 'cursors'>,
   profileId: string,
   now: EpochMs,
 ): WeeklyReview | null {
@@ -70,6 +74,7 @@ export function pendingMotivation(
   if (reviews === undefined) return null;
 
   const lastShownForWeek = state.motivation[profileId]?.lastShownForWeek ?? null;
+  const cursor = state.cursors[profileId];
   const cutoff = now - MOTIVATION_MISS_WINDOW_MS; // [ms] epoch, UTC: the oldest close still offered
 
   let candidate: WeeklyReview | null = null;
@@ -79,6 +84,7 @@ export function pendingMotivation(
     if (review.missHandled) continue;
     if (lastShownForWeek !== null && review.weekStart === lastShownForWeek) continue;
     if (weekCloseInstant(review.weekEnd, profile.timezone) <= cutoff) continue;
+    if (isAfterProgramme(review.weekStart, cursor)) continue;
     if (candidate === null || compareLocalDate(review.weekStart, candidate.weekStart) === 1) {
       candidate = review;
     }

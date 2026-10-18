@@ -17,6 +17,12 @@
 // begun longer ago than the window still closes the week that has just ended, because the
 // window is anchored at the present rather than at the plan start.
 //
+// The upper end of the plan's lifetime is the ISO week containing cursor.completedOn
+// (ROADMAP B1). That week is graded like any other; every week after it holds no session to
+// miss, and walking into them graded each one 0 of target and fired the motivation popup.
+// isAfterProgramme is the one statement of that bound: readers of stored reviews use it too,
+// because documents written before the bound existed still hold those post-completion misses.
+//
 // Every date argument is a LocalDate ("YYYY-MM-DD") in the profile's timezone, produced only
 // by src/domain/dates.ts. Instants (EpochMs) are epoch milliseconds, UTC. The single reading
 // of the clock is todayLocal(profile.timezone, now): the week boundary is a civil-date
@@ -32,7 +38,7 @@
 // one.
 
 import { addDays, compareLocalDate, todayLocal, weekStart } from '../dates';
-import type { AppState, EpochMs, LocalDate, PlanPause, WeeklyReview } from '../types';
+import type { AppState, EpochMs, LocalDate, PlanCursor, PlanPause, WeeklyReview } from '../types';
 
 /**
  * Width of the evaluation window: 520 weeks = 10 years. It bounds the work one call can do
@@ -41,6 +47,29 @@ import type { AppState, EpochMs, LocalDate, PlanPause, WeeklyReview } from '../t
  * no longer act on — and never the newest.
  */
 export const MAX_WEEKS_EVALUATED = 520; // [weeks]
+
+/**
+ * Monday of the last ISO week the programme is graded on: the week containing
+ * cursor.completedOn. null while the programme is still running, or when there is no cursor.
+ */
+export function finalProgrammeWeek(
+  cursor: Pick<PlanCursor, 'completedOn'> | null | undefined,
+): LocalDate | null {
+  if (cursor === null || cursor === undefined || cursor.completedOn === null) return null;
+  return weekStart(cursor.completedOn);
+}
+
+/**
+ * Does the ISO week starting on `monday` begin after the week the programme completed in?
+ * Such a week is never graded, and a stored review of one is not a miss (ROADMAP B1).
+ */
+export function isAfterProgramme(
+  monday: LocalDate,
+  cursor: Pick<PlanCursor, 'completedOn'> | null | undefined,
+): boolean {
+  const last = finalProgrammeWeek(cursor);
+  return last !== null && compareLocalDate(monday, last) > 0;
+}
 
 /** The later of two dates. */
 function maxDate(a: LocalDate, b: LocalDate): LocalDate {
@@ -128,6 +157,8 @@ export function closeWeeks(state: AppState, profileId: string, now: EpochMs): Ap
   while (evaluated < MAX_WEEKS_EVALUATED) {
     // The current week is never evaluated: it must have ended strictly before today.
     if (compareLocalDate(week.end, today) >= 0) break;
+    // Nor is any week after the one the programme completed in: no session is left to miss.
+    if (isAfterProgramme(week.start, cursor)) break;
 
     if (!alreadyReviewed.has(week.start)) {
       evaluated += 1;
