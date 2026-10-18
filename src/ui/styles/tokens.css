@@ -295,6 +295,12 @@ body {
   color: var(--lime);
 }
 
+/* A display line on the panel: white type (21:1) keeping the pink offset shadow. The ink the
+ * display line carries on lime would be 1:1 here. Stylize survey 2026-10-18, item 9 (toasts). */
+:root[data-skin='limelight'] .ll-panel .ll-display {
+  color: var(--panel-text);
+}
+
 /* The one declaration in this file allowed to set a colour from --pink: inside a black panel,
  * where it measures 7.75:1. */
 :root[data-skin='limelight'] .ll-panel .ll-panel-state {

@@ -30,13 +30,26 @@
   outline-offset: -2px;
 }
 
+/*
+ * Ink, where it was --accent: pink type on the lime card, 1.41:1 (tokens.css bans it at every
+ * size). With `.ll-display` the title is the ink display cut with the pink offset shadow; the
+ * card stays lime, not a lit-sign panel, and carries no picture (stylize survey 2026-10-18,
+ * item 9, and the missed-week veto).
+ */
 .mmod-title {
   margin: 0 0 0.5rem;
   font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--text);
+}
+
+.mmod-title.ll-display {
+  margin-bottom: 0.75rem;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  text-transform: none;
 }
 
 .mmod-detail {

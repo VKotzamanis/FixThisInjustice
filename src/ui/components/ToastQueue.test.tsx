@@ -587,6 +587,38 @@ describe('useToasts', () => {
     expect(screen.queryByText(/specimen acquired/i)).toBeNull();
   });
 
+  /*
+   * Stylize survey 2026-10-18, item 9: a toast is the lit sign, the black `.ll-panel` the
+   * marquee already uses, so its pink tag is legal type (7.75:1 on black, via the panel's own
+   * `.ll-panel-state` rule in tokens.css) where it was 1.41:1 on lime. A card title takes the
+   * display cut unless it carries a numeral.
+   */
+  it('renders every toast as a lit-sign panel with its tag in the panel state colour', () => {
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'coach', message: 'msg' });
+    });
+    const toast = onScreen()[0];
+    expect(toast?.classList.contains('ll-panel')).toBe(true);
+    const tag = screen.getByText(copyFor('limelight', 'label.coachNote'));
+    expect(tag.classList.contains('ll-panel-state')).toBe(true);
+  });
+
+  it('sets a specimen title in the display cut, and never one carrying a numeral', () => {
+    renderQueue();
+    act(() => {
+      api!.push({ kind: 'specimen', cardId: 'c005' });
+    });
+    expect(screen.getByText('Volume and hypertrophy').classList.contains('ll-display')).toBe(true);
+    act(() => {
+      api!.dismiss(api!.queue[0]!.id);
+      api!.push({ kind: 'specimen', cardId: 'c003' });
+    });
+    const numbered = screen.getByText(SPECIMEN_BY_ID['c003']!.title);
+    expect(numbered.classList.contains('toast-title')).toBe(true);
+    expect(numbered.classList.contains('ll-display')).toBe(false);
+  });
+
   it('renders into a polite region, and the undo class into an assertive one', () => {
     renderQueue();
     const polite = screen.getByRole('status');

@@ -1,9 +1,10 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
-import { useCopyOverrides } from '../../content/useCopy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
+import { displayClass } from '../format/display';
 import { weekDeltaKey } from '../format/weekDelta';
 import './limelight.css';
 
@@ -56,6 +57,7 @@ export function Intervention({ review }: { review: WeeklyReview | null }): React
   // Only the counts line resolves a key here now; the title and the body read theirs through
   // SkinLabel, which calls useCopy() itself.
   const overrides = useCopyOverrides();
+  const c = useCopy();
   const shown = handledMiss(review);
   const sounded = useRef(false);
 
@@ -85,8 +87,12 @@ export function Intervention({ review }: { review: WeeklyReview | null }): React
         * The popup that precedes this block (src/ui/motivation/MotivationModal.tsx) renders
         * the same title key and is deliberately left bare: 4.4 names one position for `alert`,
         * and that dialog's own art is P6's clip.
+        *
+        * The title takes the ink display cut (stylize survey 2026-10-18, items 1 and 9), never a
+        * picture: the title may be camp, and the cut is type, not a mascot. displayClass reads
+        * the same string SkinLabel renders and withholds the cut if it ever carries a numeral.
         */}
-      <h2 className="ll-intervention-title">
+      <h2 className={displayClass(c('hero.weeklyTargetMissed'), 'll-intervention-title')}>
         <SkinLabel copyKey="hero.weeklyTargetMissed" />
       </h2>
       <p className="ll-intervention-body">

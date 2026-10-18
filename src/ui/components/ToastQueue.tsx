@@ -27,6 +27,7 @@ import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { SPECIMEN_BY_ID } from '../../content/specimenCards';
 import { newId } from '../../domain/ids';
 import type { EpochMs } from '../../domain/types';
+import { displayClass } from '../format/display';
 
 export type ToastKind = 'undo' | 'milestone' | 'coach' | 'telemetry' | 'specimen';
 
@@ -341,7 +342,7 @@ function toastContent(toast: Toast, words: ToastCopy): ReactElement | null {
     case 'telemetry':
       return (
         <>
-          <span className="toast-tag">
+          <span className="toast-tag ll-panel-state">
             {words.t(toast.kind === 'coach' ? 'label.coachNote' : 'label.telemetry')}
           </span>
           <span className="toast-message">{toast.message}</span>
@@ -354,11 +355,11 @@ function toastContent(toast: Toast, words: ToastCopy): ReactElement | null {
       if (card === undefined) return null;
       return (
         <>
-          <span className="toast-tag">
+          <span className="toast-tag ll-panel-state">
             {FORMAT.specimenAcquired(card.rarity, words.overrides)}
           </span>
           <span className="toast-category">{card.category}</span>
-          <span className="toast-title">{card.title}</span>
+          <span className={displayClass(card.title, 'toast-title')}>{card.title}</span>
           <span className="toast-body">{card.body}</span>
           <span className="toast-source">{card.source.citation}</span>
         </>
@@ -393,9 +394,14 @@ function ToastShell(props: {
    */
   const tapDismisses = toast.kind !== 'undo';
 
+  /*
+   * `ll-panel`: every toast is the lit sign, the black panel the marquee already uses (stylize
+   * survey 2026-10-18, item 9). On the lime ground the tag was pink type at 1.41:1; on the panel
+   * its `ll-panel-state` class makes it pink at 7.75:1, the one place tokens.css lets pink be type.
+   */
   return (
     <div
-      className={`toast toast-${toast.kind}${rarity === null ? '' : ` rarity-${rarity}`}`}
+      className={`toast ll-panel toast-${toast.kind}${rarity === null ? '' : ` rarity-${rarity}`}`}
       data-testid="toast"
       onClick={tapDismisses ? dismiss : undefined}
     >

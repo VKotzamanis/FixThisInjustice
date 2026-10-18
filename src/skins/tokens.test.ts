@@ -35,6 +35,13 @@ describe('the limelight token contract', () => {
     expect(fromPink).toEqual(['color: var(--pink);']);
   });
 
+  it('sets a display line inside the black panel in panel text, not in ink', () => {
+    // .ll-display is ink (10.91:1 on lime) and the panel is black, where ink would be 1:1. The
+    // toasts became lit-sign panels with display-cut titles (stylize survey 2026-10-18, item 9).
+    const inPanel = /:root\[data-skin='limelight'\] \.ll-panel \.ll-display \{([^}]*)\}/.exec(tokens);
+    expect(inPanel?.[1]).toMatch(/color:\s*var\(--panel-text\);/);
+  });
+
   it('names the face the remaining fontsource package provides', () => {
     expect(tokens).toContain("'Archivo Variable'");
     expect(tokens).not.toContain("'Space Mono'");
