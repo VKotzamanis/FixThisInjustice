@@ -246,6 +246,19 @@ function idsInUse(session: PlannedSession, e: SessionEdits): Set<string> {
 }
 
 /**
+ * The exercise ids 'add' refuses (review R3): every id the edited session holds in a slot, and
+ * every planned exercise of the session even after its slot was swapped away. A planned id is a
+ * slot key (LineupEntry.key), so an added card under it would collide with that slot; the way
+ * back to a swapped-away exercise is swapping its slot back. The Add picker excludes exactly
+ * this set (TrainView), so it never offers what the store refuses.
+ */
+export function addBlockedIds(session: PlannedSession, edits: SessionEdits | undefined): Set<string> {
+  const ids = idsInUse(session, edits ?? EMPTY_EDITS);
+  for (const p of session.exercises) ids.add(p.exerciseId);
+  return ids;
+}
+
+/**
  * Applies one edit and returns the next edits, or throws with what was wrong. The input is
  * never mutated. Refusals are the faults a stale screen can produce (a slot that is gone, an
  * exercise already on the card list), named so the store can report them.
@@ -309,8 +322,12 @@ export function applySessionEdit(
       if (library[op.exerciseId] === undefined) {
         throw new Error(`add: "${op.exerciseId}" is not a known exercise`);
       }
-      if (idsInUse(session, e).has(op.exerciseId) || plannedKeys.has(op.exerciseId)) {
-        throw new Error(`add: "${op.exerciseId}" is already in this session`);
+      if (addBlockedIds(session, e).has(op.exerciseId)) {
+        throw new Error(
+          idsInUse(session, e).has(op.exerciseId)
+            ? `add: "${op.exerciseId}" is already in this session`
+            : `add: "${op.exerciseId}" is a planned exercise of this session whose slot was swapped; swap the slot back instead`,
+        );
       }
       return { ...e, added: [...e.added, op.exerciseId] };
     }

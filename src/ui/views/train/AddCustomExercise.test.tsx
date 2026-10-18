@@ -9,7 +9,7 @@
 // below asserts the ABSENCE by key, so a later row added there fails this test rather than
 // slipping in unnoticed.
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, copy, copyFor } from '../../../content/copy';
 import { EXERCISE_NAME_MAX_CHARS } from '../../../domain/schema';
 import type { SkinId } from '../../../domain/types';
@@ -75,6 +75,31 @@ describe('AddCustomExercise: the limelight words', () => {
         ),
       ),
     ).toBeInTheDocument();
+  });
+});
+
+describe('AddCustomExercise: a refused session add (review R5)', () => {
+  it('retries with the exercise it already stored instead of storing a duplicate', () => {
+    const profile = makeProfile();
+    // The store refuses the first session add (a session finished in another tab), then takes it.
+    const onAdd = vi.fn<(exerciseId: string) => boolean>().mockReturnValueOnce(false).mockReturnValue(true);
+    render(<AddCustomExercise profile={profile} onAdd={onAdd} />);
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') }));
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName')), {
+      target: { value: 'Cable crunch' },
+    });
+    const save = (): void => {
+      fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
+    };
+
+    save();
+    expect(screen.getByRole('alert').textContent).toBe(copyFor('limelight', 'status.sessionEditRefused'));
+    save();
+
+    const custom = useAppStore.getState().customExercises[profile.id] ?? [];
+    expect(custom.map((e) => e.name)).toEqual(['Cable crunch']);
+    expect(onAdd.mock.calls).toEqual([[custom[0]?.id], [custom[0]?.id]]);
+    expect(screen.queryByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toBeNull();
   });
 });
 

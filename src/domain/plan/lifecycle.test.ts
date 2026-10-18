@@ -193,35 +193,67 @@ describe('massTargetReached and nextProgrammeGoal', () => {
     targetBodyFatPct: null,
     targetDate: null,
   });
+  // [kg] setup baselines the targets below were set against: above a fat-loss target, below a
+  // muscle-gain one.
+  const ABOVE = 95; // [kg]
+  const BELOW = 80; // [kg]
 
   it('reaches a fat-loss target at or below it', () => {
-    expect(massTargetReached(goalOf('fat-loss', 85), 85)).toBe(true); // [kg]
-    expect(massTargetReached(goalOf('fat-loss', 85), 84.9)).toBe(true); // [kg]
-    expect(massTargetReached(goalOf('fat-loss', 85), 85.1)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), 85, ABOVE)).toBe(true); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), 84.9, ABOVE)).toBe(true); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), 85.1, ABOVE)).toBe(false); // [kg]
   });
 
   it('reaches a muscle-gain target at or above it', () => {
-    expect(massTargetReached(goalOf('muscle-gain', 90), 90)).toBe(true); // [kg]
-    expect(massTargetReached(goalOf('muscle-gain', 90), 89.9)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('muscle-gain', 90), 90, BELOW)).toBe(true); // [kg]
+    expect(massTargetReached(goalOf('muscle-gain', 90), 89.9, BELOW)).toBe(false); // [kg]
   });
 
   it('never reaches a goal that holds mass, a missing target, or no weigh-in', () => {
-    expect(massTargetReached(goalOf('recomposition', 80), 70)).toBe(false); // [kg]
-    expect(massTargetReached(goalOf('maintenance', 80), 80)).toBe(false); // [kg]
-    expect(massTargetReached(goalOf('fat-loss', null), 70)).toBe(false); // [kg]
-    expect(massTargetReached(goalOf('fat-loss', 85), null)).toBe(false);
+    expect(massTargetReached(goalOf('recomposition', 80), 70, ABOVE)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('maintenance', 80), 80, ABOVE)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', null), 70, ABOVE)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('fat-loss', 85), null, ABOVE)).toBe(false);
+  });
+
+  /*
+   * Review R1 (2026-10-18). The wizard stores a body-fat target as the mass it implies at HELD
+   * lean mass (SetupWizard.tsx, impliedTargetMassKg): 95 kg at 20 % with a 15 % target is
+   * 76 kg lean / 0.85 = 89.41 kg, below the start. Under muscle gain that target points down,
+   * so it is never "reached" by standing still at 95 kg.
+   */
+  it('never reaches a muscle-gain target set below the starting mass', () => {
+    const startKg = 95; // [kg] setup baseline
+    const leanKg = startKg * (1 - 20 / 100); // [kg] 76 at 20 % body fat
+    const targetKg = leanKg / (1 - 15 / 100); // [kg] 89.41 at a 15 % target
+    const goal = goalOf('muscle-gain', targetKg);
+    expect(massTargetReached(goal, startKg, startKg)).toBe(false);
+    expect(nextProgrammeGoal(goal, startKg, startKg)).toEqual({
+      goal: 'muscle-gain',
+      targetReached: false,
+    });
+  });
+
+  it('never reaches a target a goal change left pointing the other way, or one at the start', () => {
+    // A fat-loss target (85 kg from 95 kg) kept after Settings switched the goal to muscle gain.
+    expect(massTargetReached(goalOf('muscle-gain', 85), 96, ABOVE)).toBe(false); // [kg]
+    // A muscle-gain target (90 kg from 80 kg) kept after a switch to fat loss.
+    expect(massTargetReached(goalOf('fat-loss', 90), 78, BELOW)).toBe(false); // [kg]
+    // A target equal to the start asks for no change in either direction.
+    expect(massTargetReached(goalOf('fat-loss', 95), 94, 95)).toBe(false); // [kg]
+    expect(massTargetReached(goalOf('muscle-gain', 95), 96, 95)).toBe(false); // [kg]
   });
 
   it('defaults the next goal to maintenance only when the target was reached', () => {
-    expect(nextProgrammeGoal(goalOf('fat-loss', 85), 84)).toEqual({
+    expect(nextProgrammeGoal(goalOf('fat-loss', 85), 84, ABOVE)).toEqual({
       goal: 'maintenance',
       targetReached: true,
     });
-    expect(nextProgrammeGoal(goalOf('fat-loss', 85), 86)).toEqual({
+    expect(nextProgrammeGoal(goalOf('fat-loss', 85), 86, ABOVE)).toEqual({
       goal: 'fat-loss',
       targetReached: false,
     });
-    expect(nextProgrammeGoal(goalOf('recomposition', 85), 80)).toEqual({
+    expect(nextProgrammeGoal(goalOf('recomposition', 85), 80, ABOVE)).toEqual({
       goal: 'recomposition',
       targetReached: false,
     });

@@ -906,8 +906,11 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
     });
   }
 
-  /** A fat-loss goal with an 80 kg target and one weigh-in of `massKg`. */
-  function fatLossWeighedAt(massKg: number): void {
+  /**
+   * `goal` with one weigh-in of `massKg`, set up from `baselineKg`: the mass the wizard measured
+   * the target against (lifecycle.ts massTargetReached).
+   */
+  function weighedAt(goal: AppState['profiles'][string]['goal'], baselineKg: number, massKg: number): void {
     const s = useAppStore.getState();
     const profile = s.profiles[PROFILE_ID];
     if (profile === undefined) throw new Error('fixture: profile missing');
@@ -916,7 +919,8 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
       profiles: {
         [PROFILE_ID]: {
           ...profile,
-          goal: { kind: 'fat-loss', targetMassKg: 80, targetBodyFatPct: null, targetDate: null }, // [kg]
+          body: { ...profile.body, baselineMassKg: baselineKg }, // [kg]
+          goal,
         },
       },
       bodyMass: {
@@ -933,6 +937,11 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
         ],
       },
     });
+  }
+
+  /** A fat-loss goal with an 80 kg target set from 90 kg, and one weigh-in of `massKg`. */
+  function fatLossWeighedAt(massKg: number): void {
+    weighedAt({ kind: 'fat-loss', targetMassKg: 80, targetBodyFatPct: null, targetDate: null }, 90, massKg); // [kg]
   }
 
   const nextPanel = (): HTMLElement =>
@@ -1022,5 +1031,18 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
     fireEvent.change(goal, { target: { value: 'muscle-gain' } });
     fireEvent.click(within(panel).getByRole('button', { name: copyFor('limelight', 'button.startProgramme') }));
     expect(useAppStore.getState().profiles[PROFILE_ID]?.goal.kind).toBe('muscle-gain');
+  });
+
+  it('keeps muscle gain when its body-fat target implies a mass below the start (review R1)', () => {
+    finished();
+    // 95 kg at 20 % body fat with a 15 % target: 76 kg lean / 0.85 = 89.41 kg (SetupWizard.tsx).
+    const targetKg = (95 * (1 - 20 / 100)) / (1 - 15 / 100); // [kg]
+    weighedAt({ kind: 'muscle-gain', targetMassKg: targetKg, targetBodyFatPct: 15, targetDate: null }, 95, 95); // [kg]
+    render(<TodayView />);
+    fireEvent.click(button('button.startNextProgramme'));
+
+    const goal = within(nextPanel()).getByLabelText(copyFor('limelight', 'label.goal'));
+    expect((goal as HTMLSelectElement).value).toBe('muscle-gain');
+    expect(screen.queryByText(copyFor('limelight', 'advice.targetReachedMaintenance'))).toBeNull();
   });
 });

@@ -1713,6 +1713,17 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
     expect(screen.getByText(FORMAT.bonusExerciseName('Lateral raise'))).toBeInTheDocument();
   });
 
+  it('L4: does not offer to add a planned exercise whose slot was swapped away (review R3)', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    swapTo('Barbell bench press', 'incline-db-press');
+
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    // The store refuses it (its id is the slot's key); the way back is swapping the slot back.
+    expect(screen.queryByRole('option', { name: 'Barbell bench press' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'Incline dumbbell press' })).toBeNull();
+  });
+
   it('L4: logs sets on an added exercise as bonus work, out of progression', () => {
     seedStore(seed({ exercise: BENCH }));
     renderTrain();

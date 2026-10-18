@@ -104,21 +104,35 @@ export function massDirection(kind: GoalKind): MassDirection {
 /**
  * Has the body-mass target been reached (ROADMAP L7)?
  *
- * True only for a goal that moves mass, with a stored target, and a logged weigh-in at or past
- * the target in the goal's direction: at or below it for fat loss, at or above it for muscle
- * gain. `latestMassKg` is the latest logged entry (latestBodyMassEntry); the setup baseline is not
- * a weigh-in. No tolerance band: the app has no sourced figure for one.
+ * True only for a goal that moves mass, with a stored target that lies in the goal's direction
+ * from the setup baseline, and a logged weigh-in at or past the target in that direction: for fat
+ * loss a target below the baseline and a weigh-in at or below it, for muscle gain a target above
+ * the baseline and a weigh-in at or above it. `latestMassKg` is the latest logged entry
+ * (latestBodyMassEntry); the setup baseline is not a weigh-in. No tolerance band: the app has no
+ * sourced figure for one.
+ *
+ * The baseline is the reference because it is the mass the target was set against: the wizard
+ * writes `body.baselineMassKg` and `goal.targetMassKg` in one profile, and nothing else writes
+ * either. A target on the wrong side of it (review R1: a body-fat target stored as the mass it
+ * implies at held lean mass, below the start under muscle gain; or a fat-loss target kept after
+ * Settings or a restart changed only `goal.kind`) asks for no change in the goal's direction, so
+ * it is never reached. A target equal to the baseline is the same case.
  *
  * @param latestMassKg [kg] the latest logged body mass, or null when nothing is logged.
+ * @param baselineMassKg [kg] `profile.body.baselineMassKg`, the mass at setup.
  */
-export function massTargetReached(goal: Profile['goal'], latestMassKg: Kg | null): boolean {
+export function massTargetReached(
+  goal: Profile['goal'],
+  latestMassKg: Kg | null,
+  baselineMassKg: Kg,
+): boolean {
   const target = goal.targetMassKg; // [kg]
   if (target === null || latestMassKg === null) return false;
   switch (massDirection(goal.kind)) {
     case 'down':
-      return latestMassKg <= target;
+      return target < baselineMassKg && latestMassKg <= target;
     case 'up':
-      return latestMassKg >= target;
+      return target > baselineMassKg && latestMassKg >= target;
     case 'held':
       return false;
   }
@@ -130,12 +144,14 @@ export function massTargetReached(goal: Profile['goal'], latestMassKg: Kg | null
  * the current goal. A default only; the user picks the goal the next programme runs on.
  *
  * @param latestMassKg [kg] the latest logged body mass, or null when nothing is logged.
+ * @param baselineMassKg [kg] `profile.body.baselineMassKg` (see massTargetReached).
  */
 export function nextProgrammeGoal(
   goal: Profile['goal'],
   latestMassKg: Kg | null,
+  baselineMassKg: Kg,
 ): { goal: GoalKind; targetReached: boolean } {
-  const targetReached = massTargetReached(goal, latestMassKg);
+  const targetReached = massTargetReached(goal, latestMassKg, baselineMassKg);
   return { goal: targetReached ? 'maintenance' : goal.kind, targetReached };
 }
 

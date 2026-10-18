@@ -25,7 +25,7 @@ Agent doc. Regenerate the programme from today: when Settings no longer match it
 
 ## Goal reached (L7)
 - Applies only to a goal that moves body mass: `massDirection(kind)` from `GOAL_AXES_BY_KIND` (fat lose + muscle hold = down: fat loss; fat hold + muscle gain = up: muscle gain; recomposition and maintenance hold mass, `nutrition.ts` energyPlan at TDEE).
-- Reached: `goal.targetMassKg` set, at least one logged body-mass entry, and the latest one (by date, then loggedAt; `latestBodyMassEntry`) is at or below the target (down) or at or above it (up). Baseline mass is not a logged entry.
+- Reached: `goal.targetMassKg` set and strictly below (down) or above (up) `body.baselineMassKg`, the mass the wizard set it against; at least one logged body-mass entry; and the latest one (by date, then loggedAt; `latestBodyMassEntry`) is at or below the target (down) or at or above it (up). Baseline mass is not a logged entry. A target at or on the wrong side of the baseline is never reached (review R1: a body-fat target stored at held lean mass under muscle gain; a target kept when Settings or a restart changed only `goal.kind`). Such a target is kept as stored, not cleared.
 - Then Start Next Programme preselects Maintenance and says so in one sentence. The user can pick any goal. Target mass and date are left as stored. Energy follows from `goal.kind` (`computeTargets`); no coefficient added.
 - Update Programme (Settings) does not apply L7: the goal there is the Settings goal.
 

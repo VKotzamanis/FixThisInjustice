@@ -219,7 +219,11 @@ export function TodayView(): JSX.Element {
    * ROADMAP L7: the goal Start Next Programme preselects, maintenance once the body-mass target
    * was reached (src/domain/plan/lifecycle.ts states the rule). Read only by the finished hero.
    */
-  const suggestion = nextProgrammeGoal(profile.goal, latestWeighIn?.massKg ?? null); // [kg]
+  const suggestion = nextProgrammeGoal(
+    profile.goal,
+    latestWeighIn?.massKg ?? null, // [kg]
+    profile.body.baselineMassKg, // [kg] the mass the target was set against
+  );
 
   /*
    * The ticker's lines (P8 Task 14, round-three plan section 2.4). Every line is a string a
