@@ -120,7 +120,7 @@ export const GUIDANCE_REFERENCES: readonly GuidanceReference[] = [
     lead: 'Caffeine, the dose range that helps resistance training specifically.',
     cite: {
       kind: 'published',
-      text: 'Grgic J. Nutrition 103-104:111604, 2022. DOI 10.1016/j.nut.2022.111604',
+      text: 'Grgic J. Nutrition 97:111604, 2022. DOI 10.1016/j.nut.2022.111604',
       doi: '10.1016/j.nut.2022.111604',
       recordedIn: 'src/domain/nutrition.ts',
     },

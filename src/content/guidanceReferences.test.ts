@@ -196,3 +196,13 @@ describe('the claims with no source are named rather than filled', () => {
     }
   });
 });
+
+describe('Grgic 2022 carries the volume Crossref records (ROADMAP B2, checked 2026-10-17)', () => {
+  // Crossref api.crossref.org/works/10.1016/j.nut.2022.111604: Nutrition, volume 97, article 111604.
+  it('prints volume 97 in the reference list and in the engine that cites it', () => {
+    const ref = PUBLISHED.find((r) => r.cite.doi === '10.1016/j.nut.2022.111604');
+    expect(ref?.cite.text).toContain('Nutrition 97:111604');
+    expect(nutritionSource).toContain('Nutrition 97:111604');
+    expect(nutritionSource).not.toContain('103-104:111604');
+  });
+});

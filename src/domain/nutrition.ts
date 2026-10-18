@@ -604,7 +604,7 @@ export function creatineDoseG(massKg: Kg): number {
 /**
  * Caffeine, as an ergogenic dose for RESISTANCE training.
  *
- * Grgic J (2022), Nutrition 103-104:111604, DOI 10.1016/j.nut.2022.111604: 0.9-2 mg/kg is
+ * Grgic J (2022), Nutrition 97:111604, DOI 10.1016/j.nut.2022.111604: 0.9-2 mg/kg is
  * sufficient for strength, muscular endurance and movement velocity. The wider 3-6 mg/kg band in
  * the ISSN position stand (Guest NS et al. 2021, J Int Soc Sports Nutr 18:1,
  * DOI 10.1186/s12970-020-00383-4) is evidenced mostly in ENDURANCE work, and at 70 kg its floor
