@@ -13,10 +13,11 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
   - B1d `setPlan` keeps old reviews (`src/store/index.ts:650`); a leftover review blocks re-grading that week under a new plan. Matters once L5 regenerates plans.
 
 ## 2. Training loop (want, all)
-- L1 Edit a logged set (today: delete within 6 s undo, relog). `src/ui/views/train/SetRow.tsx`, store has no updateSet.
-- L2 Swap an exercise mid-session (no store action, no UI).
-- L3 Skip / remove / reorder exercises in a session.
-- L4 Add a library exercise mid-session. Today only free-text custom (`src/ui/views/train/AddCustomExercise.tsx`), `muscleGroups: []`, counts for no volume, no removal.
+- L1 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Edit a logged set (today: delete within 6 s undo, relog). `src/ui/views/train/SetRow.tsx`, store has no updateSet.
+- L2 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Swap an exercise mid-session (no store action, no UI).
+- L3 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Skip / remove / reorder exercises in a session.
+- L4 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Add a library exercise mid-session. Today only free-text custom (`src/ui/views/train/AddCustomExercise.tsx`), `muscleGroups: []`, counts for no volume, no removal.
+- L1-L4 follow-ups: swap A→B, log on B, swap to C labels B's sets "(bonus)" (data intact); `addBonusExercise` + `session.bonusExerciseIds` only read for sessions opened by older builds (remove later); `anyAppState` (`src/domain/arbitraries.ts`) never generates `edits`; not checked on a phone.
 - L5 Programme follows Settings: changing equipment, days, goal or experience regenerates/updates the plan. Today `generatePlan` has one caller, the wizard (`src/ui/setup/SetupWizard.tsx`), reachable only via Wipe All.
 - L6 (design) Open-ended programme, no length input. Owner ask: build the next block from what was logged ("one training ends -> create the next one based on the data logged"). Prior design `docs/design/programme-horizon.md` (copy cycle 1 forward) does NOT meet that ask; `docs/design/jit-scheduler-brief.md` is closer. Remove the wizard `programme` step; wizard tests navigate by counting `next()` presses.
 - L7 (design) After the goal: switch to maintenance. Keep the gym habit, stop weight loss (energy target to maintenance).
