@@ -19,9 +19,10 @@ import {
 } from '../../store/scheduleSelectors';
 import { latestBodyMassEntry, useActiveProfile } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
-import { Intervention } from '../components/Intervention';
+import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
+import { StatusMark } from '../components/StatusMark';
 import { TimeCapsule } from '../components/TimeCapsule';
 import { WeekStamp } from '../components/WeekStamp';
 import {
@@ -33,8 +34,10 @@ import {
   formatSets,
   formatWeekday,
 } from '../format/plan';
+import { displayClass } from '../format/display';
 import { refusalLine } from '../format/refusal';
 import { weekDeltaKey } from '../format/weekDelta';
+import { heroPose, heroStateOf, type DayStatus } from './todayHero';
 import './views.css';
 
 /**
@@ -69,8 +72,6 @@ import './views.css';
 /** [d] Whole calendar days in the strip below the hero. */
 const STRIP_DAYS = 14;
 
-type DayStatus = 'in-progress' | 'paused' | 'completed' | 'skipped' | 'planned' | 'rest';
-
 /** The precedence above, applied to one projected day. */
 function dayStatus(day: CalendarDay): DayStatus {
   const status = day.assignment?.status;
@@ -97,8 +98,9 @@ const STATUS_KEY: Record<DayStatus, CopyKey> = {
  *
  * Master plan section 3 bans emoji from the default skin, and a glyph taken from the text font
  * is at the mercy of whatever the platform substitutes for it (a check mark renders as an
- * emoji on some phones and as a dingbat on others). These are two-line SVG figures on a 12-unit
- * grid, so they scale with the row and inherit its colour.
+ * emoji on some phones and as a dingbat on others). The marks are StatusMark's pixel grids
+ * (stylize survey 2026-10-18, item 6), the same set the Log compliance grid draws, so a status
+ * looks the same on both screens and differs from its neighbours by shape, not only by shade.
  *
  * The name is carried by aria-label alone. A <title> child names the graphic too, and the two
  * were the same string: the accessible-name computation prefers aria-label, so the element was
@@ -107,26 +109,16 @@ const STATUS_KEY: Record<DayStatus, CopyKey> = {
  */
 function StatusGlyph(props: { status: DayStatus }): JSX.Element {
   const c = useCopy();
-  const name = c(STATUS_KEY[props.status]);
-  return (
-    <svg
-      className="sd-glyph"
-      viewBox="0 0 12 12"
-      role="img"
-      aria-label={name}
-      focusable="false"
-      data-glyph={props.status}
-    >
-      {props.status === 'completed' && <polyline points="2,6.4 4.8,9.2 10,3" />}
-      {props.status === 'skipped' && <path d="M3 3 L9 9 M9 3 L3 9" />}
-      {props.status === 'in-progress' && (
-        <polygon points="3.5,2.5 9.5,6 3.5,9.5" className="sd-fill" />
-      )}
-      {props.status === 'paused' && <path d="M4.5 2.5 L4.5 9.5 M7.5 2.5 L7.5 9.5" />}
-      {props.status === 'planned' && <circle cx="6" cy="6" r="1.7" className="sd-fill" />}
-      {props.status === 'rest' && <path d="M3 6 L9 6" />}
-    </svg>
-  );
+  return <StatusMark kind={props.status} label={c(STATUS_KEY[props.status])} />;
+}
+
+/**
+ * The hero's heading. It takes the brat display cut (stylize survey 2026-10-18, item 1) unless
+ * the text carries a numeral, which a session name ("Push 1") or the pause date does:
+ * displayClass decides that for every heading in the app, so this view does not.
+ */
+function HeroName(props: { text: string }): JSX.Element {
+  return <h1 className={displayClass(props.text, 'hero-name')}>{props.text}</h1>;
 }
 
 /**
@@ -191,7 +183,7 @@ export function TodayView(): JSX.Element {
     return (
       <div className="view today">
         <div className="today-hero">
-          <h1 className="hero-name">{c('hero.noPlan')}</h1>
+          <HeroName text={c('hero.noPlan')} />
           <p className="today-sub">{c('advice.completeSetup')}</p>
         </div>
       </div>
@@ -215,6 +207,15 @@ export function TodayView(): JSX.Element {
   const graded = reviews.filter((r) => !isAfterProgramme(r.weekStart, cursor));
   const lastReview: WeeklyReview | null =
     graded.length === 0 ? null : (graded[graded.length - 1] ?? null);
+  /*
+   * The mascot beside the hero (stylize survey item 5), from one map in todayHero.ts. A missed
+   * week on screen outranks every pose: the popup while it is owed, then the intervention block,
+   * neither of which is shown once the programme is finished.
+   */
+  const pose = heroPose(heroStateOf(status, finished), !finished && missedWeek(lastReview));
+  // Decorative: every hero's heading says what the picture shows (Illustration.tsx).
+  const mascot =
+    pose === null ? null : <Illustration name={pose.name} width={pose.size} height={pose.size} />;
   /*
    * ROADMAP L7: the goal Start Next Programme preselects, maintenance once the body-mass target
    * was reached (src/domain/plan/lifecycle.ts states the rule). Read only by the finished hero.
@@ -320,10 +321,8 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        {/* Decorative: the heading already says a session is under way. Round 3 drew this and
-            never placed it; the asset manifest of 2026-09-06 put it here. */}
-        <Illustration name="mascotLifting" width={72} height={72} />
-        <h1 className="hero-name">{c('hero.sessionInProgress')}</h1>
+        {mascot}
+        <HeroName text={c('hero.sessionInProgress')} />
         {session !== null && <p className="today-sub">{session.name}</p>}
       </div>
     );
@@ -331,7 +330,8 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)}</h1>
+        {mascot}
+        <HeroName text={FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)} />
         <p className="today-sub">{c('advice.pauseHoldsCursor')}</p>
       </div>
     );
@@ -340,9 +340,10 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">
-          {c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
-        </h1>
+        {mascot}
+        <HeroName
+          text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
+        />
         {session !== null && <p className="today-sub">{session.name}</p>}
         {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
       </div>
@@ -351,7 +352,8 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{session.name}</h1>
+        {mascot}
+        <HeroName text={session.name} />
         <p className="today-sub">
           {FORMAT.sessionSummary(
             session.label,
@@ -382,7 +384,8 @@ export function TodayView(): JSX.Element {
         <p className="today-eyebrow">
           {FORMAT.planPosition(shown, total, c('status.planComplete'))}
         </p>
-        <h1 className="hero-name">{c('hero.programmeComplete')}</h1>
+        {mascot}
+        <HeroName text={c('hero.programmeComplete')} />
         <p className="today-sub">
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
         </p>
@@ -393,7 +396,8 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{c('hero.noSessionToday')}</h1>
+        {mascot}
+        <HeroName text={c('hero.noSessionToday')} />
         <p className="today-sub">
           {next === null || next.slot === null || next.projectedSession === null
             ? c('advice.noSessionIn14Days')
@@ -660,7 +664,9 @@ export function TodayView(): JSX.Element {
        * of the same string in an aria-label: one string in the DOM, and a reworded heading
        * cannot leave the list announcing the old wording.
        */}
-      <h2 id="today-strip-heading">{c('hero.nextFourteenDays')}</h2>
+      <h2 id="today-strip-heading" className={displayClass(c('hero.nextFourteenDays'))}>
+        {c('hero.nextFourteenDays')}
+      </h2>
       <ol className="today-strip" aria-labelledby="today-strip-heading">
         {upcoming.map((d) => {
           const s = dayStatus(d);

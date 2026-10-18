@@ -29,6 +29,7 @@ import {
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { describeMiss } from '../../domain/motivation/trigger';
 import { useAppStore } from '../../store';
+import { displayClass } from '../format/display';
 import type { WeeklyReview } from '../../domain/types';
 import './motivation.css';
 
@@ -163,6 +164,7 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
   );
 
   const showVideo = source !== null && playable;
+  const title = review === null ? t('hero.motivationPreview') : t('hero.weeklyTargetMissed');
 
   return (
     <ModalShell
@@ -172,8 +174,13 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
       testId="motivation-backdrop"
       onClose={dismiss}
     >
-      <h2 id={headingId} className="mmod-title">
-        {review === null ? t('hero.motivationPreview') : t('hero.weeklyTargetMissed')}
+      {/*
+        * The ink display cut (stylize survey 2026-10-18, item 9) on the lime card: this dialog is
+        * deliberately NOT a lit-sign panel and shows NO picture (the veto Intervention.tsx
+        * records). displayClass withholds the cut from a title carrying a numeral.
+        */}
+      <h2 id={headingId} className={displayClass(title, 'mmod-title')}>
+        {title}
       </h2>
       <p className="mmod-detail">
         {review === null ? t('advice.motivationPreview') : describeMiss(review, overrides)}

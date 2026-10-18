@@ -292,3 +292,21 @@ describe('MotivationModal under a skin', () => {
     ).toBeInTheDocument();
   });
 });
+
+/*
+ * Stylize survey 2026-10-18, item 9, and the build brief's recorded veto. The missed-week popup is
+ * NOT a lit-sign panel and carries NO picture: its title takes the ink display cut on the lime
+ * card (it was pink type on lime, 1.41:1) and nothing else changes.
+ */
+describe('MotivationModal styling', () => {
+  it('sets the title in the ink display cut and shows no mascot', async () => {
+    renderModal();
+    const heading = screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') });
+    expect(heading.classList.contains('mmod-title')).toBe(true);
+    expect(heading.classList.contains('ll-display')).toBe(true);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.classList.contains('ll-panel')).toBe(false);
+    expect(dialog.querySelectorAll('img')).toHaveLength(0);
+    await screen.findByTestId('motivation-video');
+  });
+});

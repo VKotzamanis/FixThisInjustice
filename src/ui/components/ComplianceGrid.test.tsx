@@ -131,6 +131,39 @@ describe('ComplianceGrid', () => {
     ).toBeTruthy();
   });
 
+  it('draws each cell with the shared status mark, its shape matching its state', () => {
+    // Stylize survey item 6: the grid's skipped and missed cells used to differ only in fill
+    // luminance. Each cell now holds the StatusMark of its state, hidden from assistive
+    // technology because the gridcell's own aria-label (asserted above) already names it.
+    render(
+      <ComplianceGrid
+        assignments={[
+          assignment('2026-01-05', 'completed'),
+          assignment('2026-01-07', 'skipped'),
+          assignment('2026-01-09', 'planned'),
+          assignment('2026-01-14', 'planned'),
+        ]}
+        weekStarts={WEEK_STARTS}
+        slotWeekdays={[...MWF]}
+        today={AFTER}
+        weeklySessionTarget={TARGET}
+      />,
+    );
+    const cells = screen.getAllByRole('gridcell');
+    const shapes = new Map<string, string>();
+    for (const cell of cells) {
+      const mark = cell.querySelector('svg.status-mark');
+      expect(mark).not.toBeNull();
+      expect(mark?.getAttribute('data-mark')).toBe(cell.getAttribute('data-mark'));
+      expect(mark?.getAttribute('aria-hidden')).toBe('true');
+      // No inline colour: the fills live in statusMark.css, token-only.
+      expect(cell.getAttribute('style')).toBeNull();
+      shapes.set(cell.getAttribute('data-mark') ?? '', mark?.getAttribute('data-shape') ?? '');
+    }
+    expect([...shapes.keys()].sort()).toEqual(['completed', 'missed', 'none', 'skipped']);
+    expect(new Set(shapes.values()).size).toBe(shapes.size);
+  });
+
   it('states each week against its own session target', () => {
     render(
       <ComplianceGrid

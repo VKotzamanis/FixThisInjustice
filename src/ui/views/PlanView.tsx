@@ -1,4 +1,5 @@
 import { useEffect, type JSX } from 'react';
+import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
@@ -228,7 +229,7 @@ export function PlanView(): JSX.Element {
   if (plan === null || cursor === null) {
     return (
       <div className="view plan">
-        <h2>{t('nav.plan')}</h2>
+        <h2 className={displayClass(t('nav.plan'))}>{t('nav.plan')}</h2>
         <p className="view-note">{t('hero.noPlan')}</p>
       </div>
     );
@@ -246,7 +247,7 @@ export function PlanView(): JSX.Element {
 
   return (
     <div className="view plan">
-      <h2>{t('nav.plan')}</h2>
+      <h2 className={displayClass(t('nav.plan'))}>{t('nav.plan')}</h2>
 
       <div className="plan-blocks" role="group" aria-label={t('label.blockStrip')}>
         {plan.blocks.map((block) => {

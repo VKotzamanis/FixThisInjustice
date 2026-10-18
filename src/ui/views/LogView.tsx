@@ -17,6 +17,7 @@
 // boundary; the selector answers null instead, which is a state this view can draw.
 
 import { useMemo } from 'react';
+import { displayClass } from '../format/display';
 import type { ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
@@ -152,7 +153,7 @@ export function LogView(): ReactElement {
   if (profile === null) {
     return (
       <section className="view log">
-        <h2>{t('nav.log')}</h2>
+        <h2 className={displayClass(t('nav.log'))}>{t('nav.log')}</h2>
         <p className="view-note">{t('advice.noProfileSetupFirst')}</p>
       </section>
     );
@@ -168,7 +169,7 @@ export function LogView(): ReactElement {
 
   return (
     <section className="view log">
-      <h2>{t('nav.log')}</h2>
+      <h2 className={displayClass(t('nav.log'))}>{t('nav.log')}</h2>
 
       <h3>{t('hero.bodyMass')}</h3>
       {entries.length === 0 && <p className="view-note">{t('advice.noBodyMassLogged')}</p>}

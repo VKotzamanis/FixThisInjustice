@@ -1,4 +1,5 @@
 import { useState, type JSX } from 'react';
+import { displayClass } from '../format/display';
 
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import { useCopy } from '../../content/useCopy';
@@ -103,7 +104,7 @@ export function DataSection(): JSX.Element {
        */}
       <ExportView />
 
-      <h2>{t('hero.dataOnDevice')}</h2>
+      <h2 className={displayClass(t('hero.dataOnDevice'))}>{t('hero.dataOnDevice')}</h2>
       <p className="view-note">{t('advice.dataOnDevice')}</p>
 
       {open === 'wipe' ? (

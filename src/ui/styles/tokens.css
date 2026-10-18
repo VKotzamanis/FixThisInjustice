@@ -266,6 +266,10 @@ body {
   --display-stretch: 62%;
   --display-weight: 800;
   --display-tracking: -0.045em;
+  /* Added to the word space of a display line. At the 62 % cut with the tracking above, the
+   * face's own space closes to a sliver and a multi-word heading reads as one word (measured in
+   * a 320 px render, 2026-10-18: "the intervention" set as "theintervention"). */
+  --display-word-spacing: 0.15em;
   --shadow-offset: 4px;
 }
 
@@ -280,6 +284,7 @@ body {
   font-weight: var(--display-weight);
   font-stretch: var(--display-stretch);
   letter-spacing: var(--display-tracking);
+  word-spacing: var(--display-word-spacing);
   color: var(--ink);
   text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--pink);
 }
@@ -293,6 +298,12 @@ body {
 
 :root[data-skin='limelight'] .ll-panel .ll-panel-accent {
   color: var(--lime);
+}
+
+/* A display line on the panel: white type (21:1) keeping the pink offset shadow. The ink the
+ * display line carries on lime would be 1:1 here. Stylize survey 2026-10-18, item 9 (toasts). */
+:root[data-skin='limelight'] .ll-panel .ll-display {
+  color: var(--panel-text);
 }
 
 /* The one declaration in this file allowed to set a colour from --pink: inside a black panel,

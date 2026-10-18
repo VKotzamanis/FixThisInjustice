@@ -1,4 +1,5 @@
 import { useId, useState, type JSX } from 'react';
+import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
 import { buildIcs } from '../../domain/export/ics';
@@ -201,7 +202,7 @@ export function ExportView(): JSX.Element {
 
   return (
     <>
-      <h2>{t('hero.exportImport')}</h2>
+      <h2 className={displayClass(t('hero.exportImport'))}>{t('hero.exportImport')}</h2>
 
       <h3>{t('label.downloads')}</h3>
       <div className="view-field">

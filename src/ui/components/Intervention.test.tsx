@@ -107,3 +107,17 @@ describe('Intervention', () => {
     expect(playSfx.mock.calls).toEqual([['intervention_open'], ['intervention_open']]);
   });
 });
+
+/*
+ * Stylize survey 2026-10-18, items 1 and 9. The intervention's title may take the ink display
+ * cut; the block carries no mascot in any pose (the veto recorded in Intervention.tsx).
+ */
+describe('Intervention styling', () => {
+  it('sets the title in the display cut and places no mascot', () => {
+    withSkin('limelight');
+    render(<Intervention review={HANDLED} />);
+    const heading = screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') });
+    expect(heading.classList.contains('ll-display')).toBe(true);
+    expect(screen.getByTestId('intervention').querySelectorAll('img.ll-illustration')).toHaveLength(0);
+  });
+});

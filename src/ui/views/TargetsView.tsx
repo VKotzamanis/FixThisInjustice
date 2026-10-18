@@ -1,4 +1,5 @@
 import { useMemo, useState, type JSX } from 'react';
+import { displayClass } from '../format/display';
 import { AsciiBar } from '../components/AsciiBar';
 import { massUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT, copy } from '../../content/copy';
@@ -143,9 +144,12 @@ export function TargetsView(): JSX.Element {
     useAppStore.getState().logIntake(profile.id, entry);
   };
 
+  // Carries today's date, a numeral, so displayClass keeps it out of the display cut.
+  const checkInHeading = FORMAT.headingWithDate(t('hero.intakeCheckIn'), today);
+
   return (
     <section className="view">
-      <h2>{t('hero.dailyTargets')}</h2>
+      <h2 className={displayClass(t('hero.dailyTargets'))}>{t('hero.dailyTargets')}</h2>
       <dl className="view-dl">
         <dt>{t('label.energy')}</dt>
         <dd data-testid="target-kcal">{FORMAT.kcal(targets.targetKcal)}</dd>
@@ -187,7 +191,7 @@ export function TargetsView(): JSX.Element {
         </div>
       </details>
 
-      <h2>{FORMAT.headingWithDate(t('hero.intakeCheckIn'), today)}</h2>
+      <h2 className={displayClass(checkInHeading)}>{checkInHeading}</h2>
       <div className="view-field">
         <label htmlFor="intake-kcal">
           {FORMAT.quantityWithUnit(t('quantity.energyIntake'), 'kcal')}

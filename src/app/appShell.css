@@ -103,6 +103,10 @@ main {
  * The save-failure banner carries its own export control: a write that failed
  * leaves the only copy of the change in memory, so the export has to be one
  * click away rather than several views deep.
+ *
+ * A pink sticker (stylize survey 2026-10-18, item 2): pink FILL, ink type, ink border. It was
+ * pink type on the lime ground, 1.41:1, which tokens.css bans at every size; ink on pink is
+ * 7.75:1.
  */
 .banner button {
   font: inherit;
@@ -110,20 +114,22 @@ main {
   flex-shrink: 0;
   align-self: center;
   padding: 6px 12px;
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
+  border: 1px solid var(--ink);
+  background: var(--accent);
+  color: var(--ink);
   cursor: pointer;
 }
 
-/* The service-worker update prompt: informational, so accent rather than danger. */
+/* The service-worker update prompt: informational, so accent rather than danger. The tag is a
+ * pink sticker rather than pink type, for the 1.41:1 reason above. */
 .banner.update {
   border-left-color: var(--accent);
 }
 
 .banner.update .banner-tag {
-  color: var(--accent);
-  border-color: var(--accent);
+  color: var(--ink);
+  background: var(--accent);
+  border-color: var(--ink);
 }
 
 .recovery {
@@ -161,18 +167,22 @@ main {
   white-space: pre-wrap;
 }
 
+/* The way out (export) is the pink sticker; the destructive control stays an ink outline, so
+ * the two differ by fill as well as by their words. Both were pink or ink TYPE on lime before;
+ * pink type was 1.41:1. */
 .recovery button {
   font: inherit;
   font-family: var(--sans);
   padding: 9px 16px;
   margin-right: 10px;
-  border: 1px solid var(--accent);
-  background: transparent;
-  color: var(--accent);
+  border: 1px solid var(--ink);
+  background: var(--accent);
+  color: var(--ink);
   cursor: pointer;
 }
 
 .recovery button.destructive {
+  background: transparent;
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -180,6 +190,7 @@ main {
 .recovery button:disabled {
   opacity: 0.35;
   cursor: not-allowed;
+  background: transparent;
   border-color: var(--text-3);
   color: var(--text-3);
 }
@@ -205,23 +216,34 @@ main {
   gap: 0.25rem;
   overflow-x: auto;
   padding: 0.5rem;
-  border-bottom: 1px solid var(--line-1, rgba(220, 230, 240, 0.08));
+  /* --line: --line-1 was never defined, so the fallback (a near-white line from the retired
+   * console skin) is what rendered. */
+  border-bottom: 1px solid var(--line);
 }
 
+/* Every tab reserves the 2 px border the active one draws, so selecting a tab moves nothing;
+ * the padding gives back the extra pixel per side. */
 .viewnav button {
   flex: 0 0 auto;
   min-height: 2.75rem;
-  padding: 0 0.75rem;
+  padding: 0 calc(0.75rem - 1px);
   color: var(--text-2, #8e97a3);
   background: transparent;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   font-family: inherit;
   font-size: 16px;
   letter-spacing: 0.06em;
   cursor: pointer;
 }
 
+/*
+ * The current view is a pink sticker (stylize survey 2026-10-18, item 2): pink fill, ink type,
+ * 2 px ink border. It was pink type and a pink border on lime, 1.41:1, so the one tab that says
+ * where the user is was the hardest to read. Ink on pink is 7.75:1, and the filled, bordered box
+ * marks it by shape as well as colour (WCAG 1.4.1).
+ */
 .viewnav button[aria-current='true'] {
-  color: var(--accent, #a3e635);
-  border-color: var(--accent, #a3e635);
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
 }

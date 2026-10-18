@@ -21,16 +21,37 @@
   padding: 1rem 1rem 4rem;
 }
 
+/*
+ * View headings are INK. They were --accent, which on limelight is pink on the lime ground at
+ * 1.41:1, a ratio tokens.css bans as type at every size. A heading that carries a numeral keeps
+ * this plain small-capitals form; every other one also takes .ll-display (below).
+ */
 .view h2 {
   font-size: 1rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent, #a3e635);
+  color: var(--text);
   margin: 1.5rem 0 0.5rem;
 }
 
 .view h2:first-child {
   margin-top: 0;
+}
+
+/*
+ * The brat headings (stylize survey 2026-10-18, item 1). `.ll-display` in tokens.css supplies the
+ * whole look: the 62 % Archivo cut, weight 800, tight tracking, ink, and the 4 px pink offset
+ * shadow. Only size and case are set here. The copy is written lower case in the limelight voice
+ * and the display line is set as written, the way the week stamp already sets it, so the
+ * uppercase transform above is undone rather than doubled. src/ui/format/display.ts decides
+ * which headings get the class (never one with a numeral).
+ */
+.view h2.ll-display {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  text-transform: none;
+  /* The shadow sits 4 px below and right of the glyphs; this keeps it off the next line. */
+  margin-bottom: 0.75rem;
 }
 
 .view .view-dl {
@@ -124,9 +145,11 @@
   margin-bottom: 0.25rem;
 }
 
+/* --danger, which this skin defines as ink. It read the undefined --bad token, so the hex
+ * fallback (an unmeasured red on lime) is what rendered; the message carries the state in words. */
 .view .view-error {
   font-size: 0.8rem;
-  color: var(--bad, #f87171);
+  color: var(--danger);
   margin: 0.25rem 0 0.75rem;
 }
 
@@ -169,6 +192,15 @@
   margin: 0 0 0.5rem;
   font-size: 1.4rem;
   line-height: 1.2;
+}
+
+/* The hero in the display cut. At 62 % width the narrow face sets about as many characters per
+ * line at 2rem as the regular face did at 1.4rem, so the size goes up without the line count. */
+.view.today .hero-name.ll-display {
+  font-size: 2rem;
+  line-height: 1.05;
+  margin-bottom: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .view.today .today-sub {
@@ -217,14 +249,14 @@
   gap: 0.5rem;
   margin: 0 0 1rem;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--bad, #f87171);
+  border: 1px solid var(--danger);
   font-size: 0.85rem;
 }
 
 .view.today .today-banner .banner-tag {
   font-size: 0.7rem;
   letter-spacing: 0.12em;
-  color: var(--bad, #f87171);
+  color: var(--danger);
 }
 
 /*
@@ -273,35 +305,14 @@
 }
 
 /*
- * The status marks. Stroked, not filled, except the two figures that read as solid (the
- * in-progress triangle and the planned dot). currentColor throughout, so a row inherits the
- * strip's colour and the marks cannot drift from it.
+ * The status marks are StatusMark's pixel grids (src/ui/components/statusMark.css draws them in
+ * currentColor), so a row's mark is ink like its text. A rest day's mark is recessive with its
+ * label: --fine on lime is 4.98:1. The completed mark's pink chip and the skipped mark's hatch
+ * are shapes, so no state here needs a colour of its own (the pink stroke at 1.41:1 and the red
+ * reached through the undefined --bad token are gone).
  */
-.view.today .sd-glyph {
-  width: 0.85rem;
-  height: 0.85rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.view.today .sd-glyph .sd-fill {
-  fill: currentColor;
-  stroke: none;
-}
-
-.view.today .strip-day[data-status='completed'] .sd-glyph {
-  color: var(--accent, #a3e635);
-}
-
-.view.today .strip-day[data-status='skipped'] .sd-glyph {
-  color: var(--bad, #f87171);
-}
-
-.view.today .strip-day[data-status='rest'] .sd-glyph {
-  color: var(--text-2, #8e97a3);
+.view.today .strip-day[data-status='rest'] .status-mark {
+  color: var(--text-2);
 }
 
 /*
@@ -331,15 +342,27 @@
   letter-spacing: 0.04em;
 }
 
-/* The block the CURSOR stands in, which is a fact about the programme. */
+/*
+ * The block the CURSOR stands in, which is a fact about the programme: a pink sticker (stylize
+ * survey 2026-10-18, item 2), pink fill, ink type, 2 px ink border. It was pink type on lime,
+ * 1.41:1. The padding gives back the extra border pixel so the strip does not reflow.
+ */
 .view.plan .plan-chip[data-current='true'] {
-  border-color: var(--accent, #a3e635);
-  color: var(--accent, #a3e635);
+  padding: calc(0.4rem - 1px) calc(0.6rem - 1px);
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
 }
 
-/* The block the scrubber is showing, which is a fact about this screen only. */
+/*
+ * The block the scrubber is showing, which is a fact about this screen only: an ink bar along
+ * the chip's foot, a shape that reads on the lime chip and on the pink one alike. It was the
+ * black --bg-3 fill, under which the chip's inherited ink type measured 1:1 and the --fine notes
+ * about 2.2:1 (WCAG 2.1 relative luminance, computed for this note), and on the current chip it
+ * would have hidden the sticker.
+ */
 .view.plan .plan-chip[aria-pressed='true'] {
-  background: var(--bg-3, #1a1f25);
+  box-shadow: inset 0 -0.25rem 0 var(--ink);
 }
 
 .view.plan .plan-chip .pc-id {
@@ -349,6 +372,13 @@
 .view.plan .plan-chip .pc-range,
 .view.plan .plan-chip .pc-note {
   color: var(--text-2, #8e97a3);
+}
+
+/* On the pink sticker the notes take the chip's ink: --fine on pink is about 3.5:1 (computed,
+ * WCAG 2.1), under the 4.5:1 this 0.8rem type needs; ink on pink is 7.75:1. */
+.view.plan .plan-chip[data-current='true'] .pc-range,
+.view.plan .plan-chip[data-current='true'] .pc-note {
+  color: inherit;
 }
 
 .view.plan .plan-chip .pc-flag {
@@ -418,9 +448,14 @@
   color: var(--text-2, #8e97a3);
 }
 
+/* "Next" beside the session the cursor stands on: the same pink sticker as the current block,
+ * where it was pink type on lime (1.41:1). */
 .view.plan .ps-cursor {
   margin-left: auto;
-  color: var(--accent, #a3e635);
+  padding: 0 0.3rem;
+  background: var(--accent);
+  color: var(--ink);
+  border: 1px solid var(--ink);
 }
 
 .view.plan .ps-row {

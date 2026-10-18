@@ -1,11 +1,26 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
-import { useCopyOverrides } from '../../content/useCopy';
+import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
+import { displayClass } from '../format/display';
 import { weekDeltaKey } from '../format/weekDelta';
 import './limelight.css';
+
+/**
+ * Did this closed week miss its target, whether or not the popup has been answered yet?
+ *
+ * `paused` is checked for the reason weekly.ts states: a paused week is not a miss, and its
+ * delta is 0 rather than negative, so this predicate would be false anyway. It is written out
+ * because a future change to the delta convention must not silently turn a pause into a verdict.
+ *
+ * Exported for the Today hero (src/ui/views/todayHero.ts), which shows no mascot while a missed
+ * week is on screen in either form: one definition of "missed", read by both.
+ */
+export function missedWeek(review: WeeklyReview | null): review is WeeklyReview {
+  return review !== null && !review.paused && review.delta < 0;
+}
 
 /**
  * Did this closed week miss its target, and has the popup already been answered?
@@ -14,13 +29,9 @@ import './limelight.css';
  * modal was shown for and on every older one, so it is exactly "P6 has had its turn". While it
  * is false the missed-week modal owns the screen and this block stays silent: two renderings of
  * the same week at the same time is the duplication A59 recorded.
- *
- * `paused` is checked for the reason weekly.ts states: a paused week is not a miss, and its
- * delta is 0 rather than negative, so this predicate would be false anyway. It is written out
- * because a future change to the delta convention must not silently turn a pause into a verdict.
  */
 export function handledMiss(review: WeeklyReview | null): review is WeeklyReview {
-  return review !== null && !review.paused && review.delta < 0 && review.missHandled;
+  return missedWeek(review) && review.missHandled;
 }
 
 /**
@@ -46,6 +57,7 @@ export function Intervention({ review }: { review: WeeklyReview | null }): React
   // Only the counts line resolves a key here now; the title and the body read theirs through
   // SkinLabel, which calls useCopy() itself.
   const overrides = useCopyOverrides();
+  const c = useCopy();
   const shown = handledMiss(review);
   const sounded = useRef(false);
 
@@ -75,8 +87,12 @@ export function Intervention({ review }: { review: WeeklyReview | null }): React
         * The popup that precedes this block (src/ui/motivation/MotivationModal.tsx) renders
         * the same title key and is deliberately left bare: 4.4 names one position for `alert`,
         * and that dialog's own art is P6's clip.
+        *
+        * The title takes the ink display cut (stylize survey 2026-10-18, items 1 and 9), never a
+        * picture: the title may be camp, and the cut is type, not a mascot. displayClass reads
+        * the same string SkinLabel renders and withholds the cut if it ever carries a numeral.
         */}
-      <h2 className="ll-intervention-title">
+      <h2 className={displayClass(c('hero.weeklyTargetMissed'), 'll-intervention-title')}>
         <SkinLabel copyKey="hero.weeklyTargetMissed" />
       </h2>
       <p className="ll-intervention-body">
