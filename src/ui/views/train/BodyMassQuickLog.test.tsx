@@ -1,11 +1,11 @@
 // src/ui/views/train/BodyMassQuickLog.test.tsx
 //
-// The in-session body-mass entry's copyFor contract (P8 close-out C).
+// The in-session body-mass entry's copy contract (P8 close-out C).
 //
-// This is the one Train component copyFor.limelight.ts names NO row for. That is the table's rule
+// This is the one Train component copy.limelight.ts names NO row for. That is the table's rule
 // 4 again: `button.logBodyMass` fronts a measurement that feeds the > 2 % dehydration
 // comparison, and `advice.fluidLoss` is the flag that comparison raises, so both stand in the
-// limelight sentence under every skin. The limelight suite therefore asserts the fall-through by
+// base sentence under every skin. The limelight suite therefore asserts the fall-through by
 // key rather than pretending to an override, and a row added to the table later fails here.
 //
 // `quantity` arrives as a prop, already resolved by TrainView from the same table, so the field
@@ -72,7 +72,7 @@ describe('BodyMassQuickLog: the limelight words', () => {
 });
 
 describe('BodyMassQuickLog: the limelight voice', () => {
-  it("keeps the control and the flag in the limelight words, which is the table's own rule", () => {
+  it("keeps the control and the flag in the base-table words, which is the table's own rule", () => {
     // Asserted by key on both sides: the table names no row for either, so `copyFor` returns
     // the default. A row added later changes these two expectations and this test fails.
     expect(copyFor('limelight', 'button.logBodyMass')).toBe(copy('button.logBodyMass'));
@@ -111,32 +111,5 @@ describe('BodyMassQuickLog: the limelight voice', () => {
     const entries = useAppStore.getState().bodyMass[FUN_PROFILE_ID] ?? [];
     expect(entries).toHaveLength(1);
     expect(entries[0]?.massKg).toBe(POST_KG); // [kg]
-  });
-});
-
-/*
- * The departures limelight (P8 close-out D).
- *
- * LIMELIGHT_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
- * and NONE of them is a key this component renders. The smoke case therefore asserts the other
- * half of the per-key merge: the component mounts under `ui.skin = 'limelight'` without throwing,
- * and the strings fall through to the limelight default. Asserted through `copyFor` by key, so
- * a limelight row added for one of these keys later moves this expectation with it.
- */
-describe('BodyMassQuickLog under the departures limelight', () => {
-  it('mounts and falls through to the default words, the flag included', () => {
-    expect(() => {
-      renderLog('limelight');
-    }).not.toThrow();
-
-    submitMass('limelight', POST_KG);
-
-    expect(copyFor('limelight', 'advice.fluidLoss')).toBe(copy('advice.fluidLoss'));
-    expect(screen.getByText(copyFor('limelight', 'advice.fluidLoss'))).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        FORMAT.fluidLossWhy('3.0', DEHYDRATION_LOSS_FRACTION * PERCENT, SKIN_COPY.limelight),
-      ),
-    ).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 // src/ui/views/train/RestTimerPanel.test.tsx
 //
-// The rest panel's copyFor contract and its zero-crossing sound (P8 close-out C).
+// The rest panel's copy contract and its zero-crossing sound (P8 close-out C).
 //
 // Two mocks, both at the module boundary and both for the same reason: jsdom has no Web Audio,
 // so the real `playChime` and `playSfx` would return silently whether or not the effect reached
@@ -72,7 +72,7 @@ afterEach(() => {
 describe('RestTimerPanel: the limelight voice', () => {
   it('renders the skin strings on the label and both controls', () => {
     renderPanel('limelight');
-    // By key against copyFor.limelight.ts, never as a literal.
+    // By key against copy.limelight.ts, never as a literal.
     expect(screen.getByText(copyFor('limelight', 'status.rest'))).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }),
@@ -114,7 +114,7 @@ describe('RestTimerPanel: the limelight voice', () => {
     /*
      * P8 close-out D. `FORMAT.restRemaining` reads `status.restRemaining` and this panel now
      * passes `useCopyOverrides()` into it. The limelight table carries no row for that key on
-     * purpose (copyFor.test.ts records why: the mockup renders "1:47" and the string is two slots
+     * purpose (copy.test.ts records why: the mockup renders "1:47" and the string is two slots
      * and a colon), so the readout is the default under every skin, and this case is what would
      * fail if a row were ever added without revisiting that decision.
      */

@@ -119,14 +119,13 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a view that reads the
- * table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them.
+ * table through `useCopy()` renders the limelight words, and the assertions in this file quote
+ * them through `copyFor('limelight', key)` (the local `copy` below). The pin restates the only
+ * skin; until clinical was removed it pinned clinical and the assertions quoted the default
+ * table.
  *
  * A seed that REPLACES `ui` puts the shipped skin back, so it is a named function rather than
- * an inline hook body: a test that reseeds calls it again, after the seed. It takes the skin as
- * an argument because the strip and the picker are now read under each of the three, and a
- * second helper that set a different field would be the drift this one exists to prevent.
+ * an inline hook body: a test that reseeds calls it again, after the seed.
  */
 function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((state) => ({ ui: { ...state.ui, skin } }));
@@ -263,16 +262,15 @@ describe('CRT presentation preferences', () => {
 
 /**
  * The top bar's per-view instruction, and the plan position it now carries (P10 Brief D, part
- * 1). This suite's file pins `limelight` by default (the module-scoped `pinSkin()` above), which
- * is exactly the skin the brief asks for a static fallback on, so the plain assertions below
- * exercise that path; the marquee path (limelight, limelight) gets its own test with the skin
- * pinned back. `advice.todayInstruction` is the row under test throughout because `ui.lastView`
- * defaults to `'today'` (src/domain/schema.ts) and none of these tests changes it.
+ * 1). The marquee carries both, and its static copy (`.ll-marquee-static`, one line per item) is
+ * what these tests read. The static fallback line the brief asked for on clinical, where the
+ * marquee rendered nothing, went with that skin. `advice.todayInstruction` is the row under test
+ * throughout because `ui.lastView` defaults to `'today'` (src/domain/schema.ts) and none of these
+ * tests changes it.
  *
  * The session position itself stays covered by SessionIndicator.test.tsx, which renders the
  * standalone component directly; the brief displaced it into the marquee rather than dropping
- * it, and src/app/App.tsx's own comment names the trade-off this suite's third test asserts:
- * on limelight, where Marquee.tsx renders nothing by design, the position is not shown at all.
+ * it.
  */
 describe('top bar', () => {
   const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
@@ -714,7 +712,6 @@ describe('skin attribute', () => {
 
   it('mirrors the stored skin onto the document root and removes it on unmount', () => {
     /*
-     * This suite pins the skin to limelight so its assertions quote the default copy table.
      * This test is about the SHIPPED default, so it puts the shipped `ui` back first and
      * states what that default is.
      */
@@ -1062,8 +1059,8 @@ describe('the tab strip under a skin', () => {
   beforeEach(() => {
     installFakeStorage();
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
-    // seedState pins limelight (src/test/scheduleFixtures.ts, emptyState), so each case below
-    // states the skin it is about rather than inheriting one.
+    // seedState writes the shipped skin (src/test/scheduleFixtures.ts, emptyState); each case
+    // below still states the skin it is about rather than inheriting one.
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
   });
 
@@ -1077,32 +1074,21 @@ describe('the tab strip under a skin', () => {
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'nav.today') }),
     ).toBeInTheDocument();
-    // The limelight word is GONE rather than merely joined: a strip carrying both would be the
+    // The base-table word is GONE rather than merely joined: a strip carrying both would be the
     // same defect in a different shape.
     expect(screen.queryByRole('button', { name: defaultCopy('nav.today') })).toBeNull();
-  });
-
-  it('names them in the limelight words, falling back per key rather than per table', () => {
-    pinSkin('limelight');
-    render(<App />);
-
+    // Two more tabs, kept from the board case this file carried until that skin was removed.
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'nav.train') }),
-    ).toBeInTheDocument();
-    // LIMELIGHT_COPY names no landmark and no Targets tab, so both fall through to the default.
-    // The fall-through is per KEY, which is what makes a partial override table safe.
-    expect(
-      screen.getByRole('navigation', { name: copyFor('limelight', 'nav.label') }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'nav.targets') }),
     ).toBeInTheDocument();
   });
-
 });
 
 /*
- * The top bar's dynamic half, round 2 claim `r2-onlimelighting.general`.
+ * The top bar's dynamic half, round 2 claim `r2-onboarding.general`.
  *
  * "The banner of the web page (That now says FIX THIS INJUSTICE) is not dynamic. I would Like it
  * to append some information as the user moves forward."

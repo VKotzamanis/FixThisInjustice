@@ -52,9 +52,9 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -70,7 +70,7 @@ beforeEach(() => {
 
 describe('buildBootLines', () => {
   it('prints the plan name, the week and the weekly session count', () => {
-    const lines = buildBootLines(unseenState());
+    const lines = buildBootLines(unseenState(), SKIN_COPY.limelight);
     const text = lines.join('\n');
     expect(text).toContain('Upper / Lower x2'); // makePlan().name
     expect(text).toContain('week 1 of 12'); // nextSessionIndex 0, weeks 12
@@ -83,22 +83,28 @@ describe('buildBootLines', () => {
   it('reads the week from the cursor rather than the calendar', () => {
     const state = unseenState();
     const plan = makePlan();
-    const lines = buildBootLines({
-      ...state,
-      // 4 sessions/week: the fifth session (index 4) is the first of week 2.
-      cursors: { [makeProfile().id]: { planId: plan.id, nextSessionIndex: 4, startedOn: '2026-09-07', completedOn: null } },
-    });
+    const lines = buildBootLines(
+      {
+        ...state,
+        // 4 sessions/week: the fifth session (index 4) is the first of week 2.
+        cursors: { [makeProfile().id]: { planId: plan.id, nextSessionIndex: 4, startedOn: '2026-09-07', completedOn: null } },
+      },
+      SKIN_COPY.limelight,
+    );
     expect(lines.join('\n')).toContain('week 2 of 12');
   });
 
   it('degrades to a two-line boot with no plan', () => {
-    const lines = buildBootLines(unseenState({ activeProfileId: null, cursors: {}, plans: {} }));
+    const lines = buildBootLines(
+      unseenState({ activeProfileId: null, cursors: {}, plans: {} }),
+      SKIN_COPY.limelight,
+    );
     expect(lines).toHaveLength(2);
     expect(lines[1]).toBe(copyFor('limelight', 'status.bootReady'));
   });
 
   it('carries no name, no place, no body composition and no medication', () => {
-    const text = buildBootLines(unseenState()).join('\n');
+    const text = buildBootLines(unseenState(), SKIN_COPY.limelight).join('\n');
     expect(text).not.toContain(makeProfile().displayName);
     expect(text).not.toContain(makeProfile().timezone);
     expect(BANNED.test(text)).toBe(false);
@@ -122,7 +128,7 @@ describe('Boot', () => {
     });
     expect(bootText().split('\n')).toHaveLength(2);
 
-    const total = buildBootLines(useAppStore.getState()).length;
+    const total = buildBootLines(useAppStore.getState(), SKIN_COPY.limelight).length;
     act(() => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS * total);
     });
@@ -157,7 +163,7 @@ describe('Boot', () => {
      * pause. The total cost is 90 ms on a sequence already under the 1 s "the app started"
      * threshold BOOT_LINE_INTERVAL_MS is chosen against.
      */
-    const total = buildBootLines(useAppStore.getState()).length;
+    const total = buildBootLines(useAppStore.getState(), SKIN_COPY.limelight).length;
     render(<Boot />);
     expect(useAppStore.getState().ui.bootSeen).toBe(false);
 
@@ -192,7 +198,7 @@ describe('Boot', () => {
         removeEventListener: () => undefined,
       })),
     );
-    const total = buildBootLines(useAppStore.getState()).length;
+    const total = buildBootLines(useAppStore.getState(), SKIN_COPY.limelight).length;
     render(<Boot />);
     expect(bootText().split('\n')).toHaveLength(total);
     expect(bootText()).toContain(copyFor('limelight', 'status.bootReady'));
@@ -229,7 +235,7 @@ describe('BootGate', () => {
   });
 
   it('unmounts the sequence as soon as it is recorded as seen', () => {
-    const total = buildBootLines(useAppStore.getState()).length;
+    const total = buildBootLines(useAppStore.getState(), SKIN_COPY.limelight).length;
     render(<BootGate />);
     act(() => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS * total);
@@ -251,24 +257,12 @@ describe('BootGate', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('Boot under a skin', () => {
-  it('prints the limelight console line, and the default one under limelight', () => {
-    pinSkin('limelight');
-    const view = render(<Boot />);
-    act(() => {
-      vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
-    });
-    expect(bootText()).toContain(copyFor('limelight', 'status.bootConsole'));
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.skipBoot') }),
-    ).toBeInTheDocument();
-    view.unmount();
-
-    useAppStore.setState(unseenState());
+  it('prints the limelight console line', () => {
     pinSkin('limelight');
     render(<Boot />);
     act(() => {

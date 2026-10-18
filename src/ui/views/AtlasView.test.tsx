@@ -72,9 +72,9 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -245,17 +245,12 @@ describe('AtlasView and dropped legacy ids', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('AtlasView under a skin', () => {
-  it('states the collection in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = render(<AtlasView />);
-    expect(screen.getByText(copyFor('limelight', 'advice.atlas'))).toBeInTheDocument();
-    view.unmount();
-
+  it('states the collection in the limelight words', () => {
     pinSkin('limelight');
     render(<AtlasView />);
     expect(screen.getByText(copyFor('limelight', 'advice.atlas'))).toBeInTheDocument();

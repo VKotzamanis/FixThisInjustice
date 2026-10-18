@@ -124,9 +124,9 @@ const DEVICE: PushDevice = {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -313,8 +313,8 @@ describe('ExportView', () => {
 
   it('does not accept the view download as the backup this panel requires', () => {
     // The export gate is a fact about the open panel, not about the session (the property
-    // ConfirmDestructive holds and its own suite asserts). A copyFor taken before the document
-    // was pasted is not a copyFor of what Replace is about to overwrite.
+    // ConfirmDestructive holds and its own suite asserts). A copy taken before the document
+    // was pasted is not a copy of what Replace is about to overwrite.
     render(<ExportView />);
     click(copyFor('limelight', 'button.downloadJson'));
     check(otherDocument());
@@ -441,18 +441,13 @@ describe('ExportView', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
- * them. This screen names no row either override table carries, so what the pair below asserts
- * is the OTHER half of the contract: a key a skin does not name renders the limelight sentence,
- * on every skin. Both sides are read by key through `copyFor`, never as a literal.
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * them. This screen names no row the override table carries, so what the case below asserts
+ * is the OTHER half of the contract: a key a skin does not name renders the base-table sentence.
+ * It is read by key through `copyFor`, never as a literal.
  */
 describe('ExportView under a skin', () => {
-  it('reads its heading through the skin, and falls back to the default table', () => {
-    pinSkin('limelight');
-    const view = render(<ExportView />);
-    expect(screen.getByText(copyFor('limelight', 'hero.exportImport'))).toBeInTheDocument();
-    view.unmount();
-
+  it('falls back to the default table for a heading the skin leaves alone', () => {
     pinSkin('limelight');
     render(<ExportView />);
     expect(screen.getByText(copyFor('limelight', 'hero.exportImport'))).toBeInTheDocument();

@@ -29,14 +29,10 @@ export interface IconProps {
 /**
  * One limelight pixel icon, inlined as a data URI by scripts/inline-icons.mjs.
  *
- * THE SKIN GATE (P8 Task 12). The set belongs to exactly one skin, so the component returns
- * null off it and no call site has to ask which skin is active. Limelight is emoji-free and
- * glyph-free by contract (copy contract R6), and the departures limelight ships no graphic at all:
- * its whole character is type and motion. Returning null rather than substituting something is
- * the point -- there is no fallback artwork, because a fallback would be a fourth design.
- *
- * The skin is read from the store through useSkin(), not taken as a prop: a prop would let one
- * call site render an icon the rest of the page has switched away from.
+ * NO SKIN GATE. Until the clinical and board skins were removed this returned null off
+ * limelight (P8 Task 12): clinical was glyph-free by contract (copy contract R6) and the board
+ * shipped no graphic. Limelight is now the only skin, so the icon always renders. A skin that
+ * returns without icon art needs that gate back, read from the store through useSkin().
  *
  * Accessibility follows the decorative-image rule: with no label the icon is an empty-alt image and
  * carries aria-hidden, so a screen reader never announces it and the text beside it stands alone.
@@ -138,9 +134,8 @@ export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>
  * button's name.
  */
 export function SkinLabel({ copyKey }: { copyKey: CopyKey }): ReactElement {
-  // The words follow the skin the same way the icon does: `Icon` renders nothing outside
-  // limelight, and reading the string through the default table alone would have put a
-  // limelight sentence beside a limelight glyph.
+  // The words follow the skin: reading the string through the base table alone would put a
+  // base-table sentence beside a limelight glyph.
   const t = useCopy();
   const icon = ICON_FOR_KEY[copyKey];
   return (

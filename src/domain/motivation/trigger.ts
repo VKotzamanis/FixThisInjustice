@@ -95,7 +95,7 @@ export function pendingMotivation(
  * The words are `advice.weekMissed` and `advice.weekMissedNone`, read through
  * `FORMAT.weekMissed` rather than written out here, so the skin the caller is rendering under
  * reaches them. `overrides` is the active skin's table (`useCopyOverrides()` at the call site);
- * omitting it renders the limelight sentence this function held before, byte for byte.
+ * omitting it renders the base-table sentence this function held before, byte for byte.
  */
 export function describeMiss(
   review: WeeklyReview,

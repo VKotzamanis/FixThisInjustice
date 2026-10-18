@@ -382,7 +382,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     ).toBeInTheDocument();
   });
 
-  it('keeps the arithmetic behind a why? disclosure (copyFor contract R9)', () => {
+  it('keeps the arithmetic behind a why? disclosure (copy contract R9)', () => {
     const history = metTopHistory(UPPER.id, 60);
     seedStore(seed({ sets: history }));
     renderTrain();
@@ -405,7 +405,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
    * `suggestedProgression` returns `loadKg: null` in four positions: a bodyweight exercise, a
    * non-`reps` prescription with nothing logged, a deload block with nothing logged, and a
    * loaded exercise with no history at all. `formatLoad(null, units)` is the em dash
-   * `NO_VALUE` (src/ui/format/plan.ts), which copyFor contract R5 retains as a WHOLE CELL and
+   * `NO_VALUE` (src/ui/format/plan.ts), which copy contract R5 retains as a WHOLE CELL and
    * never inside a sentence, so substituting it into `label.suggestedLoad`'s `{load}` slot
    * produced "Suggested \u2014: Hold load" under every skin. The absence now has a row of its
    * own, `label.noSuggestedLoad`, which carries no slot and therefore no dash.
@@ -439,7 +439,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     expect(
       screen.getByText(copyFor('limelight', 'label.noSuggestedLoad')),
     ).toBeInTheDocument();
-    // The limelight row is off the screen, which is what makes the assertion above about the
+    // The base-table row is off the screen, which is what makes the assertion above about the
     // table rather than about a string that happens to match.
     expect(screen.queryByText(copy('label.noSuggestedLoad'))).toBeNull();
     expect(
@@ -489,7 +489,7 @@ describe('TrainView set logging feedback', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the coach line through the copyFor table, not from the domain', () => {
+  it('renders the coach line through the copy table, not from the domain', () => {
     // P4 review item 2: coachLine returns a key and its values; this view resolves it. The
     // assertion quotes the table rather than the literal above, so a reworded template moves
     // the rendered toast with it and a skin override would reach the same string.
@@ -1389,9 +1389,10 @@ describe('TrainView wake lock', () => {
 /*
  * The skin suite (P8 close-out C).
  *
- * Every seed above pins `ui.skin: 'limelight'` so the 59 cases before this point quote the
- * default table; these five name limelight explicitly and quote copyFor.limelight.ts BY KEY. A
- * literal here would pass while the table it is supposed to be about was reworded.
+ * Every seed above writes the only skin, limelight; until clinical was removed they pinned it so
+ * the cases before this point quoted the default table. These name limelight explicitly and quote
+ * copy.limelight.ts BY KEY. A literal here would pass while the table it is supposed to be about
+ * was reworded.
  *
  * The point of the file-level cases (rather than the per-component suites in ./train/) is the
  * THREADING: TrainView reads `useCopy()` once and hands the lookup down through ExerciseCard to
@@ -1403,15 +1404,7 @@ function withSkin(state: AppState, skin: SkinId): AppState {
 }
 
 describe('TrainView: the limelight voice', () => {
-  it('renders the default hero when no session is assigned, on the limelight skin', () => {
-    const state = seed();
-    seedStore({ ...state, assignments: { 'profile-1': [] } });
-    renderTrain();
-
-    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.train') })).toBeInTheDocument();
-  });
-
-  it('renders the skin hero for the same empty day', () => {
+  it('renders the skin hero for an empty day', () => {
     const state = seed();
     seedStore(withSkin({ ...state, assignments: { 'profile-1': [] } }, 'limelight'));
     renderTrain();
@@ -1420,6 +1413,8 @@ describe('TrainView: the limelight voice', () => {
       screen.getByRole('heading', { name: copyFor('limelight', 'hero.train') }),
     ).toBeInTheDocument();
     expect(screen.getByText(copyFor('limelight', 'advice.noSessionToday'))).toBeInTheDocument();
+    // The base-table heading is gone, not merely joined.
+    expect(screen.queryByRole('heading', { name: copy('hero.train') })).toBeNull();
   });
 
   it('resolves the coach line against the skin overlay', () => {
@@ -1475,15 +1470,15 @@ describe('TrainView: the limelight voice', () => {
     expect(
       screen.getAllByText(FORMAT.setCounter(1, 3, SKIN_COPY.limelight)).length,
     ).toBeGreaterThan(0);
-    // The limelight forms are gone from the screen, which is what makes the three above
+    // The base-table forms are gone from the screen, which is what makes the three above
     // assertions about the table rather than about a string that happens to match.
     expect(screen.queryByText(FORMAT.sessionEyebrow(1, 'Upper'))).toBeNull();
     expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
   });
 
-  it('leaves the four frames the table has no word for in the limelight string', () => {
+  it('leaves the four frames the table has no word for in the base-table string', () => {
     // The other half of the same decision: `status.setsBy`, `status.restRemaining`,
-    // `label.suggestedLoad` and `why.fluidLoss` carry no limelight row (copyFor.test.ts records
+    // `label.suggestedLoad` and `why.fluidLoss` carry no limelight row (copy.test.ts records
     // the reason for each), so the overlay resolves to the default and the screen says so.
     seedStore(withSkin(seed({ sets: metTopHistory(UPPER.id, 60) }), 'limelight'));
     renderTrain();

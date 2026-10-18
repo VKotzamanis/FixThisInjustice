@@ -3,7 +3,7 @@
 // The sticky top bar's contrast, per skin.
 //
 // ALPHA ROUND 1 DEFECT w1.03. appShell.css hard-coded `background: rgba(10, 11, 12, 0.92)`,
-// which is the limelight skin's own --bg at 92 %. Nothing restated it per skin, so limelight
+// which is the clinical skin's own --bg at 92 %. Nothing restated it per skin, so limelight
 // inherited it: a near-black bar carrying --text #000000 and --text-2 #454545. The owner
 // reported the bar as invisible and could "somehow" make out only the status line. Measured
 // below: 1.19:1 for the brand and 1.84:1 for the status, against the 4.5:1 AA asks for.
@@ -50,7 +50,7 @@ function tokenBlock(skin: SkinName): Map<string, string> {
   return out;
 }
 
-/** Follows `var(--x)` indirection inside the skin, then the limelight root, to a literal. */
+/** Follows `var(--x)` indirection inside the skin, then the clinical root, to a literal. */
 function resolve(name: string, skin: SkinName): string {
   const own = tokenBlock(skin);
   const root = tokenBlock('limelight');

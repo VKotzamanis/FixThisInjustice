@@ -15,7 +15,10 @@ import {
   readRaw,
   save,
 } from './persistence';
-import { defaultState } from '../domain/schema';
+import { defaultState, parseState } from '../domain/schema';
+// ?raw, as src/domain/alphaFixture.test.ts reads it: tsconfig.app.json pins `types` to the vite
+// client, so node:fs is not available to the suites.
+import alphaFixtureJson from '../../docs/feedback/alpha-fixture.json?raw';
 import type { AppState, PushDevice } from '../domain/types';
 import {
   domExceptionWithCode,
@@ -23,6 +26,31 @@ import {
   makeStorageFull,
   makeStorageUnavailable,
 } from './testStorage';
+
+/*
+ * RETIRED SKINS. Documents written while clinical and board shipped carry `ui.skin` set to one
+ * of them. They must load as limelight with nothing else touched, and without a schema version
+ * bump. The populated alpha fixture (profiles, plan, sets, reviews) is the document, so "nothing
+ * else touched" is checked against real content rather than an empty default state.
+ */
+const FIXTURE: Record<string, unknown> = JSON.parse(alphaFixtureJson) as Record<string, unknown>;
+
+/** The fixture as serialised text, with `ui.skin` replaced and every other byte of data kept. */
+function withSkin(skin: string): string {
+  const ui = FIXTURE.ui as Record<string, unknown>;
+  return JSON.stringify({ ...FIXTURE, ui: { ...ui, skin } });
+}
+
+/** What the same document parses to when it already names limelight: the expected result. */
+function populatedReference(): AppState {
+  const parsed = parseState(JSON.parse(withSkin('limelight')) as unknown);
+  if (!parsed.ok) throw new Error(`alpha-fixture.json fails the schema: ${parsed.error}`);
+  // Guards against a vacuous comparison: the reference must carry real content.
+  expect(Object.keys(parsed.state.profiles).length).toBeGreaterThan(0);
+  expect(Object.keys(parsed.state.sets).length).toBeGreaterThan(0);
+  expect(parsed.state.schemaVersion).toBe(3);
+  return parsed.state;
+}
 
 describe('the storage key', () => {
   it('is fti.v3', () => {
@@ -50,15 +78,21 @@ describe('load', () => {
     if (result.ok) expect(result.state).toEqual(s);
   });
 
-  it.each(['clinical', 'board'] as const)('repairs retired %s skin in a stored v3 document only', (skin) => {
-    const data = installFakeStorage();
-    const expected = defaultState();
-    data.set(STORAGE_KEY, JSON.stringify({ ...expected, ui: { ...expected.ui, skin } }));
+  it.each(['clinical', 'board'] as const)(
+    'loads a stored v3 document naming the retired %s skin as limelight, all else unchanged',
+    (skin) => {
+      const data = installFakeStorage();
+      const expected = populatedReference();
+      data.set(STORAGE_KEY, withSkin(skin));
 
-    const result = load();
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state).toEqual(expected);
-  });
+      const result = load();
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.state.ui.skin).toBe('limelight');
+        expect(result.state).toEqual(expected);
+      }
+    },
+  );
 
   it('reports non-JSON text as invalid rather than throwing', () => {
     installFakeStorage({ [STORAGE_KEY]: 'not json {' });
@@ -214,12 +248,17 @@ describe('exportJson and importJson', () => {
     if (result.ok) expect(result.state).toEqual(s);
   });
 
-  it.each(['clinical', 'board'] as const)('repairs retired %s skin in an imported v3 backup only', (skin) => {
-    const expected = defaultState();
-    const result = importJson(JSON.stringify({ ...expected, ui: { ...expected.ui, skin } }));
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state).toEqual(expected);
-  });
+  it.each(['clinical', 'board'] as const)(
+    'imports a v3 backup naming the retired %s skin as limelight, all else unchanged',
+    (skin) => {
+      const result = importJson(withSkin(skin));
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.state.ui.skin).toBe('limelight');
+        expect(result.state).toEqual(populatedReference());
+      }
+    },
+  );
 
   it('rejects malformed JSON with a message, not an exception', () => {
     const result = importJson('{');

@@ -17,7 +17,7 @@
 // ("Export and import"), `label.downloads` ("Downloads"), `button.downloadJson`
 // ("Download JSON") and `label.importSection` ("Import"). None of the four carries a per-skin
 // override today (copy.limelight.ts names `hero.exportImport` among the keys every skin keeps
-// limelight, "a control whose misreading costs data"), and `reviewDataNotes.test.ts` imports
+// clinical, "a control whose misreading costs data"), and `reviewDataNotes.test.ts` imports
 // `DEFAULT_COPY` and asserts this module still quotes it, so a renamed control fails a test
 // here instead of silently going stale.
 //

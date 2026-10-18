@@ -2,14 +2,17 @@ import { LIMELIGHT_COPY } from './copy.limelight';
 import type { SkinId } from '../domain/types';
 
 /**
- * The skin overlay lives in its own file so copy resolution remains extensible.
- * They are re-exported here so the copy module is one import site, and so `SKIN_COPY` below and a
+ * The limelight overlay lives in its own file, because a table of camp strings and a table of
+ * five hundred base ones are read for different reasons and reviewed by different eyes. It is
+ * re-exported here so the copy module is one import site, and so `SKIN_COPY` below and a
  * test that quotes a row cannot end up holding two different objects.
  */
 export { LIMELIGHT_COPY } from './copy.limelight';
 
 /**
- * User-facing copy, default (limelight) skin.
+ * User-facing copy, the base table. The app ships one skin, limelight, whose overlay
+ * (copy.limelight.ts) is merged over this table per key; a key the overlay does not name renders
+ * the string here. Until the clinical skin was removed this table was that skin's copy.
  *
  * Contract: docs/design/2026-09-01-copy-contract.md. Every string here obeys R1 to R13.
  * Numbers, units and quantity names are part of the contract, not of the skin: a skin may
@@ -544,7 +547,8 @@ export type CopyKey =
   | 'button.wipeConfirm'
   | 'button.legacyReopen'
   | 'advice.wipeRemoves'
-  // --- sound toggle (P8 Task 12; appended by that task) ---
+  // --- the look-and-sound row (P8 Task 12; appended by that task) ---
+  | 'hero.skin'
   | 'label.settingsSounds'
   // --- block transition cutscene (P8 Task 10; appended by that task) ---
   | 'status.blockTransition'
@@ -589,10 +593,6 @@ export type CopyKey =
   | 'label.noSuggestedLoad'
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   | 'advice.clickToContinue'
-  // Round 3: the app shell's skin-and-preferences control (top right, TopbarSkinPicker in
-  // src/app/App.tsx) had nothing pointing at it and the owner never found it. This labels the
-  // arrow drawn on the intro's final slide only (src/ui/intro/IntroSequence.tsx).
-  | 'label.changeVisualSettings'
   | 'advice.setupInstruction'
   // --- the top bar's per-view instruction, one per ViewId (P10 Brief D) ---
   | 'advice.todayInstruction'
@@ -609,7 +609,7 @@ export type CopyKey =
   | 'footer.version'
   | 'footer.updated'
   | 'footer.licence'
-  // --- round 2 brief N: the dynamic banner (r2-onlimelighting.general) ---
+  // --- round 2 brief N: the dynamic banner (r2-onboarding.general) ---
   | 'status.bannerIntro'
   | 'status.bannerSetup'
   | 'status.bannerSetupNamed'
@@ -1602,9 +1602,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
   'advice.wipeRemoves': 'Removes every profile, plan, session, set and note on this device.',
-  // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
-  // The row's heading. It names both controls under it, so neither the picker's legend nor
-  // The sound toggle's label. One word, like the legend above it.
+  // --- the look-and-sound row (P8 Task 12; appended by that task) ---
+  // The row's heading, kept when the skin picker under it was removed (limelight is the only
+  // skin): it still heads the sound and shortcut switches, and the limelight row resolves it to
+  // the same words the user saw before. "Look" now names no control; rewording it is the
+  // owner's call, not this table's.
+  'hero.skin': 'Look and Sound',
+  // The sound toggle's label. One word.
   'label.settingsSounds': 'Sounds',
 
   // --- block transition cutscene (P8 Task 10; appended by that task) ---
@@ -1639,7 +1643,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- the week review, the personal-record stamp and the skinned status lines (P8 Task 11) ---
   // The three week rows are TEMPLATES, not formatted examples. The round-three and
-  // departures-limelight design tables each wrote their own scenario into this row ("2 sessions below
+  // departures-board design tables each wrote their own scenario into this row ("2 sessions below
   // target" against "2 of 4. flop era."), and one skin's specimen cannot be checked against
   // another's. With the two counts as slots, the numbers come from the domain in every skin and
   // the rule "a skin never changes a number" is decided by the suite rather than asserted in
@@ -1673,7 +1677,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // was: it rendered `status.prStamp` over a week whose completed count merely reached its
   // target, which is an attendance fact, while a personal record is a load or a repetition
   // count nothing else in the document beat. The two keys carry the same limelight word
-  // (MOTHER) because the design gives that position one word; they carry different limelight
+  // (MOTHER) because the design gives that position one word; they carry different clinical
   // words because the claims are different. `status.prStamp` stays, unrenamed and unmoved, for
   // the record toast that P4 detects.
   'status.weekMetStamp': 'Target met',
@@ -1696,7 +1700,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Six new rows and three specimens converted in place (label.suggestedLoad,
   // advice.beverageShortfall, why.fluidLoss). Every one of the nine FORMAT frames below
   // assembled its sentence from a template literal and took no overlay parameter, so the words
-  // it printed were limelight under every skin however the user had set `ui.skin`. This is the
+  // it printed were clinical under every skin however the user had set `ui.skin`. This is the
   // same conversion P8 Task 16 applied to thirteen other frames, and the same rule holds: the
   // VALUES the caller passes are unchanged and stay the domain's, and only the words around
   // them move into the table.
@@ -1765,12 +1769,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   // The long-form slide text lives in src/content/introSlides.ts (R10 reference text, not this
-  // table); these are the two strings the sequence's own controls draw from copy.ts.
+  // table); this is the string the sequence's own control draws from copy.ts. The second,
+  // `label.changeVisualSettings`, captioned an arrow at the top-bar skin control and went with it.
   'advice.clickToContinue': 'Click to continue', // R3: 3 words
-  // The arrow's caption on the final slide ("What Setup Collects"), pointing at the shell's
-  // top-right skin-and-preferences control. `label.` carries no R1-R4 word cap; R14 still
-  // applies, and this is Title Case as written, a control name rather than a sentence.
-  'label.changeVisualSettings': 'Change Visual Settings Here',
   'advice.setupInstruction': 'Answer each step. Nothing leaves this device.',
 
   // --- the top bar's per-view instruction (P10 Brief D) ---
@@ -1803,7 +1804,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'footer.updated': 'Last updated {date}.', // template; FORMAT.footerUpdated
   'footer.licence': 'MIT licence.',
 
-  // --- round 2 brief N: the dynamic banner (r2-onlimelighting.general) ---
+  // --- round 2 brief N: the dynamic banner (r2-onboarding.general) ---
   // "The banner of the web page (That now says FIX THIS INJUSTICE) is not dynamic. I would Like
   // it to append some information as the user moves forward."
   //
@@ -1824,13 +1825,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // reached Review without giving a name, not for someone who has not typed it yet. The wizard's
   // review step is what gates it (src/app/App.tsx), never a blank field.
   'status.bannerSetupAnonymous': 'Welcome Aboard: Shy or Paranoid?',
-
-  // --- round 2 brief N: reaching the skin picker during setup (r2.05) ---
-  // "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any skin picker or any
-  // app settings." The tab strip does not render until a profile exists, so nothing in the whole
-  // wizard could reach the skin. This is the summary of the top-bar disclosure that now can,
-  // matching `disclosure.why` and `disclosure.examples`, which is the app's own idiom for a
-  // control that opens a panel in place.
 
   // --- round 2 brief N: the time-zone picker (r2.09) ---
   // The list shows one row per BEHAVIOUR (59 of them) and the search reads every zone the
@@ -1968,6 +1962,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
  * how a skin is chosen: the FORMAT frames below pass it through, a test passes a literal, and
  * `copyFor` passes the selected skin's table. Every call site that already passes an overlay
  * therefore reaches a skin without being touched.
+ *
+ * With NO overlay this is the base-table string, which is not what the app shows for a key the
+ * limelight table overrides. Anything a user reads goes through `useCopy()` or passes
+ * `useCopyOverrides()`; src/content/limelightParity.test.ts pins what that path resolves to.
  */
 export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string {
   return overrides?.[key] ?? DEFAULT_COPY[key];
@@ -1983,7 +1981,7 @@ export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey,
 /**
  * One string, resolved for a skin. This is the whole of the selection: the override is merged per
  * KEY, not per table, so a skin that names ninety rows inherits the rest rather than restating
- * them, and a row a skin forgets is a limelight sentence rather than a blank.
+ * them, and a row a skin forgets is a base-table sentence rather than a blank.
  *
  * Pure, and free of the store: `useCopy()` in ./useCopy.ts is the React binding that reads
  * `ui.skin` and calls this. A content module that read `UiPrefs` itself would drag Zustand into
@@ -2148,7 +2146,7 @@ export const FORMAT = {
    * this frame substitutes and nothing else. The en dashes are numeric ranges, which R5 retains.
    *
    * Reads `status.setsBy` (P8 close-out B). It owned the multiplication sign as a template
-   * literal, which made the row limelight under every skin.
+   * literal, which made the row clinical under every skin.
    */
   setsBy: (
     sets: string,
@@ -2416,7 +2414,7 @@ export const FORMAT = {
   /**
    * "Log 250 mL": the drink control, whose volume is the profile's own editable cup size. Reads
    * `button.logVolume` (P8 close-out B); it is the control a user meets most often on the Train
-   * screen, and it was the limelight word under every skin.
+   * screen, and it was the clinical word under every skin.
    */
   logVolume: (volume: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('button.logVolume', overrides).replace('{volume}', () => volume),

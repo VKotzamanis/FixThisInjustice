@@ -4,8 +4,8 @@
 //  - The component takes `today` and `weeklySessionTarget`. Without a civil today there is no
 //    way to tell a session still to come from one that was MISSED, and the plan's draft marked
 //    both "not planned", which is the rest-day defect (A48) in a second costume.
-//  - Every label quotes src/content/copyFor.ts; the draft's literals would have shipped a view
-//    whose copyFor and whose test could drift apart.
+//  - Every label quotes src/content/copy.ts; the draft's literals would have shipped a view
+//    whose copy and whose test could drift apart.
 //  - The `// @vitest-environment jsdom` pragma is dropped: vitest.config.ts sets jsdom already.
 
 import { describe, expect, it } from 'vitest';

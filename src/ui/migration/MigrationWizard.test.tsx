@@ -165,9 +165,9 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -303,7 +303,7 @@ describe('MigrationWizard: applying', () => {
   });
 
   it('withholds the delete when the write could not be confirmed', () => {
-    // An unhydrated store refuses every write, so nothing reached storage and the legacy copyFor
+    // An unhydrated store refuses every write, so nothing reached storage and the legacy copy
     // is the only complete one left. The delete must not be offered.
     useAppStore.setState({ status: { ...useAppStore.getState().status, hydrated: false } });
     renderWizard();
@@ -423,8 +423,8 @@ describe('MigrationWizard: the delete is gated', () => {
     /*
      * Security recommendation 10 / M5. The gate exported `fti.console.v2` alone while the
      * confirmed action removes all three legacy keys, so two of them were destroyed with no
-     * copyFor taken. The v2 payload is carried as the RAW text it was read as, never a parse of
-     * it and never the migrated document: this is the last copyFor of whatever the migration
+     * copy taken. The v2 payload is carried as the RAW text it was read as, never a parse of
+     * it and never the migrated document: this is the last copy of whatever the migration
      * refused, and the report the user was just shown lists exactly that.
      */
     const [, text] = vi.mocked(downloadText).mock.calls[0] ?? [];

@@ -56,6 +56,24 @@ describe('the limelight token contract', () => {
     expect(tokens).toContain('.ll-display');
   });
 
+  it('paints the same values from the bare :root block as from the limelight block', () => {
+    // The bare block is what renders before useApplySkin() writes data-skin, so it restates the
+    // limelight values. Two copies of one fact, held together here (AGENTS.md rule 2): every
+    // token the bare block declares must carry the identical value in the limelight block.
+    const valuesIn = (block: string): Record<string, string> =>
+      Object.fromEntries(
+        [...block.matchAll(/^\s*(--[a-z0-9-]+)\s*:\s*([^;]+);/gm)].map((match) => [
+          match[1] ?? '',
+          (match[2] ?? '').trim(),
+        ]),
+      );
+    const base = valuesIn(BASE_BLOCK);
+    const limelight = valuesIn(LIMELIGHT_BLOCK);
+    expect(Object.keys(base).length).toBeGreaterThan(30);
+    const disagree = Object.keys(base).filter((token) => limelight[token] !== base[token]);
+    expect(disagree).toEqual([]);
+  });
+
   it('gives every token used in CSS a limelight value', () => {
     const used = new Set(
       [...tokens.matchAll(/var\((--[a-z0-9-]+)/g)].map((match) => match[1] ?? ''),

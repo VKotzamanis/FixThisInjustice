@@ -6,10 +6,10 @@
 // the plan:
 //  - The `milestoneMessage` describe block is gone with the component it tested. The milestone
 //    toast is rendered by the queue itself from `FORMAT.milestoneSets` (P8 Task 3), so a second
-//    module holding the same sentence would be a copyFor no skin override could reach.
+//    module holding the same sentence would be a copy no skin override could reach.
 //  - The gate assertions use the shared fixture plan's own block boundaries (0-19 and 20-23),
 //    not the eight-session blocks the plan's literal assumes, and the heading is quoted through
-//    the copyFor table rather than as a literal.
+//    the copy table rather than as a literal.
 //  - Two conditions the plan's literal does not state are asserted here because the task brief
 //    requires them: the cutscene never appears during an active session, and never over the
 //    boot sequence.
@@ -59,9 +59,9 @@ function headingFor(from: number, to: number): string {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -441,7 +441,7 @@ describe('PhaseTransitionGate against the legacy migration offer', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
@@ -453,20 +453,8 @@ describe('PhaseTransition under a skin', () => {
     vi.useRealTimers();
   });
 
-  it('names the control in the limelight words, and in the default ones under limelight', () => {
+  it('names the control in the limelight words', () => {
     const stats = { sessionsCompleted: 8, setsLogged: 96, tonnageKg: 41208, specimensOwned: 5 };
-
-    pinSkin('limelight');
-    const view = render(
-      <PhaseTransition fromIndex={0} toIndex={1} stats={stats} units="metric" onClose={vi.fn()} />,
-    );
-    act(() => {
-      vi.advanceTimersByTime(6000); // [ms]
-    });
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
-    ).toBeInTheDocument();
-    view.unmount();
 
     pinSkin('limelight');
     render(

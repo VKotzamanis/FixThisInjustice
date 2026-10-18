@@ -1,15 +1,15 @@
 // src/ui/views/train/SetRow.test.tsx
 //
-// The set row's copyFor contract (P8 close-out C).
+// The set row's copy contract (P8 close-out C).
 //
 // This suite exists because of the ONE structural decision in the Train migration: SetRow is
 // mounted up to six times per exercise card and up to eight cards deep, so it does not call
-// `useCopy()` - TrainView reads the hook once and threads the lookup down as `t`. The third
-// case below is what pins that: the store says limelight while the prop says limelight, and the
-// row renders what the PROP says. A row that had quietly grown its own subscription would
-// render the limelight word there and fail.
+// `useCopy()` - TrainView reads the hook once and threads the lookup down as `t`. The last
+// cases below pin that: the store says limelight while the prop supplies its own label (or an
+// empty overlay), and the row renders what the PROP says. A row that had quietly grown its own
+// subscription would render the limelight word there and fail.
 //
-// Every skin assertion is made BY KEY through `copyFor`/`copyFor`, never against a literal, so a
+// Every skin assertion is made BY KEY through `copy`/`copyFor`, never against a literal, so a
 // reworded table moves the expectation with the string it is about.
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';

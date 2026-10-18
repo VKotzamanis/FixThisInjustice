@@ -75,10 +75,9 @@ describe('Icon', () => {
 });
 
 /**
- * The skin gate (P8 Task 12). The icon set belongs to one skin: limelight is deliberately
- * emoji-free and glyph-free (copy contract R6), and direction H ships no graphic at all, its
- * whole character being type and motion. So the component returns null off limelight and a call
- * site never has to ask which skin is active.
+ * The icon set belongs to limelight (P8 Task 12). Until clinical and board were removed the
+ * component returned null off limelight: clinical was glyph-free (copy contract R6) and the board
+ * shipped no graphic. With one skin there is no gate, and the cases below are the limelight ones.
  */
 describe('Icon on the limelight skin', () => {
   it('renders the pixel art on the limelight skin', () => {
@@ -105,7 +104,7 @@ describe('SkinLabel', () => {
     expect(ICON_FOR_KEY['button.back']).toBeUndefined();
     const { container } = render(<SkinLabel copyKey="button.back" />);
     // The default this file seeds is limelight, which carries no row for this key, so the
-    // limelight string is what `copyFor` resolves and what the label renders.
+    // base-table string is what `copyFor` resolves and what the label renders.
     expect(screen.getByText(copyFor('limelight', 'button.back'))).toBeInTheDocument();
     expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
@@ -167,7 +166,7 @@ describe('SkinLabel', () => {
      *    that wants it places it the way WeekStamp places the crown;
      *  - `lips` has NO position in this app. 4.4 gives it "quote-tweet attribution" and "the
      *    reunion". The quote-tweet inset was never built (the plan's own "what this plan does not
-     *    do": "the limelight skin's ... quote-tweet inset ... not built"), and "the reunion" is
+     *    do": "the board skin's ... quote-tweet inset ... not built"), and "the reunion" is
      *    `hero.weekReview`, which 4.4 gives to `fan` in the row above. Inventing a second home
      *    for it would be putting art where the design put none.
      */

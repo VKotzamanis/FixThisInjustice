@@ -89,9 +89,9 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -126,7 +126,7 @@ describe('MotivationModal', () => {
     expect(video instanceof HTMLVideoElement && video.muted).toBe(true);
   });
 
-  it('keeps the copyFor and drops the element when no clip resolves', async () => {
+  it('keeps the copy and drops the element when no clip resolves', async () => {
     vi.mocked(resolveVideoSrc).mockResolvedValue({
       src: BUNDLED_VIDEO_SRC,
       revoke: () => {
@@ -143,7 +143,7 @@ describe('MotivationModal', () => {
     expect(dismissButton()).toBeDefined();
   });
 
-  it('hides the element when the clip fails to load, and keeps the copyFor', async () => {
+  it('hides the element when the clip fails to load, and keeps the copy', async () => {
     renderModal();
     const video = await screen.findByTestId('motivation-video');
     fireEvent.error(video);
@@ -276,22 +276,12 @@ describe('MotivationModal', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('MotivationModal under a skin', () => {
-  it('heads the miss in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = renderModal();
-    expect(
-      screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
-    ).toBeInTheDocument();
-    view.unmount();
-
+  it('heads the miss in the limelight words', () => {
     pinSkin('limelight');
     renderModal();
     expect(

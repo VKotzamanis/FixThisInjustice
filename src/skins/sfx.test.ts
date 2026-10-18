@@ -81,8 +81,8 @@ class FakeContext implements SfxContext {
 /*
  * The byte length of a fetched file carries the skin it belongs to, and FakeContext turns bytes
  * into the stand-in `duration`, so a decoded buffer names its own skin. That is what lets a test
- * assert that the limelight buffer played rather than only that some buffer was set, which is the
- * difference between catching the limelight-plays-under-limelight bug and missing it.
+ * assert WHICH skin's buffer played rather than only that some buffer was set. The skin-change
+ * cases that relied on it went with the board skin; one skin is left, so one entry.
  */
 const SKIN_BYTES: Readonly<Record<SkinId, number>> = {
   limelight: 1100,

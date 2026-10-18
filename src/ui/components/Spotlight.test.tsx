@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FORMAT, copyFor } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copyFor } from '../../content/copy';
 import type { AppState, PlanTemplate } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
@@ -67,12 +67,17 @@ function planOfState(state: AppState): PlanTemplate {
   return plan;
 }
 
-/** No-op collaborators, so a test overrides only the one it is asserting on. */
+/**
+ * No-op collaborators, so a test overrides only the one it is asserting on. The overlay is the
+ * one the component passes (`useCopyOverrides()` under the shipped skin), so the labels asserted
+ * below are the ones the palette shows.
+ */
 function args(over: Partial<Parameters<typeof buildSpotlightItems>[0]> = {}): Parameters<
   typeof buildSpotlightItems
 >[0] {
   return {
     plan: planOfState(seed()),
+    overrides: SKIN_COPY.limelight,
     setView: () => {
       /* asserted by the tests that pass a spy */
     },
@@ -132,9 +137,9 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -468,23 +473,17 @@ describe('plan deep link', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('Spotlight under a skin', () => {
-  it('heads the palette in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = renderPalette();
-    expect(screen.getByText(copyFor('limelight', 'hero.spotlight'))).toBeInTheDocument();
-    // The view rows are named through their copyFor key too, not through the label VIEWS baked at
-    // import: `nav.plan` is one of the rows the palette lists with an empty query.
-    expect(optionLabels()).toContain(copyFor('limelight', 'nav.plan'));
-    view.unmount();
-
+  it('heads the palette in the limelight words', () => {
     pinSkin('limelight');
     renderPalette();
     expect(screen.getByText(copyFor('limelight', 'hero.spotlight'))).toBeInTheDocument();
+    // The view rows are named through their copy key too, not through the label VIEWS baked at
+    // import: `nav.plan` is one of the rows the palette lists with an empty query.
     expect(optionLabels()).toContain(copyFor('limelight', 'nav.plan'));
   });
 });

@@ -32,22 +32,7 @@
 }
 
 /*
- * The limelight fallback (P10 Brief D): Marquee.tsx renders nothing on limelight by design, so
- * this is what the top bar shows there instead of an empty slot. No colour of its own: it is a
- * child of .topbar and inherits `color: var(--topbar-text)` from it, exactly as the old status
- * span did.
- */
-.topbar-instruction {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: right;
-}
-
-/*
- * The dynamic half of the banner (round 2, r2-onlimelighting.general): the brand stays fixed and
+ * The dynamic half of the banner (round 2, r2-onboarding.general): the brand stays fixed and
  * this is what follows it. It sits BESIDE the brand and is read with it, so it takes the brand's
  * colour token rather than the bar's dimmer text token, and a separator is drawn with a border
  * rather than written into a copy string.
@@ -69,7 +54,7 @@
   white-space: nowrap;
 }
 
-/* The marquee fills the space the fixed brand leaves, on the two skins that render it. */
+/* The marquee fills the space the fixed brand leaves. */
 .topbar .ll-marquee {
   flex: 1 1 auto;
   min-width: 0;
@@ -239,25 +224,4 @@ main {
 .viewnav button[aria-current='true'] {
   color: var(--accent, #a3e635);
   border-color: var(--accent, #a3e635);
-}
-
-/*
- * THE INTRO'S SETTINGS POINTER NEEDS ITS TARGET VISIBLE.
- *
- * <!-- decision: topbar-lifts-for-the-intro-pointer | status: adopted | supersedes: none -->
- *
- * The intro overlay is z-index 56 (intro.css) and this bar is 30, so for the whole intro the skin
- * and preferences control sits BEHIND it. The final slide draws an arrow at that corner, and an
- * arrow aimed at a covered control points at blank space: it teaches a location the user cannot
- * see, which is worse than not pointing at all. The owner's ask was to be SHOWN where the button
- * is, not told where it will be.
- *
- * So for that one slide the intro marks itself, and the bar rises above the overlay. 57 rather
- * than 56 because 57 is what intro.css already uses for its own modal layer, and the bar must
- * clear the overlay without covering that modal's own backdrop on the tl;dr slide -- which cannot
- * collide in practice, since the acknowledgement modal and the final slide are different slides.
- */
-.intro[data-pointing-at-settings='true'] ~ .app .topbar,
-body:has(.intro[data-pointing-at-settings='true']) .topbar {
-  z-index: 57;
 }

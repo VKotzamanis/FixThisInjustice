@@ -57,6 +57,15 @@ describe('InteractionSettings', () => {
     await user.click(toggle);
     expect(toggle).not.toBeChecked();
     expect(useAppStore.getState().ui.hotkeys).toBe(false);
+    await user.click(toggle);
+    expect(useAppStore.getState().ui.hotkeys).toBe(true);
+  });
+
+  it('heads the two switches with the row heading the skin picker used to share', () => {
+    render(<InteractionSettings />);
+    expect(
+      screen.getByRole('heading', { level: 2, name: copyFor('limelight', 'hero.skin') }),
+    ).toBeInTheDocument();
   });
 
   it('describes both switches', () => {

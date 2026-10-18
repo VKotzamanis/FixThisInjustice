@@ -115,9 +115,9 @@ function confirmButton(labelKey: 'button.wipeConfirm' | 'button.legacyDeleteOld'
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -263,7 +263,7 @@ describe('SettingsView data section', () => {
     expect(downloads.map((d) => d.name)).toEqual([`fti-legacy-bundle-${STAMP}.json`]);
     /*
      * Security recommendation 10 / M5. The gate used to export `fti.console.v2` alone while
-     * the confirmed action removed three keys, so two of them were destroyed with no copyFor
+     * the confirmed action removed three keys, so two of them were destroyed with no copy
      * taken. The backup now covers exactly what the delete removes.
      */
     expect(JSON.parse(await onlyDownloadText())).toEqual({

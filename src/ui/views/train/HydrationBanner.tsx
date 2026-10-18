@@ -36,7 +36,7 @@ export function HydrationBanner(props: {
    * The same skin's table, read beside the lookup and above the early return for the same
    * reason. The two frames this banner renders read a copy key since P8 close-out B
    * (`advice.beverageShortfall` and `button.logVolume`), so without the overlay the shortfall
-   * sentence and the drink control were the only limelight strings on a skinned Train screen.
+   * sentence and the drink control were the only clinical strings on a skinned Train screen.
    */
   const overrides = useCopyOverrides();
   /*

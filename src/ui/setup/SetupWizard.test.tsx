@@ -222,9 +222,9 @@ function fillImperialWizard(): void {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -1107,14 +1107,7 @@ describe('guidance step in wizard', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('SetupWizard under a skin', () => {
-  it('names the primary control in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = render(<SetupWizard />);
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
-    ).toBeInTheDocument();
-    view.unmount();
-
+  it('names the primary control in the limelight words', () => {
     pinSkin('limelight');
     render(<SetupWizard />);
     expect(
@@ -1252,7 +1245,7 @@ describe('Brief B: failed Next on the body step (C1.08.12, C1.08.14)', () => {
 });
 
 /**
- * C1.G.1: "if I don't end the onlimelighting and close the browser, when I open the page again, the
+ * C1.G.1: "if I don't end the onboarding and close the browser, when I open the page again, the
  * information that has been put there needs to be there waiting for me."
  */
 describe('the setup draft survives a closed browser (C1.G.1)', () => {
@@ -2918,7 +2911,7 @@ describe('Brief I Part 2: the body-fat target', () => {
 });
 
 /**
- * ROUND 3, the onlimelighting revision: what moved between steps, and what now gates what.
+ * ROUND 3, the onboarding revision: what moved between steps, and what now gates what.
  *
  * These are placement tests, deliberately. Every control below already had a behaviour test
  * somewhere in this file; what round 3 changed is WHICH SCREEN each one is on, and a suite that

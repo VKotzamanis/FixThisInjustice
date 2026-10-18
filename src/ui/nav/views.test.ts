@@ -77,7 +77,7 @@ describe('the view registry', () => {
   it('is read by the strip through the copy key, not through the baked label', () => {
     /*
      * `label` is resolved from the DEFAULT table at MODULE LOAD, so a component that renders it
-     * renders the limelight word under every skin: that is what put "the run" in the palette and
+     * renders the clinical word under every skin: that is what put "the run" in the palette and
      * "Plan" on the tab beside it (P8 review). The strip must reach the row through `copyKey`
      * and `useCopy()`, which is what src/ui/components/Spotlight.tsx already does, and the
      * landmark's own name must come from the same reader rather than from a bare `copy()` call.

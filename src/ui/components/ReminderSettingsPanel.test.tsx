@@ -164,7 +164,7 @@ describe('switching reminders on', () => {
     });
   });
 
-  it('reports a refused subscription as copyFor and enables nothing', async () => {
+  it('reports a refused subscription as copy and enables nothing', async () => {
     subscribeMock.mockResolvedValue({ ok: false, reason: 'failed' });
     render(<ReminderSettingsPanel />);
     await click(toggle());
@@ -181,7 +181,7 @@ describe('switching reminders on', () => {
     // subscribe() is a caller contract that resolves with {ok, reason} rather than throwing,
     // but nothing in this component enforces that at the type level, and a runtime failure
     // upstream of that contract (e.g. a bug in the client, or a mock in test) must not leave
-    // an unhandled rejection with no user-visible copyFor and no store write undone.
+    // an unhandled rejection with no user-visible copy and no store write undone.
     subscribeMock.mockRejectedValue(new Error('boom'));
     seed({ device: DEVICE });
     render(<ReminderSettingsPanel />);
@@ -197,7 +197,7 @@ describe('switching reminders on', () => {
     expect(syncMock).not.toHaveBeenCalled();
   });
 
-  it('reports a denied permission with the copyFor that names where to allow it', async () => {
+  it('reports a denied permission with the copy that names where to allow it', async () => {
     subscribeMock.mockResolvedValue({ ok: false, reason: 'denied' });
     render(<ReminderSettingsPanel />);
     await click(toggle());
@@ -208,7 +208,7 @@ describe('switching reminders on', () => {
     expect(settings()?.enabled).toBe(false);
   });
 
-  it('reports a failed upload as copyFor and keeps the raw error out of the page', async () => {
+  it('reports a failed upload as copy and keeps the raw error out of the page', async () => {
     syncMock.mockResolvedValue({ status: 'failed', error: 'HTTP 500' });
     const { container } = render(<ReminderSettingsPanel />);
     await click(toggle());
@@ -279,10 +279,10 @@ describe('switching reminders off', () => {
     await waitFor(() => {
       expect(settings()?.enabled).toBe(false);
     });
-    // The local state clears regardless, but the failure must not be silent: there is no copyFor
+    // The local state clears regardless, but the failure must not be silent: there is no copy
     // key specific to an unsubscribe failure (grepped status.reminders*/advice.reminder*), so
     // this reuses advice.reminderSyncFailed, the nearest existing "did not reach the server"
-    // copyFor for a Worker-side push failure.
+    // copy for a Worker-side push failure.
     expect(useAppStore.getState().pushDevice).toBeNull();
     expect(screen.getByText(copyFor('limelight', 'advice.reminderSyncFailed'))).toBeInTheDocument();
   });

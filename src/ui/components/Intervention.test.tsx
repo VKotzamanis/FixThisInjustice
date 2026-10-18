@@ -58,12 +58,6 @@ describe('Intervention', () => {
     ).toBeTruthy();
   });
 
-  it('keeps the limelight vocabulary for the same missed week', () => {
-    withSkin('limelight');
-    render(<Intervention review={HANDLED} />);
-    expect(screen.getByText(copyFor('limelight', 'hero.weeklyTargetMissed'))).toBeTruthy();
-  });
-
   it('stays silent while the popup still owes the user that week', () => {
     render(<Intervention review={PENDING} />);
     expect(screen.queryByTestId('intervention')).toBeNull();
@@ -83,9 +77,9 @@ describe('Intervention', () => {
   /**
    * P9 Task 17. Round three section 4.4 draws `alert` at the motivation title and `heart` at the
    * intervention body, and both now render through SkinLabel. The assertion is on the ICON, not
-   * on the words: the words are covered above, and what these two tests pin is that the glyph
-   * arrives on limelight and that nothing but text reaches the other skins, which is copyFor
-   * contract R6 (limelight is glyph-free) and the limelight's own no-graphics rule.
+   * on the words: the words are covered above, and what this test pins is that the glyph
+   * arrives on limelight. (A second test pinned that nothing but text reached clinical and the
+   * board, until those skins were removed.)
    */
   it('puts the two round-three icons beside the title and the body on limelight', () => {
     withSkin('limelight');

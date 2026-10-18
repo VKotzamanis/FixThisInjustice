@@ -785,12 +785,22 @@ describe('the skin and sounds preferences', () => {
   });
 
   it('coerces retired skin ids while retaining the rest of a v3 document', () => {
+    // The same document naming the shipped skin is the reference: a retired id must parse to
+    // exactly what that parses to, so nothing but `ui.skin` can have moved.
+    const reference = legacyDocument();
+    reference.ui = { ...(reference.ui as Record<string, unknown>), skin: 'limelight' };
+    const expected = parseState(reference);
+    expect(expected.ok).toBe(true);
+    if (!expected.ok) return;
     for (const skin of ['clinical', 'board']) {
       const doc = legacyDocument();
       doc.ui = { ...(doc.ui as Record<string, unknown>), skin };
       const result = parseState(doc);
       expect({ skin, ok: result.ok }).toEqual({ skin, ok: true });
-      if (result.ok) expect(result.state.ui.skin).toBe('limelight');
+      if (result.ok) {
+        expect(result.state.ui.skin).toBe('limelight');
+        expect(result.state).toEqual(expected.state);
+      }
     }
   });
 

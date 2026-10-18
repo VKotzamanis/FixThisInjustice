@@ -28,8 +28,8 @@ export function metWeek(review: WeeklyReview | null): review is WeeklyReview {
  * The stamp that lands on the Today view when the week that has just closed met its target.
  *
  * THE WORD IS `status.weekMetStamp`, which shouts MOTHER on limelight (round three section 3.2)
- * and renders its own plain phrase on limelight and on the limelight, so the component holds no skin
- * branch: `useCopy()` resolves the row and `Icon` returns null off limelight.
+ * and has its own plain phrase in the base table; the component holds no skin branch, because
+ * `useCopy()` resolves the row.
  *
  * IT IS NOT `status.prStamp`, which is what this component read until P8 close-out B. A met week
  * is an ATTENDANCE fact -- the completed count reached the target -- and a personal record is a

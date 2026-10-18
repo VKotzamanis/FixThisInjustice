@@ -1,6 +1,6 @@
 // src/ui/format/plan.ts
 //
-// Presentation-only formatting for plan content. Limelight register: no hype, no emoji, the
+// Presentation-only formatting for plan content. Clinical register: no hype, no emoji, the
 // defined quantity every time (master plan section 3, copy contract R11).
 //
 // Why these live here and not in src/content/copy.ts. copy.ts holds SENTENCES, which a skin

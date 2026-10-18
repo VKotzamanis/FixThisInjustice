@@ -1,14 +1,14 @@
 // src/ui/views/train/HydrationBanner.test.tsx
 //
-// The hydration cue's copyFor contract (P8 close-out C).
+// The hydration cue's copy contract (P8 close-out C).
 //
 // The domain chooses a KEY (src/domain/training/hydration.ts, HYDRATION_COPY_KEY) and this
-// component renders it, so the skin reaches the cue without the cue logic knowing that copyFor
+// component renders it, so the skin reaches the cue without the cue logic knowing that copy
 // exists. The assertions quote the tables by key: the limelight case is the row round three
 // section 3.4 names for `advice.drinkToThirst`, and asserting the literal here would let a
 // reworded table pass a stale test.
 //
-// Both branches are under test. The in-session cue is a single copyFor key; the shortfall cue is a
+// Both branches are under test. The in-session cue is a single copy key; the shortfall cue is a
 // FORMAT frame with two volumes in it, and since P8 close-out B that frame reads
 // `advice.beverageShortfall` and takes an overlay, so close-out D hands it this banner's own
 // `useCopyOverrides()` and the skin reaches it like any other string.
@@ -96,7 +96,7 @@ describe('HydrationBanner: the limelight voice', () => {
     expect(icons).toHaveLength(1);
     expect(icons[0]?.getAttribute('aria-hidden')).toBe('true');
     expect(icons[0]?.getAttribute('alt')).toBe('');
-    // By key against copyFor.limelight.ts. The domain returned the same cue kind in both cases;
+    // By key against copy.limelight.ts. The domain returned the same cue kind in both cases;
     // only the words moved.
     expect(screen.getByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeInTheDocument();
     expect(screen.queryByText(copy('advice.drinkToThirst'))).toBeNull();
@@ -105,10 +105,10 @@ describe('HydrationBanner: the limelight voice', () => {
   it('names the drink control in the skin words, keeping the profile volume', () => {
     renderBanner('limelight');
     /*
-     * P8 close-out B gave `FORMAT.logVolume` a copyFor key and an overlay parameter, and close-out
+     * P8 close-out B gave `FORMAT.logVolume` a copy key and an overlay parameter, and close-out
      * D passes this banner's `useCopyOverrides()` into it, so the control follows the skin.
      * What does NOT follow the skin is the VOLUME: 250 mL is the profile's own cup size, it
-     * reaches the frame as a slot, and copyFor.limelight.ts rule 1 keeps it there.
+     * reaches the frame as a slot, and copy.limelight.ts rule 1 keeps it there.
      */
     expect(
       screen.getByRole('button', {

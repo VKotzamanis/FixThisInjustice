@@ -36,9 +36,9 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -118,7 +118,7 @@ describe('SessionIndicator', () => {
     expect(screen.getByTestId('session-indicator').textContent).toBe('S 1/6');
   });
 
-  it('carries an accessible label from the copyFor table', () => {
+  it('carries an accessible label from the copy table', () => {
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
       FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
@@ -157,14 +157,7 @@ describe('SessionIndicator', () => {
  * them: they read the same on both sides of this pair.
  */
 describe('SessionIndicator under a skin', () => {
-  it('speaks the cursor in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
-    );
-    view.unmount();
-
+  it('speaks the cursor in the limelight words', () => {
     pinSkin('limelight');
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(

@@ -978,8 +978,8 @@ function SexRationaleModal(props: { onClose: () => void }): JSX.Element {
       {/*
        * SEGMENT TWO, r2.12(iv). Three subsection headings, his words and his order, with the wall
        * of text under each broken into points. The heading itself takes the theme colour on a
-       * white highlight ("fuchsia pink here"), which is `var(--accent)` in setup.css so limelight
-       * and limelight resolve their own rather than inheriting limelight's pink.
+       * white highlight ("fuchsia pink here"), which is `var(--accent)` in setup.css, so a skin
+       * other than limelight would resolve its own rather than inherit limelight's pink.
        */}
       <div className="wiz-modal-segment">
         <h3 className="wiz-modal-subtitle wiz-modal-hrt">{SEX_RATIONALE_HRT_TITLE}</h3>
@@ -1135,7 +1135,7 @@ export function SetupWizard(): JSX.Element {
   const t = useCopy();
   const overrides = useCopyOverrides();
   /*
-   * C1.G.1: "if I don't end the onlimelighting and close the browser, when I open the page again,
+   * C1.G.1: "if I don't end the onboarding and close the browser, when I open the page again,
    * the information that has been put there needs to be there waiting for me." Both lazy
    * initialisers read `useAppStore.getState().setupDraft` directly rather than through a hook,
    * because this only has to run once, on the first render, and neither call can observe the
@@ -1249,7 +1249,7 @@ export function SetupWizard(): JSX.Element {
   const step: StepId = STEPS[stepIndex] ?? 'units';
 
   /*
-   * The top bar's banner reads these two and nothing else (round 2, r2-onlimelighting.general). The
+   * The top bar's banner reads these two and nothing else (round 2, r2-onboarding.general). The
    * banner is rendered in <header> by src/app/App.tsx, above <main>, so it cannot reach this
    * component's state without being handed it; src/ui/setup/setupBanner.tsx records why that is
    * a context and not the persisted draft.
@@ -2431,7 +2431,7 @@ export function SetupWizard(): JSX.Element {
            * distinguish it aesthetically and make it more 'fun'." STYLE ONLY. The value is the
            * user's own text and nothing here alters it: no capitalisation, no trimming for
            * display, no substitution. `wiz-name` sets the skin's display face and accent through
-           * tokens, so limelight, limelight and limelight each resolve their own.
+           * tokens, so the face and colour are the skin's, not this component's.
            */}
           <div className="wiz-field">
             <label htmlFor="f-name">{t('label.name')}</label>

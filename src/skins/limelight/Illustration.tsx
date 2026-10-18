@@ -5,10 +5,10 @@ import { LIMELIGHT_ILLUSTRATIONS, type LimelightIllustrationName } from './illus
 /**
  * A limelight mascot illustration.
  *
- * Mirrors `Icon.tsx` deliberately, including the null return on every other skin: the mascots are
- * this skin's voice, and limelight is the plain table the app falls back to. Round 3 drew four of
- * them and none was ever wired; this component is what round 2 of the alpha needed to place two
- * of them (asset manifest, 2026-09-06).
+ * Mirrors `Icon.tsx` deliberately: the mascots are this skin's voice. The null return on every
+ * other skin went with the clinical and board skins, as Icon's did. Round 3 drew four of them
+ * and none was ever wired; this component is what round 2 of the alpha needed to place two of
+ * them (asset manifest, 2026-09-06).
  *
  * DECORATIVE BY DEFAULT, and that is a decision rather than a shortcut. A mascot beside a heading
  * carries nothing the heading does not already say, so it takes an empty alt and is hidden from

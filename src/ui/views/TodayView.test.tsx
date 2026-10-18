@@ -28,9 +28,9 @@ import type { AppState, SessionAssignment, SkinId, WeeklyReview } from '../../do
  *     the module. The fixture's exercise ids ("ex-1", "ex-2") are not in the library, so the
  *     rows exercise exerciseName's documented fallback instead, which is the behaviour a plan
  *     generated against an older library actually gets.
- *  2. Every assertion quotes src/content/copyFor.ts rather than a literal (copyFor contract: "test
+ *  2. Every assertion quotes src/content/copy.ts rather than a literal (copy contract: "test
  *     assertions quote the default table"), so a reworded string fails here rather than
- *     shipping a view whose copyFor and whose test have drifted apart.
+ *     shipping a view whose copy and whose test have drifted apart.
  *  3. The hero eyebrow is the CURSOR position in Task 7's "S n/N" form (FORMAT.planPosition),
  *     not a re-spelling of it, so the Today hero and the top-bar indicator cannot disagree
  *     about where the plan stands.
@@ -50,10 +50,9 @@ function seed(): AppState {
   });
   /*
    * P8 Task 14. The view now reads its strings through useCopy(), so the ACTIVE SKIN decides
-   * what it renders, and the shipped default is limelight (schema.ts, UiPrefsSchema). Every
-   * assertion below quotes the limelight default table, which is the contract's own baseline, so
-   * the skin is pinned here rather than each assertion being rewritten; the limelight suite at
-   * the end of this file flips it and asserts the override table instead.
+   * what it renders, and the only skin is limelight (schema.ts, UiPrefsSchema). Every assertion
+   * below quotes `copyFor('limelight', key)`; until clinical was removed this pinned clinical and
+   * the assertions quoted the default table.
    */
   return { ...state, ui: { ...state.ui, skin: 'limelight' } };
 }
@@ -436,7 +435,7 @@ describe('TodayView: a refused action', () => {
 
     const banner = screen.getByRole('alert');
     expect(banner.textContent).toContain(copyFor('limelight', 'banner.actionRefused.tag'));
-    // P4 review item 4: the banner renders the copyFor line for the refusal, not the domain's
+    // P4 review item 4: the banner renders the copy line for the refusal, not the domain's
     // thrown message. The store still holds the domain's own words, which is what the schedule
     // slice documents; this is the mapping from those words to the ones the user reads.
     expect(useAppStore.getState().status.lastActionError).toBe(
@@ -475,7 +474,7 @@ describe('TodayView: a refused action', () => {
    * writing the message into the status object, so the string this test maps is the one the
    * domain actually mints.
    */
-  it('renders a paused refusal as copyFor, with the date and no function name', () => {
+  it('renders a paused refusal as copy, with the date and no function name', () => {
     setState({
       ...useAppStore.getState(),
       pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
@@ -493,14 +492,14 @@ describe('TodayView: a refused action', () => {
     expect(banner.textContent).toContain(MONDAY);
     expect(banner.textContent).not.toContain('startSession');
     expect(banner.textContent).not.toContain('startSession:');
-    // The mapper is the single definition of that rendering; the view holds no second copyFor.
+    // The mapper is the single definition of that rendering; the view holds no second copy.
     expect(banner.textContent).toContain(refusalLine(raw ?? '', SKIN_COPY.limelight));
   });
 
-  it('renders the refusal in the active skin, not always in the limelight words', () => {
+  it('renders the refusal in the active skin, not in the base-table words', () => {
     /*
      * `refusalLine` has taken an overlay since it was written, and TodayView called it without
-     * one, so the one sentence on this screen that reports a domain refusal was limelight under
+     * one, so the one sentence on this screen that reports a domain refusal was clinical under
      * every skin while the controls beside it were not.
      *
      * `status.refusalPaused` is the row limelight carries, and it is asserted BY KEY through
@@ -598,7 +597,7 @@ describe('TodayView: the 14-day strip', () => {
     );
 
     // aria-label is what the accessible-name computation reads; a <title> child would be a
-    // second copyFor of the same name that nothing can reach.
+    // second copy of the same name that nothing can reach.
     const row = screen.getAllByTestId('strip-day')[0] as HTMLElement;
     const glyph = within(row).getByLabelText(copyFor('limelight', 'status.dayPlanned'));
     expect(glyph.querySelector('title')).toBeNull();
@@ -648,9 +647,9 @@ describe('App wiring', () => {
 /*
  * P8 Task 14: the ticker, the week block and the capsule.
  *
- * Every string below is quoted from the copyFor tables by KEY, never as a literal, which is the
+ * Every string below is quoted from the copy tables by KEY, never as a literal, which is the
  * rule the head of this file states: a reworded row fails here rather than shipping a view whose
- * copyFor and whose test have drifted apart.
+ * copy and whose test have drifted apart.
  */
 
 /** The week that closed before MONDAY 2026-09-07, met exactly: delta = 4 - 4 = 0. */
@@ -687,7 +686,7 @@ describe('TodayView: the ticker', () => {
     withSkin('limelight');
     render(<TodayView />);
 
-    // By key against copyFor.limelight.ts: the strip's name follows the skin like every other
+    // By key against copy.limelight.ts: the strip's name follows the skin like every other
     // control, and the default string is no longer what limelight renders.
     const strip = screen.getByRole('button', {
       name: copyFor('limelight', 'button.pauseTicker'),
@@ -742,7 +741,7 @@ describe('TodayView: the ticker', () => {
 
   it('names the strip in the limelight voice, in lower case', () => {
     // Round three section 3.2 closes the uppercase list; the ticker's control is not on it, and
-    // the limelight's PAUSE TICKER is the limelight's register, not this one.
+    // the removed board skin's PAUSE TICKER was that skin's register, not this one.
     withSkin('limelight');
     render(<TodayView />);
     const name = copyFor('limelight', 'button.pauseTicker');
@@ -800,7 +799,7 @@ describe('TodayView: the limelight voice', () => {
     withSkin('limelight');
     render(<TodayView />);
 
-    // Asserted by key against copyFor.limelight.ts, never as a literal.
+    // Asserted by key against copy.limelight.ts, never as a literal.
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.markCompleted') }),
     ).toBeTruthy();
@@ -832,7 +831,7 @@ describe('TodayView: the limelight voice', () => {
   it("keeps the session preview's set counts in the limelight string, under the overlay", () => {
     /*
      * P8 close-out D wired `useCopyOverrides()` into this view's `FORMAT.setsBy` call. The
-     * limelight table carries no `status.setsBy` row on purpose (copyFor.test.ts records why: the
+     * limelight table carries no `status.setsBy` row on purpose (copy.test.ts records why: the
      * mockup's own card renders "3 x 6-8", which IS the default), so the preview reads the same
      * under both skins. That is asserted rather than assumed, so adding a row later fails here
      * instead of silently changing a plan row.

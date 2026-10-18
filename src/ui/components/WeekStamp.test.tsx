@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { WeekStamp } from './WeekStamp';
+import { WeekStamp, SPARKLE_COUNT } from './WeekStamp';
 import { Intervention } from './Intervention';
 import { FORMAT, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
@@ -55,6 +55,9 @@ describe('WeekStamp', () => {
         ),
       ),
     ).toBeTruthy();
+    // The sparkle fan lands in full. Asserted under the board skin until that skin was removed;
+    // the fan is not skin-gated, so the count holds here.
+    expect(document.querySelectorAll('.ll-stamp-sparkle')).toHaveLength(SPARKLE_COUNT);
   });
 
   it('reads the beaten week from the sign of the stored delta, never from arithmetic', () => {

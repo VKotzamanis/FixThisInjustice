@@ -51,7 +51,7 @@ export interface ExerciseCardProps {
    * The active skin's override table, read once by the view beside `t` and threaded the same
    * way. Three of this card's frames read a copy key since P8 close-out B (`setsBy`,
    * `lastSessionSets`, `suggestedLoad`) and the rows below read a fourth (`setCounter`), so a
-   * card that took only the lookup would render four limelight strings inside a skinned screen.
+   * card that took only the lookup would render four clinical strings inside a skinned screen.
    */
   overrides: Readonly<Partial<Record<CopyKey, string>>>;
   profile: Profile;

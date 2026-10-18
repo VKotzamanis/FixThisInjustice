@@ -1,12 +1,15 @@
 /*
- * Base tokens provide the limelight values before React applies the data attribute.
+ * Base tokens: the limelight values, so the page paints limelight before useApplySkin() writes
+ * the data-skin attribute. Until the clinical and board skins were removed this block held the
+ * clinical set.
  *
  * Code review A67: the legacy build carried three accents — #00ff88 in
  * manifest.json and the theme-color meta, #a3e635 in --accent, and #f472b6 in
- * TWEAK_DEFAULTS. --accent is the one the CSS actually rendered (every glow and
- * tint in the sheet is rgba(163, 230, 53, ...)), so #a3e635 is canonical and the
- * manifest, the theme-color meta and UiPrefs.accent all match it. The tweaks
- * panel that owned #f472b6 is dropped per the code review port table.
+ * TWEAK_DEFAULTS. #a3e635 was made canonical and the manifest, the theme-color meta and
+ * UiPrefs.accent were set to it. That was the CLINICAL --accent; limelight's is --pink, so those
+ * three now match no token in this sheet (unchanged by the skin removal; limelight already
+ * shipped with them). The tweaks panel that owned #f472b6 is dropped per the code review port
+ * table.
  *
  * Font families are the self-hosted @fontsource-variable packages imported in
  * src/main.tsx, not the Google Fonts stylesheet the legacy shell loaded
@@ -58,7 +61,7 @@
    *
    * MEASURED 2026-09-06, WCAG 2.1 relative luminance, sRGB. Not recomputed here:
    *
-   *   band                hex        limelight --bg   limelight --bg   limelight --limelight   #000000
+   *   band                hex        clinical --bg   limelight --bg   board --board   #000000
    *   realistic           #a4eab0    14.05:1         1.37:1 FAILS     14.03:1         14.97:1
    *   improbable          #eac9a4    12.56:1         1.23:1 FAILS     12.54:1         13.39:1
    *   highly improbable   #eaa6a4     9.84:1         1.04:1 FAILS      9.83:1         10.49:1
@@ -72,8 +75,8 @@
    * `--band-surface` is the resolution and it is a LAYOUT constraint, not a colour change: these
    * fills render inside a dark card, never on the bare page. In limelight that card is `--panel`
    * (#000000), the same inversion `.ll-panel` and the top bar already make for the identical
-   * lime-ground problem. Limelight and limelight are near-black already, so each takes the ground the
-   * table above measured. Re-deriving the palette to suit lime is NOT the fix: a pastel light
+   * lime-ground problem. The removed clinical and board skins were near-black already, so each
+   * took the ground the table above measured. Re-deriving the palette to suit lime is NOT the fix: a pastel light
    * enough to read as green on black would not read as distinct from lime, and pastel on pastel
    * is the failure this measurement exists to catch.
    */
@@ -135,7 +138,9 @@ body {
 /* ==========================================================================
  * Skin token blocks (P8 Task 12).
  *
- * The base block and this attribute block intentionally carry the same limelight token names.
+ * The bare :root block above and this attribute block carry the same limelight values on
+ * purpose; src/skins/tokens.test.ts holds them identical. The attribute block is kept so a
+ * returning skin is one more block of the same shape.
  *
  * Why an attribute and not a class: `:root[data-skin='limelight']` has the same specificity a
  * class would, but an attribute holds exactly one value. A class list can carry two skins at
@@ -217,10 +222,10 @@ body {
   /*
    * The three fills are the SAME hexes on every skin, and deliberately so: the measurement in
    * the `:root` block is one HSL family against three grounds, not three palettes. They are
-   * restated here rather than left to inherit because src/skins/tokens.test.ts requires every
-   * limelight token to carry a value in both attribute blocks, and that rule is worth keeping
-   * even where the value is unchanged: it is what stops a limelight colour leaking silently onto
-   * a lime page.
+   * restated here rather than left to inherit: this block was written when the bare `:root` held
+   * the clinical set, and every token had to carry a limelight value so no clinical colour leaked
+   * onto a lime page. The bare block now restates limelight, and src/skins/tokens.test.ts holds
+   * the two blocks to identical values.
    */
   --band-realistic: #a4eab0;
   --band-improbable: #eac9a4;

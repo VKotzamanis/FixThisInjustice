@@ -1,7 +1,7 @@
 // src/ui/components/InstallGuide.test.tsx
 //
 // The guide shown when the runtime reports pushAvailability() === 'needs-install'. Every
-// assertion quotes the default copyFor table, as the copyFor contract requires, so a reworded step
+// assertion quotes the default copy table, as the copy contract requires, so a reworded step
 // fails here rather than shipping a guide that names a control the platform does not have.
 
 import { describe, expect, it } from 'vitest';
@@ -55,7 +55,7 @@ describe('InstallGuide', () => {
     expect(container.querySelectorAll('img')).toHaveLength(0);
   });
 
-  it('renders every string from the copyFor table, never a literal', () => {
+  it('renders every string from the copy table, never a literal', () => {
     const { container } = render(<InstallGuide />);
     const rendered = container.textContent ?? '';
     const table = [

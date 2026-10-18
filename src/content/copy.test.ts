@@ -21,7 +21,7 @@ import {
  *
  * docs/design/2026-09-01-copy-contract.md states R1 to R13 in prose and says "test assertions quote
  * the default table". This file is the mechanical half: every rule that can be decided from the
- * string alone is decided here, over all three tables, with the per-skin relaxations the contract
+ * string alone is decided here, over both tables, with the per-skin relaxations the contract
  * and the round-three plan grant. What cannot be decided from the string alone (R7's ban on
  * hedging, R11's quantity names) is left to review and is named in "What this file does not check"
  * at the bottom.
@@ -338,7 +338,7 @@ describe('the limelight table', () => {
   it('carries the two Train rows the close-out converted, keeping every quantity name', () => {
     /*
      * P8 close-out B: the drink control and the shortfall line were template literals in
-     * copy.ts, so they were limelight under every skin. These two rows are the limelight words
+     * copy.ts, so they were clinical under every skin. These two rows are the limelight words
      * for them, and they obey rule 1 of copy.limelight.ts exactly: the VOLUMES are slots the
      * domain filled, the quantity name "beverage intake" is the one the contract fixes (R11),
      * and only the verb and the tag are the skin's.
@@ -362,7 +362,7 @@ describe('the limelight table', () => {
      *                           `nav.train`, `hero.sessionInProgress` and `status.bootSchedule`
      *                           already set.
      *
-     * The four that stay limelight are asserted below, so a later row cannot be added without
+     * The four that stay on the base table are asserted below, so a later row cannot be added without
      * answering the reason recorded against it.
      */
     expect(LIMELIGHT_COPY['status.sessionEyebrow']).toBe('ep. {ordinal}, {label}');
@@ -372,12 +372,12 @@ describe('the limelight table', () => {
     );
   });
 
-  it('leaves the four Train frames with nothing to say in the limelight words', () => {
+  it('leaves the four Train frames on the base-table words, with nothing for limelight to say', () => {
     /*
      * Each absence is a decision, not an omission.
      *
      * `status.setsBy`      the mockup's own exercise card renders "3 x 6-8", which IS the
-     *                      limelight string: two numbers and the multiplication sign, with no
+     *                      clinical string: two numbers and the multiplication sign, with no
      *                      word for a skin to change.
      * `status.restRemaining` the mockup renders "1:47". The string is two slots and a colon, so
      *                      a row would carry no word at all.
@@ -428,7 +428,7 @@ describe('the limelight table', () => {
     //
     // THREE OF SECTION 3.4'S ROWS ARE ABSENT, and their absence is a decision rather than a gap:
     // `status.prReached`, `status.planProgress` and `toast.setDeleted` shipped a limelight row
-    // and, for the first two, a limelight row, and no component ever read any of them. P9 Task 16
+    // and, for the first two, a board row, and no component ever read any of them. P9 Task 16
     // retired all three from every table. The words survive where the app actually says them:
     // `status.prStamp` is the record, and `coach.setDeleted` is the toast the UI queues.
     const REQUIRED: readonly CopyKey[] = [
@@ -499,7 +499,7 @@ describe('the limelight table', () => {
 });
 
 describe('copy()', () => {
-  it('returns the limelight string when no overlay is given', () => {
+  it('returns the base-table string when no overlay is given', () => {
     expect(copy('button.startSession')).toBe('Start Session');
     expect(copy('status.rest')).toBe('REST');
   });
@@ -516,7 +516,7 @@ describe('copyFor()', () => {
   });
 
   it('falls back to the default when the skin has no override', () => {
-    // The limelight table has no row for the Atlas hero; the limelight noun stands.
+    // The limelight table has no row for the Atlas hero; the base-table noun stands.
     expect(copyFor('limelight', 'hero.atlas')).toBe(DEFAULT_COPY['hero.atlas']);
   });
 });
@@ -549,11 +549,11 @@ describe('the FORMAT frames reach a skin', () => {
  * The thirteen frames P8 Task 16 moved off a template literal and onto a copy key.
  *
  * The check is parity, not plausibility: each expectation quotes the exact literal the frame
- * held before the conversion, so a table edit that changes what the limelight skin renders fails
+ * held before the conversion, so a table edit that changes what the base table renders fails
  * here rather than in a screenshot. The en dash in `blockSessions` and the U+2212 MINUS SIGN in
  * `deloadNote` are part of that literal and are compared as written.
  */
-describe('the converted frames render the limelight string they replaced', () => {
+describe('the converted frames render the base-table string they replaced', () => {
   it('renders each default byte for byte', () => {
     expect(FORMAT.nextSession('Wed', '07:00', 'Push')).toBe('Next: Wed 07:00 Push.');
     expect(FORMAT.pausedSince('2026-09-07')).toBe('Plan paused since 2026-09-07.');
@@ -599,8 +599,8 @@ describe('the converted frames render the limelight string they replaced', () =>
    * The nine frames P8 close-out B moved off a template literal and onto a copy key.
    *
    * Same check as the thirteen above, and the same reason: each expectation quotes the exact
-   * literal the frame held before the conversion, so a table edit that changes what the limelight
-   * skin renders fails here rather than on a screen. `setsBy` and `lastSessionSets` carry the
+   * literal the frame held before the conversion, so a table edit that changes what the base
+   * table renders fails here rather than on a screen. `setsBy` and `lastSessionSets` carry the
    * MULTIPLICATION SIGN U+00D7 and `restRemaining` carries a zero-padded seconds field; both are
    * part of the literal and are compared as written.
    */
@@ -742,7 +742,7 @@ describe('the call-site gate over DEFAULT_COPY', () => {
     { query: '?raw', import: 'default', eager: true },
   );
 
-  /** `src/content/copy.ts`, `copy.limelight.ts`, `copy.limelight.ts`: tables, never renderers. */
+  /** `src/content/copy.ts` and `copy.limelight.ts`: tables, never renderers. */
   const IS_COPY_TABLE = /\/copy\.[^/]*$/;
   /** Any suite. The glob already excludes these; this is what asserts that it still does. */
   const IS_TEST = /\.test\.tsx?$/;
@@ -797,9 +797,9 @@ describe('the call-site gate over DEFAULT_COPY', () => {
   });
 
   it('excludes the copy tables and the suites, or the gate would pass on itself', () => {
-    // The three tables are in the corpus and are filtered out by name, asserted here rather than
-    // trusted to a regular expression nobody reads: a hit in `copy.limelight.ts` or
-    // `copy.limelight.ts` says only that a skin has a row, not that anything renders it.
+    // The two tables are in the corpus and are filtered out by name, asserted here rather than
+    // trusted to a regular expression nobody reads: a hit in `copy.limelight.ts`
+    // says only that a skin has a row, not that anything renders it.
     const tables = Object.keys(SOURCES).filter((path) => IS_COPY_TABLE.test(path));
     expect(tables.sort()).toEqual(['/src/content/copy.limelight.ts', '/src/content/copy.ts']);
 

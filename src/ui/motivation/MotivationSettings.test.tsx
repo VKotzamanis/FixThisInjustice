@@ -141,7 +141,7 @@ beforeEach(() => {
       /* the bundled path holds nothing to release */
     },
   });
-  // No clip is deployed in a test build, so the preview renders its copyFor and no element.
+  // No clip is deployed in a test build, so the preview renders its copy and no element.
   vi.mocked(probeBundledVideo).mockResolvedValue(false);
 });
 
@@ -151,9 +151,9 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -357,19 +357,12 @@ describe('MotivationSettings', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('MotivationSettings under a skin', () => {
-  it('names the preview in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = render(<MotivationSettings />);
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.motivationClipPreview') }),
-    ).toBeInTheDocument();
-    view.unmount();
-
+  it('names the preview in the limelight words', () => {
     pinSkin('limelight');
     render(<MotivationSettings />);
     expect(

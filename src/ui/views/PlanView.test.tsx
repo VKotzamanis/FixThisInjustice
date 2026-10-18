@@ -26,9 +26,9 @@ import type { SkinId } from '../../domain/types';
  *     are not in the library, so the rows exercise exerciseName's documented fallback.
  *  2. The draft's `usePlan`/`useCursor` are read here as `useActivePlan`/`useActiveCursor`,
  *     which is what the shipped SessionIndicator reads; both spellings are one derivation.
- *  3. Every assertion quotes src/content/copyFor.ts rather than a literal (copyFor contract: "test
+ *  3. Every assertion quotes src/content/copy.ts rather than a literal (copy contract: "test
  *     assertions quote the default table"), so a reworded string fails here rather than
- *     shipping a view whose copyFor and whose test have drifted apart. The one exception is the
+ *     shipping a view whose copy and whose test have drifted apart. The one exception is the
  *     second `deloadNote` case, which asserts a modifier the default table has no entry for
  *     and therefore quotes the FORMAT frame instead.
  */
@@ -108,9 +108,9 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
@@ -127,8 +127,8 @@ beforeEach(() => {
 describe('deloadNote', () => {
   it('states the volume cut and that the load is unchanged', () => {
     // The default table's own row, filled by the frame that reads it, so the note the view
-    // prints for the canonical deload is the string the copyFor contract fixed. The row is a
-    // template since P8 Task 16, so the frame is what renders it and `copyFor` alone no longer can.
+    // prints for the canonical deload is the string the copy contract fixed. The row is a
+    // template since P8 Task 16, so the frame is what renders it and `copy` alone no longer can.
     expect(deloadNote(0.5)).toBe(FORMAT.deloadNote(50)); // [%] of planned sets removed
   });
 
@@ -346,17 +346,12 @@ describe('App wiring', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('PlanView under a skin', () => {
-  it('names the view in the limelight words, and in the default ones under limelight', () => {
-    pinSkin('limelight');
-    const view = render(<PlanView />);
-    expect(screen.getByText(copyFor('limelight', 'nav.plan'))).toBeInTheDocument();
-    view.unmount();
-
+  it('names the view in the limelight words', () => {
     pinSkin('limelight');
     render(<PlanView />);
     expect(screen.getByText(copyFor('limelight', 'nav.plan'))).toBeInTheDocument();
@@ -366,7 +361,7 @@ describe('PlanView under a skin', () => {
     /*
      * P8 close-out D: `SessionCard` takes the skin's table beside its lookup, for the same
      * reason it takes the lookup, and passes it to `FORMAT.setsBy`. The limelight table carries
-     * no `status.setsBy` row (copyFor.test.ts records why), so the rows read the same under both
+     * no `status.setsBy` row (copy.test.ts records why), so the rows read the same under both
      * skins; the assertion is here so that adding one fails a test rather than a plan.
      */
     pinSkin('limelight');
