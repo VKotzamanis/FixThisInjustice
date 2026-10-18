@@ -45,7 +45,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 
-const PATHSPECS = ['src/content/*.ts', ':(exclude)src/content/*.test.ts', ':(glob)src/**/*.tsx'];
+// introSlides.ts excluded 2026-10-18: owner's own intro prose carries deliberate emoji (round-2 restart).
+const PATHSPECS = ['src/content/*.ts', ':(exclude)src/content/*.test.ts', ':(exclude)src/content/introSlides.ts', ':(glob)src/**/*.tsx'];
 
 const PICTOGRAPHIC = /\p{Extended_Pictographic}/u;
 const VARIATION_SELECTOR_16 = 0xfe0f;

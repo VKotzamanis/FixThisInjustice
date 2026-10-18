@@ -17,9 +17,10 @@ const TEXT = INTRO_SLIDES.flatMap((slide) => [
 ]);
 
 describe('the intro slides obey the rules R10 does not exempt', () => {
-  it('has no em dash, connector en dash, emoji, loose quantity name, or URL', () => {
+  // Emoji and "weight"/"calories" allowed here since 2026-10-18: the owner's own intro wording.
+  it('has no em dash, connector en dash, or URL', () => {
     for (const row of TEXT) {
-      expect(/—|–|\p{Extended_Pictographic}|\bweight\b|\bcalories\b|https?:\/\//iu.test(row)).toBe(false);
+      expect(/—|–|https?:\/\//iu.test(row)).toBe(false);
     }
   });
 });
