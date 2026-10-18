@@ -4,7 +4,12 @@
 - Push `main`. `.github/workflows/ci.yml` runs gates; on success `.github/workflows/deploy.yml` (workflow_run) builds that commit and publishes `dist/` to Pages.
 - Pages source must be "GitHub Actions" (set once, already done).
 - Repo variables used at build: reminder Worker URL and VAPID public key (see `docs/runbooks/reminders.md`); unset = reminders show "not set up on this deployment".
-- Verify: fetch https://vkotzamanis.github.io/FixThisInjustice/, read the asset hash from the HTML, grep the JS for a string only your change adds.
+- Verify the live bundle, not the workflow status:
+  ```
+  U=https://vkotzamanis.github.io/FixThisInjustice
+  JS=$(curl -s $U/ | grep -oE 'assets/index-[^"]+\.js' | head -1)
+  curl -s "$U/$JS" | grep -c 'a string only your change adds'   # must be >= 1
+  ```
 
 ## Roll back
 - Site: Actions → "Deploy to GitHub Pages" → last good run → Re-run all jobs (allowed 30 days, 50 re-runs). Older: `git revert` and push.

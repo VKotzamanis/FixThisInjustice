@@ -8,7 +8,7 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 
 ## Branches and tags
 - `main`: cleanup done (`git log pre-cleanup-2026-10-17..main`). Limelight-only merged (14aceec); parity pinned by `src/content/limelightParity.test.ts` + `src/content/__fixtures__/limelight-resolved.json`.
-- Not pushed. `origin/main` is the pre-cleanup state. History scrub of private identifiers: pending owner approval (commands in the 2026-10-18 report); push only after the owner's yes.
+- Not pushed. `origin/main` is the pre-cleanup state. History scrub of private identifiers: pending owner approval (procedure and checks: `docs/private/history-scrub.md`); push only after the owner's yes.
 - `wip/rest-word-game`: Wordle-style rest game, parked (ROADMAP F1). Red at park time: tsc `src/store/sessionMirror.ts:170` (exactOptionalPropertyTypes on `game?`); its title-case and catalogue failures no longer apply (those gates are gone).
 - tag `archive/design-editor`: local design editor + type-role tokens (owner: never helped). Only the owner's intro text was taken onto main.
 - tag `pre-cleanup-2026-10-17`: tree before the cleanup (old handoffs, plans, design rounds).
@@ -16,7 +16,7 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 
 ## Gates
 - All commands in `AGENTS.md` → Verify. Known red: App.test weekly-miss (ROADMAP B6).
-- CI privacy check needs repo secret `PRIVACY_PATTERN` (same regex as `docs/private/privacy-pattern.txt`); without it CI prints SKIPPED.
+- Privacy check: `scripts/check-private.sh` reads `docs/private/privacy-pattern.txt` locally (this laptop only) or repo secret `PRIVACY_PATTERN` in CI (not set yet). Neither present (fresh clone, CI today): prints SKIPPED, exits 0.
 
 ## Doc drift (known)
 - Kept older docs cite paths/lines that drifted: `docs/design/programme-horizon.md` (names files it planned, never built), `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-01-copy-contract.md`, runbooks (1-2 each). Re-derive before trusting a line number.
