@@ -442,6 +442,27 @@ export const PlanPauseSchema = z.object({
 
 const AssignmentStatusSchema = z.enum(['planned', 'in-progress', 'completed', 'skipped']);
 
+/**
+ * [exercises] Sanity ceiling on each list in SessionEdits. No session holds a hundred
+ * exercises; the bound exists so a hand-edited document cannot inflate one assignment.
+ */
+const MAX_SESSION_EDIT_IDS = 100;
+
+const ExerciseIdSchema = z.string().min(1);
+
+/**
+ * ROADMAP L2-L4 (docs/design/session-editing.md). Structure only: whether a key names a slot
+ * of the session, or an id names a known exercise, is decided when the edit is made
+ * (src/domain/training/sessionEdits.ts) and tolerated when stale, because a custom exercise or
+ * a plan can outlive the edit that named it.
+ */
+export const SessionEditsSchema = z.object({
+  swaps: z.record(ExerciseIdSchema, ExerciseIdSchema), // slot key -> substitute exercise id
+  skipped: z.array(ExerciseIdSchema).max(MAX_SESSION_EDIT_IDS),
+  added: z.array(ExerciseIdSchema).max(MAX_SESSION_EDIT_IDS),
+  order: z.array(ExerciseIdSchema).max(MAX_SESSION_EDIT_IDS),
+});
+
 export const SessionAssignmentSchema = z.object({
   date: LocalDateSchema,
   sessionId: z.string().min(1),
@@ -450,6 +471,13 @@ export const SessionAssignmentSchema = z.object({
   startedAt: EpochMsSchema.nullable(), // [ms]
   completedAt: EpochMsSchema.nullable(), // [ms]
   skipReason: z.string().max(500).nullable(),
+  /*
+   * Additive and OPTIONAL, with no default and no catch (rule 7). A document or export written
+   * before the field existed has no key, and the parse leaves it absent rather than inserting
+   * an empty object, so the parsed document deep-equals what was stored. A present but
+   * malformed value fails like any other malformed record.
+   */
+  edits: SessionEditsSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------

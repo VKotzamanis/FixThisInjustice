@@ -77,6 +77,24 @@ describe('the fixture reaches the states a fresh install cannot', () => {
     expect(doc.reminderSettings[PROFILE_ID]?.enabled).toBe(true);
     expect(doc.capsules[PROFILE_ID]).not.toBeNull();
   });
+});
+
+describe('an export written before SessionAssignment.edits existed (rule 7)', () => {
+  it('loads with every assignment unchanged and no edits key inserted', () => {
+    /*
+     * The committed fixture is a real export from a build that had no `edits` field, with
+     * completed and skipped assignments in it. Parsed by this build, every assignment must be
+     * exactly what the file holds: the field is optional with no default, so nothing is added.
+     */
+    const raw = JSON.parse(fixtureJson) as { assignments: Record<string, unknown[]> };
+    const stored = raw.assignments[PROFILE_ID] ?? [];
+    expect(stored.length).toBeGreaterThan(0);
+    expect(stored.some((a) => typeof a === 'object' && a !== null && 'edits' in a)).toBe(false);
+    expect(doc.assignments[PROFILE_ID]).toStrictEqual(stored);
+  });
+});
+
+describe('the alpha fixture, continued', () => {
 
   it('carries no personal identifier, because it is committed to a public repository', () => {
     /*

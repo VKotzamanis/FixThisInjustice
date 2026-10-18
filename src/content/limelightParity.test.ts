@@ -8,6 +8,10 @@
 // before the change, as `copyFor('limelight', key)` for every key of DEFAULT_COPY (583 keys), and
 // is committed byte for byte. A table edit that changes what a user reads therefore fails here
 // until someone replaces the fixture on purpose.
+//
+// Rows added to the fixture after the snapshot, on purpose, each with the string it ships: the
+// session-editing keys (docs/design/session-editing.md, "Copy keys added"). No snapshot row
+// was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';

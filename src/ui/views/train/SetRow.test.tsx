@@ -16,7 +16,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copyFor, type CopyKey } from '../../../content/copy';
 import { useAppStore } from '../../../store';
 import { makeAppState, makeUiPrefs } from '../../../test/funFixtures';
-import type { Prescription, SkinId } from '../../../domain/types';
+import { makeSet } from '../../../test/fixtures';
+import type { LoggedSet, Prescription, SkinId } from '../../../domain/types';
 import { SetRow, type SetRowProps } from './SetRow';
 
 /** The lookup the view would hand down, resolved for one skin. */
@@ -45,11 +46,104 @@ function renderRow(patch: Partial<SetRowProps> = {}): void {
     logged: null,
     isBodyweightExercise: false,
     onLog: vi.fn(),
+    onEdit: vi.fn(() => true),
     onDelete: vi.fn(),
     ...patch,
   };
   render(<SetRow {...props} />);
 }
+
+/** A set already logged on row 1: 60 kg x 8 unless patched. */
+function loggedSet(patch: Partial<LoggedSet> = {}): LoggedSet {
+  return makeSet({ id: 'set-1', setNumber: 1, loadKg: 60, reps: 8, durationS: null, ...patch });
+}
+
+describe('SetRow: editing a logged set (ROADMAP L1)', () => {
+  it('offers Edit beside Delete on a logged row', () => {
+    withSkin('limelight');
+    renderRow({ logged: loggedSet() });
+    const edit = screen.getByRole('button', { name: FORMAT.editSetLabel(1) });
+    expect(edit.textContent).toBe(copyFor('limelight', 'button.editSet'));
+    expect(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) })).toBeInTheDocument();
+  });
+
+  it('reopens the row prefilled with what was logged and saves the change', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet(), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+
+    const load = screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`);
+    const reps = screen.getByLabelText(FORMAT.setRepsQuantity(1));
+    expect(load).toHaveValue(60); // UnitInput is a number input
+    expect(reps).toHaveValue('8');
+
+    fireEvent.change(load, { target: { value: '62.5' } });
+    fireEvent.change(reps, { target: { value: '6' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(62.5, { reps: 6, durationS: null }); // [kg], [repetitions]
+    // Saved: the row is a readout again.
+    expect(screen.queryByRole('button', { name: FORMAT.saveSetLabel(1) })).toBeNull();
+  });
+
+  it('prefills the bodyweight toggle from a 0 kg set and can clear it', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ loadKg: 0, reps: 12 }), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+
+    const toggle = screen.getByLabelText(FORMAT.setBodyweightQuantity(1));
+    expect(toggle).toBeChecked();
+    fireEvent.click(toggle);
+    fireEvent.change(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`), {
+      target: { value: '10' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(10, { reps: 12, durationS: null });
+  });
+
+  it('edits a hold in seconds', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({
+      prescription: TIMED,
+      logged: loggedSet({ loadKg: 0, reps: null, durationS: 45 }),
+      onEdit,
+    });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
+    expect(field).toHaveValue(45); // [s]
+    fireEvent.change(field, { target: { value: '50' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(0, { reps: null, durationS: 50 }); // [kg], [s]
+  });
+
+  it('cancels without saving', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet(), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
+
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: FORMAT.editSetLabel(1) })).toBeInTheDocument();
+  });
+
+  it('stays open and says so when the store refuses the edit', () => {
+    withSkin('limelight');
+    renderRow({ logged: loggedSet(), onEdit: vi.fn(() => false) });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(screen.getByRole('alert').textContent).toBe(
+      copyFor('limelight', 'status.sessionEditRefused'),
+    );
+    expect(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) })).toBeInTheDocument();
+  });
+});
 
 describe('SetRow: the limelight words', () => {
   it('names the log control from the default table', () => {

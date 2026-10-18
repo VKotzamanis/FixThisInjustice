@@ -372,6 +372,67 @@ function legacyDocument(): Record<string, unknown> {
   };
 }
 
+/** One in-progress day, as stored before SessionAssignment.edits existed (no `edits` key). */
+function assignmentWithoutEdits(): Record<string, unknown> {
+  return {
+    date: '2026-03-02',
+    sessionId: 'session-1',
+    sourceIndex: 0, // [sessions] offset
+    status: 'in-progress',
+    startedAt: Date.UTC(2026, 2, 2, 10, 0, 0), // [ms] epoch UTC
+    completedAt: null,
+    skipReason: null,
+  };
+}
+
+describe('SessionAssignment.edits (ROADMAP L2-L4, rule 7)', () => {
+  it('keeps the edits a session carries through a save and load', () => {
+    const doc = legacyDocument();
+    const edits = {
+      swaps: { 'barbell-bench-press': 'incline-db-press' },
+      skipped: ['plank'],
+      added: ['lateral-raise'],
+      order: ['lateral-raise', 'barbell-bench-press'],
+    };
+    doc.assignments = { [P1]: [{ ...assignmentWithoutEdits(), edits }] };
+    const result = parseState(JSON.parse(JSON.stringify(doc)) as unknown);
+    expect(result.ok ? null : result.error).toBeNull();
+    if (!result.ok) return;
+    expect(result.state.assignments[P1]?.[0]?.edits).toEqual(edits);
+  });
+
+  it('loads an old document whose assignments have no edits, unchanged and without the key', () => {
+    const doc = legacyDocument();
+    doc.assignments = { [P1]: [assignmentWithoutEdits()] };
+    const result = parseState(doc);
+    expect(result.ok ? null : result.error).toBeNull();
+    if (!result.ok) return;
+    // toStrictEqual: an `edits: undefined` key would fail here, so no default was inserted.
+    expect(result.state.assignments).toStrictEqual({ [P1]: [assignmentWithoutEdits()] });
+    expect('edits' in (result.state.assignments[P1]?.[0] ?? {})).toBe(false);
+  });
+
+  it('round-trips a current document without edits byte for byte', () => {
+    const doc = legacyDocument();
+    doc.assignments = { [P1]: [assignmentWithoutEdits()] };
+    const first = parseState(doc);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    // The stored text of a document saved before this change, read back by this build.
+    const stored = JSON.stringify(first.state);
+    const second = parseState(JSON.parse(stored) as unknown);
+    expect(second.ok).toBe(true);
+    if (!second.ok) return;
+    expect(JSON.stringify(second.state)).toBe(stored);
+  });
+
+  it('refuses a malformed edits value rather than guessing', () => {
+    const doc = legacyDocument();
+    doc.assignments = { [P1]: [{ ...assignmentWithoutEdits(), edits: { swaps: {}, skipped: [''] } }] };
+    expect(parseState(doc).ok).toBe(false);
+  });
+});
+
 describe('a document written before the section 5 amendments', () => {
   it('backfills every default, at the root, the profile and the exercise', () => {
     const doc = legacyDocument();

@@ -16,7 +16,7 @@
 //    path master plan section 6.5 actually specifies.
 //  - The audio module is mocked at the module boundary: jsdom has no Web Audio, so the real
 //    playChime would return false without telling this suite whether it was reached.
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
@@ -93,6 +93,13 @@ const PLANK: Exercise = (() => {
 const CURL: Exercise = (() => {
   const ex = EXERCISE_BY_ID['barbell-curl'];
   if (ex === undefined) throw new Error('library.ts no longer defines barbell-curl');
+  return ex;
+})();
+
+/** The session-editing tests swap away from this one: its template slot has curated peers. */
+const BENCH: Exercise = (() => {
+  const ex = EXERCISE_BY_ID['barbell-bench-press'];
+  if (ex === undefined) throw new Error('library.ts no longer defines barbell-bench-press');
   return ex;
 })();
 
@@ -1086,7 +1093,7 @@ describe('TrainView custom and bonus exercises', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') }));
     fireEvent.change(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName')), {
       target: { value: 'Cable crunch' },
     });
@@ -1100,6 +1107,9 @@ describe('TrainView custom and bonus exercises', () => {
     expect(
       screen.getByText(FORMAT.bonusExerciseName('Cable crunch'), { exact: false }),
     ).toBeInTheDocument();
+    // ROADMAP L4: on the day's persisted edits, like a library addition, not the session slice.
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.added).toEqual([custom[0]?.id]);
+    expect(useAppStore.getState().session.bonusExerciseIds).toEqual([]);
   });
 
   /*
@@ -1112,7 +1122,7 @@ describe('TrainView custom and bonus exercises', () => {
 
   /** Opens the form and returns the name field. */
   function openNameField(): HTMLElement {
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addCustomExercise') }));
     return screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'));
   }
 
@@ -1501,5 +1511,259 @@ describe('TrainView: the limelight voice', () => {
     ).toBeInTheDocument();
     expect(screen.getAllByText(copyFor('limelight', 'button.logSet')).length).toBeGreaterThan(0);
     expect(screen.queryByText(copy('button.logSet'))).toBeNull();
+  });
+});
+
+describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.md)', () => {
+  it('L1: edits a logged set in place and leaves the rest timer running', () => {
+    seedStore(seed());
+    renderTrain();
+    logRow(1, '60', '8');
+    const timer = useAppStore.getState().session.restTimer;
+    expect(timer).not.toBeNull();
+    dismissAllToasts();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    const sets = Object.values(useAppStore.getState().sets);
+    expect(sets).toHaveLength(1);
+    expect(sets[0]?.reps).toBe(7); // [repetitions]
+    expect(sets[0]?.loadKg).toBe(60); // [kg]
+    // The same interval, not a restarted one: an edit is not a new set.
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+    // No coach line for an edit: the queue stays empty.
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.dismiss') })).toBeNull();
+  });
+
+  /** The edit controls of one card: a group named by the exercise. */
+  function editBar(name: string): HTMLElement {
+    return screen.getByRole('group', { name });
+  }
+
+  /** Opens the swap picker on a card and confirms `exerciseId`. */
+  function swapTo(cardName: string, exerciseId: string): void {
+    fireEvent.click(
+      within(editBar(cardName)).getByRole('button', { name: copyFor('limelight', 'button.swapExercise') }),
+    );
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.exerciseChoice')), {
+      target: { value: exerciseId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmSwap') }));
+  }
+
+  it('L2: offers same-muscle exercises that fit the equipment first, then the rest', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    fireEvent.click(
+      within(editBar('Barbell bench press')).getByRole('button', {
+        name: copyFor('limelight', 'button.swapExercise'),
+      }),
+    );
+    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'OPTGROUP');
+    expect(groups.map((g) => g.getAttribute('label'))).toEqual([
+      copyFor('limelight', 'label.sameMuscle'),
+      copyFor('limelight', 'label.otherExercises'),
+    ]);
+    const first = within(groups[0]!).getAllByRole('option')[0];
+    expect(first).toHaveValue('incline-db-press'); // the template's own next candidate
+  });
+
+  it('L2: swaps an exercise for this session and keeps the rest timer running', () => {
+    seedStore(seed({ exercise: BENCH }));
+    useAppStore.getState().setRestTimer({ startedAt: NOW, endsAt: NOW + 90_000, durationS: 90 });
+    const timer = useAppStore.getState().session.restTimer;
+    renderTrain();
+
+    swapTo('Barbell bench press', 'incline-db-press');
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.swaps).toEqual({
+      'barbell-bench-press': 'incline-db-press',
+    });
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+    expect(screen.getByText('Incline dumbbell press')).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.swappedFrom('Barbell bench press', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+  });
+
+  it('L2: logs sets on the substitute as prescribed work, not bonus', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    swapTo('Barbell bench press', 'incline-db-press');
+    logRow(1, '24', '6');
+
+    const sets = Object.values(useAppStore.getState().sets);
+    expect(sets.map((s) => [s.exerciseId, s.isBonus])).toEqual([['incline-db-press', false]]);
+  });
+
+  it('L2: keeps sets logged before the swap on their own card, never hidden', () => {
+    const before = makeSet({ id: 'set-1', exerciseId: 'barbell-bench-press', loadKg: 60, reps: 8 });
+    seedStore(seed({ exercise: BENCH, sets: [before] }));
+    renderTrain();
+    swapTo('Barbell bench press', 'incline-db-press');
+
+    expect(useAppStore.getState().sets['set-1']).toEqual(before);
+    expect(screen.getByText(copyFor('limelight', 'label.swappedOut'))).toBeInTheDocument();
+  });
+
+  /** seed() with a second planned exercise after the bench press: lat pulldown. */
+  function seedTwo(opts: SeedOptions = {}): AppState {
+    const state = seed({ exercise: BENCH, ...opts });
+    const plan = state.plans['plan-1'];
+    const first = plan?.sessions[0];
+    if (plan === undefined || first === undefined) throw new Error('seed() changed shape');
+    return {
+      ...state,
+      plans: {
+        'plan-1': {
+          ...plan,
+          sessions: [
+            {
+              ...first,
+              exercises: [...first.exercises, makePlannedExercise({ exerciseId: 'lat-pulldown' })],
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  /** The card titles in screen order. */
+  function cardTitles(): string[] {
+    return screen
+      .getAllByRole('button')
+      .filter((b) => b.classList.contains('ex-head'))
+      .map((b) => b.querySelector('.ex-title')?.firstChild?.textContent ?? '');
+  }
+
+  function barButton(card: string, key: Parameters<typeof copyFor>[1]): HTMLElement {
+    return within(editBar(card)).getByRole('button', { name: copyFor('limelight', key) });
+  }
+
+  it('L3: skips an exercise for this session and restores it', () => {
+    seedStore(seedTwo());
+    renderTrain();
+
+    fireEvent.click(barButton('Barbell bench press', 'button.skipExercise'));
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.skipped).toEqual([
+      'barbell-bench-press',
+    ]);
+    expect(screen.getByText(copyFor('limelight', 'label.skipped'))).toBeInTheDocument();
+
+    // A skipped card is not opened for the user; they open it to restore it.
+    fireEvent.click(screen.getByRole('button', { name: /Barbell bench press/ }));
+    fireEvent.click(barButton('Barbell bench press', 'button.restoreExercise'));
+    const day = useAppStore.getState().assignments['profile-1']?.[0];
+    expect(day !== undefined && 'edits' in day).toBe(false);
+    expect(screen.queryByText(copyFor('limelight', 'label.skipped'))).toBeNull();
+  });
+
+  it('L3: skipping keeps every set already logged on the exercise', () => {
+    const done = makeSet({ id: 'set-1', exerciseId: 'barbell-bench-press', loadKg: 60, reps: 8 });
+    seedStore(seedTwo({ sets: [done] }));
+    renderTrain();
+    fireEvent.click(barButton('Barbell bench press', 'button.skipExercise'));
+
+    expect(useAppStore.getState().sets['set-1']).toEqual(done);
+    // Still on screen, with its count, under the Skipped tag.
+    expect(screen.getByText(FORMAT.exerciseProgress(1, 3))).toBeInTheDocument();
+  });
+
+  it('L3: reorders exercises with Move Up and Move Down, disabled at the ends', () => {
+    seedStore(seedTwo());
+    renderTrain();
+    expect(cardTitles()).toEqual(['Barbell bench press', 'Lat pulldown']);
+    expect(barButton('Barbell bench press', 'button.moveUp')).toBeDisabled();
+
+    fireEvent.click(barButton('Barbell bench press', 'button.moveDown'));
+    expect(cardTitles()).toEqual(['Lat pulldown', 'Barbell bench press']);
+    expect(barButton('Barbell bench press', 'button.moveDown')).toBeDisabled();
+
+    fireEvent.click(barButton('Barbell bench press', 'button.moveUp'));
+    expect(cardTitles()).toEqual(['Barbell bench press', 'Lat pulldown']);
+  });
+
+  /** Opens the library picker, chooses `exerciseId` and adds it. */
+  function addFromLibrary(exerciseId: string): void {
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.exerciseChoice')), {
+      target: { value: exerciseId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addToSession') }));
+  }
+
+  it('L4: adds a library exercise mid-session, equipment fits first, timer untouched', () => {
+    seedStore(seed({ exercise: BENCH }));
+    useAppStore.getState().setRestTimer({ startedAt: NOW, endsAt: NOW + 90_000, durationS: 90 });
+    const timer = useAppStore.getState().session.restTimer;
+    renderTrain();
+
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'OPTGROUP');
+    expect(groups[0]?.getAttribute('label')).toBe(copyFor('limelight', 'label.fitsEquipment'));
+    // What the session already holds is not offered again.
+    expect(screen.queryByRole('option', { name: 'Barbell bench press' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
+
+    addFromLibrary('lateral-raise');
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.added).toEqual(['lateral-raise']);
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+    expect(screen.getByText(FORMAT.bonusExerciseName('Lateral raise'))).toBeInTheDocument();
+  });
+
+  it('L4: logs sets on an added exercise as bonus work, out of progression', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    addFromLibrary('lateral-raise');
+    // The added card opened itself; its first row is the only empty set-1 row on screen.
+    const rows = screen.getAllByLabelText(FORMAT.setRepsQuantity(1));
+    expect(rows).toHaveLength(1);
+    logRow(1, '8', '12');
+
+    const sets = Object.values(useAppStore.getState().sets);
+    expect(sets.map((s) => [s.exerciseId, s.isBonus])).toEqual([['lateral-raise', true]]);
+  });
+
+  it('L4: removes an added exercise with no sets, and offers Skip once it has some', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    addFromLibrary('lateral-raise');
+    const name = FORMAT.bonusExerciseName('Lateral raise');
+    expect(barButton(name, 'button.removeExercise')).toBeInTheDocument();
+
+    logRow(1, '8', '12');
+    expect(
+      within(editBar(name)).queryByRole('button', { name: copyFor('limelight', 'button.removeExercise') }),
+    ).toBeNull();
+    expect(barButton(name, 'button.skipExercise')).toBeInTheDocument();
+  });
+
+  it('L4: Remove takes the added card away', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    addFromLibrary('lateral-raise');
+    fireEvent.click(barButton(FORMAT.bonusExerciseName('Lateral raise'), 'button.removeExercise'));
+
+    const day = useAppStore.getState().assignments['profile-1']?.[0];
+    expect(day !== undefined && 'edits' in day).toBe(false);
+    expect(screen.queryByText(FORMAT.bonusExerciseName('Lateral raise'))).toBeNull();
+  });
+
+  it('L3: offers no session edits once the session is finished', () => {
+    const state = seedTwo();
+    const day = state.assignments['profile-1']?.[0];
+    if (day === undefined) throw new Error('seed() changed shape');
+    seedStore({
+      ...state,
+      assignments: { 'profile-1': [{ ...day, status: 'completed', completedAt: NOW }] },
+    });
+    renderTrain();
+    expect(screen.queryByRole('group', { name: 'Barbell bench press' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: copyFor('limelight', 'button.skipExercise') }),
+    ).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.addExercise') })).toBeNull();
   });
 });

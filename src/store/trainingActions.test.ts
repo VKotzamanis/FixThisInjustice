@@ -23,7 +23,7 @@ import { EMPTY_SESSION, SESSION_KEY, loadSessionMirror } from './sessionMirror';
 import { UNDO_WINDOW_MS } from './training';
 import { installFakeStorage } from './testStorage';
 import { useExerciseHistory, useRestTimer, useTodaysSets } from './selectors';
-import { makeExercise, makeProfile } from '../test/fixtures';
+import { makeBlock, makeExercise, makePlannedExercise, makeProfile } from '../test/fixtures';
 import { parseState } from '../domain/schema';
 import { startRest } from '../domain/training/restTimer';
 import type { AppState, LoggedSet } from '../domain/types';
@@ -124,6 +124,116 @@ describe('logSet', () => {
     const before = useAppStore.getState().sets;
     expect(() => useAppStore.getState().logSet({ ...setInput, rpe: 7.3 }, NOW)).toThrow(/rpe/i);
     expect(useAppStore.getState().sets).toBe(before);
+  });
+});
+
+describe('updateSet (ROADMAP L1)', () => {
+  it('edits the stored set and leaves a running rest timer alone', () => {
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
+    const timer = startRest(120, NOW); // [s], [ms]
+    useAppStore.getState().setRestTimer(timer);
+    const sessionBefore = useAppStore.getState().session;
+
+    useAppStore.getState().updateSet(id, {
+      loadKg: 65, // [kg]
+      reps: 7, // [repetitions]
+      durationS: null,
+      enteredUnit: 'metric',
+    });
+
+    expect(useAppStore.getState().sets[id]).toMatchObject({ id, loadKg: 65, reps: 7, loggedAt: NOW });
+    // The edit is a document change only: the timer the user is resting on keeps running.
+    expect(useAppStore.getState().session).toBe(sessionBefore);
+    expectStorable();
+  });
+
+  it('leaves the document untouched when the schema refuses the edit', () => {
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
+    const before = useAppStore.getState().sets;
+    expect(() =>
+      useAppStore.getState().updateSet(id, {
+        loadKg: 60,
+        reps: 0, // [repetitions] below the schema's floor of 1
+        durationS: null,
+        enteredUnit: 'metric',
+      }),
+    ).toThrow(/reps/);
+    expect(useAppStore.getState().sets).toBe(before);
+  });
+});
+
+describe('editSession (ROADMAP L2-L4)', () => {
+  const DAY = '2026-03-02';
+
+  function seedSession(): void {
+    useAppStore.setState({
+      plans: {
+        'plan-1': {
+          id: 'plan-1',
+          version: 1,
+          name: 'Upper/Lower',
+          sessionsPerWeek: 4,
+          weeks: 12,
+          sessions: [
+            {
+              id: 'session-1',
+              ordinal: 1,
+              name: 'Upper A',
+              kind: 'lift',
+              label: 'Upper',
+              exercises: [
+                makePlannedExercise({ exerciseId: 'barbell-bench-press' }),
+                makePlannedExercise({ exerciseId: 'lat-pulldown' }),
+              ],
+            },
+          ],
+          blocks: [makeBlock()],
+        },
+      },
+      cursors: {
+        'profile-1': { planId: 'plan-1', nextSessionIndex: 0, startedOn: DAY, completedOn: null },
+      },
+      assignments: {
+        'profile-1': [
+          {
+            date: DAY,
+            sessionId: 'session-1',
+            sourceIndex: 0,
+            status: 'in-progress',
+            startedAt: NOW, // [ms] epoch UTC
+            completedAt: null,
+            skipReason: null,
+          },
+        ],
+      },
+    });
+  }
+
+  it('stores the edit and leaves the session slice, rest timer included, untouched', () => {
+    seedSession();
+    useAppStore.getState().setRestTimer(startRest(90, NOW)); // [s], [ms]
+    const sessionBefore = useAppStore.getState().session;
+
+    useAppStore
+      .getState()
+      .editSession('profile-1', DAY, { kind: 'swap', key: 'lat-pulldown', exerciseId: 'pull-up' });
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.swaps).toEqual({
+      'lat-pulldown': 'pull-up',
+    });
+    expect(useAppStore.getState().session).toBe(sessionBefore);
+    expectStorable();
+  });
+
+  it('writes nothing when the edit is refused', () => {
+    seedSession();
+    const before = useAppStore.getState().assignments;
+    expect(() =>
+      useAppStore
+        .getState()
+        .editSession('profile-1', DAY, { kind: 'swap', key: 'lat-pulldown', exerciseId: 'nope' }),
+    ).toThrow(/editSession/);
+    expect(useAppStore.getState().assignments).toBe(before);
   });
 });
 

@@ -659,7 +659,27 @@ export type CopyKey =
   // --- round 3: the two Settings switches gain a plain description (owner: "I have no idea
   // what they do or if they even work") ---
   | 'advice.soundsSilent'
-  | 'advice.hotkeysKeyboardOnly';
+  | 'advice.hotkeysKeyboardOnly'
+  // --- session editing, ROADMAP L1-L4 (docs/design/session-editing.md) ---
+  | 'button.editSet'
+  | 'button.saveSet'
+  | 'status.sessionEditRefused'
+  | 'button.swapExercise'
+  | 'button.confirmSwap'
+  | 'label.exerciseChoice'
+  | 'label.sameMuscle'
+  | 'label.otherExercises'
+  | 'label.swappedOut'
+  | 'status.swappedFrom'
+  | 'button.skipExercise'
+  | 'button.restoreExercise'
+  | 'button.moveUp'
+  | 'button.moveDown'
+  | 'label.skipped'
+  | 'button.addCustomExercise'
+  | 'button.addToSession'
+  | 'button.removeExercise'
+  | 'label.fitsEquipment';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1953,6 +1973,42 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    * a phone with no keyboard attached this switch changes nothing the owner can reach.
    */
   'advice.hotkeysKeyboardOnly': 'Keyboard required.',
+
+  // --- session editing, ROADMAP L1-L4 (docs/design/session-editing.md) ---
+  // L1: a logged set reopens in place. The accessible names carry the set number
+  // (FORMAT.editSetLabel, FORMAT.saveSetLabel), as the log and delete controls already do.
+  'button.editSet': 'Edit',
+  'button.saveSet': 'Save',
+  // Shown when the store refuses a session edit or a set edit. The likely causes are a session
+  // finished or a set deleted in another tab, so the next step is to reload and look again.
+  'status.sessionEditRefused': 'Change not saved. Reload to see the current session.',
+  // L2: swap an exercise for this session. The picker is a native select; its two groups are
+  // the suggestions (template peers and exercises sharing a direct mover that the equipment
+  // unlocks) and the rest of the library.
+  'button.swapExercise': 'Swap',
+  'button.confirmSwap': 'Confirm Swap',
+  'label.exerciseChoice': 'Exercise',
+  'label.sameMuscle': 'Same Muscle',
+  'label.otherExercises': 'Other Exercises',
+  // On the card of a planned exercise that was swapped out after sets were logged on it, so
+  // those sets stay visible and editable.
+  'label.swappedOut': 'Swapped Out',
+  // template; FORMAT.swappedFrom. Under a swapped-in exercise's name: the planned one it replaces.
+  'status.swappedFrom': 'In place of {name}.',
+  // L3: skip (restorable, logged sets kept) and reorder, by buttons rather than drag so the
+  // controls work one-handed and never fight the page scroll.
+  'button.skipExercise': 'Skip Exercise',
+  'button.restoreExercise': 'Restore',
+  'button.moveUp': 'Move Up',
+  'button.moveDown': 'Move Down',
+  'label.skipped': 'Skipped',
+  // L4: add from the library mid-session. `button.addExercise` above now opens the library
+  // picker; the free-text form is kept as the fallback behind `button.addCustomExercise`.
+  'button.addCustomExercise': 'Custom Exercise',
+  'button.addToSession': 'Add to Session',
+  // Offered only for an added exercise with no sets today; with sets the control is Skip.
+  'button.removeExercise': 'Remove Exercise',
+  'label.fitsEquipment': 'Fits Your Equipment',
 };
 
 /**
@@ -2341,6 +2397,19 @@ export const FORMAT = {
 
   /** The accessible name of one row's delete control; the visible word is `button.deleteSet`. */
   deleteSetLabel: (n: number): string => `Delete set ${n}`,
+
+  /** The accessible name of one logged row's edit control; the visible word is `button.editSet`. */
+  editSetLabel: (n: number): string => `Edit set ${n}`,
+
+  /** The accessible name of an edited row's save control; the visible word is `button.saveSet`. */
+  saveSetLabel: (n: number): string => `Save set ${n}`,
+
+  /**
+   * "In place of Barbell bench press." under a swapped-in exercise (ROADMAP L2). Reads
+   * `status.swappedFrom`; the name is the library's own, never reworded by a skin.
+   */
+  swappedFrom: (name: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.swappedFrom', overrides).replace('{name}', () => name),
 
   /**
    * "60 kg × 8", one logged set. The load arrives already formatted by src/domain/units.ts, so

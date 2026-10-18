@@ -667,6 +667,20 @@ export function prescriptionFor(ex: Exercise, intensity: SlotIntensity): Prescri
 }
 
 /**
+ * The intensity a planned prescription was written at, as far as `prescriptionFor` can tell:
+ * a rep range topping out within REPS_HEAVY is heavy, anything else moderate (`light` and
+ * `moderate` produce the same prescriptions above).
+ *
+ * ROADMAP L2. A mid-session swap re-prescribes the substitute at the SLOT's intensity, so a
+ * heavy bench slot swapped for dumbbells stays a 4-6 rep slot rather than becoming 6-8. Kept
+ * next to REPS_HEAVY so the inverse reads the same constant; templates.test.ts checks
+ * `prescriptionFor(ex, slotIntensityOf(prescriptionFor(ex, i)))` over the whole library.
+ */
+export function slotIntensityOf(p: Prescription): SlotIntensity {
+  return p.kind === 'reps' && p.hi <= REPS_HEAVY.hi ? 'heavy' : 'moderate'; // hi [repetitions]
+}
+
+/**
  * Rest interval before the next set, in seconds.
  *
  * Master plan section 6.3 (amended): the rest table has ONE home, src/domain/plan/library.ts, so

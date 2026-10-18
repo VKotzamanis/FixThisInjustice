@@ -266,6 +266,28 @@
 
 .set-row.done {
   opacity: 0.6;
+  /* marker, readout, then Edit and Delete side by side (ROADMAP L1) */
+  grid-template-columns: 4rem 1fr auto;
+  align-items: center;
+}
+
+/*
+ * A logged row reopened for editing (ROADMAP L1). The fields keep the new-row layout; the
+ * toggle, Save and Cancel take a line of their own under them, so each control gets a full
+ * share of the width at phone size instead of three crammed into the last column.
+ */
+.set-row.editing .set-actions,
+.set-row.editing .set-edit-error {
+  grid-column: 1 / -1;
+}
+
+.set-row.editing .set-actions > button {
+  flex: 1 1 0;
+}
+
+.set-edit-error {
+  margin: 0;
+  color: var(--danger);
 }
 
 .unit-input {
@@ -342,6 +364,47 @@
   flex: 1 1 auto;
 }
 
+/* What the session did to this card (ROADMAP L2): "In place of ...", "Swapped Out". */
+.ex-tag {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/*
+ * The session-edit controls at the bottom of an open card (ROADMAP L2-L4). Two equal columns,
+ * so every control is half the card wide and at least 44 px tall (the `.view button` rule) -
+ * a thumb target on a phone held in one hand. A control alone on its row takes the whole row.
+ */
+.ex-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  border-top: 1px solid var(--line-2);
+  padding-top: 0.5rem;
+}
+
+.ex-edit-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.ex-edit-row > button:only-child {
+  grid-column: 1 / -1;
+}
+
+.ex-edit-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ex-edit-error {
+  margin: 0;
+  color: var(--danger);
+}
+
 .ex-sub,
 .ex-prog {
   font-size: 0.75rem;
@@ -414,6 +477,30 @@
   font-size: 0.65rem;
   letter-spacing: 0.12em;
   color: var(--text-3);
+}
+
+/*
+ * ROADMAP L4: Add Exercise (library) and Custom Exercise side by side under the cards, half
+ * the width each; an opened form takes the whole row. The two openers are `.view button`s, so
+ * 44 px tall.
+ */
+.ex-add {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.ex-add > .add-library,
+.ex-add > .add-custom {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.add-library {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .add-custom {

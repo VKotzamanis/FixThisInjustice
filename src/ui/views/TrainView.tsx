@@ -28,7 +28,13 @@ import { EXERCISES } from '../../domain/plan/library';
 import type { CoachLine } from '../../domain/training/coach';
 import { preSessionMass } from '../../domain/training/hydration';
 import { IDENTITY_BLOCK, blockFor } from '../../domain/training/progression';
-import type { Exercise, PlannedExercise } from '../../domain/types';
+import {
+  isBonusEntry,
+  isEditable,
+  sessionLineup,
+  type SessionEditOp,
+} from '../../domain/training/sessionEdits';
+import type { Exercise } from '../../domain/types';
 import { playSfx } from '../../skins/sfx';
 import { useAppStore } from '../../store';
 import { useActiveProfile, useTodaysSets } from '../../store/selectors';
@@ -36,29 +42,14 @@ import { releaseAudio, unlockAudio } from '../audio/chime';
 import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { AddCustomExercise } from './train/AddCustomExercise';
+import { AddLibraryExercise } from './train/AddLibraryExercise';
 import { BodyMassQuickLog } from './train/BodyMassQuickLog';
 import { ExerciseCard } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
 import { RestTimerPanel } from './train/RestTimerPanel';
+import { SessionEditBar } from './train/SessionEditBar';
 import '../styles/train.css';
 import './views.css';
-
-/**
- * A planned slot synthesised for an exercise the plan does not contain.
- *
- * The numbers are a default, not a prescription derived from anything: a bonus exercise was
- * never programmed, so nothing about it is known. `restS: 0` means "use defaultRestS", which
- * routes the interval through the cited stratification rather than inventing one here.
- */
-function bonusSlot(exerciseId: string): PlannedExercise {
-  return {
-    exerciseId,
-    setsLo: 3, // [sets]
-    setsHi: 3, // [sets]
-    prescription: { kind: 'reps', lo: 8, hi: 12 }, // [repetitions]
-    restS: 0, // [s] 0 means "use defaultRestS"
-  };
-}
 
 export function TrainView(): ReactElement {
   const profile = useActiveProfile();
@@ -234,17 +225,51 @@ export function TrainView(): ReactElement {
   }
 
   /*
-   * Bonus cards come from the session slice AND from any set already logged today against an
-   * exercise the plan does not contain, so the cards survive a lost sessionStorage mirror.
-   * Filtered against the library, because an id with no Exercise behind it can render nothing.
+   * Today's cards: the plan's slots with the user's session edits applied (ROADMAP L2-L4,
+   * src/domain/training/sessionEdits.ts), plus a card for every exercise with sets logged today
+   * that the edited session no longer holds, so an edit never hides a logged set and the cards
+   * survive a lost sessionStorage mirror. `bonusExerciseIds` is the session slice an older
+   * build wrote custom exercises to; it is read here so such a session keeps its cards, and has
+   * no writer from this build (custom exercises now land in `edits.added`).
    */
-  const plannedIds = new Set(session.exercises.map((e) => e.exerciseId));
-  const bonusIds = Array.from(
-    new Set([...bonusExerciseIds, ...todaysSets.map((s) => s.exerciseId)]),
-  ).filter((id) => !plannedIds.has(id) && library[id] !== undefined);
+  const lineup = sessionLineup({
+    session,
+    edits: assignment.edits,
+    library,
+    loggedExerciseIds: [...bonusExerciseIds, ...todaysSets.map((s) => s.exerciseId)],
+  });
+  const editable = lineup.filter(isEditable);
+  const inUse = new Set(editable.map((e) => e.exerciseId));
+  // Reordering moves slots among themselves; the read-only cards (a swapped-out original, a
+  // logged-only exercise) follow their slot or sit at the end and are not positions.
+  const slotKeys = editable.map((e) => e.key);
+  const libraryList = Object.values(library);
+  const editsOpen = assignment.status !== 'completed' && assignment.status !== 'skipped';
+  const editSession = (op: SessionEditOp): boolean => {
+    /*
+     * A click handler: React does not catch a throw from one, so the store's refusal (a
+     * session finished in another tab, a slot that is gone) becomes the bar's own message.
+     * The store writes the document only; the rest timer keeps running.
+     */
+    try {
+      useAppStore.getState().editSession(profileId, assignment.date, op);
+    } catch {
+      return false;
+    }
+    // The card the user is working on stays open through a move, a swap or a restore, and an
+    // added one opens. A skip or a removal means "done with this one", so the first card still
+    // to do opens instead (null).
+    setOpenId(
+      op.kind === 'add' ? op.exerciseId : op.kind === 'skip' || op.kind === 'remove' ? null : op.key,
+    );
+    return true;
+  };
+  const addExercise = (exerciseId: string): boolean => editSession({ kind: 'add', exerciseId });
+  const loggedIds = new Set(todaysSets.map((s) => s.exerciseId));
 
-  const firstPlannedId = session.exercises[0]?.exerciseId ?? null;
-  const isCardOpen = (id: string): boolean => (openId === null ? id === firstPlannedId : openId === id);
+  // The first card the user still has to do opens by itself; a skipped one does not.
+  const firstKey = lineup.find((e) => !e.skipped)?.key ?? null;
+  const isCardOpen = (key: string): boolean => (openId === null ? key === firstKey : openId === key);
   // Toggling the open card to '' rather than to null CLOSES it: null means "nothing has been
   // chosen yet", which is what opens the first card.
   const toggleCard = (id: string): void => {
@@ -317,59 +342,77 @@ export function TrainView(): ReactElement {
       <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
 
       <div className="ex-stack">
-        {session.exercises.map((planned) => {
-          const exercise = library[planned.exerciseId];
+        {lineup.map((entry) => {
+          const exercise = library[entry.exerciseId];
           if (exercise === undefined) return null;
+          const replaced = entry.replaces === null ? undefined : library[entry.replaces];
+          const tag = entry.skipped
+            ? c('label.skipped')
+            : replaced !== undefined
+              ? FORMAT.swappedFrom(replaced.name, overrides)
+              : entry.kind === 'swapped-out'
+                ? c('label.swappedOut')
+                : null;
+          const slotIndex = slotKeys.indexOf(entry.key);
+          const bonus = isBonusEntry(entry);
           return (
             <ExerciseCard
-              key={planned.exerciseId}
+              // Slot AND exercise: a swap remounts the card, so a half-typed row of the
+              // exercise that left cannot be submitted against the one that arrived.
+              key={`${entry.key}:${entry.exerciseId}`}
               t={c}
               overrides={overrides}
               profile={profile}
               exercise={exercise}
-              planned={planned}
+              planned={entry.planned}
               block={block}
               library={library}
               assignmentDate={today}
               sessionId={session.id}
-              isBonusExercise={false}
-              isOpen={isCardOpen(planned.exerciseId)}
+              isBonusExercise={bonus}
+              isOpen={isCardOpen(entry.key)}
               onToggle={() => {
-                toggleCard(planned.exerciseId);
+                toggleCard(entry.key);
               }}
               onCoach={onSetLogged}
               onDeleted={onDeleted}
-            />
-          );
-        })}
-        {bonusIds.map((id) => {
-          const exercise = library[id];
-          if (exercise === undefined) return null;
-          return (
-            <ExerciseCard
-              key={id}
-              t={c}
-              overrides={overrides}
-              profile={profile}
-              exercise={exercise}
-              planned={bonusSlot(id)}
-              block={block}
-              library={library}
-              assignmentDate={today}
-              sessionId={session.id}
-              isBonusExercise
-              isOpen={openId === id}
-              onToggle={() => {
-                toggleCard(id);
-              }}
-              onCoach={onSetLogged}
-              onDeleted={onDeleted}
-            />
+              tag={tag}
+            >
+              {editsOpen && isEditable(entry) && (
+                <SessionEditBar
+                  t={c}
+                  entry={entry}
+                  name={bonus ? FORMAT.bonusExerciseName(exercise.name) : exercise.name}
+                  original={entry.kind === 'added' ? null : (library[entry.key] ?? null)}
+                  access={profile.equipment}
+                  library={libraryList}
+                  inUse={inUse}
+                  canMoveUp={slotIndex > 0}
+                  canMoveDown={slotIndex >= 0 && slotIndex < slotKeys.length - 1}
+                  hasLoggedSets={loggedIds.has(entry.exerciseId)}
+                  onEdit={editSession}
+                />
+              )}
+            </ExerciseCard>
           );
         })}
       </div>
 
-      <AddCustomExercise profile={profile} />
+      {/*
+        * ROADMAP L4: the library picker first, the free-text form as the fallback. Both put the
+        * exercise on the day's persisted edits; neither is offered once the session is over.
+        */}
+      {editsOpen && (
+        <div className="ex-add">
+          <AddLibraryExercise
+            access={profile.equipment}
+            library={libraryList}
+            inUse={inUse}
+            onAdd={addExercise}
+          />
+          <AddCustomExercise profile={profile} onAdd={addExercise} />
+        </div>
+      )}
 
       {asksPreSessionMass && (
         <BodyMassQuickLog

@@ -16,9 +16,15 @@ import {
   ExerciseSchema,
   HydrationEntrySchema,
   LoggedSetSchema,
+  SessionAssignmentSchema,
 } from '../domain/schema';
 import { compareLocalDate } from '../domain/dates';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
+import {
+  applySessionEdit,
+  isEmptyEdits,
+  type SessionEditOp,
+} from '../domain/training/sessionEdits';
 import { inventoryOf } from './funActions';
 import { requireProfile } from './scheduleActions';
 import type {
@@ -29,6 +35,8 @@ import type {
   LocalDate,
   LoggedSet,
   ML,
+  SessionAssignment,
+  SessionEdits,
 } from '../domain/types';
 
 /**
@@ -156,6 +164,112 @@ export function applyRestoreSet(state: AppState, loggedSet: LoggedSet): AppState
     specimens: {
       ...state.specimens,
       [loggedSet.profileId]: { ...inventory, totalSetsLogged: inventory.totalSetsLogged + 1 }, // [sets]
+    },
+  };
+}
+
+/**
+ * What an edit of a logged set may change (ROADMAP L1): the measurement and the unit it was
+ * typed in. Everything else on a LoggedSet is the record's identity - which set of which
+ * exercise on which day, when it was logged, whether it was bonus work - and an edit that moved
+ * any of those would be a different set wearing this one's id.
+ */
+export type SetMeasurement = Pick<LoggedSet, 'loadKg' | 'reps' | 'durationS' | 'enteredUnit'>;
+
+/**
+ * Rewrites the measurement of one logged set in place.
+ *
+ * `loggedAt` is kept: it records when the set was performed, and the history is ordered by
+ * assignment date and set number anyway (sortSetHistory), so an edit cannot reorder it. The
+ * specimen counter is not touched - the set count did not change - so no milestone or card can
+ * be produced by an edit.
+ *
+ * Throws on an id that names no set rather than returning the state: the caller is showing the
+ * user an edit form, and a silent no-op would let it report a save that never happened.
+ *
+ * @param m loadKg [kg] canonical (0 = bodyweight, A60), reps [repetitions] or null,
+ *   durationS [s] or null, enteredUnit the unit the user typed in.
+ */
+export function applyUpdateSet(state: AppState, id: string, m: SetMeasurement): AppState {
+  const current = state.sets[id];
+  if (current === undefined) {
+    throw new Error(`updateSet: no logged set "${id}"; it may have been deleted`);
+  }
+  const candidate: LoggedSet = {
+    ...current,
+    loadKg: m.loadKg, // [kg]
+    reps: m.reps, // [repetitions]
+    durationS: m.durationS, // [s]
+    enteredUnit: m.enteredUnit,
+  };
+  const edited = parseOrThrow(LoggedSetSchema, candidate, 'updateSet');
+  return { ...state, sets: { ...state.sets, [id]: edited } };
+}
+
+/**
+ * The exercises one profile can name: the shipped library overlaid by its own custom ones,
+ * the same overlay the Train view renders cards from.
+ */
+export function profileLibrary(state: AppState, profileId: string): Record<string, Exercise> {
+  const map: Record<string, Exercise> = { ...EXERCISE_BY_ID };
+  for (const e of state.customExercises[profileId] ?? []) map[e.id] = e;
+  return map;
+}
+
+/**
+ * Applies one session edit (ROADMAP L2-L4) to the assignment on `date` and stores the result
+ * as that assignment's `edits` (docs/design/session-editing.md).
+ *
+ * Refused, by throwing, when there is nothing it may change: an unknown profile, no session
+ * assigned on the day, or a session already completed or skipped - the record of what was done
+ * is the logged sets plus the lineup as it stood at Finish, and it is not rewritten afterwards.
+ * The domain's own refusals (a slot that is gone, an exercise already in the session) pass
+ * through with this action's name in front.
+ *
+ * When the edits are back to "nothing changed" the field is REMOVED rather than stored empty,
+ * so a day that was edited and then restored is byte-identical to one that never was.
+ *
+ * The session slice is not read or written: a running rest timer keeps running.
+ */
+export function applyEditSession(
+  state: AppState,
+  profileId: string,
+  date: LocalDate,
+  op: SessionEditOp,
+): AppState {
+  requireProfile(state, 'editSession', profileId);
+  const list = state.assignments[profileId] ?? [];
+  const day = list.find((a) => a.date === date);
+  if (day === undefined) {
+    throw new Error(`editSession: no session is assigned on ${date}; start one from Today first`);
+  }
+  if (day.status === 'completed' || day.status === 'skipped') {
+    throw new Error(`editSession: the session on ${date} is already ${day.status}`);
+  }
+  const cursor = state.cursors[profileId];
+  const plan = cursor === undefined ? undefined : state.plans[cursor.planId];
+  const session = plan?.sessions.find((s) => s.id === day.sessionId);
+  if (session === undefined) {
+    throw new Error(`editSession: session "${day.sessionId}" is not in the active plan`);
+  }
+
+  let next: SessionEdits;
+  try {
+    next = applySessionEdit(session, day.edits, op, profileLibrary(state, profileId));
+  } catch (err) {
+    throw new Error(`editSession: ${err instanceof Error ? err.message : String(err)}`, {
+      cause: err,
+    });
+  }
+
+  const candidate: SessionAssignment = { ...day, edits: next };
+  if (isEmptyEdits(next)) delete candidate.edits;
+  const stored = parseOrThrow(SessionAssignmentSchema, candidate, 'editSession');
+  return {
+    ...state,
+    assignments: {
+      ...state.assignments,
+      [profileId]: list.map((a) => (a === day ? stored : a)),
     },
   };
 }

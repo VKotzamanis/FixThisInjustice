@@ -11,17 +11,19 @@
 // `profile-1`, which the amended actions require: requireProfile is now a guard on every
 // action that writes a record keyed by a profile id.
 import { describe, expect, it } from 'vitest';
-import { makeExercise, makeProfile } from '../test/fixtures';
+import { makeBlock, makeExercise, makePlannedExercise, makeProfile } from '../test/fixtures';
 import { defaultState, parseState } from '../domain/schema';
 import {
   applyAddCustomExercise,
   applyAddHydration,
   applyDeleteSet,
+  applyEditSession,
   applyLogBodyMass,
   applyLogSet,
   applyRestoreSet,
+  applyUpdateSet,
 } from './training';
-import type { AppState, LoggedSet } from '../domain/types';
+import type { AppState, LoggedSet, PlanTemplate, SessionAssignment } from '../domain/types';
 
 const NOW = Date.UTC(2026, 2, 2, 18, 30, 0); // [ms] epoch, UTC
 
@@ -159,6 +161,173 @@ describe('applyDeleteSet / applyRestoreSet', () => {
     const restored = applyRestoreSet(next, removed);
     expect(restored.sets['set-abc']).toEqual(removed);
     assertStorable(restored);
+  });
+});
+
+describe('applyUpdateSet (ROADMAP L1)', () => {
+  it('rewrites the measurement and keeps the identity of the record', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', {
+      loadKg: 62.5, // [kg]
+      reps: 6, // [repetitions]
+      durationS: null, // [s]
+      enteredUnit: 'imperial',
+    });
+    // Only the four measurement fields move; the id, the instant, the set number, the bonus
+    // flag and what the set is OF are the record's identity and stay.
+    expect(next.sets['set-abc']).toEqual({
+      ...setInput,
+      id: 'set-abc',
+      loggedAt: NOW,
+      loadKg: 62.5,
+      reps: 6,
+      enteredUnit: 'imperial',
+    });
+    assertStorable(next);
+  });
+
+  it('stores a bodyweight edit as 0 kg', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', {
+      loadKg: 0, // [kg] bodyweight, A60
+      reps: 12,
+      durationS: null,
+      enteredUnit: 'metric',
+    });
+    expect(next.sets['set-abc']?.loadKg).toBe(0);
+    assertStorable(next);
+  });
+
+  it('changes no set count, so no milestone or specimen can move', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', {
+      loadKg: 70,
+      reps: 5,
+      durationS: null,
+      enteredUnit: 'metric',
+    });
+    expect(next.specimens).toBe(seeded.specimens);
+  });
+
+  it('refuses a value the schema refuses and names the field', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    expect(() =>
+      applyUpdateSet(seeded, 'set-abc', {
+        loadKg: -5,
+        reps: 8,
+        durationS: null,
+        enteredUnit: 'metric',
+      }),
+    ).toThrow(/updateSet: loadKg/);
+  });
+
+  it('refuses an id that names no set, rather than inventing one', () => {
+    expect(() =>
+      applyUpdateSet(makeState(), 'nope', {
+        loadKg: 60,
+        reps: 8,
+        durationS: null,
+        enteredUnit: 'metric',
+      }),
+    ).toThrow(/updateSet: no logged set "nope"/);
+  });
+});
+
+const DAY = '2026-03-02';
+
+/** makeState() plus a one-session plan and an in-progress day, which editSession needs. */
+function makeSessionState(status: SessionAssignment['status'] = 'in-progress'): AppState {
+  const base = makeState();
+  const plan: PlanTemplate = {
+    id: 'plan-1',
+    version: 1,
+    name: 'Upper/Lower',
+    sessionsPerWeek: 4,
+    weeks: 12,
+    sessions: [
+      {
+        id: 'session-1',
+        ordinal: 1,
+        name: 'Upper A',
+        kind: 'lift',
+        label: 'Upper',
+        exercises: [
+          makePlannedExercise({ exerciseId: 'barbell-bench-press' }),
+          makePlannedExercise({ exerciseId: 'lat-pulldown' }),
+        ],
+      },
+    ],
+    blocks: [makeBlock()],
+  };
+  return {
+    ...base,
+    plans: { 'plan-1': plan },
+    cursors: {
+      'profile-1': { planId: 'plan-1', nextSessionIndex: 0, startedOn: DAY, completedOn: null },
+    },
+    assignments: {
+      'profile-1': [
+        {
+          date: DAY,
+          sessionId: 'session-1',
+          sourceIndex: 0,
+          status,
+          startedAt: NOW, // [ms] epoch UTC
+          completedAt: status === 'completed' ? NOW : null,
+          skipReason: null,
+        },
+      ],
+    },
+  };
+}
+
+describe('applyEditSession (ROADMAP L2-L4)', () => {
+  const swap = { kind: 'swap', key: 'lat-pulldown', exerciseId: 'pull-up' } as const;
+
+  it('stores the edit on the day it names and keeps the document storable', () => {
+    const next = applyEditSession(makeSessionState(), 'profile-1', DAY, swap);
+    expect(next.assignments['profile-1']?.[0]?.edits?.swaps).toEqual({ 'lat-pulldown': 'pull-up' });
+    assertStorable(next);
+  });
+
+  it('drops the field when the edits are back to the plan as written', () => {
+    const swapped = applyEditSession(makeSessionState(), 'profile-1', DAY, swap);
+    const back = applyEditSession(swapped, 'profile-1', DAY, { ...swap, exerciseId: 'lat-pulldown' });
+    const day = back.assignments['profile-1']?.[0];
+    expect(day !== undefined && 'edits' in day).toBe(false);
+    assertStorable(back);
+  });
+
+  it('swaps to the profile\'s own custom exercise', () => {
+    const state = applyAddCustomExercise(
+      makeSessionState(),
+      'profile-1',
+      makeExercise({ id: 'custom-row', name: 'Machine row' }),
+    );
+    const next = applyEditSession(state, 'profile-1', DAY, { ...swap, exerciseId: 'custom-row' });
+    expect(next.assignments['profile-1']?.[0]?.edits?.swaps['lat-pulldown']).toBe('custom-row');
+  });
+
+  it('refuses a finished session, so the record of what was done stays as it was', () => {
+    expect(() => applyEditSession(makeSessionState('completed'), 'profile-1', DAY, swap)).toThrow(
+      /editSession: the session on 2026-03-02 is already completed/,
+    );
+  });
+
+  it('refuses a day with no session', () => {
+    expect(() => applyEditSession(makeSessionState(), 'profile-1', '2026-03-03', swap)).toThrow(
+      /editSession: no session is assigned on 2026-03-03/,
+    );
+  });
+
+  it('refuses a profile that does not exist', () => {
+    expect(() => applyEditSession(makeSessionState(), 'ghost', DAY, swap)).toThrow(/ghost/);
+  });
+
+  it('passes the domain refusal through, prefixed with the action', () => {
+    expect(() =>
+      applyEditSession(makeSessionState(), 'profile-1', DAY, { ...swap, exerciseId: 'barbell-bench-press' }),
+    ).toThrow(/editSession: swap: "barbell-bench-press" is already in this session/);
   });
 });
 

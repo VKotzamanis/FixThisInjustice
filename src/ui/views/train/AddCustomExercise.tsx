@@ -5,8 +5,13 @@
 // The id is generated, never positional. Code review A26 records the legacy defect: custom
 // exercises were keyed by `1000 + i`, so deleting one re-attributed another's logged sets and
 // orphaned the rest. The record is stored on the profile (AppState.customExercises) and the
-// session-local half - "this exercise is on today's card" - is the session slice's
-// bonusExerciseIds, which is mirrored to sessionStorage and dropped when the session ends.
+// session half - "this exercise is on today's card" - is the day's persisted session edits
+// (`SessionAssignment.edits.added`, ROADMAP L4), reached through the `onAdd` the view passes,
+// the same path a library addition takes. It used to be the session slice's bonusExerciseIds,
+// which a Home Screen app relaunch loses.
+//
+// ROADMAP L4: this form is the FALLBACK. The primary control is the library picker beside it
+// (AddLibraryExercise.tsx); this one opens behind `button.addCustomExercise`.
 import { useState, type ReactElement } from 'react';
 import { FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy } from '../../../content/useCopy';
@@ -35,8 +40,12 @@ const MODALITY_KEY: Record<Modality, CopyKey> = {
 
 const MODALITIES: readonly Modality[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight'];
 
-export function AddCustomExercise(props: { profile: Profile }): ReactElement {
-  const { profile } = props;
+export function AddCustomExercise(props: {
+  profile: Profile;
+  /** Puts the stored exercise on today's session; false when the store refused it. */
+  onAdd: (exerciseId: string) => boolean;
+}): ReactElement {
+  const { profile, onAdd } = props;
   const c = useCopy();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
@@ -97,18 +106,24 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
      * P4 review item 1, second layer. `addCustomExercise` throws on a colliding id and on a
      * record the schema rejects, and this is a click handler: React does not catch a throw
      * from an event handler, so it escaped to the window and left the form sitting there with
-     * no explanation. The catch turns it into the one line this form can show. The bonus-card
-     * call is INSIDE the try and after it, so a refused record is never added to today's card.
+     * no explanation. The catch turns it into the one line this form can show. The session
+     * addition runs only after the record was stored, so a refused record is never added to
+     * today's card.
      */
     try {
       // Through getState(): the store's actions are created once and never replace themselves,
       // so subscribing to one buys nothing and hands the component an unbound method.
       useAppStore.getState().addCustomExercise(profile.id, exercise);
-      useAppStore.getState().addBonusExercise(exercise.id);
     } catch {
       // The thrown text names the store function and the id it minted, neither of which the
       // user chose or can act on, so the copy line is shown instead of the message.
       setError(c('status.customExerciseRefused'));
+      return;
+    }
+    // Stored, but not on today's session (a session finished in another tab): the exercise is
+    // in the library picker now, and the line says what happened and what to do.
+    if (!onAdd(exercise.id)) {
+      setError(c('status.sessionEditRefused'));
       return;
     }
     setError(null);
@@ -125,7 +140,7 @@ export function AddCustomExercise(props: { profile: Profile }): ReactElement {
           setOpen(true);
         }}
       >
-        {c('button.addExercise')}
+        {c('button.addCustomExercise')}
       </button>
     );
   }
