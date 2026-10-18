@@ -71,6 +71,22 @@ export function isAfterProgramme(
   return last !== null && compareLocalDate(monday, last) > 0;
 }
 
+/**
+ * Does the ISO week starting on `monday` begin before the week the programme started in?
+ *
+ * The lower bound of the programme's lifetime, beside isAfterProgramme's upper one (ROADMAP
+ * B1d, docs/design/programme-lifecycle.md). `closeWeeks` never grades such a week for this
+ * cursor; a stored review of one was written under the plan this programme replaced, so it is
+ * not this programme's miss. False with no cursor, like isAfterProgramme.
+ */
+export function isBeforeProgramme(
+  monday: LocalDate,
+  cursor: Pick<PlanCursor, 'startedOn'> | null | undefined,
+): boolean {
+  if (cursor === null || cursor === undefined) return false;
+  return compareLocalDate(monday, weekStart(cursor.startedOn)) < 0;
+}
+
 /** The later of two dates. */
 function maxDate(a: LocalDate, b: LocalDate): LocalDate {
   return compareLocalDate(a, b) >= 0 ? a : b;

@@ -21,7 +21,7 @@ Agent doc. Regenerate the programme from today: when Settings no longer match it
 
 ## B1d resolution
 - Grading: the reviews the new programme would grade are removed by setPlan (above), so `closeWeeks`' `alreadyReviewed` never holds a leftover week.
-- Popup and Today: `isBeforeProgramme(monday, cursor)` (`weekly.ts`, mirror of `isAfterProgramme`): week begins before `weekStart(cursor.startedOn)`. `pendingMotivation` and Today's last review skip such weeks, so an old-plan miss neither pops up nor shows on the new programme.
+- Popup: `isBeforeProgramme(monday, cursor)` (`weekly.ts`, mirror of `isAfterProgramme`): week begins before `weekStart(cursor.startedOn)`. `pendingMotivation` skips such weeks, so an unanswered old-plan miss never pops up on the new programme. Today's week line and stamp are unchanged: an answered or met old-plan week is still the week that last closed, and an unanswered one renders nowhere (Today leaves an owed miss to the popup).
 
 ## Goal reached (L7)
 - Applies only to a goal that moves body mass: `massDirection(kind)` from `GOAL_AXES_BY_KIND` (fat lose + muscle hold = down: fat loss; fat hold + muscle gain = up: muscle gain; recomposition and maintenance hold mass, `nutrition.ts` energyPlan at TDEE).

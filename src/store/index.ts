@@ -30,6 +30,7 @@ import {
 import { createMotivationActions, type MotivationActions } from './motivationActions';
 import { createReminderActions, type ReminderActions } from './reminderActions';
 import { createFunActions, type FunActions } from './funActions';
+import { applyReplacePlan } from './programme';
 import {
   UNDO_WINDOW_MS,
   applyAddCustomExercise,
@@ -171,7 +172,9 @@ export interface AppActions {
   /**
    * Stores a plan for one profile and starts its cursor at session 0. Throws
    * while a session is in progress; otherwise clears that profile's stale
-   * schedule (assignments and pauses). The replaced plan is kept.
+   * schedule (pauses, planned days, finished days before the start week) and the
+   * reviews of weeks the new plan grades. The replaced plan is kept
+   * (docs/design/programme-lifecycle.md).
    */
   setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void;
   /** One intake entry per civil date; a second entry for a date replaces the first. */
@@ -692,69 +695,19 @@ export const useAppStore = create<AppStore>()((set, get) => {
   },
 
   setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void {
-    const s = get();
-    requireProfile(s, 'setPlan', profileId);
-    /*
-     * Refuse rather than discard. An in-progress assignment means the user is
-     * mid-session: sets are being logged against `assignment.date` and
-     * `session.id`, and a rest timer may be running. Clearing that row would
-     * strand those sets on a schedule entry that no longer exists and leave the
-     * timer counting for a session the app has forgotten, so re-planning is not
-     * something the store may decide to do quietly. The caller finishes or skips
-     * the session first (P3's completeSession / skipSession) and then re-plans.
-     */
-    const schedule = s.assignments[profileId] ?? [];
-    if (schedule.some((a) => a.status === 'in-progress')) {
-      throw new Error('setPlan: a session is in progress');
-    }
-    // A PlanTemplate belongs to exactly one profile (master plan section 5), so
-    // the stored copy always gets a fresh id. Without it, handing the same
-    // generated template to two profiles would leave one record that either
-    // profile's later edits would rewrite under the other.
-    const stored: PlanTemplate = { ...plan, id: newId() };
+    // What a new plan keeps and clears, and the in-progress refusal, live in applyReplacePlan
+    // (src/store/programme.ts), shared with restartProgramme. It throws before set() runs, so a
+    // refusal writes nothing.
+    const next = applyReplacePlan(get(), 'setPlan', profileId, plan, newId(), startedOn);
     set({
+      ...next,
       /*
-       * The replaced plan is KEPT (master plan section 6.7). Every LoggedSet
-       * carries the `sessionId` of the session it was logged under, and `plans`
-       * is the only place that id resolves to a name, an ordinal or an exercise
-       * list. Deleting the plan on re-planning severed every set logged before
-       * the change from its session — the sets survived, but nothing could say
-       * what they were sets OF. The cursor, not the contents of this map, is
-       * what identifies the active plan, so an unreferenced plan here is history
-       * rather than an orphan. It is bounded by how often a user re-plans.
-       */
-      plans: { ...s.plans, [stored.id]: stored },
-      cursors: {
-        ...s.cursors,
-        [profileId]: { planId: stored.id, nextSessionIndex: 0, startedOn, completedOn: null },
-      },
-      /*
-       * The schedule is cleared in the SAME set() as the cursor, so no reader
-       * ever observes the new plan beside the old plan's calendar. Both records
-       * point into the plan that has just stopped being current:
-       *
-       *   assignments  each row names a `sessionId` and a `sourceIndex` into the
-       *                REPLACED plan's session list. Left in place, P3's
-       *                projectedCalendar would resolve today's row against the
-       *                new plan and show whichever session happens to sit at
-       *                that index. Terminal rows (completed, skipped) go too:
-       *                they are the old plan's calendar, and the logged sets —
-       *                which is what the user actually did — are in `sets` and
-       *                are not touched.
-       *   pauses       a pause is a suspension OF a plan. An open pause (to ===
-       *                null) carried across would silently suspend the plan the
-       *                user just asked to start.
-       */
-      assignments: { ...s.assignments, [profileId]: [] },
-      pauses: { ...s.pauses, [profileId]: [] },
-      /*
-       * The non-persisted session slice goes with them, in the same set(), for the same
-       * reason: `activeAssignmentDate` names a row in the schedule just cleared, the rest
+       * The non-persisted session slice goes with the old schedule, in the same set(), for the
+       * same reason: `activeAssignmentDate` names a row in the schedule just replaced, the rest
        * timer belongs to a session of the plan just replaced, and the bonus exercises were
-       * added to that session. The in-progress guard above makes this a formality rather than
-       * a data loss — a running timer implies an in-progress assignment, which has already
-       * thrown by this line — but leaving the slice behind would still hand the new plan the
-       * old plan's open day.
+       * added to that session. The in-progress guard makes this a formality rather than a data
+       * loss — a running timer implies an in-progress assignment, which has already thrown —
+       * but leaving the slice behind would still hand the new plan the old plan's open day.
        */
       session: EMPTY_SESSION,
     });

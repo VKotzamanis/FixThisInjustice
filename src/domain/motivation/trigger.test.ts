@@ -134,6 +134,31 @@ describe('pendingMotivation', () => {
     const state = finishedOn(stateOf([review({})]), '2026-08-26');
     expect(pendingMotivation(state, 'p1', NOW)?.weekStart).toBe('2026-08-24');
   });
+
+  // ROADMAP B1d. A programme regenerated from today keeps the old plan's reviews; an unanswered
+  // miss among them belongs to the replaced plan and must not open the popup on the new one.
+  it('ignores a stored miss for a week before the current programme started', () => {
+    const state = stateOf([review({})]);
+    const restarted = {
+      ...state,
+      cursors: {
+        p1: { planId: 'plan-2', nextSessionIndex: 0, startedOn: '2026-08-31', completedOn: null },
+      },
+    };
+    expect(pendingMotivation(restarted, 'p1', NOW)).toBeNull();
+  });
+
+  it('still offers a miss for the week the current programme started in', () => {
+    const state = stateOf([review({})]);
+    const midweek = {
+      ...state,
+      cursors: {
+        // Wednesday of the reviewed week: the programme grades that week itself.
+        p1: { planId: 'plan-2', nextSessionIndex: 0, startedOn: '2026-08-26', completedOn: null },
+      },
+    };
+    expect(pendingMotivation(midweek, 'p1', NOW)?.weekStart).toBe('2026-08-24');
+  });
 });
 
 describe('pendingMotivation miss window', () => {

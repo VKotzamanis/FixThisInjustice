@@ -31,7 +31,7 @@
 // whatever guards that module grows.
 
 import { describe, expect, it } from 'vitest';
-import { closeWeeks, MAX_WEEKS_EVALUATED } from './weekly';
+import { closeWeeks, isBeforeProgramme, MAX_WEEKS_EVALUATED } from './weekly';
 import { completeSession, pausePlan, resumePlan, skipSession, startSession } from './cursor';
 import { assignToday, remainingLabelsThisWeek } from './calendar';
 import {
@@ -475,6 +475,29 @@ describe('closeWeeks — programme completion', () => {
       delta: -1, // [sessions/week] completed − target
       missHandled: false,
     });
+  });
+});
+
+/*
+ * ROADMAP B1d (docs/design/programme-lifecycle.md). A regenerated programme keeps the reviews of
+ * the weeks before it. Those weeks belong to the plan it replaced, so readers skip them: the
+ * lower bound of the programme's lifetime, beside isAfterProgramme's upper one.
+ */
+describe('isBeforeProgramme', () => {
+  const cursor = { startedOn: '2026-09-09', completedOn: null }; // a Wednesday
+
+  it('is true for a week that begins before the week the programme started in', () => {
+    expect(isBeforeProgramme(PREV_MONDAY, cursor)).toBe(true);
+  });
+
+  it('is false for the week the programme started in, even when it started midweek', () => {
+    expect(isBeforeProgramme(MONDAY, cursor)).toBe(false);
+  });
+
+  it('is false for a later week, and false with no cursor', () => {
+    expect(isBeforeProgramme('2026-09-14', cursor)).toBe(false);
+    expect(isBeforeProgramme(PREV_MONDAY, null)).toBe(false);
+    expect(isBeforeProgramme(PREV_MONDAY, undefined)).toBe(false);
   });
 });
 

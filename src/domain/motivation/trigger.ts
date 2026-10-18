@@ -1,5 +1,5 @@
 import { addDays, compareLocalDate, instantOf } from '../dates';
-import { isAfterProgramme } from '../schedule/weekly';
+import { isAfterProgramme, isBeforeProgramme } from '../schedule/weekly';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import type { AppState, EpochMs, LocalDate, TimeZone, WeeklyReview } from '../types';
@@ -39,7 +39,7 @@ function weekCloseInstant(weekEnd: LocalDate, timezone: TimeZone): EpochMs {
 /**
  * The most recent closed week that still deserves the motivation popup, or null.
  *
- * A week qualifies when all six hold:
+ * A week qualifies when all seven hold:
  *   delta < 0        — sessions completed fell short of the weekly target
  *                      (delta = completed − target, in sessions; negative = sessions missed)
  *   paused === false — a week overlapping a PlanPause is not a miss (master plan §6.4)
@@ -51,6 +51,9 @@ function weekCloseInstant(weekEnd: LocalDate, timezone: TimeZone): EpochMs {
  *   not after the programme — the week does not begin after the week the cursor's programme
  *                      completed in (isAfterProgramme, ROADMAP B1). `closeWeeks` no longer
  *                      writes such a week, but documents saved before that fix still hold them.
+ *   not before the programme — the week does not begin before the week the cursor's programme
+ *                      started in (isBeforeProgramme, ROADMAP B1d): a regenerated programme
+ *                      keeps the replaced plan's reviews, and their misses are not its own.
  *
  * The fourth condition is deliberately redundant with the third: markMotivationShown sets both,
  * so either one alone is enough to stop the popup reappearing on the next app open.
@@ -85,6 +88,7 @@ export function pendingMotivation(
     if (lastShownForWeek !== null && review.weekStart === lastShownForWeek) continue;
     if (weekCloseInstant(review.weekEnd, profile.timezone) <= cutoff) continue;
     if (isAfterProgramme(review.weekStart, cursor)) continue;
+    if (isBeforeProgramme(review.weekStart, cursor)) continue;
     if (candidate === null || compareLocalDate(review.weekStart, candidate.weekStart) === 1) {
       candidate = review;
     }

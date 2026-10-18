@@ -18,6 +18,7 @@ import type {
   PlanTemplate,
   Profile,
   SessionAssignment,
+  WeeklyReview,
 } from '../domain/types';
 // Type-only, so it is erased before the module mock below ever matters.
 import type { NutritionInput } from '../domain/nutrition';
@@ -531,6 +532,111 @@ describe('setPlan', () => {
     // The sets are the record of what was done, and they are not the schedule.
     expect(useAppStore.getState().sets).toEqual({});
     expectDocumentConsistent();
+  });
+
+  /*
+   * ROADMAP B1d and the start week (docs/design/programme-lifecycle.md). 2026-10-05 is a Monday;
+   * the replacement starts on Wednesday 2026-10-07, so the new programme grades the week of
+   * 2026-10-05 itself.
+   */
+  it('keeps the finished days of the week the new programme starts in, up to its first day', () => {
+    useAppStore.getState().createProfile(profile());
+    useAppStore.getState().setPlan('p1', planTemplate(), '2026-09-07');
+    useAppStore.setState((s) => ({
+      assignments: {
+        ...s.assignments,
+        p1: [
+          assignment({ date: '2026-10-02', status: 'completed', completedAt: 1 }), // previous week
+          assignment({ date: '2026-10-05', status: 'completed', completedAt: 2 }), // Monday
+          assignment({ date: '2026-10-06', status: 'skipped', skipReason: 'ill' }), // Tuesday
+          assignment({ date: '2026-10-07', status: 'completed', completedAt: 3 }), // the first day
+          assignment({ date: '2026-10-09', status: 'planned' }), // after the first day
+        ],
+      },
+    }));
+
+    useAppStore.getState().setPlan('p1', replacementTemplate(), '2026-10-07');
+
+    expect(useAppStore.getState().assignments['p1']?.map((a) => [a.date, a.status])).toEqual([
+      ['2026-10-05', 'completed'],
+      ['2026-10-06', 'skipped'],
+      ['2026-10-07', 'completed'],
+    ]);
+    expectDocumentConsistent();
+  });
+
+  it('keeps the reviews of weeks before the new programme and drops those it grades itself', () => {
+    useAppStore.getState().createProfile(profile());
+    useAppStore.getState().setPlan('p1', planTemplate(), '2026-09-07');
+    const reviewOf = (weekStart: string, weekEnd: string): WeeklyReview => ({
+      profileId: 'p1',
+      weekStart,
+      weekEnd,
+      target: 3, // [sessions/week]
+      completed: 1, // [sessions]
+      skipped: 0, // [sessions]
+      paused: false,
+      delta: -2, // [sessions/week] completed − target
+      evaluatedAt: 1, // [ms] epoch UTC
+      missHandled: false,
+    });
+    useAppStore.setState((s) => ({
+      weeklyReviews: {
+        ...s.weeklyReviews,
+        // The second can exist only after a zone change or a back-dated start: the week holds
+        // the new programme's first day, so the new programme must grade it.
+        p1: [reviewOf('2026-09-28', '2026-10-04'), reviewOf('2026-10-05', '2026-10-11')],
+      },
+    }));
+
+    useAppStore.getState().setPlan('p1', replacementTemplate(), '2026-10-07');
+
+    expect(useAppStore.getState().weeklyReviews['p1']?.map((r) => r.weekStart)).toEqual([
+      '2026-09-28',
+    ]);
+    expectDocumentConsistent();
+  });
+
+  it('grades the start week with the days trained under the plan it replaced', () => {
+    useAppStore.getState().createProfile(profile());
+    useAppStore.getState().setAvailability('p1', {
+      slots: [1, 3, 5].map((weekday) => ({
+        weekday: weekday as 1 | 3 | 5,
+        startTime: '07:00',
+        expectedDurationS: 3600, // [s]
+      })),
+      weeklySessionTarget: 3, // [sessions/week]
+    });
+    useAppStore.getState().setPlan('p1', planTemplate(), '2026-09-28');
+    useAppStore.setState((s) => ({
+      assignments: {
+        ...s.assignments,
+        p1: [assignment({ date: '2026-10-05', status: 'completed', completedAt: 1 })], // Monday
+      },
+    }));
+    useAppStore.getState().setPlan('p1', replacementTemplate(), '2026-10-07');
+    const newSession = useAppStore.getState().plans[useAppStore.getState().cursors['p1']?.planId ?? '']
+      ?.sessions[0];
+    useAppStore.setState((s) => ({
+      assignments: {
+        ...s.assignments,
+        p1: [
+          ...(s.assignments['p1'] ?? []),
+          assignment({
+            date: '2026-10-09', // Friday, under the new plan
+            sessionId: newSession?.id ?? '',
+            status: 'completed',
+            completedAt: 2,
+          }),
+        ],
+      },
+    }));
+
+    // Monday 2026-10-12 09:00 in Europe/Athens: the week of 2026-10-05 has ended.
+    useAppStore.getState().closeWeeks('p1', Date.UTC(2026, 9, 12, 6, 0)); // [ms] epoch UTC
+    expect(useAppStore.getState().weeklyReviews['p1']).toMatchObject([
+      { weekStart: '2026-10-05', completed: 2, target: 3, delta: -1 }, // [sessions]
+    ]);
   });
 
   it('clears an open pause so the new plan does not start suspended', () => {
