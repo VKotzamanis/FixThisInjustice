@@ -264,8 +264,13 @@
   align-items: end;
 }
 
-.set-row.done {
+/* A logged row reads as done; its Edit and Delete stay at full strength so they never look disabled. */
+.set-row.done > .set-marker,
+.set-row.done > .set-done-value {
   opacity: 0.6;
+}
+
+.set-row.done {
   /* marker, readout, then Edit and Delete side by side (ROADMAP L1) */
   grid-template-columns: 4rem 1fr auto;
   align-items: center;
