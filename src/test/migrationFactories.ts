@@ -191,8 +191,8 @@ export function makeBlankState(profile = makeProfile(), plan = makePlan()): AppS
     capsules: {},
     ui: {
       bootSeen: true,
-      // Additive, mirroring src/domain/migrations/v2.ts's blankState(): a migrated document is
-      // an existing user, so the intro sequence is not shown to them either.
+      // Additive: this blank state stands for an existing user, so the intro sequence is not
+      // shown to them.
       introSeen: true,
       lastView: 'today',
       accent: '#a3e635',

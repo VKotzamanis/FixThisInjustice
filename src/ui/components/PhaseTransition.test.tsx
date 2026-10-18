@@ -21,7 +21,6 @@ import { FORMAT, copyFor } from '../../content/copy';
 import { addDays, todayLocal } from '../../domain/dates';
 import { probeBundledVideo, resolveVideoSrc } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
-import { LEGACY_V2_KEY } from '../../store/persistence';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
 import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../test/funFixtures';
@@ -375,14 +374,12 @@ describe('PhaseTransitionGate against the missed-week popup', () => {
 });
 
 /**
- * The `suppressedByMigration` branch (code review: it shipped untested).
- *
- * The legacy key is what MigrationGate mounts on, so a cutscene painted over the import wizard
- * would put a second ModalShell on top of a destructive confirmation.
+ * The old console's import is gone (ROADMAP N5). The gate used to stay silent while a document
+ * sat under `fti.console.v2` and `ui.legacyMigration` was still 'pending', the default every
+ * document carries, so on such a device the cutscene was held back. The key now offers nothing
+ * and must hold nothing back.
  */
-describe('PhaseTransitionGate against the legacy migration offer', () => {
-  const LEGACY_RAW = '{"schemaVersion":2}';
-
+describe('PhaseTransitionGate on a device that still holds the old console document', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -390,43 +387,8 @@ describe('PhaseTransitionGate against the legacy migration offer', () => {
     vi.useRealTimers();
   });
 
-  it('stays silent while the legacy import is still being offered', () => {
-    installFakeStorage({ [LEGACY_V2_KEY]: LEGACY_RAW });
-    useAppStore.setState({
-      ...makeAppState({
-        cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
-        ui: makeUiPrefs({ legacyMigration: 'pending', skin: 'limelight' }),
-      }),
-      session: { ...EMPTY_SESSION },
-    });
-
-    const { container } = render(<PhaseTransitionGate />);
-    expect(container.firstChild).toBeNull();
-    expect(useAppStore.getState().ui.lastBlockSeenByProfile[FUN_PROFILE_ID]).toBeUndefined();
-  });
-
-  it('stays latched when the migration writes its decision mid-wizard', () => {
-    installFakeStorage({ [LEGACY_V2_KEY]: LEGACY_RAW });
-    useAppStore.setState({
-      ...makeAppState({
-        cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },
-        ui: makeUiPrefs({ legacyMigration: 'pending', skin: 'limelight' }),
-      }),
-      session: { ...EMPTY_SESSION },
-    });
-    const { container } = render(<PhaseTransitionGate />);
-
-    // applyMigration writes 'done' as part of the document it installs, while the wizard is
-    // still on screen offering to delete the old data. The latch is what keeps this mount
-    // silent for the rest of its life rather than un-suppressing under the wizard.
-    act(() => {
-      useAppStore.getState().setUi({ legacyMigration: 'done' });
-    });
-    expect(container.firstChild).toBeNull();
-  });
-
-  it('fires normally on a device that holds no legacy document', () => {
-    installFakeStorage();
+  it('fires as it does on any other device', () => {
+    installFakeStorage({ 'fti.console.v2': '{"week":2}' });
     useAppStore.setState({
       ...makeAppState({
         cursors: { [FUN_PROFILE_ID]: cursorAt(BLOCK_ONE_START) },

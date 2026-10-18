@@ -5,40 +5,27 @@ import { useCopy } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { clearAssetStorage } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
-import {
-  deleteLegacyV2,
-  hasAnyLegacyKey,
-  hasLegacyV2,
-  readLegacyBundle,
-} from '../../store/persistence';
 import { ExportView } from '../views/ExportView';
 
 /**
- * The Data section of Settings: the exports, the legacy import offer, and the two destructive
- * controls (P7 Task 6, master plan section 3).
+ * The Data section of Settings: the exports and the wipe (P7 Task 6, master plan section 3).
  *
  * It is one SETTINGS_ROWS entry, and it is a component rather than an inline fragment because
- * it holds state: which confirmation panel is open, and whether a legacy document is still on
- * the device. `SettingsRow.render` is a plain function called during SettingsView's render, so
- * a hook could not live there.
+ * it holds state: whether the wipe's confirmation panel is open, and whether the last wipe left
+ * the clip behind. `SettingsRow.render` is a plain function called during SettingsView's render,
+ * so a hook could not live there.
  *
- * WHY BOTH DESTRUCTIVE CONTROLS SIT BEHIND A TRIGGER. Security finding H2: the legacy console
- * put a one-tap wipe in the footer of every screen. Neither confirmation panel is mounted
- * until its trigger is pressed, so there is no always-visible wipe control, and the panel that
- * does mount holds the two gates master plan section 3 requires of every destructive action --
- * a completed export, then a typed word (ConfirmDestructive owns both).
+ * NOTHING HERE FOR THE OLD CONSOLE. Its import, the reopen offer and the control that deleted
+ * its three keys are gone (ROADMAP N5, owner ruling 2026-10-18). A device that still holds
+ * those keys keeps them as stored: removing a user's data is not this code's decision.
  *
- * ONE PANEL AT A TIME, which is why `open` is a union rather than two booleans. Both panels
- * confirm on the same word, so both label their field 'Type DELETE to confirm' and both carry
- * a 'Cancel'; opening one at a time keeps the wipe and the legacy delete from being two
- * identical-looking sets of controls that destroy different things.
- *
- * That is no longer the ONLY thing standing between them (P7 Task 6 review, item 2): each
- * panel is a named `role="group"`, and it has to be, because the Replace confirmation in
- * ExportView -- mounted by this same section, above these controls -- is now the same
- * component and can be open at the same time as either of them. The rule here stays because it
- * is about this section's own two panels, which confirm on one word and cannot be told apart
- * by what the user types into them.
+ * WHY THE WIPE SITS BEHIND A TRIGGER. Security finding H2: the legacy console put a one-tap
+ * wipe in the footer of every screen. The confirmation panel is not mounted until its trigger
+ * is pressed, so there is no always-visible wipe control, and the panel that does mount holds
+ * the two gates master plan section 3 requires of every destructive action -- a completed
+ * export, then a typed word (ConfirmDestructive owns both). The panel is a named
+ * `role="group"` because the Replace confirmation in ExportView, mounted by this same section
+ * above it, is the same component and can be open at the same time.
  *
  * A trigger BUTTON rather than a <details> disclosure, which is what the rest of this view
  * uses for its explanatory asides. Two reasons, and the first is the load-bearing one:
@@ -52,23 +39,14 @@ import { ExportView } from '../views/ExportView';
 /** The word master plan section 3 fixes for every destructive confirmation. */
 const CONFIRM_WORD = 'DELETE';
 
-type OpenPanel = 'none' | 'wipe' | 'legacy';
+type OpenPanel = 'none' | 'wipe';
 
 export function DataSection(): JSX.Element {
   const t = useCopy();
-  const decision = useAppStore((s) => s.ui.legacyMigration);
   const profile = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
   );
   const [open, setOpen] = useState<OpenPanel>('none');
-  /*
-   * Two questions, not one (P7 Task 6 review, item 3). `hasLegacyV2` asks whether the document
-   * the MIGRATION needs is here, and only the reopen offer turns on it. The delete reaches all
-   * three legacy keys, so the control that offers it asks the wider question: a device holding
-   * only `fti.plan.v1` has legacy data to clean up and nothing to import.
-   */
-  const [legacyDoc, setLegacyDoc] = useState(() => hasLegacyV2());
-  const [anyLegacy, setAnyLegacy] = useState(() => hasAnyLegacyKey());
   /** True once a wipe has run whose clip-store clear was refused. */
   const [clipUncleared, setClipUncleared] = useState(false);
 
@@ -80,22 +58,6 @@ export function DataSection(): JSX.Element {
    * The 'export' fallback is ExportView's: with no profile there is no zone to date the file in.
    */
   const stamp = profile === null ? 'export' : todayLocal(profile.timezone, Date.now());
-
-  /*
-   * The legacy document is re-read whenever the migration decision changes, not once for the
-   * life of the section. The wizard this section can reopen ends by offering to delete the old
-   * data, and it writes the decision when it finishes; a presence latched at mount would then
-   * keep offering to delete keys that are already gone. This is MigrationGate's own pattern
-   * (src/ui/migration/MigrationGate.tsx, code review finding 8), and setting state during
-   * render is React's documented way to derive state from a changed input: it re-renders
-   * before committing, so no extra paint is shown.
-   */
-  const [seen, setSeen] = useState(decision);
-  if (decision !== seen) {
-    setSeen(decision);
-    setLegacyDoc(hasLegacyV2());
-    setAnyLegacy(hasAnyLegacyKey());
-  }
 
   const wipe = (): void => {
     // Closed first, then wiped. wipeAll() empties the document, which unmounts this whole
@@ -133,13 +95,6 @@ export function DataSection(): JSX.Element {
     })();
   };
 
-  const removeLegacy = (): void => {
-    setOpen('none');
-    deleteLegacyV2();
-    setLegacyDoc(false);
-    setAnyLegacy(false);
-  };
-
   return (
     <>
       {/*
@@ -150,23 +105,6 @@ export function DataSection(): JSX.Element {
 
       <h2>{t('hero.dataOnDevice')}</h2>
       <p className="view-note">{t('advice.dataOnDevice')}</p>
-
-      {legacyDoc && decision !== 'pending' && (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              // 'pending' is what MigrationGate watches; it re-reads the legacy document on
-              // the transition and renders the wizard. Nothing here reads or writes that
-              // document itself.
-              useAppStore.getState().setUi({ legacyMigration: 'pending' });
-            }}
-          >
-            {t('button.legacyReopen')}
-          </button>
-          <p className="view-note">{t('advice.legacyOldDataKept')}</p>
-        </>
-      )}
 
       {open === 'wipe' ? (
         <div className="view-field">
@@ -192,7 +130,6 @@ export function DataSection(): JSX.Element {
       ) : (
         <button
           type="button"
-          disabled={open !== 'none'}
           onClick={() => {
             setOpen('wipe');
           }}
@@ -206,44 +143,6 @@ export function DataSection(): JSX.Element {
           {t('advice.clipClearFailed')}
         </p>
       )}
-
-      {anyLegacy &&
-        (open === 'legacy' ? (
-          <div className="view-field">
-            <p className="view-note">{t('advice.deleteLegacy')}</p>
-            <ConfirmDestructive
-              titleKey="label.confirmDeleteLegacy"
-              word={CONFIRM_WORD}
-              exportLabelKey="button.downloadLegacyJson"
-              exportFilename={`fti-legacy-bundle-${stamp}.json`}
-              /*
-               * All THREE legacy keys, as raw text in one envelope, because all three are what
-               * the confirmed action removes (security recommendation 10 / M5). It used to
-               * export `fti.console.v2` alone, so the other two were destroyed with no copy
-               * taken. Never a migrated projection: this is the last copy of whatever the
-               * migration refused, so it has to be the bytes as stored. The empty string
-               * covers keys that have gone since this row rendered -- the gate still has to be
-               * passable, and an empty backup of nothing is honest about what was there.
-               */
-              exportText={() => readLegacyBundle() ?? ''}
-              confirmLabelKey="button.legacyDeleteOld"
-              onConfirm={removeLegacy}
-              onCancel={() => {
-                setOpen('none');
-              }}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            disabled={open !== 'none'}
-            onClick={() => {
-              setOpen('legacy');
-            }}
-          >
-            {t('button.deleteLegacy')}
-          </button>
-        ))}
     </>
   );
 }

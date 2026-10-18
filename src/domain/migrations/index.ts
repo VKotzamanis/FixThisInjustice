@@ -6,27 +6,10 @@
  * code. The refusal lives in parseState; this module only walks the chain.
  *
  * Version 3 is the current schema and needs no migration, so the chain is empty.
- * P7 adds the { from: 2, to: 3 } step that converts the legacy fti.console.v2
- * document, including the one-off prompt for whether historical loads were
- * entered in kg or lb.
+ * The old console's document under a DIFFERENT key ("fti.console.v2") was never
+ * a step of this chain; its one-way import was removed (ROADMAP N5) and nothing
+ * reads that key any more.
  */
-/*
- * The legacy v2 store lives under a DIFFERENT localStorage key ("fti.console.v2"), so it is
- * not a step of the ordered chain below: the chain walks one `fti.v3` document from an older
- * schemaVersion to the current one, and the v2 import is invoked by the migration wizard with
- * the unit the user names at the prompt. It is re-exported here so this module stays the
- * single entry point for migration code.
- */
-export { CUP_ML, applyMigration, migrateV2 } from './v2';
-export type {
-  ApplyMigrationResult,
-  LegacyUnit,
-  MigrateV2Options,
-  MigrateV2Result,
-  MigrationReport,
-  MigrationSkip,
-} from './v2';
-
 export interface Migration {
   /** Schema version this step accepts. */
   readonly from: number;

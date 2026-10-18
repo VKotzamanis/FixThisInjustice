@@ -15,7 +15,7 @@ import {
  * either one fails this suite instead of silently breaking the service worker.
  * ?raw rather than node:fs because tsconfig.app.json pins `types` to the vite
  * client typings, under which node:fs has no declaration (the same reason
- * v2plan.test.ts and cursor.test.ts give).
+ * cursor.test.ts gives).
  */
 import scheduleSource from '../../../worker/src/schedule.ts?raw';
 import viteConfigSource from '../../../vite.config.ts?raw';

@@ -306,7 +306,6 @@ export type CopyKey =
   | 'advice.weekMissedNone'
   | 'button.dismiss'
   // --- log, export, migration, settings (P7) ---
-  | 'button.downloadLegacyJson'
   | 'advice.noWeeksYet'
   | 'advice.noSetsLogged'
   | 'hero.exportImport'
@@ -322,8 +321,6 @@ export type CopyKey =
   | 'hero.dataOnDevice'
   | 'advice.dataOnDevice'
   | 'button.wipeAll'
-  | 'button.deleteLegacy'
-  | 'advice.deleteLegacy'
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   | 'hero.atlas'
   | 'advice.atlas'
@@ -433,36 +430,6 @@ export type CopyKey =
   | 'label.spotlightView'
   | 'label.spotlightExercise'
   | 'advice.noSpotlightMatch'
-  // --- legacy migration wizard (P7 Task 3; appended by that task) ---
-  | 'hero.legacyImport'
-  | 'hero.legacyPreview'
-  | 'hero.legacyDone'
-  | 'advice.legacyFound'
-  | 'advice.legacyNothingDeleted'
-  | 'advice.legacyUnitRequired'
-  | 'advice.legacyRefused'
-  | 'advice.legacyApplyFailed'
-  | 'advice.legacyStored'
-  | 'advice.legacyStoreUnconfirmed'
-  | 'advice.legacyOldDataDeleted'
-  | 'advice.legacyOldDataKept'
-  | 'disclosure.legacyTransfers'
-  | 'disclosure.legacyBodyMassEvidence'
-  | 'label.legacyLoadUnit'
-  | 'label.legacyBodyMassUnit'
-  | 'label.legacyUnitKg'
-  | 'label.legacyUnitLb'
-  | 'label.legacyMassUnitKg'
-  | 'label.legacyMassUnitLb'
-  | 'disclosure.whatTransfers'
-  | 'disclosure.whatWasRefused'
-  | 'disclosure.whatWasNotMatched'
-  | 'button.legacyPreview'
-  | 'button.legacyApply'
-  | 'button.legacyDismiss'
-  | 'button.legacyDeleteOld'
-  | 'button.legacyKeepOld'
-  | 'button.legacyClose'
   // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
   | 'advice.exportBeforeConfirm'
   | 'status.exportTaken'
@@ -545,7 +512,6 @@ export type CopyKey =
   // --- the Settings data section (P7 Task 6; appended by that task) ---
   | 'button.downloadBackup'
   | 'button.wipeConfirm'
-  | 'button.legacyReopen'
   | 'advice.wipeRemoves'
   // --- the look-and-sound row (P8 Task 12; appended by that task) ---
   | 'hero.skin'
@@ -559,7 +525,6 @@ export type CopyKey =
   // --- the wipe covers the clip store, and every panel names itself (P7 Task 6 review) ---
   | 'advice.clipClearFailed'
   | 'label.confirmWipe'
-  | 'label.confirmDeleteLegacy'
   | 'label.confirmReplace'
   // --- the week review, the personal-record stamp and the skinned status lines (P8 Task 11) ---
   | 'status.weekDeltaNegative'
@@ -1118,7 +1083,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.dismiss': 'Dismiss',
 
   // --- log, export, migration, settings (P7) ---
-  'button.downloadLegacyJson': 'Download Legacy JSON',
   'advice.noWeeksYet': 'No weeks to show.',
   'advice.noSetsLogged': 'No sets logged.',
   'hero.exportImport': 'Export and Import',
@@ -1134,8 +1098,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.dataOnDevice': 'Data on This Device',
   'advice.dataOnDevice': 'Everything stays on this device. No account.',
   'button.wipeAll': 'Wipe All Data',
-  'button.deleteLegacy': 'Delete Legacy Data',
-  'advice.deleteLegacy': 'Removes the old app data. Anything not imported is lost.',
 
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   'hero.atlas': 'Atlas',
@@ -1354,53 +1316,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The empty result set. It reports what is absent and asks for nothing (R7).
   'advice.noSpotlightMatch': 'No matches.',
 
-  // --- legacy migration wizard (P7 Task 3; appended by that task) ---
-  'hero.legacyImport': 'Import from the Old App',
-  'hero.legacyPreview': 'What the Import Writes',
-  'hero.legacyDone': 'Import Complete',
-  // The offer. It states the fact and the one guarantee that makes accepting it safe; it asks
-  // for nothing (R7).
-  'advice.legacyFound': 'The old app has data on this device.',
-  'advice.legacyNothingDeleted': 'Nothing is deleted until you ask.',
-  // The load unit is asked for, never assumed: the legacy store held a bare number, so a wrong
-  // answer rescales the whole load history by the pound-to-kilogram factor.
-  'advice.legacyUnitRequired': 'Choose a unit. A wrong unit rescales every load.',
-  'advice.legacyRefused': 'The old data could not be read. Nothing changed.',
-  'advice.legacyApplyFailed': 'The import was refused. Nothing changed.',
-  'advice.legacyStored': 'The import is stored. The old data is untouched.',
-  // Shown when the write could not be confirmed. The delete is withheld in that case, so this
-  // says which of the two things happened instead of reporting a success.
-  'advice.legacyStoreUnconfirmed': 'The write was not confirmed. The old data stays.',
-  'advice.legacyOldDataDeleted': 'The old app data is deleted.',
-  'advice.legacyOldDataKept': 'The old app data was kept.',
-  // Disclosure bodies, exempt from R1-R4 (R9): a disclosure exists to hold what does not fit.
-  'disclosure.legacyTransfers':
-    'Logged sets, weekly push-up maxima, body-mass check-ins, beverage intake, daily notes, ' +
-    'collected specimen cards, and a sealed time capsule. Anything the import cannot read is ' +
-    'listed with its reason first.',
-  // The evidence behind the body-mass assumption, stated so the user can overrule it rather
-  // than trust it. Three independent legacy facts, not a preference.
-  'disclosure.legacyBodyMassEvidence':
-    'The old body-mass field was labelled lb, refused values outside the pound range, and its ' +
-    'text export reported pounds. The load field carried no such evidence, so that unit is ' +
-    'asked for.',
-  'label.legacyLoadUnit': 'Load Unit in the Old App',
-  'label.legacyBodyMassUnit': 'Body Mass Unit in the Old App',
-  'label.legacyUnitKg': 'Kilograms (kg)',
-  'label.legacyUnitLb': 'Pounds (lb)',
-  // The body-mass radios carry their own labels rather than reusing the two above: both pairs
-  // are in the document at once, so identical labels would name two controls each.
-  'label.legacyMassUnitKg': 'Kilograms (kg), Body Mass',
-  'label.legacyMassUnitLb': 'Pounds (lb), Body Mass',
-  'disclosure.whatTransfers': 'What transfers',
-  'disclosure.whatWasRefused': 'What was refused, and why',
-  'disclosure.whatWasNotMatched': 'Days with no session match',
-  'button.legacyPreview': 'Preview Import',
-  'button.legacyApply': 'Keep Import',
-  'button.legacyDismiss': 'Start Clean',
-  'button.legacyDeleteOld': 'Delete Old Data',
-  'button.legacyKeepOld': 'Keep Old Data',
-  'button.legacyClose': 'Close',
   // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
   // The gate, stated before it is met. The word itself is not named here: FORMAT.typeToConfirm
   // owns that sentence, so the label and the compared word cannot say different things.
@@ -1597,8 +1512,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The armed action, worded as what it does rather than repeating the disclosure that opened
   // it. 'Wipe all data' names the trigger above; the two must not read alike.
   'button.wipeConfirm': 'Delete Everything',
-  // Puts the legacy import offer back in front of a user who dismissed it or finished one.
-  'button.legacyReopen': 'Import Old Data',
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
   'advice.wipeRemoves': 'Removes every profile, plan, session, set and note on this device.',
@@ -1638,7 +1551,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // these, a screen reader offers two identical-looking controls that destroy different things.
   // Each names the decision rather than repeating the trigger's own wording.
   'label.confirmWipe': 'Confirm Wipe',
-  'label.confirmDeleteLegacy': 'Confirm Legacy Delete',
   'label.confirmReplace': 'Confirm Replace',
 
   // --- the week review, the personal-record stamp and the skinned status lines (P8 Task 11) ---
@@ -2602,30 +2514,7 @@ export const FORMAT = {
   summaryNoProfile: (profileId: string): string =>
     `There is no profile with id "${profileId}" in this document.`,
 
-  // --- legacy migration wizard (P7 Task 3) ---
-  // Counts, never differences: the preview reports what each figure is, and the reasons sit
-  // beside them in a disclosure rather than being summed into one number (R9).
-
-  /**
-   * "22 sets", one line of the migration preview. [sets]
-   *
-   * The four counters below singularise, in the pattern sessionSummary already uses: a preview
-   * that reports "1 sets" reads as a formatting fault, and a user weighing an irreversible
-   * import is entitled to doubt every other number on the screen once one of them is wrong.
-   */
-  legacySets: (sets: number): string => `${sets} ${sets === 1 ? 'set' : 'sets'}`,
-
-  /** "7 sessions": the training sessions the import reconstructs. [sessions] */
-  legacySessions: (sessions: number): string =>
-    `${sessions} ${sessions === 1 ? 'session' : 'sessions'}`,
-
-  /** "17 records not imported". Each reason is listed behind a disclosure. */
-  legacyDropped: (records: number): string =>
-    `${records} ${records === 1 ? 'record' : 'records'} not imported`,
-
-  /** "3 days not matched to a session". [d] Those sets are kept under a legacy session id. */
-  legacyFallbacks: (days: number): string =>
-    `${days} ${days === 1 ? 'day' : 'days'} not matched to a session`,
+  // --- typed confirmation shell (P7 Task 3 review) ---
 
   /**
    * The label above a typed-confirmation field: "Type DELETE to confirm".
@@ -2636,18 +2525,6 @@ export const FORMAT = {
    */
   typeToConfirm: (word: string): string => `Type ${word} to confirm`,
 
-  /** One refused record: its legacy key, and the migration's own wording for the refusal. */
-  legacySkip: (key: string, reason: string): string => `${key}: ${reason}`,
-
-  /** The body-mass unit the import will assume, shown before it runs. */
-  legacyBodyMassAssumed: (unit: string): string => `Body mass is read as ${unit}.`,
-
-  /** Both unit assumptions, echoed back from the report the import actually produced. */
-  legacyUnitsAssumed: (loads: string, bodyMass: string): string =>
-    `Loads read as ${loads}. Body mass read as ${bodyMass}.`,
-
-  /** Why the import was refused, in the migration's own words. */
-  legacyRefusedReason: (reason: string): string => `Reason: ${reason}`,
   // --- reminders (P5 Task 8) ---
 
   /**
@@ -2814,7 +2691,7 @@ export const FORMAT = {
   /**
    * "Opens 2026-11-29, in 30 days." The date is the capsule's own LocalDate and the count is
    * whole calendar days from today to it (src/domain/dates.ts daysBetween), never a difference
-   * of wall clocks. The unit word is singularised here, in the pattern legacySets uses, so a
+   * of wall clocks. The unit word is singularised here, in the pattern sessionSummary uses, so a
    * capsule one day off does not read "in 1 days". [d]
    */
   capsuleSealed: (

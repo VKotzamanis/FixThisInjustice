@@ -22,7 +22,7 @@ import type { CopyKey } from './copy';
  *    positions where the stan-twitter parent carried an emoji now carry a pixel icon, mapped in
  *    src/skins/limelight/Icon.tsx.
  * 4. The joke never sits on a control whose misreading costs data. Every string that fronts a
- *    wipe, an import, a legacy delete, an export or a save failure is absent from this table on
+ *    wipe, an import, an export or a save failure is absent from this table on
  *    purpose, and the base sentence stands there.
  *
  * WHAT IS NOT HERE, AND WHY. Case alone is not a reason for a row: cloning a string to lower-case
@@ -287,27 +287,26 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   /*
    * WHAT STAYS ON THE BASE TABLE ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
    *
-   * 125 default keys reach Today, Train, Plan or Settings (130 until the skin picker's five keys
-   * went with the clinical and board skins: `label.settingsSkin`, which had a row here,
-   * `advice.skinChanges` and the three skin names; 131 until Brief F Part 3 deleted
-   * `label.microPlates`, which reached Settings' now-removed micro-plate checkbox). Those two
-   * figures are arithmetic on the P9 count, not a fresh sweep. Twenty took a row above, the
-   * last being `label.noSuggestedLoad`, which the whole-app review added with a row in both
-   * tables. The other 105 are named below, grouped so each reason is
+   * 118 default keys reach Today, Train, Plan or Settings (125 until ROADMAP N5 removed the old
+   * console's import, whose reopen and delete controls in Settings carried seven of them; 130
+   * until the skin picker's five keys went with the clinical and board skins:
+   * `label.settingsSkin`, which had a row here, `advice.skinChanges` and the three skin names;
+   * 131 until Brief F Part 3 deleted `label.microPlates`, which reached Settings' now-removed
+   * micro-plate checkbox). Those three figures are arithmetic on the P9 count, not a fresh
+   * sweep. Twenty took a row above, the last being `label.noSuggestedLoad`, which the whole-app
+   * review added with a row in both tables. The other 98 are named below, grouped so each reason is
    * written once rather than once per key. Recount the list against the tree with the sweep in
    * docs/plans/2026-09-02-09-prose-and-docs-pass.md, Task 12 step 1, WITH ONE CORRECTION: that
    * sweep greps for a single-quoted key and a view that hands a key to a component as a JSX prop
    * writes it in double quotes (`titleKey="label.confirmWipe"`, `copyKey="button.skipToday"`).
    * Match both quotes or the count comes back two short, which is how it first came back 128.
    *
-   * RULE 4, a control whose misreading costs data (18). The wipe, the two legacy paths, the
-   * backup download and the clip failure say what they destroy or fail to destroy, a set delete
-   * is not recoverable, and the two confirm titles name the act the dialog is about to do:
-   *   advice.clipClearFailed, advice.dataOnDevice, advice.deleteLegacy, advice.legacyOldDataKept,
-   *   advice.storedUnitsUnchanged, advice.wipeRemoves, button.deleteLegacy, button.downloadBackup,
-   *   button.downloadLegacyJson, button.legacyDeleteOld, button.legacyReopen, button.wipeAll,
-   *   button.wipeConfirm, button.deleteSet, hero.dataOnDevice, hero.exportImport,
-   *   label.confirmDeleteLegacy, label.confirmWipe
+   * RULE 4, a control whose misreading costs data (11). The wipe, the backup download and the
+   * clip failure say what they destroy or fail to destroy, a set delete is not recoverable, and
+   * the confirm title names the act the dialog is about to do:
+   *   advice.clipClearFailed, advice.dataOnDevice, advice.storedUnitsUnchanged,
+   *   advice.wipeRemoves, button.downloadBackup, button.wipeAll, button.wipeConfirm,
+   *   button.deleteSet, hero.dataOnDevice, hero.exportImport, label.confirmWipe
    *
    * THE INSTALL GUIDE (12). Every string quotes a label the operating system draws: Share, Add to
    * Home Screen, Install app, the three dots. A skin that rewrites them makes the instruction

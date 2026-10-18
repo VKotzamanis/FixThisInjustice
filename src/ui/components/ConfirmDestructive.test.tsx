@@ -15,7 +15,7 @@ import type { SkinId } from '../../domain/types';
 vi.mock('../../app/download', () => ({ downloadText: vi.fn() }));
 
 const WORD = 'DELETE';
-const BACKUP = '{"legacy":true}';
+const BACKUP = '{"schemaVersion":3}';
 
 function renderPanel(
   overrides: Partial<ConfirmDestructiveProps> = {},
@@ -24,12 +24,12 @@ function renderPanel(
   const onCancel = vi.fn();
   render(
     <ConfirmDestructive
-      titleKey="label.confirmDeleteLegacy"
+      titleKey="label.confirmWipe"
       word={WORD}
-      exportLabelKey="button.downloadLegacyJson"
-      exportFilename="fixthisinjustice-legacy-v2.json"
+      exportLabelKey="button.downloadBackup"
+      exportFilename="fti-state-2026-09-01.json"
       exportText={() => BACKUP}
-      confirmLabelKey="button.legacyDeleteOld"
+      confirmLabelKey="button.wipeConfirm"
       onConfirm={onConfirm}
       onCancel={onCancel}
       {...overrides}
@@ -73,29 +73,29 @@ describe('ConfirmDestructive: the export gate', () => {
   it('holds the action while the backup has not been taken, even with the word typed', () => {
     renderPanel();
     type(WORD);
-    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeDisabled();
     expect(screen.getByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeTruthy();
   });
 
   it('holds the action after the backup when the typed word does not match', () => {
     renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     type('delete');
-    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeDisabled();
   });
 
   it('releases the action once the backup is taken and the word matches exactly', () => {
     renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     type(WORD);
-    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeEnabled();
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeEnabled();
   });
 
   it('hands the export the filename and the text it was given, and says so', () => {
     renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     expect(downloadText).toHaveBeenCalledTimes(1);
-    expect(downloadText).toHaveBeenCalledWith('fixthisinjustice-legacy-v2.json', BACKUP);
+    expect(downloadText).toHaveBeenCalledWith('fti-state-2026-09-01.json', BACKUP);
     expect(screen.getByText(copyFor('limelight', 'status.exportTaken'))).toBeTruthy();
     expect(screen.queryByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeNull();
   });
@@ -104,16 +104,16 @@ describe('ConfirmDestructive: the export gate', () => {
 describe('ConfirmDestructive: the decision', () => {
   it('calls onConfirm exactly once and never cancels', () => {
     const { onConfirm, onCancel } = renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     type(WORD);
-    fireEvent.click(button(copyFor('limelight', 'button.legacyDeleteOld')));
+    fireEvent.click(button(copyFor('limelight', 'button.wipeConfirm')));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
   });
 
   it('calls onCancel and never confirms', () => {
     const { onConfirm, onCancel } = renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     type(WORD);
     fireEvent.click(button(copyFor('limelight', 'button.cancel')));
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -136,11 +136,11 @@ describe('ConfirmDestructive: the word and its label', () => {
 
   it('compares the typed word case-sensitively against the word it was given', () => {
     renderPanel({ word: 'IMPORT' });
-    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     type('Import', 'IMPORT');
-    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeDisabled();
     type('IMPORT', 'IMPORT');
-    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeEnabled();
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeEnabled();
   });
 });
 
@@ -153,10 +153,10 @@ describe('ConfirmDestructive: the panel names itself', () => {
    * destroy different things.
    */
   it('exposes the title as the group label', () => {
-    renderPanel({ titleKey: 'label.confirmWipe' });
-    const group = screen.getByRole('group', { name: copyFor('limelight', 'label.confirmWipe') });
+    renderPanel({ titleKey: 'label.confirmReplace' });
+    const group = screen.getByRole('group', { name: copyFor('limelight', 'label.confirmReplace') });
     // The gate's own controls are INSIDE the named group, which is what makes the name useful.
-    expect(within(group).getByRole('button', { name: copyFor('limelight', 'button.legacyDeleteOld') })).toBeTruthy();
+    expect(within(group).getByRole('button', { name: copyFor('limelight', 'button.wipeConfirm') })).toBeTruthy();
     expect(within(group).getByLabelText(FORMAT.typeToConfirm(WORD))).toBeTruthy();
   });
 

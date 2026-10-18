@@ -31,7 +31,6 @@ import type { BlockStats } from '../../domain/fun/blocks';
 import type { UnitSystem } from '../../domain/types';
 import { UNIT_LABEL, displayMass } from '../../domain/units';
 import { useAppStore } from '../../store';
-import { hasLegacyV2 } from '../../store/persistence';
 import { usePendingMotivation } from '../../store/selectors';
 import { ModalShell } from './ModalShell';
 
@@ -197,7 +196,6 @@ export function PhaseTransition({
  *    the timer off screen mid-set.
  *  - the boot sequence has finished. It is a fixed overlay covering the whole screen, and a
  *    dialog opened underneath it would trap focus in something nobody can see.
- *  - the legacy migration is not being offered. See the latch below.
  *  - no missed week is waiting to be answered. Both gates are mounted by the app shell and
  *    both used to satisfy their conditions on the same render, so two ModalShells opened at
  *    once. Each shell listens for Escape on the WINDOW, so one keypress aimed at the popup
@@ -207,10 +205,11 @@ export function PhaseTransition({
  *    again on the next render after the Dismiss, and `usePendingMotivation` goes null on that
  *    render because the dismissal is a store write (MotivationGate.tsx).
  *
- *    This is NOT latched, unlike the migration below. The migration is a one-way data decision
- *    made in a wizard that stays on screen after writing its flag; the popup unmounts the
- *    instant its own write lands, so there is no window in which un-suppressing would paint
- *    over anything.
+ *    This is NOT latched: the popup unmounts the instant its own write lands, so there is no
+ *    window in which un-suppressing would paint over anything.
+ *
+ * Not gated on the old console's document (`fti.console.v2`). Its import is gone (ROADMAP N5),
+ * so the key offers nothing and holds nothing back.
  *
  * Deferring costs nothing: the block stays unseen, so the cutscene is due again on the next
  * render for which every condition holds.
@@ -226,32 +225,9 @@ export function PhaseTransitionGate(): ReactElement | null {
   const seenMap = useAppStore((s) => s.ui.lastBlockSeenByProfile);
   const bootSeen = useAppStore((s) => s.ui.bootSeen);
   const activeAssignmentDate = useAppStore((s) => s.session.activeAssignmentDate);
-  const legacyDecision = useAppStore((s) => s.ui.legacyMigration);
   // The missed-week popup's own question, read through the selector that owns it so the two
   // gates cannot disagree about whether one is pending (src/store/selectors.ts).
   const pendingMiss = usePendingMotivation();
-
-  /*
-   * Read once per mount, as MigrationGate and MotivationGate read it: the legacy key does not
-   * appear while the app is open, and it DISAPPEARS when the wizard's delete step runs, which
-   * must not be read as "the migration is over" a frame before the wizard says so.
-   */
-  const [legacyPresent] = useState<boolean>(() => hasLegacyV2());
-
-  /*
-   * Latched, and deliberately not the live condition alone. MotivationGate's argument holds
-   * here unchanged: applyMigration writes ui.legacyMigration = 'done' as part of the document
-   * it installs, while the wizard is still on screen making its last offer to delete the old
-   * data. A gate reading only the live condition would un-suppress mid-wizard and paint a
-   * second modal over a destructive confirmation, with two ModalShells fighting over focus and
-   * the scroll lock.
-   *
-   * Setting state during render is React's documented way to derive state from a changed
-   * input; it re-renders before committing, so no extra paint is shown.
-   */
-  const migrationOffered = legacyPresent && legacyDecision === 'pending';
-  const [suppressedByMigration, setSuppressedByMigration] = useState(migrationOffered);
-  if (migrationOffered && !suppressedByMigration) setSuppressedByMigration(true);
 
   const cursor = profileId === null ? undefined : cursors[profileId];
   const plan = cursor === undefined ? undefined : plans[cursor.planId];
@@ -290,7 +266,7 @@ export function PhaseTransitionGate(): ReactElement | null {
   }, [profileId, currentIndex, seenMap]);
 
   // Every hook above is called unconditionally; the decisions come after them.
-  if (suppressedByMigration || pendingMiss !== null) return null;
+  if (pendingMiss !== null) return null;
   if (!bootSeen || activeAssignmentDate !== null) return null;
   if (profileId === null || currentIndex === null || stats === null) return null;
   const profile = profiles[profileId];

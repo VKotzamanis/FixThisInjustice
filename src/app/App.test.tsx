@@ -4,9 +4,8 @@ import userEvent from '@testing-library/user-event';
 import '../ui/styles/crt.css';
 import { App } from './App';
 import { syncSchedule } from '../domain/reminders/client';
-import legacyV2 from '../domain/migrations/fixtures/v2-sample.json';
 import { defaultState, useAppStore } from '../store';
-import { LEGACY_V2_KEY, STORAGE_KEY } from '../store/persistence';
+import { STORAGE_KEY } from '../store/persistence';
 import { makeBlankState } from '../test/migrationFactories';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
@@ -509,37 +508,34 @@ describe('reminder sync', () => {
 });
 
 /**
- * The legacy-import offer (P7 Task 6, wiring deferred here).
+ * The old console's import is gone (ROADMAP N5, owner ruling 2026-10-18). A device that still
+ * holds that app's document under `fti.console.v2` is treated like any other: the shell renders
+ * exactly what it renders without the key, and the key is left as stored. Removing a user's
+ * data is not this code's decision, so nothing reads, rewrites or deletes it.
  *
- * MigrationGate is self-gating and covered in full by MigrationGate.test.tsx. What is asserted
- * here is that the shell mounts it where the offer can appear ABOVE the app rather than in
- * place of it: inside <main>, beside the view switch, so nothing about it blocks. Both halves
- * are asserted, because a gate mounted at the wrong condition is as broken as one not mounted:
- * the wizard on a device carrying the old document, and nothing on a device without it.
+ * Compared against a render WITHOUT the key rather than against a named heading, so the check
+ * does not depend on copy that no longer exists and still catches any UI the key would trigger.
  */
-describe('legacy migration offer', () => {
-  const LEGACY_JSON = JSON.stringify(legacyV2);
+describe('a device that still holds the old console document', () => {
+  const OLD_CONSOLE_KEY = 'fti.console.v2';
+  const OLD_CONSOLE_TEXT = '{"week":2}';
 
-  /** Storage with or without the legacy key, plus the profile and plan the gate requires. */
-  function seedLegacy(legacy: string | null): void {
-    installFakeStorage(legacy === null ? {} : { [LEGACY_V2_KEY]: legacy });
+  it('renders the same app as without it and leaves it as stored', () => {
+    const data = installFakeStorage();
+    const headings = (): string[] =>
+      screen.queryAllByRole('heading').map((h) => h.textContent ?? '');
+
     useAppStore.getState().replaceState(makeBlankState());
-  }
+    const { unmount } = render(<App />);
+    const without = headings();
+    unmount();
 
-  it('offers the import when the old document is on the device', () => {
-    seedLegacy(LEGACY_JSON);
-
+    data.set(OLD_CONSOLE_KEY, OLD_CONSOLE_TEXT);
+    useAppStore.getState().replaceState(makeBlankState());
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: copy('hero.legacyImport') })).toBeInTheDocument();
-  });
-
-  it('offers nothing when the old document is not on the device', () => {
-    seedLegacy(null);
-
-    render(<App />);
-
-    expect(screen.queryByRole('heading', { name: copy('hero.legacyImport') })).toBeNull();
+    expect(headings()).toEqual(without);
+    expect(data.get(OLD_CONSOLE_KEY)).toBe(OLD_CONSOLE_TEXT);
   });
 });
 
