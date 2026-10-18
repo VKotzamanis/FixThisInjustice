@@ -1,16 +1,30 @@
 /*
  * The Atlas grid and its card dialog, phone first.
  *
- * Tokens only, each with the literal fallback src/ui/views/views.css uses, so a slot still
- * reads if the P1 token sheet has not loaded.
+ * TOKENS ONLY, with no literal fallback (AGENTS rule 5). src/main.tsx loads tokens.css before any
+ * view, and the fallbacks this sheet used to carry were the removed clinical skin's colours: had
+ * one ever fired it would have painted a dark-theme card on the lime page.
  *
- * The grid tracks are auto-filled from a 9rem minimum rather than a fixed column count: the
- * pool is 37 cards and the narrowest supported viewport fits two of them, which is the whole
- * of the responsive requirement here.
+ * The grid tracks are auto-filled from a 9rem minimum rather than a fixed column count. Two
+ * tracks need 19rem (304 px) with the gap; the view's 1rem side padding leaves 288 px at a
+ * 320 px viewport, which therefore gets one column, and 368 px at 400 px, which gets two.
  *
- * MOTION. One transition, on the owned card's border, and it is dropped wholesale under
- * prefers-reduced-motion. Nothing in this view animates on mount, so there is no entrance to
- * suppress and no JavaScript that needs to read the preference.
+ * FACES AND TIERS. A drawn card and its dialog are both `.atlas-face.ll-panel`: the black panel,
+ * whose colours come from tokens.css's `.ll-panel` (limelight-scoped, as that rule says). The
+ * tier is drawn as a shape, so it never rests on colour alone (WCAG 1.4.1):
+ *   common    the plain panel
+ *   uncommon  two lime rules inside the edge
+ *   rare      one pink rule inside the edge, the pink offset block outside it, and the foil
+ * Contrast, quoted from tokens.css (section 2.3 of the round-three plan): lime on black 10.91:1
+ * (rarity word, glyph, rules), white on black 21:1 (title, body, citation), pink on black 7.75:1
+ * (the rare rule). The offset block meets the lime page at 1.41:1, which is why it is outlined
+ * in ink (10.91:1 on lime); it is a fill, never type. Locked slots stay on the lime page: ink
+ * dashes and mark at 10.91:1, the #454545 fine print at 4.98:1.
+ *
+ * MOTION. One animation, the rare face's foil: a single pass on mount, 600 ms, no repeat, so at
+ * most one luminance change and far under the three-flashes rule (WCAG 2.3.1). The view adds the
+ * class only when motion is allowed (AtlasView.tsx, faceClasses) and the media query at the end
+ * of this sheet cancels it as well. The sweep passes under the type, never over it.
  */
 .atlas .atlas-total {
   display: flex;
@@ -23,13 +37,13 @@
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .atlas .atlas-count {
   margin: 0;
   font-variant-numeric: tabular-nums;
-  color: var(--text, #dde3ea);
+  color: var(--text);
 }
 
 .atlas .atlas-section {
@@ -40,19 +54,20 @@
   font-size: 0.85rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   margin: 0 0 0.15rem;
 }
 
 .atlas .atlas-section .atlas-count {
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   margin: 0 0 0.5rem;
 }
 
 .atlas .atlas-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  /* 0.5rem = 8 px, which also holds the rare card's 6 px offset block clear of its neighbour. */
   gap: 0.5rem;
   list-style: none;
   margin: 0;
@@ -63,81 +78,151 @@
   display: flex;
 }
 
+/*
+ * One slot, drawn or locked: the art and the rarity word on the first row, the title (or the
+ * undiscovered word) across the whole width below, so a long title is never squeezed beside the
+ * art in a 9rem column.
+ */
 .atlas .atlas-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr);
+  grid-template-areas:
+    'art rarity'
+    'text text';
+  align-items: center;
+  align-content: start;
+  column-gap: 0.5rem;
+  row-gap: 0.4rem;
   width: 100%;
-  /* 4.5rem = 72 px at the 16 px root, comfortably over the 44 px (2.75rem) minimum interactive
-     target views.css fixes for every control. The comment here read "44 px at the 16 px root"
-     against a 4.5rem value until P8 close-out B, which was simply wrong arithmetic; the extra
-     28 px are the two stacked lines, not the target rule. */
+  /* 4.5rem = 72 px at the 16 px root, over the 44 px (2.75rem) minimum interactive target
+     views.css fixes for every control; the art row and the title fill it in practice. */
   min-height: 4.5rem;
-  padding: 0.5rem;
+  /* 0.75rem = 12 px, clear of the 9 px band the tier rules occupy inside the edge. */
+  padding: 0.75rem;
+  margin: 0;
   text-align: left;
   font: inherit;
-  background: var(--bg-2, #13161a);
-  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
-  border-left-width: 3px;
+  border: 0;
+}
+
+/* 2.25rem = 36 px: an integer 3x of the question mark's 12-cell grid. */
+.atlas .atlas-card-art {
+  grid-area: art;
+  display: block;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.atlas .atlas-card-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .atlas .atlas-card-rarity {
+  grid-area: rarity;
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-3, #5a6270);
 }
 
 .atlas .atlas-card-title {
-  color: var(--text, #dde3ea);
+  grid-area: text;
+  font-weight: 700;
   line-height: 1.3;
 }
 
 .atlas .atlas-card-lock {
+  grid-area: text;
   font-size: 0.7rem;
   letter-spacing: 0.08em;
-  color: var(--text-3, #5a6270);
 }
 
-/* The tier reads from the left edge, so the three tiers are distinguishable at a glance
-   without the card carrying a second copy of its own rarity word in a badge. */
-.atlas .atlas-common {
-  border-left-color: var(--text-3, #5a6270);
-}
-
-.atlas .atlas-uncommon {
-  border-left-color: var(--info, #67e8f9);
-}
-
-.atlas .atlas-rare {
-  border-left-color: var(--accent, #a3e635);
-}
+/* --- the locked slot: on the lime page, never a panel --- */
 
 .atlas .atlas-locked {
   background: transparent;
-  border-style: dashed;
-  border-left-style: dashed;
+  border: 2px dashed var(--line-2);
+  color: var(--text);
 }
+
+.atlas .atlas-locked .atlas-card-rarity,
+.atlas .atlas-locked .atlas-card-lock {
+  color: var(--text-3);
+}
+
+/* --- a drawn face, in the grid and in the dialog --- */
+
+/* `isolation` gives the face its own stacking context, so the foil at z-index -1 paints above
+   the panel's background and below its type. */
+.atlas .atlas-face {
+  position: relative;
+  isolation: isolate;
+}
+
+.atlas .atlas-face.atlas-uncommon {
+  box-shadow:
+    inset 0 0 0 3px var(--panel),
+    inset 0 0 0 5px var(--lime),
+    inset 0 0 0 7px var(--panel),
+    inset 0 0 0 9px var(--lime);
+}
+
+/* The inner pink rule, then the offset block (`--shadow-offset`, the display type's own 4 px
+   offset) and its 2 px ink outline. Box shadows take no layout space, so the block never
+   widens the page. */
+.atlas .atlas-face.atlas-rare {
+  box-shadow:
+    inset 0 0 0 3px var(--panel),
+    inset 0 0 0 5px var(--pink),
+    var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0 0 var(--pink),
+    var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0 2px var(--line-2);
+}
+
+/*
+ * The foil: one band of pink at 40 % alpha crossing the face once. At its peak the band lifts
+ * the black ground to about #662651, where lime type still measures 5.6:1 and white 10.7:1, so
+ * no word drops under 4.5:1 while it passes.
+ */
+.atlas .atlas-foil::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(var(--accent-rgb), 0.4) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: atlas-foil-sweep 600ms ease-out 1 forwards;
+}
+
+@keyframes atlas-foil-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* --- the drawn card in the grid --- */
 
 .atlas button.atlas-card {
   cursor: pointer;
-  color: var(--text, #dde3ea);
-  transition: border-color 120ms ease;
+  /* Clips the foil to the card. An element's own box-shadow and outline are not clipped by its
+     own overflow, so the tier block and the focus ring still show. */
+  overflow: hidden;
 }
 
-.atlas button.atlas-card:hover {
-  border-color: var(--line-2, rgba(220, 230, 240, 0.16));
-}
-
+/* An ink ring outside the black face, with a lime gap: 10.91:1 against the page either way. */
 .atlas button.atlas-card:focus-visible {
-  outline: 1px solid var(--accent, #a3e635);
-  outline-offset: -2px;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .atlas button.atlas-card {
-    transition: none;
-  }
+  outline: 3px solid var(--line-2);
+  outline-offset: 3px;
 }
 
 /*
@@ -146,9 +231,8 @@
  * SCOPED UNDER `.atlas`, as every rule above it is. The dialog is rendered by AtlasCardDialog
  * through ModalShell, which builds no portal (src/ui/components/ModalShell.tsx returns a plain
  * <div>), so the whole dialog is a descendant of `<section className="view atlas">` and the
- * scope costs nothing. Unscoped, `.atlas-modal`, `.atlas-modal-title` and the six rules beside
- * them were global names in a sheet any view that imports atlas.css loads, and the next
- * component to want a class called `.atlas-modal-body` would have inherited them silently.
+ * scope costs nothing. Unscoped, `.atlas-modal`, `.atlas-modal-title` and the rules beside them
+ * would be global names in a sheet any view that imports atlas.css loads.
  */
 
 .atlas .atlas-modal-bg {
@@ -163,53 +247,77 @@
 }
 
 .atlas .atlas-modal {
-  background: var(--bg-2, #13161a);
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
-  color: var(--text, #dde3ea);
   width: min(34rem, 100%);
   max-height: 90vh;
+  /* Horizontal clipping keeps the foil from adding a sideways scrollbar while it passes. */
+  overflow-x: hidden;
   overflow-y: auto;
   padding: 1rem;
 }
 
 .atlas .atlas-modal:focus-visible {
-  outline: 1px solid var(--accent, #a3e635);
+  outline: 2px solid var(--pink);
   outline-offset: -2px;
 }
 
 .atlas .atlas-modal-head {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
+}
+
+.atlas .atlas-modal-art {
+  flex: none;
+  display: block;
+  width: 3rem;
+  height: 3rem;
+}
+
+.atlas .atlas-modal-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.atlas .atlas-modal-heading {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .atlas .atlas-modal-rarity {
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-3, #5a6270);
 }
 
+/* Restated in full: `.view h2` styles every heading in a view, and this one sits on black. */
 .atlas .atlas-modal-title {
-  font-size: 1rem;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  letter-spacing: normal;
+  text-transform: none;
+  text-shadow: none;
   margin: 0.15rem 0 0;
-  color: var(--accent, #a3e635);
+  color: inherit;
 }
 
+/* Ink on a lime fill, 10.91:1, and the fill against the black panel at the same ratio. */
 .atlas .atlas-modal-close {
+  flex: none;
+  width: auto;
   font: inherit;
   min-height: 2.75rem;
   padding: 0 0.75rem;
   cursor: pointer;
-  color: var(--text, #dde3ea);
-  background: var(--bg-3, #1c2026);
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  color: var(--ink);
+  background: var(--lime);
+  border: 2px solid var(--lime);
 }
 
+/* Pink on the black panel, 7.75:1. */
 .atlas .atlas-modal-close:focus-visible {
-  outline: 1px solid var(--accent, #a3e635);
-  outline-offset: -2px;
+  outline: 2px solid var(--pink);
+  outline-offset: 2px;
 }
 
 .atlas .atlas-modal-body {
@@ -221,7 +329,13 @@
   margin: 1rem 0 0;
   font-size: 0.8rem;
   line-height: 1.5;
-  color: var(--text-2, #8e97a3);
   /* A citation carries a DOI, which has no spaces and overflows a 9rem phone column. */
   overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas .atlas-foil::after {
+    animation: none;
+    display: none;
+  }
 }
