@@ -29,6 +29,7 @@ import type {
   Profile,
 } from '../types';
 import { achievableLoad, formatLoad, stepFor } from '../units';
+import { RPE_ONE_RIR, RPE_ZERO_RIR } from './effort';
 
 /**
  * Fraction of the working load added when the top of the rep range is met on
@@ -169,6 +170,32 @@ export function e1RMOrNull(loadKg: Kg, reps: number): Kg | null {
   return e1RM(loadKg, reps); // [kg]
 }
 
+/**
+ * Effort rule (ROADMAP L8). True when a set that reached the top of the range also shows the
+ * lifter could have done at least one repetition more.
+ *
+ * ACSM (2009), Progression Models in Resistance Training for Healthy Adults, Med Sci Sports
+ * Exerc 41(3):687-708, DOI 10.1249/mss.0b013e3181915670 (verified), verbatim: "2-10% increase
+ * in load be applied when the individual can perform the current workload for one to two
+ * repetitions over the desired number". Zourdos MC et al. (2016), J Strength Cond Res
+ * 30(1):267-275, DOI 10.1519/JSC.0000000000001049 (verified): RPE 10 = 0 repetitions in reserve,
+ * RPE 9 = 1. Both: docs/private/evidence/content-peer-review.md section 10.
+ *
+ * - reps > hi: the repetition over the top was performed, whatever the effort.
+ * - reps === hi and RPE <= 9: at least one repetition was left in reserve.
+ * - reps === hi and RPE above 9 (10 = "Max"; an imported 9.5 lies between the two anchors, so
+ *   under one in reserve): the lifter could not have done one more. Not evidence.
+ * - no RPE recorded: the rule cannot tell, and keeps the pre-L8 reading, where reaching the top
+ *   was enough. A history with no effort anywhere therefore advises exactly as before.
+ *
+ * @param hi [repetitions] top of the prescribed range.
+ */
+export function showsRepetitionInReserve(s: LoggedSet, hi: number): boolean {
+  if (s.reps === null || s.reps < hi) return false;
+  if (s.reps > hi) return true;
+  return s.rpe === null || s.rpe <= RPE_ONE_RIR; // [RPE] dimensionless
+}
+
 /** The identity on every prescription that has no upper bound to raise. */
 function extendReps(p: Prescription): Prescription {
   return p.kind === 'reps' ? { kind: 'reps', lo: p.lo, hi: p.hi + REP_RANGE_EXTENSION } : p;
@@ -305,12 +332,13 @@ export function suggestedProgression(
   // (timed work logged against a rep prescription) can never have reached the top,
   // so it is performed but not met.
   const prescribedSets = Math.max(1, planned.setsLo); // [sets]
-  const metCount = lastSession.filter(
+  const metSets = lastSession.filter(
     (s) =>
       s.reps !== null &&
       s.reps >= prescription.hi &&
       Math.abs(s.loadKg - workingLoadKg) <= LOAD_EQ_TOL_KG,
-  ).length; // [sets]
+  );
+  const metCount = metSets.length; // [sets]
   const metTop = metCount >= prescribedSets;
   const countText = metCountText(
     metCount,
@@ -327,6 +355,24 @@ export function suggestedProgression(
       loadKg: workingLoadKg, // [kg]
       reason: `Hold ${formatLoad(workingLoadKg, units)} until every set reaches ${prescription.hi} repetitions.`,
       why: `${countText}. The load rises only when every prescribed set reaches the top of the range at the working load.`,
+    };
+  }
+
+  // Effort rule (ROADMAP L8; sources at showsRepetitionInReserve). The deciding sets are the
+  // ones the tally above already chose: non-bonus, at the working load, at or past the top. Of
+  // those, a set rated above RPE 9 at exactly the top had no repetition to spare, so it does not
+  // count, and the prescribed count must still be met by the rest. Placed before every
+  // progression step, so it holds the load AND the range: extending the range is the
+  // substitute for the same earned increase (step guard below), and nothing was earned.
+  const reserveCount = metSets.filter((s) => showsRepetitionInReserve(s, prescription.hi)).length; // [sets]
+  if (reserveCount < prescribedSets) {
+    const spent = metCount - reserveCount; // [sets] at the top with no repetition left
+    return {
+      ...base,
+      kind: 'hold',
+      loadKg: workingLoadKg, // [kg] unchanged
+      reason: `Hold ${formatLoad(workingLoadKg, units)}: a top-of-range set had no repetitions left.`,
+      why: `${countText}. ${spent} of them ${spent === 1 ? 'was' : 'were'} rated above RPE ${RPE_ONE_RIR}, under one repetition in reserve (Zourdos 2016: RPE ${RPE_ZERO_RIR} = 0, RPE ${RPE_ONE_RIR} = 1), so ${reserveCount} of ${prescribedSets} prescribed show a repetition to spare. ACSM 2009 raises the load when the current load can be lifted for one to two repetitions over the target, so the load and the range of ${rangeText(prescription)} hold.`,
     };
   }
 

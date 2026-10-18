@@ -21,6 +21,7 @@ import {
   sortSetHistory,
   suggestedProgression,
 } from './progression';
+import { EFFORT_RPE } from './effort';
 
 beforeEach(() => {
   resetFixtureIds();
@@ -329,6 +330,7 @@ describe('advice copy contract', () => {
     ['hold', session('2026-03-02', 3, 60, 7), makePlannedExercise(), ex, makeBlock()],
     ['step guard', session('2026-03-02', 3, 20, 8), makePlannedExercise(), ex, makeBlock()],
     ['add-load', session('2026-03-02', 3, 60, 8), makePlannedExercise(), ex, makeBlock()],
+    ['effort hold', session('2026-03-02', 3, 60, 8, { rpe: 10 }), makePlannedExercise(), ex, makeBlock()],
   ];
 
   it.each(cases)(
@@ -698,6 +700,7 @@ describe('advice copy contract R5: no dash connectors', () => {
       ex,
       makeBlock(),
     ],
+    ['effort hold', session('2026-03-02', 3, 60, 8, { rpe: 10 }), makePlannedExercise(), ex, makeBlock()],
   ];
 
   it.each(r5Cases)('%s: reason and why carry no dash connector', (_name, history, planned, exercise, block) => {
@@ -711,5 +714,141 @@ describe('advice copy contract R5: no dash connectors', () => {
     expect(advice.reason.trim().split(/\s+/).length).toBeLessThanOrEqual(MAX_REASON_WORDS);
     expect(advice.reason).not.toContain('!');
     expect(advice.why.length).toBeGreaterThan(0);
+  });
+});
+
+describe('suggestedProgression effort rule (ROADMAP L8)', () => {
+  // ACSM 2009 raises the load "when the individual can perform the current workload for one to
+  // two repetitions over the desired number"; Zourdos 2016: RPE 10 = 0 repetitions in reserve,
+  // RPE 9 = 1. A set that reached exactly the top at Max shows no repetition to spare.
+  const MAX = EFFORT_RPE.max; // [RPE]
+
+  function advise(
+    history: LoggedSet[],
+    planned: PlannedExercise = makePlannedExercise(),
+    ex: Exercise = makeExercise({ loadClass: 'upper-compound' }),
+  ) {
+    return suggestedProgression(history, planned, ex, makeProfile(), makeBlock());
+  }
+
+  it('holds the load when every prescribed set reached the top at Max', () => {
+    const advice = advise(session('2026-03-02', 3, 60, 8, { rpe: MAX }));
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(60); // [kg] unchanged
+    expect(advice.nextPrescription).toEqual({ kind: 'reps', lo: 6, hi: 8 });
+    // The hold says why in its own words, not the "reach the top" hold it is not.
+    expect(advice.reason).toBe('Hold 60 kg: a top-of-range set had no repetitions left.');
+    expect(advice.why).toContain('ACSM 2009');
+    expect(advice.why).toContain('Zourdos 2016');
+  });
+
+  it('holds when one of the three prescribed sets was Max at exactly the top', () => {
+    const history = [
+      ...session('2026-03-02', 2, 60, 8, { rpe: EFFORT_RPE.hard }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 3, loadKg: 60, reps: 8, rpe: MAX }),
+    ];
+    const advice = advise(history);
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(60); // [kg]
+  });
+
+  it.each(['easy', 'solid', 'hard'] as const)('advances when the top sets were %s', (level) => {
+    const advice = advise(session('2026-03-02', 3, 60, 8, { rpe: EFFORT_RPE[level] }));
+    expect(advice.kind).toBe('add-load');
+    expect(advice.loadKg).toBeCloseTo(62.5, 10); // [kg] 60 + one 2.5 kg step
+  });
+
+  it('advances when some sets carry no effort and the rest kept a repetition', () => {
+    const history = [
+      ...session('2026-03-02', 2, 60, 8), // rpe null: not recorded
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 3, loadKg: 60, reps: 8, rpe: EFFORT_RPE.hard }),
+    ];
+    expect(advise(history).kind).toBe('add-load');
+  });
+
+  it('advances when a Max set went past the top: the extra repetition was performed', () => {
+    const advice = advise(session('2026-03-02', 3, 60, 9, { rpe: MAX })); // [repetitions] 9 > hi 8
+    expect(advice.kind).toBe('add-load');
+  });
+
+  it('gives an imported RPE 9.5 less than one repetition in reserve, so it holds', () => {
+    expect(advise(session('2026-03-02', 3, 60, 8, { rpe: 9.5 })).kind).toBe('hold');
+  });
+
+  it('holds rather than extending the range when the step guard would have fired', () => {
+    const planned = makePlannedExercise({
+      exerciseId: 'barbell-curl',
+      prescription: { kind: 'reps', lo: 8, hi: 12 },
+    });
+    const curl = makeExercise({ id: 'barbell-curl', loadClass: 'isolation', isCompoundPrimary: false });
+    const atMax = advise(
+      session('2026-03-02', 3, 20, 12, { exerciseId: 'barbell-curl', rpe: MAX }),
+      planned,
+      curl,
+    );
+    expect(atMax.kind).toBe('hold');
+    expect(atMax.nextPrescription).toEqual({ kind: 'reps', lo: 8, hi: 12 });
+    const atHard = advise(
+      session('2026-03-02', 3, 20, 12, { exerciseId: 'barbell-curl', rpe: EFFORT_RPE.hard }),
+      planned,
+      curl,
+    );
+    expect(atHard.kind).toBe('extend-reps');
+  });
+
+  it('lets neither a Max back-off set nor a Max bonus set decide', () => {
+    const history = [
+      ...session('2026-03-02', 3, 60, 8, { rpe: EFFORT_RPE.hard }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 4, loadKg: 50, reps: 12, rpe: MAX }),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 5, loadKg: 60, reps: 8, rpe: MAX, isBonus: true }),
+    ];
+    expect(advise(history).kind).toBe('add-load');
+  });
+
+  it('keeps the existing hold, reason and all, when a Max set fell short of the top', () => {
+    const shortAt = (rpe: number | null): LoggedSet[] => [
+      ...session('2026-03-02', 2, 60, 8),
+      makeSet({ assignmentDate: '2026-03-02', setNumber: 3, loadKg: 60, reps: 7, rpe }),
+    ];
+    const withMax = advise(shortAt(MAX));
+    const withNone = advise(shortAt(null));
+    expect(withMax).toEqual(withNone);
+    expect(withMax.kind).toBe('hold');
+  });
+
+  it('gives the pre-L8 advice on every branch when the recorded effort left a repetition', () => {
+    // Every rpe null is the pre-L8 path (the rest of this file). Hard at the top keeps one
+    // repetition in reserve, so it must reach the identical advice on every branch.
+    const ex = makeExercise();
+    const bodyweight = makeExercise({ id: 'pull-up', isBodyweight: true, modality: 'bodyweight' });
+    const cases: [LoggedSet[], PlannedExercise, Exercise, PlanBlock][] = [
+      [session('2026-03-02', 3, 60, 8), makePlannedExercise(), ex, makeBlock()],
+      [session('2026-03-02', 3, 60, 7), makePlannedExercise(), ex, makeBlock()],
+      [session('2026-03-02', 3, 20, 8), makePlannedExercise(), ex, makeBlock()],
+      [session('2026-03-02', 3, 60, 8), makePlannedExercise(), ex, makeBlock({ isDeload: true })],
+      [
+        session('2026-03-02', 3, 0, 8, { exerciseId: 'pull-up' }),
+        makePlannedExercise({ exerciseId: 'pull-up' }),
+        bodyweight,
+        makeBlock(),
+      ],
+      [
+        session('2026-03-02', 3, 60, 14),
+        makePlannedExercise({ prescription: { kind: 'amrap', minimum: null } }),
+        ex,
+        makeBlock(),
+      ],
+    ];
+    for (const [history, planned, exercise, block] of cases) {
+      const none = suggestedProgression(history, planned, exercise, makeProfile(), block);
+      const hard = suggestedProgression(
+        history.map((s) => ({ ...s, rpe: EFFORT_RPE.hard })),
+        planned,
+        exercise,
+        makeProfile(),
+        block,
+      );
+      expect(hard).toEqual(none);
+    }
   });
 });
