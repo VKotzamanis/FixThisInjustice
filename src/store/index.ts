@@ -46,6 +46,7 @@ import {
   EMPTY_SESSION,
   clearSessionMirror,
   initialSession,
+  REST_GAME_WINS_MAX,
   saveSessionMirror,
   type SessionState,
 } from './sessionMirror';
@@ -238,6 +239,11 @@ export interface AppActions {
   addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void;
   /** Starts, replaces or clears the rest interval. Session slice only; never persisted. */
   setRestTimer(t: RestTimer | null): void;
+  /**
+   * Counts one won rest-game round in this lifting day (ROADMAP F1). Session slice only: mirrored
+   * to sessionStorage, reset by clearSessionSlice, never written to fti.v3. Touches no timer field.
+   */
+  recordRestGameWin(): void;
   /** Adds a user-defined exercise to one profile's library under a freshly generated id (A26). */
   addCustomExercise(profileId: string, ex: Exercise): void;
   /**
@@ -916,6 +922,19 @@ export const useAppStore = create<AppStore>()((set, get) => {
     set((s) => {
       const session: SessionState = { ...s.session, restTimer: t };
       // Mirrored: this is the field a mid-session reload must not lose.
+      saveSessionMirror(session);
+      return { ...s, session };
+    });
+  },
+
+  recordRestGameWin(): void {
+    set((s) => {
+      const session: SessionState = {
+        ...s.session,
+        // Saturates at the mirror schema's ceiling, so a very long session never writes a mirror
+        // this same build would refuse on reload.
+        restGameWins: Math.min(REST_GAME_WINS_MAX, s.session.restGameWins + 1), // [rounds]
+      };
       saveSessionMirror(session);
       return { ...s, session };
     });

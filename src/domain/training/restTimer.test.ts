@@ -91,6 +91,26 @@ describe('startRest / remainingS', () => {
     expect(remainingS(t, T0 + 90_000)).toBe(0); // [s] exactly at endsAt
   });
 
+  it('carries a rest-game identity without moving either instant (ROADMAP F1)', () => {
+    // The game rides on the timer it was started with; it must never stretch the cited rest.
+    const game = {
+      exerciseId: 'fixture-exercise',
+      sessionId: 'session-1',
+      assignmentDate: '2026-03-02',
+      setNumber: 2, // [sets]
+      sessionSetOrdinal: 5, // [sets]
+    };
+    const plain = startRest(120, T0); // [s], [ms]
+    const withGame = startRest(120, T0, game); // [s], [ms]
+    expect(withGame).toEqual({ ...plain, game });
+    expect(withGame.endsAt).toBe(T0 + 120_000); // [ms]
+    expect(totalS(withGame)).toBe(totalS(plain)); // [s]
+    // No key at all without a game: an older reader sees exactly the shape it always saw.
+    expect('game' in plain).toBe(false);
+    // An extension keeps the identity, so the same round survives a +30 s tap.
+    expect(extend(withGame, 30).game).toEqual(game);
+  });
+
   it('is pure: the same arguments give the same answer and nothing is stored', () => {
     const t = startRest(90, T0);
     expect(remainingS(t, T0 + 30_000)).toBe(60); // [s]

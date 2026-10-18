@@ -81,6 +81,10 @@ export default defineConfig({
         /limelight\.css(\?|$)/,
         /appShell\.css(\?|$)/,
         /setup\.css(\?|$)/,
+        // train.css (ROADMAP F1): the rest game's reduced-motion rule, its 44 px key targets and
+        // its token-only colours are CSS guarantees jsdom cannot compute, so
+        // src/ui/views/train/restGameStyles.test.ts reads the sheet as text through ?raw.
+        /train\.css(\?|$)/,
       ],
     },
   },

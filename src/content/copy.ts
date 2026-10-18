@@ -377,6 +377,18 @@ export type CopyKey =
   | 'advice.noFormCues'
   // --- Train view (P4 Task 10; appended by that task) ---
   | 'button.extendRest'
+  // --- Rest games (ROADMAP F1, docs/design/rest-games.md) ---
+  | 'button.restWordLaunch'
+  | 'button.restWordExit'
+  | 'button.restWordDelete'
+  | 'button.restWordSubmit'
+  | 'hero.restWord'
+  | 'label.restWordBoard'
+  | 'label.restWordKeyboard'
+  | 'advice.restWordRule'
+  | 'status.restWordWon'
+  | 'status.restWordLost'
+  | 'status.restWordTooLate'
   | 'button.backToToday'
   | 'label.bonusSet'
   | 'label.suggestedLoad'
@@ -1218,6 +1230,19 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The rest control adds a fixed 30 s. The value is part of the control, not of the skin: a
   // skin that renamed it "+1 min" would state an extension the timer does not make.
   'button.extendRest': '+30 s',
+  // Rest games (ROADMAP F1). Optional, and none of them names the rest clock: a game never pauses,
+  // skips or extends the prescribed rest, so no string here may promise that it does.
+  'button.restWordLaunch': 'Play Word Game',
+  'button.restWordExit': 'Exit Game',
+  'button.restWordDelete': 'Delete Letter',
+  'button.restWordSubmit': 'Submit Guess',
+  'hero.restWord': 'Rest Word',
+  'label.restWordBoard': 'Word Puzzle Board',
+  'label.restWordKeyboard': 'Word Puzzle Keyboard',
+  'advice.restWordRule': 'Solve the word before the round clock ends.',
+  'status.restWordWon': 'Round won.',
+  'status.restWordLost': 'Round lost.',
+  'status.restWordTooLate': 'Not enough rest time remains for a round.',
   // Leaves the finished session. Named for the destination, because after the post-session
   // weigh-in there is nothing left to do here.
   'button.backToToday': 'Back to Today',

@@ -342,6 +342,32 @@ describe('the session slice', () => {
     expect(loadSessionMirror()?.restTimer).toBeNull();
   });
 
+  it('keeps rest-game wins in the session mirror and out of the main document (ROADMAP F1)', () => {
+    vi.useFakeTimers();
+    const data = installFakeStorage();
+    startPersistenceForTest();
+
+    useAppStore.getState().recordRestGameWin();
+
+    expect(useAppStore.getState().session.restGameWins).toBe(1); // [rounds]
+    expect(loadSessionMirror()?.restGameWins).toBe(1); // [rounds]
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 2);
+    // A win alone makes the store write nothing to fti.v3.
+    expect(data.get(STORAGE_KEY)).toBeUndefined();
+
+    // A later document write (a logged set) carries no trace of the game either.
+    useAppStore.getState().logSet(setInput, NOW);
+    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    const written = data.get(STORAGE_KEY) ?? '';
+    expect(written).not.toBe('');
+    expect(written).not.toMatch(/restGame|restWord/);
+
+    // The count ends with the session: no score outlives the lifting day.
+    useAppStore.getState().clearSessionSlice();
+    expect(useAppStore.getState().session.restGameWins).toBe(0); // [rounds]
+    expect(loadSessionMirror()).toBeNull();
+  });
+
   it('refuses a bonus exercise no library and no profile knows', () => {
     // The session slice is mirrored, so an id with no Exercise behind it would be written to
     // storage and read back on every reload to render a card that can never appear.

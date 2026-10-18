@@ -36,6 +36,18 @@ describe('sessionMirror', () => {
     expect(loadSessionMirror()).toBeNull();
   });
 
+  it('treats a pre-game mirror with no win counter as zero rather than refusing the rest', () => {
+    storage.set(
+      SESSION_KEY,
+      JSON.stringify({
+        restTimer: { startedAt: T0, endsAt: T0 + 90_000, durationS: 90 }, // [ms], [ms], [s]
+        activeAssignmentDate: '2026-03-02',
+        bonusExerciseIds: [],
+      }),
+    );
+    expect(loadSessionMirror()?.restGameWins).toBe(0);
+  });
+
   it('round-trips a running rest timer', () => {
     const timer = startRest(90, T0); // [s], [ms]
     saveSessionMirror({
@@ -45,9 +57,47 @@ describe('sessionMirror', () => {
     });
     expect(loadSessionMirror()).toEqual({
       restTimer: timer,
+      restGameWins: 0,
       activeAssignmentDate: '2026-03-02',
       bonusExerciseIds: [],
     });
+  });
+
+  it('round-trips the rest-game identity beside its timer (ROADMAP F1)', () => {
+    const timer = startRest(120, T0, {
+      exerciseId: 'barbell-bench-press',
+      sessionId: 'session-1',
+      assignmentDate: '2026-03-02',
+      setNumber: 2, // [sets]
+      sessionSetOrdinal: 5, // [sets]
+    });
+    saveSessionMirror({ ...EMPTY_SESSION, restTimer: timer, restGameWins: 2 });
+    expect(loadSessionMirror()?.restTimer).toEqual(timer);
+    expect(loadSessionMirror()?.restGameWins).toBe(2); // [rounds]
+  });
+
+  it('refuses a game identity naming no calendar day, like any other bad field', () => {
+    storage.set(
+      SESSION_KEY,
+      JSON.stringify({
+        restTimer: {
+          startedAt: T0,
+          endsAt: T0 + 90_000, // [ms]
+          durationS: 90, // [s]
+          game: {
+            exerciseId: 'e',
+            sessionId: 's',
+            assignmentDate: '2026-02-30',
+            setNumber: 1,
+            sessionSetOrdinal: 1,
+          },
+        },
+        restGameWins: 0,
+        activeAssignmentDate: '2026-03-02',
+        bonusExerciseIds: [],
+      }),
+    );
+    expect(loadSessionMirror()).toBeNull();
   });
 
   it('round-trips the bonus exercises added to this session', () => {

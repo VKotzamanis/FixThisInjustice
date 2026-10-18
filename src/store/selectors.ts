@@ -295,6 +295,11 @@ export function useRestTimer(): RestTimer | null {
   return useAppStore((s) => s.session.restTimer);
 }
 
+/** [rounds] Rest-game wins in the current lifting day, reset when the session closes. */
+export function useRestGameWins(): number {
+  return useAppStore((s) => s.session.restGameWins);
+}
+
 /**
  * [ms] How often the motivation clock is allowed to move. The quantity the selector below
  * compares against it is the age of a closed week, measured in days (MOTIVATION_MISS_WINDOW_DAYS

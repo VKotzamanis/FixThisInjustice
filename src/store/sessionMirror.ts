@@ -8,9 +8,10 @@
 // src/store/persistence.ts (master plan section 3: one key, one owner). This module is the
 // only sanctioned sessionStorage writer in the app.
 //
-// What is mirrored is what a reload must not lose: the running timer, the day the user is
-// training, and the exercises added beyond the plan. The undo buffer is deliberately excluded;
-// see PendingUndo.
+// What is mirrored is what a reload must not lose: the running timer (with its rest-game
+// identity), the day the user is training, the exercises added beyond the plan, and the day's
+// rest-game win count (ROADMAP F1; the only place a game result is kept, and it ends with the
+// session). The undo buffer is deliberately excluded; see PendingUndo.
 //
 // Reads are validated and failures are swallowed on purpose. The mirror is a convenience, not
 // a record: every failure mode below (unavailable storage, corrupt JSON, a payload from an
@@ -33,6 +34,8 @@ export interface PendingUndo {
 export interface SessionState {
   /** The running rest interval, or null when no rest is under way. */
   restTimer: RestTimer | null;
+  /** [rounds] Wins in this lifting day; raises the next generated rest-game difficulty only. */
+  restGameWins: number;
   /** The civil day the user is training, once a session has been opened on it. */
   activeAssignmentDate: LocalDate | null;
   /** Exercises added to today's session beyond the plan; their sets carry isBonus. */
@@ -46,15 +49,19 @@ export interface SessionState {
   undo: PendingUndo | null;
 }
 
+/** [rounds] The mirror schema's ceiling on rest-game wins; the store saturates at it. */
+export const REST_GAME_WINS_MAX = 10_000;
+
 export const EMPTY_SESSION: SessionState = {
   restTimer: null,
+  restGameWins: 0,
   activeAssignmentDate: null,
   bonusExerciseIds: [],
   undo: null,
 };
 
 /**
- * The three durable fields, validated on the way back in.
+ * The four durable fields, validated on the way back in.
  *
  * Written out here rather than reused from the domain because a mirror is untrusted input:
  * it is user-editable storage, it can be written by an older build, and it reaches a store
@@ -83,12 +90,28 @@ const MirrorSchema = z.object({
       startedAt: z.number().int().finite(), // [ms] epoch UTC
       endsAt: z.number().int().finite(), // [ms] epoch UTC
       durationS: z.number().nonnegative().finite(), // [s]
+      // Optional for timers started by older builds. A present context is fully validated rather
+      // than silently stripped, so a reload restores the same seeded puzzle as the live tab.
+      game: z
+        .object({
+          exerciseId: z.string().min(1).max(200),
+          sessionId: z.string().min(1).max(200),
+          assignmentDate: z
+            .string()
+            .refine((d) => isValidLocalDate(d), { message: 'not a calendar-valid game date' }),
+          setNumber: z.number().int().min(1).max(100), // [sets]
+          sessionSetOrdinal: z.number().int().min(1).max(1_000), // [sets]
+        })
+        .optional(),
     })
     // Non-strict: endsAt === startedAt is the zero-length interval startRest(0, t) produces.
     .refine((t) => t.endsAt >= t.startedAt, {
       message: 'endsAt is before startedAt',
     })
     .nullable(),
+  // A missing key is an older pre-game mirror, not a corrupt session. Its safe meaning is no
+  // bonus difficulty, so default it rather than dropping an otherwise valid in-progress rest.
+  restGameWins: z.number().int().min(0).max(REST_GAME_WINS_MAX).default(0), // [rounds]
   activeAssignmentDate: z
     .string()
     .refine((d) => isValidLocalDate(d), { message: 'not a calendar-valid "YYYY-MM-DD" date' })
@@ -119,10 +142,11 @@ export function loadSessionMirror(): SessionMirror | null {
   }
 }
 
-/** Writes the three durable fields. The undo buffer is dropped here, by construction. */
+/** Writes the four durable fields. The undo buffer is dropped here, by construction. */
 export function saveSessionMirror(s: SessionState): void {
   const mirror: SessionMirror = {
     restTimer: s.restTimer,
+    restGameWins: s.restGameWins,
     activeAssignmentDate: s.activeAssignmentDate,
     bonusExerciseIds: s.bonusExerciseIds,
   };
