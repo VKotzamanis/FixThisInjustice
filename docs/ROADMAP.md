@@ -41,6 +41,15 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
   - Dead: sfx skin-switch logic (`src/skins/sfx.ts`), geist/jetbrains entries in `vite.config.ts` globIgnores, 4 unused font packages in `package.json` (@fontsource-variable/geist, @fontsource-variable/jetbrains-mono, @fontsource/dm-mono, @fontsource/space-mono).
   - Nothing stops a new call site from calling `copy()` without the limelight overlay; `src/content/limelightParity.test.ts` covers the existing render path only.
 
+## 3b. Art and style (2026-10-18, done unless listed)
+- DONE: approved art wired (body-fat torsos, slider icons, tape diagrams, Atlas glyphs, app icon from owner sprite, badge); all 10 survey items (`docs/design/stylize-survey-2026-10-18.md`); contrast sweep test `src/ui/styles/limeContrast.test.ts`. Review pages: art https://claude.ai/code/artifact/892f9e79-641c-4408-9540-d7810eacda2c, screenshots https://claude.ai/code/artifact/f57b6407-07a7-4d17-b8cb-1296a6b94d61.
+- S1 `.wiz-modal-hrt` pink on white 2.71:1: owner's own request (r2.12 iv), needs his ruling.
+- S2 Ink on black still in `spotlight.css` (`.spotlight-item.is-active`), `konami.css` (`.konami button`), `limelight.css` (`.ll-marquee-strip`).
+- S3 `@media (max-width:560px) .wiz-row` never applies (`.wiz .wiz-row` outranks it); wizard radios keep browser blue.
+- S4 Fixture `scripts/alpha-fixture.mjs:134` puts sessions off slot weekdays (Fri/Sun/Tue vs Mon/Wed/Fri), so review screenshots of Log look empty. Log grid shows an unopened past slot day as "not planned", not "missed": owner call.
+- S5 Precache grew to ~1,030 KiB (+141) mostly from inlined SVG; lazy-load the chart art if size matters.
+- S6 Specimen toast could show the category glyph (`CategoryGlyph`). `INTRO_FIGURE` in `src/content/introSlides.ts` is now unrendered: owner decides whether to delete it.
+
 ## 4. Fun (want, all)
 - F1 DONE 2026-10-18: Rest Word (Wordle-style) offered with each rest, opt-in, closes with the rest; design and constraints `docs/design/rest-games.md`. More small games: add per that note. Gaps: leaving Train mid-rest re-offers the same round; guess results not announced to screen readers; rest-over chime ignores `ui.sounds` (pre-existing).
 - F2 Limelight voice: the vulgar register the owner asked for; never written (agent chose camp only). Owner's words, his call on lines.
