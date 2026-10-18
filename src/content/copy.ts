@@ -670,7 +670,12 @@ export type CopyKey =
   | 'label.sameMuscle'
   | 'label.otherExercises'
   | 'label.swappedOut'
-  | 'status.swappedFrom';
+  | 'status.swappedFrom'
+  | 'button.skipExercise'
+  | 'button.restoreExercise'
+  | 'button.moveUp'
+  | 'button.moveDown'
+  | 'label.skipped';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1986,6 +1991,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.swappedOut': 'Swapped Out',
   // template; FORMAT.swappedFrom. Under a swapped-in exercise's name: the planned one it replaces.
   'status.swappedFrom': 'In place of {name}.',
+  // L3: skip (restorable, logged sets kept) and reorder, by buttons rather than drag so the
+  // controls work one-handed and never fight the page scroll.
+  'button.skipExercise': 'Skip Exercise',
+  'button.restoreExercise': 'Restore',
+  'button.moveUp': 'Move Up',
+  'button.moveDown': 'Move Down',
+  'label.skipped': 'Skipped',
 };
 
 /**

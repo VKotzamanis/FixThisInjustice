@@ -1604,4 +1604,96 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
     expect(useAppStore.getState().sets['set-1']).toEqual(before);
     expect(screen.getByText(copyFor('limelight', 'label.swappedOut'))).toBeInTheDocument();
   });
+
+  /** seed() with a second planned exercise after the bench press: lat pulldown. */
+  function seedTwo(opts: SeedOptions = {}): AppState {
+    const state = seed({ exercise: BENCH, ...opts });
+    const plan = state.plans['plan-1'];
+    const first = plan?.sessions[0];
+    if (plan === undefined || first === undefined) throw new Error('seed() changed shape');
+    return {
+      ...state,
+      plans: {
+        'plan-1': {
+          ...plan,
+          sessions: [
+            {
+              ...first,
+              exercises: [...first.exercises, makePlannedExercise({ exerciseId: 'lat-pulldown' })],
+            },
+          ],
+        },
+      },
+    };
+  }
+
+  /** The card titles in screen order. */
+  function cardTitles(): string[] {
+    return screen
+      .getAllByRole('button')
+      .filter((b) => b.classList.contains('ex-head'))
+      .map((b) => b.querySelector('.ex-title')?.firstChild?.textContent ?? '');
+  }
+
+  function barButton(card: string, key: Parameters<typeof copyFor>[1]): HTMLElement {
+    return within(editBar(card)).getByRole('button', { name: copyFor('limelight', key) });
+  }
+
+  it('L3: skips an exercise for this session and restores it', () => {
+    seedStore(seedTwo());
+    renderTrain();
+
+    fireEvent.click(barButton('Barbell bench press', 'button.skipExercise'));
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.skipped).toEqual([
+      'barbell-bench-press',
+    ]);
+    expect(screen.getByText(copyFor('limelight', 'label.skipped'))).toBeInTheDocument();
+
+    // A skipped card is not opened for the user; they open it to restore it.
+    fireEvent.click(screen.getByRole('button', { name: /Barbell bench press/ }));
+    fireEvent.click(barButton('Barbell bench press', 'button.restoreExercise'));
+    const day = useAppStore.getState().assignments['profile-1']?.[0];
+    expect(day !== undefined && 'edits' in day).toBe(false);
+    expect(screen.queryByText(copyFor('limelight', 'label.skipped'))).toBeNull();
+  });
+
+  it('L3: skipping keeps every set already logged on the exercise', () => {
+    const done = makeSet({ id: 'set-1', exerciseId: 'barbell-bench-press', loadKg: 60, reps: 8 });
+    seedStore(seedTwo({ sets: [done] }));
+    renderTrain();
+    fireEvent.click(barButton('Barbell bench press', 'button.skipExercise'));
+
+    expect(useAppStore.getState().sets['set-1']).toEqual(done);
+    // Still on screen, with its count, under the Skipped tag.
+    expect(screen.getByText(FORMAT.exerciseProgress(1, 3))).toBeInTheDocument();
+  });
+
+  it('L3: reorders exercises with Move Up and Move Down, disabled at the ends', () => {
+    seedStore(seedTwo());
+    renderTrain();
+    expect(cardTitles()).toEqual(['Barbell bench press', 'Lat pulldown']);
+    expect(barButton('Barbell bench press', 'button.moveUp')).toBeDisabled();
+
+    fireEvent.click(barButton('Barbell bench press', 'button.moveDown'));
+    expect(cardTitles()).toEqual(['Lat pulldown', 'Barbell bench press']);
+    expect(barButton('Barbell bench press', 'button.moveDown')).toBeDisabled();
+
+    fireEvent.click(barButton('Barbell bench press', 'button.moveUp'));
+    expect(cardTitles()).toEqual(['Barbell bench press', 'Lat pulldown']);
+  });
+
+  it('L3: offers no session edits once the session is finished', () => {
+    const state = seedTwo();
+    const day = state.assignments['profile-1']?.[0];
+    if (day === undefined) throw new Error('seed() changed shape');
+    seedStore({
+      ...state,
+      assignments: { 'profile-1': [{ ...day, status: 'completed', completedAt: NOW }] },
+    });
+    renderTrain();
+    expect(screen.queryByRole('group', { name: 'Barbell bench press' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: copyFor('limelight', 'button.skipExercise') }),
+    ).toBeNull();
+  });
 });

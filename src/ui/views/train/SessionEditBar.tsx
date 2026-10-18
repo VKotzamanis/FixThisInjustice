@@ -33,12 +33,16 @@ export interface SessionEditBarProps {
   library: readonly Exercise[];
   /** Exercise ids the session already holds; never offered again. */
   inUse: ReadonlySet<string>;
+  /** False on the first card (Move Up) or the last (Move Down): the control is disabled. */
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   /** Applies the edit; false when the store refused it. */
   onEdit: (op: SessionEditOp) => boolean;
 }
 
 export function SessionEditBar(props: SessionEditBarProps): ReactElement {
-  const { t, entry, name, original, access, library, inUse, onEdit } = props;
+  const { t, entry, name, original, access, library, inUse, canMoveUp, canMoveDown, onEdit } =
+    props;
   const [swapping, setSwapping] = useState(false);
   const [choice, setChoice] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -119,6 +123,18 @@ export function SessionEditBar(props: SessionEditBarProps): ReactElement {
             </button>
           </div>
         </div>
+      ) : entry.skipped ? (
+        // A skipped card offers one thing: bringing it back. Its logged sets were never touched.
+        <div className="ex-edit-row">
+          <button
+            type="button"
+            onClick={() => {
+              run({ kind: 'restore', key: entry.key });
+            }}
+          >
+            {t('button.restoreExercise')}
+          </button>
+        </div>
       ) : (
         <div className="ex-edit-row">
           {original !== null && (
@@ -132,6 +148,32 @@ export function SessionEditBar(props: SessionEditBarProps): ReactElement {
               {t('button.swapExercise')}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => {
+              run({ kind: 'skip', key: entry.key });
+            }}
+          >
+            {t('button.skipExercise')}
+          </button>
+          <button
+            type="button"
+            disabled={!canMoveUp}
+            onClick={() => {
+              run({ kind: 'move', key: entry.key, by: -1 });
+            }}
+          >
+            {t('button.moveUp')}
+          </button>
+          <button
+            type="button"
+            disabled={!canMoveDown}
+            onClick={() => {
+              run({ kind: 'move', key: entry.key, by: 1 });
+            }}
+          >
+            {t('button.moveDown')}
+          </button>
         </div>
       )}
       {/* role="alert": it answers the control the user just pressed. */}

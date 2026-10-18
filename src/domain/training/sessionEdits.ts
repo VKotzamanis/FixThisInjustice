@@ -75,8 +75,32 @@ export function isBonusEntry(e: LineupEntry): boolean {
   return e.kind === 'added' || e.kind === 'logged';
 }
 
-/** One edit, as the Train view asks for it. */
-export type SessionEditOp = { kind: 'swap'; key: string; exerciseId: string };
+/** One edit, as the Train view asks for it. `key` is a slot key (see LineupEntry.key). */
+export type SessionEditOp =
+  | { kind: 'swap'; key: string; exerciseId: string }
+  | { kind: 'skip'; key: string }
+  | { kind: 'restore'; key: string }
+  | { kind: 'move'; key: string; by: -1 | 1 };
+
+/** Slot keys in the order the plan (then the user's additions) gives them. */
+function defaultOrder(session: PlannedSession, e: SessionEdits): string[] {
+  return [...session.exercises.map((p) => p.exerciseId), ...e.added];
+}
+
+/**
+ * Slot keys in display order: the keys `e.order` names that still exist, then every other
+ * key in default order. Tolerates a stale order (a key that is gone, a slot added since), so a
+ * stored order can never hide a slot.
+ */
+function effectiveOrder(session: PlannedSession, e: SessionEdits): string[] {
+  const all = defaultOrder(session, e);
+  const named = e.order.filter((k, i) => all.includes(k) && e.order.indexOf(k) === i);
+  return [...named, ...all.filter((k) => !named.includes(k))];
+}
+
+function sameOrder(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((k, i) => k === b[i]);
+}
 
 /**
  * The substitute's prescription for a planned slot. Set counts are the slot's volume decision
@@ -127,13 +151,15 @@ export function sessionLineup(input: LineupInput): LineupEntry[] {
   const { session, library, loggedExerciseIds } = input;
   const e = input.edits ?? EMPTY_EDITS;
 
-  const slots: LineupEntry[] = [];
+  const skipped = new Set(e.skipped);
+  const byKey = new Map<string, LineupEntry>();
   for (const planned of session.exercises) {
     const original = library[planned.exerciseId];
     if (original === undefined) continue;
     const subId = e.swaps[planned.exerciseId];
     const sub = subId === undefined ? undefined : library[subId];
-    slots.push(
+    byKey.set(
+      planned.exerciseId,
       sub === undefined
         ? {
             key: planned.exerciseId,
@@ -141,7 +167,7 @@ export function sessionLineup(input: LineupInput): LineupEntry[] {
             planned,
             kind: 'planned',
             replaces: null,
-            skipped: false,
+            skipped: skipped.has(planned.exerciseId),
           }
         : {
             key: planned.exerciseId,
@@ -149,10 +175,14 @@ export function sessionLineup(input: LineupInput): LineupEntry[] {
             planned: substitutePlanned(planned, sub),
             kind: 'swapped',
             replaces: planned.exerciseId,
-            skipped: false,
+            skipped: skipped.has(planned.exerciseId),
           },
     );
   }
+  const slots = effectiveOrder(session, e).flatMap((k) => {
+    const entry = byKey.get(k);
+    return entry === undefined ? [] : [entry];
+  });
 
   const shown = new Set(slots.map((s) => s.exerciseId));
   const logged = new Set(loggedExerciseIds);
@@ -235,6 +265,31 @@ export function applySessionEdit(
       }
       swaps[op.key] = op.exerciseId;
       return { ...e, swaps };
+    }
+    case 'skip': {
+      if (!defaultOrder(session, e).includes(op.key)) {
+        throw new Error(`skip: "${op.key}" is not in this session`);
+      }
+      return e.skipped.includes(op.key) ? { ...e } : { ...e, skipped: [...e.skipped, op.key] };
+    }
+    case 'restore': {
+      if (!defaultOrder(session, e).includes(op.key)) {
+        throw new Error(`restore: "${op.key}" is not in this session`);
+      }
+      return { ...e, skipped: e.skipped.filter((k) => k !== op.key) };
+    }
+    case 'move': {
+      const keys = effectiveOrder(session, e);
+      const i = keys.indexOf(op.key);
+      if (i < 0) throw new Error(`move: "${op.key}" is not in this session`);
+      const j = i + op.by;
+      // Already at that end: nothing to move, and not an error (the control is disabled there).
+      if (j < 0 || j >= keys.length) return { ...e };
+      const moved = [...keys];
+      moved[i] = keys[j] ?? op.key;
+      moved[j] = op.key;
+      // Back in default order: store none, so a restored day carries no `order` at all.
+      return { ...e, order: sameOrder(moved, defaultOrder(session, e)) ? [] : moved };
     }
   }
 }

@@ -237,7 +237,11 @@ export function TrainView(): ReactElement {
     library,
     loggedExerciseIds: [...bonusExerciseIds, ...todaysSets.map((s) => s.exerciseId)],
   });
-  const inUse = new Set(lineup.filter(isEditable).map((e) => e.exerciseId));
+  const editable = lineup.filter(isEditable);
+  const inUse = new Set(editable.map((e) => e.exerciseId));
+  // Reordering moves slots among themselves; the read-only cards (a swapped-out original, a
+  // logged-only exercise) follow their slot or sit at the end and are not positions.
+  const slotKeys = editable.map((e) => e.key);
   const libraryList = Object.values(library);
   const editsOpen = assignment.status !== 'completed' && assignment.status !== 'skipped';
   const editSession = (op: SessionEditOp): boolean => {
@@ -248,13 +252,17 @@ export function TrainView(): ReactElement {
      */
     try {
       useAppStore.getState().editSession(profileId, assignment.date, op);
-      return true;
     } catch {
       return false;
     }
+    // The card the user is working on stays open through a move, a swap or a restore. A skip
+    // means "done with this one", so the first card still to do opens instead (null).
+    setOpenId(op.kind === 'skip' ? null : op.key);
+    return true;
   };
 
-  const firstKey = lineup[0]?.key ?? null;
+  // The first card the user still has to do opens by itself; a skipped one does not.
+  const firstKey = lineup.find((e) => !e.skipped)?.key ?? null;
   const isCardOpen = (key: string): boolean => (openId === null ? key === firstKey : openId === key);
   // Toggling the open card to '' rather than to null CLOSES it: null means "nothing has been
   // chosen yet", which is what opens the first card.
@@ -332,12 +340,14 @@ export function TrainView(): ReactElement {
           const exercise = library[entry.exerciseId];
           if (exercise === undefined) return null;
           const replaced = entry.replaces === null ? undefined : library[entry.replaces];
-          const tag =
-            replaced !== undefined
+          const tag = entry.skipped
+            ? c('label.skipped')
+            : replaced !== undefined
               ? FORMAT.swappedFrom(replaced.name, overrides)
               : entry.kind === 'swapped-out'
                 ? c('label.swappedOut')
                 : null;
+          const slotIndex = slotKeys.indexOf(entry.key);
           const bonus = isBonusEntry(entry);
           return (
             <ExerciseCard
@@ -371,6 +381,8 @@ export function TrainView(): ReactElement {
                   access={profile.equipment}
                   library={libraryList}
                   inUse={inUse}
+                  canMoveUp={slotIndex > 0}
+                  canMoveDown={slotIndex >= 0 && slotIndex < slotKeys.length - 1}
                   onEdit={editSession}
                 />
               )}

@@ -172,6 +172,71 @@ describe('applySessionEdit: swap (L2)', () => {
   });
 });
 
+describe('sessionLineup: skip and order (L3)', () => {
+  it('flags a skipped slot and leaves it in place, so its logged sets stay reachable', () => {
+    const l = lineup(edits({ skipped: ['lat-pulldown'] }));
+    expect(l.map((e) => [e.key, e.skipped])).toEqual([
+      ['barbell-bench-press', false],
+      ['lat-pulldown', true],
+      ['plank', false],
+    ]);
+  });
+
+  it('shows slots in the stored order, and any slot the order does not name after it', () => {
+    const l = lineup(edits({ order: ['plank', 'gone', 'barbell-bench-press'] }));
+    expect(l.map((e) => e.key)).toEqual(['plank', 'barbell-bench-press', 'lat-pulldown']);
+  });
+
+  it('moves a swapped-out card with the slot it left', () => {
+    const l = lineup(
+      edits({ swaps: { 'barbell-bench-press': 'incline-db-press' }, order: ['plank', 'barbell-bench-press'] }),
+      ['barbell-bench-press'],
+    );
+    expect(l.map((e) => [e.exerciseId, e.kind])).toEqual([
+      ['plank', 'planned'],
+      ['incline-db-press', 'swapped'],
+      ['barbell-bench-press', 'swapped-out'],
+      ['lat-pulldown', 'planned'],
+    ]);
+  });
+});
+
+describe('applySessionEdit: skip, restore, move (L3)', () => {
+  const apply = (e: SessionEdits | undefined, op: Parameters<typeof applySessionEdit>[2]): SessionEdits =>
+    applySessionEdit(SESSION, e, op, EXERCISE_BY_ID);
+
+  it('skips a slot once, however often it is asked', () => {
+    const once = apply(undefined, { kind: 'skip', key: 'plank' });
+    expect(once.skipped).toEqual(['plank']);
+    expect(apply(once, { kind: 'skip', key: 'plank' }).skipped).toEqual(['plank']);
+  });
+
+  it('restores a skipped slot', () => {
+    const skipped = apply(undefined, { kind: 'skip', key: 'plank' });
+    expect(apply(skipped, { kind: 'restore', key: 'plank' }).skipped).toEqual([]);
+  });
+
+  it('moves a slot one place and stores the whole order', () => {
+    const next = apply(undefined, { kind: 'move', key: 'lat-pulldown', by: -1 });
+    expect(next.order).toEqual(['lat-pulldown', 'barbell-bench-press', 'plank']);
+  });
+
+  it('stores no order once the slots are back in plan order', () => {
+    const moved = apply(undefined, { kind: 'move', key: 'plank', by: -1 });
+    expect(apply(moved, { kind: 'move', key: 'plank', by: 1 }).order).toEqual([]);
+  });
+
+  it('leaves the first slot where it is when asked to move up, and the last when asked down', () => {
+    expect(apply(undefined, { kind: 'move', key: 'barbell-bench-press', by: -1 }).order).toEqual([]);
+    expect(apply(undefined, { kind: 'move', key: 'plank', by: 1 }).order).toEqual([]);
+  });
+
+  it('refuses a key that names no slot', () => {
+    expect(() => apply(undefined, { kind: 'skip', key: 'curl' })).toThrow(/skip: "curl" is not in this session/);
+    expect(() => apply(undefined, { kind: 'move', key: 'curl', by: 1 })).toThrow(/move: "curl" is not in this session/);
+  });
+});
+
 describe('swapAlternatives (L2)', () => {
   const bench = ex('barbell-bench-press');
   const inUse = new Set(['barbell-bench-press', 'lat-pulldown', 'plank']);
