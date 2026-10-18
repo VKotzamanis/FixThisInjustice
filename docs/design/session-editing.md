@@ -28,7 +28,7 @@ Agent doc. Change today's session while training: edit a logged set (L1), swap (
 - Added: `prescriptionFor(ex, 'moderate')` (custom: 8-12 reps, same as the old bonus default), 3 sets (old default), rest from the cited table.
 - Extra cards, never hidden: an exercise with sets logged today that is not in the lineup. A swapped-out original goes right after its slot with the original planned slot ("Swapped Out", non-bonus); anything else is a bonus card at the end (existing rule).
 - Swap alternatives (`swapAlternatives`): suggested = other candidates of every template slot that lists the current exercise (`SPLIT_TEMPLATES`, best first), then library exercises sharing a direct mover (`muscleGroups`); both filtered by `ACCESS_UNLOCKS[profile.equipment]`. Others = rest of shipped + custom library. Lineup ids excluded.
-- Add picker: fits equipment first, then the rest; lineup ids excluded; custom form kept as fallback.
+- Add picker: fits equipment first, then the rest; excludes `addBlockedIds` (`src/domain/training/sessionEdits.ts`: exercises in a slot plus every planned exercise, review R3), the same set the store refuses; custom form kept as fallback.
 
 ## Derived numbers
 - Progression (`suggestedProgression`, per `exerciseId`, excludes `isBonus`): swapped-in sets are non-bonus (they fill a planned slot) and feed the substitute's own history; the original gets no sets that day, its next suggestion is unchanged. Added-exercise sets stay `isBonus: true` (`ExerciseCard.tsx:154`): never feed progression. Skipped: no sets.

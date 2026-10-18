@@ -3,16 +3,15 @@
 Single source of current state. Update in place. Last update: 2026-10-18 (restart cleanup).
 
 ## Next job
-1. ROADMAP N1: owner uses the app at the gym on his phone; record findings with `docs/runbooks/phone-check.md`.
-2. ROADMAP section 1 (broken now), then section 2 (training loop). Design before building items marked (design).
+1. ROADMAP N1: owner uses the app at the gym on his phone; record findings with `docs/runbooks/phone-check.md`. Nothing built 2026-10-18 has been seen on a device.
+2. Owner wording calls: new copy keys are base-table only (no limelight voice yet): session editing, effort taps, programme lifecycle, Rest Word, plus ROADMAP N7.
+3. Then ROADMAP: R4, B1a, B1c, L6 (design), L9, L10, F2-F5.
 
 ## Branches and tags
-- `main`: cleanup done (`git log pre-cleanup-2026-10-17..main`). Limelight-only merged (14aceec); parity pinned by `src/content/limelightParity.test.ts` + `src/content/__fixtures__/limelight-resolved.json`.
-- Not pushed. `origin/main` is the pre-cleanup state. History scrub of private identifiers: pending owner approval (procedure and checks: `docs/private/history-scrub.md`); push only after the owner's yes.
-- `wip/rest-word-game`: parked source of ROADMAP F1, kept. Ported onto main's base as `worktree-agent-aa432776b4f6670e4` (all gates green there; `docs/design/rest-games.md`), not merged.
-- tag `archive/design-editor`: local design editor + type-role tokens (owner: never helped). Only the owner's intro text was taken onto main.
-- tag `pre-cleanup-2026-10-17`: tree before the cleanup (old handoffs, plans, design rounds).
-- Backup outside the repo, pre-history-rewrite: `~/Desktop/Claude/backups/FixThisInjustice-2026-10-18/` (all-branches bundle, WIP archive, `.nodeterm`).
+- `main` only. Built 2026-10-18 on top of the cleanup: B1-B6, N5, N7, L1-L5, L7, L8, F1, review fixes R1-R3/R5/R6 (`git log --oneline pre-cleanup-2026-10-17..main`).
+- Not pushed. `origin/main` is the pre-cleanup state. History scrub approved by the owner but blocked by the agent permission classifier: owner runs it (`docs/private/history-scrub.md`), then pushes.
+- tag `archive/design-editor`: local design editor (owner: never helped). tag `pre-cleanup-2026-10-17`: tree before the cleanup.
+- Backup outside the repo, pre-history-rewrite: `~/Desktop/Claude/backups/FixThisInjustice-2026-10-18/`.
 
 ## Gates
 - All commands in `AGENTS.md` → Verify. Known red: App.test weekly-miss (ROADMAP B6).

@@ -18,6 +18,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - L3 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Skip / remove / reorder exercises in a session.
 - L4 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Add a library exercise mid-session. Today only free-text custom (`src/ui/views/train/AddCustomExercise.tsx`), `muscleGroups: []`, counts for no volume, no removal.
 - L1-L4 follow-ups: swap A→B, log on B, swap to C labels B's sets "(bonus)" (data intact); `addBonusExercise` + `session.bonusExerciseIds` only read for sessions opened by older builds (remove later); `anyAppState` (`src/domain/arbitraries.ts`) never generates `edits`; not checked on a phone.
+- R1-R3, R5, R6 (review 2026-10-18) DONE: goal-reached needs the target on the goal side of the setup baseline; editing reps keeps the stored load exactly; Add picker and store agree; custom-exercise retry is idempotent; null-load sets editable.
 - R4 (review 2026-10-18) Swap-day sets count for the substitute at the swapped slot's rep range; if the substitute has its own slot with a different range, its next advice is underloaded (e.g. RDL 6-8 swapped to trap-bar deadlift whose slot is 4-6). Design call: use the substitute's own range, or keep swap sets out of its progression. Report: `docs/private/audit-2026-10-17/review-2026-10-18.md`.
 - R7 (review, minor) ProgrammeSettings confirm panel can reappear without the Update tap; each Update keeps one more old plan (32-102 kB JSON each): consider pruning old plans with no logged sets.
 - L5 DONE 2026-10-18 (`docs/design/programme-lifecycle.md`): Settings "Programme" group (equipment, sessions/week, conditioning) + Update Programme; `restartProgramme` in `src/store/programme.ts`. Gap: training weekdays/times not editable after setup.
@@ -41,7 +42,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
   - Nothing stops a new call site from calling `copy()` without the limelight overlay; `src/content/limelightParity.test.ts` covers the existing render path only.
 
 ## 4. Fun (want, all)
-- F1 Rest games. Rest Word (Wordle-style) built on branch `worktree-agent-aa432776b4f6670e4`, not yet merged; design and constraints `docs/design/rest-games.md`. More small games later: add per that note.
+- F1 DONE 2026-10-18: Rest Word (Wordle-style) offered with each rest, opt-in, closes with the rest; design and constraints `docs/design/rest-games.md`. More small games: add per that note. Gaps: leaving Train mid-rest re-offers the same round; guess results not announced to screen readers; rest-over chime ignores `ui.sounds` (pre-existing).
 - F2 Limelight voice: the vulgar register the owner asked for; never written (agent chose camp only). Owner's words, his call on lines.
 - F3 Sound effects: player exists (`src/skins/sfx.ts`), zero files in `public/sfx/`. Make them locally with the owner's MIDI/FluidSynth/equation-instrument pipeline (`orchestrate` skill). Formats AAC `.m4a`/MP3.
 - F4 Motivation clip after a missed week: modal built, no clip (`public/media/` empty). Owner picks or films one.
