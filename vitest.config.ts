@@ -79,6 +79,10 @@ export default defineConfig({
         /crt\.css$/,
         /tokens\.css(\?|$)/,
         /limelight\.css(\?|$)/,
+        // ownerSprite.css (stylize survey item 7): the 11 frames, the integer 2x scale and the
+        // reduced-motion stop are CSS guarantees, so src/ui/components/OwnerSprite.test.tsx reads
+        // the sheet as text through ?raw.
+        /ownerSprite\.css(\?|$)/,
         /appShell\.css(\?|$)/,
         // Stylize survey items 1, 2, 6 and 9 (2026-10-18): the pink-type sweep and the status
         // marks are colour rules jsdom cannot compute, so src/ui/styles/stickerStates.test.ts and

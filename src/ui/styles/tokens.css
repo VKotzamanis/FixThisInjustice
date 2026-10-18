@@ -289,6 +289,19 @@ body {
   text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--pink);
 }
 
+/*
+ * ASCII art: the boot print, the Konami box, the cutscene picture (stylize survey items 3 and 9).
+ * Boxes and dotted leaders line up only in a face whose glyphs share one advance width, and
+ * --mono is Archivo, which is proportional. System faces only: no web font is added, and the
+ * generic `monospace` at the end is a monospace face on every engine. Not skin-scoped, because no
+ * skin makes a proportional face right for ASCII. `pre.` is deliberate: at 0,1,1 it outranks the
+ * single-class rules that set `font: inherit` (boot.css, konami.css) whatever order the bundle
+ * loads the sheets in.
+ */
+pre.ll-ascii {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
 /* The inverted panel: the marquee strip, the rest panel and the stamp. The one black surface
  * on a light page, which is what makes the marquee read as a lit sign (section 2.4). */
 :root[data-skin='limelight'] .ll-panel {

@@ -12,8 +12,9 @@
 // Three exports, three concerns:
 //   buildBootLines  the text, a pure function of the document, unit-tested as strings;
 //   Boot            the timed print of that text;
-//   BootGate        the one-line mount, which reads UiPrefs.bootSeen and unmounts the sequence
-//                   the moment the sequence records itself as seen.
+//   BootGate        the mount, which reads UiPrefs.bootSeen, unmounts the sequence the moment
+//                   the sequence records itself as seen, and brings the app in through the
+//                   dither wipe (DitherWipe.tsx) on that same mount.
 
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import './boot.css';
@@ -22,6 +23,8 @@ import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { AppState } from '../../domain/types';
 import { useAppStore } from '../../store';
+import { prefersReducedMotion } from '../hooks/reducedMotion';
+import { DitherWipe } from './DitherWipe';
 
 /**
  * Delay between printed lines. [ms]
@@ -88,20 +91,6 @@ export function buildBootLines(
 
   lines.push(copy('status.bootReady', overrides));
   return lines;
-}
-
-/**
- * True when the user has asked for reduced motion.
- *
- * The typeof guard is not defensive noise: jsdom implements no matchMedia at all, and neither
- * do some embedded webviews, so an unguarded call throws rather than returning false
- * (src/domain/reminders/client.ts makes the same argument for display-mode).
- */
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
 }
 
 /**
@@ -245,7 +234,7 @@ export function Boot({ onDone }: { onDone?: () => void }): ReactElement | null {
      * screen reader user needs to reach.
      */
     <section className="boot" aria-label={t('hero.boot')} onClick={finish}>
-      <pre className="boot-pre" data-testid="boot-text">
+      <pre className="boot-pre ll-ascii" data-testid="boot-text">
         {lines.slice(0, shown).join('\n')}
       </pre>
       <button type="button" className="boot-skip" onClick={finish}>
@@ -261,8 +250,15 @@ export function Boot({ onDone }: { onDone?: () => void }): ReactElement | null {
  * It is the piece that reads `UiPrefs.bootSeen` reactively, so the sequence disappears the
  * moment it records itself as seen and never comes back on a later mount. Boot itself must not
  * do this, for the reason its snapshot comment gives.
+ *
+ * BOOT TO APP goes through the dither wipe (stylize survey item 10), and only on the mount that
+ * printed the boot: `printed` is a mount-time snapshot, so a later mount, where the boot was
+ * already seen, cuts straight to the app exactly as before. The wipe skips itself under reduced
+ * motion and removes itself when done.
  */
 export function BootGate(): ReactElement | null {
   const bootSeen = useAppStore((s) => s.ui.bootSeen);
-  return bootSeen ? null : <Boot />;
+  const [printed] = useState<boolean>(() => !bootSeen);
+  if (!bootSeen) return <Boot />;
+  return printed ? <DitherWipe /> : null;
 }

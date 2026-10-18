@@ -112,18 +112,10 @@
 }
 
 /*
- * The picture, at the foot of slides 1 to 4 only (IntroSequence.tsx). `overflow-x: auto` rather
- * than a wrap, exactly as phaseTransition.css's `.pt-art`: the figure is fixed-width ASCII and a
- * wrapped line of it is not the same figure. `aria-hidden` in the component, because it conveys
- * nothing a screen reader user needs that the slide's own text does not already say.
+ * The picture at the foot of slides 1 to 4 is the owner's sprite now (OwnerSprite.tsx, drawn by
+ * src/ui/components/ownerSprite.css). The ASCII figure's rule that stood here went with it: it
+ * set pink type on the lime ground, 1.41:1, which tokens.css bans at every size.
  */
-.intro-figure {
-  margin: 0;
-  overflow-x: auto;
-  color: var(--accent, #a3e635);
-  font-size: 0.85rem;
-  line-height: 1.15;
-}
 
 /*
  * "Click to continue...", a hover cue rather than an instruction the user must read to proceed

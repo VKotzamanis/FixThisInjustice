@@ -8,6 +8,7 @@ import { RestWordGame } from './RestWordGame';
 // cursor and reminders suites use: node:fs has no typings under tsconfig.app.json).
 import gameSource from './RestWordGame.tsx?raw';
 import mascotSource from './PixelMascot.tsx?raw';
+import spriteSource from '../../components/OwnerSprite.tsx?raw';
 import engineSource from '../../../domain/fun/restWord.ts?raw';
 import audioSource from '../../audio/restGameAudio.ts?raw';
 
@@ -90,6 +91,73 @@ describe('RestWordGame', () => {
   });
 });
 
+/*
+ * Stylize survey item 7: the owner's own sprite replaces the ASCII stand-in for it. It holds its
+ * still frame through the round and plays its 11 frames once on a win (ownerSprite.css runs one
+ * iteration; OwnerSprite.test.tsx reads that). A loss does not play it.
+ */
+describe("RestWordGame: the owner's sprite", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(NOW);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  function win(): void {
+    const target = restWordRound(TIMER.game!, TIMER.durationS, 0).target.toUpperCase();
+    for (const letter of target) fireEvent.click(screen.getByRole('button', { name: letter }));
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordSubmit') }));
+  }
+
+  it('holds frame 0 through the round and plays once on the win', () => {
+    const { container } = renderGame();
+    const sprite = container.querySelector('.ll-sprite');
+    expect(container.querySelectorAll('.ll-sprite')).toHaveLength(1);
+    expect(sprite?.getAttribute('data-sprite')).toBe('still');
+    // The ASCII face it replaces is gone.
+    expect(container.querySelector('pre.rest-game-mascot')).toBeNull();
+
+    win();
+
+    // The same element starts playing: not remounted, so the one-iteration animation runs once.
+    expect(container.querySelector('.ll-sprite')).toBe(sprite);
+    expect(sprite?.getAttribute('data-sprite')).toBe('playing');
+    act(() => {
+      vi.advanceTimersByTime(5_000); // [ms] the round clock ticks on; nothing restarts the play
+    });
+    expect(container.querySelector('.ll-sprite')).toBe(sprite);
+  });
+
+  it('does not play on a loss', () => {
+    const { container } = renderGame();
+    act(() => {
+      vi.advanceTimersByTime(60_000); // [ms] the 120 s rest's 60 s round runs out
+    });
+    expect(screen.getByText(copy('status.restWordLost'))).toBeInTheDocument();
+    expect(container.querySelector('.ll-sprite')?.getAttribute('data-sprite')).toBe('still');
+  });
+
+  it('shows frame 0 only under prefers-reduced-motion, win included', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })),
+    );
+    const { container } = renderGame();
+    win();
+    expect(screen.getByText(copy('status.restWordWon'))).toBeInTheDocument();
+    expect(container.querySelector('.ll-sprite')?.getAttribute('data-sprite')).toBe('still');
+  });
+});
+
 describe('RestWordGame: phone keyboard (ROADMAP F1)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
@@ -156,6 +224,7 @@ describe('RestWordGame: offline (ROADMAP F1)', () => {
     for (const [file, text] of Object.entries({
       'RestWordGame.tsx': gameSource,
       'PixelMascot.tsx': mascotSource,
+      'OwnerSprite.tsx': spriteSource,
       'restWord.ts': engineSource,
       'restGameAudio.ts': audioSource,
     })) {

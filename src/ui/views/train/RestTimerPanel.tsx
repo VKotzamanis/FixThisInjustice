@@ -21,6 +21,7 @@ import { playSfx } from '../../../skins/sfx';
 import { useAppStore } from '../../../store';
 import { useRestGameWins, useRestTimer } from '../../../store/selectors';
 import { playChime, unlockAudio, vibrate } from '../../audio/chime';
+import { prefersReducedMotion } from '../../hooks/reducedMotion';
 import { RestWordGame } from './RestWordGame';
 import '../../styles/train.css';
 
@@ -81,6 +82,8 @@ export function RestTimerPanel(): ReactElement | null {
   const restGameWins = useRestGameWins(); // [rounds]
   const sounds = useAppStore((s) => s.ui.sounds);
   const [game, setGame] = useState<RestGamePhase | null>(null);
+  // Read once at mount, as Boot and PhaseTransition read it: it picks the rest-over sign's pulse.
+  const [reduced] = useState<boolean>(prefersReducedMotion);
   const phase = timer !== null && game?.startedAt === timer.startedAt ? game.phase : 'ready';
   const restOver = timer !== null && remainingS(timer, now) <= 0;
 
@@ -170,27 +173,39 @@ export function RestTimerPanel(): ReactElement | null {
   const offerGame = round !== null && phase === 'ready' && !restOver;
   const gameFits = round !== null && remaining >= round.durationS; // [s] vs [s]
   const startedAt = timer.startedAt; // [ms] epoch UTC, the interval a phase is keyed to
+  /*
+   * THE LIT SIGN (stylize survey item 3). The ring, the clock and the controls sit on the black
+   * `.ll-panel`, which is where the lime `stopwatchPanel` icon was drawn to sit. At zero the sign
+   * turns pink and its label says the rest is over, so the state is a word as well as a colour
+   * (WCAG 1.4.1) and a screen reader hears it through the label's live region. `rest-over-pulse`
+   * adds 3 pulses at 2 Hz (train.css); reduced motion gets the steady state alone. The clock, the
+   * cues and the game are untouched: this is a class on the sign and nothing else.
+   */
+  const signClass = restOver
+    ? `rest-summary ll-panel rest-over${reduced ? '' : ' rest-over-pulse'}`
+    : 'rest-summary ll-panel';
 
   return (
     <div className="rest-panel">
-      <div className="rest-summary">
+      <div className={signClass}>
         <div className="rest-ring">
-          {/* Decorative: the remaining time is read from the text beside it, not from the arc. */}
+          {/* Decorative: the remaining time is read from the text beside it, not from the arc.
+              Stroke colours come from train.css (lime track, pink arc on the black panel). */}
           <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
             <circle
+              className="rest-ring-track"
               cx="32"
               cy="32"
               r={RING_RADIUS}
               fill="none"
-              stroke="var(--line-2)"
               strokeWidth="3"
             />
             <circle
+              className="rest-ring-arc"
               cx="32"
               cy="32"
               r={RING_RADIUS}
               fill="none"
-              stroke="var(--accent)"
               strokeWidth="3"
               strokeDasharray={RING_CIRCUMFERENCE}
               strokeDashoffset={RING_CIRCUMFERENCE * elapsedFraction}
@@ -215,8 +230,12 @@ export function RestTimerPanel(): ReactElement | null {
             * `button.extendRest` stays a plain `c` call: section 4.4 gives it no icon, and a
             * SkinLabel around it would add a wrapper element and nothing else.
             */}
-          <div className="rest-label">
-            <SkinLabel copyKey="status.rest" />
+          <div className="rest-label" aria-live="polite">
+            {restOver ? (
+              <span className="ll-label">{c('notification.restOver')}</span>
+            ) : (
+              <SkinLabel copyKey="status.rest" />
+            )}
           </div>
           <button
             type="button"

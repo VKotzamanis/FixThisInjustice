@@ -152,7 +152,7 @@ export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElemen
   return (
     <div className="konami-bg" role="dialog" aria-modal="true" aria-label={line}>
       <div className="konami">
-        <pre className="konami-art" aria-hidden="true">
+        <pre className="konami-art ll-ascii" aria-hidden="true">
           {ART}
         </pre>
         <p className="konami-line">{line}</p>

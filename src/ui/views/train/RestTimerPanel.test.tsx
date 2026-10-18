@@ -191,6 +191,64 @@ describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
 });
 
 /*
+ * Stylize survey item 3: the rest is a black lit sign (`.ll-panel`), and when it runs out the sign
+ * turns pink and says so. The colours and the pulse are CSS (restPanelStyles.test.ts reads the
+ * sheet); what is asserted here is the state the component hands the CSS, and the word that
+ * carries the state alongside the colour (WCAG 1.4.1).
+ */
+describe('RestTimerPanel: the lit sign (stylize survey item 3)', () => {
+  const sign = (container: HTMLElement): Element | null => container.querySelector('.rest-summary');
+
+  it('draws the ring, the clock and the controls on the black panel', () => {
+    const container = renderPanel('limelight');
+    const panel = sign(container);
+    expect(panel?.classList.contains('ll-panel')).toBe(true);
+    expect(panel?.classList.contains('rest-over')).toBe(false);
+    // The ring takes its colours from the sheet, not from inline presentation attributes.
+    expect(container.querySelector('circle.rest-ring-track')?.getAttribute('stroke')).toBeNull();
+    expect(container.querySelector('circle.rest-ring-arc')?.getAttribute('stroke')).toBeNull();
+    // The stopwatchPanel icon (lime, drawn for a black ground) sits inside the panel now.
+    expect(panel?.querySelector('.rest-label img.ll-icon')).not.toBeNull();
+  });
+
+  it('turns to the pulsing rest-over state, in words as well as colour, when the rest ends', () => {
+    const container = renderPanel('limelight');
+    const label = container.querySelector('.rest-label');
+    expect(label?.getAttribute('aria-live')).toBe('polite');
+    expect(screen.queryByText(copyFor('limelight', 'notification.restOver'))).toBeNull();
+
+    expireRest();
+
+    const panel = sign(container);
+    expect(panel?.classList.contains('rest-over')).toBe(true);
+    expect(panel?.classList.contains('rest-over-pulse')).toBe(true);
+    expect(label?.textContent).toBe(copyFor('limelight', 'notification.restOver'));
+    // Timing and sounds are untouched: the clock still reads zero and the cues fired once.
+    expect(screen.getByText(FORMAT.restRemaining(0, 0))).toBeInTheDocument();
+    expect(playChime).toHaveBeenCalledTimes(1);
+  });
+
+  it('under prefers-reduced-motion changes state once, steady, with no pulse', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })),
+    );
+    const container = renderPanel('limelight');
+    expireRest();
+    const panel = sign(container);
+    expect(panel?.classList.contains('rest-over')).toBe(true);
+    expect(panel?.classList.contains('rest-over-pulse')).toBe(false);
+    expect(screen.getByText(copyFor('limelight', 'notification.restOver'))).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+});
+
+/*
  * ROADMAP F1, docs/design/rest-games.md. The game rides on the rest timer: offered when a rest
  * with a game identity starts, gone when the rest ends, and never a writer of the timer.
  */

@@ -1,0 +1,88 @@
+/*
+ * The owner's sprite (OwnerSprite.tsx, stylize survey item 7).
+ *
+ * THE SHEET. src/assets/sprite/sprite-40x40px-11f-sheet.png, byte-identical to
+ * agy-artifacts/SpriteAI_Vasileios/sprite-40x40px-11f-sheet.png (2761 B): 160 x 120 px, a 4 x 3
+ * grid of 40 x 40 px cells read row-major, 11 frames, the 12th cell empty. Each cell matches the
+ * same frame of the owner's GIF exactly. Vite emits it as its own hashed file (vite.config.ts sets
+ * build.assetsInlineLimit to 0), the service worker precaches it with every other `png`
+ * (injectManifest.globPatterns), and CSP `img-src 'self'` allows it. No network at play time.
+ *
+ * SCALE. 80 CSS px per frame = exactly 2 x 40 px, so the sheet is drawn at 320 x 240 CSS px and
+ * each source pixel is a 2 x 2 CSS px block; `image-rendering: pixelated` keeps the edges hard.
+ * No other size: a non-integer scale drops and doubles pixel rows unevenly.
+ *
+ * TIMING. 130 ms per frame, the owner's GIF (11 x 13 cs = 1430 ms). One keyframe per frame, and
+ * `steps(1, end)` holds each for its whole interval, so no in-between position is ever drawn.
+ * One iteration and no fill: the play ends on the base rule, frame 0, which frames 8 to 10 already
+ * repeat, so the hand-back is seamless.
+ *
+ * No colour is set here. Where the ground is black (the rest game), the caller backs the sprite.
+ */
+.ll-sprite {
+  display: block;
+  flex: none;
+  width: 80px;
+  height: 80px;
+  background: url('../../assets/sprite/sprite-40x40px-11f-sheet.png') 0 0 / 320px 240px no-repeat;
+  image-rendering: pixelated;
+}
+
+.ll-sprite-play {
+  animation: ll-sprite-jolt 1430ms steps(1, end) 1;
+}
+
+/* Frame k starts at k / 11 of the play and shows cell (k mod 4, floor(k / 4)), 80 px per cell. */
+@keyframes ll-sprite-jolt {
+  0% {
+    background-position: 0 0;
+  }
+
+  9.0909% {
+    background-position: -80px 0;
+  }
+
+  18.1818% {
+    background-position: -160px 0;
+  }
+
+  27.2727% {
+    background-position: -240px 0;
+  }
+
+  36.3636% {
+    background-position: 0 -80px;
+  }
+
+  45.4545% {
+    background-position: -80px -80px;
+  }
+
+  54.5455% {
+    background-position: -160px -80px;
+  }
+
+  63.6364% {
+    background-position: -240px -80px;
+  }
+
+  72.7273% {
+    background-position: 0 -160px;
+  }
+
+  81.8182% {
+    background-position: -80px -160px;
+  }
+
+  90.9091%,
+  100% {
+    background-position: -160px -160px;
+  }
+}
+
+/* Frame 0, still. OwnerSprite.tsx also withholds the play class under this setting. */
+@media (prefers-reduced-motion: reduce) {
+  .ll-sprite-play {
+    animation: none;
+  }
+}

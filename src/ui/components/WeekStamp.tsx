@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement } from 'react';
+import { useEffect, useRef, type CSSProperties, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
@@ -7,10 +7,17 @@ import { Illustration } from '../../skins/limelight/Illustration';
 import { playSfx } from '../../skins/sfx';
 import { usePendingMotivation } from '../../store/selectors';
 import { weekDeltaKey } from '../format/weekDelta';
+import { DitherWipe } from './DitherWipe';
 import './limelight.css';
 
 /** Twelve, as round-three section 2.5 fixed it. The fan tracks are nth-child rules in the sheet. */
 export const SPARKLE_COUNT = 12;
+
+/**
+ * The wipe's area: grid rows 1 to 2 of `.ll-stamp` (mascot, word), never row 3 (the counts). An
+ * absolutely placed child of a grid container takes its grid area as its containing block.
+ */
+const STAMP_HEAD: CSSProperties = { position: 'absolute', gridRow: '1 / 3', gridColumn: '1', inset: 0, zIndex: 1 };
 
 /**
  * Did this closed week meet its target?
@@ -109,6 +116,11 @@ export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactEle
           </span>
         ))}
       </span>
+      {/* The landing's dither wipe (stylize survey item 10), on the stamp's first two grid rows
+          only: the mascot and the word. The counts are row 3 and the wipe never covers them
+          (round-three section 2.5: no quantity is animated). Last child, so the sparkle fan's
+          nth-child tracks are untouched; absolutely placed, so the grid does not reflow. */}
+      <DitherWipe area={STAMP_HEAD} />
     </section>
   );
 }
