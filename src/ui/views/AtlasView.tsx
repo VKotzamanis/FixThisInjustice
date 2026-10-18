@@ -33,6 +33,13 @@
 //  - The card id ('c001') is not printed. It is a storage key, not content, and on a locked
 //    slot its letter leaks the rarity a second time.
 //  - Counts come from FORMAT.atlasCount rather than a literal `${a}/${b}` in the view.
+//
+// COLLECTIBLE FACES (styling survey 2026-10-18, item 8). A drawn card, and its dialog, is a black
+// `.ll-panel` carrying its category glyph (src/ui/views/atlasArt.tsx) in the panel's lime. The
+// tier is a SHAPE as well as the word (atlas.css): common plain, uncommon a double lime rule,
+// rare a pink rule with the pink offset block and a one-shot foil sweep. A locked slot gains a
+// pixel question mark and nothing else, so the rule above about what it may say is unchanged:
+// no glyph, no category, in the text or in the markup. No word, count or control changed.
 
 import { useCallback, useId, useMemo, useState } from 'react';
 import type { ReactElement } from 'react';
@@ -47,7 +54,9 @@ import {
 import type { SpecimenCard, SpecimenRarity } from '../../content/specimenCards';
 import type { SpecimenInventory } from '../../domain/types';
 import { ModalShell } from '../components/ModalShell';
+import { prefersReducedMotion } from '../hooks/reducedMotion';
 import { useAppStore } from '../../store';
+import { CategoryGlyph, UnknownMark } from './atlasArt';
 import './views.css';
 import './atlas.css';
 
@@ -57,6 +66,21 @@ const RARITY_LABEL: Readonly<Record<SpecimenRarity, CopyKey>> = {
   uncommon: 'label.rarityUncommon',
   rare: 'label.rarityRare',
 };
+
+/**
+ * The classes of a drawn card's face, shared by the grid card and its dialog so the two cannot
+ * disagree about a tier.
+ *
+ * `atlas-foil` is the rare tier's sweep. It plays once, when the face mounts: on the grid when
+ * the Atlas opens, and on the dialog when it opens; a re-render keeps the element, so it does not
+ * replay. It is added only when `motionAllowed`, so a reduced-motion user never receives the
+ * class, and atlas.css cancels the animation under the media query as well, which also covers a
+ * preference changed while the view is open.
+ */
+function faceClasses(rarity: SpecimenRarity, motionAllowed: boolean): string {
+  const foil = rarity === 'rare' && motionAllowed ? ' atlas-foil' : '';
+  return `atlas-face ll-panel atlas-${rarity}${foil}`;
+}
 
 /**
  * Whether the inventory holds this card.
@@ -70,21 +94,26 @@ function holds(acquired: SpecimenInventory['acquired'] | undefined, id: string):
 }
 
 /** One card's full text. Mounted only for a card the profile actually holds. */
-function AtlasCardDialog(props: { card: SpecimenCard; onClose: () => void }): ReactElement {
+function AtlasCardDialog(props: {
+  card: SpecimenCard;
+  motionAllowed: boolean;
+  onClose: () => void;
+}): ReactElement {
   const t = useCopy();
   const titleId = useId();
   const { card } = props;
   return (
     <ModalShell
       labelledBy={titleId}
-      className="atlas-modal"
+      className={`atlas-modal ${faceClasses(card.rarity, props.motionAllowed)}`}
       backdropClassName="atlas-modal-bg"
       testId="atlas-card-backdrop"
       onClose={props.onClose}
     >
       <div className="atlas-modal-head">
-        <div>
-          <div className="atlas-modal-rarity">{t(RARITY_LABEL[card.rarity])}</div>
+        <CategoryGlyph category={card.category} className="atlas-modal-art ll-panel-accent" />
+        <div className="atlas-modal-heading">
+          <div className="atlas-modal-rarity ll-panel-accent">{t(RARITY_LABEL[card.rarity])}</div>
           {/* The dialog's accessible name is the card, so the title carries the id. */}
           <h2 className="atlas-modal-title" id={titleId}>
             {card.title}
@@ -123,6 +152,9 @@ export function AtlasView(): ReactElement {
   );
 
   const [openId, setOpenId] = useState<string | null>(null);
+  // Read once per mount, as Boot.tsx and PhaseTransition.tsx read it: the foil is a one-shot on
+  // mount, so a later change has nothing left to stop, and atlas.css's media query covers it.
+  const [motionAllowed] = useState<boolean>(() => !prefersReducedMotion());
   // Referentially stable, as ModalShell's contract requires: an unstable onClose re-runs its
   // key listener and focus effect on every render of this view.
   const close = useCallback(() => {
@@ -188,14 +220,20 @@ export function AtlasView(): ReactElement {
                    */
                   <button
                     type="button"
-                    className={`atlas-card atlas-owned atlas-${card.rarity}`}
+                    className={`atlas-card atlas-owned ${faceClasses(card.rarity, motionAllowed)}`}
                     data-testid={`atlas-card-${card.id}`}
                     aria-label={card.title}
                     onClick={() => {
                       setOpenId(card.id);
                     }}
                   >
-                    <span className="atlas-card-rarity">{t(RARITY_LABEL[card.rarity])}</span>
+                    <CategoryGlyph
+                      category={card.category}
+                      className="atlas-card-art ll-panel-accent"
+                    />
+                    <span className="atlas-card-rarity ll-panel-accent">
+                      {t(RARITY_LABEL[card.rarity])}
+                    </span>
                     <span className="atlas-card-title">{card.title}</span>
                   </button>
                 ) : (
@@ -217,6 +255,8 @@ export function AtlasView(): ReactElement {
                       t('status.undiscovered'),
                     )}
                   >
+                    {/* The mark is the same for every slot: it says "not drawn", never "what". */}
+                    <UnknownMark className="atlas-card-art" />
                     <span className="atlas-card-rarity">{t(RARITY_LABEL[card.rarity])}</span>
                     <span className="atlas-card-lock">{t('status.undiscovered')}</span>
                   </div>
@@ -227,7 +267,9 @@ export function AtlasView(): ReactElement {
         </section>
       ))}
 
-      {openCard !== undefined && <AtlasCardDialog card={openCard} onClose={close} />}
+      {openCard !== undefined && (
+        <AtlasCardDialog card={openCard} motionAllowed={motionAllowed} onClose={close} />
+      )}
     </section>
   );
 }

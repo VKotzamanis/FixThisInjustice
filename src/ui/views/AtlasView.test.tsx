@@ -19,7 +19,7 @@
 // No clock is pinned: nothing this view renders reads the time. `at` is stored on an
 // acquisition and never displayed here.
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { FORMAT, copyFor } from '../../content/copy';
 import { DROPPED_CARD_IDS, SPECIMEN_BY_ID, SPECIMEN_CARDS } from '../../content/specimenCards';
@@ -28,7 +28,12 @@ import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { FUN_PROFILE_ID, makeAppState, makeInventory } from '../../test/funFixtures';
 import { AtlasView } from './AtlasView';
+import { CATEGORY_GLYPH } from './atlasArt';
 import type { SkinId } from '../../domain/types';
+// The sheet as TEXT: jsdom computes no style and evaluates no media query, so the tier shapes,
+// the token-only rule and the reduced-motion rule are asserted in the source. vitest.config.ts
+// lists atlas.css under css.include for this, as it does train.css for restGameStyles.test.ts.
+import atlasCss from './atlas.css?raw';
 
 /** [ms] epoch, UTC. Arbitrary: no assertion below reads an acquisition instant. */
 const ACQUIRED_AT = Date.UTC(2026, 8, 1, 9, 0);
@@ -254,5 +259,148 @@ describe('AtlasView under a skin', () => {
     pinSkin('limelight');
     render(<AtlasView />);
     expect(screen.getByText(copyFor('limelight', 'advice.atlas'))).toBeInTheDocument();
+  });
+});
+
+/*
+ * The collectible treatment (styling survey 2026-10-18, item 8). What a slot REVEALS is the
+ * contract above and does not move: an owned card adds its category glyph, a locked slot adds a
+ * pixel question mark and nothing that names or draws its category.
+ */
+
+/** A glyph's markup as the DOM serialises it, so the comparison is not about whitespace. */
+function serialised(markup: string): string {
+  const host = document.createElement('span');
+  host.innerHTML = markup;
+  return host.innerHTML;
+}
+
+/** Stubs matchMedia so the reduced-motion query answers `reduce`; the caller unstubs. */
+function stubReducedMotion(reduce: boolean): void {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: reduce && query.includes('prefers-reduced-motion'),
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+}
+
+describe('AtlasView collectible faces', () => {
+  it('draws every owned card as a black panel carrying its own category glyph', () => {
+    render(<AtlasView />);
+    for (const id of OWNED) {
+      const card = SPECIMEN_BY_ID[id]!;
+      const face = screen.getByTestId(`atlas-card-${id}`);
+      expect(face.classList.contains('ll-panel')).toBe(true);
+      expect(face.classList.contains('atlas-face')).toBe(true);
+      const glyph = face.querySelector('[data-glyph]');
+      expect(glyph?.getAttribute('data-glyph')).toBe(card.category);
+      expect(glyph?.getAttribute('aria-hidden')).toBe('true');
+      expect(glyph?.innerHTML).toBe(serialised(CATEGORY_GLYPH[card.category]));
+      // The glyph is decoration: the card is still named by its title alone.
+      expect(face).toHaveAccessibleName(card.title);
+    }
+  });
+
+  it('carries the same glyph into the card dialog', () => {
+    render(<AtlasView />);
+    const card = SPECIMEN_BY_ID['u003']!;
+    fireEvent.click(screen.getByTestId('atlas-card-u003'));
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.classList.contains('ll-panel')).toBe(true);
+    expect(dialog.querySelector('[data-glyph]')?.getAttribute('data-glyph')).toBe(card.category);
+  });
+
+  it('marks every locked slot with the question mark and with no glyph or category', () => {
+    render(<AtlasView />);
+    for (const card of SPECIMEN_CARDS) {
+      if (OWNED.includes(card.id)) continue;
+      const slot = screen.getByTestId(`atlas-card-${card.id}`);
+      expect(slot.querySelector('[data-mark="unknown"]')).not.toBeNull();
+      expect(slot.querySelector('[data-glyph]')).toBeNull();
+      expect(slot.classList.contains('ll-panel')).toBe(false);
+      // Not in an attribute, a class or a path either: the whole serialised slot is checked.
+      expect(slot.outerHTML.toLowerCase()).not.toContain(card.category);
+      for (const markup of Object.values(CATEGORY_GLYPH)) {
+        expect(slot.innerHTML).not.toContain(serialised(markup));
+      }
+    }
+  });
+});
+
+describe('AtlasView rarity marks', () => {
+  it('gives an owned rare card the rare mark and the one-shot foil, and no other tier the foil', () => {
+    render(<AtlasView />);
+    const rare = screen.getByTestId('atlas-card-r001');
+    expect(rare.classList.contains('atlas-rare')).toBe(true);
+    expect(rare.classList.contains('atlas-foil')).toBe(true);
+    for (const id of ['c001', 'u003']) {
+      expect(screen.getByTestId(`atlas-card-${id}`).classList.contains('atlas-foil')).toBe(false);
+    }
+    // A locked rare slot has not been drawn, so there is nothing to shine.
+    const lockedRare = SPECIMEN_CARDS.find((c) => c.rarity === 'rare' && !OWNED.includes(c.id))!;
+    expect(screen.getByTestId(`atlas-card-${lockedRare.id}`).classList.contains('atlas-foil')).toBe(
+      false,
+    );
+
+    fireEvent.click(rare);
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.classList.contains('atlas-rare')).toBe(true);
+    expect(dialog.classList.contains('atlas-foil')).toBe(true);
+  });
+
+  it('keeps the foil when matchMedia answers that motion is allowed', () => {
+    stubReducedMotion(false);
+    try {
+      render(<AtlasView />);
+      expect(screen.getByTestId('atlas-card-r001').classList.contains('atlas-foil')).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('drops the foil under prefers-reduced-motion and keeps the static rare mark', () => {
+    stubReducedMotion(true);
+    try {
+      render(<AtlasView />);
+      const rare = screen.getByTestId('atlas-card-r001');
+      expect(rare.classList.contains('atlas-foil')).toBe(false);
+      expect(rare.classList.contains('atlas-rare')).toBe(true);
+      fireEvent.click(rare);
+      expect(screen.getByRole('dialog').classList.contains('atlas-foil')).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('atlas.css', () => {
+  /** The declaration block of the first rule whose selector list matches. */
+  function block(css: string, selector: RegExp): string {
+    const match = new RegExp(`${selector.source}[^{]*\\{([^}]*)\\}`).exec(css);
+    return match?.[1] ?? '';
+  }
+
+  it('names a token for every colour, with no hex literal (AGENTS rule 5)', () => {
+    // Comments are dropped first: they quote measured colours, which is documentation.
+    const rules = atlasCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(rules.length).toBeGreaterThan(0);
+    expect(rules).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  });
+
+  it('draws the three tiers as three shapes, not three colours', () => {
+    // uncommon: two lime rules; rare: a pink rule and the pink offset block; locked: dashed.
+    const uncommon = block(atlasCss, /\.atlas-face\.atlas-uncommon\s*/);
+    expect(uncommon.match(/var\(--lime\)/g)).toHaveLength(2);
+    const rare = block(atlasCss, /\.atlas-face\.atlas-rare\s*/);
+    expect(rare).toMatch(/var\(--shadow-offset[^)]*\)\s+var\(--shadow-offset[^)]*\)\s+0\s+0\s+var\(--pink\)/);
+    expect(block(atlasCss, /\.atlas \.atlas-locked\s*/)).toMatch(/border:[^;]*dashed/);
+  });
+
+  it('runs the foil once and cancels it under prefers-reduced-motion', () => {
+    expect(block(atlasCss, /\.atlas-foil::after\s*/)).toMatch(/animation:[^;]*\b1\b/);
+    const at = atlasCss.indexOf('@media (prefers-reduced-motion: reduce)');
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(atlasCss.slice(at)).toMatch(/\.atlas-foil::after\s*\{[^}]*animation:\s*none/);
   });
 });

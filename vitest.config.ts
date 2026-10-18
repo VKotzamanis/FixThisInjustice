@@ -85,6 +85,10 @@ export default defineConfig({
         // its token-only colours are CSS guarantees jsdom cannot compute, so
         // src/ui/views/train/restGameStyles.test.ts reads the sheet as text through ?raw.
         /train\.css(\?|$)/,
+        // atlas.css (styling survey item 8): the tier shapes, the token-only colours and the
+        // foil's reduced-motion rule are CSS guarantees, so src/ui/views/AtlasView.test.tsx reads
+        // the sheet as text through ?raw. Unanchored for the query, as the tokens.css entry above.
+        /atlas\.css(\?|$)/,
       ],
     },
   },
