@@ -55,6 +55,7 @@ describe('the limelight token contract', () => {
       '--display-stretch',
       '--display-weight',
       '--display-tracking',
+      '--display-word-spacing',
       '--shadow-offset',
     ]) {
       expect({ token, present: LIMELIGHT_TOKENS.has(token) }).toEqual({ token, present: true });
