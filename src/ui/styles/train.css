@@ -146,12 +146,18 @@
   padding: 1rem;
 }
 
+/* Ink type with a pink offset underline (stylize survey 2026-10-18, item 2): the link was pink
+ * type on the lime modal, 1.41:1. The underline is decoration; the ink word and the box carry
+ * the link. */
 .vmod-link {
-  color: var(--accent);
+  color: var(--ink);
   border: 1px solid var(--line-2);
   padding: 0.5rem 0.75rem;
   text-align: center;
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.25em;
 }
 
 .fcm-body {
@@ -394,9 +400,11 @@
   color: var(--text-3);
 }
 
+/* Ink, weighted, where it was pink type on lime (1.41:1). The sentence says what it is. */
 .train-deload {
   font-size: 0.8rem;
-  color: var(--accent);
+  font-weight: 600;
+  color: var(--ink);
   margin-top: 0.25rem;
 }
 
@@ -496,8 +504,14 @@
   color: var(--text-3);
 }
 
+/* The encore tag is a pink sticker, ink on a pink fill (7.75:1), where it was pink type on lime
+ * (1.41:1). justify-self keeps the fill to the word rather than the grid column. */
 .set-row.bonus .set-marker {
-  color: var(--accent);
+  justify-self: start;
+  padding: 0 0.25rem;
+  background: var(--accent);
+  color: var(--ink);
+  border: 1px solid var(--ink);
 }
 
 .set-done-value {
