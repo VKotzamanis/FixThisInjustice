@@ -659,7 +659,11 @@ export type CopyKey =
   // --- round 3: the two Settings switches gain a plain description (owner: "I have no idea
   // what they do or if they even work") ---
   | 'advice.soundsSilent'
-  | 'advice.hotkeysKeyboardOnly';
+  | 'advice.hotkeysKeyboardOnly'
+  // --- session editing, ROADMAP L1-L4 (docs/design/session-editing.md) ---
+  | 'button.editSet'
+  | 'button.saveSet'
+  | 'status.sessionEditRefused';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1953,6 +1957,15 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    * a phone with no keyboard attached this switch changes nothing the owner can reach.
    */
   'advice.hotkeysKeyboardOnly': 'Keyboard required.',
+
+  // --- session editing, ROADMAP L1-L4 (docs/design/session-editing.md) ---
+  // L1: a logged set reopens in place. The accessible names carry the set number
+  // (FORMAT.editSetLabel, FORMAT.saveSetLabel), as the log and delete controls already do.
+  'button.editSet': 'Edit',
+  'button.saveSet': 'Save',
+  // Shown when the store refuses a session edit or a set edit. The likely causes are a session
+  // finished or a set deleted in another tab, so the next step is to reload and look again.
+  'status.sessionEditRefused': 'Change not saved. Reload to see the current session.',
 };
 
 /**
@@ -2341,6 +2354,12 @@ export const FORMAT = {
 
   /** The accessible name of one row's delete control; the visible word is `button.deleteSet`. */
   deleteSetLabel: (n: number): string => `Delete set ${n}`,
+
+  /** The accessible name of one logged row's edit control; the visible word is `button.editSet`. */
+  editSetLabel: (n: number): string => `Edit set ${n}`,
+
+  /** The accessible name of an edited row's save control; the visible word is `button.saveSet`. */
+  saveSetLabel: (n: number): string => `Save set ${n}`,
 
   /**
    * "60 kg × 8", one logged set. The load arrives already formatted by src/domain/units.ts, so

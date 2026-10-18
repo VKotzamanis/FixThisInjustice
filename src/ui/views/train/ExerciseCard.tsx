@@ -283,6 +283,26 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   onLog={(loadKg, entry) => {
                     handleLog(n, loadKg, entry);
                   }}
+                  onEdit={(loadKg, entry) => {
+                    if (logged === null) return false;
+                    /*
+                     * ROADMAP L1. A click handler: React does not catch a throw from one, so
+                     * the store's refusal (a set deleted in another tab, a value the schema
+                     * refuses) is turned into the row's own message rather than escaping to
+                     * the window. No rest timer, no coach line: an edit is not a new set.
+                     */
+                    try {
+                      useAppStore.getState().updateSet(logged.id, {
+                        loadKg, // [kg] canonical
+                        reps: entry.reps, // [repetitions] or null
+                        durationS: entry.durationS, // [s] or null
+                        enteredUnit: profile.units,
+                      });
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  }}
                   onDelete={() => {
                     if (logged === null) return;
                     useAppStore.getState().deleteSet(logged.id);

@@ -266,6 +266,28 @@
 
 .set-row.done {
   opacity: 0.6;
+  /* marker, readout, then Edit and Delete side by side (ROADMAP L1) */
+  grid-template-columns: 4rem 1fr auto;
+  align-items: center;
+}
+
+/*
+ * A logged row reopened for editing (ROADMAP L1). The fields keep the new-row layout; the
+ * toggle, Save and Cancel take a line of their own under them, so each control gets a full
+ * share of the width at phone size instead of three crammed into the last column.
+ */
+.set-row.editing .set-actions,
+.set-row.editing .set-edit-error {
+  grid-column: 1 / -1;
+}
+
+.set-row.editing .set-actions > button {
+  flex: 1 1 0;
+}
+
+.set-edit-error {
+  margin: 0;
+  color: var(--danger);
 }
 
 .unit-input {

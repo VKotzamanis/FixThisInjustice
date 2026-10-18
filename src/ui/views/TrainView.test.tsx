@@ -1503,3 +1503,27 @@ describe('TrainView: the limelight voice', () => {
     expect(screen.queryByText(copy('button.logSet'))).toBeNull();
   });
 });
+
+describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.md)', () => {
+  it('L1: edits a logged set in place and leaves the rest timer running', () => {
+    seedStore(seed());
+    renderTrain();
+    logRow(1, '60', '8');
+    const timer = useAppStore.getState().session.restTimer;
+    expect(timer).not.toBeNull();
+    dismissAllToasts();
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    const sets = Object.values(useAppStore.getState().sets);
+    expect(sets).toHaveLength(1);
+    expect(sets[0]?.reps).toBe(7); // [repetitions]
+    expect(sets[0]?.loadKg).toBe(60); // [kg]
+    // The same interval, not a restarted one: an edit is not a new set.
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+    // No coach line for an edit: the queue stays empty.
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.dismiss') })).toBeNull();
+  });
+});

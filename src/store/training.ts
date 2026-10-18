@@ -161,6 +161,44 @@ export function applyRestoreSet(state: AppState, loggedSet: LoggedSet): AppState
 }
 
 /**
+ * What an edit of a logged set may change (ROADMAP L1): the measurement and the unit it was
+ * typed in. Everything else on a LoggedSet is the record's identity - which set of which
+ * exercise on which day, when it was logged, whether it was bonus work - and an edit that moved
+ * any of those would be a different set wearing this one's id.
+ */
+export type SetMeasurement = Pick<LoggedSet, 'loadKg' | 'reps' | 'durationS' | 'enteredUnit'>;
+
+/**
+ * Rewrites the measurement of one logged set in place.
+ *
+ * `loggedAt` is kept: it records when the set was performed, and the history is ordered by
+ * assignment date and set number anyway (sortSetHistory), so an edit cannot reorder it. The
+ * specimen counter is not touched - the set count did not change - so no milestone or card can
+ * be produced by an edit.
+ *
+ * Throws on an id that names no set rather than returning the state: the caller is showing the
+ * user an edit form, and a silent no-op would let it report a save that never happened.
+ *
+ * @param m loadKg [kg] canonical (0 = bodyweight, A60), reps [repetitions] or null,
+ *   durationS [s] or null, enteredUnit the unit the user typed in.
+ */
+export function applyUpdateSet(state: AppState, id: string, m: SetMeasurement): AppState {
+  const current = state.sets[id];
+  if (current === undefined) {
+    throw new Error(`updateSet: no logged set "${id}"; it may have been deleted`);
+  }
+  const candidate: LoggedSet = {
+    ...current,
+    loadKg: m.loadKg, // [kg]
+    reps: m.reps, // [repetitions]
+    durationS: m.durationS, // [s]
+    enteredUnit: m.enteredUnit,
+  };
+  const edited = parseOrThrow(LoggedSetSchema, candidate, 'updateSet');
+  return { ...state, sets: { ...state.sets, [id]: edited } };
+}
+
+/**
  * Appends a body-mass entry and keeps the profile's list in civil-date order, which every
  * reader (the trend chart, latestBodyMassEntry) is entitled to assume.
  *

@@ -127,6 +127,41 @@ describe('logSet', () => {
   });
 });
 
+describe('updateSet (ROADMAP L1)', () => {
+  it('edits the stored set and leaves a running rest timer alone', () => {
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
+    const timer = startRest(120, NOW); // [s], [ms]
+    useAppStore.getState().setRestTimer(timer);
+    const sessionBefore = useAppStore.getState().session;
+
+    useAppStore.getState().updateSet(id, {
+      loadKg: 65, // [kg]
+      reps: 7, // [repetitions]
+      durationS: null,
+      enteredUnit: 'metric',
+    });
+
+    expect(useAppStore.getState().sets[id]).toMatchObject({ id, loadKg: 65, reps: 7, loggedAt: NOW });
+    // The edit is a document change only: the timer the user is resting on keeps running.
+    expect(useAppStore.getState().session).toBe(sessionBefore);
+    expectStorable();
+  });
+
+  it('leaves the document untouched when the schema refuses the edit', () => {
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
+    const before = useAppStore.getState().sets;
+    expect(() =>
+      useAppStore.getState().updateSet(id, {
+        loadKg: 60,
+        reps: 0, // [repetitions] below the schema's floor of 1
+        durationS: null,
+        enteredUnit: 'metric',
+      }),
+    ).toThrow(/reps/);
+    expect(useAppStore.getState().sets).toBe(before);
+  });
+});
+
 describe('deleteSet / undoDelete', () => {
   it('restores the identical record inside the undo window', () => {
     vi.useFakeTimers();

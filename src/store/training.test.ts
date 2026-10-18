@@ -20,6 +20,7 @@ import {
   applyLogBodyMass,
   applyLogSet,
   applyRestoreSet,
+  applyUpdateSet,
 } from './training';
 import type { AppState, LoggedSet } from '../domain/types';
 
@@ -159,6 +160,75 @@ describe('applyDeleteSet / applyRestoreSet', () => {
     const restored = applyRestoreSet(next, removed);
     expect(restored.sets['set-abc']).toEqual(removed);
     assertStorable(restored);
+  });
+});
+
+describe('applyUpdateSet (ROADMAP L1)', () => {
+  it('rewrites the measurement and keeps the identity of the record', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', {
+      loadKg: 62.5, // [kg]
+      reps: 6, // [repetitions]
+      durationS: null, // [s]
+      enteredUnit: 'imperial',
+    });
+    // Only the four measurement fields move; the id, the instant, the set number, the bonus
+    // flag and what the set is OF are the record's identity and stay.
+    expect(next.sets['set-abc']).toEqual({
+      ...setInput,
+      id: 'set-abc',
+      loggedAt: NOW,
+      loadKg: 62.5,
+      reps: 6,
+      enteredUnit: 'imperial',
+    });
+    assertStorable(next);
+  });
+
+  it('stores a bodyweight edit as 0 kg', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', {
+      loadKg: 0, // [kg] bodyweight, A60
+      reps: 12,
+      durationS: null,
+      enteredUnit: 'metric',
+    });
+    expect(next.sets['set-abc']?.loadKg).toBe(0);
+    assertStorable(next);
+  });
+
+  it('changes no set count, so no milestone or specimen can move', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', {
+      loadKg: 70,
+      reps: 5,
+      durationS: null,
+      enteredUnit: 'metric',
+    });
+    expect(next.specimens).toBe(seeded.specimens);
+  });
+
+  it('refuses a value the schema refuses and names the field', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    expect(() =>
+      applyUpdateSet(seeded, 'set-abc', {
+        loadKg: -5,
+        reps: 8,
+        durationS: null,
+        enteredUnit: 'metric',
+      }),
+    ).toThrow(/updateSet: loadKg/);
+  });
+
+  it('refuses an id that names no set, rather than inventing one', () => {
+    expect(() =>
+      applyUpdateSet(makeState(), 'nope', {
+        loadKg: 60,
+        reps: 8,
+        durationS: null,
+        enteredUnit: 'metric',
+      }),
+    ).toThrow(/updateSet: no logged set "nope"/);
   });
 });
 

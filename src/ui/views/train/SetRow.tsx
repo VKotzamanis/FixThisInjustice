@@ -75,6 +75,13 @@ export interface SetRowProps {
   logged: LoggedSet | null;
   isBodyweightExercise: boolean;
   onLog: (loadKg: Kg, entry: SetEntry) => void;
+  /**
+   * Saves an edit of the logged set (ROADMAP L1). Returns false when the store refused it, so
+   * the row stays open with what the user typed instead of claiming a save.
+   *
+   * @param loadKg [kg] canonical; 0 when the bodyweight toggle is set (A60).
+   */
+  onEdit: (loadKg: Kg, entry: SetEntry) => boolean;
   onDelete: () => void;
 }
 
@@ -82,6 +89,15 @@ export interface SetRowProps {
 function prefill(suggestedKg: Kg | null, units: UnitSystem): string {
   if (suggestedKg === null) return '';
   return String(displayLoad(suggestedKg, units)); // [lb] or [kg]
+}
+
+/**
+ * A logged load as the user would type it. A bodyweight set (0 kg) and an unrecorded load both
+ * open an empty field: the toggle carries the first, and the second has nothing to show.
+ */
+function loggedLoadText(loadKg: Kg | null, units: UnitSystem): string {
+  if (loadKg === null || loadKg === 0) return '';
+  return String(displayLoad(loadKg, units)); // [lb] or [kg]
 }
 
 export function SetRow(props: SetRowProps): ReactElement {
@@ -98,10 +114,25 @@ export function SetRow(props: SetRowProps): ReactElement {
     logged,
     isBodyweightExercise,
     onLog,
+    onEdit,
     onDelete,
   } = props;
 
-  const timed = isTimedPrescription(prescription);
+  /*
+   * ROADMAP L1. True while a LOGGED row is reopened for editing. The same fields as a new row
+   * are rendered, prefilled from the record, so editing needs no second form and the
+   * reps-or-seconds rule below holds for both.
+   */
+  const [editing, setEditing] = useState(false);
+  /** The store's refusal of an edit, in copy words, or null. */
+  const [editError, setEditError] = useState<string | null>(null);
+  /*
+   * An edit measures what the RECORD measured: a set stored with a duration is edited in
+   * seconds even if the prescription has since changed, so an edit can never turn a hold into
+   * a repetition count. A new row follows the prescription.
+   */
+  const timed =
+    editing && logged !== null ? logged.durationS !== null : isTimedPrescription(prescription);
   const [loadText, setLoadText] = useState(() => prefill(suggestedKg, units));
   // One field holds whichever count this row collects; only one of the two is ever rendered,
   // so a single piece of state cannot leave a stale value behind the other.
@@ -134,16 +165,51 @@ export function SetRow(props: SetRowProps): ReactElement {
     // section 8, code review A60): 0 kg is a real load, "not recorded" is a different fact.
     const loadKg = bodyweight ? 0 : storedLoadKg(loadText, units); // [kg]
     if (loadKg === null || loadKg < 0) return;
-    onLog(loadKg, timed ? { reps: null, durationS: count } : { reps: count, durationS: null });
+    const entry: SetEntry = timed ? { reps: null, durationS: count } : { reps: count, durationS: null };
+    if (editing) {
+      // An edit is not a new set: no rest timer, no coach line (ExerciseCard owns both and
+      // calls neither on this path). A refusal keeps the row open with what was typed.
+      if (!onEdit(loadKg, entry)) {
+        setEditError(t('status.sessionEditRefused'));
+        return;
+      }
+      setEditing(false);
+      setEditError(null);
+    } else {
+      onLog(loadKg, entry);
+    }
     setCountText('');
     setCountError(null);
     touched.current = false;
     countRef.current?.blur();
   };
 
+  /** Reopens the logged row with the record's own values in the fields. */
+  const startEdit = (): void => {
+    if (logged === null) return;
+    // Marked as typed, so a suggestion arriving mid-edit cannot overwrite the logged load.
+    touched.current = true;
+    setLoadText(loggedLoadText(logged.loadKg, units));
+    setCountText(String(logged.durationS ?? logged.reps ?? '')); // [s] or [repetitions]
+    setBodyweight(logged.loadKg === 0);
+    setCountError(null);
+    setEditError(null);
+    setEditing(true);
+  };
+
+  const cancelEdit = (): void => {
+    setEditing(false);
+    setEditError(null);
+    setCountError(null);
+    setCountText('');
+    touched.current = false;
+    setLoadText(prefill(suggestedKg, units));
+    setBodyweight(isBodyweightExercise);
+  };
+
   const marker = isBonus ? t('label.bonusSet') : FORMAT.setCounter(n, targetSets, overrides);
 
-  if (logged !== null) {
+  if (logged !== null && !editing) {
     return (
       <div className="set-row done">
         <span className="set-marker">{marker}</span>
@@ -155,15 +221,22 @@ export function SetRow(props: SetRowProps): ReactElement {
               )
             : FORMAT.loggedTimedSet(formatLoad(logged.loadKg, units), logged.durationS)}
         </span>
-        <button type="button" onClick={onDelete} aria-label={FORMAT.deleteSetLabel(n)}>
-          {t('button.deleteSet')}
-        </button>
+        <div className="set-actions">
+          <button type="button" onClick={startEdit} aria-label={FORMAT.editSetLabel(n)}>
+            {t('button.editSet')}
+          </button>
+          <button type="button" onClick={onDelete} aria-label={FORMAT.deleteSetLabel(n)}>
+            {t('button.deleteSet')}
+          </button>
+        </div>
       </div>
     );
   }
 
+  const rowClass = editing ? 'set-row editing' : isBonus ? 'set-row bonus' : 'set-row';
+
   return (
-    <div className={isBonus ? 'set-row bonus' : 'set-row'}>
+    <div className={rowClass}>
       <span className="set-marker">{marker}</span>
       <div
         onKeyDown={(e) => {
@@ -244,10 +317,27 @@ export function SetRow(props: SetRowProps): ReactElement {
             }}
           />
         </div>
-        <button type="button" onClick={submit} aria-label={FORMAT.logSetLabel(n)}>
-          {t('button.logSet')}
-        </button>
+        {editing ? (
+          <>
+            <button type="button" onClick={submit} aria-label={FORMAT.saveSetLabel(n)}>
+              {t('button.saveSet')}
+            </button>
+            <button type="button" onClick={cancelEdit}>
+              {t('button.cancel')}
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={submit} aria-label={FORMAT.logSetLabel(n)}>
+            {t('button.logSet')}
+          </button>
+        )}
       </div>
+      {/* role="alert": it answers the Save the user just pressed (same rule as add-custom). */}
+      {editError !== null && (
+        <p className="set-edit-error" role="alert">
+          {editError}
+        </p>
+      )}
     </div>
   );
 }
