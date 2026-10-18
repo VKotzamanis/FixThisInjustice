@@ -70,6 +70,9 @@ export interface FormCue {
  * constraints forbid shipping an unsourced number. This notice therefore states the requirement
  * without prescribing sets, loads or durations; `formCues.test.ts` asserts it carries no digit.
  * A sourced protocol is requested as a P2 amendment.
+ *
+ * Shown ONCE per profile (owner 2026-10-18): on Train while a session is in progress, until
+ * dismissed (src/ui/views/TrainView.tsx, UiPrefs.warmupNoticeDismissedByProfile). Nowhere else.
  */
 export const WARMUP_NOTICE =
   'Warm up before the first working set of each compound lift: general aerobic work, then progressively loaded ramp-up sets. Seek medical clearance before training if you have a cardiovascular, metabolic or renal condition, or symptoms that suggest one.';

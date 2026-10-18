@@ -40,7 +40,8 @@ import type {
   UnitSystem,
 } from '../../domain/types';
 import { NO_VALUE } from '../format/plan';
-import { useAppStore } from '../../store';
+import { flushSave, startPersistence, useAppStore } from '../../store';
+import { STORAGE_KEY } from '../../store/persistence';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
 import { UNDO_WINDOW_MS } from '../../store/training';
@@ -1218,15 +1219,99 @@ describe('TrainView custom and bonus exercises', () => {
   });
 });
 
-describe('TrainView session frame', () => {
-  it('keeps the warm-up notice off the session screen; the Form Cues modal still carries it', () => {
-    // Owner 2026-10-18: "keep it simple when we train". The notice text is unchanged and lives
-    // in the modal, above every cue set (FormCuesModal.test.tsx asserts its position there).
+/*
+ * The warm-up notice, shown ONCE (owner 2026-10-18: "Gyms already make you sign a waiver.
+ * Showing it once is ok"). It appears on the first Train mount with a session in progress and
+ * stays until its one control is tapped; the dismissal is stored per profile in the document
+ * (UiPrefs.warmupNoticeDismissedByProfile), so neither a remount nor a reload brings it back.
+ */
+describe('TrainView one-time warm-up notice', () => {
+  const gotIt = (): string => copyFor('limelight', 'button.gotIt');
+
+  it('shows the notice above the exercise cards on the first mount of a session in progress', () => {
     seedStore(seed());
+    const view = renderTrain();
+
+    const notice = screen.getByText(WARMUP_NOTICE);
+    const cards = view.container.querySelector('.ex-stack');
+    expect(cards).not.toBeNull();
+    if (cards === null) return;
+    // Above the cards in document order, and not inside any of them.
+    expect(notice.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(cards.contains(notice)).toBe(false);
+    // One control, and it is the one that dismisses.
+    expect(screen.getByRole('button', { name: gotIt() })).toBeInTheDocument();
+  });
+
+  it('never shows it again once dismissed: not after a remount, not after a reload', () => {
+    const storage = installFakeStorage();
+    seedStore(seed());
+    // hydrate() against the empty fake storage takes the "absent" branch: it only marks the
+    // store hydrated, which is what lets the persistence subscription write (canPersist).
+    useAppStore.getState().hydrate();
+    const stop = startPersistence();
+    try {
+      const first = renderTrain();
+      fireEvent.click(screen.getByRole('button', { name: gotIt() }));
+      expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+      // Keyed by the profile that dismissed it, and by nothing else.
+      expect(useAppStore.getState().ui.warmupNoticeDismissedByProfile).toEqual({ 'profile-1': true });
+
+      // Leaving Train and coming back.
+      first.unmount();
+      const second = renderTrain();
+      expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+      second.unmount();
+
+      // A reload: the debounced write is committed, the in-memory document is thrown away
+      // (with the subscription stopped, so the reset itself is not saved), and the store is
+      // read back from storage.
+      flushSave();
+      stop();
+      expect(storage.get(STORAGE_KEY)).toContain('warmupNoticeDismissedByProfile');
+      useAppStore.getState().replaceState(defaultState());
+      useAppStore.getState().hydrate();
+      expect(useAppStore.getState().status.lastLoadError).toBeNull();
+      renderTrain();
+      expect(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') })).toBeInTheDocument();
+      expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+    } finally {
+      stop();
+    }
+  });
+
+  it('shows it to a profile that has not dismissed it, even when another profile has', () => {
+    const state = seed();
+    seedStore({ ...state, ui: { ...state.ui, warmupNoticeDismissedByProfile: { 'profile-2': true } } });
+    renderTrain();
+    expect(screen.getByText(WARMUP_NOTICE)).toBeInTheDocument();
+  });
+
+  it('does not show it without a session in progress', () => {
+    const state = seed();
+    const day = state.assignments['profile-1']?.[0];
+    if (day === undefined) throw new Error('seed() no longer assigns a session to today');
+    seedStore({
+      ...state,
+      assignments: { 'profile-1': [{ ...day, status: 'completed', completedAt: NOW }] },
+    });
     renderTrain();
     expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+    expect(screen.queryByRole('button', { name: gotIt() })).toBeNull();
+  });
+});
+
+describe('TrainView session frame', () => {
+  it('keeps the warm-up notice out of the Form Cues modal', () => {
+    // Owner 2026-10-18: shown once on Train, nowhere else. Dismissed first, so the only place
+    // the text could come from is the modal.
+    const state = seed();
+    seedStore({ ...state, ui: { ...state.ui, warmupNoticeDismissedByProfile: { 'profile-1': true } } });
+    renderTrain();
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.formCues') }));
-    expect(within(screen.getByTestId('form-cues-backdrop')).getByText(WARMUP_NOTICE)).toBeInTheDocument();
+    const modal = screen.getByTestId('form-cues-backdrop');
+    expect(within(modal).queryByText(WARMUP_NOTICE)).toBeNull();
+    expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
   });
 
   it('says so when no session is assigned to today', () => {

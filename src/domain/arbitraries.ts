@@ -520,6 +520,13 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   // `false` rather than to itself and the parity property would fail for a reason that is not a
   // bug.
   introSeen: fc.boolean(),
+  // The one-time warm-up notice's dismissals. OPTIONAL rather than defaulted, so absence is a
+  // real stored state and is generated too (`nil: undefined`, as acquiredByOrdinal above does);
+  // a populated map is what makes the round trip check the field at all.
+  warmupNoticeDismissedByProfile: fc.option(
+    fc.dictionary(anyId, fc.constant(true as const), { maxKeys: 2 }),
+    { nil: undefined },
+  ),
 });
 
 /**

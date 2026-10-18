@@ -8,16 +8,14 @@
 // that carries no cue is stated rather than rendered as an empty dialog (security constraint
 // 30: no silent no-op on a user-initiated action).
 //
-// WARMUP_NOTICE is rendered above every cue set, on every open: the review required a warm-up
-// protocol and a pre-participation screen, and the notice is the whole of what can be said
-// without a sourced protocol. It carries no digit, and src/content/formCues.test.ts asserts
-// that, so nothing here prescribes a number. This modal is now the notice's only screen: the Train
-// view dropped its copy (owner 2026-10-18, "keep it simple when we train").
+// WARMUP_NOTICE is NOT rendered here. The owner ruled it shown once and nowhere else (2026-10-18:
+// "Gyms already make you sign a waiver. Showing it once is ok"): it appears on the profile's
+// first Train session until dismissed (src/ui/views/TrainView.tsx).
 
 import { createContext, useContext, useId } from 'react';
 import type { ReactElement } from 'react';
 import { ModalShell } from './ModalShell';
-import { FORM_CUES, WARMUP_NOTICE } from '../../content/formCues';
+import { FORM_CUES } from '../../content/formCues';
 import { useCopy } from '../../content/useCopy';
 import '../styles/train.css';
 
@@ -91,7 +89,6 @@ export function FormCuesModal(props: {
       </div>
 
       <div className="fcm-body">
-        <p className="fcm-warmup">{WARMUP_NOTICE}</p>
         {cue === undefined ? (
           <p className="fcm-none">{t('advice.noFormCues')}</p>
         ) : (

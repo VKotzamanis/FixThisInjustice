@@ -171,7 +171,6 @@
   gap: 1rem;
 }
 
-.fcm-warmup,
 .fcm-none {
   font-size: 0.8rem;
   color: var(--text-2);
@@ -489,6 +488,41 @@
   gap: 0.75rem;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/*
+ * The one-time warm-up notice above the exercise cards (owner 2026-10-18: shown once, then gone).
+ * Ink type on the lime page (10.91:1) inside a 2 px ink edge; the pink offset block is a fill, never
+ * type (pink on lime is 1.41:1). The sentence and its one control share a row where the phone is
+ * wide enough and the control drops under the sentence where it is not.
+ */
+.train-warmup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--line-2);
+  box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0 var(--accent);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.train-warmup-text {
+  flex: 1 1 14rem;
+  min-width: 0;
+  margin: 0;
+}
+
+/* `.view button` (views.css, 0,1,1) is full width; two classes outrank it so the control sits
+ * beside the sentence. 2.75rem is the 44 px target at the 16 px root, restated, not reduced. */
+.view .train-warmup-ok {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 1rem;
 }
 
 /* --- Train view, the classes P4 Task 10's markup adds beyond the block above --- */

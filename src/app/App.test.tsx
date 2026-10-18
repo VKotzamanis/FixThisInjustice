@@ -408,10 +408,11 @@ describe('view shell', () => {
     // resumes the same training day rather than re-deriving it from the clock.
     expect(useAppStore.getState().session.activeAssignmentDate).toBe(MONDAY);
     expect(useAppStore.getState().ui.lastView).toBe('train');
-    // Train is mounted on an open session: its Finish control is there. The warm-up notice is
-    // not (owner 2026-10-18); it is read in the Form Cues modal.
+    // Train is mounted on an open session: its Finish control is there. This is the profile's
+    // first session, so the one-time warm-up notice is shown above the cards (owner 2026-10-18:
+    // "Showing it once is ok"); TrainView.test.tsx covers its dismissal.
     expect(screen.getByRole('button', { name: copy('button.finishSession') })).toBeInTheDocument();
-    expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+    expect(screen.getByText(WARMUP_NOTICE)).toBeInTheDocument();
   });
 
   it('unlocks the audio context on the Start tap, inside the gesture', async () => {

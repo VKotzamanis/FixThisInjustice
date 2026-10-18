@@ -431,6 +431,47 @@ describe('SessionAssignment.edits (ROADMAP L2-L4, rule 7)', () => {
   });
 });
 
+/**
+ * The document as this build's predecessor stored it: every additive default filled in, and no
+ * `warmupNoticeDismissedByProfile` key, because that build never wrote one. JSON-cloned, so it
+ * is the bytes in localStorage or in an exported file, not a Zod output object.
+ */
+function storedBeforeWarmupDismissal(): Record<string, unknown> {
+  const parsed = parseState(legacyDocument());
+  if (!parsed.ok) throw new Error(`legacyDocument() no longer parses: ${parsed.error}`);
+  return throughJson(parsed.state) as Record<string, unknown>;
+}
+
+describe('UiPrefs.warmupNoticeDismissedByProfile (owner 2026-10-18, rule 7)', () => {
+  it('keeps a profile\'s dismissal through a save and load', () => {
+    const doc = storedBeforeWarmupDismissal();
+    doc.ui = { ...(doc.ui as Record<string, unknown>), warmupNoticeDismissedByProfile: { [P1]: true } };
+    const result = parseState(throughJson(doc));
+    expect(result.ok ? null : result.error).toBeNull();
+    if (!result.ok) return;
+    expect(result.state.ui.warmupNoticeDismissedByProfile).toEqual({ [P1]: true });
+  });
+
+  it('loads a document stored without the field, deep-equal and without the key', () => {
+    // Optional, not defaulted: an old document or an old JSON export parses to exactly what was
+    // stored, so this build reads it back byte for byte rather than adding a key on load.
+    const stored = storedBeforeWarmupDismissal();
+    expect('warmupNoticeDismissedByProfile' in (stored.ui as Record<string, unknown>)).toBe(false);
+    const result = parseState(stored);
+    expect(result.ok ? null : result.error).toBeNull();
+    if (!result.ok) return;
+    expect(result.state).toStrictEqual(stored);
+    expect('warmupNoticeDismissedByProfile' in result.state.ui).toBe(false);
+    expect(JSON.stringify(result.state)).toBe(JSON.stringify(stored));
+  });
+
+  it('refuses a malformed value rather than guessing', () => {
+    const doc = storedBeforeWarmupDismissal();
+    doc.ui = { ...(doc.ui as Record<string, unknown>), warmupNoticeDismissedByProfile: { [P1]: 'yes' } };
+    expect(parseState(doc).ok).toBe(false);
+  });
+});
+
 describe('a document written before the section 5 amendments', () => {
   it('backfills every default, at the root, the profile and the exercise', () => {
     const doc = legacyDocument();

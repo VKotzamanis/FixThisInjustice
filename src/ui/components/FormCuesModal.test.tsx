@@ -53,16 +53,16 @@ describe('FormCuesModal', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('renders the warm-up notice first, then every cue section', () => {
+  it('renders every cue section, and no warm-up notice', () => {
     const cue = cueFor('barbell-bench-press');
     renderWith('barbell-bench-press', 'Barbell bench press');
     openFrom();
 
     const dialog = screen.getByRole('dialog');
     const text = dialog.textContent ?? '';
-    // The notice is above the first section heading, not appended at the end.
-    expect(text.indexOf(WARMUP_NOTICE)).toBeGreaterThanOrEqual(0);
-    expect(text.indexOf(WARMUP_NOTICE)).toBeLessThan(text.indexOf(copyFor('limelight', 'label.cueSetup')));
+    // Owner 2026-10-18: the notice is shown once, on the first Train session
+    // (TrainView.test.tsx), and nowhere else. The constant itself stays in formCues.ts.
+    expect(text).not.toContain(WARMUP_NOTICE);
 
     expect(screen.getByText(copyFor('limelight', 'label.cueSetup'))).toBeTruthy();
     expect(screen.getByText(copyFor('limelight', 'label.cueExecution'))).toBeTruthy();

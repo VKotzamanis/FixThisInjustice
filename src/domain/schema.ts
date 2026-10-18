@@ -693,6 +693,19 @@ export const UiPrefsSchema = z.object({
    * records for all of P1-P8.
    */
   hotkeys: z.boolean().default(true),
+  /*
+   * Additive and OPTIONAL. The profiles that have dismissed the one-time warm-up notice on Train
+   * (owner 2026-10-18: "Showing it once is ok"; text in src/content/formCues.ts WARMUP_NOTICE).
+   * An entry exists only once its profile tapped the notice's control, so `true` is the only
+   * value; an absent key, or an absent map, means "not dismissed yet".
+   *
+   * `.optional()` rather than the `.default({})` its two per-profile neighbours carry: a missing
+   * key resolves to plain absence before the record schema runs (ActivityPalSchema's comment
+   * above records the Zod 4.5.4 behaviour), so a document or JSON export written before this
+   * field existed parses to exactly what was stored, with no key added on load (rule 7).
+   * CURRENT_SCHEMA_VERSION stays 3.
+   */
+  warmupNoticeDismissedByProfile: z.record(z.string(), z.literal(true)).optional(),
 });
 
 // ---------------------------------------------------------------------------

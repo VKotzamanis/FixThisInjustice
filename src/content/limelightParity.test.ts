@@ -14,7 +14,8 @@
 // effort keys `button.effort{Easy,Solid,Hard,Max}` (ROADMAP L8), the programme lifecycle keys
 // (docs/design/programme-lifecycle.md, "Copy keys") and the eleven rest-game keys whose name
 // contains `restWord` (ROADMAP F1, docs/design/rest-games.md; base table only, no limelight
-// override). No snapshot row was changed to add them.
+// override), and `button.gotIt`, the one control of the one-time warm-up notice on Train (owner
+// 2026-10-18; base table only). No snapshot row was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';

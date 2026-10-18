@@ -286,7 +286,11 @@ export type SkinId = 'limelight';
 // Skip, and never returns (App.tsx gates the sequence on it, ahead of the boot gate). A document
 // migrated from v2, or any other test/production fixture standing in for an existing user, seeds
 // it true, exactly as bootSeen does, so a returning user is never shown a first-run screen.
-export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; }
+// warmupNoticeDismissedByProfile: the profiles that dismissed the one-time warm-up notice on
+// Train (owner 2026-10-18, "Showing it once is ok"). OPTIONAL, not defaulted, so a document or
+// export written before it existed parses to exactly what was stored; `| undefined` is spelled
+// out for type identity with z.infer under exactOptionalPropertyTypes (see activityPal).
+export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; }
 
 // ---- setup draft (persisted so a closed browser does not lose in-progress setup) ----
 /*

@@ -21,6 +21,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
+import { WARMUP_NOTICE } from '../../content/formCues';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { crossedMilestones } from '../../domain/fun/blocks';
@@ -60,6 +61,7 @@ export function TrainView(): ReactElement {
   const customExercises = useAppStore((s) => s.customExercises);
   const bodyMass = useAppStore((s) => s.bodyMass);
   const bonusExerciseIds = useAppStore((s) => s.session.bonusExerciseIds);
+  const warmupDismissed = useAppStore((s) => s.ui.warmupNoticeDismissedByProfile);
   const todaysSets = useTodaysSets();
   const profileId = profile?.id ?? null;
   const { push } = useToasts();
@@ -204,6 +206,18 @@ export function TrainView(): ReactElement {
     plan === null || assignment === null ? IDENTITY_BLOCK : blockFor(plan, assignment.sourceIndex);
   const sessionActive = assignment !== null && assignment.status === 'in-progress';
   /*
+   * The warm-up notice, ONCE (owner 2026-10-18: "Gyms already make you sign a waiver. Showing it
+   * once is ok"). Shown while a session is in progress until this profile taps its one control.
+   * The dismissal is stored per profile in the document (UiPrefs.warmupNoticeDismissedByProfile),
+   * not in component state, so leaving Train, a reload or a new session does not bring it back.
+   */
+  const showWarmup = sessionActive && warmupDismissed?.[profileId] !== true;
+  const dismissWarmup = (): void => {
+    // Read at the tap, not from the render, so an entry another profile wrote since is kept.
+    const dismissed = useAppStore.getState().ui.warmupNoticeDismissedByProfile ?? {};
+    useAppStore.getState().setUi({ warmupNoticeDismissedByProfile: { ...dismissed, [profileId]: true } });
+  };
+  /*
    * The mass this session started from, by the hydration module's own rule (the latest entry
    * within 6 h before startedAt). It is the ONLY reference the > 2 % comparison can use: the
    * profile baseline is a mass from whenever the profile was set up, so comparing against it
@@ -339,8 +353,16 @@ export function TrainView(): ReactElement {
         <RestTimerPanel />
       </div>
 
-      {/* No standing prose mid-workout (owner 2026-10-18): the warm-up notice is in Form Cues. */}
       <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
+
+      {showWarmup && (
+        <div className="train-warmup" role="note">
+          <p className="train-warmup-text">{WARMUP_NOTICE}</p>
+          <button type="button" className="train-warmup-ok" onClick={dismissWarmup}>
+            {c('button.gotIt')}
+          </button>
+        </div>
+      )}
 
       <div className="ex-stack">
         {lineup.map((entry) => {

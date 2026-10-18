@@ -148,6 +148,8 @@ const TEXT_RULES: readonly {
   // Scoped under .wiz: a bare `.wiz-modal-close` (0,1,0) lost every property to `.wiz button`
   // (0,1,1), so the pink fill and ink glyph this row measures were never painted.
   { sheet: 'setup.css', css: setupCss, selector: '.wiz .wiz-modal-close', ground: '--accent', own: true },
+  // The one-time warm-up notice on Train (owner 2026-10-18), on the view's lime page ground.
+  { sheet: 'train.css', css: trainCss, selector: '.train-warmup', ground: '--bg' },
 ];
 
 describe('text that was pink on lime, or lime on pink, clears 4.5:1', () => {
@@ -204,6 +206,8 @@ const BOUNDARY_RULES: readonly {
     value: '2px solid var(--line-2)',
   },
   { sheet: 'timeCapsule.css', css: capsuleCss, selector: '.capsule-seal', property: 'border-color', value: 'var(--ink)' },
+  // The one-time warm-up notice's edge on the Train page; the pink offset beside it is decoration.
+  { sheet: 'train.css', css: trainCss, selector: '.train-warmup', property: 'border', value: '2px solid var(--line-2)' },
   // The modal's close control on the lime modal: "bold and stand out" (r2.12(i)) is this 3 px edge.
   { sheet: 'setup.css', css: setupCss, selector: '.wiz .wiz-modal-close', property: 'border', value: '3px solid var(--ink)' },
   // Focus rings: the state a keyboard user steers by. Outlines take no layout space.

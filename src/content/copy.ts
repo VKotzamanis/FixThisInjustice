@@ -268,6 +268,8 @@ export type CopyKey =
   | 'button.logBodyMass'
   | 'button.formReference'
   | 'button.formCues'
+  // The one control of the one-time warm-up notice on Train (owner 2026-10-18).
+  | 'button.gotIt'
   | 'button.nextInstance'
   | 'button.openClip'
   | 'button.searchInstance'
@@ -1051,6 +1053,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.logBodyMass': 'Log Body Mass',
   'button.formReference': 'Form Reference',
   'button.formCues': 'Form Cues',
+  // Dismisses the one-time warm-up notice on Train; it is not shown again (owner 2026-10-18).
+  'button.gotIt': 'Got It',
   'button.nextInstance': 'Next Instance',
   'button.openClip': 'Open Clip',
   'button.searchInstance': 'Search Instance',
