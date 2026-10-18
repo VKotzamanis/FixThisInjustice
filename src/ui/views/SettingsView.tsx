@@ -21,6 +21,7 @@ import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { InteractionSettings } from '../settings/InteractionSettings';
+import { ProgrammeSettings } from '../settings/ProgrammeSettings';
 import './views.css';
 
 /**
@@ -475,6 +476,12 @@ export function SettingsView(): JSX.Element {
         {t('label.creatine')}
       </label>
       <p className="view-note">{t('advice.creatineOnly')}</p>
+
+      {/* ROADMAP L5: equipment, split and conditioning, and Update Programme when Goal,
+          Experience or any of these would change the running plan. Remounted per profile. */}
+      {/* A key of its own: TimeZoneSetting above is a sibling keyed by the bare profile id, and a
+          duplicate sibling key made React hand one component's state to the other. */}
+      <ProgrammeSettings key={`programme-${profile.id}`} profile={profile} />
 
       <h2>{t('hero.equipmentSteps')}</h2>
       <NumberSetting

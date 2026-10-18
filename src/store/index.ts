@@ -30,7 +30,8 @@ import {
 import { createMotivationActions, type MotivationActions } from './motivationActions';
 import { createReminderActions, type ReminderActions } from './reminderActions';
 import { createFunActions, type FunActions } from './funActions';
-import { applyReplacePlan } from './programme';
+import { applyReplacePlan, applyRestartProgramme } from './programme';
+import type { ProgrammeChoice } from '../domain/plan/lifecycle';
 import {
   UNDO_WINDOW_MS,
   applyAddCustomExercise,
@@ -177,6 +178,15 @@ export interface AppActions {
    * (docs/design/programme-lifecycle.md).
    */
   setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void;
+  /**
+   * Replaces the running programme with one built from the profile's current settings, starting
+   * on `today` (ROADMAP L5 Update Programme, B1b Start Next Programme). `choice` may set the goal
+   * kind, the split and the conditioning option; absent fields keep the running plan's. Keeps
+   * and clears exactly what setPlan does. Throws, writing nothing, while a session is in
+   * progress, with no running plan, or for a split above the training weekdays
+   * (docs/design/programme-lifecycle.md).
+   */
+  restartProgramme(profileId: string, choice: ProgrammeChoice, today: LocalDate): void;
   /** One intake entry per civil date; a second entry for a date replaces the first. */
   logIntake(profileId: string, entry: IntakeEntry): void;
   /** The weekday slots and weekly session target the wizard collects; P3 consumes them. */
@@ -713,6 +723,14 @@ export const useAppStore = create<AppStore>()((set, get) => {
     });
     // Outside the set() because it is I/O, not state: without it a reload would restore the
     // slice this set() just cleared.
+    clearSessionMirror();
+  },
+
+  restartProgramme(profileId: string, choice: ProgrammeChoice, today: LocalDate): void {
+    // Same shape as setPlan: the pure transition throws before set() on any refusal, and the
+    // session slice and its mirror go with the replaced schedule.
+    const next = applyRestartProgramme(get(), profileId, choice, today, newId());
+    set({ ...next, session: EMPTY_SESSION });
     clearSessionMirror();
   },
 

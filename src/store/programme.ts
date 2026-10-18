@@ -5,10 +5,73 @@
 // what a new programme keeps and clears is stated once (docs/design/programme-lifecycle.md).
 
 import { compareLocalDate, weekStart } from '../domain/dates';
-import { sessionInProgress } from '../domain/plan/lifecycle';
+import { generatePlan } from '../domain/plan/generator';
+import {
+  programmeInput,
+  sessionInProgress,
+  type ProgrammeChoice,
+} from '../domain/plan/lifecycle';
+import { EXERCISES } from '../domain/plan/library';
 import { isTerminal } from '../domain/schedule/cursor';
 import type { AppState, LocalDate, PlanTemplate } from '../domain/types';
 import { requireProfile } from './scheduleActions';
+
+/**
+ * Replaces the running programme with one built from the profile as it is now, starting on
+ * `today` (ROADMAP L5 and B1b). The generator input is `programmeInput`; the replacement is
+ * `applyReplacePlan`, so it keeps and clears exactly what the wizard's setPlan does.
+ *
+ * Besides the plan it writes two things, each only when it changed: the goal kind, when
+ * `choice.goal` names another one (Start Next Programme, L7), and the weekly session target,
+ * set to the new split when the split changed (the wizard's own rule: picking a split sets the
+ * target to it). Target mass and date are left as stored.
+ *
+ * Throws, writing nothing: an unknown profile; no running plan; a session in progress; a split
+ * above the schedule's distinct training weekdays (the projection serves one session per
+ * weekday, so the surplus would never be scheduled).
+ */
+export function applyRestartProgramme(
+  s: AppState,
+  profileId: string,
+  choice: ProgrammeChoice,
+  today: LocalDate,
+  planId: string,
+): AppState {
+  const action = 'restartProgramme';
+  const profile = requireProfile(s, action, profileId);
+  const cursor = s.cursors[profileId];
+  const current = cursor === undefined ? undefined : s.plans[cursor.planId];
+  if (current === undefined) {
+    throw new Error(`${action}: "${profileId}" has no programme to restart; finish setup first`);
+  }
+  const input = programmeInput(profile, current, choice);
+  const splitChanged = input.sessionsPerWeek !== current.sessionsPerWeek;
+  const availability = s.availability[profileId];
+  // [days/week] distinct ISO weekdays: the calendar uses one slot per weekday (calendar.ts).
+  const trainingDays = new Set((availability?.slots ?? []).map((slot) => slot.weekday)).size;
+  if (splitChanged && input.sessionsPerWeek > trainingDays) {
+    throw new RangeError(
+      `${action}: ${String(input.sessionsPerWeek)} sessions per week need as many training days; ` +
+        `the schedule has ${String(trainingDays)} training days. Choose at most ${String(trainingDays)}.`,
+    );
+  }
+  const plan = generatePlan(input, EXERCISES);
+  const goalChanged = input.goal !== profile.goal.kind;
+  const patched: AppState = {
+    ...s,
+    profiles: goalChanged
+      ? { ...s.profiles, [profileId]: { ...profile, goal: { ...profile.goal, kind: input.goal } } }
+      : s.profiles,
+    availability:
+      splitChanged && availability !== undefined
+        ? {
+            ...s.availability,
+            [profileId]: { ...availability, weeklySessionTarget: input.sessionsPerWeek }, // [sessions/week]
+          }
+        : s.availability,
+  };
+  return applyReplacePlan(patched, action, profileId, plan, planId, today);
+}
 
 /**
  * Stores `plan` under `planId` and starts the profile's cursor on it at session 0 on

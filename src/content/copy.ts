@@ -679,7 +679,13 @@ export type CopyKey =
   | 'button.addCustomExercise'
   | 'button.addToSession'
   | 'button.removeExercise'
-  | 'label.fitsEquipment';
+  | 'label.fitsEquipment'
+  // --- programme lifecycle, ROADMAP L5, B1b, L7 (docs/design/programme-lifecycle.md) ---
+  | 'button.updateProgramme'
+  | 'button.startProgramme'
+  | 'advice.programmeDiffers'
+  | 'advice.programmeRestart'
+  | 'advice.programmeLockedInSession';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -2009,6 +2015,18 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Offered only for an added exercise with no sets today; with sets the control is Skip.
   'button.removeExercise': 'Remove Exercise',
   'label.fitsEquipment': 'Fits Your Equipment',
+
+  // --- programme lifecycle, ROADMAP L5, B1b, L7 (docs/design/programme-lifecycle.md) ---
+  // L5: Settings offers this once the plan built from the current settings would differ from
+  // the running one. It opens the confirmation below; nothing regenerates without it.
+  'button.updateProgramme': 'Update Programme',
+  'advice.programmeDiffers': 'These settings would build a different programme.',
+  // The confirmation both entry points share. restartProgramme keeps sets (and the records
+  // derived from them) and body mass; the cursor starts again at the first session today.
+  'button.startProgramme': 'Start Programme',
+  'advice.programmeRestart': 'Starts a new programme today. Logged sets, records and body mass stay.',
+  // setPlan refuses to replace the schedule a session is being logged against.
+  'advice.programmeLockedInSession': 'Finish or skip the session in progress first.',
 };
 
 /**

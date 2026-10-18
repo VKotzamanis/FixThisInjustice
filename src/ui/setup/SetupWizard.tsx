@@ -357,7 +357,7 @@ const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey; iconRow: strin
  * (src/domain/plan/templates.ts). This is why library.ts needed no retagging: see that type's own
  * comment for the proof that a combination resolves identically to its dominant pure tier.
  */
-const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey; iconRow: string }[] = [
+export const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey; iconRow: string }[] = [
   { value: 'bodyweight', labelKey: 'option.accessBodyweight', iconRow: 'equip-1-bodyweight' },
   {
     value: 'home-and-bodyweight',
