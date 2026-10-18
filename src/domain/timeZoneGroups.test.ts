@@ -334,16 +334,23 @@ describe('search also reaches a vendored city, not only an IANA id', () => {
  * complete zone list to measure.
  */
 describe.skipIf(PLATFORM_ZONES.length < 400)('the platform list, measured', () => {
-  it('groups 418 zones into 59 behaviours', () => {
-    expect(PLATFORM_ZONES).toHaveLength(418);
-    expect(groupTimeZones(PLATFORM_ZONES, JANUARY)).toHaveLength(59);
-    // Not a property of the season: the same 59 come out six months later.
-    expect(groupTimeZones(PLATFORM_ZONES, JULY)).toHaveLength(59);
+  // The exact counts (418 zones, 59 groups on 2026-09-06, tz 2025c) belong to the runtime's tz
+  // database, not to this code: Node on the CI runner grouped the same list into 61 on 2026-10-18.
+  // Pinning them failed every deploy on a tz update, so the block asserts what must hold on ANY
+  // database instead.
+  it('puts every platform zone in exactly one group, the same groups in January and July', () => {
+    const january = groupTimeZones(PLATFORM_ZONES, JANUARY);
+    const seen = january.flatMap((group) => [...group.members]);
+    expect(seen).toHaveLength(PLATFORM_ZONES.length);
+    expect(new Set(seen).size).toBe(PLATFORM_ZONES.length);
+    expect(january.length).toBeLessThan(PLATFORM_ZONES.length);
+    // Not a property of the season: a group is a whole year of offsets.
+    expect(groupTimeZones(PLATFORM_ZONES, JULY)).toHaveLength(january.length);
   });
 
-  it('would have collapsed 37 offsets in January, 16 of which split by July', () => {
-    // The measurement behind the refusal, stated as an assertion so nobody has to take it on
-    // trust. This is what one row per offset would have produced.
+  it('would have collapsed zones that split by July, had it grouped by January offset alone', () => {
+    // The measurement behind the refusal of one-row-per-offset (37 January offsets, 16 of which
+    // split by July, on tz 2025c), stated as a property so it holds on any tz database.
     const january = new Map<number, string[]>();
     for (const zone of PLATFORM_ZONES) {
       const offset = zoneOffsetMinutes(zone, JANUARY); // [min]
@@ -351,11 +358,11 @@ describe.skipIf(PLATFORM_ZONES.length < 400)('the platform list, measured', () =
       if (bucket === undefined) january.set(offset, [zone]);
       else bucket.push(zone);
     }
-    expect(january.size).toBe(37);
     const split = [...january.values()].filter(
       (members) => new Set(members.map((zone) => zoneOffsetMinutes(zone, JULY))).size > 1,
     );
-    expect(split).toHaveLength(16);
+    expect(split.length).toBeGreaterThan(0);
+    expect(groupTimeZones(PLATFORM_ZONES, JANUARY).length).toBeGreaterThan(january.size);
   });
 
   it('spans 25 hours, and eleven January offsets are not whole hours', () => {
