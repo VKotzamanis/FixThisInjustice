@@ -37,9 +37,23 @@ describe('the chart tells the reader what it is worth', () => {
     expect(BODY_FAT_CHART_INTRO).toContain('underestimate');
   });
 
-  it('labels a rising series of percentages, low to high', () => {
-    const pct = [...BODY_FAT_CHART_PERCENTAGES];
-    expect(pct.length).toBeGreaterThanOrEqual(5);
-    expect([...pct].sort((a, b) => a - b)).toEqual(pct);
+  it('labels a rising series of percentages, low to high, for each sex', () => {
+    for (const sex of ['male', 'female'] as const) {
+      const pct = [...BODY_FAT_CHART_PERCENTAGES[sex]];
+      expect(pct.length).toBeGreaterThanOrEqual(5);
+      expect([...pct].sort((a, b) => a - b)).toEqual(pct);
+    }
+  });
+
+  // ROADMAP B4. Gallagher et al. 2000, Am J Clin Nutr 72(3):694-701, DOI 10.1093/ajcn/72.3.694
+  // (Crossref-checked 2026-10-18), Table 4, age 20-39: the BMI 18.5 (underweight) cut-off maps to
+  // 21 % fat in women and 8 % in men, so a shared low label of 10 % sat far below the
+  // underweight-equivalent for women.
+  it('never offers a woman a label below the underweight-equivalent band (Gallagher 2000)', () => {
+    expect(Math.min(...BODY_FAT_CHART_PERCENTAGES.female)).toBeGreaterThanOrEqual(20);
+  });
+
+  it('keeps the male row as it was', () => {
+    expect([...BODY_FAT_CHART_PERCENTAGES.male]).toEqual([10, 15, 20, 25, 30, 35]);
   });
 });

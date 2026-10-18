@@ -1059,7 +1059,7 @@ function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: ()
         <div key={sex} className="wiz-chart-row">
           <p className="wiz-label">{t(sex === 'male' ? 'label.sexMale' : 'label.sexFemale')}</p>
           <div className="wiz-chart-frames">
-            {BODY_FAT_CHART_PERCENTAGES.map((pct) => (
+            {BODY_FAT_CHART_PERCENTAGES[sex].map((pct) => (
               <button
                 key={pct}
                 type="button"
