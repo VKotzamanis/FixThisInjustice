@@ -104,10 +104,9 @@ export async function handlePush(
     tag: payload.tag,
     data: { url: payload.url },
     icon: icons.icon,
-    // Android masks the badge to a monochrome silhouette, so the full-colour
-    // 192 px icon renders there as a solid blob. A dedicated monochrome badge
-    // asset is a P9 item and does not exist yet; this passes the colour icon,
-    // which is the current behaviour rather than the intended one.
+    // Android masks the badge to a monochrome silhouette, so a full-colour icon
+    // renders there as a solid blob. src/sw.ts passes the dedicated monochrome
+    // badge (icons/notification-badge-96.png, since 2026-10-18).
     badge: icons.badge,
   });
 }

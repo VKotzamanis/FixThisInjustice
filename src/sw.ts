@@ -72,7 +72,9 @@ self.addEventListener('push', (event: PushEvent) => {
   event.waitUntil(
     handlePush(event.data, self.registration, {
       icon: `${import.meta.env.BASE_URL}icons/icon-192.png`,
-      badge: `${import.meta.env.BASE_URL}icons/icon-192.png`,
+      // 96 x 96 px, monochrome on transparent: Android paints a badge from its alpha channel
+      // only, so the full-colour 192 px icon showed as a solid blob there.
+      badge: `${import.meta.env.BASE_URL}icons/notification-badge-96.png`,
     }),
   );
 });

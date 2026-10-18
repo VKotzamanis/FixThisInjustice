@@ -455,10 +455,9 @@
 }
 
 /*
- * The three marked stops on the equipment slider (round 3 Task 7): a DRAFT BOX, not a drawing.
- * The artwork is the owner's, each frame names its docs/design/2026-09-04-icon-register.csv row
- * in `data-icon-row`, and nothing here draws, generates or substitutes a character for it. Same
- * dashed-frame-on-token pattern as `.wiz-placeholder-frame`, at marker scale. The frame is
+ * The three marked stops on the equipment slider (round 3 Task 7): the owner's drawing for each
+ * frame's docs/design/2026-09-04-icon-register.csv row (`data-icon-row`), approved 2026-10-18,
+ * at the 20 px the draft box held, so the row did not reflow when the art landed. The frame is
  * centred on the same pitch as a plain tick because it is laid out by the same row: its extra
  * width is split evenly either side of the tick position by `space-between`'s own arithmetic
  * only at the ends, so the two end frames are nudged inward by half their own width.
@@ -467,9 +466,6 @@
   flex: none;
   width: 20px;
   height: 20px;
-  border: 1px dashed var(--line-2);
-  border-radius: 3px;
-  background: var(--bg-2);
 }
 
 /*
@@ -512,9 +508,18 @@
   }
 }
 
-/* The same pairing above the breakpoint, where .wiz-row is still a flex row. */
+/*
+ * The same pairing above the breakpoint, where .wiz-row is still a flex row.
+ *
+ * `max-width: 8rem` (survey item 4, 2026-10-18). Without it the column took the caption's
+ * max-content width: the female abdomen and hip captions are one long sentence each, so at 400 px
+ * the column grew past the box, crushed the girth input to about 18 px and ran past the viewport
+ * (MEASURED in headless Chromium on the HEAD markup and on this one). 8rem (128 px) holds the 64 px
+ * diagram with room either side and lets the caption wrap beneath it.
+ */
 .wiz-row-site > .wiz-site {
   flex: 0 0 auto;
+  max-width: 8rem;
 }
 
 /*
@@ -587,18 +592,15 @@
 }
 
 /*
- * The option's placeholder frame. THE ARTWORK IS THE OWNER'S and does not exist: this is the
- * space it will take, named by its docs/design/2026-09-04-icon-register.csv row in
- * `data-icon-row`, so the layout does not reflow when the drawn asset lands. 44 px square, which
- * is also the tap-target floor, so the frame alone satisfies it before the label is counted.
+ * The option's icon frame, holding the owner's drawing for its
+ * docs/design/2026-09-04-icon-register.csv row (`data-icon-row`), approved 2026-10-18. 44 px
+ * square, the size the draft box held, which is also the tap-target floor, so the frame alone
+ * satisfies it before the label is counted.
  */
 .wiz-option-frame {
   flex: none;
   width: 44px;
   height: 44px;
-  border: 1px dashed var(--line-2);
-  border-radius: 4px;
-  background: var(--bg-2);
 }
 
 /*
@@ -717,19 +719,39 @@
 }
 
 /*
- * The measurement-site and body-fat-chart placeholder frames (round 1 claims C1.08.5, C1.08.9).
- * The real artwork is separate work (docs/design/2026-09-04-icon-register.csv); this is the frame
- * it will sit in, sized so the layout does not reflow when the drawn asset lands.
+ * One inlined drawing (src/ui/setup/setupArt.tsx). The art paints with `currentColor`, so its
+ * colour is set here, once, as ink: 10.9:1 on the lime ground (tokens.css --lime against --ink).
+ * Set explicitly rather than inherited because a selected `.wiz-glyph` turns its own text to
+ * `--bg` on `--accent` (lime on pink, 1.41:1), and a drawing that followed it would all but
+ * vanish on selection; ink on the pink fill is 7.75:1. The box sizes come from the frame each
+ * drawing sits in; the SVG fills it, centred and letterboxed by its default
+ * preserveAspectRatio (xMidYMid meet).
  */
-.wiz-placeholder-frame {
-  width: 64px;
-  height: 64px;
-  border: 1px dashed var(--line-2);
-  border-radius: 4px;
-  background: var(--bg-2);
+.wiz-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--text);
 }
 
-.wiz-placeholder-caption {
+.wiz-art > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/*
+ * The tape-measurement site diagrams (round 1 claims C1.08.5, C1.08.9): the owner's drawings,
+ * approved 2026-10-18, in the 64 px square the dashed draft frame held, so the two-column site
+ * rows did not reflow when they landed.
+ */
+.wiz-site-art {
+  width: 64px;
+  height: 64px;
+  margin-inline: auto;
+}
+
+.wiz-site-caption {
   margin-top: 4px;
 }
 
@@ -759,8 +781,8 @@
  * A labelled frame for `reset-cookies-icon` in docs/design/2026-09-04-icon-register.csv, marked
  * owner-supplied on every column there (r2.19): the artwork is his, and this is the space it
  * will take, sized so the row does not reflow when it lands. Same dashed-frame-on-token pattern
- * as `.wiz-placeholder-frame` and `.wiz-sprite-slot` above, sized between the two: bigger than a
- * text-height marker, because this icon stands beside a whole paragraph rather than one heading.
+ * as `.wiz-sprite-slot`, and bigger than that text-height marker, because this icon stands beside
+ * a whole paragraph rather than one heading.
  */
 .wiz-review-reset-icon {
   flex: none;
@@ -882,29 +904,55 @@
   margin: 0 0 1rem;
 }
 
+/*
+ * The body-fat chart (survey item 4, 2026-10-18): per sex, three columns, so the six percentages
+ * fall into two rows. `minmax(0, 1fr)` lets a column shrink below its content's width, so the
+ * grid fits a 320 px screen: the modal's inner width there is 246 px (320 - 2 x 16 backdrop
+ * padding - 2 x 1 border - 2 x 20 modal padding), which leaves each cell 77 px.
+ */
 .wiz-chart-frames {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
-.wiz-chart-frame {
+/*
+ * The cell: the same selectable button as before. `.wiz .wiz-chart-frame` because `.wiz button`
+ * (0,1,1) outranked the old single-class rule and painted the pink accent border it meant to
+ * replace; ink (`--line-2`) is the border the rule always asked for. 44 px floor in both axes.
+ */
+.wiz .wiz-chart-frame {
   display: flex;
-  flex: none;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   min-width: 2.75rem; /* 44 px */
   min-height: 2.75rem; /* 44 px */
-  padding: 6px;
-  background: var(--bg, #0a0b0c);
+  padding: 6px 4px;
+  background: var(--bg);
   border: 1px solid var(--line-2);
   cursor: pointer;
 }
 
-.wiz-chart-frame .wiz-placeholder-frame {
-  width: 44px;
-  height: 76px;
+/*
+ * The front and side drawings, side by side. Each drawing's flex-grow is its crop width and its
+ * aspect ratio its crop box, both set inline from BODY_FAT_CHART_CROP (setupArt.tsx), so the two
+ * split the row in proportion and render at one height, one scale. 7.75rem (124 px) caps the
+ * pair where that height is about 104 px: 124 x 536 / (360 + 280) = 103.9 px. Below that width
+ * (phones) the pair shrinks with its cell and both drawings shrink by the same factor.
+ */
+.wiz-chart-pair {
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  max-width: 7.75rem;
+}
+
+.wiz-chart-fig {
+  flex-shrink: 1;
+  flex-basis: 0;
+  min-width: 0;
+  height: auto;
 }
 
 .wiz-chart-pct {

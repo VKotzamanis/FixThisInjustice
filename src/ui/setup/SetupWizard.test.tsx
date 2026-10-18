@@ -32,6 +32,7 @@ import {
   isInDomain,
 } from '../../domain/nutrition';
 import { ACTIVITY_LEVELS_CITATION } from '../../content/activityLevels';
+import { BODY_FAT_CHART_PERCENTAGES } from '../../content/bodyFatChart';
 import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
 import { nutritionInputFor } from '../../store/selectors';
 import { FORMAT, copyFor } from '../../content/copy';
@@ -1224,6 +1225,61 @@ describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
     expect(screen.queryByTestId('bodyfat-chart-backdrop')).toBeNull();
     expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(25);
   });
+
+  /*
+   * Survey item 4 (2026-10-18): the owner's front and side drawings fill the frames. One button
+   * per percentage, in BODY_FAT_CHART_PERCENTAGES order, each holding the pair for its own sex and
+   * percentage; the file ids are derived from those numbers, never listed a second time.
+   */
+  it('draws a front and side pair per percentage, per sex, in the order of the percentages', () => {
+    reachBody();
+    fireEvent.click(screen.getByText('Click here to estimate'));
+    const chart = screen.getByTestId('bodyfat-chart-backdrop');
+    for (const sex of ['male', 'female'] as const) {
+      const row = chart.querySelector(`.wiz-chart-row[data-sex="${sex}"]`);
+      expect(row).not.toBeNull();
+      // The row is a named group, so a screen reader hears which sex the percentages belong to.
+      expect(
+        within(chart).getByRole('group', { name: sex === 'male' ? 'Male' : 'Female' }),
+      ).toBe(row);
+      const buttons = within(row as HTMLElement).getAllByRole('button');
+      const pcts = BODY_FAT_CHART_PERCENTAGES[sex];
+      expect(buttons).toHaveLength(pcts.length);
+      pcts.forEach((pct, i) => {
+        const button = buttons[i] as HTMLElement;
+        // The accessible name is the percentage, unchanged; the drawings are hidden from it.
+        expect(button).toBe(within(row as HTMLElement).getByRole('button', { name: `${String(pct)}%` }));
+        const art = [...button.querySelectorAll('[data-art]')];
+        expect(art.map((el) => el.getAttribute('data-art'))).toEqual([
+          `bf-${sex}-${String(pct)}-front`,
+          `bf-${sex}-${String(pct)}-side`,
+        ]);
+        for (const el of art) {
+          expect(el.getAttribute('aria-hidden')).toBe('true');
+          expect(el.querySelector('svg')).not.toBeNull();
+        }
+      });
+    }
+    // No dashed draft frame is left in the chart.
+    expect(chart.querySelector('.wiz-placeholder-frame')).toBeNull();
+  });
+
+  it('selects a female percentage the male row does not carry, exactly as before', () => {
+    reachBody();
+    fireEvent.click(screen.getByText('Click here to estimate'));
+    const female = screen.getByRole('group', { name: 'Female' });
+    fireEvent.click(within(female).getByRole('button', { name: '45%' }));
+    expect(screen.queryByTestId('bodyfat-chart-backdrop')).toBeNull();
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(45);
+  });
+
+  it('lays the chart out as three columns of 44 px targets, the art in ink', () => {
+    expect(setupCss).toMatch(
+      /\.wiz-chart-frames\s*\{[^}]*grid-template-columns:\s*repeat\(3,\s*minmax\(0,\s*1fr\)\)/,
+    );
+    expect(setupCss).toMatch(/\.wiz \.wiz-chart-frame\s*\{[^}]*min-height:\s*2\.75rem/);
+    expect(setupCss).toMatch(/\.wiz-art\s*\{[^}]*color:\s*var\(--text\)/);
+  });
 });
 
 describe('Brief B: failed Next on the body step (C1.08.12, C1.08.14)', () => {
@@ -1542,10 +1598,10 @@ describe('Brief F: the equipment sliders', () => {
 
   /*
    * ROUND 3 TASK 7: five markers on the equipment slider, of which the start, the middle and the
-   * end are placeholder icon frames naming their icon-register rows. The artwork is the owner's
-   * and does not exist, so the frames must be EMPTY.
+   * end are icon frames naming their icon-register rows. Survey item 4 (2026-10-18) put the
+   * owner's approved drawing in each; until then the frames were asserted EMPTY.
    */
-  it('marks all five equipment stops, three of them as named draft boxes', () => {
+  it('marks all five equipment stops, three of them with their named icons', () => {
     toTrainingStep();
     const access = screen.getByLabelText(/^equipment access$/i);
     const row = access.parentElement?.querySelector('.wiz-slider-ticks') ?? null;
@@ -1558,8 +1614,13 @@ describe('Brief F: the equipment sliders', () => {
       'equip-3-home',
       'equip-5-full-gym',
     ]);
-    // Empty: no character, no drawing, no generated asset stands in for the owner's artwork.
-    for (const frame of frames) expect(frame.textContent).toBe('');
+    // Each frame holds its own row's drawing and no text.
+    for (const frame of frames) {
+      expect(frame.textContent).toBe('');
+      const art = frame.querySelector('[data-art]');
+      expect(art?.getAttribute('data-art')).toBe(frame.getAttribute('data-icon-row'));
+      expect(art?.querySelector('svg')).not.toBeNull();
+    }
     // The two between are plain markers.
     expect(row?.querySelectorAll('.wiz-slider-tick')).toHaveLength(2);
   });
@@ -1656,10 +1717,10 @@ describe('Brief F: the equipment sliders', () => {
   /*
    * ROUND 3 TASK 6. This test asserted a SLIDER; the owner replaced the slider with option boxes
    * ("just like the gender option"), so the assertion was updated to the control that replaced
-   * it rather than deleted. What it still guards is unchanged: the owner's own three sets of
-   * words, and a named placeholder frame per option with no substitute artwork inside it.
+   * it rather than deleted. What it still guards: the owner's own three sets of words, and a
+   * named frame per option. Survey item 4 (2026-10-18) put his approved drawing in each frame.
    */
-  it('renders Gym Comfort as three option boxes, each a named draft frame, and no slider', () => {
+  it('renders Gym Comfort as three option boxes, each with its named icon, and no slider', () => {
     toTrainingStep();
     const group = screen.getByRole('radiogroup', { name: 'Gym Comfort' });
     const options = within(group).getAllByRole('radio');
@@ -1675,11 +1736,14 @@ describe('Brief F: the equipment sliders', () => {
       'comfort-2-machines',
       'comfort-3-freeweights',
     ]);
-    // The artwork is the owner's and does not exist: every frame is empty and hidden from the
-    // accessibility tree, and the option's own words are its caption.
+    // Each frame holds its row's drawing, is hidden from the accessibility tree, and carries no
+    // text: the option's own words are its caption.
     for (const frame of frames) {
       expect(frame.textContent).toBe('');
       expect(frame.getAttribute('aria-hidden')).toBe('true');
+      const art = frame.querySelector('[data-art]');
+      expect(art?.getAttribute('data-art')).toBe(frame.getAttribute('data-icon-row'));
+      expect(art?.querySelector('svg')).not.toBeNull();
     }
 
     // The owner's own words, and each one selects its own stored Experience value.
@@ -2099,6 +2163,45 @@ describe('r2.14: the tape fields follow the selected sex', () => {
     );
     // The old contents, which named which girth to enter where, are gone: the fields say it.
     expect(screen.queryByText('why?')).toBeNull();
+  });
+
+  /*
+   * Survey item 4 (2026-10-18): the owner's site diagrams replace the dashed frames, chosen by
+   * the same sex rule that picks the abdomen label, and each keeps its visible caption.
+   */
+  it('draws the male tape sites: neck and the umbilicus abdomen, no hip', () => {
+    reachBodyWithoutSex();
+    pickSex('Male');
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
+    const sites = [...document.querySelectorAll('.wiz-site [data-art]')];
+    expect(sites.map((el) => el.getAttribute('data-art'))).toEqual([
+      'tape-neck',
+      'tape-abdomen-male',
+    ]);
+    for (const el of sites) {
+      expect(el.getAttribute('aria-hidden')).toBe('true');
+      expect(el.querySelector('svg')).not.toBeNull();
+    }
+    expect(document.querySelector('.wiz-placeholder-frame')).toBeNull();
+  });
+
+  it('draws the female tape sites: neck, the narrowest abdomen and the hip', () => {
+    reachBodyWithoutSex();
+    pickSex('Female');
+    fireEvent.click(screen.getByLabelText('Body Measurements'));
+    const sites = [...document.querySelectorAll('.wiz-site [data-art]')];
+    expect(sites.map((el) => el.getAttribute('data-art'))).toEqual([
+      'tape-neck',
+      'tape-abdomen-female',
+      'tape-hip',
+    ]);
+    for (const el of sites) expect(el.querySelector('svg')).not.toBeNull();
+    // The caption under each diagram is still visible text.
+    expect(document.querySelectorAll('.wiz-site .wiz-site-caption')).toHaveLength(3);
+    // The diagram column is capped so a long caption wraps instead of crushing the input beside
+    // it (measured overflow at 400 px before the cap); the drawing keeps the 64 px draft size.
+    expect(setupCss).toMatch(/\.wiz-row-site > \.wiz-site\s*\{[^}]*max-width:\s*8rem/);
+    expect(setupCss).toMatch(/\.wiz-site-art\s*\{[^}]*width:\s*64px;\s*height:\s*64px/);
   });
 
   it('puts a Body Fat Estimate subheading over the tape section', () => {
