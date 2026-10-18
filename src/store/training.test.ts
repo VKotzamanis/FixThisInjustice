@@ -233,6 +233,37 @@ describe('applyUpdateSet (ROADMAP L1)', () => {
   });
 });
 
+describe('applyUpdateSet: effort (ROADMAP L8)', () => {
+  const measurement = {
+    loadKg: 60, // [kg]
+    reps: 8, // [repetitions]
+    durationS: null, // [s]
+    enteredUnit: 'metric',
+  } as const;
+
+  it('records an effort when one is given', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    const next = applyUpdateSet(seeded, 'set-abc', { ...measurement, rpe: 9 }); // [RPE]
+    expect(next.sets['set-abc']?.rpe).toBe(9);
+    assertStorable(next);
+  });
+
+  it('keeps the stored effort when the edit carries none, and clears it on null', () => {
+    const seeded = applyUpdateSet(
+      applyLogSet(makeState(), setInput, 'set-abc', NOW),
+      'set-abc',
+      { ...measurement, rpe: 10 }, // [RPE]
+    );
+    expect(applyUpdateSet(seeded, 'set-abc', measurement).sets['set-abc']?.rpe).toBe(10);
+    expect(applyUpdateSet(seeded, 'set-abc', { ...measurement, rpe: null }).sets['set-abc']?.rpe).toBeNull();
+  });
+
+  it('refuses an effort off the half-point grid', () => {
+    const seeded = applyLogSet(makeState(), setInput, 'set-abc', NOW);
+    expect(() => applyUpdateSet(seeded, 'set-abc', { ...measurement, rpe: 7.3 })).toThrow(/rpe/);
+  });
+});
+
 const DAY = '2026-03-02';
 
 /** makeState() plus a one-session plan and an in-progress day, which editSession needs. */

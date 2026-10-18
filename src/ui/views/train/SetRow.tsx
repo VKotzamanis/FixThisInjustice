@@ -16,6 +16,12 @@
 // engine's top-of-range test then judge a hold as if it were a set of 45.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { FORMAT, type CopyKey } from '../../../content/copy';
+import {
+  EFFORT_LEVELS,
+  EFFORT_RPE,
+  effortLevelOf,
+  type EffortLevel,
+} from '../../../domain/training/effort';
 import type { Kg, LoggedSet, Prescription, Seconds, UnitSystem } from '../../../domain/types';
 import { displayLoad, formatLoad } from '../../../domain/units';
 import { UnitInput, loadUnit, storedLoadKg } from '../../components/UnitInput';
@@ -42,6 +48,47 @@ export function isTimedPrescription(p: Prescription): boolean {
  * session view to the error boundary over a mistyped field.
  */
 const MAX_DURATION_S = 86_400;
+
+/** One copy key per effort level. Exhaustive by type, so a fifth level fails to compile. */
+const EFFORT_KEY: Record<EffortLevel, CopyKey> = {
+  easy: 'button.effortEasy',
+  solid: 'button.effortSolid',
+  hard: 'button.effortHard',
+  max: 'button.effortMax',
+};
+
+/**
+ * The four one-tap effort controls (ROADMAP L8), easiest first, as one named group. Each is a
+ * `.view button` (44 px tall, 16 px text) with no hover-only state. `selected` marks the effort
+ * an edit currently holds; under a freshly logged row it is null and nothing is pressed.
+ */
+function EffortChoices(props: {
+  t: (key: CopyKey) => string;
+  n: number;
+  selected: number | null; // [RPE] or null
+  onChoose: (rpe: number) => void; // [RPE]
+}): ReactElement {
+  const { t, n, selected, onChoose } = props;
+  return (
+    <div className="set-effort" role="group" aria-label={FORMAT.setEffortQuantity(n)}>
+      {EFFORT_LEVELS.map((level) => {
+        const rpe = EFFORT_RPE[level]; // [RPE] dimensionless
+        return (
+          <button
+            key={level}
+            type="button"
+            aria-pressed={selected === rpe}
+            onClick={() => {
+              onChoose(rpe);
+            }}
+          >
+            {t(EFFORT_KEY[level])}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 export interface SetRowProps {
   /**
@@ -80,8 +127,17 @@ export interface SetRowProps {
    * the row stays open with what the user typed instead of claiming a save.
    *
    * @param loadKg [kg] canonical; 0 when the bodyweight toggle is set (A60).
+   * @param rpe [RPE] the effort the edit leaves on the set (ROADMAP L8): the record's own unless
+   *   an effort control was tapped; null = none recorded.
    */
-  onEdit: (loadKg: Kg, entry: SetEntry) => boolean;
+  onEdit: (loadKg: Kg, entry: SetEntry, rpe: number | null) => boolean;
+  /**
+   * Records the effort of the logged set with one tap (ROADMAP L8). Returns false when the store
+   * refused it. Called only on a logged row, never with the rest timer: the log already started it.
+   *
+   * @param rpe [RPE] dimensionless, one of EFFORT_RPE.
+   */
+  onEffort: (rpe: number) => boolean;
   onDelete: () => void;
 }
 
@@ -115,6 +171,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     isBodyweightExercise,
     onLog,
     onEdit,
+    onEffort,
     onDelete,
   } = props;
 
@@ -124,8 +181,10 @@ export function SetRow(props: SetRowProps): ReactElement {
    * reps-or-seconds rule below holds for both.
    */
   const [editing, setEditing] = useState(false);
-  /** The store's refusal of an edit, in copy words, or null. */
+  /** The store's refusal of an edit or of an effort tap, in copy words, or null. */
   const [editError, setEditError] = useState<string | null>(null);
+  /** [RPE] The effort an open edit holds (ROADMAP L8); written only by Save, dropped by Cancel. */
+  const [editRpe, setEditRpe] = useState<number | null>(null);
   /*
    * An edit measures what the RECORD measured: a set stored with a duration is edited in
    * seconds even if the prescription has since changed, so an edit can never turn a hold into
@@ -169,7 +228,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     if (editing) {
       // An edit is not a new set: no rest timer, no coach line (ExerciseCard owns both and
       // calls neither on this path). A refusal keeps the row open with what was typed.
-      if (!onEdit(loadKg, entry)) {
+      if (!onEdit(loadKg, entry, editRpe)) {
         setEditError(t('status.sessionEditRefused'));
         return;
       }
@@ -192,6 +251,8 @@ export function SetRow(props: SetRowProps): ReactElement {
     setLoadText(loggedLoadText(logged.loadKg, units));
     setCountText(String(logged.durationS ?? logged.reps ?? '')); // [s] or [repetitions]
     setBodyweight(logged.loadKg === 0);
+    // The record's own effort, kept as stored even when no control writes it (an imported 7.5).
+    setEditRpe(logged.rpe); // [RPE]
     setCountError(null);
     setEditError(null);
     setEditing(true);
@@ -210,6 +271,11 @@ export function SetRow(props: SetRowProps): ReactElement {
   const marker = isBonus ? t('label.bonusSet') : FORMAT.setCounter(n, targetSets, overrides);
 
   if (logged !== null && !editing) {
+    // ROADMAP L8. The recorded effort as its control's word, or as its number when no control
+    // writes that value; nothing when none is recorded, which is when the controls are offered.
+    const level = effortLevelOf(logged.rpe);
+    const effortText =
+      logged.rpe === null ? null : level !== null ? t(EFFORT_KEY[level]) : FORMAT.loggedRpe(logged.rpe);
     return (
       <div className="set-row done">
         <span className="set-marker">{marker}</span>
@@ -220,6 +286,7 @@ export function SetRow(props: SetRowProps): ReactElement {
                 logged.reps === null ? NO_VALUE : String(logged.reps),
               )
             : FORMAT.loggedTimedSet(formatLoad(logged.loadKg, units), logged.durationS)}
+          {effortText !== null && <span className="set-effort-tag">{effortText}</span>}
         </span>
         <div className="set-actions">
           <button type="button" onClick={startEdit} aria-label={FORMAT.editSetLabel(n)}>
@@ -229,6 +296,25 @@ export function SetRow(props: SetRowProps): ReactElement {
             {t('button.deleteSet')}
           </button>
         </div>
+        {/*
+          * One tap, optional: skipping leaves rpe null. Offered after the log, so the rest timer
+          * the log started is already running and nothing here waits for an answer.
+          */}
+        {logged.rpe === null && (
+          <EffortChoices
+            t={t}
+            n={n}
+            selected={null}
+            onChoose={(rpe) => {
+              setEditError(onEffort(rpe) ? null : t('status.sessionEditRefused'));
+            }}
+          />
+        )}
+        {editError !== null && (
+          <p className="set-edit-error" role="alert">
+            {editError}
+          </p>
+        )}
       </div>
     );
   }
@@ -304,6 +390,17 @@ export function SetRow(props: SetRowProps): ReactElement {
             }}
           />
         </div>
+      )}
+      {editing && (
+        // Tapping the chosen effort again clears it, so "none" stays reachable from an edit.
+        <EffortChoices
+          t={t}
+          n={n}
+          selected={editRpe}
+          onChoose={(rpe) => {
+            setEditRpe((current) => (current === rpe ? null : rpe));
+          }}
+        />
       )}
       <div className="set-actions">
         <div className="unit-input">

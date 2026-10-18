@@ -644,7 +644,12 @@ export type CopyKey =
   | 'button.addCustomExercise'
   | 'button.addToSession'
   | 'button.removeExercise'
-  | 'label.fitsEquipment';
+  | 'label.fitsEquipment'
+  // --- one-tap effort per set, ROADMAP L8 (src/domain/training/effort.ts) ---
+  | 'button.effortEasy'
+  | 'button.effortSolid'
+  | 'button.effortHard'
+  | 'button.effortMax';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1921,6 +1926,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Offered only for an added exercise with no sets today; with sets the control is Skip.
   'button.removeExercise': 'Remove Exercise',
   'label.fitsEquipment': 'Fits Your Equipment',
+
+  // --- one-tap effort per set, ROADMAP L8 (src/domain/training/effort.ts) ---
+  // Offered under a logged set with no effort recorded; optional. Each stores an RPE on the
+  // repetitions-in-reserve scale (Zourdos 2016): Easy 7 (3 or more left), Solid 8 (2 left),
+  // Hard 9 (1 left), Max 10 (none left). Max at the top of the range holds the next load
+  // (src/domain/training/progression.ts). The same word is the set's readout once recorded.
+  // Base copy from the L8 brief; the owner may reword (no limelight override).
+  'button.effortEasy': 'Easy',
+  'button.effortSolid': 'Solid',
+  'button.effortHard': 'Hard',
+  'button.effortMax': 'Max',
 };
 
 /**
@@ -2315,6 +2331,18 @@ export const FORMAT = {
 
   /** The accessible name of an edited row's save control; the visible word is `button.saveSet`. */
   saveSetLabel: (n: number): string => `Save set ${n}`,
+
+  /**
+   * "Set 2 effort", the accessible name of one row's group of effort controls (ROADMAP L8).
+   * Per row for the reason `setLoadQuantity` is: every logged row may carry the same four words.
+   */
+  setEffortQuantity: (n: number): string => `Set ${n} effort`,
+
+  /**
+   * "RPE 7.5", a stored effort that no effort control writes (an imported half point or a 6).
+   * Shown as the number it is rather than relabelled to the nearest control. Dimensionless.
+   */
+  loggedRpe: (rpe: number): string => `RPE ${rpe}`,
 
   /**
    * "In place of Barbell bench press." under a swapped-in exercise (ROADMAP L2). Reads

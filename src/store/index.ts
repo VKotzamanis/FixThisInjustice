@@ -196,9 +196,10 @@ export interface AppActions {
    */
   deleteSet(id: string): void;
   /**
-   * Rewrites the load, reps or duration and entered unit of one logged set (ROADMAP L1). Keeps
-   * the id, `loggedAt` and set number; touches no session-slice field, so a running rest timer
-   * keeps running. Throws on an unknown id or a value the schema refuses, writing nothing.
+   * Rewrites the load, reps or duration and entered unit of one logged set (ROADMAP L1), and its
+   * effort when `rpe` is given (L8). Keeps the id, `loggedAt` and set number; touches no
+   * session-slice field, so a running rest timer keeps running. Throws on an unknown id or a
+   * value the schema refuses, writing nothing.
    */
   updateSet(id: string, m: SetMeasurement): void;
   /**

@@ -173,8 +173,13 @@ export function applyRestoreSet(state: AppState, loggedSet: LoggedSet): AppState
  * typed in. Everything else on a LoggedSet is the record's identity - which set of which
  * exercise on which day, when it was logged, whether it was bonus work - and an edit that moved
  * any of those would be a different set wearing this one's id.
+ *
+ * `rpe` (ROADMAP L8, the one-tap effort) is optional: absent keeps the stored effort, so an
+ * edit that does not mention it cannot erase it; `null` clears it; a number records it.
  */
-export type SetMeasurement = Pick<LoggedSet, 'loadKg' | 'reps' | 'durationS' | 'enteredUnit'>;
+export type SetMeasurement = Pick<LoggedSet, 'loadKg' | 'reps' | 'durationS' | 'enteredUnit'> & {
+  rpe?: LoggedSet['rpe']; // [RPE] dimensionless, 1-10 on the half-point grid, or null
+};
 
 /**
  * Rewrites the measurement of one logged set in place.
@@ -188,7 +193,7 @@ export type SetMeasurement = Pick<LoggedSet, 'loadKg' | 'reps' | 'durationS' | '
  * user an edit form, and a silent no-op would let it report a save that never happened.
  *
  * @param m loadKg [kg] canonical (0 = bodyweight, A60), reps [repetitions] or null,
- *   durationS [s] or null, enteredUnit the unit the user typed in.
+ *   durationS [s] or null, enteredUnit the unit the user typed in, rpe [RPE] when given.
  */
 export function applyUpdateSet(state: AppState, id: string, m: SetMeasurement): AppState {
   const current = state.sets[id];
@@ -201,6 +206,7 @@ export function applyUpdateSet(state: AppState, id: string, m: SetMeasurement): 
     reps: m.reps, // [repetitions]
     durationS: m.durationS, // [s]
     enteredUnit: m.enteredUnit,
+    rpe: m.rpe === undefined ? current.rpe : m.rpe, // [RPE] absent = keep
   };
   const edited = parseOrThrow(LoggedSetSchema, candidate, 'updateSet');
   return { ...state, sets: { ...state.sets, [id]: edited } };

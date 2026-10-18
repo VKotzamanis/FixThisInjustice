@@ -160,6 +160,24 @@ describe('updateSet (ROADMAP L1)', () => {
     ).toThrow(/reps/);
     expect(useAppStore.getState().sets).toBe(before);
   });
+
+  it('records an effort (ROADMAP L8) and leaves a running rest timer alone', () => {
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
+    useAppStore.getState().setRestTimer(startRest(120, NOW)); // [s], [ms]
+    const sessionBefore = useAppStore.getState().session;
+
+    useAppStore.getState().updateSet(id, {
+      loadKg: 60, // [kg]
+      reps: 8, // [repetitions]
+      durationS: null,
+      enteredUnit: 'metric',
+      rpe: 10, // [RPE] Max
+    });
+
+    expect(useAppStore.getState().sets[id]?.rpe).toBe(10);
+    expect(useAppStore.getState().session).toBe(sessionBefore);
+    expectStorable();
+  });
 });
 
 describe('editSession (ROADMAP L2-L4)', () => {

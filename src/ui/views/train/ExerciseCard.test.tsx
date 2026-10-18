@@ -11,12 +11,12 @@
 // suite can prove here is that the key the card reports is one the limelight table names and
 // that `FORMAT.withSlots` renders the skin sentence for it. TrainView.test.tsx asserts the
 // rendered toast on the other side of the same handoff.
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor, type CopyKey } from '../../../content/copy';
 import { EXERCISE_BY_ID } from '../../../domain/plan/library';
 import type { CoachLine } from '../../../domain/training/coach';
-import type { Exercise, SkinId } from '../../../domain/types';
+import type { Exercise, LoggedSet, SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import { makeAppState, makeProfile, makeUiPrefs } from '../../../test/funFixtures';
 import { makeBlock, makePlannedExercise } from '../../../test/fixtures';
@@ -77,6 +77,55 @@ function logRow(n: number, load: string, reps: string): void {
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(NOW);
+});
+
+describe('ExerciseCard: one-tap effort (ROADMAP L8)', () => {
+  /** The one set logged on row `n` of the bench card. */
+  function storedSet(n: number): LoggedSet {
+    const found = Object.values(useAppStore.getState().sets).find(
+      (s) => s.exerciseId === BENCH.id && s.setNumber === n,
+    );
+    if (found === undefined) throw new Error(`no set ${n} was stored`);
+    return found;
+  }
+
+  function tapEffort(n: number, key: CopyKey): void {
+    const group = screen.getByRole('group', { name: FORMAT.setEffortQuantity(n) });
+    fireEvent.click(within(group).getByRole('button', { name: copyFor('limelight', key) }));
+  }
+
+  it('records the effort with one tap after the set, and leaves the rest timer running', () => {
+    renderCard('limelight', vi.fn());
+    logRow(1, '60', '8');
+    const timer = useAppStore.getState().session.restTimer;
+    expect(timer).not.toBeNull(); // the log started it, before any effort was offered
+
+    tapEffort(1, 'button.effortHard');
+
+    expect(storedSet(1).rpe).toBe(9); // [RPE]
+    expect(storedSet(1)).toMatchObject({ loadKg: 60, reps: 8 }); // [kg], [repetitions] untouched
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+  });
+
+  it('leaves the effort unrecorded when the tap is skipped', () => {
+    renderCard('limelight', vi.fn());
+    logRow(1, '60', '8');
+    expect(storedSet(1).rpe).toBeNull();
+  });
+
+  it('changes a recorded effort through Edit, still without touching the timer', () => {
+    renderCard('limelight', vi.fn());
+    logRow(1, '60', '8');
+    tapEffort(1, 'button.effortHard');
+    const timer = useAppStore.getState().session.restTimer;
+
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    tapEffort(1, 'button.effortMax');
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(storedSet(1).rpe).toBe(10); // [RPE]
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+  });
 });
 
 describe('ExerciseCard: the limelight words', () => {
