@@ -663,7 +663,14 @@ export type CopyKey =
   // --- session editing, ROADMAP L1-L4 (docs/design/session-editing.md) ---
   | 'button.editSet'
   | 'button.saveSet'
-  | 'status.sessionEditRefused';
+  | 'status.sessionEditRefused'
+  | 'button.swapExercise'
+  | 'button.confirmSwap'
+  | 'label.exerciseChoice'
+  | 'label.sameMuscle'
+  | 'label.otherExercises'
+  | 'label.swappedOut'
+  | 'status.swappedFrom';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1966,6 +1973,19 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Shown when the store refuses a session edit or a set edit. The likely causes are a session
   // finished or a set deleted in another tab, so the next step is to reload and look again.
   'status.sessionEditRefused': 'Change not saved. Reload to see the current session.',
+  // L2: swap an exercise for this session. The picker is a native select; its two groups are
+  // the suggestions (template peers and exercises sharing a direct mover that the equipment
+  // unlocks) and the rest of the library.
+  'button.swapExercise': 'Swap',
+  'button.confirmSwap': 'Confirm Swap',
+  'label.exerciseChoice': 'Exercise',
+  'label.sameMuscle': 'Same Muscle',
+  'label.otherExercises': 'Other Exercises',
+  // On the card of a planned exercise that was swapped out after sets were logged on it, so
+  // those sets stay visible and editable.
+  'label.swappedOut': 'Swapped Out',
+  // template; FORMAT.swappedFrom. Under a swapped-in exercise's name: the planned one it replaces.
+  'status.swappedFrom': 'In place of {name}.',
 };
 
 /**
@@ -2360,6 +2380,13 @@ export const FORMAT = {
 
   /** The accessible name of an edited row's save control; the visible word is `button.saveSet`. */
   saveSetLabel: (n: number): string => `Save set ${n}`,
+
+  /**
+   * "In place of Barbell bench press." under a swapped-in exercise (ROADMAP L2). Reads
+   * `status.swappedFrom`; the name is the library's own, never reworded by a skin.
+   */
+  swappedFrom: (name: string, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.swappedFrom', overrides).replace('{name}', () => name),
 
   /**
    * "60 kg × 8", one logged set. The load arrives already formatted by src/domain/units.ts, so

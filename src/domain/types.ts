@@ -223,7 +223,19 @@ export interface PlanTemplate { id: string; version: number; name: string; sessi
 export interface PlanCursor { planId: string; nextSessionIndex: number; startedOn: LocalDate; completedOn: LocalDate | null; } // advances only on complete/skip
 export interface PlanPause { id: string; from: LocalDate; to: LocalDate | null; reason: string | null; } // half-open [from, to): `to` is the first active day again; null = still paused
 export type AssignmentStatus = "planned" | "in-progress" | "completed" | "skipped";
-export interface SessionAssignment { date: LocalDate; sessionId: string; sourceIndex: number; status: AssignmentStatus; startedAt: EpochMs | null; completedAt: EpochMs | null; skipReason: string | null; }
+/**
+ * Changes the user made to ONE day's session while training (ROADMAP L2-L4,
+ * docs/design/session-editing.md). A slot key is the planned `exerciseId` (unique within a
+ * session) or an added `exerciseId`. Rules live in src/domain/training/sessionEdits.ts.
+ */
+export interface SessionEdits {
+  swaps: Record<string, string>; // planned slot key -> substitute exerciseId
+  skipped: string[];             // slot keys skipped for this session
+  added: string[];               // exerciseIds added this session, in the order added
+  order: string[];               // display order of slot keys; keys missing here follow in default order
+}
+// `edits` is optional and additive (rule 7): absent means the plan as written, so a document or export written before it existed parses unchanged; no schemaVersion bump.
+export interface SessionAssignment { date: LocalDate; sessionId: string; sourceIndex: number; status: AssignmentStatus; startedAt: EpochMs | null; completedAt: EpochMs | null; skipReason: string | null; edits?: SessionEdits | undefined; }
 
 // ---- logs ----
 export interface LoggedSet { id: string; profileId: string; assignmentDate: LocalDate; sessionId: string; exerciseId: string; setNumber: number; isBonus: boolean; loadKg: Kg | null; enteredUnit: UnitSystem; reps: number | null; durationS: Seconds | null; rpe: number | null; loggedAt: EpochMs; } // loadKg 0 is valid (bodyweight); null = not recorded

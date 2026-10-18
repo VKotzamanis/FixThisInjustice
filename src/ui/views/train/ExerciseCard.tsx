@@ -6,7 +6,7 @@
 //
 // Units: every load is canonical kg here and is formatted for display only at the boundary,
 // by src/domain/units.ts. Rest is seconds. Instants are epoch ms UTC.
-import { useMemo, useState, type ReactElement } from 'react';
+import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import { FORMAT, type CopyKey } from '../../../content/copy';
 import { FORM_CUES } from '../../../content/formCues';
 import { coachLine, type CoachLine } from '../../../domain/training/coach';
@@ -74,6 +74,13 @@ export interface ExerciseCardProps {
    */
   onCoach: (line: CoachLine, specimen: string | null) => void;
   onDeleted: () => void;
+  /**
+   * One line under the name saying what the session did to this card (ROADMAP L2): the planned
+   * exercise a swap replaced, or that this card was swapped out. Null when nothing was.
+   */
+  tag?: string | null;
+  /** The session-edit controls (SessionEditBar), rendered at the bottom of the open card. */
+  children?: ReactNode;
 }
 
 export function ExerciseCard(props: ExerciseCardProps): ReactElement {
@@ -92,6 +99,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     onToggle,
     onCoach,
     onDeleted,
+    tag = null,
+    children,
   } = props;
 
   const history = useExerciseHistory(exercise.id);
@@ -176,7 +185,10 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   return (
     <div className={isOpen ? 'ex-card open' : 'ex-card'}>
       <button type="button" className="ex-head" onClick={onToggle} aria-expanded={isOpen}>
-        <span className="ex-title">{title}</span>
+        <span className="ex-title">
+          {title}
+          {tag !== null && <span className="ex-tag">{tag}</span>}
+        </span>
         <span className="ex-sub">
           {FORMAT.setsBy(
             String(targetSets),
@@ -321,6 +333,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
           >
             {t('button.addSet')}
           </button>
+          {children}
         </div>
       )}
     </div>

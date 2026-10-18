@@ -5,6 +5,7 @@ import {
   prescriptionFor,
   resolveSlot,
   restSFor,
+  slotIntensityOf,
   SPLIT_TEMPLATES,
   WEEKLY_SET_BAND,
   type SessionsPerWeek,
@@ -364,6 +365,30 @@ describe("weekly fractional set volume reproduces the content review's bands", (
     expect(mid('rear-delt')).toBe(6.5);
     expect(mid('calves')).toBe(6);
     expect(mid('abs')).toBe(6);
+  });
+});
+
+describe('slotIntensityOf (ROADMAP L2: a swap keeps the slot intensity)', () => {
+  it('recovers an intensity prescriptionFor turns back into the same prescription, for every exercise', () => {
+    // Rule 2: the inverse is checked against prescriptionFor itself, for the whole library at
+    // both intensities that change a rep range, so the two cannot drift apart.
+    for (const ex of EXERCISES) {
+      for (const intensity of ['heavy', 'moderate'] as const) {
+        const p = prescriptionFor(ex, intensity);
+        expect({ id: ex.id, intensity, p: prescriptionFor(ex, slotIntensityOf(p)) }).toEqual({
+          id: ex.id,
+          intensity,
+          p,
+        });
+      }
+    }
+  });
+
+  it('reads a heavy compound range as heavy and anything else as moderate', () => {
+    expect(slotIntensityOf({ kind: 'reps', lo: 4, hi: 6 })).toBe('heavy');
+    expect(slotIntensityOf({ kind: 'reps', lo: 6, hi: 8 })).toBe('moderate');
+    expect(slotIntensityOf({ kind: 'amrap', minimum: null })).toBe('moderate');
+    expect(slotIntensityOf({ kind: 'time', targetS: 60 })).toBe('moderate'); // [s]
   });
 });
 

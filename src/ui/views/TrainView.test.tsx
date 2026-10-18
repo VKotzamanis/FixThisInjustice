@@ -16,7 +16,7 @@
 //    path master plan section 6.5 actually specifies.
 //  - The audio module is mocked at the module boundary: jsdom has no Web Audio, so the real
 //    playChime would return false without telling this suite whether it was reached.
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
@@ -93,6 +93,13 @@ const PLANK: Exercise = (() => {
 const CURL: Exercise = (() => {
   const ex = EXERCISE_BY_ID['barbell-curl'];
   if (ex === undefined) throw new Error('library.ts no longer defines barbell-curl');
+  return ex;
+})();
+
+/** The session-editing tests swap away from this one: its template slot has curated peers. */
+const BENCH: Exercise = (() => {
+  const ex = EXERCISE_BY_ID['barbell-bench-press'];
+  if (ex === undefined) throw new Error('library.ts no longer defines barbell-bench-press');
   return ex;
 })();
 
@@ -1525,5 +1532,76 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
     expect(useAppStore.getState().session.restTimer).toBe(timer);
     // No coach line for an edit: the queue stays empty.
     expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.dismiss') })).toBeNull();
+  });
+
+  /** The edit controls of one card: a group named by the exercise. */
+  function editBar(name: string): HTMLElement {
+    return screen.getByRole('group', { name });
+  }
+
+  /** Opens the swap picker on a card and confirms `exerciseId`. */
+  function swapTo(cardName: string, exerciseId: string): void {
+    fireEvent.click(
+      within(editBar(cardName)).getByRole('button', { name: copyFor('limelight', 'button.swapExercise') }),
+    );
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.exerciseChoice')), {
+      target: { value: exerciseId },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmSwap') }));
+  }
+
+  it('L2: offers same-muscle exercises that fit the equipment first, then the rest', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    fireEvent.click(
+      within(editBar('Barbell bench press')).getByRole('button', {
+        name: copyFor('limelight', 'button.swapExercise'),
+      }),
+    );
+    const groups = screen.getAllByRole('group').filter((g) => g.tagName === 'OPTGROUP');
+    expect(groups.map((g) => g.getAttribute('label'))).toEqual([
+      copyFor('limelight', 'label.sameMuscle'),
+      copyFor('limelight', 'label.otherExercises'),
+    ]);
+    const first = within(groups[0]!).getAllByRole('option')[0];
+    expect(first).toHaveValue('incline-db-press'); // the template's own next candidate
+  });
+
+  it('L2: swaps an exercise for this session and keeps the rest timer running', () => {
+    seedStore(seed({ exercise: BENCH }));
+    useAppStore.getState().setRestTimer({ startedAt: NOW, endsAt: NOW + 90_000, durationS: 90 });
+    const timer = useAppStore.getState().session.restTimer;
+    renderTrain();
+
+    swapTo('Barbell bench press', 'incline-db-press');
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.swaps).toEqual({
+      'barbell-bench-press': 'incline-db-press',
+    });
+    expect(useAppStore.getState().session.restTimer).toBe(timer);
+    expect(screen.getByText('Incline dumbbell press')).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.swappedFrom('Barbell bench press', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
+  });
+
+  it('L2: logs sets on the substitute as prescribed work, not bonus', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    swapTo('Barbell bench press', 'incline-db-press');
+    logRow(1, '24', '6');
+
+    const sets = Object.values(useAppStore.getState().sets);
+    expect(sets.map((s) => [s.exerciseId, s.isBonus])).toEqual([['incline-db-press', false]]);
+  });
+
+  it('L2: keeps sets logged before the swap on their own card, never hidden', () => {
+    const before = makeSet({ id: 'set-1', exerciseId: 'barbell-bench-press', loadKg: 60, reps: 8 });
+    seedStore(seed({ exercise: BENCH, sets: [before] }));
+    renderTrain();
+    swapTo('Barbell bench press', 'incline-db-press');
+
+    expect(useAppStore.getState().sets['set-1']).toEqual(before);
+    expect(screen.getByText(copyFor('limelight', 'label.swappedOut'))).toBeInTheDocument();
   });
 });

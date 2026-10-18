@@ -21,6 +21,7 @@ import { newId } from '../domain/ids';
 import { seedBeverageTargetML } from '../domain/nutrition';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
 import type { RestTimer } from '../domain/training/restTimer';
+import type { SessionEditOp } from '../domain/training/sessionEdits';
 import {
   createScheduleActions,
   requireProfile,
@@ -34,6 +35,7 @@ import {
   applyAddCustomExercise,
   applyAddHydration,
   applyDeleteSet,
+  applyEditSession,
   applyLogBodyMass,
   applyLogSet,
   applyRestoreSet,
@@ -199,6 +201,14 @@ export interface AppActions {
    * keeps running. Throws on an unknown id or a value the schema refuses, writing nothing.
    */
   updateSet(id: string, m: SetMeasurement): void;
+  /**
+   * Changes the session assigned on `date` for this session only (ROADMAP L2-L4): swap,
+   * skip, restore, move, add or remove an exercise. Stored on that day's assignment as
+   * `edits` (docs/design/session-editing.md). Touches no session-slice field, so a running rest
+   * timer keeps running. Throws, writing nothing, on a finished or missing session and on an
+   * edit the domain refuses.
+   */
+  editSession(profileId: string, date: LocalDate, op: SessionEditOp): void;
   /**
    * Restores the buffered set if the window has not closed, and clears the buffer either way.
    * A no-op when nothing is buffered.
@@ -866,6 +876,11 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // spread inside applyUpdateSet untouched, so editing a set mid-rest never restarts or stops
     // the timer.
     set((s) => applyUpdateSet(s, id, m));
+  },
+
+  editSession(profileId: string, date: LocalDate, op: SessionEditOp): void {
+    // Same rule as updateSet: a document write only, the session slice rides along untouched.
+    set((s) => applyEditSession(s, profileId, date, op));
   },
 
   undoDelete(): void {
