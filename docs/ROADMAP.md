@@ -30,6 +30,14 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - N5 Remove the old-console import (`src/domain/migrations/v2.ts`, `src/ui/migration/`, ~3,900 lines incl. tests) once the owner confirms he no longer needs it. Drop.
 - N4 Daily notes: stored (`AppState.notes`), no UI. Drop: remove field with a coercion so old documents load (rule 7).
 
+- N7 Skin-removal leftovers (2026-10-18), owner wording first:
+  - `advice.settingsInstruction` (`src/content/copy.ts`) still lists "skin" among Settings items. Owner's words: ask.
+  - `hero.skin` "the look and the noise" now heads only sound + shortcut switches (`src/ui/settings/InteractionSettings.tsx`). Owner's words: ask.
+  - Sound and shortcut switches no longer reachable during setup (lived in the removed "Choose Skin" disclosure). Needs owner copy for a new label.
+  - Accent `#a3e635` in `index.html` theme-color, the manifest and `UiPrefs.accent` matches no token.
+  - Dead: sfx skin-switch logic (`src/skins/sfx.ts`), geist/jetbrains entries in `vite.config.ts` globIgnores, 4 unused font packages in `package.json` (@fontsource-variable/geist, @fontsource-variable/jetbrains-mono, @fontsource/dm-mono, @fontsource/space-mono).
+  - Nothing stops a new call site from calling `copy()` without the limelight overlay; `src/content/limelightParity.test.ts` covers the existing render path only.
+
 ## 4. Fun (want, all)
 - F1 (design) Rest games. Word game parked on branch `wip/rest-word-game` (red: tsc `src/store/sessionMirror.ts:170`). More small games later. Constraint: a game must never stretch the prescribed rest (`src/domain/training/restTimer.ts`), must be interruptible, offline, no stored score unless schema change.
 - F2 Limelight voice: the vulgar register the owner asked for; never written (agent chose camp only). Owner's words, his call on lines.

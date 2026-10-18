@@ -7,7 +7,8 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 2. ROADMAP section 1 (broken now), then section 2 (training loop). Design before building items marked (design).
 
 ## Branches and tags
-- `main`: cleanup done (`git log pre-cleanup-2026-10-17..main`).
+- `main`: cleanup done (`git log pre-cleanup-2026-10-17..main`). Limelight-only merged (14aceec); parity pinned by `src/content/limelightParity.test.ts` + `src/content/__fixtures__/limelight-resolved.json`.
+- Not pushed. `origin/main` is the pre-cleanup state. History scrub of private identifiers: pending owner approval (commands in the 2026-10-18 report); push only after the owner's yes.
 - `wip/rest-word-game`: Wordle-style rest game, parked (ROADMAP F1). Red at park time: tsc `src/store/sessionMirror.ts:170` (exactOptionalPropertyTypes on `game?`); its title-case and catalogue failures no longer apply (those gates are gone).
 - tag `archive/design-editor`: local design editor + type-role tokens (owner: never helped). Only the owner's intro text was taken onto main.
 - tag `pre-cleanup-2026-10-17`: tree before the cleanup (old handoffs, plans, design rounds).
@@ -27,4 +28,4 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 - No sound files (`public/sfx/`), no motivation clip (`public/media/`), app icon still the previous app's.
 
 ## Decisions log
-- 2026-10-18 restart: platform stays a web page; limelight only; design tools and review-catalogue machinery removed; docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE/runbooks/design; owner-private material moved to `docs/private/` (gitignored); history scrubbed of private identifiers. Owner's answers: `docs/private/owner-feedback/restart-2026-10-18.md`.
+- 2026-10-18 restart: platform stays a web page; limelight only; design tools and review-catalogue machinery removed; docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE/runbooks/design; owner-private material moved to `docs/private/` (gitignored); history scrub of private identifiers pending owner approval. Owner's answers: `docs/private/owner-feedback/restart-2026-10-18.md`.
