@@ -19,7 +19,7 @@ import {
 } from '../../store/scheduleSelectors';
 import { latestBodyMassEntry, useActiveProfile } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
-import { Intervention } from '../components/Intervention';
+import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
 import { StatusMark } from '../components/StatusMark';
@@ -37,6 +37,7 @@ import {
 import { displayClass } from '../format/display';
 import { refusalLine } from '../format/refusal';
 import { weekDeltaKey } from '../format/weekDelta';
+import { heroPose, heroStateOf, type DayStatus } from './todayHero';
 import './views.css';
 
 /**
@@ -70,8 +71,6 @@ import './views.css';
 
 /** [d] Whole calendar days in the strip below the hero. */
 const STRIP_DAYS = 14;
-
-type DayStatus = 'in-progress' | 'paused' | 'completed' | 'skipped' | 'planned' | 'rest';
 
 /** The precedence above, applied to one projected day. */
 function dayStatus(day: CalendarDay): DayStatus {
@@ -209,6 +208,15 @@ export function TodayView(): JSX.Element {
   const lastReview: WeeklyReview | null =
     graded.length === 0 ? null : (graded[graded.length - 1] ?? null);
   /*
+   * The mascot beside the hero (stylize survey item 5), from one map in todayHero.ts. A missed
+   * week on screen outranks every pose: the popup while it is owed, then the intervention block,
+   * neither of which is shown once the programme is finished.
+   */
+  const pose = heroPose(heroStateOf(status, finished), !finished && missedWeek(lastReview));
+  // Decorative: every hero's heading says what the picture shows (Illustration.tsx).
+  const mascot =
+    pose === null ? null : <Illustration name={pose.name} width={pose.size} height={pose.size} />;
+  /*
    * ROADMAP L7: the goal Start Next Programme preselects, maintenance once the body-mass target
    * was reached (src/domain/plan/lifecycle.ts states the rule). Read only by the finished hero.
    */
@@ -313,9 +321,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        {/* Decorative: the heading already says a session is under way. Round 3 drew this and
-            never placed it; the asset manifest of 2026-09-06 put it here. */}
-        <Illustration name="mascotLifting" width={72} height={72} />
+        {mascot}
         <HeroName text={c('hero.sessionInProgress')} />
         {session !== null && <p className="today-sub">{session.name}</p>}
       </div>
@@ -324,6 +330,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
+        {mascot}
         <HeroName text={FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)} />
         <p className="today-sub">{c('advice.pauseHoldsCursor')}</p>
       </div>
@@ -333,6 +340,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
+        {mascot}
         <HeroName
           text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
         />
@@ -344,6 +352,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
+        {mascot}
         <HeroName text={session.name} />
         <p className="today-sub">
           {FORMAT.sessionSummary(
@@ -375,6 +384,7 @@ export function TodayView(): JSX.Element {
         <p className="today-eyebrow">
           {FORMAT.planPosition(shown, total, c('status.planComplete'))}
         </p>
+        {mascot}
         <HeroName text={c('hero.programmeComplete')} />
         <p className="today-sub">
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
@@ -386,6 +396,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
+        {mascot}
         <HeroName text={c('hero.noSessionToday')} />
         <p className="today-sub">
           {next === null || next.slot === null || next.projectedSession === null

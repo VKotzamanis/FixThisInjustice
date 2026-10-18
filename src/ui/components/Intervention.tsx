@@ -8,19 +8,29 @@ import { weekDeltaKey } from '../format/weekDelta';
 import './limelight.css';
 
 /**
+ * Did this closed week miss its target, whether or not the popup has been answered yet?
+ *
+ * `paused` is checked for the reason weekly.ts states: a paused week is not a miss, and its
+ * delta is 0 rather than negative, so this predicate would be false anyway. It is written out
+ * because a future change to the delta convention must not silently turn a pause into a verdict.
+ *
+ * Exported for the Today hero (src/ui/views/todayHero.ts), which shows no mascot while a missed
+ * week is on screen in either form: one definition of "missed", read by both.
+ */
+export function missedWeek(review: WeeklyReview | null): review is WeeklyReview {
+  return review !== null && !review.paused && review.delta < 0;
+}
+
+/**
  * Did this closed week miss its target, and has the popup already been answered?
  *
  * `missHandled` is set by markMotivationShown (src/store/motivationActions.ts) on the week the
  * modal was shown for and on every older one, so it is exactly "P6 has had its turn". While it
  * is false the missed-week modal owns the screen and this block stays silent: two renderings of
  * the same week at the same time is the duplication A59 recorded.
- *
- * `paused` is checked for the reason weekly.ts states: a paused week is not a miss, and its
- * delta is 0 rather than negative, so this predicate would be false anyway. It is written out
- * because a future change to the delta convention must not silently turn a pause into a verdict.
  */
 export function handledMiss(review: WeeklyReview | null): review is WeeklyReview {
-  return review !== null && !review.paused && review.delta < 0 && review.missHandled;
+  return missedWeek(review) && review.missHandled;
 }
 
 /**

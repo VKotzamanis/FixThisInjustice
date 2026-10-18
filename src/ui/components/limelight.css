@@ -249,7 +249,9 @@
 
 /*
  * The mascot illustrations, placed by the asset manifest of 2026-09-06. Round 3 drew four and
- * wired none; two are placed now, on the Today hero and beside the week stamp.
+ * wired none; three are placed now: lifting, resting and the crown on the Today hero (one map,
+ * src/ui/views/todayHero.ts, stylize survey 2026-10-18 item 5) and the crown beside the week
+ * stamp. The flop is placed nowhere.
  *
  * They are DECORATION and behave like it: they never take space from the words, they shrink out
  * of the way on a narrow screen, and they carry an empty alt so a screen reader skips them.

@@ -5,6 +5,7 @@ import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { formatRest } from '../format/plan';
 import { refusalLine } from '../format/refusal';
 import { TodayView } from './TodayView';
+import { LIMELIGHT_ILLUSTRATIONS } from '../../skins/limelight/illustrations';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import {
@@ -537,6 +538,102 @@ describe('TodayView: a refused action', () => {
 
     expect(screen.queryByRole('alert')).toBeNull();
     expect(useAppStore.getState().status.lastActionError).toBeNull();
+  });
+});
+
+/*
+ * Stylize survey item 5: the hero's mascot pose per day state. The mapping itself is tested
+ * exhaustively in todayHero.test.ts; these tests prove the view renders what the map says in
+ * each hero branch, since the branches and the map are two readings of the same precedence.
+ */
+describe('TodayView hero: the mascot pose', () => {
+  /** The src of the hero's picture, or null when the hero has none. */
+  function heroPicture(): { src: string | null; width: string | null } | null {
+    const img = document.querySelector('.today-hero img.ll-illustration');
+    return img === null ? null : { src: img.getAttribute('src'), width: img.getAttribute('width') };
+  }
+
+  function closedDay(status: 'completed' | 'skipped'): SessionAssignment {
+    return {
+      date: MONDAY,
+      sessionId: 's-1',
+      sourceIndex: 0,
+      status,
+      startedAt: status === 'completed' ? NOW_MS : null, // [ms] epoch, UTC
+      completedAt: status === 'completed' ? NOW_MS : null, // [ms] epoch, UTC
+      skipReason: null,
+    };
+  }
+
+  it('lifts on a planned day that has not started yet, at 56 px', () => {
+    render(<TodayView />);
+    expect(heroPicture()).toEqual({ src: LIMELIGHT_ILLUSTRATIONS.mascotLifting, width: '56' });
+  });
+
+  it('lifts while the session is in progress', () => {
+    withAssignment({ ...closedDay('completed'), status: 'in-progress', completedAt: null });
+    render(<TodayView />);
+    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotLifting);
+  });
+
+  it('rests after a completed session', () => {
+    withAssignment(closedDay('completed'));
+    render(<TodayView />);
+    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotResting);
+  });
+
+  it('rests on a rest day', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday: no slot
+    render(<TodayView />);
+    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotResting);
+  });
+
+  it('wears the crown once the programme is complete', () => {
+    setState({
+      ...useAppStore.getState(),
+      cursors: {
+        [PROFILE_ID]: { planId: 'plan-1', nextSessionIndex: TOTAL, startedOn: MONDAY, completedOn: MONDAY },
+      },
+    });
+    render(<TodayView />);
+    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotCrown);
+  });
+
+  it('shows no picture beside a skipped session', () => {
+    withAssignment(closedDay('skipped'));
+    render(<TodayView />);
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionSkipped'))).toBeTruthy();
+    expect(heroPicture()).toBeNull();
+  });
+
+  it('shows no picture beside a pause', () => {
+    setState({
+      ...useAppStore.getState(),
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
+    });
+    render(<TodayView />);
+    expect(heroPicture()).toBeNull();
+  });
+
+  it('shows no picture anywhere on Today while a missed week is on screen', () => {
+    // A planned day, which would lift: the miss outranks it, popup pending or answered alike.
+    for (const missHandled of [false, true]) {
+      withReview({ ...MISSED_WEEK, missHandled });
+      const { unmount } = render(<TodayView />);
+      expect({ missHandled, picture: heroPicture() }).toEqual({ missHandled, picture: null });
+      // No mascot anywhere on the screen, the intervention block included. (Its small SkinLabel
+      // icons are type ornaments round three placed there, not a picture of the mascot.)
+      expect(document.querySelectorAll('.view.today img.ll-illustration')).toHaveLength(0);
+      unmount();
+    }
+  });
+
+  it('never shows the flopped mascot, even beside the week stamp', () => {
+    withReview(MET_WEEK);
+    render(<TodayView />);
+    expect(screen.getByTestId('week-stamp')).toBeTruthy();
+    const sources = [...document.querySelectorAll('img')].map((img) => img.getAttribute('src'));
+    expect(sources).not.toContain(LIMELIGHT_ILLUSTRATIONS.mascotFlop);
   });
 });
 
