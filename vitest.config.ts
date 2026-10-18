@@ -79,6 +79,10 @@ export default defineConfig({
         /crt\.css$/,
         /tokens\.css(\?|$)/,
         /limelight\.css(\?|$)/,
+        // ownerSprite.css (stylize survey item 7): the 11 frames, the integer 2x scale and the
+        // reduced-motion stop are CSS guarantees, so src/ui/components/OwnerSprite.test.tsx reads
+        // the sheet as text through ?raw.
+        /ownerSprite\.css(\?|$)/,
         /appShell\.css(\?|$)/,
         /setup\.css(\?|$)/,
         // train.css (ROADMAP F1): the rest game's reduced-motion rule, its 44 px key targets and

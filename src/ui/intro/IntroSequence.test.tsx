@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { INTRO_CHAR_INTERVAL_MS, IntroGate, IntroSequence } from './IntroSequence';
-import { INTRO_DISCLAIMER, INTRO_SLIDES } from '../../content/introSlides';
+import { INTRO_DISCLAIMER, INTRO_FIGURE, INTRO_SLIDES } from '../../content/introSlides';
 import { copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
@@ -99,6 +99,32 @@ describe('IntroSequence', () => {
       const wrapped = INTRO_DISCLAIMER.includes(`**${phrase}**`) || INTRO_DISCLAIMER.includes(`*${phrase}*`);
       expect(wrapped).toBe(true);
     }
+  });
+
+  it("shows the owner's sprite where the ASCII stick figure was, playing once per slide", () => {
+    const { container } = render(<IntroSequence />);
+    // The figure constant stays in the owner's file; it is no longer what the slide draws.
+    const text = container.textContent ?? '';
+    for (const line of INTRO_FIGURE.split('\n')) expect(text).not.toContain(line.trim());
+    expect(container.querySelector('.intro-figure')).toBeNull();
+    const first = container.querySelector('.ll-sprite');
+    expect(first?.getAttribute('data-sprite')).toBe('playing');
+
+    // The slide remounts on each advance, so the next slide gets a fresh element and a fresh play.
+    advance();
+    const second = container.querySelector('.ll-sprite');
+    expect(second).not.toBeNull();
+    expect(second).not.toBe(first);
+    expect(second?.getAttribute('data-sprite')).toBe('playing');
+  });
+
+  it('holds the sprite on frame 0 under prefers-reduced-motion', () => {
+    vi.stubGlobal('matchMedia', vi.fn((query: string) => ({
+      matches: query.includes('prefers-reduced-motion'), media: query,
+      addEventListener: () => undefined, removeEventListener: () => undefined,
+    })));
+    const { container } = render(<IntroSequence />);
+    expect(container.querySelector('.ll-sprite')?.getAttribute('data-sprite')).toBe('still');
   });
 
   it('does not apply animation under prefers-reduced-motion', () => {

@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState, type ReactElement } from 'react';
 import './intro.css';
 import { emphasise } from './emphasis';
-import { INTRO_ACKNOWLEDGEMENT, INTRO_DISCLAIMER, INTRO_DISCLAIMER_HEADING, INTRO_FIGURE, INTRO_SLIDES } from '../../content/introSlides';
+import { INTRO_ACKNOWLEDGEMENT, INTRO_DISCLAIMER, INTRO_DISCLAIMER_HEADING, INTRO_SLIDES } from '../../content/introSlides';
 import { useCopy } from '../../content/useCopy';
 import { ModalShell } from '../components/ModalShell';
+import { OwnerSprite } from '../components/OwnerSprite';
+import { prefersReducedMotion } from '../hooks/reducedMotion';
 import { useAppStore } from '../../store';
 
 /** [ms] per character of the typed body text. */
@@ -30,10 +32,6 @@ const BULLET_SEPARATOR = ': ';
 const FIGURE_SLIDE_COUNT = 4;
 const ACKNOWLEDGEMENT_INDEX = 3;
 const LAST_INDEX = INTRO_SLIDES.length - 1;
-
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 function bodyText(index: number): string {
   const slide = INTRO_SLIDES[index] ?? INTRO_SLIDES[0];
@@ -151,7 +149,13 @@ export function IntroSequence(): ReactElement {
             })}
           </ul>
         )}
-        {showFigure && <><pre className="intro-figure" aria-hidden="true">{INTRO_FIGURE}</pre><p className="intro-continue">{t('advice.clickToContinue')}...</p></>}
+        {/*
+          * The owner's own sprite where the ASCII stick figure was (stylize survey item 7). It
+          * plays once per slide: the slide remounts on every advance (`key={index}` above), so
+          * each figure slide gets a fresh element and one 1.43 s play, then rests on frame 0.
+          * INTRO_FIGURE stays in introSlides.ts, the owner's file, unedited and now unrendered.
+          */}
+        {showFigure && <><OwnerSprite play /><p className="intro-continue">{t('advice.clickToContinue')}...</p></>}
       </div>
       {acknowledgementOpen && (
         <ModalShell labelledBy={acknowledgementId} className="intro-modal" backdropClassName="intro-modal-bg" testId="intro-acknowledgement-backdrop" onClose={keepAcknowledgementOpen}>

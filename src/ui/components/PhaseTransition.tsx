@@ -32,6 +32,8 @@ import type { UnitSystem } from '../../domain/types';
 import { UNIT_LABEL, displayMass } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { usePendingMotivation } from '../../store/selectors';
+import { prefersReducedMotion } from '../hooks/reducedMotion';
+import { DitherWipe } from './DitherWipe';
 import { ModalShell } from './ModalShell';
 
 /** [ms] from mount to the first statistic. */
@@ -49,19 +51,6 @@ const STEPS = 5;
  * restated it would be a second copy no skin could reach.
  */
 const ART = '[==================]==>[..................]';
-
-/**
- * True when the user has asked for reduced motion.
- *
- * The typeof guard is Boot.tsx's, for its reason: jsdom implements no matchMedia at all, and
- * neither do some embedded webviews, so an unguarded call throws rather than returning false.
- */
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-}
 
 /**
  * Total mass moved, in the profile's display unit. [kg] in, display unit out.
@@ -126,57 +115,68 @@ export function PhaseTransition({
     };
   }, [reduced]);
 
+  /*
+   * THE OPENING goes through the dither wipe (stylize survey item 10), a sibling of the shell so
+   * the canvas is never inside the focus trap. It is clear before the first statistic can show:
+   * the wipe is 600 ms from an effect that runs BEFORE this component's own (a child's effects
+   * run first), every cell is transparent from 98 % of it (DitherWipe.tsx: the deepest Bayer
+   * threshold is 15.5 / 16), and the first statistic waits FIRST_STEP_MS = 600 ms. Under reduced
+   * motion the wipe never mounts and every statistic prints at once, as before.
+   */
   return (
-    <ModalShell
-      labelledBy={headingId}
-      className="phase"
-      backdropClassName="phase-bg"
-      testId="phase-transition"
-      onClose={onClose}
-    >
-      <h2 className="pt-head" id={headingId}>
-        {/* 1-based for display; PlanBlock.index is 0-based, as FORMAT.blockLabel records. */}
-        {FORMAT.withSlots(
-          'status.blockTransition',
-          { from: fromIndex + 1, to: toIndex + 1 },
-          overrides,
+    <>
+      <DitherWipe />
+      <ModalShell
+        labelledBy={headingId}
+        className="phase"
+        backdropClassName="phase-bg"
+        testId="phase-transition"
+        onClose={onClose}
+      >
+        <h2 className="pt-head" id={headingId}>
+          {/* 1-based for display; PlanBlock.index is 0-based, as FORMAT.blockLabel records. */}
+          {FORMAT.withSlots(
+            'status.blockTransition',
+            { from: fromIndex + 1, to: toIndex + 1 },
+            overrides,
+          )}
+        </h2>
+        <pre className="pt-art ll-ascii" aria-hidden="true">
+          {ART}
+        </pre>
+        <dl className="pt-stats">
+          {step >= 1 && (
+            <div className="pt-row">
+              <dt>{t('label.blockSessionsCompleted')}</dt>
+              <dd>{stats.sessionsCompleted}</dd>
+            </div>
+          )}
+          {step >= 2 && (
+            <div className="pt-row">
+              <dt>{t('label.blockSetsLogged')}</dt>
+              <dd>{stats.setsLogged}</dd>
+            </div>
+          )}
+          {step >= 3 && (
+            <div className="pt-row">
+              <dt>{t('label.blockMassMoved')}</dt>
+              <dd>{formatTonnage(stats.tonnageKg, units)}</dd>
+            </div>
+          )}
+          {step >= 4 && (
+            <div className="pt-row">
+              <dt>{t('label.blockSpecimens')}</dt>
+              <dd>{stats.specimensOwned}</dd>
+            </div>
+          )}
+        </dl>
+        {step >= STEPS && (
+          <button type="button" className="pt-continue" onClick={onClose}>
+            {t('button.continue')}
+          </button>
         )}
-      </h2>
-      <pre className="pt-art" aria-hidden="true">
-        {ART}
-      </pre>
-      <dl className="pt-stats">
-        {step >= 1 && (
-          <div className="pt-row">
-            <dt>{t('label.blockSessionsCompleted')}</dt>
-            <dd>{stats.sessionsCompleted}</dd>
-          </div>
-        )}
-        {step >= 2 && (
-          <div className="pt-row">
-            <dt>{t('label.blockSetsLogged')}</dt>
-            <dd>{stats.setsLogged}</dd>
-          </div>
-        )}
-        {step >= 3 && (
-          <div className="pt-row">
-            <dt>{t('label.blockMassMoved')}</dt>
-            <dd>{formatTonnage(stats.tonnageKg, units)}</dd>
-          </div>
-        )}
-        {step >= 4 && (
-          <div className="pt-row">
-            <dt>{t('label.blockSpecimens')}</dt>
-            <dd>{stats.specimensOwned}</dd>
-          </div>
-        )}
-      </dl>
-      {step >= STEPS && (
-        <button type="button" className="pt-continue" onClick={onClose}>
-          {t('button.continue')}
-        </button>
-      )}
-    </ModalShell>
+      </ModalShell>
+    </>
   );
 }
 

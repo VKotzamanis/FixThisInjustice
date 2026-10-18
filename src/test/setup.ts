@@ -8,3 +8,13 @@ import '@testing-library/jest-dom/vitest';
 afterEach(() => {
   cleanup();
 });
+
+// jsdom has no 2D canvas: its getContext returns null AND logs "Not implemented" on every call.
+// Boot, PhaseTransition and WeekStamp mount the dither wipe, which treats a null context as "no
+// canvas" and cuts instantly (src/ui/components/DitherWipe.tsx), so every suite that mounts one
+// of them printed that log. This returns the same null without it. A suite that draws installs its
+// own fake with vi.spyOn (DitherWipe.test.tsx); restoreMocks hands this stub back afterwards.
+// Guarded because build/cspPlugin.test.ts runs in the node environment, where there is no DOM.
+if (typeof HTMLCanvasElement !== 'undefined') {
+  HTMLCanvasElement.prototype.getContext = (() => null) as typeof HTMLCanvasElement.prototype.getContext;
+}

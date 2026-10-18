@@ -1,8 +1,10 @@
 // src/ui/views/train/RestWordGame.tsx
 //
 // Rest Word, the first rest game (ROADMAP F1, docs/design/rest-games.md). A small DOM/CSS board:
-// no canvas, image, media element, font request or network call. It reads the rest timer and
-// never writes it; RestTimerPanel mounts it inside a rest and unmounts it when that rest ends.
+// no canvas, media element, font request or network call. Its one picture is the owner's sprite
+// sheet as a CSS background, a precached same-origin file (ownerSprite.css). It reads the rest
+// timer and never writes it; RestTimerPanel mounts it inside a rest and unmounts it when that
+// rest ends.
 //
 // Units: instants are epoch ms UTC [ms]; durations are seconds [s].
 import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
@@ -16,7 +18,8 @@ import {
 } from '../../../domain/fun/restWord';
 import type { RestGameContext, RestTimer } from '../../../domain/training/restTimer';
 import { playRestGameCue, type RestGameCue } from '../../audio/restGameAudio';
-import { LossChomp, PixelMascot } from './PixelMascot';
+import { OwnerSprite } from '../../components/OwnerSprite';
+import { LossChomp } from './PixelMascot';
 
 type RoundResult = 'won' | 'lost' | null;
 
@@ -209,7 +212,11 @@ export function RestWordGame(props: RestWordGameProps): ReactElement {
             );
           })}
         </div>
-        <PixelMascot mood={mascotMood} />
+        {/* The owner's sprite (stylize survey item 7): still through the round, one play on a
+            win. The wrapper carries the mood, so a loss still shakes (train.css). */}
+        <span className={`rest-game-mascot rest-game-mascot-${mascotMood}`}>
+          <OwnerSprite play={result === 'won'} />
+        </span>
         {result === 'lost' && <LossChomp />}
       </div>
 

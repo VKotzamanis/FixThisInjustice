@@ -353,12 +353,21 @@
   max-width: min(100%, 28rem);
 }
 
+/*
+ * THE REST SIGN (stylize survey item 3). `.rest-summary` carries `.ll-panel` (tokens.css), the
+ * black sign round three named for this panel, so the ring, the clock and the controls read off
+ * black: lime numerals and track at 10.91:1, the pink arc at 7.75:1, the white label at 21:1 (the
+ * fine-print grey it had is 2.2:1 on black, computed with the WCAG 2.1 formula). The lime
+ * `stopwatchPanel` icon was drawn for this ground; on the lime page its outline vanished.
+ */
 .rest-summary {
   display: flex;
   gap: 0.75rem;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--line-2);
 }
 
 .rest-ring {
@@ -367,12 +376,80 @@
   height: 64px;
 }
 
+.rest-ring-track {
+  stroke: var(--lime);
+}
+
+.rest-ring-arc {
+  stroke: var(--pink);
+}
+
 .rest-time {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
+  color: var(--lime);
   font-variant-numeric: tabular-nums;
+}
+
+/*
+ * The controls on the sign: lime fill, ink type (10.91:1), a 2 px ink edge that holds on the pink
+ * rest-over fill too. `.view button` (views.css) would paint them lime with INHERITED type, which
+ * on this panel is white on lime, 1.92:1. Scoped to `.rest-controls` so the game's keys, which
+ * sit inside `.rest-panel` with rules of their own, are untouched.
+ */
+.view .rest-controls button {
+  color: var(--ink);
+  background: var(--lime);
+  border: 2px solid var(--ink);
+}
+
+/*
+ * REST OVER. The sign turns pink with ink type (7.75:1) and stays so: `.ll-panel` paints from
+ * --panel and --panel-text, so re-pointing those two here flips it with no specificity contest
+ * against the skin-scoped rule. Text inside follows the sign's own colour, which the pulse below
+ * animates, so it stays legible on both halves of a pulse.
+ *
+ * THE PULSE. 3 pulses of 500 ms, 2 Hz, then the steady fill: each pulse is a black half with lime
+ * type and a pink half with ink type, `steps(1, end)` so there is no fade between them. That is at
+ * most 2 flashes in any second against WCAG 2.3.1's 3. Reduced motion: no pulse, only the change.
+ */
+.rest-summary.rest-over {
+  --panel: var(--pink);
+  --panel-text: var(--ink);
+}
+
+.rest-summary.rest-over .rest-time,
+.rest-summary.rest-over .rest-label {
+  color: inherit;
+}
+
+.rest-summary.rest-over .rest-ring-track {
+  stroke: currentColor;
+}
+
+.rest-summary.rest-over-pulse {
+  animation: ll-rest-over-pulse 500ms steps(1, end) 3;
+}
+
+@keyframes ll-rest-over-pulse {
+  0% {
+    background-color: var(--ink);
+    color: var(--lime);
+  }
+
+  50%,
+  100% {
+    background-color: var(--pink);
+    color: var(--ink);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rest-summary.rest-over-pulse {
+    animation: none;
+  }
 }
 
 .hydration-banner {
@@ -520,7 +597,7 @@
 .rest-label {
   font-size: 0.65rem;
   letter-spacing: 0.12em;
-  color: var(--text-3);
+  color: var(--panel-text);
 }
 
 /*
@@ -591,8 +668,11 @@
   padding: 0.25rem 0.4rem;
 }
 
+/* Wraps: a five-letter board (152 px) beside the 80 px sprite is 244 px, 4 px over a 320 px
+   phone's 240 px, and the loss loop adds 91 px more; a narrow phone stacks them instead. */
 .rest-word-playfield {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   justify-content: center;
   align-items: center;
@@ -683,30 +763,34 @@
   border: 2px solid var(--accent);
 }
 
-/* ASCII art needs a real monospace face: --mono is Archivo, which is proportional. */
+/*
+ * The owner's sprite in the game (ownerSprite.css draws it; stylize survey item 7). The board is
+ * black and his drawing is black hair, so the sprite sits on a lime tile, the skin's own ground.
+ * The win is the sprite's own one play; a loss still shakes the tile.
+ */
 .rest-game-mascot {
-  color: var(--accent);
-  font: 700 0.68rem/0.82rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  margin: 0;
-  white-space: pre;
+  flex: none;
 }
 
-.rest-game-mascot-win {
-  animation: rest-game-pop 260ms steps(2, end) 2;
+.rest-game-mascot .ll-sprite {
+  background-color: var(--lime);
 }
 
 .rest-game-mascot-lose {
   animation: rest-game-shake 160ms steps(2, end) 3;
 }
 
-/* Original ASCII loss loop: two CSS-swapped text frames, never a downloaded GIF. */
+/* Original ASCII loss loop: two CSS-swapped text frames, never a downloaded GIF. The face is the
+   `ll-ascii` stack (tokens.css) on each frame, so the two overlay column for column. */
 .rest-loss-chomp {
   position: relative;
   width: 5.7rem;
   height: 1rem;
   overflow: hidden;
   color: var(--accent);
-  font: 700 0.7rem/1rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.7rem;
+  line-height: 1rem;
 }
 
 .rest-loss-chomp pre {
@@ -722,12 +806,6 @@
 
 .rest-loss-chomp-closed {
   animation: rest-game-chomp-closed 420ms steps(1, end) infinite;
-}
-
-@keyframes rest-game-pop {
-  50% {
-    transform: translateY(-3px);
-  }
 }
 
 @keyframes rest-game-shake {
@@ -753,7 +831,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rest-game-mascot-win,
   .rest-game-mascot-lose,
   .rest-loss-chomp-open,
   .rest-loss-chomp-closed {
