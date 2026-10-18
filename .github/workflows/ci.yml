@@ -138,27 +138,10 @@ jobs:
       - name: CSP content and referrer meta
         run: bash scripts/check-dist-csp.sh dist/index.html
 
-      - name: No personal health data in the tracked tree
-        run: |
-          set -euo pipefail
-          # P7 widened this from 'src/ worker/ public/ index.html' to the whole tracked tree. Four
-          # paths are exempt, each for a stated reason: docs/review/ and docs/plans/ are the
-          # documents that decided the terms had to go and quote them to say so, REFERENCES.md logs
-          # the Crossref queries that sourced the content review, and graphify-out/ is a generated
-          # index of all three.
-          # One-character classes keep the pattern from matching its own definition. git grep exits 1
-          # on no match, which is the passing case, and also when a pathspec matches no tracked file.
-          # \b is load-bearing. Unanchored and case-insensitive, the location identifier matched the
-          # same letters inside a base64 data URI in src/skins/limelight/icons.ts (commit 8511f21),
-          # so the job failed on generated data rather than on prose. Measured 2026-09-02 against the
-          # widened pathspec: \b alone clears that false positive, so the two generated asset modules
-          # that used to be excluded are now covered by the gate.
-          if ! git grep -nEi '\b(vyvans[e]|lisdexamfetamin[e]|ymc[a]|amphetamin[e])\b' -- . ':!docs/review/' ':!docs/plans/' ':!REFERENCES.md' ':!graphify-out/'; then
-            echo "PASS: no medication or location identifier outside the four exempt paths"
-          else
-            echo "FAIL: personal health data found in the tracked tree"
-            exit 1
-          fi
+      - name: No private identifiers in the tracked tree
+        env:
+          PRIVACY_PATTERN: ${{ secrets.PRIVACY_PATTERN }}
+        run: bash scripts/check-private.sh
 
   # The Worker is a separate npm package with its own lockfile, so it gets its own job
   # rather than extra steps in `verify`. It is not linted here: worker/ sits outside the
