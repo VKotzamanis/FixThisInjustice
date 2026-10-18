@@ -2,7 +2,7 @@
 import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SessionIndicator } from './SessionIndicator';
-import { FORMAT, SKIN_COPY, copy } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { DAY_MS, MONDAY, NOW_MS, PLAN_ID, PROFILE_ID, seedState } from '../../test/scheduleFixtures';
 import type { PlanCursor } from '../../domain/types';
@@ -36,15 +36,15 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -80,7 +80,9 @@ describe('SessionIndicator', () => {
   it('reports a finished programme without overrunning the total', () => {
     setCursor({ nextSessionIndex: 6, completedOn: MONDAY });
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 6/6 complete');
+    expect(screen.getByTestId('session-indicator').textContent).toBe(
+      `S 6/6 ${copyFor('limelight', 'status.planComplete')}`,
+    );
   });
 
   it('clamps a cursor that has run past the last session', () => {
@@ -119,7 +121,7 @@ describe('SessionIndicator', () => {
   it('carries an accessible label from the copy table', () => {
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(1, 6, ''),
+      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
     );
   });
 
@@ -127,7 +129,12 @@ describe('SessionIndicator', () => {
     setCursor({ nextSessionIndex: 6, completedOn: MONDAY });
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(6, 6, copy('hero.programmeComplete')),
+      FORMAT.planPositionLabel(
+        6,
+        6,
+        copyFor('limelight', 'hero.programmeComplete'),
+        SKIN_COPY.limelight,
+      ),
     );
   });
 
@@ -150,18 +157,11 @@ describe('SessionIndicator', () => {
  * them: they read the same on both sides of this pair.
  */
 describe('SessionIndicator under a skin', () => {
-  it('speaks the cursor in the limelight words, and in the default ones under clinical', () => {
+  it('speaks the cursor in the limelight words', () => {
     pinSkin('limelight');
-    const view = render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
-    );
-    view.unmount();
-
-    pinSkin('clinical');
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.clinical),
+      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
     );
   });
 });

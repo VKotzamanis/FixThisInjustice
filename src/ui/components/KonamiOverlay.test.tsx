@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
-import { copy, copyFor } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { KONAMI_OVERLAY_MS, KonamiOverlay, useKonamiCode } from './KonamiOverlay';
 import { useAppStore } from '../../store';
 import type { SkinId } from '../../domain/types';
@@ -43,15 +43,15 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -112,8 +112,8 @@ describe('KonamiOverlay', () => {
   it('is a modal dialog carrying its line from the copy table', () => {
     render(<KonamiOverlay onClose={() => {}} />);
     const dialog = screen.getByRole('dialog');
-    expect(dialog).toHaveAccessibleName(copy('status.konami'));
-    expect(screen.getByText(copy('status.konami'))).toBeInTheDocument();
+    expect(dialog).toHaveAccessibleName(copyFor('limelight', 'status.konami'));
+    expect(screen.getByText(copyFor('limelight', 'status.konami'))).toBeInTheDocument();
   });
 
   it('draws itself in ASCII and no emoji', () => {
@@ -135,7 +135,7 @@ describe('KonamiOverlay', () => {
   it('closes on the dismiss control, for a pointer with no keyboard', () => {
     const close = vi.fn();
     render(<KonamiOverlay onClose={close} />);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
     expect(close).toHaveBeenCalledTimes(1);
   });
 
@@ -153,7 +153,7 @@ describe('KonamiOverlay', () => {
      */
     render(<KonamiOverlay onClose={() => {}} />);
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: copy('button.dismiss') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
     );
   });
 
@@ -190,14 +190,9 @@ describe('KonamiOverlay', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('KonamiOverlay under a skin', () => {
-  it('refuses in the limelight words, and in the default ones under clinical', () => {
+  it('refuses in the limelight words', () => {
     pinSkin('limelight');
-    const view = render(<KonamiOverlay onClose={() => {}} />);
-    expect(screen.getByText(copyFor('limelight', 'status.konami'))).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
     render(<KonamiOverlay onClose={() => {}} />);
-    expect(screen.getByText(copyFor('clinical', 'status.konami'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.konami'))).toBeInTheDocument();
   });
 });

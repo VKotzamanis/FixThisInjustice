@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { downloadText } from '../../app/download';
 import { ConfirmDestructive, type ConfirmDestructiveProps } from './ConfirmDestructive';
 import { useAppStore } from '../../store';
@@ -53,15 +53,15 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -73,49 +73,49 @@ describe('ConfirmDestructive: the export gate', () => {
   it('holds the action while the backup has not been taken, even with the word typed', () => {
     renderPanel();
     type(WORD);
-    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
-    expect(screen.getByText(copy('advice.exportBeforeConfirm'))).toBeTruthy();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
+    expect(screen.getByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeTruthy();
   });
 
   it('holds the action after the backup when the typed word does not match', () => {
     renderPanel();
-    fireEvent.click(button(copy('button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
     type('delete');
-    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
   });
 
   it('releases the action once the backup is taken and the word matches exactly', () => {
     renderPanel();
-    fireEvent.click(button(copy('button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
     type(WORD);
-    expect(button(copy('button.legacyDeleteOld'))).toBeEnabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeEnabled();
   });
 
   it('hands the export the filename and the text it was given, and says so', () => {
     renderPanel();
-    fireEvent.click(button(copy('button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
     expect(downloadText).toHaveBeenCalledTimes(1);
     expect(downloadText).toHaveBeenCalledWith('fixthisinjustice-legacy-v2.json', BACKUP);
-    expect(screen.getByText(copy('status.exportTaken'))).toBeTruthy();
-    expect(screen.queryByText(copy('advice.exportBeforeConfirm'))).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'status.exportTaken'))).toBeTruthy();
+    expect(screen.queryByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeNull();
   });
 });
 
 describe('ConfirmDestructive: the decision', () => {
   it('calls onConfirm exactly once and never cancels', () => {
     const { onConfirm, onCancel } = renderPanel();
-    fireEvent.click(button(copy('button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
     type(WORD);
-    fireEvent.click(button(copy('button.legacyDeleteOld')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyDeleteOld')));
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(onCancel).not.toHaveBeenCalled();
   });
 
   it('calls onCancel and never confirms', () => {
     const { onConfirm, onCancel } = renderPanel();
-    fireEvent.click(button(copy('button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
     type(WORD);
-    fireEvent.click(button(copy('button.cancel')));
+    fireEvent.click(button(copyFor('limelight', 'button.cancel')));
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(onConfirm).not.toHaveBeenCalled();
   });
@@ -136,11 +136,11 @@ describe('ConfirmDestructive: the word and its label', () => {
 
   it('compares the typed word case-sensitively against the word it was given', () => {
     renderPanel({ word: 'IMPORT' });
-    fireEvent.click(button(copy('button.downloadLegacyJson')));
+    fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
     type('Import', 'IMPORT');
-    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
     type('IMPORT', 'IMPORT');
-    expect(button(copy('button.legacyDeleteOld'))).toBeEnabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeEnabled();
   });
 });
 
@@ -154,9 +154,9 @@ describe('ConfirmDestructive: the panel names itself', () => {
    */
   it('exposes the title as the group label', () => {
     renderPanel({ titleKey: 'label.confirmWipe' });
-    const group = screen.getByRole('group', { name: copy('label.confirmWipe') });
+    const group = screen.getByRole('group', { name: copyFor('limelight', 'label.confirmWipe') });
     // The gate's own controls are INSIDE the named group, which is what makes the name useful.
-    expect(within(group).getByRole('button', { name: copy('button.legacyDeleteOld') })).toBeTruthy();
+    expect(within(group).getByRole('button', { name: copyFor('limelight', 'button.legacyDeleteOld') })).toBeTruthy();
     expect(within(group).getByLabelText(FORMAT.typeToConfirm(WORD))).toBeTruthy();
   });
 
@@ -189,11 +189,11 @@ describe('ConfirmDestructive: the panel names itself', () => {
     const groups = screen.getAllByRole('group');
     expect(groups).toHaveLength(2);
     const names = groups.map((g) => g.getAttribute('aria-label'));
-    expect(names).toEqual([copy('label.confirmWipe'), copy('label.confirmReplace')]);
+    expect(names).toEqual([copyFor('limelight', 'label.confirmWipe'), copyFor('limelight', 'label.confirmReplace')]);
     // Distinct, not merely present: the whole point is that one query cannot match both.
     expect(new Set(names).size).toBe(2);
-    expect(screen.getByRole('group', { name: copy('label.confirmWipe') })).toBe(groups[0]);
-    expect(screen.getByRole('group', { name: copy('label.confirmReplace') })).toBe(groups[1]);
+    expect(screen.getByRole('group', { name: copyFor('limelight', 'label.confirmWipe') })).toBe(groups[0]);
+    expect(screen.getByRole('group', { name: copyFor('limelight', 'label.confirmReplace') })).toBe(groups[1]);
   });
 });
 
@@ -215,10 +215,10 @@ describe('ConfirmDestructive under a skin', () => {
     // cleared through Testing Library's own teardown rather than an unmount handle.
     cleanup();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     renderPanel();
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.cancel') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }),
     ).toBeInTheDocument();
   });
 });

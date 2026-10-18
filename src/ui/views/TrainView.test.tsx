@@ -160,7 +160,7 @@ function seed(opts: SeedOptions = {}): AppState {
      * `useCopy()`, so a seed that left the default in place would be read against the
      * wrong table. A test about a skin names the one it wants.
      */
-    ui: { ...defaultState().ui, skin: 'clinical' },
+    ui: { ...defaultState().ui, skin: 'limelight' },
     // The ordinal the specimen draw is keyed by, and the counter the milestones are read from
     // (master plan section 10.8). Seeded so a test can stand one set short of the number it is
     // about to assert on rather than logging fifty.
@@ -231,7 +231,7 @@ function renderTrain(): ReturnType<typeof render> {
  */
 function dismissAllToasts(): void {
   for (let i = 0; i < 8; i += 1) {
-    const control = screen.queryByRole('button', { name: copy('button.dismiss') });
+    const control = screen.queryByRole('button', { name: copyFor('limelight', 'button.dismiss') });
     if (control === null) return;
     fireEvent.click(control);
   }
@@ -360,7 +360,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     expect(advice.kind).toBe('add-load');
     expect(advice.loadKg).toBe(62.5); // [kg] 60 + max(2.5 % of 60, 2.5 kg step)
     expect(
-      screen.getByText(FORMAT.suggestedLoad('62.5 kg', copy('status.adviceAddLoad'))),
+      screen.getByText(FORMAT.suggestedLoad('62.5 kg', copyFor('limelight', 'status.adviceAddLoad'))),
     ).toBeInTheDocument();
   });
 
@@ -378,7 +378,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     );
     expect(advice.kind).toBe('extend-reps');
     expect(
-      screen.getByText(FORMAT.suggestedLoad('20 kg', copy('status.adviceExtendReps'))),
+      screen.getByText(FORMAT.suggestedLoad('20 kg', copyFor('limelight', 'status.adviceExtendReps'))),
     ).toBeInTheDocument();
   });
 
@@ -394,7 +394,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
       makeProfile({}),
       makeBlock(),
     );
-    expect(screen.getAllByText(copy('disclosure.why')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(copyFor('limelight', 'disclosure.why')).length).toBeGreaterThan(0);
     expect(screen.getByText(advice.why)).toBeInTheDocument();
     expect(screen.getByText(advice.reason)).toBeInTheDocument();
   });
@@ -417,9 +417,9 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     renderTrain();
 
     expect(
-      screen.queryByText(FORMAT.suggestedLoad(NO_VALUE, copy('status.adviceHold'))),
+      screen.queryByText(FORMAT.suggestedLoad(NO_VALUE, copyFor('limelight', 'status.adviceHold'))),
     ).toBeNull();
-    expect(screen.getByText(copy('label.noSuggestedLoad'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'label.noSuggestedLoad'))).toBeInTheDocument();
   });
 
   it('keeps the frame when a load exists, so only the null branch changed', () => {
@@ -427,7 +427,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     renderTrain();
 
     expect(
-      screen.getByText(FORMAT.suggestedLoad('62.5 kg', copy('status.adviceAddLoad'))),
+      screen.getByText(FORMAT.suggestedLoad('62.5 kg', copyFor('limelight', 'status.adviceAddLoad'))),
     ).toBeInTheDocument();
     expect(screen.queryByText(copy('label.noSuggestedLoad'))).toBeNull();
   });
@@ -439,12 +439,12 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     expect(
       screen.getByText(copyFor('limelight', 'label.noSuggestedLoad')),
     ).toBeInTheDocument();
-    // The clinical row is off the screen, which is what makes the assertion above about the
+    // The base-table row is off the screen, which is what makes the assertion above about the
     // table rather than about a string that happens to match.
     expect(screen.queryByText(copy('label.noSuggestedLoad'))).toBeNull();
     expect(
       screen.queryByText(
-        FORMAT.suggestedLoad(NO_VALUE, copy('status.adviceHold'), SKIN_COPY.limelight),
+        FORMAT.suggestedLoad(NO_VALUE, copyFor('limelight', 'status.adviceHold'), SKIN_COPY.limelight),
       ),
     ).toBeNull();
   });
@@ -454,7 +454,9 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     renderTrain();
 
     expect(
-      screen.getByText(FORMAT.lastSessionSets(YESTERDAY, '60 kg', '8, 8, 8')),
+      screen.getByText(
+        FORMAT.lastSessionSets(YESTERDAY, '60 kg', '8, 8, 8', SKIN_COPY.limelight),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -465,7 +467,7 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     // setsLo 3 x setModifier 0.5, rounded = 2 rows, load held (master plan section 5).
     expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(2)} (kg)`)).toBeInTheDocument();
     expect(screen.queryByLabelText(`${FORMAT.setLoadQuantity(3)} (kg)`)).toBeNull();
-    expect(screen.getByText(copy('advice.deloadBlock'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.deloadBlock'))).toBeInTheDocument();
   });
 });
 
@@ -476,7 +478,15 @@ describe('TrainView set logging feedback', () => {
 
     logRow(1, '60', '8');
 
-    expect(screen.getByText('Top of range at 60 kg × 8.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        FORMAT.withSlots(
+          'coach.topOfRange',
+          { load: '60 kg', reps: 8 },
+          SKIN_COPY.limelight,
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('renders the coach line through the copy table, not from the domain', () => {
@@ -489,7 +499,13 @@ describe('TrainView set logging feedback', () => {
     logRow(1, '60', '8');
 
     expect(
-      screen.getByText(FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 })),
+      screen.getByText(
+        FORMAT.withSlots(
+          'coach.topOfRange',
+          { load: '60 kg', reps: 8 },
+          SKIN_COPY.limelight,
+        ),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -501,7 +517,7 @@ describe('TrainView set logging feedback', () => {
     fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
     expect(useAppStore.getState().sets['set-1']).toBeUndefined();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.undo') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') }));
     expect(useAppStore.getState().sets['set-1']?.loadKg).toBe(60); // [kg]
   });
 
@@ -529,7 +545,7 @@ describe('TrainView set logging feedback', () => {
       vi.advanceTimersByTime(250); // [ms]
     });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
-    expect(screen.getByRole('button', { name: copy('button.undo') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') })).toBeInTheDocument();
 
     for (let elapsed = 0; elapsed < UNDO_WINDOW_MS + 100; elapsed += 100) {
       act(() => {
@@ -538,7 +554,7 @@ describe('TrainView set logging feedback', () => {
     }
 
     // 6.1 s after the delete: the store would refuse the undo, so nothing may offer it.
-    expect(screen.queryByRole('button', { name: copy('button.undo') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.undo') })).toBeNull();
     expect(useAppStore.getState().sets['set-1']).toBeUndefined();
   });
 
@@ -556,7 +572,7 @@ describe('TrainView set logging feedback', () => {
       });
     }
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.undo') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') }));
     expect(useAppStore.getState().sets['set-1']?.loadKg).toBe(60); // [kg]
   });
 
@@ -580,12 +596,12 @@ describe('TrainView set logging feedback', () => {
     act(() => {
       vi.advanceTimersByTime(UNDO_WINDOW_MS - 1); // [ms]
     });
-    expect(screen.getByRole('button', { name: copy('button.undo') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') })).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(2); // [ms] one past the buffer
     });
-    expect(screen.queryByRole('button', { name: copy('button.undo') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.undo') })).toBeNull();
   });
 
   it('announces a set-count milestone once, and not again after a delete and relog', () => {
@@ -595,7 +611,7 @@ describe('TrainView set logging feedback', () => {
 
     logRow(1, '60', '8');
     // The milestone outranks the coach line in the queue, so it is the toast on screen.
-    expect(screen.getByText(FORMAT.milestoneSets('50'))).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.milestoneSets('50', SKIN_COPY.limelight))).toBeInTheDocument();
     expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(50); // [sets]
 
     dismissAllToasts();
@@ -611,8 +627,16 @@ describe('TrainView set logging feedback', () => {
     // re-crossed. The coach line is what is on screen, and it would be behind a milestone if
     // one had been pushed.
     expect(useAppStore.getState().specimens['profile-1']?.totalSetsLogged).toBe(50); // [sets]
-    expect(screen.queryByText(FORMAT.milestoneSets('50'))).toBeNull();
-    expect(screen.getByText(FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 }))).toBeInTheDocument();
+    expect(screen.queryByText(FORMAT.milestoneSets('50', SKIN_COPY.limelight))).toBeNull();
+    expect(
+      screen.getByText(
+        FORMAT.withSlots(
+          'coach.topOfRange',
+          { load: '60 kg', reps: 8 },
+          SKIN_COPY.limelight,
+        ),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('shows the card a drawn specimen carries', () => {
@@ -644,7 +668,7 @@ describe('TrainView set logging feedback', () => {
     logRow(1, '60', '8');
 
     // The coach line has the higher priority of the two, so the card is the toast behind it.
-    fireEvent.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
     expect(screen.getByText(card.title)).toBeInTheDocument();
     expect(useAppStore.getState().specimens['profile-1']?.acquired[card.id]).toBeDefined();
   });
@@ -660,7 +684,7 @@ describe('TrainView set logging feedback', () => {
     const view = renderTrain();
 
     logRow(1, '60', '8');
-    expect(screen.getByText(FORMAT.milestoneSets('50'))).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.milestoneSets('50', SKIN_COPY.limelight))).toBeInTheDocument();
     expect(useAppStore.getState().ui.milestoneFloorByProfile['profile-1']).toBe(50); // [sets]
     dismissAllToasts();
 
@@ -674,9 +698,15 @@ describe('TrainView set logging feedback', () => {
     renderTrain();
 
     logRow(1, '60', '8');
-    expect(screen.queryByText(FORMAT.milestoneSets('50'))).toBeNull();
+    expect(screen.queryByText(FORMAT.milestoneSets('50', SKIN_COPY.limelight))).toBeNull();
     expect(
-      screen.getByText(FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 })),
+      screen.getByText(
+        FORMAT.withSlots(
+          'coach.topOfRange',
+          { load: '60 kg', reps: 8 },
+          SKIN_COPY.limelight,
+        ),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -688,7 +718,7 @@ describe('TrainView set logging feedback', () => {
     renderTrain();
 
     logRow(1, '60', '8');
-    expect(screen.getByText(FORMAT.milestoneSets('50'))).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.milestoneSets('50', SKIN_COPY.limelight))).toBeInTheDocument();
   });
 
   it('shows the specimen card once, and not again after a delete and relog', () => {
@@ -731,7 +761,7 @@ describe('TrainView set logging feedback', () => {
     // The coach line is the only toast the relog may raise. The card is already owned, so a
     // second card toast would be an acquisition the store never made.
     expect(screen.queryByText(card.title)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
     expect(screen.queryByText(card.title)).toBeNull();
 
     // ...and neither the collection nor the ordinal ledger moved.
@@ -747,7 +777,7 @@ describe('TrainView set logging feedback', () => {
     renderTrain();
 
     expect(screen.queryByLabelText(`${FORMAT.setLoadQuantity(4)} (kg)`)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.addSet') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addSet') }));
     expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(4)} (kg)`)).toBeInTheDocument();
   });
 
@@ -755,7 +785,7 @@ describe('TrainView set logging feedback', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.addSet') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addSet') }));
     logRow(4, '60', '8');
 
     const stored = Object.values(useAppStore.getState().sets);
@@ -804,7 +834,11 @@ describe('TrainView timed sets', () => {
     fireEvent.change(field, { target: { value: '50' } });
     fireEvent.keyDown(field, { key: 'Enter' });
 
-    expect(screen.getByText('50 s logged.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        FORMAT.withSlots('coach.durationLogged', { seconds: 50 }, SKIN_COPY.limelight),
+      ),
+    ).toBeInTheDocument();
   });
 
   it('names what is wrong with an unusable duration instead of failing silently', () => {
@@ -815,7 +849,7 @@ describe('TrainView timed sets', () => {
     fireEvent.change(field, { target: { value: '0' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.logSetLabel(1) }));
 
-    expect(screen.getByText(copy('advice.durationNeeded'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.durationNeeded'))).toBeInTheDocument();
     expect(field.getAttribute('aria-invalid')).toBe('true');
     expect(Object.values(useAppStore.getState().sets)).toHaveLength(0);
   });
@@ -830,7 +864,7 @@ describe('TrainView timed sets', () => {
     fireEvent.change(field, { target: { value: '86401' } }); // [s] one second past one day
     fireEvent.keyDown(field, { key: 'Enter' });
 
-    expect(screen.getByText(copy('advice.durationNeeded'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.durationNeeded'))).toBeInTheDocument();
     expect(Object.values(useAppStore.getState().sets)).toHaveLength(0);
   });
 
@@ -884,7 +918,7 @@ describe('TrainView rest timer', () => {
       .setRestTimer({ startedAt: NOW, endsAt: NOW + 60_000, durationS: 60 });
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.extendRest') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }));
 
     const timer = useAppStore.getState().session.restTimer;
     expect(timer?.endsAt).toBe(NOW + 90_000); // [ms]
@@ -899,7 +933,7 @@ describe('TrainView rest timer', () => {
       .setRestTimer({ startedAt: NOW, endsAt: NOW + 60_000, durationS: 60 });
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.skipRest') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') }));
     expect(useAppStore.getState().session.restTimer).toBeNull();
   });
 
@@ -949,7 +983,7 @@ describe('TrainView rest timer', () => {
     fireEvent(document, new Event('visibilitychange'));
 
     await waitFor(() => {
-      expect(showNotification).toHaveBeenCalledWith(copy('notification.restOver'), { tag: 'rest' });
+      expect(showNotification).toHaveBeenCalledWith(copyFor('limelight', 'notification.restOver'), { tag: 'rest' });
     });
 
     hidden.mockRestore();
@@ -963,8 +997,12 @@ describe('TrainView hydration and body mass', () => {
     seedStore(seed({ startedAt: NOW - 25 * MINUTE_MS }));
     renderTrain();
 
-    expect(screen.getByText(copy('advice.drinkToThirst'))).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: FORMAT.logVolume('250 mL') }));
+    expect(screen.getByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: FORMAT.logVolume('250 mL', SKIN_COPY.limelight),
+      }),
+    );
 
     const entry = useAppStore.getState().hydration['profile-1']?.[0];
     expect(entry?.volumeML).toBe(250); // [mL]
@@ -974,10 +1012,10 @@ describe('TrainView hydration and body mass', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.change(screen.getByLabelText(`${copy('quantity.bodyMass')} (kg)`), {
+    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`), {
       target: { value: '94.4' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.logBodyMass') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
 
     expect(useAppStore.getState().bodyMass['profile-1']?.[0]?.massKg).toBe(94.4); // [kg]
   });
@@ -988,23 +1026,23 @@ describe('TrainView hydration and body mass', () => {
     seedStore(seed({ weighInOptIn: true }));
     renderTrain();
 
-    fireEvent.change(screen.getByLabelText(`${copy('quantity.preSessionBodyMass')} (kg)`), {
+    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.preSessionBodyMass')} (kg)`), {
       target: { value: '96' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.logBodyMass') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
 
     expect(useAppStore.getState().bodyMass['profile-1']?.[0]?.massKg).toBe(96); // [kg]
     // Once it is on record the prompt is done; the ordinary in-session quick log takes over.
-    expect(screen.queryByLabelText(`${copy('quantity.preSessionBodyMass')} (kg)`)).toBeNull();
-    expect(screen.getByLabelText(`${copy('quantity.bodyMass')} (kg)`)).toBeInTheDocument();
+    expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.preSessionBodyMass')} (kg)`)).toBeNull();
+    expect(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeInTheDocument();
   });
 
   it('offers no pre-session mass to a profile that did not opt in', () => {
     seedStore(seed({ weighInOptIn: false }));
     renderTrain();
 
-    expect(screen.queryByLabelText(`${copy('quantity.preSessionBodyMass')} (kg)`)).toBeNull();
-    expect(screen.getByLabelText(`${copy('quantity.bodyMass')} (kg)`)).toBeInTheDocument();
+    expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.preSessionBodyMass')} (kg)`)).toBeNull();
+    expect(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeInTheDocument();
   });
 
   it('flags a post-session loss above 2 % of the PRE-SESSION mass', () => {
@@ -1012,14 +1050,14 @@ describe('TrainView hydration and body mass', () => {
     // ACSM 2007 threshold. The reference is the pre-session entry, not the profile baseline.
     seedStore({ ...seed({ weighInOptIn: true }), bodyMass: { 'profile-1': [preMass(95)] } });
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
-    fireEvent.change(screen.getByLabelText(`${copy('quantity.postSessionBodyMass')} (kg)`), {
+    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`), {
       target: { value: '92' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.logBodyMass') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
 
-    expect(screen.getByText(copy('advice.fluidLoss'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.fluidLoss'))).toBeInTheDocument();
     expect(screen.getByText(FORMAT.fluidLossWhy('3.2', 2))).toBeInTheDocument();
   });
 
@@ -1032,14 +1070,14 @@ describe('TrainView hydration and body mass', () => {
      */
     seedStore({ ...seed({ weighInOptIn: true }), bodyMass: { 'profile-1': [preMass(70)] } });
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
-    fireEvent.change(screen.getByLabelText(`${copy('quantity.postSessionBodyMass')} (kg)`), {
+    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`), {
       target: { value: '69.3' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.logBodyMass') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
 
-    expect(screen.queryByText(copy('advice.fluidLoss'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'advice.fluidLoss'))).toBeNull();
   });
 });
 
@@ -1048,11 +1086,11 @@ describe('TrainView custom and bonus exercises', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.addExercise') }));
-    fireEvent.change(screen.getByLabelText(copy('quantity.exerciseName')), {
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName')), {
       target: { value: 'Cable crunch' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
 
     const custom = useAppStore.getState().customExercises['profile-1'] ?? [];
     expect(custom).toHaveLength(1);
@@ -1074,8 +1112,8 @@ describe('TrainView custom and bonus exercises', () => {
 
   /** Opens the form and returns the name field. */
   function openNameField(): HTMLElement {
-    fireEvent.click(screen.getByRole('button', { name: copy('button.addExercise') }));
-    return screen.getByLabelText(copy('quantity.exerciseName'));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    return screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'));
   }
 
   it('caps the name field at the schema bound', () => {
@@ -1089,28 +1127,28 @@ describe('TrainView custom and bonus exercises', () => {
     renderTrain();
     const field = openNameField();
     fireEvent.change(field, { target: { value: overCap } });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
 
     expect(
       screen.getByText(
-        FORMAT.outOfRange(copy('quantity.exerciseName'), 1, EXERCISE_NAME_MAX_CHARS, 'characters'),
+        FORMAT.outOfRange(copyFor('limelight', 'quantity.exerciseName'), 1, EXERCISE_NAME_MAX_CHARS, 'characters'),
       ),
     ).toBeInTheDocument();
     expect(useAppStore.getState().customExercises['profile-1'] ?? []).toHaveLength(0);
     expect(useAppStore.getState().session.bonusExerciseIds).toHaveLength(0);
     // The form is still open, so the typed name is still there to be shortened.
-    expect(screen.getByLabelText(copy('quantity.exerciseName'))).toHaveValue(overCap);
+    expect(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toHaveValue(overCap);
   });
 
   it('refuses a name that is only whitespace with the same line', () => {
     seedStore(seed());
     renderTrain();
     fireEvent.change(openNameField(), { target: { value: '   ' } });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
 
     expect(
       screen.getByText(
-        FORMAT.outOfRange(copy('quantity.exerciseName'), 1, EXERCISE_NAME_MAX_CHARS, 'characters'),
+        FORMAT.outOfRange(copyFor('limelight', 'quantity.exerciseName'), 1, EXERCISE_NAME_MAX_CHARS, 'characters'),
       ),
     ).toBeInTheDocument();
     expect(useAppStore.getState().customExercises['profile-1'] ?? []).toHaveLength(0);
@@ -1120,13 +1158,13 @@ describe('TrainView custom and bonus exercises', () => {
     seedStore(seed());
     renderTrain();
     fireEvent.change(openNameField(), { target: { value: atCap } });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
 
     const custom = useAppStore.getState().customExercises['profile-1'] ?? [];
     expect(custom).toHaveLength(1);
     expect(custom[0]?.name).toBe(atCap);
     // The form closed, which is how the component reports that the store took the record.
-    expect(screen.queryByLabelText(copy('quantity.exerciseName'))).toBeNull();
+    expect(screen.queryByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toBeNull();
   });
 
   it('surfaces a store refusal instead of throwing out of the click handler', () => {
@@ -1158,12 +1196,12 @@ describe('TrainView custom and bonus exercises', () => {
       renderTrain();
       fireEvent.change(openNameField(), { target: { value: 'Cable crunch' } });
       expect(() => {
-        fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+        fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
       }).not.toThrow();
 
-      expect(screen.getByText(copy('status.customExerciseRefused'))).toBeInTheDocument();
+      expect(screen.getByText(copyFor('limelight', 'status.customExerciseRefused'))).toBeInTheDocument();
       expect(useAppStore.getState().session.bonusExerciseIds).toHaveLength(0);
-      expect(screen.getByLabelText(copy('quantity.exerciseName'))).toHaveValue('Cable crunch');
+      expect(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toHaveValue('Cable crunch');
     } finally {
       restore();
     }
@@ -1181,20 +1219,20 @@ describe('TrainView session frame', () => {
     const state = seed();
     seedStore({ ...state, assignments: { 'profile-1': [] } });
     renderTrain();
-    expect(screen.getByText(copy('advice.noSessionToday'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSessionToday'))).toBeInTheDocument();
   });
 
   it('opens the form-cue modal from the card', () => {
     seedStore(seed());
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.formCues') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.formCues') }));
     expect(screen.getByTestId('form-cues-backdrop')).toBeInTheDocument();
   });
 
   it('opens the video modal from the card', () => {
     seedStore(seed());
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.formReference') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.formReference') }));
     expect(screen.getByTestId('video-modal-backdrop')).toBeInTheDocument();
   });
 });
@@ -1209,7 +1247,7 @@ describe('TrainView finish', () => {
       .setRestTimer({ startedAt: NOW, endsAt: NOW + 60_000, durationS: 60 });
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
     const after = useAppStore.getState();
     expect(after.assignments['profile-1']?.[0]?.status).toBe('completed');
@@ -1222,8 +1260,8 @@ describe('TrainView finish', () => {
   it('prompts for the post-session mass only when the profile opted in', () => {
     seedStore(seed({ weighInOptIn: false }));
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
-    expect(screen.queryByLabelText(`${copy('quantity.postSessionBodyMass')} (kg)`)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`)).toBeNull();
   });
 
   /*
@@ -1236,7 +1274,7 @@ describe('TrainView finish', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
     expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
     expect(playSfx).toHaveBeenCalledTimes(1);
@@ -1262,7 +1300,7 @@ describe('TrainView finish', () => {
     }));
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
     expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('skipped');
     expect(playSfx).not.toHaveBeenCalled();
@@ -1289,7 +1327,7 @@ describe('TrainView finish', () => {
     useAppStore.setState((s) => ({ ui: { ...s.ui, sounds: true } }));
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
     expect(playSfx).toHaveBeenCalledWith('session_done');
     expect(releaseAudio).toHaveBeenCalledWith({ sounds: true });
@@ -1306,7 +1344,7 @@ describe('TrainView finish', () => {
     seedStore(seed()); // seed()'s ui carries the shipped default: sounds off (schema.ts)
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.finishSession') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
 
     expect(releaseAudio).toHaveBeenCalledWith({ sounds: false });
   });
@@ -1351,9 +1389,10 @@ describe('TrainView wake lock', () => {
 /*
  * The skin suite (P8 close-out C).
  *
- * Every seed above pins `ui.skin: 'clinical'` so the 59 cases before this point quote the
- * default table; these five name limelight explicitly and quote copy.limelight.ts BY KEY. A
- * literal here would pass while the table it is supposed to be about was reworded.
+ * Every seed above writes the only skin, limelight; until clinical was removed they pinned it so
+ * the cases before this point quoted the default table. These name limelight explicitly and quote
+ * copy.limelight.ts BY KEY. A literal here would pass while the table it is supposed to be about
+ * was reworded.
  *
  * The point of the file-level cases (rather than the per-component suites in ./train/) is the
  * THREADING: TrainView reads `useCopy()` once and hands the lookup down through ExerciseCard to
@@ -1365,15 +1404,7 @@ function withSkin(state: AppState, skin: SkinId): AppState {
 }
 
 describe('TrainView: the limelight voice', () => {
-  it('renders the default hero when no session is assigned, on the clinical skin', () => {
-    const state = seed();
-    seedStore({ ...state, assignments: { 'profile-1': [] } });
-    renderTrain();
-
-    expect(screen.getByRole('heading', { name: copy('hero.train') })).toBeInTheDocument();
-  });
-
-  it('renders the skin hero for the same empty day', () => {
+  it('renders the skin hero for an empty day', () => {
     const state = seed();
     seedStore(withSkin({ ...state, assignments: { 'profile-1': [] } }, 'limelight'));
     renderTrain();
@@ -1382,6 +1413,7 @@ describe('TrainView: the limelight voice', () => {
       screen.getByRole('heading', { name: copyFor('limelight', 'hero.train') }),
     ).toBeInTheDocument();
     expect(screen.getByText(copyFor('limelight', 'advice.noSessionToday'))).toBeInTheDocument();
+    // The base-table heading is gone, not merely joined.
     expect(screen.queryByRole('heading', { name: copy('hero.train') })).toBeNull();
   });
 
@@ -1438,13 +1470,13 @@ describe('TrainView: the limelight voice', () => {
     expect(
       screen.getAllByText(FORMAT.setCounter(1, 3, SKIN_COPY.limelight)).length,
     ).toBeGreaterThan(0);
-    // The clinical forms are gone from the screen, which is what makes the three above
+    // The base-table forms are gone from the screen, which is what makes the three above
     // assertions about the table rather than about a string that happens to match.
     expect(screen.queryByText(FORMAT.sessionEyebrow(1, 'Upper'))).toBeNull();
     expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
   });
 
-  it('leaves the four frames the table has no word for in the clinical string', () => {
+  it('leaves the four frames the table has no word for in the base-table string', () => {
     // The other half of the same decision: `status.setsBy`, `status.restRemaining`,
     // `label.suggestedLoad` and `why.fluidLoss` carry no limelight row (copy.test.ts records
     // the reason for each), so the overlay resolves to the default and the screen says so.

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { clearAssetStorage } from '../../domain/motivation/assets';
 import { makeBlankState } from '../../test/migrationFactories';
 import { useAppStore } from '../../store';
@@ -110,20 +110,20 @@ function typeWord(value: string): void {
 }
 
 function confirmButton(labelKey: 'button.wipeConfirm' | 'button.legacyDeleteOld'): HTMLElement {
-  return within(panel()).getByRole('button', { name: copy(labelKey) });
+  return within(panel()).getByRole('button', { name: copyFor('limelight', labelKey) });
 }
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -134,13 +134,13 @@ beforeEach(() => {
 describe('SettingsView data section', () => {
   it('mounts the export view as a settings row', () => {
     render(<SettingsView />);
-    expect(screen.getByRole('heading', { name: copy('hero.exportImport') })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: copy('hero.dataOnDevice') })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.exportImport') })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.dataOnDevice') })).toBeTruthy();
   });
 
   it('holds the wipe until the backup is taken and the word matches', () => {
     render(<SettingsView />);
-    click(copy('button.wipeAll'));
+    click(copyFor('limelight', 'button.wipeAll'));
 
     // The word alone is not the gate: master plan section 3 requires the export as well.
     typeWord('DELETE');
@@ -148,7 +148,7 @@ describe('SettingsView data section', () => {
 
     // ... and the export alone is not the gate either.
     typeWord('');
-    click(copy('button.downloadBackup'));
+    click(copyFor('limelight', 'button.downloadBackup'));
     expect(downloads.map((d) => d.name)).toEqual([`fti-state-${STAMP}.json`]);
     expect(confirmButton('button.wipeConfirm')).toBeDisabled();
 
@@ -158,8 +158,8 @@ describe('SettingsView data section', () => {
 
   it('wipes the document and leaves the app at setup', async () => {
     render(<SettingsView />);
-    click(copy('button.wipeAll'));
-    click(copy('button.downloadBackup'));
+    click(copyFor('limelight', 'button.wipeAll'));
+    click(copyFor('limelight', 'button.downloadBackup'));
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -197,8 +197,8 @@ describe('SettingsView data section', () => {
       order.push('document');
     });
 
-    click(copy('button.wipeAll'));
-    click(copy('button.downloadBackup'));
+    click(copyFor('limelight', 'button.wipeAll'));
+    click(copyFor('limelight', 'button.downloadBackup'));
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -220,8 +220,8 @@ describe('SettingsView data section', () => {
      * component is what is under test; where its host chooses to keep it mounted is not.
      */
     render(<DataSection />);
-    click(copy('button.wipeAll'));
-    click(copy('button.downloadBackup'));
+    click(copyFor('limelight', 'button.wipeAll'));
+    click(copyFor('limelight', 'button.downloadBackup'));
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -230,36 +230,36 @@ describe('SettingsView data section', () => {
     await waitFor(() => {
       expect(storage.has(STORAGE_KEY)).toBe(false);
     });
-    expect(screen.getByRole('alert').textContent).toBe(copy('advice.clipClearFailed'));
+    expect(screen.getByRole('alert').textContent).toBe(copyFor('limelight', 'advice.clipClearFailed'));
   });
 
   it('says nothing about the clip when it was cleared', async () => {
     render(<DataSection />);
-    click(copy('button.wipeAll'));
-    click(copy('button.downloadBackup'));
+    click(copyFor('limelight', 'button.wipeAll'));
+    click(copyFor('limelight', 'button.downloadBackup'));
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
     await waitFor(() => {
       expect(storage.has(STORAGE_KEY)).toBe(false);
     });
-    expect(screen.queryByText(copy('advice.clipClearFailed'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'advice.clipClearFailed'))).toBeNull();
   });
 
   it('hides the legacy delete when no legacy document is on the device', () => {
     render(<SettingsView />);
-    expect(screen.queryByRole('button', { name: copy('button.deleteLegacy') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.deleteLegacy') })).toBeNull();
   });
 
   it('deletes every legacy key behind the same two gates', async () => {
     for (const key of LEGACY_KEYS) storage.set(key, '{}');
     render(<SettingsView />);
 
-    click(copy('button.deleteLegacy'));
+    click(copyFor('limelight', 'button.deleteLegacy'));
     typeWord('DELETE');
     expect(confirmButton('button.legacyDeleteOld')).toBeDisabled();
 
-    click(copy('button.downloadLegacyJson'));
+    click(copyFor('limelight', 'button.downloadLegacyJson'));
     expect(downloads.map((d) => d.name)).toEqual([`fti-legacy-bundle-${STAMP}.json`]);
     /*
      * Security recommendation 10 / M5. The gate used to export `fti.console.v2` alone while
@@ -277,14 +277,14 @@ describe('SettingsView data section', () => {
     for (const key of LEGACY_KEYS) expect(storage.has(key)).toBe(false);
     // The v3 document is not a legacy key and must survive the legacy delete.
     expect(storage.get(STORAGE_KEY)).toBe(STORED_DOCUMENT);
-    expect(screen.queryByRole('button', { name: copy('button.deleteLegacy') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.deleteLegacy') })).toBeNull();
   });
 
   it('offers the import again only when a legacy document exists and no offer is open', () => {
     const { unmount } = render(<SettingsView />);
     // No legacy document: nothing to reopen, whatever the decision says.
     useAppStore.getState().setUi({ legacyMigration: 'done' });
-    expect(screen.queryByRole('button', { name: copy('button.legacyReopen') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyReopen') })).toBeNull();
     unmount();
 
     // A legacy document, but the offer is already open: reopening it is not an action, and
@@ -292,7 +292,7 @@ describe('SettingsView data section', () => {
     storage.set(LEGACY_V2_KEY, '{}');
     useAppStore.getState().setUi({ legacyMigration: 'pending' });
     render(<SettingsView />);
-    expect(screen.queryByRole('button', { name: copy('button.legacyReopen') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyReopen') })).toBeNull();
   });
 
   it('puts the migration decision back to pending', () => {
@@ -300,25 +300,25 @@ describe('SettingsView data section', () => {
     useAppStore.getState().setUi({ legacyMigration: 'dismissed' });
     render(<SettingsView />);
 
-    click(copy('button.legacyReopen'));
+    click(copyFor('limelight', 'button.legacyReopen'));
     expect(useAppStore.getState().ui.legacyMigration).toBe('pending');
     // The offer is now open (MigrationGate renders it), so the button that opens it is gone.
-    expect(screen.queryByRole('button', { name: copy('button.legacyReopen') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyReopen') })).toBeNull();
   });
 
   it('closes the panel on cancel and re-arms both gates', () => {
     render(<SettingsView />);
-    click(copy('button.wipeAll'));
-    click(copy('button.downloadBackup'));
+    click(copyFor('limelight', 'button.wipeAll'));
+    click(copyFor('limelight', 'button.downloadBackup'));
     typeWord('DELETE');
     expect(confirmButton('button.wipeConfirm')).not.toBeDisabled();
 
-    click(copy('button.cancel'));
+    click(copyFor('limelight', 'button.cancel'));
     expect(document.querySelector('.confirm-destructive')).toBeNull();
     expect(storage.get(STORAGE_KEY)).toBe(STORED_DOCUMENT);
 
     // Reopened, the panel asks for the backup again: the export is a fact about THIS panel.
-    click(copy('button.wipeAll'));
+    click(copyFor('limelight', 'button.wipeAll'));
     typeWord('DELETE');
     expect(confirmButton('button.wipeConfirm')).toBeDisabled();
   });
@@ -336,10 +336,10 @@ describe('SettingsView data section: a device with no importable legacy document
     render(<SettingsView />);
 
     // Nothing to import: the reopen control is keyed on the document the wizard needs.
-    expect(screen.queryByRole('button', { name: copy('button.legacyReopen') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyReopen') })).toBeNull();
 
-    click(copy('button.deleteLegacy'));
-    click(copy('button.downloadLegacyJson'));
+    click(copyFor('limelight', 'button.deleteLegacy'));
+    click(copyFor('limelight', 'button.downloadLegacyJson'));
     expect(JSON.parse(await onlyDownloadText())).toEqual({
       'fti.console.v2': null,
       'fti.plan.v1': '{"plan":1}',
@@ -349,12 +349,12 @@ describe('SettingsView data section: a device with no importable legacy document
     fireEvent.click(confirmButton('button.legacyDeleteOld'));
 
     expect(storage.has('fti.plan.v1')).toBe(false);
-    expect(screen.queryByRole('button', { name: copy('button.deleteLegacy') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.deleteLegacy') })).toBeNull();
   });
 
   it('offers the delete for a device holding only the video-instance preference', () => {
     storage.set('fti.video.instance', 'https://yewtu.be');
     render(<SettingsView />);
-    expect(screen.getByRole('button', { name: copy('button.deleteLegacy') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.deleteLegacy') })).toBeTruthy();
   });
 });

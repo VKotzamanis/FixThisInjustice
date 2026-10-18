@@ -222,15 +222,15 @@ function fillImperialWizard(): void {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -446,7 +446,7 @@ describe('submission', () => {
   it('converts imperial entries exactly and writes profile, availability and plan', () => {
     fillImperialWizard();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId;
@@ -505,7 +505,7 @@ describe('submission', () => {
   it('writes a document that passes parseState', () => {
     fillImperialWizard();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
     const result = parseState(raw);
@@ -536,7 +536,7 @@ describe('submission', () => {
     next();
     next();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';
@@ -855,7 +855,7 @@ describe('whole-number counts', () => {
   it('writes a document that passes parseState once the fractions are corrected', () => {
     fillImperialWizard();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
     const raw: unknown = JSON.parse(useAppStore.getState().exportJson());
     const result = parseState(raw);
     expect(result.ok ? null : result.error).toBeNull();
@@ -1041,7 +1041,7 @@ describe('entry aids and idempotency', () => {
   it('creates one profile however many times Confirm is clicked', () => {
     fillImperialWizard();
     tickLooksGood();
-    const button = screen.getByRole('button', { name: 'Confirm and Start' });
+    const button = screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') });
     fireEvent.click(button);
     fireEvent.click(button);
     fireEvent.click(button);
@@ -1093,7 +1093,7 @@ describe('guidance step in wizard', () => {
   it('writes profile with default readiness on confirm', () => {
     fillImperialWizard();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const state = useAppStore.getState();
     const profile = state.profiles[state.activeProfileId ?? ''];
@@ -1107,18 +1107,11 @@ describe('guidance step in wizard', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('SetupWizard under a skin', () => {
-  it('names the primary control in the limelight words, and in the default ones under clinical', () => {
+  it('names the primary control in the limelight words', () => {
     pinSkin('limelight');
-    const view = render(<SetupWizard />);
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
-    ).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
     render(<SetupWizard />);
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.continue') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }),
     ).toBeInTheDocument();
   });
 });
@@ -1322,7 +1315,7 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
     expect(useAppStore.getState().setupDraft).not.toBeNull();
 
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
     expect(useAppStore.getState().setupDraft).toBeNull();
 
     // A keystroke's debounce pending at the moment of the click must not resurrect it.
@@ -1366,7 +1359,7 @@ describe('review reads the answers back', () => {
     expect(within(review).getByTestId('review-name').textContent).toBe('Test subject');
     expect(within(review).getByTestId('review-age').textContent).toContain('30');
     expect(within(review).getByTestId('review-sex').textContent).toBe(
-      copyFor('clinical', 'label.sexMale'),
+      copyFor('limelight', 'label.sexMale'),
     );
     // Stature reads back in the two boxes it was typed into, not as one converted number.
     expect(within(review).getByTestId('review-height').textContent).toContain('5');
@@ -1380,7 +1373,7 @@ describe('review reads the answers back', () => {
     // The fixture supplies no body fat, which is a supported state: it routes RMR to
     // Mifflin-St Jeor and protein to the body-mass rule, both validated.
     expect(screen.getByTestId('review-bodyfat').textContent).toBe(
-      copyFor('clinical', 'label.bodyFatNone'),
+      copyFor('limelight', 'label.bodyFatNone'),
     );
   });
 });
@@ -1392,7 +1385,7 @@ describe('review reads the answers back', () => {
 describe('review acknowledgement and Your Data', () => {
   it('keeps Confirm disabled until Looks Good is ticked, then enables it', () => {
     fillImperialWizard();
-    const confirmButton = screen.getByRole('button', { name: 'Confirm and Start' });
+    const confirmButton = screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') });
     // Not ticked yet: fillImperialWizard leaves the review screen on show, nothing more.
     expect(confirmButton).toBeDisabled();
     fireEvent.click(screen.getByLabelText('Looks Good'));
@@ -1405,7 +1398,7 @@ describe('review acknowledgement and Your Data', () => {
   it('does not write the acknowledgement anywhere: it is a gesture, not a record', () => {
     fillImperialWizard();
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';
@@ -1424,10 +1417,10 @@ describe('review acknowledgement and Your Data', () => {
   it('names the export and import controls with the same strings ExportView renders', () => {
     fillImperialWizard();
     const review = screen.getByTestId('review').textContent ?? '';
-    expect(review).toContain(copyFor('clinical', 'hero.exportImport'));
-    expect(review).toContain(copyFor('clinical', 'label.downloads'));
-    expect(review).toContain(copyFor('clinical', 'button.downloadJson'));
-    expect(review).toContain(copyFor('clinical', 'label.importSection'));
+    expect(review).toContain(copyFor('limelight', 'hero.exportImport'));
+    expect(review).toContain(copyFor('limelight', 'label.downloads'));
+    expect(review).toContain(copyFor('limelight', 'button.downloadJson'));
+    expect(review).toContain(copyFor('limelight', 'label.importSection'));
   });
 
   it('names the icon-register row rather than drawing a substitute', () => {
@@ -1491,7 +1484,7 @@ describe('Brief F: the equipment sliders', () => {
     next(); // guidance
     next(); // review
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
   }
 
   /** The confirmed profile, or fails the test if none was created. */
@@ -1643,7 +1636,7 @@ describe('Brief F: the equipment sliders', () => {
       floor.unmount();
 
       useAppStore.getState().wipeAll();
-      pinSkin(); // wipeAll restores defaultState()'s shipped skin (limelight); re-pin to clinical
+      pinSkin(); // wipeAll restores defaultState()'s shipped skin (limelight); re-pin to limelight
       toTrainingStep();
       fireEvent.change(screen.getByLabelText(/^everyday activity level$/i), {
         target: { value: '5' }, // moderate ceiling, PAL 1.99
@@ -1765,7 +1758,7 @@ describe('Brief F: the equipment sliders', () => {
     first.unmount();
 
     useAppStore.getState().wipeAll();
-    pinSkin(); // wipeAll restores defaultState()'s shipped skin (limelight); re-pin to clinical
+    pinSkin(); // wipeAll restores defaultState()'s shipped skin (limelight); re-pin to limelight
     toTrainingStep();
     fireEvent.click(screen.getByLabelText('No'));
     finishFromTraining();
@@ -1840,7 +1833,7 @@ describe('Brief F: the equipment sliders', () => {
     // collide, or a rename meant for this slider would silently relabel an unrelated field.
     toTrainingStep();
     expect(screen.queryByText('Equipment', { selector: 'label' })).not.toBeInTheDocument();
-    expect(screen.getByText('Equipment Access')).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'label.equipmentAccess'))).toBeInTheDocument();
   });
 });
 
@@ -2061,7 +2054,7 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     expect(screen.getByTestId('review-sex')).toHaveTextContent('Not Disclosed');
 
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';
     expect(state.profiles[id]?.body.sex).toBe('nd');
@@ -2384,7 +2377,7 @@ describe('r2.09: the time-zone list', () => {
     // Thirty-three zones share western Europe's behaviour and the row is named after Paris.
     // Someone in Amsterdam has to be able to find it, or the reduction has cost them the
     // ability to find themselves.
-    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.timezoneSearch')), {
       target: { value: 'Amsterdam' },
     });
 
@@ -2399,7 +2392,7 @@ describe('r2.09: the time-zone list', () => {
 
   it('folds the underscore, because that is how a person writes the name', () => {
     openTimeZoneStep();
-    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.timezoneSearch')), {
       target: { value: 'new york' },
     });
 
@@ -2414,12 +2407,12 @@ describe('r2.09: the time-zone list', () => {
 
     // A search that matches nothing else still leaves the selection on screen, so the control
     // can never render with no option matching its own value.
-    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.timezoneSearch')), {
       target: { value: 'zzzz-no-such-city' },
     });
     expect(zoneOptions().map((o) => o.value)).toEqual(['Asia/Katmandu']);
     expect(control.value).toBe('Asia/Katmandu');
-    expect(screen.getByText(copyFor('clinical', 'advice.timezoneNoMatch'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.timezoneNoMatch'))).toBeInTheDocument();
   });
 
   it('names the chosen row after the zone actually chosen', () => {
@@ -2427,11 +2420,11 @@ describe('r2.09: the time-zone list', () => {
     const control = screen.getByLabelText<HTMLSelectElement>(/^time zone$/i);
     // A collapsed member, not the row's own name: choosing it must not silently rename it to
     // Paris, or the app looks as though it ignored the answer.
-    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.timezoneSearch')), {
       target: { value: 'Berlin' },
     });
     fireEvent.change(control, { target: { value: 'Europe/Paris' } });
-    fireEvent.change(screen.getByLabelText(copyFor('clinical', 'label.timezoneSearch')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.timezoneSearch')), {
       target: { value: '' },
     });
 
@@ -2466,18 +2459,18 @@ describe('r2.09: the time-zone list', () => {
     openTimeZoneStep();
 
     expect(
-      screen.getByRole('heading', { name: copyFor('clinical', 'hero.timezoneWhy') }),
+      screen.getByRole('heading', { name: copyFor('limelight', 'hero.timezoneWhy') }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(copyFor('clinical', 'advice.timezoneDayBoundary')),
+      screen.getByText(copyFor('limelight', 'advice.timezoneDayBoundary')),
     ).toBeInTheDocument();
-    expect(screen.getByText(copyFor('clinical', 'advice.timezoneReminders'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.timezoneReminders'))).toBeInTheDocument();
 
     // The emphasis is a CLASS, so the mark is CSS drawn from tokens rather than a character
     // written into a copy string, and the two bullets stay two plain sentences.
     const primary = document.querySelector('.wiz-tz-primary');
-    expect(primary?.textContent).toContain(copyFor('clinical', 'advice.timezoneDayBoundary'));
-    expect(primary?.textContent).not.toContain(copyFor('clinical', 'advice.timezoneReminders'));
+    expect(primary?.textContent).toContain(copyFor('limelight', 'advice.timezoneDayBoundary'));
+    expect(primary?.textContent).not.toContain(copyFor('limelight', 'advice.timezoneReminders'));
   });
 
   it('marks the day-boundary bullet with two cues, not colour alone', () => {
@@ -2905,7 +2898,7 @@ describe('Brief I Part 2: the body-fat target', () => {
     next(); // 6 programme length
     next(); // 8 guidance
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const state = useAppStore.getState();
     const profile = Object.values(state.profiles)[0];
@@ -3086,7 +3079,7 @@ describe('round 3: the load-step gate and the three controls that moved', () => 
     next(); // guidance
     next(); // review
     tickLooksGood();
-    fireEvent.click(screen.getByRole('button', { name: 'Confirm and Start' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
     const state = useAppStore.getState();
     const id = state.activeProfileId ?? '';

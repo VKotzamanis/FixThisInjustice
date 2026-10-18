@@ -15,7 +15,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { computeTargets } from '../../domain/nutrition';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
 import { defaultState } from '../../domain/schema';
@@ -139,7 +139,7 @@ function seed(patch: Partial<AppState> = {}): AppState {
      * seed replaces `ui` wholesale, so pinning it here is what keeps a reseed inside a test
      * from putting the shipped table back. Overridable by `patch`, which spreads after it.
      */
-    ui: { ...defaultState().ui, skin: 'clinical' },
+    ui: { ...defaultState().ui, skin: 'limelight' },
     ...patch,
   };
 }
@@ -173,15 +173,15 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -194,7 +194,7 @@ describe('LogView without a profile', () => {
     useAppStore.setState(defaultState());
     pinSkin();
     render(<LogView />);
-    expect(screen.getByText(copy('advice.noProfileSetupFirst'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noProfileSetupFirst'))).toBeTruthy();
     expect(screen.queryByRole('grid')).toBeNull();
   });
 });
@@ -225,10 +225,10 @@ describe('LogView body mass', () => {
     const rate = expectedRateKgPerWeek(seed()); // [kg/week]
     render(<LogView />);
     const details = screen.getByTestId('body-mass-basis');
-    expect(details.querySelector('summary')?.textContent).toBe(copy('disclosure.why'));
+    expect(details.querySelector('summary')?.textContent).toBe(copyFor('limelight', 'disclosure.why'));
     expect(details.textContent).toContain(
       rate === null
-        ? copy('status.rateUnknown')
+        ? copyFor('limelight', 'status.rateUnknown')
         : FORMAT.bodyMassProjection(formatMass(rate, 'metric')),
     );
   });
@@ -236,7 +236,7 @@ describe('LogView body mass', () => {
   it('says so when no body mass has been logged', () => {
     useAppStore.setState(seed({ bodyMass: {} }));
     render(<LogView />);
-    expect(screen.getByText(copy('advice.noBodyMassLogged'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noBodyMassLogged'))).toBeTruthy();
   });
 });
 
@@ -244,13 +244,13 @@ describe('LogView compliance', () => {
   it('marks completed, skipped and missed days of the weeks since the plan started', () => {
     render(<LogView />);
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-02-09', copy('status.markCompleted'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-02-09', copyFor('limelight', 'status.markCompleted'))),
     ).toBeTruthy();
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-02-11', copy('status.markSkipped'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-02-11', copyFor('limelight', 'status.markSkipped'))),
     ).toBeTruthy();
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-02-13', copy('status.markMissed'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-02-13', copyFor('limelight', 'status.markMissed'))),
     ).toBeTruthy();
   });
 
@@ -294,7 +294,7 @@ describe('LogView compliance', () => {
     // No cursor and no availability: nothing has been scheduled, so there is nothing to grade.
     useAppStore.setState(seed({ cursors: {}, availability: {}, assignments: {} }));
     render(<LogView />);
-    expect(screen.getByText(copy('advice.noWeeksYet'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noWeeksYet'))).toBeTruthy();
   });
 });
 
@@ -317,7 +317,7 @@ describe('LogView records', () => {
   it('says so when nothing has been logged', () => {
     useAppStore.setState(seed({ sets: {} }));
     render(<LogView />);
-    expect(screen.getByText(copy('advice.noSetsLogged'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSetsLogged'))).toBeTruthy();
   });
 });
 
@@ -335,7 +335,7 @@ describe('LogView weekly AMRAP', () => {
       seed({ sets: byId([makeSet({ id: 'only-bench', loadKg: 90, reps: 3 })]) }), // [kg]
     );
     render(<LogView />);
-    expect(screen.queryByText(copy('hero.repsPerWeek'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'hero.repsPerWeek'))).toBeNull();
   });
 });
 
@@ -353,16 +353,10 @@ describe('weeksBetween', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('LogView under a skin', () => {
-  it('names the view in the limelight words, and in the default ones under clinical', () => {
+  it('names the view in the limelight words', () => {
     pinSkin('limelight');
-    const view = render(<LogView />);
+    render(<LogView />);
     expect(screen.getByText(copyFor('limelight', 'nav.log'))).toBeInTheDocument();
     expect(screen.getByText(copyFor('limelight', 'hero.compliance'))).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
-    render(<LogView />);
-    expect(screen.getByText(copyFor('clinical', 'nav.log'))).toBeInTheDocument();
-    expect(screen.getByText(copyFor('clinical', 'hero.compliance'))).toBeInTheDocument();
   });
 });

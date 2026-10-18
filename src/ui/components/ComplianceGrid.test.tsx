@@ -10,7 +10,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import type { AssignmentStatus, SessionAssignment } from '../../domain/types';
 import { ComplianceGrid, buildStatusIndex, markFor } from './ComplianceGrid';
 
@@ -105,14 +105,14 @@ describe('ComplianceGrid', () => {
       />,
     );
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-01-05', copy('status.markCompleted'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-01-05', copyFor('limelight', 'status.markCompleted'))),
     ).toBeTruthy();
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-01-07', copy('status.markSkipped'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-01-07', copyFor('limelight', 'status.markSkipped'))),
     ).toBeTruthy();
     // Assigned for a day that has passed and never finished.
     expect(
-      screen.getAllByLabelText(FORMAT.complianceCell('2026-01-09', copy('status.markNotPlanned'))),
+      screen.getAllByLabelText(FORMAT.complianceCell('2026-01-09', copyFor('limelight', 'status.markNotPlanned'))),
     ).toHaveLength(1);
   });
 
@@ -127,7 +127,7 @@ describe('ComplianceGrid', () => {
       />,
     );
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-01-09', copy('status.markMissed'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-01-09', copyFor('limelight', 'status.markMissed'))),
     ).toBeTruthy();
   });
 
@@ -178,7 +178,7 @@ describe('ComplianceGrid', () => {
         weeklySessionTarget={TARGET}
       />,
     );
-    expect(screen.getByText(copy('advice.noWeeksYet'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noWeeksYet'))).toBeTruthy();
     expect(screen.queryAllByRole('gridcell')).toHaveLength(0);
   });
 });

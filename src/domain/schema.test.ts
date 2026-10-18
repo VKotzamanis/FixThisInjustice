@@ -763,9 +763,7 @@ describe('round trip', () => {
  * The two UI preferences P8 Task 12 adds. Both are additive and both carry a Zod default, so
  * CURRENT_SCHEMA_VERSION stays 3 and a document written before this task parses unchanged.
  *
- * The default skin is 'limelight', not 'clinical': the user chose it as the shipped look. The
- * clinical token set stays on the bare `:root` block so a document that somehow reaches the DOM
- * without the attribute still renders, but the value a fresh document carries is 'limelight'.
+ * The shipped skin is limelight. Retired values are repaired while parsing v3 data.
  */
 describe('the skin and sounds preferences', () => {
   it('defaults a fresh document to the limelight skin with sounds off', () => {
@@ -786,14 +784,27 @@ describe('the skin and sounds preferences', () => {
     expect(result.state.ui.sounds).toBe(false);
   });
 
-  it('accepts each of the three skin ids and refuses a fourth', () => {
-    for (const skin of ['clinical', 'limelight', 'board']) {
+  it('coerces retired skin ids while retaining the rest of a v3 document', () => {
+    // The same document naming the shipped skin is the reference: a retired id must parse to
+    // exactly what that parses to, so nothing but `ui.skin` can have moved.
+    const reference = legacyDocument();
+    reference.ui = { ...(reference.ui as Record<string, unknown>), skin: 'limelight' };
+    const expected = parseState(reference);
+    expect(expected.ok).toBe(true);
+    if (!expected.ok) return;
+    for (const skin of ['clinical', 'board']) {
       const doc = legacyDocument();
       doc.ui = { ...(doc.ui as Record<string, unknown>), skin };
       const result = parseState(doc);
       expect({ skin, ok: result.ok }).toEqual({ skin, ok: true });
-      if (result.ok) expect(result.state.ui.skin).toBe(skin);
+      if (result.ok) {
+        expect(result.state.ui.skin).toBe('limelight');
+        expect(result.state).toEqual(expected.state);
+      }
     }
+  });
+
+  it('refuses an unknown skin id', () => {
     const bad = legacyDocument();
     bad.ui = { ...(bad.ui as Record<string, unknown>), skin: 'crt' };
     expect(parseState(bad).ok).toBe(false);

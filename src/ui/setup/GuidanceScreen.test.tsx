@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { copy } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { GUIDANCE_REFERENCES, GUIDANCE_UNSOURCED_LABEL } from '../../content/guidanceReferences';
 import { SUPPLEMENT_GUIDANCE } from '../../content/supplementGuidance';
 import { GuidanceScreen } from './GuidanceScreen';
@@ -8,7 +8,7 @@ import { GuidanceScreen } from './GuidanceScreen';
 describe('GuidanceScreen', () => {
   it('renders the guidance hero text', () => {
     render(<GuidanceScreen massKg={70} />);
-    expect(screen.getByText(copy('hero.guidance'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'hero.guidance'))).toBeInTheDocument();
   });
 
   it('renders all eight topic headings', () => {
@@ -86,7 +86,7 @@ describe('GuidanceScreen', () => {
     // creatine, caffeine and protein carry a safety statement; the other five do not.
     expect(notes).toHaveLength(3);
     for (const note of notes) {
-      expect(note.textContent).toContain(copy('label.caution'));
+      expect(note.textContent).toContain(copyFor('limelight', 'label.caution'));
     }
   });
 
@@ -112,7 +112,7 @@ describe('GuidanceScreen', () => {
       render(<GuidanceScreen massKg={70} />);
       const refs = screen.getByTestId('guidance-references');
       expect((refs as HTMLDetailsElement).open).toBe(false);
-      expect(refs.querySelector('summary')?.textContent).toBe(copy('disclosure.references'));
+      expect(refs.querySelector('summary')?.textContent).toBe(copyFor('limelight', 'disclosure.references'));
     });
 
     it('prints every entry once, under a single numbering scheme', () => {

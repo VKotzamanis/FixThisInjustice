@@ -50,12 +50,11 @@ function seed(): AppState {
   });
   /*
    * P8 Task 14. The view now reads its strings through useCopy(), so the ACTIVE SKIN decides
-   * what it renders, and the shipped default is limelight (schema.ts, UiPrefsSchema). Every
-   * assertion below quotes the clinical default table, which is the contract's own baseline, so
-   * the skin is pinned here rather than each assertion being rewritten; the limelight suite at
-   * the end of this file flips it and asserts the override table instead.
+   * what it renders, and the only skin is limelight (schema.ts, UiPrefsSchema). Every assertion
+   * below quotes `copyFor('limelight', key)`; until clinical was removed this pinned clinical and
+   * the assertions quoted the default table.
    */
-  return { ...state, ui: { ...state.ui, skin: 'clinical' } };
+  return { ...state, ui: { ...state.ui, skin: 'limelight' } };
 }
 
 /** Replaces the document. zustand merges shallowly, so the actions and status survive. */
@@ -68,8 +67,8 @@ function withAssignment(a: SessionAssignment): void {
   setState({ ...useAppStore.getState(), assignments: { [PROFILE_ID]: [a] } });
 }
 
-function button(key: Parameters<typeof copy>[0]): HTMLElement {
-  return screen.getByRole('button', { name: copy(key) });
+function button(key: Parameters<typeof copyFor>[1]): HTMLElement {
+  return screen.getByRole('button', { name: copyFor('limelight', key) });
 }
 
 beforeEach(() => {
@@ -110,7 +109,7 @@ describe('TodayView hero: the other states', () => {
   it('rests when today has no slot, and names the next slot day', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday: not a training day
     render(<TodayView />);
-    expect(screen.getByText(copy('hero.noSessionToday'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.noSessionToday'))).toBeTruthy();
     expect(screen.getByText(FORMAT.nextSession('Wed', '07:00', 'Push'))).toBeTruthy();
   });
 
@@ -125,9 +124,9 @@ describe('TodayView hero: the other states', () => {
       skipReason: null,
     });
     render(<TodayView />);
-    expect(screen.getByText(copy('hero.sessionInProgress'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionInProgress'))).toBeTruthy();
     expect(button('button.returnToSession')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.startSession') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.startSession') })).toBeNull();
   });
 
   it('reports a completed session and withdraws Start', () => {
@@ -141,8 +140,8 @@ describe('TodayView hero: the other states', () => {
       skipReason: null,
     });
     render(<TodayView />);
-    expect(screen.getByText(copy('hero.sessionCompleted'))).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.startSession') })).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionCompleted'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.startSession') })).toBeNull();
   });
 
   it('reports a skipped session with the reason the user gave', () => {
@@ -156,7 +155,7 @@ describe('TodayView hero: the other states', () => {
       skipReason: 'illness',
     });
     render(<TodayView />);
-    expect(screen.getByText(copy('hero.sessionSkipped'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionSkipped'))).toBeTruthy();
     expect(screen.getByText(FORMAT.skipReason('illness'))).toBeTruthy();
   });
 
@@ -167,8 +166,8 @@ describe('TodayView hero: the other states', () => {
     });
     render(<TodayView />);
     expect(screen.getByText(FORMAT.pausedSince(MONDAY))).toBeTruthy();
-    expect(screen.getByText(copy('advice.pauseHoldsCursor'))).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.startSession') })).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'advice.pauseHoldsCursor'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.startSession') })).toBeNull();
   });
 
   /*
@@ -193,7 +192,7 @@ describe('TodayView hero: the other states', () => {
 
     // Master plan section 6.4: an assignment already in progress when the pause began may
     // still be completed or skipped, so the pause hero must not bury it.
-    expect(screen.getByText(copy('hero.sessionInProgress'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionInProgress'))).toBeTruthy();
     fireEvent.click(button('button.markCompleted'));
     expect(useAppStore.getState().assignments[PROFILE_ID]?.[0]?.status).toBe('completed');
     expect(useAppStore.getState().cursors[PROFILE_ID]?.nextSessionIndex).toBe(1);
@@ -217,7 +216,7 @@ describe('TodayView hero: the other states', () => {
 
     // The pause is the standing fact about the plan and the thing the user must lift first.
     expect(screen.getByText(FORMAT.pausedSince(MONDAY))).toBeTruthy();
-    expect(screen.queryByText(copy('hero.sessionCompleted'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'hero.sessionCompleted'))).toBeNull();
     expect(button('button.resumePlan')).toBeTruthy();
   });
 
@@ -234,18 +233,18 @@ describe('TodayView hero: the other states', () => {
       },
     });
     render(<TodayView />);
-    expect(screen.getByText(copy('hero.programmeComplete'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.programmeComplete'))).toBeTruthy();
     expect(screen.getByText(FORMAT.programmeClosed(TOTAL, MONDAY))).toBeTruthy();
     expect(
-      screen.getByText(FORMAT.planPosition(TOTAL, TOTAL, copy('status.planComplete'))),
+      screen.getByText(FORMAT.planPosition(TOTAL, TOTAL, copyFor('limelight', 'status.planComplete'))),
     ).toBeTruthy();
   });
 
   it('asks for setup when there is no plan', () => {
     setState({ ...useAppStore.getState(), plans: {}, cursors: {} });
     render(<TodayView />);
-    expect(screen.getByText(copy('hero.noPlan'))).toBeTruthy();
-    expect(screen.getByText(copy('advice.completeSetup'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.noPlan'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.completeSetup'))).toBeTruthy();
   });
 });
 
@@ -285,7 +284,7 @@ describe('TodayView controls', () => {
   it('Skip today records the optional reason verbatim', () => {
     render(<TodayView />);
     fireEvent.click(button('button.skipToday'));
-    fireEvent.change(screen.getByLabelText(copy('label.skipReason')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.skipReason')), {
       target: { value: 'illness' },
     });
     fireEvent.click(button('button.confirmSkip'));
@@ -305,7 +304,7 @@ describe('TodayView controls', () => {
     render(<TodayView />);
     fireEvent.click(button('button.skipToday'));
     fireEvent.click(button('button.cancel'));
-    expect(screen.queryByLabelText(copy('label.skipReason'))).toBeNull();
+    expect(screen.queryByLabelText(copyFor('limelight', 'label.skipReason'))).toBeNull();
     expect(useAppStore.getState().assignments[PROFILE_ID]).toEqual([]);
   });
 
@@ -340,8 +339,8 @@ describe('TodayView controls', () => {
     });
     render(<TodayView />);
 
-    expect(screen.getByText(copy('hero.sessionInProgress'))).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.pausePlan') })).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionInProgress'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.pausePlan') })).toBeNull();
     fireEvent.click(button('button.resumePlan'));
     expect(useAppStore.getState().pauses[PROFILE_ID]?.[0]?.to).toBe(MONDAY);
   });
@@ -350,7 +349,7 @@ describe('TodayView controls', () => {
     render(<TodayView />);
     fireEvent.click(button('button.skipToday'));
     // [characters] The UI bound on a short free-text reason; the value is stored verbatim.
-    expect(screen.getByLabelText(copy('label.skipReason')).getAttribute('maxlength')).toBe('120');
+    expect(screen.getByLabelText(copyFor('limelight', 'label.skipReason')).getAttribute('maxlength')).toBe('120');
   });
 
   it('Resume plan closes the open pause at today', () => {
@@ -401,7 +400,7 @@ describe('TodayView: train something else today', () => {
     // reshuffle would swap the exercises out from under a session being logged.
     render(<TodayView />);
     fireEvent.click(button('button.startSession'));
-    expect(screen.queryByRole('button', { name: copy('button.trainSomethingElse') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.trainSomethingElse') })).toBeNull();
     expect(screen.queryByTestId('label-picker')).toBeNull();
   });
 });
@@ -435,7 +434,7 @@ describe('TodayView: a refused action', () => {
     fireEvent.click(button('button.startSession'));
 
     const banner = screen.getByRole('alert');
-    expect(banner.textContent).toContain(copy('banner.actionRefused.tag'));
+    expect(banner.textContent).toContain(copyFor('limelight', 'banner.actionRefused.tag'));
     // P4 review item 4: the banner renders the copy line for the refusal, not the domain's
     // thrown message. The store still holds the domain's own words, which is what the schedule
     // slice documents; this is the mapping from those words to the ones the user reads.
@@ -488,16 +487,16 @@ describe('TodayView: a refused action', () => {
 
     const banner = screen.getByRole('alert');
     expect(banner.textContent).toContain(
-      FORMAT.withSlots('status.refusalPaused', { date: MONDAY }),
+      FORMAT.withSlots('status.refusalPaused', { date: MONDAY }, SKIN_COPY.limelight),
     );
     expect(banner.textContent).toContain(MONDAY);
     expect(banner.textContent).not.toContain('startSession');
     expect(banner.textContent).not.toContain('startSession:');
     // The mapper is the single definition of that rendering; the view holds no second copy.
-    expect(banner.textContent).toContain(refusalLine(raw ?? ''));
+    expect(banner.textContent).toContain(refusalLine(raw ?? '', SKIN_COPY.limelight));
   });
 
-  it('renders the refusal in the active skin, not always in the clinical words', () => {
+  it('renders the refusal in the active skin, not in the base-table words', () => {
     /*
      * `refusalLine` has taken an overlay since it was written, and TodayView called it without
      * one, so the one sentence on this screen that reports a domain refusal was clinical under
@@ -533,7 +532,7 @@ describe('TodayView: a refused action', () => {
     fireEvent.click(button('button.startSession'));
 
     fireEvent.click(
-      within(screen.getByRole('alert')).getByRole('button', { name: copy('button.dismiss') }),
+      within(screen.getByRole('alert')).getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
     );
 
     expect(screen.queryByRole('alert')).toBeNull();
@@ -551,7 +550,7 @@ describe('TodayView: the 14-day strip', () => {
     expect(rows[0]?.textContent).toContain('07:00');
     expect(rows[0]?.textContent).toContain('Push');
     expect(rows[1]?.textContent).toContain('Tue');
-    expect(rows[1]?.textContent).toContain(copy('status.dayRest'));
+    expect(rows[1]?.textContent).toContain(copyFor('limelight', 'status.dayRest'));
   });
 
   it('marks a completed day and a paused day, and names each glyph', () => {
@@ -581,26 +580,26 @@ describe('TodayView: the 14-day strip', () => {
     expect(rows[2]?.getAttribute('data-status')).toBe('planned');
 
     // The glyphs are drawn, not written, so their only accessible name is this label.
-    expect(within(rows[0] as HTMLElement).getByLabelText(copy('status.dayCompleted'))).toBeTruthy();
-    expect(within(rows[1] as HTMLElement).getByLabelText(copy('status.dayPaused'))).toBeTruthy();
+    expect(within(rows[0] as HTMLElement).getByLabelText(copyFor('limelight', 'status.dayCompleted'))).toBeTruthy();
+    expect(within(rows[1] as HTMLElement).getByLabelText(copyFor('limelight', 'status.dayPaused'))).toBeTruthy();
   });
 
   it('takes the list name from the heading, and names each glyph exactly once', () => {
     render(<TodayView />);
-    const list = screen.getByRole('list', { name: copy('hero.nextFourteenDays') });
+    const list = screen.getByRole('list', { name: copyFor('limelight', 'hero.nextFourteenDays') });
 
     // One string in the DOM: the list points at the heading rather than repeating it.
     const labelledBy = list.getAttribute('aria-labelledby');
     expect(labelledBy).not.toBeNull();
     expect(list.getAttribute('aria-label')).toBeNull();
     expect(document.getElementById(labelledBy ?? '')?.textContent).toBe(
-      copy('hero.nextFourteenDays'),
+      copyFor('limelight', 'hero.nextFourteenDays'),
     );
 
     // aria-label is what the accessible-name computation reads; a <title> child would be a
     // second copy of the same name that nothing can reach.
     const row = screen.getAllByTestId('strip-day')[0] as HTMLElement;
-    const glyph = within(row).getByLabelText(copy('status.dayPlanned'));
+    const glyph = within(row).getByLabelText(copyFor('limelight', 'status.dayPlanned'));
     expect(glyph.querySelector('title')).toBeNull();
   });
 });
@@ -610,11 +609,11 @@ describe('TodayView: one whole training day', () => {
     render(<TodayView />);
 
     fireEvent.click(button('button.startSession'));
-    expect(screen.getByText(copy('hero.sessionInProgress'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionInProgress'))).toBeTruthy();
     expect(screen.getAllByTestId('strip-day')[0]?.getAttribute('data-status')).toBe('in-progress');
 
     fireEvent.click(button('button.markCompleted'));
-    expect(screen.getByText(copy('hero.sessionCompleted'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionCompleted'))).toBeTruthy();
     expect(screen.getByText(FORMAT.planPosition(2, TOTAL, ''))).toBeTruthy();
 
     const rows = screen.getAllByTestId('strip-day');
@@ -630,7 +629,7 @@ describe('App wiring', () => {
     useAppStore.getState().wipeAll();
     setState(seed());
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: copy('nav.today') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.today') }));
     expect(screen.getByText('Push 1')).toBeTruthy();
     /*
      * Scoped to the view. P3 Task 6 mounted Task 7's SessionIndicator in the top bar, so the
@@ -683,11 +682,6 @@ function withSkin(skin: SkinId): void {
 }
 
 describe('TodayView: the ticker', () => {
-  it('carries no ticker on the clinical skin', () => {
-    render(<TodayView />);
-    expect(screen.queryByRole('button', { name: copy('button.pauseTicker') })).toBeNull();
-  });
-
   it('leads with the cursor position on limelight, in the limelight words', () => {
     withSkin('limelight');
     render(<TodayView />);
@@ -705,16 +699,16 @@ describe('TodayView: the ticker', () => {
     ]);
   });
 
-  it('names the strip in the board vocabulary and adds the closed week to it', () => {
-    withSkin('board');
+  it('names the strip in the limelight vocabulary and adds the closed week to it', () => {
+    withSkin('limelight');
     withReview(MET_WEEK);
     render(<TodayView />);
 
-    expect(screen.getByRole('button', { name: copyFor('board', 'button.pauseTicker') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.pauseTicker') })).toBeTruthy();
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.board),
-      FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 }, SKIN_COPY.board),
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 }, SKIN_COPY.limelight),
     ]);
   });
 
@@ -723,31 +717,31 @@ describe('TodayView: the ticker', () => {
     // (src/domain/schedule/weekly.ts sets it from the sign of the delta; the store's
     // markMotivationShown sets it true). The verdict on that week therefore belongs to the
     // popup, and a ticker scrolling the same verdict behind it is the duplication A59 recorded.
-    withSkin('board');
+    withSkin('limelight');
     withReview({ ...MISSED_WEEK, missHandled: false });
     render(<TodayView />);
 
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.board),
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
     ]);
   });
 
   it('carries the week line once that miss has been answered', () => {
-    withSkin('board');
+    withSkin('limelight');
     withReview({ ...MISSED_WEEK, missHandled: true });
     render(<TodayView />);
 
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.board),
-      FORMAT.withSlots('status.weekDeltaNegative', { completed: 1, target: 4 }, SKIN_COPY.board),
+      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.withSlots('status.weekDeltaNegative', { completed: 1, target: 4 }, SKIN_COPY.limelight),
     ]);
   });
 
   it('names the strip in the limelight voice, in lower case', () => {
     // Round three section 3.2 closes the uppercase list; the ticker's control is not on it, and
-    // the board's PAUSE TICKER is the board's register, not this one.
+    // the removed board skin's PAUSE TICKER was that skin's register, not this one.
     withSkin('limelight');
     render(<TodayView />);
     const name = copyFor('limelight', 'button.pauseTicker');
@@ -763,7 +757,7 @@ describe('TodayView: the week that has just closed', () => {
 
     expect(screen.getByTestId('week-stamp')).toBeTruthy();
     expect(screen.queryByTestId('intervention')).toBeNull();
-    expect(screen.getByText(copy('status.weekMetStamp'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'status.weekMetStamp'))).toBeTruthy();
   });
 
   it('shows the intervention for a missed week the popup has already answered', () => {
@@ -772,7 +766,7 @@ describe('TodayView: the week that has just closed', () => {
 
     expect(screen.getByTestId('intervention')).toBeTruthy();
     expect(screen.queryByTestId('week-stamp')).toBeNull();
-    expect(screen.getByText(copy('advice.interventionBody'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.interventionBody'))).toBeTruthy();
   });
 
   it('shows neither while the missed week is still owed its popup', () => {
@@ -795,8 +789,8 @@ describe('TodayView: the week that has just closed', () => {
 describe('TodayView: the time capsule', () => {
   it('renders the capsule card, sealed to the profile zone by this render\'s clock', () => {
     render(<TodayView />);
-    expect(screen.getByRole('heading', { name: copy('hero.timeCapsule') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: copy('button.writeCapsule') })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.timeCapsule') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.writeCapsule') })).toBeTruthy();
   });
 });
 
@@ -833,18 +827,8 @@ describe('TodayView: the limelight voice', () => {
     }
   });
 
-  it('carries no image on those controls under the clinical skin', () => {
-    // R6: the default table is glyph-free, and Icon returns null off limelight, so the same
-    // three call sites render the string alone.
-    render(<TodayView />);
 
-    for (const key of ['button.skipToday', 'button.trainSomethingElse', 'button.pausePlan'] as const) {
-      const control = screen.getByRole('button', { name: copy(key) });
-      expect(control.querySelectorAll('img')).toHaveLength(0);
-    }
-  });
-
-  it("keeps the session preview's set counts in the clinical string, under the overlay", () => {
+  it("keeps the session preview's set counts in the limelight string, under the overlay", () => {
     /*
      * P8 close-out D wired `useCopyOverrides()` into this view's `FORMAT.setsBy` call. The
      * limelight table carries no `status.setsBy` row on purpose (copy.test.ts records why: the

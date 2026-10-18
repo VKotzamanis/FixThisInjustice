@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { MotivationGate } from './MotivationGate';
 import { probeBundledVideo, resolveVideoSrc } from '../../domain/motivation/assets';
-import { copy } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { addDays, todayLocal } from '../../domain/dates';
 import { useAppStore } from '../../store';
 import type { AppStore } from '../../store';
@@ -105,15 +105,15 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -125,7 +125,7 @@ describe('MotivationGate', () => {
   it('mounts the popup for a miss inside the window', async () => {
     render(<MotivationGate />);
     expect(await screen.findByTestId('motivation-video')).toBeDefined();
-    expect(screen.getByRole('heading', { name: copy('hero.weeklyTargetMissed') })).toBeDefined();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') })).toBeDefined();
     expect(dialog()).not.toBeNull();
   });
 
@@ -174,7 +174,7 @@ describe('MotivationGate', () => {
     const user = userEvent.setup();
     render(<MotivationGate />);
     expect(await screen.findByTestId('motivation-video')).toBeDefined();
-    await user.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    await user.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
     await waitFor(() => {
       expect(dialog()).toBeNull();
     });

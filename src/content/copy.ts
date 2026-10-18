@@ -1,18 +1,18 @@
-import { BOARD_COPY } from './copy.board';
 import { LIMELIGHT_COPY } from './copy.limelight';
 import type { SkinId } from '../domain/types';
 
 /**
- * The two skin tables live in their own files, because a table of ninety camp strings and a table
- * of five hundred clinical ones are read for different reasons and reviewed by different eyes.
- * They are re-exported here so the copy module is one import site, and so `SKIN_COPY` below and a
+ * The limelight overlay lives in its own file, because a table of camp strings and a table of
+ * five hundred base ones are read for different reasons and reviewed by different eyes. It is
+ * re-exported here so the copy module is one import site, and so `SKIN_COPY` below and a
  * test that quotes a row cannot end up holding two different objects.
  */
-export { BOARD_COPY } from './copy.board';
 export { LIMELIGHT_COPY } from './copy.limelight';
 
 /**
- * User-facing copy, default (clinical) skin.
+ * User-facing copy, the base table. The app ships one skin, limelight, whose overlay
+ * (copy.limelight.ts) is merged over this table per key; a key the overlay does not name renders
+ * the string here. Until the clinical skin was removed this table was that skin's copy.
  *
  * Contract: docs/design/2026-09-01-copy-contract.md. Every string here obeys R1 to R13.
  * Numbers, units and quantity names are part of the contract, not of the skin: a skin may
@@ -547,13 +547,8 @@ export type CopyKey =
   | 'button.wipeConfirm'
   | 'button.legacyReopen'
   | 'advice.wipeRemoves'
-  // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
+  // --- the look-and-sound row (P8 Task 12; appended by that task) ---
   | 'hero.skin'
-  | 'label.settingsSkin'
-  | 'option.skinClinical'
-  | 'option.skinLimelight'
-  | 'option.skinBoard'
-  | 'advice.skinChanges'
   | 'label.settingsSounds'
   // --- block transition cutscene (P8 Task 10; appended by that task) ---
   | 'status.blockTransition'
@@ -598,10 +593,6 @@ export type CopyKey =
   | 'label.noSuggestedLoad'
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   | 'advice.clickToContinue'
-  // Round 3: the app shell's skin-and-preferences control (top right, TopbarSkinPicker in
-  // src/app/App.tsx) had nothing pointing at it and the owner never found it. This labels the
-  // arrow drawn on the intro's final slide only (src/ui/intro/IntroSequence.tsx).
-  | 'label.changeVisualSettings'
   | 'advice.setupInstruction'
   // --- the top bar's per-view instruction, one per ViewId (P10 Brief D) ---
   | 'advice.todayInstruction'
@@ -623,8 +614,6 @@ export type CopyKey =
   | 'status.bannerSetup'
   | 'status.bannerSetupNamed'
   | 'status.bannerSetupAnonymous'
-  // --- round 2 brief N: reaching the skin picker during setup (r2.05) ---
-  | 'disclosure.skin'
   // --- round 2 brief N: the time-zone picker (r2.09) ---
   | 'label.timezoneSearch'
   | 'advice.timezoneGrouped'
@@ -1613,23 +1602,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // What the wipe costs, in one sentence and by name. It promises no automatic backup: the
   // export is a control the user presses, and the panel states that gate itself.
   'advice.wipeRemoves': 'Removes every profile, plan, session, set and note on this device.',
-  // --- the skin picker and the sound toggle (P8 Task 12; appended by that task) ---
-  // The row's heading. It names both controls under it, so neither the picker's legend nor
-  // the toggle's label repeats it: two controls in one region sharing an accessible name
-  // cannot be told apart by a screen reader.
+  // --- the look-and-sound row (P8 Task 12; appended by that task) ---
+  // The row's heading, kept when the skin picker under it was removed (limelight is the only
+  // skin): it still heads the sound and shortcut switches, and the limelight row resolves it to
+  // the same words the user saw before. "Look" now names no control; rewording it is the
+  // owner's call, not this table's.
   'hero.skin': 'Look and Sound',
-  // The radio group's legend, which is also the group's accessible name.
-  'label.settingsSkin': 'Skin',
-  // The three names are proper nouns, and they are deliberately NOT skinned. A skin that
-  // renamed the other skins in this row would be a skin a user could not reliably leave, and
-  // the name here matches the id an exported document carries, so screen and file agree.
-  'option.skinClinical': 'Clinical',
-  'option.skinLimelight': 'Limelight',
-  'option.skinBoard': 'Board',
-  // What a skin may and may not change (master plan section 3): the register, never a
-  // quantity. Stated once, where the choice is made.
-  'advice.skinChanges': 'A skin changes wording and colour, never numbers or units.',
-  // The sound toggle's label. One word, like the legend above it.
+  // The sound toggle's label. One word.
   'label.settingsSounds': 'Sounds',
 
   // --- block transition cutscene (P8 Task 10; appended by that task) ---
@@ -1790,12 +1769,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
 
   // --- the intro sequence, shown once before setup (P10 Brief C) ---
   // The long-form slide text lives in src/content/introSlides.ts (R10 reference text, not this
-  // table); these are the two strings the sequence's own controls draw from copy.ts.
+  // table); this is the string the sequence's own control draws from copy.ts. The second,
+  // `label.changeVisualSettings`, captioned an arrow at the top-bar skin control and went with it.
   'advice.clickToContinue': 'Click to continue', // R3: 3 words
-  // The arrow's caption on the final slide ("What Setup Collects"), pointing at the shell's
-  // top-right skin-and-preferences control. `label.` carries no R1-R4 word cap; R14 still
-  // applies, and this is Title Case as written, a control name rather than a sentence.
-  'label.changeVisualSettings': 'Change Visual Settings Here',
   'advice.setupInstruction': 'Answer each step. Nothing leaves this device.',
 
   // --- the top bar's per-view instruction (P10 Brief D) ---
@@ -1849,14 +1825,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // reached Review without giving a name, not for someone who has not typed it yet. The wizard's
   // review step is what gates it (src/app/App.tsx), never a blank field.
   'status.bannerSetupAnonymous': 'Welcome Aboard: Shy or Paranoid?',
-
-  // --- round 2 brief N: reaching the skin picker during setup (r2.05) ---
-  // "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any skin picker or any
-  // app settings." The tab strip does not render until a profile exists, so nothing in the whole
-  // wizard could reach the skin. This is the summary of the top-bar disclosure that now can,
-  // matching `disclosure.why` and `disclosure.examples`, which is the app's own idiom for a
-  // control that opens a panel in place.
-  'disclosure.skin': 'Choose Skin',
 
   // --- round 2 brief N: the time-zone picker (r2.09) ---
   // The list shows one row per BEHAVIOUR (59 of them) and the search reads every zone the
@@ -1994,25 +1962,26 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
  * how a skin is chosen: the FORMAT frames below pass it through, a test passes a literal, and
  * `copyFor` passes the selected skin's table. Every call site that already passes an overlay
  * therefore reaches a skin without being touched.
+ *
+ * With NO overlay this is the base-table string, which is not what the app shows for a key the
+ * limelight table overrides. Anything a user reads goes through `useCopy()` or passes
+ * `useCopyOverrides()`; src/content/limelightParity.test.ts pins what that path resolves to.
  */
 export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string {
   return overrides?.[key] ?? DEFAULT_COPY[key];
 }
 
 /**
- * The override table per skin. `clinical` is empty by construction rather than by absence: the
- * default table IS the clinical skin, so a row here would be a second place to change it.
+ * The override table per shipped skin.
  */
 export const SKIN_COPY: Readonly<Record<SkinId, Readonly<Partial<Record<CopyKey, string>>>>> = {
-  clinical: {},
   limelight: LIMELIGHT_COPY,
-  board: BOARD_COPY,
 };
 
 /**
  * One string, resolved for a skin. This is the whole of the selection: the override is merged per
  * KEY, not per table, so a skin that names ninety rows inherits the rest rather than restating
- * them, and a row a skin forgets is a clinical sentence rather than a blank.
+ * them, and a row a skin forgets is a base-table sentence rather than a blank.
  *
  * Pure, and free of the store: `useCopy()` in ./useCopy.ts is the React binding that reads
  * `ui.skin` and calls this. A content module that read `UiPrefs` itself would drag Zustand into

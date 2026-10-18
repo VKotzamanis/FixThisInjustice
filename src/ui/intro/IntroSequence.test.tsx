@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { INTRO_CHAR_INTERVAL_MS, IntroGate, IntroSequence } from './IntroSequence';
 import { INTRO_DISCLAIMER, INTRO_SLIDES } from '../../content/introSlides';
-import { copy } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { makeUiPrefs } from '../../test/funFixtures';
@@ -20,7 +20,7 @@ function advance(): void {
 beforeEach(() => {
   installFakeStorage();
   vi.useFakeTimers();
-  useAppStore.setState({ ui: makeUiPrefs({ introSeen: false, skin: 'clinical' }) });
+  useAppStore.setState({ ui: makeUiPrefs({ introSeen: false, skin: 'limelight' }) });
 });
 
 afterEach(() => {
@@ -56,28 +56,12 @@ describe('IntroSequence', () => {
   it('requires the acknowledgement checkbox before Continue is enabled', () => {
     render(<IntroSequence />);
     for (let index = 0; index < 4; index += 1) advance();
-    const continueButton = screen.getByRole('button', { name: copy('button.continue') });
+    const continueButton = screen.getByRole('button', { name: copyFor('limelight', 'button.continue') });
     expect(continueButton).toBeDisabled();
     fireEvent.click(screen.getByRole('checkbox'));
     expect(continueButton).toBeEnabled();
     fireEvent.click(continueButton);
     expect(screen.getByRole('heading')).toHaveTextContent(INTRO_SLIDES[4]?.heading ?? '');
-  });
-
-  it('draws the visual-settings arrow on the final slide, and no earlier one', () => {
-    render(<IntroSequence />);
-    expect(screen.queryByTestId('intro-settings-pointer')).toBeNull();
-    for (let index = 0; index < 4; index += 1) {
-      advance();
-      expect(screen.queryByTestId('intro-settings-pointer')).toBeNull();
-    }
-    // The 4th advance() opened the acknowledgement modal without changing slides (index still 3).
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
-    expect(screen.getByRole('heading')).toHaveTextContent(INTRO_SLIDES[4]?.heading ?? '');
-    expect(screen.getByTestId('intro-settings-pointer')).toHaveTextContent(
-      copy('label.changeVisualSettings'),
-    );
   });
 
   it('renders a marked word bold, showing no asterisk, part-typed and whole', () => {
@@ -134,7 +118,7 @@ describe('IntroGate', () => {
     render(<IntroGate />);
     for (let index = 0; index < 4; index += 1) advance();
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.click(screen.getByRole('button', { name: copy('button.continue') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }));
     advance();
     expect(screen.queryByTestId('intro-body')).toBeNull();
   });

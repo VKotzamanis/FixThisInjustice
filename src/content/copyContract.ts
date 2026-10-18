@@ -15,7 +15,7 @@
  * failure the live check exists to remove. So the helpers moved here, unchanged, and their three
  * consumers import them:
  *
- *   - `src/content/copy.test.ts`      the merge gate, over all three tables
+ *   - `src/content/copy.test.ts`      the merge gate, over both tables
  *
  * These rules govern `copy.ts`; they are content's. Moving them out of content would mean the copy contract stopped being
  * enforced the day Design Mode was deleted, which is a coupling nobody would choose deliberately.
@@ -113,9 +113,9 @@ export function hasUrl(value: string): boolean {
  * "Units on the Weight Plates". "Time Zone". "What You Told Me".
  *
  * TWO THINGS IT DOES NOT TOUCH.
- *   - The SKIN tables. Limelight is deliberately lower case ("go on", "the look") and the board
- *     is deliberately upper ("PROCEED"); both registers are recorded decisions, and R8 and R9
- *     already scope themselves to the default table for the same reason.
+ *   - The SKIN table. Limelight is deliberately lower case ("go on", "the look"), as the removed
+ *     board skin was deliberately upper ("PROCEED"); a register is a recorded decision, and R8
+ *     and R9 already scope themselves to the default table for the same reason.
  *   - Unit symbols. R12 guards these: the case IS the quantity, so "(kg)" stays "(kg)" and
  *     "+30 s" stays "+30 s". Title-casing a symbol would state a different quantity.
  */
@@ -260,8 +260,8 @@ export function quantityAdvisories(value: string): ReadonlyArray<{ wrong: string
 
 /* ---------------------------------------------------------------------------------------------- */
 
-/** The three tables a copy edit can land in. Named by their exported binding, not by skin. */
-export type CopyTableId = 'DEFAULT_COPY' | 'LIMELIGHT_COPY' | 'BOARD_COPY';
+/** The tables a copy edit can land in. Named by their exported binding, not by skin. */
+export type CopyTableId = 'DEFAULT_COPY' | 'LIMELIGHT_COPY';
 
 /**
  * `EVIDENCE` is not one of R1 to R14. It belongs to `src/content/r10Text.ts`, which reuses this
@@ -301,10 +301,9 @@ const LENGTH_CAPS: ReadonlyArray<{ prefix: string; cap: number; rule: CopyRuleId
  * Every rule that can be decided from `value` alone, for one key in one table.
  *
  * THE PER-TABLE SCOPING IS THE CONTRACT'S, NOT AN INVENTION. R1 to R6 and the URL ban bind every
- * table (copy.test.ts runs them over all three). R8 and R14 bind the DEFAULT table alone: the
- * limelight register is deliberately lower case and the board's is deliberately upper, and
- * Applying R14 to a skin would destroy
- * two recorded design decisions the first time it was obeyed.
+ * table (copy.test.ts runs them over both). R8 and R14 bind the DEFAULT table alone: the
+ * limelight register is deliberately lower case (as the removed board's was upper), and applying
+ * R14 to a skin would destroy a recorded design decision the first time it was obeyed.
  */
 export function checkCopyValue(
   key: string,

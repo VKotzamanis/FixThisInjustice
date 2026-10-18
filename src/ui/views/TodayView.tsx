@@ -390,9 +390,8 @@ export function TodayView(): JSX.Element {
   return (
     <div className="view today">
       {/*
-       * The one strip that moves, above everything, as the design places it. It renders on
-       * limelight and on the board and nothing at all on clinical, so this call site does not
-       * ask which skin is active.
+       * The one strip that moves, above everything, as the design places it. Marquee renders
+       * nothing for an empty item list, so this call site asks no further question.
        */}
       <Marquee items={marqueeItems} label={c('button.pauseTicker')} />
 

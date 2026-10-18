@@ -16,7 +16,7 @@ import { useSkin } from '../skins/skinContext';
  * while the attribute on <html> follows the store, so the words and the colours disagree. One
  * store field, one reader.
  *
- * MIGRATION. Components still calling `copy(key)` render the clinical string, which is what they
+ * MIGRATION. Components still calling `copy(key)` render the base-table string, which is what they
  * rendered before this module existed. Swapping such a call for `useCopy()` is a per-component
  * change with a per-component test, so it belongs to the task that owns the component rather than
  * to the task that ships the tables.

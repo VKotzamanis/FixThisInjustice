@@ -43,7 +43,7 @@ import './views.css';
  *
  * @param setModifier dimensionless multiplier on the planned set count, 1 = unchanged
  * @param overrides   the active skin's table. Pure and optional, so the suite can call this
- *                    with no React tree and read the clinical note.
+ *                    with no React tree and read the base-table note.
  */
 export function deloadNote(
   setModifier: number,

@@ -25,7 +25,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useCallback, useState } from 'react';
 import type { ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copyFor } from '../../content/copy';
 import type { AppState, PlanTemplate } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
@@ -67,12 +67,17 @@ function planOfState(state: AppState): PlanTemplate {
   return plan;
 }
 
-/** No-op collaborators, so a test overrides only the one it is asserting on. */
+/**
+ * No-op collaborators, so a test overrides only the one it is asserting on. The overlay is the
+ * one the component passes (`useCopyOverrides()` under the shipped skin), so the labels asserted
+ * below are the ones the palette shows.
+ */
 function args(over: Partial<Parameters<typeof buildSpotlightItems>[0]> = {}): Parameters<
   typeof buildSpotlightItems
 >[0] {
   return {
     plan: planOfState(seed()),
+    overrides: SKIN_COPY.limelight,
     setView: () => {
       /* asserted by the tests that pass a spy */
     },
@@ -132,15 +137,15 @@ afterEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -162,7 +167,7 @@ describe('buildSpotlightItems', () => {
   it('labels views from the registry', () => {
     const items = buildSpotlightItems(args());
     expect(items.slice(0, VIEWS.length).map((i) => i.label)).toEqual(
-      VIEWS.map((v) => copy(v.copyKey)),
+      VIEWS.map((v) => copyFor('limelight', v.copyKey)),
     );
   });
 
@@ -195,7 +200,7 @@ describe('buildSpotlightItems', () => {
     const close = vi.fn();
     const items = buildSpotlightItems(args({ setView, focusPlanRow, close }));
 
-    items.find((i) => i.kind === 'view' && i.label === copy('nav.targets'))?.run();
+    items.find((i) => i.kind === 'view' && i.label === copyFor('limelight', 'nav.targets'))?.run();
 
     expect(setView).toHaveBeenCalledWith('targets');
     expect(focusPlanRow).not.toHaveBeenCalled();
@@ -218,7 +223,7 @@ describe('buildSpotlightItems', () => {
 describe('filterSpotlightItems', () => {
   it('matches a case-insensitive substring of the label', () => {
     const items = buildSpotlightItems(args());
-    expect(filterSpotlightItems(items, 'ARGET').map((i) => i.label)).toEqual([copy('nav.targets')]);
+    expect(filterSpotlightItems(items, 'NUMB').map((i) => i.label)).toEqual([copyFor('limelight', 'nav.targets')]);
     expect(filterSpotlightItems(items, 'ex-3').map((i) => i.label)).toEqual(['ex-3']);
   });
 
@@ -292,7 +297,7 @@ describe('Spotlight', () => {
     expect((queryBox() as HTMLInputElement).value).toBe('');
     // The unfiltered list is back, and the first row of it is the one Enter would run.
     expect(screen.getAllByRole('option')).toHaveLength(MAX_SPOTLIGHT_RESULTS);
-    expect(optionLabels()[0]).toBe(copy(VIEWS[0]!.copyKey));
+    expect(optionLabels()[0]).toBe(copyFor('limelight', VIEWS[0]!.copyKey));
     expect(queryBox().getAttribute('aria-activedescendant')).toBe(
       screen.getAllByRole('option')[0]!.id,
     );
@@ -318,7 +323,7 @@ describe('Spotlight', () => {
     expect(status.id).not.toBe('');
 
     fireEvent.change(queryBox(), { target: { value: 'zzzzzz' } });
-    expect(screen.getByRole('status').textContent).toBe(copy('advice.noSpotlightMatch'));
+    expect(screen.getByRole('status').textContent).toBe(copyFor('limelight', 'advice.noSpotlightMatch'));
   });
 
   it('caps the rendered results', () => {
@@ -328,15 +333,15 @@ describe('Spotlight', () => {
 
   it('filters the list by the typed query', () => {
     renderPalette();
-    fireEvent.change(queryBox(), { target: { value: 'targ' } });
-    expect(optionLabels()).toEqual([copy('nav.targets')]);
+    fireEvent.change(queryBox(), { target: { value: 'numb' } });
+    expect(optionLabels()).toEqual([copyFor('limelight', 'nav.targets')]);
   });
 
   it('reports an empty result set', () => {
     renderPalette();
     fireEvent.change(queryBox(), { target: { value: 'zzzzzz' } });
     expect(screen.queryAllByRole('option')).toHaveLength(0);
-    expect(screen.getByText(copy('advice.noSpotlightMatch'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSpotlightMatch'))).toBeTruthy();
   });
 
   it('moves the active option with the arrow keys and reports it to the combobox', () => {
@@ -392,7 +397,7 @@ describe('Spotlight', () => {
   it('runs a result that is clicked', () => {
     const onClose = vi.fn();
     renderPalette(onClose);
-    fireEvent.change(queryBox(), { target: { value: 'targ' } });
+    fireEvent.change(queryBox(), { target: { value: 'numb' } });
     fireEvent.click(screen.getAllByRole('option')[0]!);
 
     expect(useAppStore.getState().ui.lastView).toBe('targets');
@@ -473,18 +478,12 @@ describe('plan deep link', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('Spotlight under a skin', () => {
-  it('heads the palette in the limelight words, and in the default ones under clinical', () => {
+  it('heads the palette in the limelight words', () => {
     pinSkin('limelight');
-    const view = renderPalette();
+    renderPalette();
     expect(screen.getByText(copyFor('limelight', 'hero.spotlight'))).toBeInTheDocument();
     // The view rows are named through their copy key too, not through the label VIEWS baked at
     // import: `nav.plan` is one of the rows the palette lists with an empty query.
     expect(optionLabels()).toContain(copyFor('limelight', 'nav.plan'));
-    view.unmount();
-
-    pinSkin('clinical');
-    renderPalette();
-    expect(screen.getByText(copyFor('clinical', 'hero.spotlight'))).toBeInTheDocument();
-    expect(optionLabels()).toContain(copyFor('clinical', 'nav.plan'));
   });
 });

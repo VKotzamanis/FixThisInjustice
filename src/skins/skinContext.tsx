@@ -5,11 +5,9 @@ import type { SkinId } from '../domain/types';
 export type { SkinId } from '../domain/types';
 
 /**
- * The three skins, in the order the Settings picker offers them and the order the Zod enum in
- * schema.ts lists them. Derived from nothing: the union in types.ts is the type and this is the
- * value, and the schema suite holds the two in step.
+ * The shipped skin list remains a value-level companion to SkinId for future additions.
  */
-export const SKIN_IDS: readonly SkinId[] = ['clinical', 'limelight', 'board'];
+export const SKIN_IDS: readonly SkinId[] = ['limelight'];
 
 /**
  * The active skin, read from the one place it is stored.
@@ -24,8 +22,8 @@ export function useSkin(): SkinId {
 }
 
 /**
- * Mirrors `ui.skin` onto `document.documentElement.dataset.skin`, which is what the two
- * attribute-scoped blocks in src/ui/styles/tokens.css key on.
+ * Mirrors `ui.skin` onto `document.documentElement.dataset.skin`, which is what the token block
+ * in src/ui/styles/tokens.css keys on.
  *
  * WHY AN ATTRIBUTE AND NOT A CLASS. `:root[data-skin='limelight']` has the same specificity a
  * class would, but an attribute holds exactly one value: a class list can carry two skins at

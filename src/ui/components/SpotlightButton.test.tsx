@@ -11,22 +11,22 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { copy, copyFor } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { SpotlightButton } from './SpotlightButton';
 import { useAppStore } from '../../store';
 import type { SkinId } from '../../domain/types';
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -37,7 +37,7 @@ beforeEach(() => {
 describe('SpotlightButton', () => {
   it('renders a button whose accessible name is the copy table entry', () => {
     render(<SpotlightButton onOpen={() => {}} />);
-    const button = screen.getByRole('button', { name: copy('button.openSpotlight') });
+    const button = screen.getByRole('button', { name: copyFor('limelight', 'button.openSpotlight') });
 
     // type="button", not the default "submit": the control sits in the shell, and a stray
     // submit inside any future form would reload the page instead of opening the palette.
@@ -47,7 +47,7 @@ describe('SpotlightButton', () => {
   it('calls onOpen once when it is pressed', () => {
     const onOpen = vi.fn();
     render(<SpotlightButton onOpen={onOpen} />);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.openSpotlight') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.openSpotlight') }));
 
     expect(onOpen).toHaveBeenCalledTimes(1);
   });
@@ -59,18 +59,11 @@ describe('SpotlightButton', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('SpotlightButton under a skin', () => {
-  it('takes its name from the limelight table, and from the default one under clinical', () => {
+  it('takes its name from the limelight table', () => {
     pinSkin('limelight');
-    const view = render(<SpotlightButton onOpen={() => {}} />);
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'button.openSpotlight') }),
-    ).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
     render(<SpotlightButton onOpen={() => {}} />);
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.openSpotlight') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.openSpotlight') }),
     ).toBeInTheDocument();
   });
 });

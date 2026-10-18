@@ -22,15 +22,13 @@ import tokensCss from '../ui/styles/tokens.css?raw';
 
 type Rgb = readonly [number, number, number];
 
-/** The three shipped skins, by the selector that opens their token block. */
+/** The sole shipped skin, by the selector that opens its token block. */
 const SKIN_SELECTOR = {
-  clinical: ':root {',
   limelight: ":root[data-skin='limelight'] {",
-  board: ":root[data-skin='board'] {",
 } as const;
 
 type SkinName = keyof typeof SKIN_SELECTOR;
-const SKINS: readonly SkinName[] = ['clinical', 'limelight', 'board'];
+const SKINS: readonly SkinName[] = ['limelight'];
 
 /** The three tokens the bar reads. */
 const TOPBAR_TOKENS = ['--topbar-bg', '--topbar-text', '--topbar-brand'] as const;
@@ -55,7 +53,7 @@ function tokenBlock(skin: SkinName): Map<string, string> {
 /** Follows `var(--x)` indirection inside the skin, then the clinical root, to a literal. */
 function resolve(name: string, skin: SkinName): string {
   const own = tokenBlock(skin);
-  const root = tokenBlock('clinical');
+  const root = tokenBlock('limelight');
   let value = own.get(name) ?? root.get(name);
   for (let hops = 0; hops < 8; hops += 1) {
     if (value === undefined || !value.startsWith('var(')) break;
@@ -122,9 +120,7 @@ const AA_NORMAL = 4.5;
 
 /** The surface each skin's bar sits over, for compositing a translucent background. */
 const GROUND: Record<SkinName, Rgb> = {
-  clinical: [10, 11, 12], // --bg #0a0b0c
   limelight: [138, 206, 0], // --lime #8ace00
-  board: [20, 21, 23], // --bg #141517
 };
 
 /** The .topbar rules, from the block's start to the next top-level rule. */

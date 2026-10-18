@@ -75,26 +75,11 @@ describe('Icon', () => {
 });
 
 /**
- * The skin gate (P8 Task 12). The icon set belongs to one skin: clinical is deliberately
- * emoji-free and glyph-free (copy contract R6), and direction H ships no graphic at all, its
- * whole character being type and motion. So the component returns null off limelight and a call
- * site never has to ask which skin is active.
+ * The icon set belongs to limelight (P8 Task 12). Until clinical and board were removed the
+ * component returned null off limelight: clinical was glyph-free (copy contract R6) and the board
+ * shipped no graphic. With one skin there is no gate, and the cases below are the limelight ones.
  */
-describe('Icon off the limelight skin', () => {
-  it('renders nothing on the clinical skin', () => {
-    withSkin('clinical');
-    const { container } = render(<Icon name="crown" label="personal record" />);
-    expect(screen.queryByRole('img')).toBeNull();
-    expect(container.querySelector('img.ll-icon')).toBeNull();
-  });
-
-  it('renders nothing on the board skin', () => {
-    withSkin('board');
-    const { container } = render(<Icon name="crown" label="personal record" />);
-    expect(screen.queryByRole('img')).toBeNull();
-    expect(container.querySelector('img.ll-icon')).toBeNull();
-  });
-
+describe('Icon on the limelight skin', () => {
   it('renders the pixel art on the limelight skin', () => {
     withSkin('limelight');
     render(<Icon name="crown" label="personal record" />);
@@ -105,19 +90,13 @@ describe('Icon off the limelight skin', () => {
 });
 
 describe('SkinLabel', () => {
-  it('puts an icon beside the copy on limelight and none beside it elsewhere', () => {
+  it('puts an icon beside the copy on limelight', () => {
     // The WORDS follow the skin too, since P8 Task 16: asserted through `copyFor` by key
     // rather than as a literal, so the expectation moves with the table it quotes.
     withSkin('limelight');
     const view = render(<SkinLabel copyKey="button.startSession" />);
     expect(screen.getByText(copyFor('limelight', 'button.startSession'))).toBeInTheDocument();
     expect(view.container.querySelectorAll('img.ll-icon')).toHaveLength(1);
-    view.unmount();
-
-    withSkin('clinical');
-    const plain = render(<SkinLabel copyKey="button.startSession" />);
-    expect(screen.getByText(copyFor('clinical', 'button.startSession'))).toBeInTheDocument();
-    expect(plain.container.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
 
   it('renders the copy alone for a key with no icon, on every skin', () => {
@@ -125,7 +104,7 @@ describe('SkinLabel', () => {
     expect(ICON_FOR_KEY['button.back']).toBeUndefined();
     const { container } = render(<SkinLabel copyKey="button.back" />);
     // The default this file seeds is limelight, which carries no row for this key, so the
-    // clinical string is what `copyFor` resolves and what the label renders.
+    // base-table string is what `copyFor` resolves and what the label renders.
     expect(screen.getByText(copyFor('limelight', 'button.back'))).toBeInTheDocument();
     expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
@@ -137,7 +116,6 @@ describe('SkinLabel', () => {
     expect(ICON_FOR_KEY['advice.drinkToThirst']).toBe('drop');
     expect(ICON_FOR_KEY['button.skipRest']).toBe('skip');
     expect(ICON_FOR_KEY['status.rest']).toBe('stopwatchPanel');
-    expect(ICON_FOR_KEY['label.settingsSkin']).toBe('crown');
     expect(ICON_FOR_KEY['button.skipToday']).toBe('skip');
     expect(ICON_FOR_KEY['button.trainSomethingElse']).toBe('heel');
     expect(ICON_FOR_KEY['button.pausePlan']).toBe('martini');

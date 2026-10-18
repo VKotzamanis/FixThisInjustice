@@ -65,9 +65,9 @@ export interface SpotlightArgs {
   /**
    * The active skin's override table, for the view rows' labels.
    *
-   * Optional, and omitting it gives the clinical label VIEWS already carries: this function
-   * is pure and is called directly by its own suite, which has no React tree to read a skin
-   * from. The component below passes `useCopyOverrides()`.
+   * Optional, and omitting it gives the base-table label, as `copy()` does: this function is
+   * pure and is called directly by its own suite, which has no React tree to read a skin from.
+   * The component below passes `useCopyOverrides()`, so the app always shows the limelight label.
    */
   overrides?: Partial<Record<CopyKey, string>>;
   setView: (id: ViewId) => void;

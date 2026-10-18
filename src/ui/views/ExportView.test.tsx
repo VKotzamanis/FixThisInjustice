@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ExportView } from './ExportView';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
 import { flushSave, startPersistence, useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
@@ -69,8 +69,8 @@ function click(name: string): void {
 
 /** Types a candidate document into the paste area and asks for it to be checked. */
 function check(text: string): void {
-  fireEvent.change(screen.getByLabelText(copy('label.pasteExport')), { target: { value: text } });
-  click(copy('button.checkImport'));
+  fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.pasteExport')), { target: { value: text } });
+  click(copyFor('limelight', 'button.checkImport'));
 }
 
 /**
@@ -80,12 +80,12 @@ function check(text: string): void {
  * downloads sit in one region, and only the panel's press opens the gate.
  */
 function replacePanel(): HTMLElement {
-  return screen.getByRole('group', { name: copy('label.confirmReplace') });
+  return screen.getByRole('group', { name: copyFor('limelight', 'label.confirmReplace') });
 }
 
 /** Press the panel's own export control. The gate is a fact about this panel, not the session. */
 function backUpInPanel(): void {
-  fireEvent.click(within(replacePanel()).getByRole('button', { name: copy('button.downloadBackup') }));
+  fireEvent.click(within(replacePanel()).getByRole('button', { name: copyFor('limelight', 'button.downloadBackup') }));
 }
 
 /** Type into the panel's confirmation field, whose label is the frame that names the word. */
@@ -97,7 +97,7 @@ function typeConfirmation(value: string): void {
 
 /** The armed destructive control. */
 function replaceButton(): HTMLElement {
-  return within(replacePanel()).getByRole('button', { name: copy('button.replaceData') });
+  return within(replacePanel()).getByRole('button', { name: copyFor('limelight', 'button.replaceData') });
 }
 
 /** A valid document that differs from the fixture, so an import of it is observable. */
@@ -124,15 +124,15 @@ const DEVICE: PushDevice = {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -144,7 +144,7 @@ describe('the downloaded document and the push device', () => {
   it('withholds the device from the file while the running app keeps it', async () => {
     useAppStore.setState({ pushDevice: DEVICE });
     render(<ExportView />);
-    click(copy('button.downloadJson'));
+    click(copyFor('limelight', 'button.downloadJson'));
 
     const text = await (downloads.at(-1)?.blob ?? new Blob([''])).text();
     expect(text).not.toContain(DEVICE.secret);
@@ -163,7 +163,7 @@ describe('the downloaded document and the push device', () => {
     typeConfirmation('DELETE');
     fireEvent.click(replaceButton());
 
-    expect(screen.getByText(copy('status.importOk'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'status.importOk'))).toBeTruthy();
     // An imported document never carries a device, so reminders on this browser are dead
     // until the user switches the toggle off and on in Settings. src/store/persistence.ts
     // exportJson states that consequence; it is the same recovery the stale-device path uses.
@@ -174,22 +174,22 @@ describe('the downloaded document and the push device', () => {
 describe('ExportView', () => {
   it('offers the three downloads', () => {
     render(<ExportView />);
-    expect(screen.getByRole('button', { name: copy('button.downloadJson') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: copy('button.downloadSummary') })).toBeTruthy();
-    expect(screen.getByRole('button', { name: copy('button.downloadCalendar') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.downloadJson') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.downloadSummary') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.downloadCalendar') })).toBeTruthy();
   });
 
   it('says the calendar alarms are a courtesy, not the reminder mechanism', () => {
     render(<ExportView />);
-    expect(screen.getByText(copy('advice.calendarAlarms'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.calendarAlarms'))).toBeTruthy();
     expect(screen.getByText(FORMAT.calendarWindow(28))).toBeTruthy();
   });
 
   it('hands the browser one named file per download', () => {
     render(<ExportView />);
-    click(copy('button.downloadJson'));
-    click(copy('button.downloadSummary'));
-    click(copy('button.downloadCalendar'));
+    click(copyFor('limelight', 'button.downloadJson'));
+    click(copyFor('limelight', 'button.downloadSummary'));
+    click(copyFor('limelight', 'button.downloadCalendar'));
     expect(downloads.map((d) => d.name)).toEqual([
       'fti-state-2026-09-01.json',
       'fti-summary-2026-09-01.txt',
@@ -205,9 +205,9 @@ describe('ExportView', () => {
    */
   it('labels each download with the MIME type its own file extension implies', () => {
     render(<ExportView />);
-    click(copy('button.downloadJson'));
-    click(copy('button.downloadSummary'));
-    click(copy('button.downloadCalendar'));
+    click(copyFor('limelight', 'button.downloadJson'));
+    click(copyFor('limelight', 'button.downloadSummary'));
+    click(copyFor('limelight', 'button.downloadCalendar'));
     expect(downloads.map((d) => d.type)).toEqual([
       'application/json',
       'text/plain;charset=utf-8',
@@ -255,7 +255,7 @@ describe('ExportView', () => {
     });
 
     render(<ExportView />);
-    click(copy('button.downloadCalendar'));
+    click(copyFor('limelight', 'button.downloadCalendar'));
     const ics = await blobs[0]!.text();
 
     // The two terminal days: no VEVENT for either, regardless of whether it was completed or
@@ -273,9 +273,9 @@ describe('ExportView', () => {
     render(<ExportView />);
     const before = useAppStore.getState().exportJson();
     check('{not json');
-    expect(screen.getByRole('alert').textContent).toBe(copy('advice.importParseFailed'));
+    expect(screen.getByRole('alert').textContent).toBe(copyFor('limelight', 'advice.importParseFailed'));
     expect(useAppStore.getState().exportJson()).toBe(before);
-    expect(screen.queryByRole('button', { name: copy('button.replaceData') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.replaceData') })).toBeNull();
   });
 
   it('shows the validation error and changes nothing for a hostile document', () => {
@@ -284,7 +284,7 @@ describe('ExportView', () => {
     check('{"week":999}');
     expect(screen.getByRole('alert').textContent).toMatch(/^The import was rejected: /);
     expect(useAppStore.getState().exportJson()).toBe(before);
-    expect(screen.queryByRole('button', { name: copy('button.replaceData') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.replaceData') })).toBeNull();
   });
 
   it('writes nothing to the store merely because a document validated', () => {
@@ -292,7 +292,7 @@ describe('ExportView', () => {
     const before = useAppStore.getState().exportJson();
     check(otherDocument());
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('button', { name: copy('button.replaceData') })).toBeTruthy();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.replaceData') })).toBeTruthy();
     expect(useAppStore.getState().exportJson()).toBe(before);
   });
 
@@ -301,14 +301,14 @@ describe('ExportView', () => {
     check(otherDocument());
     typeConfirmation('DELETE');
     expect(replaceButton()).toBeDisabled();
-    expect(screen.getByText(copy('advice.exportBeforeConfirm'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeTruthy();
 
     backUpInPanel();
     expect(replaceButton()).toBeEnabled();
     // The instruction goes once it has been followed: standing advice the user has already
     // acted on reads as a second, unmet requirement.
-    expect(screen.queryByText(copy('advice.exportBeforeConfirm'))).toBeNull();
-    expect(screen.getByText(copy('status.exportTaken'))).toBeTruthy();
+    expect(screen.queryByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'status.exportTaken'))).toBeTruthy();
   });
 
   it('does not accept the view download as the backup this panel requires', () => {
@@ -316,7 +316,7 @@ describe('ExportView', () => {
     // ConfirmDestructive holds and its own suite asserts). A copy taken before the document
     // was pasted is not a copy of what Replace is about to overwrite.
     render(<ExportView />);
-    click(copy('button.downloadJson'));
+    click(copyFor('limelight', 'button.downloadJson'));
     check(otherDocument());
     typeConfirmation('DELETE');
     expect(replaceButton()).toBeDisabled();
@@ -325,7 +325,7 @@ describe('ExportView', () => {
   it('names the panel, so it is not one of two anonymous confirmations', () => {
     render(<ExportView />);
     check(otherDocument());
-    expect(replacePanel().getAttribute('aria-label')).toBe(copy('label.confirmReplace'));
+    expect(replacePanel().getAttribute('aria-label')).toBe(copyFor('limelight', 'label.confirmReplace'));
   });
 
   it('offers the panel backup under the same stamped filename as the view download', () => {
@@ -354,13 +354,13 @@ describe('ExportView', () => {
     check(otherDocument());
     backUpInPanel();
     typeConfirmation('DELETE');
-    fireEvent.click(within(replacePanel()).getByRole('button', { name: copy('button.cancel') }));
+    fireEvent.click(within(replacePanel()).getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
 
-    expect(screen.queryByRole('group', { name: copy('label.confirmReplace') })).toBeNull();
+    expect(screen.queryByRole('group', { name: copyFor('limelight', 'label.confirmReplace') })).toBeNull();
     expect(useAppStore.getState().exportJson()).toBe(before);
 
     // Checked again, the panel comes back unarmed: unmounting it is what re-arms both gates.
-    click(copy('button.checkImport'));
+    click(copyFor('limelight', 'button.checkImport'));
     typeConfirmation('DELETE');
     expect(replaceButton()).toBeDisabled();
   });
@@ -374,7 +374,7 @@ describe('ExportView', () => {
     fireEvent.click(replaceButton());
 
     expect(JSON.parse(useAppStore.getState().exportJson())).toEqual(JSON.parse(document_));
-    expect(screen.getByText(copy('status.importOk'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'status.importOk'))).toBeTruthy();
   });
 
   it('persists the imported document to storage once Replace commits it', () => {
@@ -430,11 +430,11 @@ describe('ExportView', () => {
     render(<ExportView />);
     const before = useAppStore.getState().exportJson();
     const file = new File([otherDocument()], 'backup.json', { type: 'application/json' });
-    fireEvent.change(screen.getByLabelText(copy('label.chooseExportFile')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.chooseExportFile')), {
       target: { files: [file] },
     });
     await waitFor(() => {
-      expect(screen.getByLabelText(copy('label.pasteExport'))).toHaveValue(otherDocument());
+      expect(screen.getByLabelText(copyFor('limelight', 'label.pasteExport'))).toHaveValue(otherDocument());
     });
     expect(useAppStore.getState().exportJson()).toBe(before);
   });
@@ -442,19 +442,14 @@ describe('ExportView', () => {
 
 /*
  * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
- * them. This screen names no row either override table carries, so what the pair below asserts
- * is the OTHER half of the contract: a key a skin does not name renders the clinical sentence,
- * on every skin. Both sides are read by key through `copyFor`, never as a literal.
+ * them. This screen names no row the override table carries, so what the case below asserts
+ * is the OTHER half of the contract: a key a skin does not name renders the base-table sentence.
+ * It is read by key through `copyFor`, never as a literal.
  */
 describe('ExportView under a skin', () => {
-  it('reads its heading through the skin, and falls back to the default table', () => {
+  it('falls back to the default table for a heading the skin leaves alone', () => {
     pinSkin('limelight');
-    const view = render(<ExportView />);
-    expect(screen.getByText(copyFor('limelight', 'hero.exportImport'))).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
     render(<ExportView />);
-    expect(screen.getByText(copyFor('clinical', 'hero.exportImport'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'hero.exportImport'))).toBeInTheDocument();
   });
 });

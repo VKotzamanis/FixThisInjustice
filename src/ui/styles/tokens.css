@@ -1,29 +1,36 @@
 /*
- * Design tokens ported from the legacy index.html :root block.
+ * Base tokens: the limelight values, so the page paints limelight before useApplySkin() writes
+ * the data-skin attribute. Until the clinical and board skins were removed this block held the
+ * clinical set.
  *
  * Code review A67: the legacy build carried three accents — #00ff88 in
  * manifest.json and the theme-color meta, #a3e635 in --accent, and #f472b6 in
- * TWEAK_DEFAULTS. --accent is the one the CSS actually rendered (every glow and
- * tint in the sheet is rgba(163, 230, 53, ...)), so #a3e635 is canonical and the
- * manifest, the theme-color meta and UiPrefs.accent all match it. The tweaks
- * panel that owned #f472b6 is dropped per the code review port table.
+ * TWEAK_DEFAULTS. #a3e635 was made canonical and the manifest, the theme-color meta and
+ * UiPrefs.accent were set to it. That was the CLINICAL --accent; limelight's is --pink, so those
+ * three now match no token in this sheet (unchanged by the skin removal; limelight already
+ * shipped with them). The tweaks panel that owned #f472b6 is dropped per the code review port
+ * table.
  *
  * Font families are the self-hosted @fontsource-variable packages imported in
  * src/main.tsx, not the Google Fonts stylesheet the legacy shell loaded
  * (security constraint 19).
  */
 :root {
-  --bg: #0a0b0c;
-  --bg-2: #13161a;
-  --bg-3: #1c2026;
-  --bg-4: #252a32;
-
-  --line: rgba(220, 230, 240, 0.08);
-  --line-2: rgba(220, 230, 240, 0.16);
-
-  --text: #dde3ea;
-  --text-2: #8e97a3;
-  --text-3: #5a6270;
+  --lime: #8ace00;
+  --ink: #000000;
+  --pink: #ff5fcb;
+  --fine: #454545;
+  --panel: #000000;
+  --panel-text: #ffffff;
+  --bg: var(--lime);
+  --bg-2: var(--lime);
+  --bg-3: var(--panel);
+  --bg-4: var(--panel);
+  --line: rgba(0, 0, 0, 0.22);
+  --line-2: var(--ink);
+  --text: var(--ink);
+  --text-2: var(--fine);
+  --text-3: var(--fine);
 
   /*
    * The sticky top bar's own surface. Alpha round 1 defect w1.03: appShell.css hard-coded
@@ -32,17 +39,17 @@
    * type on a near-black bar and the owner reported it as invisible. The colour is a token per
    * skin now, and topbar.test.ts computes the contrast ratio for all three.
    */
-  --topbar-bg: rgba(10, 11, 12, 0.92);
-  --topbar-text: #8e97a3;
-  --topbar-brand: #dde3ea;
+  --topbar-bg: #000000;
+  --topbar-text: #ffffff;
+  --topbar-brand: #ffffff;
 
-  --accent: #a3e635;
-  --accent-d: #84cc16;
-  --accent-rgb: 163, 230, 53;
+  --accent: var(--pink);
+  --accent-d: var(--pink);
+  --accent-rgb: 255, 95, 203;
 
-  --warn: #fbbf24;
-  --danger: #f87171;
-  --info: #67e8f9;
+  --warn: var(--ink);
+  --danger: var(--ink);
+  --info: var(--ink);
 
   /*
    * THE FEASIBILITY CALENDAR'S THREE BAND FILLS (round 1 claim C1.11.2, Brief I Part 4).
@@ -68,8 +75,8 @@
    * `--band-surface` is the resolution and it is a LAYOUT constraint, not a colour change: these
    * fills render inside a dark card, never on the bare page. In limelight that card is `--panel`
    * (#000000), the same inversion `.ll-panel` and the top bar already make for the identical
-   * lime-ground problem. Clinical and board are near-black already, so each takes the ground the
-   * table above measured. Re-deriving the palette to suit lime is NOT the fix: a pastel light
+   * lime-ground problem. The removed clinical and board skins were near-black already, so each
+   * took the ground the table above measured. Re-deriving the palette to suit lime is NOT the fix: a pastel light
    * enough to read as green on black would not read as distinct from lime, and pastel on pastel
    * is the failure this measurement exists to catch.
    */
@@ -77,17 +84,17 @@
   --band-improbable: #eac9a4;
   --band-highly-improbable: #eaa6a4;
   --band-ink: #000000;
-  --band-surface: #0a0b0c; /* this skin's own --bg, the ground the table above measured */
-  --band-surface-text: #dde3ea;
+  --band-surface: var(--panel);
+  --band-surface-text: var(--panel-text);
 
-  --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
-  --sans: 'Geist Variable', -apple-system, system-ui, sans-serif;
+  --mono: 'Archivo Variable', Archivo, ui-monospace, monospace;
+  --sans: 'Archivo Variable', Archivo, Helvetica, Arial, sans-serif;
 
-  --chart-line: rgba(220, 230, 240, 0.3);
-  --chart-actual: var(--accent);
-  --chart-grid: rgba(220, 230, 240, 0.08);
-  --chart-text: rgba(220, 230, 240, 0.5);
-  --chart-marker: var(--accent);
+  --chart-line: rgba(0, 0, 0, 0.35);
+  --chart-actual: var(--ink);
+  --chart-grid: rgba(0, 0, 0, 0.14);
+  --chart-text: var(--fine);
+  --chart-marker: var(--ink);
 
   /*
    * ROUND 2, r2.16: the invalid-field mark, and the highlight behind a heading.
@@ -103,7 +110,7 @@
    * heading, which is what makes `--accent` legal as type there on limelight.
    */
   --field-invalid-bg: #ffffff;
-  --field-invalid-text: #0a0b0c;
+  --field-invalid-text: var(--ink);
   --highlight-bg: #ffffff;
 }
 
@@ -131,11 +138,9 @@ body {
 /* ==========================================================================
  * Skin token blocks (P8 Task 12).
  *
- * The bare :root block above is the CLINICAL set and stays that way: a document that reaches
- * the DOM before useApplySkin() has run, or a page rendered with no data-skin attribute at all,
- * gets a complete token set rather than a half-painted one. Each block below re-points the same
- * twenty-two tokens through one attribute, so a skin change is one write to <html> and not a
- * cascade of per-component rules.
+ * The bare :root block above and this attribute block carry the same limelight values on
+ * purpose; src/skins/tokens.test.ts holds them identical. The attribute block is kept so a
+ * returning skin is one more block of the same shape.
  *
  * Why an attribute and not a class: `:root[data-skin='limelight']` has the same specificity a
  * class would, but an attribute holds exactly one value. A class list can carry two skins at
@@ -217,10 +222,10 @@ body {
   /*
    * The three fills are the SAME hexes on every skin, and deliberately so: the measurement in
    * the `:root` block is one HSL family against three grounds, not three palettes. They are
-   * restated here rather than left to inherit because src/skins/tokens.test.ts requires every
-   * clinical token to carry a value in both attribute blocks, and that rule is worth keeping
-   * even where the value is unchanged: it is what stops a clinical colour leaking silently onto
-   * a lime page.
+   * restated here rather than left to inherit: this block was written when the bare `:root` held
+   * the clinical set, and every token had to carry a limelight value so no clinical colour leaked
+   * onto a lime page. The bare block now restates limelight, and src/skins/tokens.test.ts holds
+   * the two blocks to identical values.
    */
   --band-realistic: #a4eab0;
   --band-improbable: #eac9a4;
@@ -294,113 +299,4 @@ body {
  * where it measures 7.75:1. */
 :root[data-skin='limelight'] .ll-panel .ll-panel-state {
   color: var(--pink);
-}
-
-/*
- * board, ported from the :root block of
- * docs/design/round2/2026-09-01-design-H-departures-board.html. Contrast quoted from round-two
- * section 5 (Direction H, Palette), not recomputed here:
- *   #FFB000 on #0B0B0C = 10.74:1  scheduled, on time, primary action
- *   #FFB000 on #17181A =  9.70:1  the same amber on a flap face
- *   #000000 on #FFB000 = 11.46:1  black type on an amber fill
- *     (was recorded as 10.74:1 until 2026-09-10: that is the figure from the #FFB000 on #0B0B0C
- *      line two above, copied down a row. Recomputed and corrected. The error was in the SAFE
- *      direction, so nothing shipped against it was wrong, but a measurement record that cannot
- *      be trusted is worse than none: someone would have used 10.74 as a floor. Found by the
- *      Design Mode contrast panel, whose arithmetic reproduces the other 25 published pairs here
- *      exactly.)
- *   #E8E4DA on #17181A = 13.99:1  departed services, body type
- *   #7C8288 on #0B0B0C =  5.06:1  held services, column headers, fine print
- *   #FF6B4A on #0B0B0C =  6.98:1  cancelled services
- * --rule (#2C2F33) and the page ground (#141517) carry no published ratio because neither is
- * ever a type colour: they are a hairline and a backdrop.
- *
- * The base sheet's --mono is the BODY face and --sans is unused by `body`, so the two map onto
- * H's pair the other way round from their names: --mono takes DM Mono, H's chrome face, and
- * --sans takes Space Mono, H's display face. --disp and --chrome keep H's names so the mapping
- * stays legible.
- *
- * Type licences: Space Mono and DM Mono, SIL Open Font License 1.1, self-hosted through
- * @fontsource (font-src 'self'; no fonts.googleapis.com, security constraint 19).
- */
-:root[data-skin='board'] {
-  --board: #0b0b0c;
-  --flap: #17181a;
-  --amber: #ffb000;
-  --paper: #e8e4da;
-  --mute: #7c8288;
-  --alert: #ff6b4a;
-  --rule: #2c2f33;
-
-  --disp: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  --chrome: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  --bg: #141517;
-  --bg-2: var(--board);
-  --bg-3: var(--flap);
-  --bg-4: var(--rule);
-
-  --line: var(--rule);
-  --line-2: var(--mute);
-
-  --text: var(--paper);
-  --text-2: var(--mute);
-  --text-3: var(--mute);
-
-  /* The board's own darkest ground, not the clinical literal it happened to resemble. */
-  --topbar-bg: #0b0b0c;
-  --topbar-text: #e8e4da;
-  --topbar-brand: #e8e4da;
-
-  --accent: var(--amber);
-  /* No darker amber was computed for this ground, so the accent does not vary by state depth. */
-  --accent-d: var(--amber);
-  --accent-rgb: 255, 176, 0;
-
-  --warn: var(--amber);
-  --danger: var(--alert);
-  --info: var(--paper);
-
-  /* The same three fills as every other skin, restated for the reason the limelight block
-   * records: one HSL family measured against three grounds, not three palettes. */
-  --band-realistic: #a4eab0;
-  --band-improbable: #eac9a4;
-  --band-highly-improbable: #eaa6a4;
-  --band-ink: #000000;
-  /* The feasibility calendar's band fills sit on the board's own darkest ground, which is the
-   * one the Brief I measurement in the `:root` block quotes: 14.03 / 12.54 / 9.83:1. The page
-   * ground (#141517) is a shade lighter and was not the measured surface, so the card names
-   * `--board` rather than inheriting `--bg`. */
-  --band-surface: var(--board);
-  --band-surface-text: var(--paper);
-
-  --mono: var(--chrome);
-  --sans: var(--disp);
-
-  --chart-line: var(--rule);
-  --chart-actual: var(--amber);
-  --chart-grid: var(--rule);
-  --chart-text: var(--mute);
-  --chart-marker: var(--amber);
-
-  /*
-   * r2.16 / r2.12(iv). The white fill takes the board's own darkest ground as ink (#000000 on
-   * #FFFFFF is 21:1); the border is `--danger`, which is this skin's published alert colour
-   * (#FF6B4A, 6.98:1 on the board ground) rather than a red named here.
-   */
-  --field-invalid-bg: #ffffff;
-  --field-invalid-text: var(--board);
-  --highlight-bg: #ffffff;
-}
-
-:root[data-skin='board'] body {
-  font-family: var(--chrome);
-}
-
-/* A board row: the display face, tabular figures, amber on near-black. */
-:root[data-skin='board'] .bd-row {
-  font-family: var(--disp);
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: var(--amber);
 }

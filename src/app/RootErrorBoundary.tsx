@@ -25,11 +25,11 @@ import { downloadText } from './download';
  * section 3's "a view imports copy(key), never a literal" does not bind. This
  * screen renders only after something below it has thrown, so every module it
  * reaches is a module the failure may already have implicated, and the copy
- * table is reached through an import chain (copy.ts pulls copy.limelight.ts
- * and copy.board.ts) rather than being a constant this file holds. It is also
- * unskinnable by construction: the boundary sits ABOVE the store, so the skin
- * preference is exactly what is unavailable, and every skin would render the
- * clinical string anyway. P9 Task 16 therefore retired the seven rows that
+ * table is reached through an import chain (copy.ts pulls copy.limelight.ts)
+ * rather than being a constant this file holds. It is also unskinnable by
+ * construction: the boundary sits ABOVE the store, so the skin preference is
+ * exactly what is unavailable, and a bare `copy()` here would render the
+ * base-table string anyway. P9 Task 16 therefore retired the seven rows that
  * duplicated these sentences (recovery.hero, recovery.advice,
  * recovery.exported, recovery.confirm, recovery.cleared.hero,
  * recovery.cleared.advice, button.clearData) rather than wiring a reader to

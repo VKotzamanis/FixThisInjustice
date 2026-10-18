@@ -31,12 +31,6 @@ beforeEach(() => {
 });
 
 describe('Marquee', () => {
-  it('renders nothing on the clinical skin, which carries no ticker', () => {
-    withSkin('clinical');
-    render(<Marquee items={ITEMS} label={LABEL} />);
-    expect(screen.queryByRole('button')).toBeNull();
-  });
-
   it('renders nothing when it has no items', () => {
     render(<Marquee items={[]} label={LABEL} />);
     expect(screen.queryByRole('button')).toBeNull();
@@ -48,14 +42,6 @@ describe('Marquee', () => {
     expect(document.querySelectorAll('.ll-marquee-item')).toHaveLength(ITEMS.length * 2);
     // The pixel art is limelight's alone; the item text is not.
     expect(document.querySelectorAll('img.ll-icon').length).toBeGreaterThan(0);
-  });
-
-  it('renders on the board skin with the same words and none of the art', () => {
-    withSkin('board');
-    render(<Marquee items={ITEMS} label={LABEL} />);
-    expect(screen.getByRole('button', { name: LABEL })).toBeTruthy();
-    expect(document.querySelectorAll('.ll-marquee-item')).toHaveLength(ITEMS.length * 2);
-    expect(document.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
 
   it('hides the moving copy from assistive technology and states the words once', () => {

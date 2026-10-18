@@ -2,12 +2,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SettingsView } from './SettingsView';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
+import type { CopyKey } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { displayLoad, toStoredLoad } from '../../domain/units';
 import { groupTimeZones } from '../../domain/dates';
 import type { Profile } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
+
+const copy = (key: CopyKey): string => copyFor('limelight', key);
 
 /**
  * The same fixture the targets view is tested against. Nothing here depends on the clock:
@@ -88,15 +91,15 @@ function fluidField(): HTMLElement {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -233,41 +236,26 @@ describe('motivation clip row in Settings', () => {
       screen.getByRole('heading', { name: copy('hero.motivationVideo') }),
     ).toBeInTheDocument();
   });
-});
 
-/**
- * The skin row (P8 Task 12). Same shape as the three rows above: this file holds only that
- * Settings mounts it, and SkinSettings.test.tsx owns what the picker then writes.
- */
-describe('skin row in Settings', () => {
-  it('mounts the skin picker', () => {
-    render(<SettingsView />);
-    expect(
-      screen.getByRole('group', { name: copy('label.settingsSkin') }),
-    ).toBeInTheDocument();
-  });
-
-  it('stands above the data section, and the wipe is still the last control', () => {
+  it('puts the look-and-sound row above the data section, and the wipe is still the last control', () => {
     /*
      * ORDER IS THE ARGUMENT. The data section holds the two destructive controls, and a screen
-     * that puts a wipe between the profile fields and a look-and-sound preference asks the user
-     * to walk past it to reach a checkbox. The data section stays last of the rows for exactly
-     * the reason its own comment gives; what moves is the skin row, from below it to above it.
-     *
-     * Asserted on DOM order rather than on the array, because the array is an implementation
-     * detail and the position on the screen is the fact.
+     * that puts a wipe between the profile fields and a sound preference asks the user to walk
+     * past it to reach a checkbox. Asserted on DOM order rather than on the array, because the
+     * array is an implementation detail and the position on the screen is the fact.
      */
     render(<SettingsView />);
     const headings = [...document.querySelectorAll('h2')].map((h) => h.textContent);
-    const skin = headings.indexOf(copy('hero.skin'));
+    const lookAndSound = headings.indexOf(copy('hero.skin'));
     const data = headings.indexOf(copy('hero.dataOnDevice'));
-    expect(skin).toBeGreaterThan(-1);
+    expect(lookAndSound).toBeGreaterThan(-1);
     expect(data).toBeGreaterThan(-1);
-    expect(skin).toBeLessThan(data);
+    expect(lookAndSound).toBeLessThan(data);
 
     // Nothing the user can press comes after the wipe.
     const buttons = [...document.querySelectorAll('button')];
-    const wipe = buttons.findIndex((b) => b.textContent === copy('button.wipeAll'));
+    const wipe = buttons.findIndex((button) => button.textContent === copy('button.wipeAll'));
+    expect(wipe).toBeGreaterThan(-1);
     expect(wipe).toBe(buttons.length - 1);
   });
 });
@@ -275,21 +263,16 @@ describe('skin row in Settings', () => {
 /*
  * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
  * them. P9 Task 12 gave the limelight table three of this screen's headings, `hero.profile`
- * among them, so the pair below now asserts the merge in both directions: the skin's own words
- * under limelight, and the clinical sentence under clinical. Every heading whose section the
- * limelight table leaves alone still falls through, which the copy suite decides by key. Both
- * sides here are read by key through `copyFor`, never as a literal.
+ * among them, so the case below asserts the skin's own words (it also asserted the clinical
+ * sentence under clinical until that skin was removed). Every heading whose section the
+ * limelight table leaves alone still falls through, which the copy suite decides by key. It is
+ * read by key through `copyFor`, never as a literal.
  */
 describe('SettingsView under a skin', () => {
-  it('reads its heading through the skin, and falls back to the default table', () => {
+  it('reads its heading through the skin', () => {
     pinSkin('limelight');
-    const view = render(<SettingsView />);
-    expect(screen.getByText(copyFor('limelight', 'hero.profile'))).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
     render(<SettingsView />);
-    expect(screen.getByText(copyFor('clinical', 'hero.profile'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'hero.profile'))).toBeInTheDocument();
   });
 });
 

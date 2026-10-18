@@ -5,7 +5,7 @@
 // This is the one Train component copy.limelight.ts names NO row for. That is the table's rule
 // 4 again: `button.logBodyMass` fronts a measurement that feeds the > 2 % dehydration
 // comparison, and `advice.fluidLoss` is the flag that comparison raises, so both stand in the
-// clinical sentence under every skin. The limelight suite therefore asserts the fall-through by
+// base sentence under every skin. The limelight suite therefore asserts the fall-through by
 // key rather than pretending to an override, and a row added to the table later fails here.
 //
 // `quantity` arrives as a prop, already resolved by TrainView from the same table, so the field
@@ -57,13 +57,13 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('BodyMassQuickLog: the clinical words', () => {
+describe('BodyMassQuickLog: the limelight words', () => {
   it('flags a loss past the threshold in the default words, with its arithmetic behind why?', () => {
-    renderLog('clinical');
-    submitMass('clinical', POST_KG);
+    renderLog('limelight');
+    submitMass('limelight', POST_KG);
 
-    expect(screen.getByText(copy('advice.fluidLoss'))).toBeInTheDocument();
-    expect(screen.getByText(copy('disclosure.why'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.fluidLoss'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'disclosure.why'))).toBeInTheDocument();
     // Sign convention: the fraction is POSITIVE for a loss, so 100 -> 97 kg is 3.0 %.
     expect(
       screen.getByText(FORMAT.fluidLossWhy('3.0', DEHYDRATION_LOSS_FRACTION * PERCENT)),
@@ -72,7 +72,7 @@ describe('BodyMassQuickLog: the clinical words', () => {
 });
 
 describe('BodyMassQuickLog: the limelight voice', () => {
-  it("keeps the control and the flag in the clinical words, which is the table's own rule", () => {
+  it("keeps the control and the flag in the base-table words, which is the table's own rule", () => {
     // Asserted by key on both sides: the table names no row for either, so `copyFor` returns
     // the default. A row added later changes these two expectations and this test fails.
     expect(copyFor('limelight', 'button.logBodyMass')).toBe(copy('button.logBodyMass'));
@@ -111,32 +111,5 @@ describe('BodyMassQuickLog: the limelight voice', () => {
     const entries = useAppStore.getState().bodyMass[FUN_PROFILE_ID] ?? [];
     expect(entries).toHaveLength(1);
     expect(entries[0]?.massKg).toBe(POST_KG); // [kg]
-  });
-});
-
-/*
- * The departures board (P8 close-out D).
- *
- * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
- * and NONE of them is a key this component renders. The smoke case therefore asserts the other
- * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
- * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
- * a board row added for one of these keys later moves this expectation with it.
- */
-describe('BodyMassQuickLog under the departures board', () => {
-  it('mounts and falls through to the default words, the flag included', () => {
-    expect(() => {
-      renderLog('board');
-    }).not.toThrow();
-
-    submitMass('board', POST_KG);
-
-    expect(copyFor('board', 'advice.fluidLoss')).toBe(copy('advice.fluidLoss'));
-    expect(screen.getByText(copyFor('board', 'advice.fluidLoss'))).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        FORMAT.fluidLossWhy('3.0', DEHYDRATION_LOSS_FRACTION * PERCENT, SKIN_COPY.board),
-      ),
-    ).toBeInTheDocument();
   });
 });

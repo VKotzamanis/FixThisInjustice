@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import type { ReactElement } from 'react';
 import { useFormCuesModal } from './FormCuesModal';
 import { TrainingModalsProvider } from './TrainingModalsProvider';
-import { copy } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { FORM_CUES, WARMUP_NOTICE } from '../../content/formCues';
 import type { FormCue } from '../../content/formCues';
 
@@ -62,11 +62,11 @@ describe('FormCuesModal', () => {
     const text = dialog.textContent ?? '';
     // The notice is above the first section heading, not appended at the end.
     expect(text.indexOf(WARMUP_NOTICE)).toBeGreaterThanOrEqual(0);
-    expect(text.indexOf(WARMUP_NOTICE)).toBeLessThan(text.indexOf(copy('label.cueSetup')));
+    expect(text.indexOf(WARMUP_NOTICE)).toBeLessThan(text.indexOf(copyFor('limelight', 'label.cueSetup')));
 
-    expect(screen.getByText(copy('label.cueSetup'))).toBeTruthy();
-    expect(screen.getByText(copy('label.cueExecution'))).toBeTruthy();
-    expect(screen.getByText(copy('label.cueMistakes'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'label.cueSetup'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'label.cueExecution'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'label.cueMistakes'))).toBeTruthy();
     for (const line of [...cue.setup, ...cue.execution, ...cue.mistakes]) {
       expect(screen.getByText(line)).toBeTruthy();
     }
@@ -94,8 +94,8 @@ describe('FormCuesModal', () => {
     renderWith('db-overhead-press', 'Dumbbell overhead press');
     openFrom();
     expect(screen.getByRole('dialog')).toBeTruthy();
-    expect(screen.getByText(copy('advice.noFormCues'))).toBeTruthy();
-    expect(screen.queryByText(copy('label.cueSetup'))).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'advice.noFormCues'))).toBeTruthy();
+    expect(screen.queryByText(copyFor('limelight', 'label.cueSetup'))).toBeNull();
   });
 
   it('closes on Escape and returns focus to the opener', () => {

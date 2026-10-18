@@ -79,22 +79,6 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('HydrationBanner: the clinical words', () => {
-  it('renders the default in-session cue, with no glyph beside it', () => {
-    const container = renderBanner('clinical');
-    expect(screen.getByText(copy('advice.drinkToThirst'))).toBeInTheDocument();
-    // Copy contract R6: the clinical skin is emoji-free and glyph-free, and the limelight icon
-    // set belongs to exactly one skin (src/skins/limelight/Icon.tsx).
-    expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
-  });
-
-  it('states the daily shortfall and names the drink control in the default words', () => {
-    renderShortfall('clinical');
-    expect(screen.getByText(FORMAT.beverageShortfall('0 mL', '3000 mL'))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: FORMAT.logVolume('250 mL') })).toBeInTheDocument();
-  });
-});
-
 describe('HydrationBanner: the limelight voice', () => {
   it('renders the skin cue for the same domain decision, under its own icon', () => {
     const container = renderBanner('limelight');
@@ -141,32 +125,5 @@ describe('HydrationBanner: the limelight voice', () => {
       screen.getByText(FORMAT.beverageShortfall('0 mL', '3000 mL', SKIN_COPY.limelight)),
     ).toBeInTheDocument();
     expect(screen.queryByText(FORMAT.beverageShortfall('0 mL', '3000 mL'))).toBeNull();
-  });
-});
-
-/*
- * The departures board (P8 close-out D).
- *
- * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
- * so most of this screen falls through to the clinical string under it. One smoke case per
- * Train component asserts BOTH halves of that: the component mounts under `ui.skin = 'board'`
- * without throwing, and the key it renders resolves to whatever `copyFor('board', ...)` says -
- * the board's own word where the table has one, the default where it does not. Asserting by
- * key rather than by literal is what makes the case survive a row being added later.
- */
-describe('HydrationBanner under the departures board', () => {
-  it('mounts and states the in-session cue in the board words, with no glyph', () => {
-    // `advice.drinkToThirst` is round two's own hydration row, with the design's em-dash
-    // replaced by the colon R5 prescribes (copy.board.ts records that one departure).
-    expect(() => {
-      renderBanner('board');
-    }).not.toThrow();
-
-    expect(screen.getByText(copyFor('board', 'advice.drinkToThirst'))).toBeInTheDocument();
-    expect(screen.queryByText(copy('advice.drinkToThirst'))).toBeNull();
-    // The icon set belongs to limelight alone, so the board shows the words and nothing else.
-    // Queried from the document rather than a container handle: the render happens inside the
-    // callback above, so there is nothing for a local to be narrowed from.
-    expect(document.body.querySelectorAll('img.ll-icon')).toHaveLength(0);
   });
 });

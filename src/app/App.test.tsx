@@ -10,7 +10,8 @@ import { LEGACY_V2_KEY, STORAGE_KEY } from '../store/persistence';
 import { makeBlankState } from '../test/migrationFactories';
 import { installFakeStorage } from '../store/testStorage';
 import { downloadText } from './download';
-import { FORMAT, LIMELIGHT_COPY, copy, copyFor } from '../content/copy';
+import { FORMAT, LIMELIGHT_COPY, copy as defaultCopy, copyFor } from '../content/copy';
+import type { CopyKey } from '../content/copy';
 import { WARMUP_NOTICE } from '../content/formCues';
 import { unlockAudio } from '../ui/audio/chime';
 import type { LocalDate, SkinId, WeeklyReview } from '../domain/types';
@@ -21,6 +22,8 @@ import { MONDAY, NOW_MS, PROFILE_ID, TZ_ATHENS, seedState } from '../test/schedu
 import { VIEWS } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { resetPlanBrowse } from '../ui/planBrowse';
+
+const copy = (key: CopyKey): string => copyFor('limelight', key);
 
 /**
  * The download helper is the seam. It is the one thing in these tests that
@@ -116,16 +119,15 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a view that reads the
- * table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them.
+ * table through `useCopy()` renders the limelight words, and the assertions in this file quote
+ * them through `copyFor('limelight', key)` (the local `copy` below). The pin restates the only
+ * skin; until clinical was removed it pinned clinical and the assertions quoted the default
+ * table.
  *
  * A seed that REPLACES `ui` puts the shipped skin back, so it is a named function rather than
- * an inline hook body: a test that reseeds calls it again, after the seed. It takes the skin as
- * an argument because the strip and the picker are now read under each of the three, and a
- * second helper that set a different field would be the drift this one exists to prevent.
+ * an inline hook body: a test that reseeds calls it again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((state) => ({ ui: { ...state.ui, skin } }));
 }
 
@@ -260,16 +262,15 @@ describe('CRT presentation preferences', () => {
 
 /**
  * The top bar's per-view instruction, and the plan position it now carries (P10 Brief D, part
- * 1). This suite's file pins `clinical` by default (the module-scoped `pinSkin()` above), which
- * is exactly the skin the brief asks for a static fallback on, so the plain assertions below
- * exercise that path; the marquee path (limelight, board) gets its own test with the skin
- * pinned back. `advice.todayInstruction` is the row under test throughout because `ui.lastView`
- * defaults to `'today'` (src/domain/schema.ts) and none of these tests changes it.
+ * 1). The marquee carries both, and its static copy (`.ll-marquee-static`, one line per item) is
+ * what these tests read. The static fallback line the brief asked for on clinical, where the
+ * marquee rendered nothing, went with that skin. `advice.todayInstruction` is the row under test
+ * throughout because `ui.lastView` defaults to `'today'` (src/domain/schema.ts) and none of these
+ * tests changes it.
  *
  * The session position itself stays covered by SessionIndicator.test.tsx, which renders the
  * standalone component directly; the brief displaced it into the marquee rather than dropping
- * it, and src/app/App.tsx's own comment names the trade-off this suite's third test asserts:
- * on clinical, where Marquee.tsx renders nothing by design, the position is not shown at all.
+ * it.
  */
 describe('top bar', () => {
   const LABELS = ['Push', 'Legs', 'Pull', 'Push', 'Legs', 'Pull'];
@@ -287,21 +288,22 @@ describe('top bar', () => {
     // route, so setup carries one instruction of its own.
     render(<App />);
 
-    const instruction = within(screen.getByRole('banner')).getByTestId('topbar-instruction');
-    expect(instruction.textContent).toBe(copy('advice.setupInstruction'));
+    const instruction = screen.getByRole('banner').querySelector('.ll-marquee-static');
+    expect(instruction).not.toBeNull();
+    expect(instruction?.textContent).toBe(copy('advice.setupInstruction'));
   });
 
-  it('falls back to a static instruction line on clinical, once a profile exists', () => {
+  it('carries the instruction and plan position in limelight static marquee copy', () => {
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
 
     render(<App />);
 
-    const instruction = within(screen.getByRole('banner')).getByTestId('topbar-instruction');
-    // The static line is built from the SAME items the marquee gets, so clinical keeps the
-    // session position SessionIndicator used to carry. Building it from the instruction alone
-    // dropped a shipped fact, described in-file as visible from every view, on one skin of three.
-    expect(instruction.textContent).toContain(copy('advice.todayInstruction'));
-    expect(instruction.textContent).toContain(FORMAT.planPositionLabel(1, LABELS.length, ''));
+    const staticCopy = screen.getByRole('banner').querySelector('.ll-marquee-static');
+    expect(staticCopy).not.toBeNull();
+    expect(staticCopy?.textContent).toContain(copy('advice.todayInstruction'));
+    expect(staticCopy?.textContent).toContain(
+      FORMAT.planPositionLabel(1, LABELS.length, '', LIMELIGHT_COPY),
+    );
   });
 
   it('carries the instruction and the plan position in the marquee on limelight', () => {
@@ -710,7 +712,6 @@ describe('skin attribute', () => {
 
   it('mirrors the stored skin onto the document root and removes it on unmount', () => {
     /*
-     * This suite pins the skin to clinical so its assertions quote the default copy table.
      * This test is about the SHIPPED default, so it puts the shipped `ui` back first and
      * states what that default is.
      */
@@ -1058,8 +1059,8 @@ describe('the tab strip under a skin', () => {
   beforeEach(() => {
     installFakeStorage();
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
-    // seedState pins clinical (src/test/scheduleFixtures.ts, emptyState), so each case below
-    // states the skin it is about rather than inheriting one.
+    // seedState writes the shipped skin (src/test/scheduleFixtures.ts, emptyState); each case
+    // below still states the skin it is about rather than inheriting one.
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
   });
 
@@ -1073,52 +1074,15 @@ describe('the tab strip under a skin', () => {
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'nav.today') }),
     ).toBeInTheDocument();
-    // The clinical word is GONE rather than merely joined: a strip carrying both would be the
+    // The base-table word is GONE rather than merely joined: a strip carrying both would be the
     // same defect in a different shape.
-    expect(screen.queryByRole('button', { name: copyFor('clinical', 'nav.today') })).toBeNull();
-  });
-
-  it('names them in the board words, falling back per key rather than per table', () => {
-    pinSkin('board');
-    render(<App />);
-
+    expect(screen.queryByRole('button', { name: defaultCopy('nav.today') })).toBeNull();
+    // Two more tabs, kept from the board case this file carried until that skin was removed.
     expect(
-      screen.getByRole('button', { name: copyFor('board', 'nav.train') }),
-    ).toBeInTheDocument();
-    // BOARD_COPY names no landmark and no Targets tab, so both fall through to the default.
-    // The fall-through is per KEY, which is what makes a partial override table safe.
-    expect(
-      screen.getByRole('navigation', { name: copyFor('clinical', 'nav.label') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'nav.train') }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'nav.targets') }),
-    ).toBeInTheDocument();
-  });
-
-  it('renders the default table under clinical', () => {
-    pinSkin('clinical');
-    render(<App />);
-
-    expect(
-      screen.getByRole('navigation', { name: copyFor('clinical', 'nav.label') }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'nav.today') }),
-    ).toBeInTheDocument();
-  });
-
-  it('follows a skin changed while the strip is on screen', () => {
-    pinSkin('clinical');
-    render(<App />);
-
-    act(() => {
-      useAppStore.getState().setUi({ skin: 'limelight' });
-    });
-
-    // A label read at module load cannot do this at all: the words have to be resolved at
-    // RENDER for a live skin change to reach the strip.
-    expect(
-      screen.getByRole('button', { name: copyFor('limelight', 'nav.settings') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'nav.targets') }),
     ).toBeInTheDocument();
   });
 });
@@ -1285,7 +1249,7 @@ describe('the top bar banner', () => {
   it('names the view once setup is done, and follows a tab change', () => {
     installFakeStorage();
     useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<App />);
 
     act(() => {
@@ -1317,71 +1281,9 @@ describe('the top bar banner', () => {
     installFakeStorage();
     const base = seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY });
     useAppStore.setState({ ...base, ui: { ...base.ui, lastView: 'a-view-from-the-future' } });
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<App />);
 
     expect(banner()).toBe(copy('nav.targets'));
-  });
-});
-
-/*
- * Round 2 claim r2.05: "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any
- * skin picker or any app settings."
- */
-describe('the skin picker during setup', () => {
-  function seedSetupScreen(): void {
-    installFakeStorage();
-    useAppStore.setState((s) => ({ ui: { ...s.ui, introSeen: true, bootSeen: true } }));
-    pinSkin('clinical');
-  }
-
-  it('is reachable with no profile in the document, and changes the skin', () => {
-    seedSetupScreen();
-
-    render(<App />);
-
-    // No profile at all: the state the whole nine-step wizard runs in, and the state in which
-    // the tab strip -- and with it the Settings tab -- does not exist.
-    expect(useAppStore.getState().activeProfileId).toBeNull();
-    expect(screen.queryByRole('navigation', { name: copy('nav.label') })).toBeNull();
-
-    const picker = screen.getByTestId('topbar-skin');
-    fireEvent.click(within(picker).getByText(copy('disclosure.skin')));
-
-    fireEvent.click(within(picker).getByLabelText(copy('option.skinBoard')));
-    expect(useAppStore.getState().ui.skin).toBe('board');
-
-    fireEvent.click(within(picker).getByLabelText(copy('option.skinLimelight')));
-    expect(useAppStore.getState().ui.skin).toBe('limelight');
-  });
-
-  it('offers the skin row alone, not the Settings view that needs a profile', () => {
-    seedSetupScreen();
-
-    render(<App />);
-    const picker = screen.getByTestId('topbar-skin');
-
-    // The three skins and the two switches SkinSettings owns are there...
-    expect(within(picker).getByLabelText(copy('option.skinClinical'))).toBeInTheDocument();
-    expect(within(picker).getByLabelText(copy('label.settingsSounds'))).toBeInTheDocument();
-    // ...and nothing that reads a profile is. SettingsView draws these three headings off
-    // `Profile`, and mounting it here would throw rather than render.
-    expect(screen.queryByText(copy('hero.profile'))).toBeNull();
-    expect(screen.queryByText(copy('hero.equipmentSteps'))).toBeNull();
-    expect(screen.queryByText(copy('hero.hydration'))).toBeNull();
-  });
-
-  it('disappears the moment a profile exists', () => {
-    installFakeStorage();
-    useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
-    pinSkin('clinical');
-
-    render(<App />);
-
-    expect(screen.queryByTestId('topbar-skin')).toBeNull();
-    // The skin is reachable the ordinary way again, through the tab strip.
-    expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'nav.settings') }),
-    ).toBeInTheDocument();
   });
 });

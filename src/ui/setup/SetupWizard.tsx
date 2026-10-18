@@ -978,8 +978,8 @@ function SexRationaleModal(props: { onClose: () => void }): JSX.Element {
       {/*
        * SEGMENT TWO, r2.12(iv). Three subsection headings, his words and his order, with the wall
        * of text under each broken into points. The heading itself takes the theme colour on a
-       * white highlight ("fuchsia pink here"), which is `var(--accent)` in setup.css so clinical
-       * and board resolve their own rather than inheriting limelight's pink.
+       * white highlight ("fuchsia pink here"), which is `var(--accent)` in setup.css, so a skin
+       * other than limelight would resolve its own rather than inherit limelight's pink.
        */}
       <div className="wiz-modal-segment">
         <h3 className="wiz-modal-subtitle wiz-modal-hrt">{SEX_RATIONALE_HRT_TITLE}</h3>
@@ -2431,7 +2431,7 @@ export function SetupWizard(): JSX.Element {
            * distinguish it aesthetically and make it more 'fun'." STYLE ONLY. The value is the
            * user's own text and nothing here alters it: no capitalisation, no trimming for
            * display, no substitution. `wiz-name` sets the skin's display face and accent through
-           * tokens, so limelight, clinical and board each resolve their own.
+           * tokens, so the face and colour are the skin's, not this component's.
            */}
           <div className="wiz-field">
             <label htmlFor="f-name">{t('label.name')}</label>
@@ -3571,7 +3571,7 @@ export function SetupWizard(): JSX.Element {
             three colours he specified with the word beside each one.
 
             THE SURFACE IS A LAYOUT CONSTRAINT, NOT A STYLE. `.wiz-calendar` paints
-            `--band-surface`, which is `--bg` in clinical, `--board` in board, and the INVERTED
+            `--band-surface`, which is `--bg` in limelight, `--limelight` in limelight, and the INVERTED
             PANEL (#000000) in limelight. All three pastels measure 1.0 to 1.4:1 against
             limelight's lime `--bg`, below even WCAG 1.4.11's 3:1 non-text floor, so on that skin
             the fills would be invisible on the bare page. tokens.css carries the measured table.

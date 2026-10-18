@@ -5,7 +5,7 @@ import type { CopyKey } from '../content/copy';
 import { useCopy, useCopyOverrides } from '../content/useCopy';
 import { useAppStore } from '../store';
 import { useFirstGestureUnlock } from '../skins/sfx';
-import { useApplySkin, useSkin } from '../skins/skinContext';
+import { useApplySkin } from '../skins/skinContext';
 import type { LimelightIconName } from '../skins/limelight/icons';
 import type { SaveErrorReason } from '../store';
 import {
@@ -35,7 +35,6 @@ import { MigrationGate } from '../ui/migration/MigrationGate';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { SetupBannerProvider, useSetupBanner } from '../ui/setup/setupBanner';
-import { SkinSettings } from '../ui/settings/SkinSettings';
 import { AtlasView } from '../ui/views/AtlasView';
 import { LogView } from '../ui/views/LogView';
 import { PlanView } from '../ui/views/PlanView';
@@ -478,40 +477,6 @@ function TopbarTitle(): ReactElement {
 }
 
 /**
- * The skin picker, reachable from the top bar while setup is running (round 2, r2.05).
- *
- * "After the Skip I am tossed as the 'Setup: pounds' etc. I do not see any skin picker or any app
- * settings." Confirmed gap: the tab strip is inside `ViewShell`, which is not mounted until a
- * profile exists, so nothing in the nine-step wizard could reach the skin. Someone who dislikes
- * the default could not change it until the whole wizard was done.
- *
- * THE SKIN PICKER ALONE, NOT THE SETTINGS VIEW. `SettingsView` reads the active profile for its
- * units, reminders, targets and data sections, and mounting it with no profile is a crash rather
- * than a screen. `SkinSettings` was read before this was written and stands alone: it reads
- * `ui.skin`, `ui.sounds` and `ui.hotkeys` and nothing else, touches no profile, and needs no
- * provider (`useSkin` is a store selector, by that module's own design note).
- *
- * A `<details>` rather than a modal, matching `disclosure.why` and `disclosure.examples`
- * elsewhere in the app: the platform control brings its own keyboard and screen-reader
- * behaviour, and a dialog here would need a focus trap and a scroll lock for a three-radio row.
- *
- * Gated on there being no profile, which is the same condition `App` uses to decide to render
- * the wizard at all, so the control appears exactly while setup is reachable and never after.
- */
-function TopbarSkinPicker(): ReactElement | null {
-  const t = useCopy();
-  const profile = useActiveProfile();
-  if (profile !== null) return null;
-  return (
-    <details className="topbar-skin" data-testid="topbar-skin">
-      <summary>{t('disclosure.skin')}</summary>
-      <div className="topbar-skin-panel">
-        <SkinSettings />
-      </div>
-    </details>
-  );
-}
-
 /**
  * The top bar's moving instruction, and the session position SessionIndicator used to carry
  * (P10 Brief D, part 1).
@@ -523,10 +488,6 @@ function TopbarSkinPicker(): ReactElement | null {
  * ViewShell's exactly, so the instruction shown here can never name a different view than the
  * tab strip renders below it.
  *
- * ON CLINICAL, Marquee renders nothing by design (its own doc comment). The brief asks for a
- * static instruction line there instead of an empty slot, so this component supplies one itself
- * rather than asking Marquee to do something it deliberately does not.
- *
  * THE SESSION POSITION IS DISPLACED HERE FROM SessionIndicator, which the brief describes as "a
  * shipped feature ... visible from every view" that this task moves "into the marquee as its
  * own item rather than dropping it". src/ui/components/SessionIndicator.tsx is left standing,
@@ -537,13 +498,8 @@ function TopbarSkinPicker(): ReactElement | null {
  * its own tabular-nums guarantee, neither of which a MarqueeItem (an icon plus a plain string)
  * has anywhere to put.
  *
- * ONE CONSEQUENCE OF THAT MOVE, STATED PLAINLY: Marquee renders nothing on clinical, so on that
- * skin the session position is no longer visible in the top bar at all. It is not duplicated
- * into the static fallback above, because "move it into the marquee AS ITS OWN ITEM" names one
- * destination, not two.
  */
 function TopbarTicker(): ReactElement | null {
-  const skin = useSkin();
   const t = useCopy();
   const overrides = useCopyOverrides();
   const profile = useActiveProfile();
@@ -579,20 +535,6 @@ function TopbarTicker(): ReactElement | null {
         overrides,
       ),
     });
-  }
-
-  /*
-   * ON CLINICAL, Marquee renders nothing by design, so the bar shows the same items as a static
-   * line. It is built from the SAME `items` array rather than from the instruction alone: the
-   * first version returned early here, before the session position was appended, which silently
-   * dropped a shipped fact (SessionIndicator, "visible from every view") on one of three skins.
-   */
-  if (skin === 'clinical') {
-    return (
-      <span className="topbar-instruction" data-testid="topbar-instruction">
-        {items.map((item) => item.text).join(' \u00b7 ')}
-      </span>
-    );
   }
 
   return <Marquee items={items} label={t('button.pauseUpdates')} />;
@@ -691,8 +633,6 @@ export function App(): ReactElement {
                * its two-element layout through setup, exactly as SessionIndicator's absence did.
                */}
               <TopbarTicker />
-              {/* The one way to the skin picker while setup is running (round 2, r2.05). */}
-              <TopbarSkinPicker />
             </header>
 
             <main>

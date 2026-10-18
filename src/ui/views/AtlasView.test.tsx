@@ -21,7 +21,7 @@
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { DROPPED_CARD_IDS, SPECIMEN_BY_ID, SPECIMEN_CARDS } from '../../content/specimenCards';
 import type { SpecimenCard, SpecimenRarity } from '../../content/specimenCards';
 import { useAppStore } from '../../store';
@@ -72,15 +72,15 @@ beforeEach(() => {
 
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
- * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
- * each of them; what a skin changes has its own test.
+ * the table through `useCopy()` renders the limelight words, and the assertions in this file
+ * quote them through `copyFor('limelight', key)`. The pin restates the only skin; until clinical
+ * was removed it pinned clinical and the assertions quoted the default table.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -156,7 +156,7 @@ describe('AtlasView accessible names', () => {
     const slot = screen.getByTestId('atlas-card-c003');
     expect(slot.getAttribute('role')).toBe('img');
     expect(slot).toHaveAccessibleName(
-      FORMAT.atlasLockedName(copy('label.rarityCommon'), copy('status.undiscovered')),
+      FORMAT.atlasLockedName(copyFor('limelight', 'label.rarityCommon'), copyFor('limelight', 'status.undiscovered')),
     );
   });
 });
@@ -166,8 +166,8 @@ describe('AtlasView locked slots', () => {
     render(<AtlasView />);
     const card = SPECIMEN_BY_ID['c003']!; // common, not in OWNED
     const slot = screen.getByTestId('atlas-card-c003');
-    expect(slot.textContent).toContain(copy('status.undiscovered'));
-    expect(slot.textContent).toContain(copy('label.rarityCommon'));
+    expect(slot.textContent).toContain(copyFor('limelight', 'status.undiscovered'));
+    expect(slot.textContent).toContain(copyFor('limelight', 'label.rarityCommon'));
     expect(slot.textContent).not.toContain(card.title);
     expect(slot.textContent).not.toContain(card.category);
     // A slot with nothing to reveal is not a control: it opens no dialog, so it is not a
@@ -216,7 +216,7 @@ describe('AtlasView card detail', () => {
   it('closes the dialog on its Close control', () => {
     render(<AtlasView />);
     fireEvent.click(screen.getByTestId('atlas-card-c001'));
-    fireEvent.click(within(screen.getByRole('dialog')).getByText(copy('button.closeModal')));
+    fireEvent.click(within(screen.getByRole('dialog')).getByText(copyFor('limelight', 'button.closeModal')));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });
@@ -250,14 +250,9 @@ describe('AtlasView and dropped legacy ids', () => {
  * table instead of having to be rewritten beside it.
  */
 describe('AtlasView under a skin', () => {
-  it('states the collection in the limelight words, and in the default ones under clinical', () => {
+  it('states the collection in the limelight words', () => {
     pinSkin('limelight');
-    const view = render(<AtlasView />);
-    expect(screen.getByText(copyFor('limelight', 'advice.atlas'))).toBeInTheDocument();
-    view.unmount();
-
-    pinSkin('clinical');
     render(<AtlasView />);
-    expect(screen.getByText(copyFor('clinical', 'advice.atlas'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.atlas'))).toBeInTheDocument();
   });
 });
