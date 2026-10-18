@@ -9,7 +9,7 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 
 ## Branches and tags
 - `main` only. Built 2026-10-18 on top of the cleanup: B1-B6, N5, N7, L1-L5, L7, L8, F1, review fixes R1-R3/R5/R6 (`git log --oneline pre-cleanup-2026-10-17..main`).
-- Not pushed. `origin/main` is the pre-cleanup state. History scrub approved by the owner but blocked by the agent permission classifier: owner runs it (`docs/private/history-scrub.md`), then pushes.
+- Pushed and deployed 2026-10-18 (live bundle verified). History scrubbed by the owner (0 private terms in 420 commits, 0 in messages); `PRIVACY_PATTERN` secret set, CI privacy check runs (PASS). Agents cannot push, force-push or write secrets (classifier): the owner runs those with `!`.
 - tag `archive/design-editor`: local design editor (owner: never helped). tag `pre-cleanup-2026-10-17`: tree before the cleanup.
 - Backup outside the repo, pre-history-rewrite: `~/Desktop/Claude/backups/FixThisInjustice-2026-10-18/`.
 
@@ -27,4 +27,4 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 - No sound files (`public/sfx/`), no motivation clip (`public/media/`), app icon still the previous app's.
 
 ## Decisions log
-- 2026-10-18 restart: platform stays a web page; limelight only; design tools and review-catalogue machinery removed; docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE/runbooks/design; owner-private material moved to `docs/private/` (gitignored); history scrub of private identifiers pending owner approval. Owner's answers: `docs/private/owner-feedback/restart-2026-10-18.md`.
+- 2026-10-18 restart: platform stays a web page; limelight only; design tools and review-catalogue machinery removed; docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE/runbooks/design; owner-private material moved to `docs/private/` (gitignored); history scrubbed of private identifiers (owner ran it). Owner's answers: `docs/private/owner-feedback/restart-2026-10-18.md`.
