@@ -1,0 +1,29 @@
+/*
+ * The status marks (StatusMark.tsx). Tokens only (AGENTS.md rule 5).
+ *
+ * The ink is currentColor, so a mark takes the colour of the row it sits in: ink on the lime
+ * ground (10.91:1, tokens.css section 2.3 table) and --fine for a recessive rest day (4.98:1).
+ * The two chips are fills BEHIND the ink, which is the only job pink has on lime: ink on the pink
+ * chip is 7.75:1 and ink on the white chip is 21:1. Neither chip is the mark's only cue; the ring
+ * and the check or cross carry the state in shape.
+ */
+.status-mark {
+  display: inline-block;
+  flex: none;
+  vertical-align: middle;
+  /* [CSS px] One grid unit per pixel; the width and height attributes say the same. */
+  width: 12px;
+  height: 12px;
+}
+
+.status-mark .sm-ink {
+  fill: currentColor;
+}
+
+.status-mark .sm-chip-completed {
+  fill: var(--accent);
+}
+
+.status-mark .sm-chip-missed {
+  fill: var(--highlight-bg);
+}

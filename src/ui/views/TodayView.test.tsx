@@ -584,6 +584,36 @@ describe('TodayView: the 14-day strip', () => {
     expect(within(rows[1] as HTMLElement).getByLabelText(copyFor('limelight', 'status.dayPaused'))).toBeTruthy();
   });
 
+  it('draws every row with the shared status mark of its own state', () => {
+    // Stylize survey item 6: the strip and the Log grid share one mark set (StatusMark), so a
+    // completed day is the same pink chip with an ink check in both places, never a pink stroke.
+    setState({
+      ...useAppStore.getState(),
+      assignments: {
+        [PROFILE_ID]: [
+          {
+            date: MONDAY,
+            sessionId: 's-1',
+            sourceIndex: 0,
+            status: 'completed',
+            startedAt: NOW_MS,
+            completedAt: NOW_MS,
+            skipReason: null,
+          },
+        ],
+      },
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: TUESDAY, to: WEDNESDAY, reason: null }] },
+    });
+    render(<TodayView />);
+    const rows = screen.getAllByTestId('strip-day');
+    for (const row of rows) {
+      const mark = row.querySelector('svg.status-mark');
+      expect(mark?.getAttribute('data-mark')).toBe(row.getAttribute('data-status'));
+    }
+    expect(rows[0]?.querySelector('svg.status-mark')?.getAttribute('data-shape')).toBe('chip-check');
+    expect(rows[1]?.querySelector('svg.status-mark')?.getAttribute('data-shape')).toBe('bars');
+  });
+
   it('takes the list name from the heading, and names each glyph exactly once', () => {
     render(<TodayView />);
     const list = screen.getByRole('list', { name: copyFor('limelight', 'hero.nextFourteenDays') });

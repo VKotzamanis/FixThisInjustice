@@ -22,6 +22,7 @@ import { unlockAudio } from '../audio/chime';
 import { Intervention } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
+import { StatusMark } from '../components/StatusMark';
 import { TimeCapsule } from '../components/TimeCapsule';
 import { WeekStamp } from '../components/WeekStamp';
 import {
@@ -97,8 +98,9 @@ const STATUS_KEY: Record<DayStatus, CopyKey> = {
  *
  * Master plan section 3 bans emoji from the default skin, and a glyph taken from the text font
  * is at the mercy of whatever the platform substitutes for it (a check mark renders as an
- * emoji on some phones and as a dingbat on others). These are two-line SVG figures on a 12-unit
- * grid, so they scale with the row and inherit its colour.
+ * emoji on some phones and as a dingbat on others). The marks are StatusMark's pixel grids
+ * (stylize survey 2026-10-18, item 6), the same set the Log compliance grid draws, so a status
+ * looks the same on both screens and differs from its neighbours by shape, not only by shade.
  *
  * The name is carried by aria-label alone. A <title> child names the graphic too, and the two
  * were the same string: the accessible-name computation prefers aria-label, so the element was
@@ -107,26 +109,7 @@ const STATUS_KEY: Record<DayStatus, CopyKey> = {
  */
 function StatusGlyph(props: { status: DayStatus }): JSX.Element {
   const c = useCopy();
-  const name = c(STATUS_KEY[props.status]);
-  return (
-    <svg
-      className="sd-glyph"
-      viewBox="0 0 12 12"
-      role="img"
-      aria-label={name}
-      focusable="false"
-      data-glyph={props.status}
-    >
-      {props.status === 'completed' && <polyline points="2,6.4 4.8,9.2 10,3" />}
-      {props.status === 'skipped' && <path d="M3 3 L9 9 M9 3 L3 9" />}
-      {props.status === 'in-progress' && (
-        <polygon points="3.5,2.5 9.5,6 3.5,9.5" className="sd-fill" />
-      )}
-      {props.status === 'paused' && <path d="M4.5 2.5 L4.5 9.5 M7.5 2.5 L7.5 9.5" />}
-      {props.status === 'planned' && <circle cx="6" cy="6" r="1.7" className="sd-fill" />}
-      {props.status === 'rest' && <path d="M3 6 L9 6" />}
-    </svg>
-  );
+  return <StatusMark kind={props.status} label={c(STATUS_KEY[props.status])} />;
 }
 
 /**

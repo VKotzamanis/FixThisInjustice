@@ -80,6 +80,10 @@ export default defineConfig({
         /tokens\.css(\?|$)/,
         /limelight\.css(\?|$)/,
         /appShell\.css(\?|$)/,
+        // Stylize survey items 1, 2, 6 and 9 (2026-10-18): the pink-type sweep and the status
+        // marks are colour rules jsdom cannot compute, so src/ui/styles/stickerStates.test.ts and
+        // src/ui/components/StatusMark.test.tsx read these sheets as text through ?raw.
+        /(views|toastQueue|motivation|statusMark)\.css(\?|$)/,
         /setup\.css(\?|$)/,
         // train.css (ROADMAP F1): the rest game's reduced-motion rule, its 44 px key targets and
         // its token-only colours are CSS guarantees jsdom cannot compute, so

@@ -273,35 +273,14 @@
 }
 
 /*
- * The status marks. Stroked, not filled, except the two figures that read as solid (the
- * in-progress triangle and the planned dot). currentColor throughout, so a row inherits the
- * strip's colour and the marks cannot drift from it.
+ * The status marks are StatusMark's pixel grids (src/ui/components/statusMark.css draws them in
+ * currentColor), so a row's mark is ink like its text. A rest day's mark is recessive with its
+ * label: --fine on lime is 4.98:1. The completed mark's pink chip and the skipped mark's hatch
+ * are shapes, so no state here needs a colour of its own (the pink stroke at 1.41:1 and the red
+ * reached through the undefined --bad token are gone).
  */
-.view.today .sd-glyph {
-  width: 0.85rem;
-  height: 0.85rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.view.today .sd-glyph .sd-fill {
-  fill: currentColor;
-  stroke: none;
-}
-
-.view.today .strip-day[data-status='completed'] .sd-glyph {
-  color: var(--accent, #a3e635);
-}
-
-.view.today .strip-day[data-status='skipped'] .sd-glyph {
-  color: var(--bad, #f87171);
-}
-
-.view.today .strip-day[data-status='rest'] .sd-glyph {
-  color: var(--text-2, #8e97a3);
+.view.today .strip-day[data-status='rest'] .status-mark {
+  color: var(--text-2);
 }
 
 /*

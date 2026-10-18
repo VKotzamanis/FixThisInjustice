@@ -17,6 +17,10 @@
 //   planned               assigned, and the day has not passed yet
 //   none                  never assigned: a rest day, or a slot the programme did not fill
 //
+// They are DRAWN by StatusMark (stylize survey 2026-10-18, item 6), the set the Today strip uses
+// too, so each differs by shape and not only by fill. The inline fills and borders this file
+// carried are gone with it; skipped and missed had differed in luminance alone.
+//
 // "The day has passed" is decided against the profile's own civil today, passed in by the
 // view. Today itself counts as not passed: a session assigned for today has not been missed.
 
@@ -31,6 +35,7 @@ import type {
   LocalDate,
   SessionAssignment,
 } from '../../domain/types';
+import { StatusMark } from './StatusMark';
 
 export type ComplianceMark = 'completed' | 'skipped' | 'missed' | 'planned' | 'none';
 
@@ -41,28 +46,6 @@ const MARK_COPY: Record<ComplianceMark, CopyKey> = {
   missed: 'status.markMissed',
   planned: 'status.markPlanned',
   none: 'status.markNotPlanned',
-};
-
-/**
- * Token colours for the five marks. Inline rather than in a stylesheet because this task's
- * file list carries no CSS file; every value is a token from src/ui/styles/tokens.css, so the
- * grid stays skin-agnostic and a re-themed build recolours it without touching this module.
- */
-const MARK_FILL: Record<ComplianceMark, string> = {
-  completed: 'var(--accent)',
-  skipped: 'var(--text-3)',
-  missed: 'var(--danger)',
-  planned: 'transparent',
-  none: 'transparent',
-};
-
-/** The outline of each mark, so the two transparent marks are still visible and distinct. */
-const MARK_BORDER: Record<ComplianceMark, string> = {
-  completed: '1px solid var(--accent)',
-  skipped: '1px solid var(--text-3)',
-  missed: '1px solid var(--danger)',
-  planned: '1px solid var(--line-2)',
-  none: '1px dashed var(--line)',
 };
 
 export interface ComplianceGridProps {
@@ -172,14 +155,10 @@ export function ComplianceGrid(props: ComplianceGridProps): ReactElement {
                 className={`compliance-cell ${mark}`}
                 data-mark={mark}
                 aria-label={FORMAT.complianceCell(date, t(MARK_COPY[mark]))}
-                style={{
-                  display: 'inline-block',
-                  width: '0.85rem',
-                  height: '0.85rem',
-                  background: MARK_FILL[mark],
-                  border: MARK_BORDER[mark],
-                }}
-              />
+              >
+                {/* The cell's aria-label names it, so the mark itself is aria-hidden. */}
+                <StatusMark kind={mark} />
+              </span>
             );
           })}
         </div>
