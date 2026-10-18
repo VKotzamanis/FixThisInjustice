@@ -12,7 +12,7 @@
 //
 // ROADMAP L4: this form is the FALLBACK. The primary control is the library picker beside it
 // (AddLibraryExercise.tsx); this one opens behind `button.addCustomExercise`.
-import { useState, type ReactElement } from 'react';
+import { useRef, useState, type ReactElement } from 'react';
 import { FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy } from '../../../content/useCopy';
 import { newId } from '../../../domain/ids';
@@ -56,6 +56,8 @@ export function AddCustomExercise(props: {
    * to answer, and this is a field the user is still typing into.
    */
   const [error, setError] = useState<string | null>(null);
+  /** The exercise the last Save stored but could not put on today's session, or null (R5). */
+  const storedNotAdded = useRef<Exercise | null>(null);
 
   const submit = (): void => {
     const trimmed = name.trim();
@@ -79,7 +81,21 @@ export function AddCustomExercise(props: {
       );
       return;
     }
-    const exercise: Exercise = {
+    /*
+     * Review R5. The record is stored before the session add, so a refused add leaves it stored
+     * while the form stays open with the name. Saving the SAME exercise again (name and modality
+     * unchanged, record still on this profile) reuses that record rather than minting a second id
+     * under the same name. A changed name or modality is another exercise and is stored as one.
+     */
+    const pending = storedNotAdded.current;
+    const reused =
+      pending !== null &&
+      pending.name === trimmed &&
+      pending.modality === modality &&
+      (useAppStore.getState().customExercises[profile.id] ?? []).some((e) => e.id === pending.id)
+        ? pending
+        : null;
+    const exercise: Exercise = reused ?? {
       id: newId(),
       name: trimmed,
       isBodyweight: modality === 'bodyweight',
@@ -110,22 +126,26 @@ export function AddCustomExercise(props: {
      * addition runs only after the record was stored, so a refused record is never added to
      * today's card.
      */
-    try {
-      // Through getState(): the store's actions are created once and never replace themselves,
-      // so subscribing to one buys nothing and hands the component an unbound method.
-      useAppStore.getState().addCustomExercise(profile.id, exercise);
-    } catch {
-      // The thrown text names the store function and the id it minted, neither of which the
-      // user chose or can act on, so the copy line is shown instead of the message.
-      setError(c('status.customExerciseRefused'));
-      return;
+    if (reused === null) {
+      try {
+        // Through getState(): the store's actions are created once and never replace themselves,
+        // so subscribing to one buys nothing and hands the component an unbound method.
+        useAppStore.getState().addCustomExercise(profile.id, exercise);
+      } catch {
+        // The thrown text names the store function and the id it minted, neither of which the
+        // user chose or can act on, so the copy line is shown instead of the message.
+        setError(c('status.customExerciseRefused'));
+        return;
+      }
     }
     // Stored, but not on today's session (a session finished in another tab): the exercise is
     // in the library picker now, and the line says what happened and what to do.
     if (!onAdd(exercise.id)) {
+      storedNotAdded.current = exercise;
       setError(c('status.sessionEditRefused'));
       return;
     }
+    storedNotAdded.current = null;
     setError(null);
     setName('');
     setOpen(false);
