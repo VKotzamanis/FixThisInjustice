@@ -35,7 +35,7 @@ cd worker && npx tsc --noEmit -p . && npx vitest run --maxWorkers=1
 ```
 - Machine: 16 GB shared with MATLAB. Always `--maxWorkers=1`, by group. "Test timed out" is not an assertion failure.
 - Count test files run against `find src build -name '*.test.ts*' | wc -l`.
-- Known red: `src/app/App.test.tsx` "weekly-miss popup > shows nothing when the week was not missed" (date-dependent; ROADMAP B6).
+- Expected: zero failing tests (since 2026-10-18).
 
 ## Deploy
 - Push `main` → `.github/workflows/ci.yml` → on success `.github/workflows/deploy.yml` publishes `dist/` to Pages. Rollback: `docs/runbooks/deploy.md`.

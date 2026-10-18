@@ -5,13 +5,12 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 ## 0. First
 - N1 Owner uses the app at the gym on his phone; collect findings per `docs/runbooks/phone-check.md`. No screen has ever been checked on a device.
 
-## 1. Broken now (want)
-- B1 After Programme Complete, `closeWeeks` grades every later week as a miss and the motivation modal fires. No `completedOn` gate in `src/domain/schedule/weekly.ts`, `src/domain/motivation/trigger.ts`, `src/store/selectors.ts`. Also check LogView zero-of-N rows.
-- B2 Grgic 2022 citation: journal volume is 97 (Crossref, checked 2026-10-17); code says 103-104. `src/content/guidanceReferences.ts:123`, `src/domain/nutrition.ts:607`.
-- B3 Delete (not reword) the squat caution pointing at the removed questionnaire: `src/content/formCues.ts:397`. Also `WARMUP_NOTICE` (`src/content/formCues.ts:75`) references it.
-- B4 Body-fat picture chart offers both sexes 10-35 %: `src/content/bodyFatChart.ts:26`. Women's range sits near essential fat. Needs a sourced range (rule 1).
-- B5 Copy promises a streak that was dropped: `src/content/copy.ts` (grep "streak").
-- B6 `src/app/App.test.tsx` weekly-miss test depends on the real date (no fake clock).
+## 1. Broken now
+- B1-B6 fixed 2026-10-18 (`git log --grep '^fix(B'`). Follow-ups from B1:
+  - B1a A completion week that ends mid-week is graded against the full weekly target, so finishing on the first slot day reads as a miss and opens the popup. Owner: pro-rate or exempt?
+  - B1b After completion the last review (WeekStamp or Intervention) stays on Today until a new plan starts (`src/ui/views/TodayView.tsx`). Resolves with L5/L7.
+  - B1c `src/domain/export/summary.ts:89` still lists stored post-completion reviews.
+  - B1d `setPlan` keeps old reviews (`src/store/index.ts:650`); a leftover review blocks re-grading that week under a new plan. Matters once L5 regenerates plans.
 
 ## 2. Training loop (want, all)
 - L1 Edit a logged set (today: delete within 6 s undo, relog). `src/ui/views/train/SetRow.tsx`, store has no updateSet.
