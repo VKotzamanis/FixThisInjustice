@@ -167,7 +167,9 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
       // repetitions for a rep or AMRAP prescription, seconds for a time or duration one.
       reps: entry.reps, // [repetitions] or null
       durationS: entry.durationS, // [s] or null
-      rpe: null, // P4 writes null; no RPE control is in scope
+      // [RPE] Recorded after the log by one optional tap on the row (ROADMAP L8, onEffort below),
+      // so the rest timer starts here at once and never waits for an effort answer.
+      rpe: null,
     };
     const now = Date.now(); // [ms] epoch UTC
     // Through getState(): the store's actions are created once and never replace themselves,
@@ -295,7 +297,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   onLog={(loadKg, entry) => {
                     handleLog(n, loadKg, entry);
                   }}
-                  onEdit={(loadKg, entry) => {
+                  onEdit={(loadKg, entry, rpe) => {
                     if (logged === null) return false;
                     /*
                      * ROADMAP L1. A click handler: React does not catch a throw from one, so
@@ -309,6 +311,27 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                         reps: entry.reps, // [repetitions] or null
                         durationS: entry.durationS, // [s] or null
                         enteredUnit: profile.units,
+                        rpe, // [RPE] or null (L8)
+                      });
+                      return true;
+                    } catch {
+                      return false;
+                    }
+                  }}
+                  onEffort={(rpe) => {
+                    if (logged === null) return false;
+                    /*
+                     * ROADMAP L8, the one tap. The same store action as an edit, carrying the
+                     * record's own measurement back unchanged, so only the effort moves. A
+                     * document write only: the rest timer the log started keeps running.
+                     */
+                    try {
+                      useAppStore.getState().updateSet(logged.id, {
+                        loadKg: logged.loadKg, // [kg] as stored
+                        reps: logged.reps, // [repetitions] as stored
+                        durationS: logged.durationS, // [s] as stored
+                        enteredUnit: logged.enteredUnit,
+                        rpe, // [RPE]
                       });
                       return true;
                     } catch {

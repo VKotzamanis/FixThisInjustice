@@ -11,7 +11,7 @@
 //
 // Every skin assertion is made BY KEY through `copy`/`copyFor`, never against a literal, so a
 // reworded table moves the expectation with the string it is about.
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copyFor, type CopyKey } from '../../../content/copy';
 import { useAppStore } from '../../../store';
@@ -47,6 +47,7 @@ function renderRow(patch: Partial<SetRowProps> = {}): void {
     isBodyweightExercise: false,
     onLog: vi.fn(),
     onEdit: vi.fn(() => true),
+    onEffort: vi.fn(() => true),
     onDelete: vi.fn(),
     ...patch,
   };
@@ -82,7 +83,8 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     fireEvent.change(reps, { target: { value: '6' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 
-    expect(onEdit).toHaveBeenCalledWith(62.5, { reps: 6, durationS: null }); // [kg], [repetitions]
+    // The third argument is the effort (L8), unchanged here: the record carries none.
+    expect(onEdit).toHaveBeenCalledWith(62.5, { reps: 6, durationS: null }, null); // [kg], [repetitions], [RPE]
     // Saved: the row is a readout again.
     expect(screen.queryByRole('button', { name: FORMAT.saveSetLabel(1) })).toBeNull();
   });
@@ -101,7 +103,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 
-    expect(onEdit).toHaveBeenCalledWith(10, { reps: 12, durationS: null });
+    expect(onEdit).toHaveBeenCalledWith(10, { reps: 12, durationS: null }, null);
   });
 
   it('edits a hold in seconds', () => {
@@ -118,7 +120,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     fireEvent.change(field, { target: { value: '50' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 
-    expect(onEdit).toHaveBeenCalledWith(0, { reps: null, durationS: 50 }); // [kg], [s]
+    expect(onEdit).toHaveBeenCalledWith(0, { reps: null, durationS: 50 }, null); // [kg], [s], [RPE]
   });
 
   it('cancels without saving', () => {
@@ -142,6 +144,105 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
       copyFor('limelight', 'status.sessionEditRefused'),
     );
     expect(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) })).toBeInTheDocument();
+  });
+});
+
+describe('SetRow: one-tap effort (ROADMAP L8)', () => {
+  /** The visible word of each effort control, by key, so a reworded table moves the test. */
+  const word = (key: CopyKey): string => copyFor('limelight', key);
+  const effortGroup = (n: number): HTMLElement =>
+    screen.getByRole('group', { name: FORMAT.setEffortQuantity(n) });
+
+  it('offers Easy, Solid, Hard and Max on a logged row with no effort, and reports the tap', () => {
+    withSkin('limelight');
+    const onEffort = vi.fn(() => true);
+    renderRow({ logged: loggedSet(), onEffort });
+    const buttons = within(effortGroup(1)).getAllByRole('button');
+    expect(buttons.map((b) => b.textContent)).toEqual([
+      word('button.effortEasy'),
+      word('button.effortSolid'),
+      word('button.effortHard'),
+      word('button.effortMax'),
+    ]);
+    fireEvent.click(within(effortGroup(1)).getByRole('button', { name: word('button.effortHard') }));
+    expect(onEffort).toHaveBeenCalledWith(9); // [RPE] Hard = 1 repetition in reserve
+  });
+
+  it('offers nothing on a row not yet logged', () => {
+    withSkin('limelight');
+    renderRow();
+    expect(screen.queryByRole('group', { name: FORMAT.setEffortQuantity(1) })).toBeNull();
+  });
+
+  it('stops offering once an effort is recorded and shows it beside the set', () => {
+    withSkin('limelight');
+    renderRow({ logged: loggedSet({ rpe: 10 }) });
+    expect(screen.queryByRole('group', { name: FORMAT.setEffortQuantity(1) })).toBeNull();
+    expect(screen.getByText(word('button.effortMax'))).toBeInTheDocument();
+  });
+
+  it('shows an effort no button writes as its number rather than relabelling it', () => {
+    withSkin('limelight');
+    renderRow({ logged: loggedSet({ rpe: 7.5 }) });
+    expect(screen.getByText(FORMAT.loggedRpe(7.5))).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: FORMAT.setEffortQuantity(1) })).toBeNull();
+  });
+
+  it('says so when the store refuses the effort', () => {
+    withSkin('limelight');
+    renderRow({ logged: loggedSet(), onEffort: vi.fn(() => false) });
+    fireEvent.click(within(effortGroup(1)).getByRole('button', { name: word('button.effortMax') }));
+    expect(screen.getByRole('alert').textContent).toBe(word('status.sessionEditRefused'));
+  });
+
+  it('changes the effort through Edit and saves it with the measurement', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ rpe: 9 }), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+
+    const hard = within(effortGroup(1)).getByRole('button', { name: word('button.effortHard') });
+    expect(hard).toHaveAttribute('aria-pressed', 'true');
+    const max = within(effortGroup(1)).getByRole('button', { name: word('button.effortMax') });
+    fireEvent.click(max);
+    expect(max).toHaveAttribute('aria-pressed', 'true');
+    expect(hard).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(60, { reps: 8, durationS: null }, 10); // [kg], [repetitions], [RPE]
+  });
+
+  it('clears the effort in Edit by tapping the chosen one again', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ rpe: 9 }), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.click(within(effortGroup(1)).getByRole('button', { name: word('button.effortHard') }));
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(60, { reps: 8, durationS: null }, null);
+  });
+
+  it('keeps an effort no button writes when Edit saves without touching it', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ rpe: 7.5 }), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(60, { reps: 8, durationS: null }, 7.5);
+  });
+
+  it('discards an effort change on Cancel', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ rpe: 9 }), onEdit });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+    fireEvent.click(within(effortGroup(1)).getByRole('button', { name: word('button.effortMax') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
+
+    expect(onEdit).not.toHaveBeenCalled();
+    expect(screen.getByText(word('button.effortHard'))).toBeInTheDocument();
   });
 });
 

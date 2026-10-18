@@ -10,8 +10,9 @@
 // until someone replaces the fixture on purpose.
 //
 // Rows added to the fixture after the snapshot, on purpose, each with the string it ships: the
-// session-editing keys (docs/design/session-editing.md, "Copy keys added"). No snapshot row
-// was changed to add them.
+// session-editing keys (docs/design/session-editing.md, "Copy keys added") and the four one-tap
+// effort keys `button.effort{Easy,Solid,Hard,Max}` (ROADMAP L8). No snapshot row was changed to
+// add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
