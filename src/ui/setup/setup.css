@@ -386,7 +386,8 @@
   min-height: 2.75rem; /* 44 px */
   padding: 16px 0;
   background: transparent;
-  accent-color: var(--accent, #a3e635);
+  /* Ink, 10.91:1 on the lime page; the pink thumb and fill were 1.41:1 (SC 1.4.11 asks 3:1). */
+  accent-color: var(--ink);
 }
 
 .wiz-slider input[type='range']::-webkit-slider-thumb {
@@ -487,6 +488,24 @@
 
 .wiz-row-tight {
   gap: 10px;
+}
+
+/*
+ * A row whose parts each need about 12rem: the body box's mass field and its stature pair. In
+ * the plain flex row the pair got half the box, 61 px per column at a 400 px phone, and
+ * "Centimetres" (78 px at 0.9rem) ran 17 px past its column onto the box's border (MEASURED,
+ * headless Chromium, 2026-10-18). Wrapping gives each part a line of its own below 2 x 12rem,
+ * where the pair's columns are 135 px; at 320 px the parts already stacked. `flex-direction: row`
+ * holds against the 24rem column rule below: the wrap does that job, and a 12rem basis on a
+ * column would be a 12rem height.
+ */
+.wiz .wiz-row.wiz-row-wrap {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.wiz .wiz-row.wiz-row-wrap > * {
+  flex: 1 1 12rem;
 }
 
 @media (max-width: 560px) {
@@ -856,16 +875,21 @@
  * `right`, not `left`, per r2.12(i). "Bold and stand out" is the 3 px border and the 700 weight.
  * The glyph is ink on the pink fill, 7.75:1. It was `--bg`, which was ink on the retired dark
  * skins and is lime on limelight: lime on pink, 1.41:1.
+ *
+ * `.wiz .wiz-modal-close` (0,2,0), not `.wiz-modal-close` (0,1,0): the modal renders inside
+ * `.wiz`, and the bare class lost background, colour and border to `.wiz button` (0,1,1), so the
+ * button painted as a plain lime one with a 1 px edge (MEASURED in headless Chromium, 2026-10-18).
+ * The 3 px edge is ink on the lime modal, 10.91:1.
  */
-.wiz-modal-close {
+.wiz .wiz-modal-close {
   position: absolute;
   top: 0.75rem;
   right: 0.75rem;
   min-width: 2.75rem; /* 44 px */
   min-height: 2.75rem; /* 44 px */
-  background: var(--accent, #a3e635);
+  background: var(--accent);
   color: var(--ink);
-  border: 3px solid var(--text, #dde3ea);
+  border: 3px solid var(--ink);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1;
@@ -905,6 +929,21 @@
   margin: 0.5rem 0 0.1rem;
   font-size: 1.05rem;
   overflow-x: auto;
+}
+
+/*
+ * The aligned rows of a broken equation (SetupWizard.tsx, MSJ_EQUATION_MATHML): the left-hand
+ * side right-aligned against the right-hand side's left edge. Chromium ignores the table's
+ * columnalign attribute and centres every cell by default; this is the same alignment for it.
+ * No cell padding, so the rows sit at the equation's own operator spacing.
+ */
+.wiz-mathml mtd {
+  padding: 0.1em 0;
+  text-align: left;
+}
+
+.wiz-mathml mtd:first-child {
+  text-align: right;
 }
 
 .wiz-mathml-caption {
@@ -1503,11 +1542,12 @@
   margin-bottom: 8px;
 }
 
-/* 44 px minimum, as every other tapped control in this file. */
+/* 44 px minimum, as every other tapped control in this file. The edge is the band's own type
+ * colour, white on the black band (21:1); the ink --line-2 it took was black on black, 1:1. */
 .wiz .wiz-calendar-nav {
   min-height: 2.75rem;
   padding: 0 10px;
-  border: 1px solid var(--line-2, var(--line));
+  border: 1px solid var(--band-surface-text);
   border-radius: 4px;
   background: transparent;
   color: inherit;

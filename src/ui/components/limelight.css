@@ -107,12 +107,16 @@
 
 /* --- the week stamp (section 2.5, row 2) --- */
 
+/* The box hugs its content (fit-content, centred), so its edges are the edges of the widest of
+ * the mascot, the word and the counts line: the sparkle wings below stand outside those edges. */
 .ll-stamp {
   position: relative;
   display: grid;
   gap: 4px;
   justify-items: center;
-  margin: 12px 0;
+  width: fit-content;
+  max-width: 100%;
+  margin: 12px auto;
   text-align: center;
 }
 
@@ -148,35 +152,52 @@
   pointer-events: none;
 }
 
+/*
+ * THE SPARKLES STAND IN TWO WINGS, six a side, OUTSIDE the stamp's box. The fan they replace was
+ * centred on the whole stamp and flew 44 px out, which landed sparkles on the mascot, on the word
+ * and on the counts line (screenshot, 2026-10-18). Here each sparkle is anchored to the box's left
+ * edge (children 1-6) or right edge (7-12) at its own height, and rests --wing-gap beyond that
+ * edge; the six gaps bow out in the middle, a bracket around the stamp. It arrives by drifting
+ * --wing-drift outward from a spot that is itself outside the edge, so no frame puts a sparkle
+ * over a word. weekStampStyles.test.ts holds every gap above the drift.
+ *
+ * [px] gaps and drift; [%] heights, of the stamp's box. A sparkle is 20 px (Icon.tsx), so six at
+ * 16 % steps of a box at least 128 px tall never touch one another.
+ */
 .ll-stamp-sparkle {
+  --wing-drift: 6px;
+  --wing-rest: translate(calc(-100% - var(--wing-gap)), -50%);
+  --wing-start: translate(calc(-100% - var(--wing-gap) + var(--wing-drift)), -50%) scale(0.4);
   position: absolute;
-  left: 50%;
-  top: 50%;
-  animation: ll-sparkle-fan 460ms ease-out 240ms both;
+  top: var(--wing-top);
+  left: 0;
+  display: flex;
+  transform: var(--wing-rest);
+  opacity: 0.92;
+  animation: ll-sparkle-wing 460ms ease-out 240ms both;
 }
 
-/* Twelve tracks, one per sparkle, 30 degrees apart. */
-.ll-stamp-sparkle:nth-child(1) { --fan-angle: 0deg; }
-.ll-stamp-sparkle:nth-child(2) { --fan-angle: 30deg; }
-.ll-stamp-sparkle:nth-child(3) { --fan-angle: 60deg; }
-.ll-stamp-sparkle:nth-child(4) { --fan-angle: 90deg; }
-.ll-stamp-sparkle:nth-child(5) { --fan-angle: 120deg; }
-.ll-stamp-sparkle:nth-child(6) { --fan-angle: 150deg; }
-.ll-stamp-sparkle:nth-child(7) { --fan-angle: 180deg; }
-.ll-stamp-sparkle:nth-child(8) { --fan-angle: 210deg; }
-.ll-stamp-sparkle:nth-child(9) { --fan-angle: 240deg; }
-.ll-stamp-sparkle:nth-child(10) { --fan-angle: 270deg; }
-.ll-stamp-sparkle:nth-child(11) { --fan-angle: 300deg; }
-.ll-stamp-sparkle:nth-child(12) { --fan-angle: 330deg; }
+.ll-stamp-sparkle:nth-child(n + 7) {
+  --wing-rest: translate(var(--wing-gap), -50%);
+  --wing-start: translate(calc(var(--wing-gap) - var(--wing-drift)), -50%) scale(0.4);
+  left: 100%;
+}
 
-@keyframes ll-sparkle-fan {
+.ll-stamp-sparkle:nth-child(6n + 1) { --wing-top: 8%; --wing-gap: 8px; }
+.ll-stamp-sparkle:nth-child(6n + 2) { --wing-top: 24%; --wing-gap: 16px; }
+.ll-stamp-sparkle:nth-child(6n + 3) { --wing-top: 40%; --wing-gap: 22px; }
+.ll-stamp-sparkle:nth-child(6n + 4) { --wing-top: 56%; --wing-gap: 22px; }
+.ll-stamp-sparkle:nth-child(6n + 5) { --wing-top: 72%; --wing-gap: 16px; }
+.ll-stamp-sparkle:nth-child(6n + 6) { --wing-top: 88%; --wing-gap: 8px; }
+
+@keyframes ll-sparkle-wing {
   from {
-    transform: rotate(var(--fan-angle)) translateY(0) rotate(calc(-1 * var(--fan-angle)));
+    transform: var(--wing-start);
     opacity: 0;
   }
 
   to {
-    transform: rotate(var(--fan-angle)) translateY(-44px) rotate(calc(-1 * var(--fan-angle)));
+    transform: var(--wing-rest);
     opacity: 0.92;
   }
 }

@@ -6,6 +6,7 @@ import { copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
 import type { SkinId } from '../../domain/types';
+import iconCss from './icon.css?raw';
 
 /** Puts one skin in the store, which is the single source of truth useSkin() reads. */
 function withSkin(skin: SkinId): void {
@@ -97,6 +98,27 @@ describe('SkinLabel', () => {
     const view = render(<SkinLabel copyKey="button.startSession" />);
     expect(screen.getByText(copyFor('limelight', 'button.startSession'))).toBeInTheDocument();
     expect(view.container.querySelectorAll('img.ll-icon')).toHaveLength(1);
+  });
+
+  it('sets the icon and the words apart by a flex gap, never one drawn over the other', () => {
+    // The icon used to sit inline against the first letter with nothing between them, so the
+    // hand touched "LET'S GO BABES" and the skip mark ran into "i'm ready" (screenshots,
+    // 2026-10-18). One wrapper, a flex row with a gap; the icon stays in flow.
+    const { container } = render(<SkinLabel copyKey="button.startSession" />);
+    const pair = container.querySelector('.ll-iconlabel');
+    expect(pair).not.toBeNull();
+    expect([...(pair?.children ?? [])].map((el) => el.className)).toEqual(['ll-icon', 'll-label']);
+    const rule = /\.ll-iconlabel\s*\{([^}]*)\}/.exec(iconCss)?.[1] ?? '';
+    expect(rule).toMatch(/display:\s*inline-flex;/);
+    expect(rule).toMatch(/align-items:\s*center;/);
+    expect(rule).toMatch(/gap:\s*0\.5em;/);
+    // Nothing places the icon out of flow, where a gap could not reach it.
+    expect(iconCss).not.toMatch(/position:\s*absolute/);
+  });
+
+  it('adds no wrapper where there is no icon', () => {
+    const { container } = render(<SkinLabel copyKey="button.back" />);
+    expect(container.querySelector('.ll-iconlabel')).toBeNull();
   });
 
   it('renders the copy alone for a key with no icon, on every skin', () => {

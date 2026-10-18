@@ -3,6 +3,7 @@ import { LIMELIGHT_ICONS } from './icons';
 import type { LimelightIconName } from './icons';
 import type { CopyKey } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
+import './icon.css';
 
 export type { LimelightIconName } from './icons';
 
@@ -132,16 +133,21 @@ export const ICON_FOR_KEY: Readonly<Partial<Record<CopyKey, LimelightIconName>>>
  * The icon is decorative: it carries no label, so it is hidden from assistive technology and the
  * string beside it is the whole accessible name. An icon that announced itself would double every
  * button's name.
+ *
+ * With an icon, the pair is one `.ll-iconlabel` flex row with a gap (icon.css), so the art never
+ * touches or overruns the first letter at any call site. Without one, the words render alone.
  */
 export function SkinLabel({ copyKey }: { copyKey: CopyKey }): ReactElement {
   // The words follow the skin: reading the string through the base table alone would put a
   // base-table sentence beside a limelight glyph.
   const t = useCopy();
   const icon = ICON_FOR_KEY[copyKey];
+  const words = <span className="ll-label">{t(copyKey)}</span>;
+  if (icon === undefined) return words;
   return (
-    <>
-      {icon === undefined ? null : <Icon name={icon} />}
-      <span className="ll-label">{t(copyKey)}</span>
-    </>
+    <span className="ll-iconlabel">
+      <Icon name={icon} />
+      {words}
+    </span>
   );
 }

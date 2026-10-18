@@ -145,7 +145,9 @@ const TEXT_RULES: readonly {
   // The text input's own fill, from `.wiz input[type='text']`.
   { sheet: 'setup.css', css: setupCss, selector: '.wiz input.wiz-name', ground: '--bg-2' },
   { sheet: 'setup.css', css: setupCss, selector: '.wiz-glyph:has(input:checked)', ground: '--accent', own: true },
-  { sheet: 'setup.css', css: setupCss, selector: '.wiz-modal-close', ground: '--accent', own: true },
+  // Scoped under .wiz: a bare `.wiz-modal-close` (0,1,0) lost every property to `.wiz button`
+  // (0,1,1), so the pink fill and ink glyph this row measures were never painted.
+  { sheet: 'setup.css', css: setupCss, selector: '.wiz .wiz-modal-close', ground: '--accent', own: true },
 ];
 
 describe('text that was pink on lime, or lime on pink, clears 4.5:1', () => {
@@ -202,6 +204,8 @@ const BOUNDARY_RULES: readonly {
     value: '2px solid var(--line-2)',
   },
   { sheet: 'timeCapsule.css', css: capsuleCss, selector: '.capsule-seal', property: 'border-color', value: 'var(--ink)' },
+  // The modal's close control on the lime modal: "bold and stand out" (r2.12(i)) is this 3 px edge.
+  { sheet: 'setup.css', css: setupCss, selector: '.wiz .wiz-modal-close', property: 'border', value: '3px solid var(--ink)' },
   // Focus rings: the state a keyboard user steers by. Outlines take no layout space.
   {
     sheet: 'setup.css',
@@ -352,5 +356,90 @@ describe('sweep: no other stylesheet in src sets pink type', () => {
 
   it('atlas.css sets no pink type: its pink is fills, rules and focus rings on the black face', () => {
     expect(rulesOf(atlasCss).filter((r) => PINK.test(valueOf(r.body, 'color') ?? ''))).toEqual([]);
+  });
+});
+
+/**
+ * Specificity of a selector made of classes, attributes, pseudo-classes and type names only, as
+ * [ids, classes, types]. Enough for the rules compared below; it does not parse :not() or :is().
+ */
+function specificity(selector: string): [number, number, number] {
+  const ids = (selector.match(/#[\w-]+/g) ?? []).length;
+  const classes = (selector.match(/\.[\w-]+|\[[^\]]+\]|:(?!:)[\w-]+/g) ?? []).length;
+  const types = (selector.replace(/\[[^\]]+\]/g, '').match(/(?:^|[\s>+~])[a-z][\w-]*/gi) ?? []).length;
+  return [ids, classes, types];
+}
+
+function outranks(a: string, b: string): boolean {
+  const [x, y] = [specificity(a), specificity(b)];
+  for (let i = 0; i < 3; i += 1) {
+    if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) > (y[i] ?? 0);
+  }
+  return false; // equal: source order decides, which this test does not rely on
+}
+
+describe('the wizard modal close control is styled by its own rule', () => {
+  it('outranks `.wiz button`, which paints every other button in the wizard', () => {
+    expect(specificity('.wiz button')).toEqual([0, 1, 1]);
+    expect(outranks('.wiz .wiz-modal-close', '.wiz button')).toBe(true);
+    // A bare class rule would lose again, silently: no such rule may come back.
+    expect(rulesOf(setupCss).filter((r) => r.selector === '.wiz-modal-close')).toEqual([]);
+  });
+
+  it('keeps its glyph and its edge ink-based', () => {
+    const { body } = ruleFor(setupCss, '.wiz .wiz-modal-close');
+    expect(tokenIn(valueOf(body, 'color') ?? '')).toBe('--ink');
+    expect(ratio('--ink', '--accent')).toBeGreaterThanOrEqual(TEXT_MIN); // glyph on its pink fill
+    expect(ratio('--ink', '--bg-2')).toBeGreaterThanOrEqual(BOUNDARY_MIN); // edge on the lime modal
+  });
+});
+
+/*
+ * `accent-color` tints a native control's thumb, fill and check mark. Every such control sits on
+ * the lime ground (the wizard, the Plan view, the intro's lime modal), so the tint is a state
+ * mark held to SC 1.4.11's 3:1 there. --accent is pink: a pink thumb on lime is 1.41:1.
+ */
+describe('native controls are tinted with a colour that reads on lime', () => {
+  const tinted = Object.entries(ALL_SHEETS).flatMap(([path, css]) =>
+    rulesOf(css)
+      .map((rule) => ({ path, selector: rule.selector, value: valueOf(rule.body, 'accent-color') }))
+      .filter((r): r is { path: string; selector: string; value: string } => r.value !== null),
+  );
+
+  it('finds the three tinted controls the brief names', () => {
+    expect(tinted.map((r) => r.selector).sort()).toEqual([
+      '.intro-acknowledgement input',
+      '.view.plan .plan-scrub input[type=\'range\']',
+      '.wiz-slider input[type=\'range\']',
+    ]);
+  });
+
+  it.each(tinted.map((r) => [`${r.path} ${r.selector}`, r] as const))('%s', (_, r) => {
+    const token = tokenIn(r.value);
+    expect(token).toBe('--ink');
+    expect(ratio(token, '--lime')).toBeGreaterThanOrEqual(BOUNDARY_MIN);
+  });
+});
+
+/*
+ * Ink on the black panel is 1:1. Each rule below paints its own fill, so its type and edge are
+ * read against that fill (`own`) or against the black surface it sits on (`ground`).
+ */
+describe('nothing paints ink on black', () => {
+  it.each([
+    ['.vmod-instance button', trainCss],
+    ['.unit-input input', trainCss],
+  ] as const)('train.css %s puts its type on a fill it can be read on', (selector, css) => {
+    const { body } = ruleFor(css, selector);
+    const fg = tokenIn(valueOf(body, 'color') ?? '');
+    const bg = tokenIn(valueOf(body, 'background') ?? '');
+    expect(ratio(fg, bg), `${selector}: ${fg} on ${bg}`).toBeGreaterThanOrEqual(TEXT_MIN);
+  });
+
+  it('the calendar month buttons draw an edge that shows on the black calendar band', () => {
+    const border = valueOf(ruleFor(setupCss, '.wiz .wiz-calendar-nav').body, 'border') ?? '';
+    const surface = tokenIn(valueOf(ruleFor(setupCss, '.wiz .wiz-calendar').body, 'background') ?? '');
+    expect(surface).toBe('--band-surface');
+    expect(ratio(tokenIn(border), surface)).toBeGreaterThanOrEqual(BOUNDARY_MIN);
   });
 });

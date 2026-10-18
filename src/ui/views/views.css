@@ -404,7 +404,8 @@
 .view.plan .plan-scrub input[type='range'] {
   width: 100%;
   min-height: 2.75rem;
-  accent-color: var(--accent, #a3e635);
+  /* Ink, 10.91:1 on the lime page; the pink thumb and fill were 1.41:1 (SC 1.4.11 asks 3:1). */
+  accent-color: var(--ink);
 }
 
 .view.plan .plan-week-label {

@@ -1212,6 +1212,50 @@ describe('Brief B: the sex explainer (C1.07.6, C1.07.10 to C1.07.16)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByTestId('sex-rationale-backdrop')).toBeNull();
   });
+
+  /*
+   * The Mifflin-St Jeor line was one 351 px MathML row in a modal 326 px wide at a 400 px phone
+   * and 246 px at 320 (MEASURED, headless Chromium), so the highlighted S sat past the edge.
+   * MathML Core does not break lines, so the equation is set as an aligned table of three rows,
+   * the operator that opens a row kept as a binary one (form="infix"), the same terms in order.
+   */
+  it('sets the Mifflin-St Jeor equation on three aligned rows, the sex term in the last', () => {
+    reachBody();
+    fireEvent.click(screen.getByText('Options suck? I agree. Click here for a workaround.'));
+    const msj = document.querySelector('.wiz-modal .wiz-mathml');
+    const table = msj?.querySelector('math > mtable');
+    expect(table).not.toBeNull();
+    const rows = [...(table?.querySelectorAll(':scope > mtr') ?? [])];
+    expect(rows).toHaveLength(3);
+    // Nothing added, dropped or reordered: the rows read as the one equation it was.
+    expect((msj?.textContent ?? '').replace(/\s+/g, '')).toBe('RMR=10×mass+6.25×height−5×age+S');
+    expect(rows[2]?.querySelector('.wiz-mathml-term')?.textContent).toBe('S');
+    for (const row of rows.slice(1)) {
+      expect(row.querySelector('mo')?.getAttribute('form')).toBe('infix');
+    }
+    // Chromium ignores columnalign, so the alignment is in the sheet too.
+    expect(setupCss).toMatch(/\.wiz-mathml mtd\s*\{[^}]*text-align:\s*left/);
+    expect(setupCss).toMatch(/\.wiz-mathml mtd:first-child\s*\{[^}]*text-align:\s*right/);
+  });
+});
+
+/*
+ * "Centimetres" (78 px at 0.9rem) sat in a 61 px column at a 400 px phone and ran 17 px past it,
+ * onto the box's border (MEASURED, headless Chromium). The mass field and the stature pair shared
+ * one flex row; that row now wraps, each part at least 12rem wide, so below 2 x 12rem the pair
+ * takes the full box and each of its columns is wider than the word.
+ */
+describe('the body box gives the stature pair room for its labels', () => {
+  it('puts mass and stature in a wrapping row', () => {
+    reachBody();
+    const row = screen.getByLabelText(/body mass \(kg\)/i).closest('.wiz-box > .wiz-row');
+    expect(row?.classList.contains('wiz-row-wrap')).toBe(true);
+    expect(row?.querySelector('#height-label')).not.toBeNull();
+    expect(setupCss).toMatch(
+      /\.wiz \.wiz-row\.wiz-row-wrap\s*\{[^}]*flex-direction:\s*row;[^}]*flex-wrap:\s*wrap;/,
+    );
+    expect(setupCss).toMatch(/\.wiz \.wiz-row\.wiz-row-wrap > \*\s*\{[^}]*flex:\s*1 1 12rem;/);
+  });
 });
 
 describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
@@ -2377,6 +2421,14 @@ describe('r2.12: the modal close control, and the comment that records the rulin
     const block = close.slice(0, close.indexOf('}'));
     expect(block).toContain('right: 0.75rem;');
     expect(block).not.toContain('left:');
+  });
+
+  it('renders it inside .wiz, so the scoped `.wiz .wiz-modal-close` rule reaches it', () => {
+    reachBody();
+    fireEvent.click(screen.getByText('Options suck? I agree. Click here for a workaround.'));
+    const close = screen.getByRole('button', { name: 'Close' });
+    expect(close.classList.contains('wiz-modal-close')).toBe(true);
+    expect(close.closest('.wiz')).not.toBeNull();
   });
 
   it('leaves no comment still claiming the upper left', () => {

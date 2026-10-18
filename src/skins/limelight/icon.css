@@ -1,0 +1,17 @@
+/*
+ * An icon in front of its words (SkinLabel, Icon.tsx). One flex row with a gap, so the pixel art
+ * and the first letter never touch, whatever the button, banner or heading around them does.
+ * Before this the img sat inline against the text with nothing between them: the hand touched
+ * "LET'S GO BABES" on Today and the skip mark ran into "i'm ready" on the rest sign (screenshots,
+ * 2026-10-18). `em`, so the gap scales with the words it separates. No colour here.
+ */
+.ll-iconlabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  vertical-align: middle;
+}
+
+.ll-iconlabel > .ll-icon {
+  flex: none;
+}

@@ -881,11 +881,25 @@ function girthError(
  * `React.createElement` calls with untyped props; nothing here interpolates a variable, so there
  * is no injection surface. The sex term carries its own class so CSS can highlight it with
  * `var(--accent)`, per the brief and never a hex literal (00-CONTEXT accessibility rule).
+ *
+ * Mifflin-St Jeor is set on THREE ALIGNED ROWS, the same terms in the same order. On one row it
+ * is 351 px wide at the modal's 16.8 px type, and the modal is 326 px wide on a 400 px phone and
+ * 246 px on a 320 px one (MEASURED, headless Chromium, 2026-10-18), so the highlighted S was
+ * scrolled out of sight. MathML Core breaks no lines, so the break is in the markup: RMR in a
+ * right-aligned first column, the right-hand side in a left-aligned second one. The operator that
+ * opens a row is `form="infix"`, so it keeps a binary operator's spacing and "- 5" cannot read as
+ * a negative number. `columnalign` is honoured by WebKit and Gecko; Chromium ignores it, and
+ * setup.css (.wiz-mathml mtd) carries the same alignment for it.
  */
 const MSJ_EQUATION_MATHML =
-  '<math display="block"><mrow><mi>RMR</mi><mo>=</mo><mn>10</mn><mo>&#215;</mo><mi>mass</mi>' +
-  '<mo>+</mo><mn>6.25</mn><mo>&#215;</mo><mi>height</mi><mo>&#8722;</mo><mn>5</mn><mo>&#215;</mo>' +
-  '<mi>age</mi><mo>+</mo><mi class="wiz-mathml-term">S</mi></mrow></math>';
+  '<math display="block"><mtable columnalign="right left">' +
+  '<mtr><mtd><mi>RMR</mi></mtd><mtd><mrow><mo form="infix">=</mo><mn>10</mn><mo>&#215;</mo>' +
+  '<mi>mass</mi></mrow></mtd></mtr>' +
+  '<mtr><mtd></mtd><mtd><mrow><mo form="infix">+</mo><mn>6.25</mn><mo>&#215;</mo>' +
+  '<mi>height</mi></mrow></mtd></mtr>' +
+  '<mtr><mtd></mtd><mtd><mrow><mo form="infix">&#8722;</mo><mn>5</mn><mo>&#215;</mo><mi>age</mi>' +
+  '<mo>+</mo><mi class="wiz-mathml-term">S</mi></mrow></mtd></mtr>' +
+  '</mtable></math>';
 const CUNNINGHAM_EQUATION_MATHML =
   '<math display="block"><mrow><mi>RMR</mi><mo>=</mo><mn>370</mn><mo>+</mo><mn>21.6</mn>' +
   '<mo>&#215;</mo><mi>FFM</mi></mrow></math>';
@@ -2567,7 +2581,8 @@ export function SetupWizard(): JSX.Element {
           </div>
 
           <div className="wiz-box">
-            <div className="wiz-row">
+            {/* Wraps: below two 12rem parts the stature pair takes the whole box (setup.css). */}
+            <div className="wiz-row wiz-row-wrap">
               <UnitInput
                 id="f-mass"
                 quantity={t('quantity.bodyMass')}

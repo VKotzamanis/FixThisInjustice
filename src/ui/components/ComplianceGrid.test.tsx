@@ -215,3 +215,65 @@ describe('ComplianceGrid', () => {
     expect(screen.queryAllByRole('gridcell')).toHaveLength(0);
   });
 });
+
+/*
+ * The Log screenshot of 2026-10-18 (alpha fixture) showed "3 of 3 completed" rows with ONE
+ * completed mark and two empty "not planned" rings. Reproduced here with explicit state, both
+ * ways round, to tell a grid defect from a fixture artefact:
+ *
+ *  - three sessions completed ON the slot days draw three completed marks: the day mapping and
+ *    the StatusMark mapping are right;
+ *  - the fixture's shape (slots Mon/Wed/Fri, sessions on Fri/Sun/Tue: scripts/alpha-fixture.mjs
+ *    walks `63 - (week * 7 + day * 2)` days back from Friday 2026-09-04) draws exactly the
+ *    screenshot: Friday completed, Monday and Wednesday unassigned. The row counts the week the
+ *    way closeWeeks does, every completed session Monday to Sunday ('counts only the week it
+ *    belongs to' above), so it still reads 3 of 3.
+ *
+ * The app cannot produce the second shape: a session is served only on a slot day
+ * (src/domain/schedule/calendar.ts projectedCalendar), and slots are written once, by the setup
+ * wizard that creates the profile.
+ */
+describe('a 3-of-3 week (the Log screenshot of 2026-10-18)', () => {
+  const MONDAY = '2026-08-24';
+  const marksOf = (): (string | null)[] =>
+    screen.getAllByRole('gridcell').map((cell) => cell.getAttribute('data-mark'));
+
+  it('draws three completed marks for three sessions completed on the slot days', () => {
+    render(
+      <ComplianceGrid
+        assignments={[
+          assignment('2026-08-24', 'completed'), // Monday
+          assignment('2026-08-26', 'completed'), // Wednesday
+          assignment('2026-08-28', 'completed'), // Friday
+        ]}
+        weekStarts={[MONDAY]}
+        slotWeekdays={[...MWF]}
+        today="2026-09-04"
+        weeklySessionTarget={TARGET}
+      />,
+    );
+    expect(marksOf()).toEqual(['completed', 'completed', 'completed']);
+    for (const cell of screen.getAllByRole('gridcell')) {
+      expect(cell.querySelector('svg.status-mark')?.getAttribute('data-shape')).toBe('chip-check');
+    }
+    expect(screen.getByRole('rowheader').textContent).toBe(FORMAT.complianceWeek(MONDAY, 3, TARGET));
+  });
+
+  it('draws the screenshot only for sessions off the slot days, as the fixture has them', () => {
+    render(
+      <ComplianceGrid
+        assignments={[
+          assignment('2026-08-25', 'completed'), // Tuesday
+          assignment('2026-08-28', 'completed'), // Friday
+          assignment('2026-08-30', 'completed'), // Sunday
+        ]}
+        weekStarts={[MONDAY]}
+        slotWeekdays={[...MWF]}
+        today="2026-09-04"
+        weeklySessionTarget={TARGET}
+      />,
+    );
+    expect(marksOf()).toEqual(['none', 'none', 'completed']);
+    expect(screen.getByRole('rowheader').textContent).toBe(FORMAT.complianceWeek(MONDAY, 3, TARGET));
+  });
+});

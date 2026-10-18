@@ -95,8 +95,10 @@
   margin-right: auto;
 }
 
+/* Lime with ink type and an ink edge (10.91:1 each), as every lime-ground button: it painted ink
+ * type on the black --bg-3, 1:1. */
 .vmod-instance button {
-  background: var(--bg-3);
+  background: var(--bg-2);
   border: 1px solid var(--line-2);
   color: var(--text);
   font: inherit;
@@ -265,11 +267,35 @@
   flex-wrap: wrap;
 }
 
+/*
+ * A row being entered: the counter on its own line, then the load and the count at half the row
+ * each, then the bodyweight toggle and Log on a line of their own. The load must always show
+ * whole. In one `4rem 1fr 1fr auto` line the auto track kept the toggle and the button at full
+ * width and the fields split the rest: the load input was 38 px at a 400 px phone and 25 px at
+ * 320 against 54 px of "137.8", which showed as "13", and its label wrapped to three lines
+ * (MEASURED, headless Chromium, 2026-10-18). setRowStyles.test.ts holds this shape.
+ */
 .set-row {
   display: grid;
-  grid-template-columns: 4rem 1fr 1fr auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.5rem;
   align-items: end;
+}
+
+.set-row:not(.done) > .set-marker,
+.set-row:not(.done) > .set-actions {
+  grid-column: 1 / -1;
+}
+
+/* The toggle keeps its own width; Log takes the rest of the line. Before the editing rule below,
+ * which gives Save and Cancel equal halves at the same specificity. */
+.set-row:not(.done) .set-actions > .unit-input {
+  flex: none;
+}
+
+.set-row:not(.done) .set-actions > button {
+  flex: 1 1 auto;
+  width: auto;
 }
 
 /* A logged row reads as done; its Edit and Delete stay at full strength so they never look disabled. */
@@ -343,9 +369,11 @@
   color: var(--text-3);
 }
 
+/* Lime with ink type (10.91:1), as `.view input[type='text']`, which outranks this rule inside a
+ * view: the black --bg-3 it named put ink type on black, 1:1, wherever this rule won. */
 .unit-input input {
   width: 100%;
-  background: var(--bg-3);
+  background: var(--bg-2);
   border: 1px solid var(--line-2);
   color: var(--text);
   padding: 0.4rem;
