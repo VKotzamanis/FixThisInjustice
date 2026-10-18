@@ -10,6 +10,7 @@ import type { Exercise, PlannedSession, SessionEdits } from '../types';
 import {
   EMPTY_EDITS,
   UNPLANNED_SETS,
+  addBlockedIds,
   addChoices,
   applySessionEdit,
   sessionLineup,
@@ -314,6 +315,25 @@ describe('addChoices (L4)', () => {
     for (const e of others) expect(e.equipment.some((t) => ACCESS_UNLOCKS.home.includes(t))).toBe(false);
     const all = [...fits, ...others].map((e) => e.id).sort();
     expect(all).toEqual(EXERCISES.map((e) => e.id).filter((id) => !inUse.has(id)).sort());
+  });
+
+  /*
+   * Review R3. The view built the picker's exclusions from the cards on screen, so a planned
+   * exercise whose slot was swapped away was offered, and 'add' then refused it (its id is the
+   * slot's key). One set now feeds both.
+   */
+  it('offers exactly what add accepts, never a planned exercise whose slot was swapped away', () => {
+    const swapped = edits({ swaps: { 'barbell-bench-press': 'incline-db-press' } });
+    const blocked = addBlockedIds(SESSION, swapped);
+    const { fits, others } = addChoices({ access: 'full-gym', library: EXERCISES, inUse: blocked });
+    const offered = [...fits, ...others].map((e) => e.id);
+    expect(offered).not.toContain('barbell-bench-press');
+    expect(offered).not.toContain('incline-db-press');
+    const add = (exerciseId: string): SessionEdits =>
+      applySessionEdit(SESSION, swapped, { kind: 'add', exerciseId }, EXERCISE_BY_ID);
+    for (const id of offered) expect(() => add(id)).not.toThrow();
+    for (const id of blocked) expect(() => add(id)).toThrow(/^add: /);
+    expect(() => add('barbell-bench-press')).toThrow(/swap the slot back instead/);
   });
 });
 

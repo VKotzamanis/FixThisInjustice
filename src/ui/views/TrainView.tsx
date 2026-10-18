@@ -29,6 +29,7 @@ import type { CoachLine } from '../../domain/training/coach';
 import { preSessionMass } from '../../domain/training/hydration';
 import { IDENTITY_BLOCK, blockFor } from '../../domain/training/progression';
 import {
+  addBlockedIds,
   isBonusEntry,
   isEditable,
   sessionLineup,
@@ -407,7 +408,9 @@ export function TrainView(): ReactElement {
           <AddLibraryExercise
             access={profile.equipment}
             library={libraryList}
-            inUse={inUse}
+            // The store's own 'add' refusal set (review R3): it also holds a planned exercise
+            // whose slot was swapped away, which the cards on screen (`inUse`) no longer show.
+            inUse={addBlockedIds(session, assignment.edits)}
             onAdd={addExercise}
           />
           <AddCustomExercise profile={profile} onAdd={addExercise} />
