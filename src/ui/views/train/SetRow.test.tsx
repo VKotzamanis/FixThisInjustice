@@ -89,6 +89,37 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     expect(screen.queryByRole('button', { name: FORMAT.saveSetLabel(1) })).toBeNull();
   });
 
+  /*
+   * Review R2. The edit opens the load through displayLoad's 0.1 rounding in the display unit;
+   * converting that text back on Save moved the stored load (60 kg -> 132.3 lb -> 60.0103 kg),
+   * which takes it outside progression's LOAD_EQ_TOL_KG and turns add-load into hold.
+   */
+  it('keeps the stored load exactly when only the reps change, shown in pounds', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ units: 'imperial', logged: loggedSet({ loadKg: 60 }), onEdit }); // [kg]
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (lb)`)).toHaveValue(132.3); // [lb]
+    fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(60, { reps: 7, durationS: null }, null); // [kg], [repetitions], [RPE]
+  });
+
+  it('keeps a load off the 0.1 kg grid exactly when only the reps change', () => {
+    withSkin('limelight');
+    const onEdit = vi.fn(() => true);
+    renderRow({ logged: loggedSet({ loadKg: 61.25 }), onEdit }); // [kg]
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
+
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue(61.3); // [kg] as shown
+    fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
+
+    expect(onEdit).toHaveBeenCalledWith(61.25, { reps: 7, durationS: null }, null); // [kg]
+  });
+
   it('prefills the bodyweight toggle from a 0 kg set and can clear it', () => {
     withSkin('limelight');
     const onEdit = vi.fn(() => true);

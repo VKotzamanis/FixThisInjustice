@@ -222,7 +222,24 @@ export function SetRow(props: SetRowProps): ReactElement {
     }
     // A bodyweight set stores 0, never null and never a dropped falsy value (master plan
     // section 8, code review A60): 0 kg is a real load, "not recorded" is a different fact.
-    const loadKg = bodyweight ? 0 : storedLoadKg(loadText, units); // [kg]
+    let loadKg: Kg | null; // [kg]
+    if (bodyweight) {
+      loadKg = 0;
+    } else if (
+      editing &&
+      logged !== null &&
+      logged.loadKg !== null &&
+      logged.loadKg !== 0 &&
+      loadText === loggedLoadText(logged.loadKg, units)
+    ) {
+      // Review R2: the field still holds the text the edit opened with, which went through
+      // displayLoad's 0.1 rounding in the display unit. Converting it back would move the stored
+      // load (60 kg shown as 132.3 lb returns 60.0103 kg, outside progression's LOAD_EQ_TOL_KG),
+      // so an untouched load keeps the record's own kg exactly.
+      loadKg = logged.loadKg;
+    } else {
+      loadKg = storedLoadKg(loadText, units);
+    }
     if (loadKg === null || loadKg < 0) return;
     const entry: SetEntry = timed ? { reps: null, durationS: count } : { reps: count, durationS: null };
     if (editing) {
