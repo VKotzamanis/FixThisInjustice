@@ -8,7 +8,7 @@ Single source of current state. Update in place. Last update: 2026-10-18 (restar
 3. Then ROADMAP: R4, B1a, B1c, L6 (design), L9, L10, F2-F5.
 
 ## Branches and tags
-- Art + styling built 2026-10-18 afternoon (ROADMAP 3b); not pushed yet.
+- Art, styling, her sprites, lean Train/Log, once-only safety notice, per-card Atlas icons: pushed and live 2026-10-18 evening (bundle index-BAo2F74l.js verified; icon = owner sprite).
 - `main` only. Built 2026-10-18 on top of the cleanup: B1-B6, N5, N7, L1-L5, L7, L8, F1, review fixes R1-R3/R5/R6 (`git log --oneline pre-cleanup-2026-10-17..main`).
 - Pushed and deployed 2026-10-18 (live bundle verified). History scrubbed by the owner (0 private terms in 420 commits, 0 in messages); `PRIVACY_PATTERN` secret set, CI privacy check runs (PASS). Agents cannot push, force-push or write secrets (classifier): the owner runs those with `!`.
 - tag `archive/design-editor`: local design editor (owner: never helped). tag `pre-cleanup-2026-10-17`: tree before the cleanup.
