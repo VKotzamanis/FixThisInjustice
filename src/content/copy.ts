@@ -649,7 +649,15 @@ export type CopyKey =
   | 'button.effortEasy'
   | 'button.effortSolid'
   | 'button.effortHard'
-  | 'button.effortMax';
+  | 'button.effortMax'
+  // --- programme lifecycle, ROADMAP L5, B1b, L7 (docs/design/programme-lifecycle.md) ---
+  | 'button.updateProgramme'
+  | 'button.startProgramme'
+  | 'advice.programmeDiffers'
+  | 'advice.programmeRestart'
+  | 'advice.programmeLockedInSession'
+  | 'button.startNextProgramme'
+  | 'advice.targetReachedMaintenance';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -1937,6 +1945,23 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.effortSolid': 'Solid',
   'button.effortHard': 'Hard',
   'button.effortMax': 'Max',
+  // --- programme lifecycle, ROADMAP L5, B1b, L7 (docs/design/programme-lifecycle.md) ---
+  // L5: Settings offers this once the plan built from the current settings would differ from
+  // the running one. It opens the confirmation below; nothing regenerates without it.
+  'button.updateProgramme': 'Update Programme',
+  'advice.programmeDiffers': 'These settings would build a different programme.',
+  // The confirmation both entry points share. restartProgramme keeps sets (and the records
+  // derived from them) and body mass; the cursor starts again at the first session today.
+  'button.startProgramme': 'Start Programme',
+  'advice.programmeRestart': 'Starts a new programme today. Logged sets, records and body mass stay.',
+  // setPlan refuses to replace the schedule a session is being logged against.
+  'advice.programmeLockedInSession': 'Finish or skip the session in progress first.',
+  // B1b: replaces the last week's review on Today once the programme is complete.
+  'button.startNextProgramme': 'Start Next Programme',
+  // L7: the goal-reached rule (latest weigh-in at or past the target mass, in the goal's
+  // direction) preselected Maintenance. The user can still pick another goal.
+  'advice.targetReachedMaintenance':
+    'Target body mass reached, so the next programme defaults to maintenance.',
 };
 
 /**

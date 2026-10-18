@@ -6,7 +6,10 @@ import { FORMAT, copyFor } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { displayLoad, toStoredLoad } from '../../domain/units';
-import { groupTimeZones } from '../../domain/dates';
+import { groupTimeZones, todayLocal } from '../../domain/dates';
+import { generatePlan } from '../../domain/plan/generator';
+import { planIncludesCardio } from '../../domain/plan/lifecycle';
+import { EXERCISES } from '../../domain/plan/library';
 import type { Profile } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
 
@@ -391,5 +394,129 @@ describe('the time zone control in Settings (C1.04.3)', () => {
     } finally {
       Intl.supportedValuesOf = original;
     }
+  });
+});
+
+/**
+ * ROADMAP L5 (docs/design/programme-lifecycle.md): the programme follows Settings, but only
+ * through an explicit Update Programme and its confirmation. The running plan is the one the
+ * wizard would have stored for PROFILE on Monday, Wednesday and Friday.
+ */
+describe('the Programme group in Settings (L5)', () => {
+  const START = '2026-09-07';
+
+  beforeEach(() => {
+    const s = useAppStore.getState();
+    s.setAvailability('p1', {
+      slots: ([1, 3, 5] as const).map((weekday) => ({
+        weekday,
+        startTime: '07:00',
+        expectedDurationS: 3600, // [s]
+      })),
+      weeklySessionTarget: 3, // [sessions/week]
+    });
+    s.setPlan(
+      'p1',
+      generatePlan(
+        {
+          sessionsPerWeek: 3, // [sessions/week]
+          weeks: 12, // [weeks]
+          goal: PROFILE.goal.kind,
+          experience: PROFILE.experience,
+          equipment: PROFILE.equipment,
+          includeCardio: false,
+        },
+        EXERCISES,
+      ),
+      START,
+    );
+  });
+
+  const planId = (): string => useAppStore.getState().cursors['p1']?.planId ?? '';
+  const updateButton = (): HTMLElement | null =>
+    screen.queryByRole('button', { name: copy('button.updateProgramme') });
+
+  it('offers no update while the running plan matches the settings', () => {
+    render(<SettingsView />);
+    expect(screen.getByRole('heading', { name: copy('hero.programme') })).toBeTruthy();
+    expect(updateButton()).toBeNull();
+    // Three training weekdays: a split above three would leave sessions unscheduled.
+    const split = screen.getByLabelText(copy('label.sessionsPerWeek'));
+    expect(within(split).getAllByRole('option').map((o) => o.textContent)).toEqual(['2', '3']);
+    expect((split as HTMLSelectElement).value).toBe('3');
+    expect(screen.getByLabelText(copy('label.includeCardio'))).not.toBeChecked();
+  });
+
+  it('offers Update Programme once Experience changes, and restarts only on confirm', async () => {
+    const before = planId();
+    render(<SettingsView />);
+    await userEvent.selectOptions(screen.getByLabelText(copy('label.experience')), 'advanced');
+
+    expect(screen.getByText(copy('advice.programmeDiffers'))).toBeTruthy();
+    expect(planId()).toBe(before); // a changed setting alone regenerates nothing
+    await userEvent.click(updateButton() as HTMLElement);
+    const confirm = screen.getByRole('group', { name: copy('button.updateProgramme') });
+    expect(within(confirm).getByText(copy('advice.programmeRestart'))).toBeTruthy();
+    expect(planId()).toBe(before);
+
+    await userEvent.click(
+      within(confirm).getByRole('button', { name: copy('button.startProgramme') }),
+    );
+
+    const s = useAppStore.getState();
+    expect(planId()).not.toBe(before);
+    expect(s.plans[before]).toBeDefined(); // the replaced plan is history, kept
+    expect(s.cursors['p1']).toMatchObject({
+      nextSessionIndex: 0,
+      startedOn: todayLocal('Europe/Athens', Date.now()),
+    });
+    expect(updateButton()).toBeNull();
+    expect(screen.queryByText(copy('advice.programmeDiffers'))).toBeNull();
+  });
+
+  it('applies a chosen split and conditioning only through Update Programme', async () => {
+    const before = planId();
+    render(<SettingsView />);
+    await userEvent.selectOptions(screen.getByLabelText(copy('label.sessionsPerWeek')), '2');
+    await userEvent.click(screen.getByLabelText(copy('label.includeCardio')));
+    expect(planId()).toBe(before);
+
+    await userEvent.click(updateButton() as HTMLElement);
+    await userEvent.click(screen.getByRole('button', { name: copy('button.startProgramme') }));
+
+    const s = useAppStore.getState();
+    const plan = s.plans[planId()];
+    expect(plan?.sessionsPerWeek).toBe(2); // [sessions/week]
+    expect(plan !== undefined && planIncludesCardio(plan)).toBe(true);
+    expect(s.availability['p1']?.weeklySessionTarget).toBe(2); // [sessions/week]
+  });
+
+  it('writes Equipment Access to the profile at once, and then offers the update', async () => {
+    render(<SettingsView />);
+    await userEvent.selectOptions(screen.getByLabelText(copy('label.equipmentAccess')), 'home');
+    expect(useAppStore.getState().profiles['p1']?.equipment).toBe('home');
+    expect(updateButton()).toBeTruthy();
+  });
+
+  it('Cancel closes the confirmation and writes nothing', async () => {
+    const before = planId();
+    render(<SettingsView />);
+    await userEvent.selectOptions(screen.getByLabelText(copy('label.experience')), 'advanced');
+    await userEvent.click(updateButton() as HTMLElement);
+    await userEvent.click(screen.getByRole('button', { name: copy('button.cancel') }));
+
+    expect(screen.queryByRole('group', { name: copy('button.updateProgramme') })).toBeNull();
+    expect(updateButton()).toBeTruthy();
+    expect(planId()).toBe(before);
+  });
+
+  it('withholds the update while a session is in progress', async () => {
+    useAppStore.getState().startSession('p1', START, Date.now()); // [ms] epoch UTC
+    expect(useAppStore.getState().assignments['p1']?.[0]?.status).toBe('in-progress');
+    render(<SettingsView />);
+    await userEvent.selectOptions(screen.getByLabelText(copy('label.experience')), 'advanced');
+
+    expect(screen.getByText(copy('advice.programmeLockedInSession'))).toBeTruthy();
+    expect(updateButton()).toBeNull();
   });
 });

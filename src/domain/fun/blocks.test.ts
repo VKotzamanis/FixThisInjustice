@@ -20,7 +20,13 @@ import {
   isBlockBoundary,
 } from './blocks';
 import { makeAppState, makePlan } from '../../test/funFixtures';
-import type { LoggedSet, PlanBlock, PlanCursor, SessionAssignment } from '../types';
+import type {
+  LoggedSet,
+  PlanBlock,
+  PlanCursor,
+  PlannedSession,
+  SessionAssignment,
+} from '../types';
 
 /** Three eight-session blocks: 0-7, 8-15, 16-23. */
 const BLOCKS: PlanBlock[] = [
@@ -50,7 +56,22 @@ const BLOCKS: PlanBlock[] = [
   },
 ];
 
-const plan = makePlan({ blocks: BLOCKS });
+/*
+ * Twenty-four sessions, ids s1..s24 at offsets 0..23, so every assignment below names a session
+ * this plan holds. blockStats counts only the current plan's sessions (ROADMAP B1d,
+ * docs/design/programme-lifecycle.md): a regenerated programme keeps the old plan's finished days
+ * of its start week, and their sourceIndex points into the plan they were drawn from.
+ */
+const SESSIONS: PlannedSession[] = Array.from({ length: 24 }, (_, i) => ({
+  id: `s${String(i + 1)}`,
+  ordinal: i + 1, // positional invariant: sessions[i].ordinal === i + 1
+  name: `Session ${String(i + 1)}`,
+  kind: 'lift',
+  label: 'Full body',
+  exercises: [],
+}));
+
+const plan = makePlan({ blocks: BLOCKS, sessions: SESSIONS });
 
 const cursorAt = (n: number): PlanCursor => ({
   planId: plan.id,
@@ -221,6 +242,40 @@ describe('blockStats', () => {
     expect(stats.setsLogged).toBe(4);
     expect(stats.tonnageKg).toBe(980); // [kg] 60x8 + 100x5 + 0x12 + 0
     expect(stats.specimensOwned).toBe(1);
+  });
+
+  it("ignores a replaced plan's finished day whose sourceIndex falls inside the block", () => {
+    const base = stateWithBlockOneWork();
+    const replaced: SessionAssignment = {
+      date: '2026-11-05',
+      sessionId: 'old-plan-session', // a session of the plan this one replaced
+      sourceIndex: 11, // [sessions] offset into the OLD plan; inside block 1 of this one
+      status: 'completed',
+      startedAt: 1, // [ms] epoch UTC
+      completedAt: 2, // [ms] epoch UTC
+      skipReason: null,
+    };
+    const oldSet: LoggedSet = {
+      id: 'f',
+      profileId: 'p1',
+      assignmentDate: '2026-11-05',
+      sessionId: 'old-plan-session',
+      exerciseId: 'barbell-bench-press',
+      setNumber: 1,
+      isBonus: false,
+      loadKg: 50, // [kg]
+      enteredUnit: 'metric',
+      reps: 10, // [repetitions]
+      durationS: null, // [s]
+      rpe: null,
+      loggedAt: 1, // [ms] epoch UTC
+    };
+    const state = {
+      ...base,
+      assignments: { p1: [...(base.assignments['p1'] ?? []), replaced] },
+      sets: { ...base.sets, f: oldSet },
+    };
+    expect(blockStats(state, 'p1', 1)).toEqual(blockStats(base, 'p1', 1));
   });
 
   it('returns zeros for a block with no work', () => {

@@ -551,8 +551,8 @@ describe('a device that still holds the old console document', () => {
  * waitFor keeps real timers. On the real clock this suite broke once the date passed the
  * fixture's fixed plan start (MONDAY): `useWeeklyClose` then graded every week since it as 0
  * of target, a miss inside the 14 day window, and the popup opened over the "not missed" case.
- * Pinned, the plan starts on the clock's own Monday, so no week has finished and the closure
- * cannot add to what is seeded here; the seeded week is the ISO week that ended yesterday.
+ * Pinned, the plan starts on the Monday of the seeded week, the ISO week that ended yesterday,
+ * so the only finished week is the seeded one and the closure cannot add to it.
  */
 describe('weekly-miss popup', () => {
   const TODAY: LocalDate = todayLocal(TZ_ATHENS, NOW_MS); // MONDAY
@@ -585,7 +585,14 @@ describe('weekly-miss popup', () => {
   function seedReviews(reviews: WeeklyReview[]): void {
     installFakeStorage();
     useAppStore.setState({
-      ...seedState({ labels: ['Push'], weekdays: [1] }),
+      /*
+       * The plan starts on the Monday of the first seeded week. A review of a week before the
+       * programme started belongs to a plan it replaced and opens no popup (ROADMAP B1d,
+       * isBeforeProgramme), so a seed with the plan starting after its own review modelled a
+       * state closeWeeks cannot produce. The closure still adds nothing: the seeded week is
+       * already reviewed, and the current one has not ended.
+       */
+      ...seedState({ labels: ['Push'], weekdays: [1], startedOn: reviews[0]?.weekStart ?? TODAY }),
       weeklyReviews: { [PROFILE_ID]: reviews },
       motivation: {},
       // The session slice is store-only and survives between tests in a file, so it is pinned.

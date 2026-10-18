@@ -13,14 +13,16 @@ import {
 } from '../../domain/dates';
 import { dailyBeverageTargetML, statedBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
-import type { ActivityLevel, Experience, GoalKind, Profile, UnitSystem } from '../../domain/types';
+import type { ActivityLevel, Experience, Profile, UnitSystem } from '../../domain/types';
 import { displayLoad, formatBeverageTarget, toStoredLoad } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
+import { GOAL_OPTIONS } from '../components/RestartProgramme';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { InteractionSettings } from '../settings/InteractionSettings';
+import { ProgrammeSettings } from '../settings/ProgrammeSettings';
 import './views.css';
 
 /**
@@ -42,13 +44,6 @@ const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey }[] = [
   { value: 'novice', labelKey: 'option.experienceNovice' },
   { value: 'intermediate', labelKey: 'option.experienceIntermediate' },
   { value: 'advanced', labelKey: 'option.experienceAdvanced' },
-];
-
-const GOAL_OPTIONS: { value: GoalKind; labelKey: CopyKey }[] = [
-  { value: 'fat-loss', labelKey: 'option.goalFatLoss' },
-  { value: 'muscle-gain', labelKey: 'option.goalMuscleGain' },
-  { value: 'recomposition', labelKey: 'option.goalRecomposition' },
-  { value: 'maintenance', labelKey: 'option.goalMaintenance' },
 ];
 
 /**
@@ -475,6 +470,12 @@ export function SettingsView(): JSX.Element {
         {t('label.creatine')}
       </label>
       <p className="view-note">{t('advice.creatineOnly')}</p>
+
+      {/* ROADMAP L5: equipment, split and conditioning, and Update Programme when Goal,
+          Experience or any of these would change the running plan. Remounted per profile. */}
+      {/* A key of its own: TimeZoneSetting above is a sibling keyed by the bare profile id, and a
+          duplicate sibling key made React hand one component's state to the other. */}
+      <ProgrammeSettings key={`programme-${profile.id}`} profile={profile} />
 
       <h2>{t('hero.equipmentSteps')}</h2>
       <NumberSetting

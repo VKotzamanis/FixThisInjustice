@@ -94,8 +94,13 @@ const GOAL_LABEL: Record<GoalKind, string> = {
 /**
  * Conditioning candidates, best first. The ergometers are full-gym only, so the walk is what a
  * dumbbells-only or bodyweight setting gets.
+ *
+ * Exported so a stored plan can say whether it was built with the conditioning option
+ * (planIncludesCardio, src/domain/plan/lifecycle.ts): no template slot names these ids, so
+ * their presence is exactly that option (lifecycle.test.ts asserts both halves).
  */
-const CARDIO_PREFERENCE = ['rower-intervals', 'stair-climber', 'walk'];
+export const CARDIO_EXERCISE_IDS: readonly string[] = ['rower-intervals', 'stair-climber', 'walk'];
+const CARDIO_PREFERENCE = CARDIO_EXERCISE_IDS;
 
 /**
  * SUBSTITUTE, NEVER DROP. Every slot is resolved by the templates' own `resolveSlot`, with the

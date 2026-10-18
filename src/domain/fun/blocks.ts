@@ -133,7 +133,15 @@ export function blockStats(
   const lo = block.firstSessionIndex; // [sessions] offset, inclusive
   const hi = block.firstSessionIndex + block.sessionCount; // [sessions] offset, exclusive
   const assignments = state.assignments[profileId] ?? [];
-  const inBlock = assignments.filter((a) => a.sourceIndex >= lo && a.sourceIndex < hi);
+  /*
+   * Only this plan's sessions. A regenerated programme keeps the replaced plan's finished days
+   * of its start week (setPlan, docs/design/programme-lifecycle.md), and their sourceIndex is an
+   * offset into THAT plan, so it says nothing about this plan's blocks.
+   */
+  const planSessionIds = new Set(plan.sessions.map((s) => s.id));
+  const inBlock = assignments.filter(
+    (a) => planSessionIds.has(a.sessionId) && a.sourceIndex >= lo && a.sourceIndex < hi,
+  );
   // (date, sessionId) is what a LoggedSet carries; the same session id can recur on other
   // days, so the date is part of the key rather than a second filter.
   const keys = new Set(inBlock.map((a) => `${a.date} ${a.sessionId}`));
