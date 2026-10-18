@@ -1,0 +1,33 @@
+/* src/ui/components/prList.css
+ *
+ * One personal record in two lines (owner 2026-10-18, Log "Too verbose"): the exercise name
+ * with the record's date beside it, then the best set and the estimated 1RM on one line.
+ * Layout only: no colour is set here, so the row inherits the view's text tokens.
+ * prListStyles.test.ts asserts these rules.
+ */
+
+.pr-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name date' 'meta meta';
+  column-gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.3rem 0;
+}
+
+.pr-name {
+  grid-area: name;
+  /* A long custom exercise name wraps inside its column instead of widening the row. */
+  overflow-wrap: anywhere;
+}
+
+.pr-date {
+  grid-area: date;
+}
+
+.pr-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 0.75rem;
+}

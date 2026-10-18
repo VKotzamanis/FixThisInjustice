@@ -26,6 +26,7 @@ import { computeRecords } from '../../domain/training/records';
 import type { ExerciseRecords } from '../../domain/training/records';
 import type { Exercise, LoggedSet, UnitSystem } from '../../domain/types';
 import { formatLoad } from '../../domain/units';
+import './prList.css';
 
 export interface PRListProps {
   sets: readonly LoggedSet[];
@@ -67,33 +68,33 @@ export function PRList(props: PRListProps): ReactElement {
   return (
     <ul className="pr-list" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
       {rows.map((r) => (
-        <li
-          key={r.exerciseId}
-          className="pr-row"
-          style={{ display: 'grid', gap: '0 0.75rem', padding: '0.15rem 0' }}
-        >
+        // Two lines per record (owner 2026-10-18, Log "Too verbose"): name and date, then the
+        // two figures. The grid is in prList.css; DOM order stays name, figures, date.
+        <li key={r.exerciseId} className="pr-row">
           <span className="pr-name" data-testid="pr-name">
             {r.name}
           </span>
-          <span
-            className="pr-best"
-            data-testid="pr-best"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-          >
-            {/* The load is formatted in the profile's unit; "BW" is what a 0 kg load reads as. */}
-            {FORMAT.loggedSet(
-              formatLoad(r.bestSet?.loadKg ?? null, units),
-              String(r.bestSet?.reps ?? 0),
-            )}
-          </span>
-          <span
-            className="pr-e1rm"
-            data-testid="pr-e1rm"
-            style={{ fontVariantNumeric: 'tabular-nums' }}
-          >
-            {r.bestE1RM === null
-              ? t('status.noEstimated1RM')
-              : FORMAT.estimated1RM(formatLoad(r.bestE1RM.e1RMKg, units), overrides)}
+          <span className="pr-meta">
+            <span
+              className="pr-best"
+              data-testid="pr-best"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {/* The load is formatted in the profile's unit; "BW" is what a 0 kg load reads as. */}
+              {FORMAT.loggedSet(
+                formatLoad(r.bestSet?.loadKg ?? null, units),
+                String(r.bestSet?.reps ?? 0),
+              )}
+            </span>
+            <span
+              className="pr-e1rm"
+              data-testid="pr-e1rm"
+              style={{ fontVariantNumeric: 'tabular-nums' }}
+            >
+              {r.bestE1RM === null
+                ? t('status.noEstimated1RM')
+                : FORMAT.estimated1RM(formatLoad(r.bestE1RM.e1RMKg, units), overrides)}
+            </span>
           </span>
           <span
             className="pr-date"

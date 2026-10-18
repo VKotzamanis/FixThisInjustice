@@ -2608,6 +2608,14 @@ export const FORMAT = {
       .replace('{target}', () => String(target)),
 
   /**
+   * "2026-01-05 2/3", the on-screen text of a compliance row (owner 2026-10-18, Log "Too
+   * verbose"). The same date and the same two counts as `complianceWeek`, which stays the row's
+   * accessible name; a pure composition with no words, like `complianceCell`.
+   */
+  complianceWeekShort: (monday: string, completed: number, target: number): string =>
+    `${monday} ${String(completed)}/${String(target)}`,
+
+  /**
    * "99 kg estimated 1RM". The word "estimated" is not decoration: the Epley figure carries a
    * standard error of estimate of several kilograms (Reynolds 2006) and must never be read as
    * a measured maximum. The load arrives already formatted by src/domain/units.ts.

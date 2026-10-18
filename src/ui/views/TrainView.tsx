@@ -21,7 +21,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
 import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
-import { WARMUP_NOTICE } from '../../content/formCues';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { crossedMilestones } from '../../domain/fun/blocks';
@@ -340,7 +339,7 @@ export function TrainView(): ReactElement {
         <RestTimerPanel />
       </div>
 
-      <p className="train-warmup">{WARMUP_NOTICE}</p>
+      {/* No standing prose mid-workout (owner 2026-10-18): the warm-up notice is in Form Cues. */}
       <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
 
       <div className="ex-stack">

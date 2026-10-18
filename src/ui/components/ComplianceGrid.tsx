@@ -129,40 +129,44 @@ export function ComplianceGrid(props: ComplianceGridProps): ReactElement {
       aria-label={t('label.complianceGrid')}
       style={{ display: 'grid', gap: '0.25rem', fontVariantNumeric: 'tabular-nums' }}
     >
-      {weekStarts.map((monday) => (
-        <div
-          className="compliance-row"
-          role="row"
-          key={monday}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-        >
-          <span className="compliance-week" role="rowheader">
-            {FORMAT.complianceWeek(
-              monday,
-              completedInWeek(assignments, monday),
-              weeklySessionTarget,
-              overrides,
-            )}
-          </span>
-          {slotWeekdays.map((weekday) => {
-            // ISO weekdays are Monday-first, and `monday` is day 1, so the offset is weekday - 1.
-            const date = addDays(monday, weekday - 1);
-            const mark = markFor(index.get(date), date, today);
-            return (
-              <span
-                key={date}
-                role="gridcell"
-                className={`compliance-cell ${mark}`}
-                data-mark={mark}
-                aria-label={FORMAT.complianceCell(date, t(MARK_COPY[mark]))}
-              >
-                {/* The cell's aria-label names it, so the mark itself is aria-hidden. */}
-                <StatusMark kind={mark} />
-              </span>
-            );
-          })}
-        </div>
-      ))}
+      {weekStarts.map((monday) => {
+        const completed = completedInWeek(assignments, monday); // [sessions]
+        return (
+          <div
+            className="compliance-row"
+            role="row"
+            key={monday}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+          >
+            {/* The screen shows the date and the two counts; the sentence is the row's name for
+                a screen reader (owner 2026-10-18: the Log was "too verbose"). */}
+            <span
+              className="compliance-week"
+              role="rowheader"
+              aria-label={FORMAT.complianceWeek(monday, completed, weeklySessionTarget, overrides)}
+            >
+              {FORMAT.complianceWeekShort(monday, completed, weeklySessionTarget)}
+            </span>
+            {slotWeekdays.map((weekday) => {
+              // ISO weekdays are Monday-first, and `monday` is day 1, so the offset is weekday - 1.
+              const date = addDays(monday, weekday - 1);
+              const mark = markFor(index.get(date), date, today);
+              return (
+                <span
+                  key={date}
+                  role="gridcell"
+                  className={`compliance-cell ${mark}`}
+                  data-mark={mark}
+                  aria-label={FORMAT.complianceCell(date, t(MARK_COPY[mark]))}
+                >
+                  {/* The cell's aria-label names it, so the mark itself is aria-hidden. */}
+                  <StatusMark kind={mark} />
+                </span>
+              );
+            })}
+          </div>
+        );
+      })}
     </div>
   );
 }

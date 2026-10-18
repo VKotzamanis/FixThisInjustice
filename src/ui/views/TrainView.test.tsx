@@ -1219,10 +1219,14 @@ describe('TrainView custom and bonus exercises', () => {
 });
 
 describe('TrainView session frame', () => {
-  it('renders the warm-up notice on every session', () => {
+  it('keeps the warm-up notice off the session screen; the Form Cues modal still carries it', () => {
+    // Owner 2026-10-18: "keep it simple when we train". The notice text is unchanged and lives
+    // in the modal, above every cue set (FormCuesModal.test.tsx asserts its position there).
     seedStore(seed());
     renderTrain();
-    expect(screen.getByText(WARMUP_NOTICE)).toBeInTheDocument();
+    expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.formCues') }));
+    expect(within(screen.getByTestId('form-cues-backdrop')).getByText(WARMUP_NOTICE)).toBeInTheDocument();
   });
 
   it('says so when no session is assigned to today', () => {

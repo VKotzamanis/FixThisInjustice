@@ -256,7 +256,7 @@ describe('LogView compliance', () => {
 
   it('shows one row per week from the plan start through today, and no earlier', () => {
     render(<LogView />);
-    const rows = screen.getAllByRole('rowheader').map((n) => n.textContent);
+    const rows = screen.getAllByRole('rowheader').map((n) => n.getAttribute('aria-label'));
     expect(rows).toEqual([
       FORMAT.complianceWeek('2026-02-09', 1, TARGET),
       FORMAT.complianceWeek('2026-02-16', 0, TARGET),
@@ -306,7 +306,7 @@ describe('LogView compliance', () => {
       }),
     );
     render(<LogView />);
-    const rows = screen.getAllByRole('rowheader').map((n) => n.textContent);
+    const rows = screen.getAllByRole('rowheader').map((n) => n.getAttribute('aria-label'));
     expect(rows).toEqual([FORMAT.complianceWeek('2026-02-09', 1, TARGET)]);
   });
 
@@ -356,6 +356,42 @@ describe('LogView weekly AMRAP', () => {
     );
     render(<LogView />);
     expect(screen.queryByText(copyFor('limelight', 'hero.repsPerWeek'))).toBeNull();
+  });
+});
+
+/*
+ * Owner 2026-10-18 on the Log screenshot: "Too verbose". The data stays; the repeated sentence
+ * per week leaves the screen (it is still each row's accessible name), and the evidence for the
+ * projection stays one tap away behind the existing why? disclosure.
+ */
+describe('LogView, lean (owner 2026-10-18)', () => {
+  it('shows each week as its date and count, never the sentence, on screen', () => {
+    render(<LogView />);
+    expect(screen.getAllByRole('rowheader').map((n) => n.textContent)).toEqual([
+      FORMAT.complianceWeekShort('2026-02-09', 1, TARGET),
+      FORMAT.complianceWeekShort('2026-02-16', 0, TARGET),
+      FORMAT.complianceWeekShort('2026-02-23', 0, TARGET),
+      FORMAT.complianceWeekShort('2026-03-02', 0, TARGET),
+    ]);
+    expect(screen.queryByText(FORMAT.complianceWeek('2026-02-09', 1, TARGET))).toBeNull();
+  });
+
+  it('keeps the projection and the rule behind it in the why? disclosure, closed by default', () => {
+    const state = seed();
+    const profile = state.profiles[PROFILE_ID];
+    if (!profile) throw new Error('fixture has no profile');
+    const { basis } = computeTargets(
+      nutritionInputFor(
+        profile,
+        latestBodyMassEntry(state, PROFILE_ID),
+        state.availability[PROFILE_ID]?.weeklySessionTarget ?? 0,
+        TODAY,
+      ),
+    );
+    render(<LogView />);
+    const details = screen.getByTestId('body-mass-basis');
+    expect(details).toHaveProperty('open', false);
+    expect(details.textContent).toContain(basis.rateRule);
   });
 });
 

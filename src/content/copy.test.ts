@@ -573,6 +573,11 @@ describe('the converted frames render the base-table string they replaced', () =
     expect(FORMAT.weekMissed('2026-08-24', 0, 4)).toBe('Week of 2026-08-24: no sessions completed.');
   });
 
+  it('composes the on-screen compliance row from its date and two counts, no words', () => {
+    // Owner 2026-10-18 ("Too verbose"): the sentence above stays the row's accessible name.
+    expect(FORMAT.complianceWeekShort('2026-01-05', 2, 3)).toBe('2026-01-05 2/3');
+  });
+
   it('leaves no slot standing in any of them', () => {
     const rendered = [
       FORMAT.nextSession('Wed', '07:00', 'Push'),

@@ -224,14 +224,6 @@
   align-items: flex-start;
 }
 
-.train-warmup {
-  font-size: 0.8rem;
-  color: var(--text-2);
-  border-left: 2px solid var(--line-2);
-  padding-left: 0.75rem;
-  margin: 0.75rem 0;
-}
-
 .ex-card {
   border: 1px solid var(--line-2);
   margin-bottom: 0.5rem;

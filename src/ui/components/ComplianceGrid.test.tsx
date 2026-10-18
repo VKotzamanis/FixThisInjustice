@@ -179,11 +179,31 @@ describe('ComplianceGrid', () => {
         weeklySessionTarget={TARGET}
       />,
     );
-    const rows = screen.getAllByRole('rowheader').map((n) => n.textContent);
+    const rows = screen.getAllByRole('rowheader').map((n) => n.getAttribute('aria-label'));
     expect(rows).toEqual([
       FORMAT.complianceWeek('2026-01-05', 2, TARGET),
       FORMAT.complianceWeek('2026-01-12', 1, TARGET),
     ]);
+  });
+
+  it('shows each week as its date and count, and keeps the sentence as the row name', () => {
+    // Owner 2026-10-18, Log "Too verbose": "Week of ... completed" on every row repeated what the
+    // heading says. The sentence stays the accessible name; the screen shows the two counts.
+    render(
+      <ComplianceGrid
+        assignments={[assignment('2026-01-05', 'completed'), assignment('2026-01-07', 'completed')]}
+        weekStarts={WEEK_STARTS}
+        slotWeekdays={[...MWF]}
+        today={AFTER}
+        weeklySessionTarget={TARGET}
+      />,
+    );
+    expect(screen.getAllByRole('rowheader').map((n) => n.textContent)).toEqual([
+      FORMAT.complianceWeekShort('2026-01-05', 2, TARGET),
+      FORMAT.complianceWeekShort('2026-01-12', 0, TARGET),
+    ]);
+    expect(screen.getByRole('rowheader', { name: FORMAT.complianceWeek('2026-01-05', 2, TARGET) })).toBeTruthy();
+    expect(screen.queryByText(FORMAT.complianceWeek('2026-01-05', 2, TARGET))).toBeNull();
   });
 
   it('counts only the week it belongs to', () => {
@@ -196,7 +216,7 @@ describe('ComplianceGrid', () => {
         weeklySessionTarget={TARGET}
       />,
     );
-    const rows = screen.getAllByRole('rowheader').map((n) => n.textContent);
+    const rows = screen.getAllByRole('rowheader').map((n) => n.getAttribute('aria-label'));
     expect(rows[0]).toBe(FORMAT.complianceWeek('2026-01-05', 1, TARGET));
     expect(rows[1]).toBe(FORMAT.complianceWeek('2026-01-12', 0, TARGET));
   });
@@ -256,7 +276,7 @@ describe('a 3-of-3 week (the Log screenshot of 2026-10-18)', () => {
     for (const cell of screen.getAllByRole('gridcell')) {
       expect(cell.querySelector('svg.status-mark')?.getAttribute('data-shape')).toBe('chip-check');
     }
-    expect(screen.getByRole('rowheader').textContent).toBe(FORMAT.complianceWeek(MONDAY, 3, TARGET));
+    expect(screen.getByRole('rowheader').getAttribute('aria-label')).toBe(FORMAT.complianceWeek(MONDAY, 3, TARGET));
   });
 
   it('draws the screenshot only for sessions off the slot days, as the fixture has them', () => {
@@ -274,6 +294,6 @@ describe('a 3-of-3 week (the Log screenshot of 2026-10-18)', () => {
       />,
     );
     expect(marksOf()).toEqual(['none', 'none', 'completed']);
-    expect(screen.getByRole('rowheader').textContent).toBe(FORMAT.complianceWeek(MONDAY, 3, TARGET));
+    expect(screen.getByRole('rowheader').getAttribute('aria-label')).toBe(FORMAT.complianceWeek(MONDAY, 3, TARGET));
   });
 });

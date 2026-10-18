@@ -11,7 +11,8 @@
 // WARMUP_NOTICE is rendered above every cue set, on every open: the review required a warm-up
 // protocol and a pre-participation screen, and the notice is the whole of what can be said
 // without a sourced protocol. It carries no digit, and src/content/formCues.test.ts asserts
-// that, so nothing here prescribes a number.
+// that, so nothing here prescribes a number. This modal is now the notice's only screen: the Train
+// view dropped its copy (owner 2026-10-18, "keep it simple when we train").
 
 import { createContext, useContext, useId } from 'react';
 import type { ReactElement } from 'react';

@@ -118,6 +118,32 @@ describe('PRList', () => {
     expect(dates).toEqual(['2026-02-16', '2026-01-26', '2026-01-05']);
   });
 
+  it('puts the best set and the estimate on one line under the name (owner 2026-10-18)', () => {
+    // Four stacked lines per record read as "too verbose"; prListStyles.test.ts holds the grid.
+    render(
+      <PRList
+        sets={[
+          makeSet({ exerciseId: BENCH.id, loadKg: 90, reps: 3 }), // [kg]
+          makeSet({ exerciseId: ROW.id, loadKg: 70, reps: 6 }), // [kg]
+        ]}
+        library={LIBRARY}
+        units="metric"
+      />,
+    );
+    const rows = screen.getAllByRole('listitem');
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect([...row.children].map((c) => c.className)).toEqual(['pr-name', 'pr-meta', 'pr-date']);
+      const meta = row.querySelector('.pr-meta');
+      expect(meta?.querySelector('[data-testid="pr-best"]')).not.toBeNull();
+      expect(meta?.querySelector('[data-testid="pr-e1rm"]')).not.toBeNull();
+      // Inline layout would override the stylesheet's grid.
+      expect(row.getAttribute('style')).toBeNull();
+    }
+    // The qualifier stays on the figure: an Epley estimate is never shown as a measured maximum.
+    expect(screen.getByText(FORMAT.estimated1RM(formatLoad(e1RM(90, 3), 'metric')))).toBeTruthy();
+  });
+
   it('leaves out an exercise whose only sets carry no rep count', () => {
     // A timed hold logs a duration and no reps. It is not a repetition record.
     render(
