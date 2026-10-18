@@ -142,7 +142,7 @@ export function IntroSequence(): ReactElement {
                * same and measures the same.
                *
                * WHY. Design Mode recognises long-form text by matching an element's WHOLE text
-               * against src/content/r10Text.ts (src/design/CopyEditLayer.tsx's R10 pass). With
+               * against src/content/r10Text.ts. With
                * the rest living loose in the `<li>`, the only element whose text was ever exactly
                * one stored field was the lead phrase, so the sentence AFTER the colon - which is
                * most of what the owner wrote - could not be tapped and edited. One span buys it.

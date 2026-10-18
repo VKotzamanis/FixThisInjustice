@@ -15,7 +15,7 @@ coverage/
 worker/.dev.vars
 
 # tooling caches and local editor state
-graphify-out/cache/
+graphify-out/
 .nodeterm/
 .design-canvas.state.json
 

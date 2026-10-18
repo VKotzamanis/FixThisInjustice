@@ -4,7 +4,7 @@
  * docs/design/2026-09-01-copy-contract.md states R1 to R14 in prose. The parts that can be
  * decided from a string alone were, until Design Mode Task 2, implemented in two places that
  * could not see each other: `src/content/copy.test.ts` held R1 to R6 and R8 as file-local
- * helpers, and `scripts/check-title-case.mjs` held R14. Neither was importable by the running
+ * helpers. Neither was importable by the running
  * app, so a panel that validated copy AS IT IS TYPED would have had to carry a third copy of
  * every rule.
  *
@@ -16,11 +16,8 @@
  * consumers import them:
  *
  *   - `src/content/copy.test.ts`      the merge gate, over all three tables
- *   - `scripts/check-title-case.mjs`  the R14 gate, over the default table
- *   - `src/design/copyEdits.ts`       Design Mode's live validator, as the owner types
  *
- * WHY `src/content/` AND NOT `src/design/`. These rules govern `copy.ts`; they are content's, not
- * the design panel's. Putting them under `src/design/` would mean the copy contract stopped being
+ * These rules govern `copy.ts`; they are content's. Moving them out of content would mean the copy contract stopped being
  * enforced the day Design Mode was deleted, which is a coupling nobody would choose deliberately.
  *
  * IT IMPORTS NOTHING. No React, no store, no Node built-in. A browser bundle, a vitest run and a
@@ -107,7 +104,7 @@ export function hasUrl(value: string): boolean {
 
 /*
  * ----------------------------------------------------------------------------------------------
- * R14, moved here verbatim from scripts/check-title-case.mjs so the script and the panel decide
+ * R14 is defined here so all copy validation agrees.
  * the same thing. The script now loads this module through the Vite server it already creates.
  * ----------------------------------------------------------------------------------------------
  *
@@ -306,7 +303,7 @@ const LENGTH_CAPS: ReadonlyArray<{ prefix: string; cap: number; rule: CopyRuleId
  * THE PER-TABLE SCOPING IS THE CONTRACT'S, NOT AN INVENTION. R1 to R6 and the URL ban bind every
  * table (copy.test.ts runs them over all three). R8 and R14 bind the DEFAULT table alone: the
  * limelight register is deliberately lower case and the board's is deliberately upper, and
- * scripts/check-title-case.mjs skips both for that reason. Applying R14 to a skin would destroy
+ * Applying R14 to a skin would destroy
  * two recorded design decisions the first time it was obeyed.
  */
 export function checkCopyValue(

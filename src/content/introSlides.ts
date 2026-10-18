@@ -19,8 +19,7 @@
 // round 2 changes the former walls of prose into headings, lead lines and bullets.
 //
 // SUPERSEDED AGAIN, AND THIS TIME THE RULE ITSELF GOES, NOT ONLY ITS SCOPE. Design Mode now edits
-// these five slides in place. The owner opens the deployed app with `?design=1`, taps a sentence,
-// retypes it, and exports a patch that `scripts/design-patch.mjs` applies back to the literals
+// these five slides in place.
 // below. "Copied verbatim from the brief, do not reword" was a rule for AGENTS and it still binds
 // them: nobody but the owner rewrites his own words, and an agent asked to shorten, improve or
 // tidy a slide should refuse and say so. What changed is that HE has a way to do it, so a

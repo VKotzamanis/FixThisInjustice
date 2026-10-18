@@ -1,163 +1,43 @@
-# Publishes dist/ to GitHub Pages on every push to main. The build job repeats every gate
-# ci.yml's `verify` job runs, in the same order: the three asset and copy gates, the P7 legacy
-# gate, lint, types, the four-zone suite, the build and the two grep gates. The gates are
-# repeated rather than left to ci.yml because the two workflows are independent: a red ci.yml
-# does not stop this one from publishing, so a gate that runs only there does not guard the
-# live site. That argument covers lint, types and the tests exactly as it covers the asset
-# gates, which is why they are here too rather than trusted to the parallel run.
-#
-# ci.yml's second job, `worker`, is NOT repeated. It gates worker/, a separate npm package that
-# this workflow neither builds nor publishes: dist/ is the whole Pages artifact, and the Worker
-# is deployed by hand, by `npm --prefix worker run deploy` in docs/RUNBOOK-reminders.md section
-# 7. No workflow runs `wrangler deploy`, so a gate here could not stand between worker/ and
-# production the way these gates stand between dist/ and the live site.
-#
-# One-time manual step, documented in docs/DEPLOY-CUTOVER-NOTE.md:
-# Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+# Publishes dist/ only from a successful CI run on main.
 name: Deploy to GitHub Pages
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-  workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# One deployment at a time. Queued runs are not cancelled: a half-finished Pages
-# deployment is worse than a slightly stale one.
 concurrency:
   group: pages
   cancel-in-progress: false
 
 jobs:
   build:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
-    # Job level, not step level. P5 populates these repository variables; empty is a valid
-    # build because the reminder worker is optional. VITE_REMINDER_API is read twice: by
-    # build/cspPlugin.ts during `npm run build`, and by scripts/check-dist-csp.sh, which
-    # asserts the built connect-src names exactly that origin. Scoped to the Build step,
-    # the variable is unset by the time the check runs and its assertion is inert.
     env:
       VITE_REMINDER_API: ${{ vars.VITE_REMINDER_API }}
       VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
-      # Needs no Node: a clip over GitHub's 100 MiB file limit, or a file that is not an
-      # .mp4, should fail before the install spends a minute.
-      - name: Check the motivation clip's size and format
-        run: bash scripts/check-media-size.sh
-
-      # Needs no Node either, for the same reason: a sound effect over the size limit, or in a
-      # container Safari cannot decode, should fail before the install spends a minute. The
-      # repository ships no audio, so the passing output is "no audio under public/sfx".
-      - name: Check the skin sound-effect sizes and formats
-        run: bash scripts/check-sfx-size.sh
-
-      # Node 22 comes from .nvmrc, the floor package.json `engines` declares.
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
 
-      # Round-three verification criterion 5: the screens use icons, not emoji. It is a Node
-      # script, so it sits after the Node version is pinned; it reads the checkout through
-      # `git ls-files` and needs no dependencies, so it runs before the install rather than after.
-      - name: No emoji in the copy tables or the components
-        run: node scripts/check-no-emoji.mjs
-
-      # P7 deleted the pre-rewrite console and the documents that described it. This step is the
-      # gate that keeps them deleted: a re-added legacy/ would ship the medication text the
-      # content review ordered removed, and a re-added DEPLOY.md would name a file set the build
-      # stopped producing. Tracked files only. An untracked copy on a developer's disk is not
-      # CI's business, and `git ls-files` prints nothing when a pathspec matches nothing.
-      - name: No legacy tree, no superseded root documents
-        run: |
-          set -euo pipefail
-          removed=(legacy DEPLOY.md PROJECT_SUMMARY.md scripts/scrub-legacy.py \
-                   console.html 'console-*.jsx' 'prototype-*.html' core.jsx data.js \
-                   design-canvas.jsx tweaks-panel.jsx sw.js manifest.json \
-                   .design-canvas.state.json uploads screenshots)
-          found=$(git ls-files -- "${removed[@]}")
-          if [ -n "$found" ]; then
-            echo "FAIL: these were deleted at the P7 cutover and are tracked again:"
-            echo "$found"
-            exit 1
-          fi
-          echo "legacy gate: clean"
-
-      # npm ci installs the exact package-lock.json tree; a drifted lockfile fails here.
       - name: Install
-        # The root eslint config lints worker/** with type-aware rules, so the
-        # worker's own dependencies must be present for the types to resolve.
-        run: |
-          npm ci
-          npm ci --prefix worker
-
-      # The five master plan section 3 lint gates are errors, so eslint failing fails the job.
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npm run typecheck
-
-      # Civil dates are zone-sensitive: the suite runs under UTC, Europe/Athens, America/New_York, America/Los_Angeles.
-      - name: Test in four time zones
-        run: npm run test:tz
+        run: npm ci
 
       - name: Build
         run: npm run build
-
-      - name: Build hygiene
-        run: |
-          set -euo pipefail
-
-          # Gate 1: no inline <script> — the CSP is script-src 'self', so an inline script is dead code the browser refuses to run.
-          if grep -o '<script[^>]*>' dist/index.html | grep -v 'src='; then
-            echo "FAIL: dist/index.html contains a <script> without src="
-            exit 1
-          fi
-          echo "PASS: every <script> in dist/index.html has src="
-
-          # Gate 2: no CDN and no in-browser compiler — the legacy console pulled React from unpkg and compiled JSX at runtime as text/babel.
-          if grep -niE 'unpkg|text/babel' dist/index.html; then
-            echo "FAIL: dist/index.html references a CDN or an in-browser compiler"
-            exit 1
-          fi
-          echo "PASS: no unpkg, no text/babel"
-
-          # Gate 3: the CSP meta tag survives the build — GitHub Pages cannot set response headers, so the meta tag is the only enforcement point.
-          if ! grep -q 'http-equiv="Content-Security-Policy"' dist/index.html; then
-            echo "FAIL: CSP meta tag absent from dist/index.html"
-            exit 1
-          fi
-          echo "PASS: CSP meta tag present"
-
-          # Gate 4a: the built frame-src equals the host list build/cspPlugin.ts read from src/config/videoInstances.ts, so policy and runtime list cannot drift.
-          from_config=$(grep -oE "host: '[^']+'" src/config/videoInstances.ts | sed -E "s|host: '(.+)'|https://\1|" | tr '\n' ' ' | sed 's/ *$//')
-          from_build=$(grep -o 'frame-src [^;"]*' dist/index.html | sed 's/^frame-src //; s/ *$//')
-          if [ "$from_build" != "$from_config" ]; then
-            echo "FAIL: dist frame-src has drifted from src/config/videoInstances.ts"
-            echo "  dist:   $from_build"
-            echo "  config: $from_config"
-            exit 1
-          fi
-
-          # Gate 4b: that list is still the six hosts master plan section 3 approved, so the frame allowlist cannot widen without a plan amendment.
-          approved='https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.tiekoetter.com https://yt.chocolatemoo53.com https://inv.thepixora.com https://invidious.f5.si'
-          if [ "$from_build" != "$approved" ]; then
-            echo "FAIL: frame-src host list differs from master plan section 3; amend the plan before widening it"
-            echo "  built:    $from_build"
-            echo "  approved: $approved"
-            exit 1
-          fi
-          echo "PASS: frame-src equals the six hosts in src/config/videoInstances.ts"
-
-      - name: CSP content and referrer meta
-        run: bash scripts/check-dist-csp.sh dist/index.html
 
       - name: No personal health data in the tracked tree
         run: |

@@ -1,6 +1,5 @@
 import { BOARD_COPY } from './copy.board';
 import { LIMELIGHT_COPY } from './copy.limelight';
-import { isMarkingCopyKeys, markCopyValue } from '../design/copyMarkers';
 import type { SkinId } from '../domain/types';
 
 /**
@@ -712,7 +711,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.continue': 'Next',
   /*
    * The intro's own advance control, deliberately NOT `button.continue`. A copy key may be
-   * claimed by exactly one part in scripts/alpha-parts.mjs, and `button.continue` belongs to
+   * claimed by exactly one review area, and `button.continue` belongs to
    * `setup.nav`; the intro screen rendering the same key left it unassignable on the intro screen
    * (round 2, brief J, the acknowledgement modal). Same label, separate key, so the two controls
    * can also diverge without one screen dragging the other.
@@ -853,7 +852,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.equipment': 'Equipment',
   'label.equipmentAccess': 'Equipment Access',
   'label.goal': 'Goal',
-  // R14, and scripts/check-title-case.mjs scans the `label.` family: both words were lower case
+  // R14 scans the `label.` family: both words were lower case
   // and both are now capitalised. The string is otherwise unchanged.
   'label.targetDate': 'Target Date (Optional)',
   'label.creatine': 'Creatine Monohydrate',
@@ -1802,7 +1801,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // --- the top bar's per-view instruction (P10 Brief D) ---
   // src/ui/nav/views.ts's VIEW_INSTRUCTIONS is a Record<ViewId, CopyKey>, so a view added there
   // with no row here is a compile error rather than a blank line in the marquee. Each is
-  // written from the same screen's own catalogue "what" in scripts/alpha-parts.mjs, so the
+  // written from the same screen's own review note, so the
   // instruction never claims a capability the view does not have.
   'advice.todayInstruction': 'Start, resume, or skip the session assigned today.', // R3: 8 words
   'advice.planInstruction': 'Browse blocks and weeks, then open any session card.', // R3: 9 words
@@ -1836,7 +1835,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // `status.` AND NOT `hero.`, for two reasons that agree. The top bar's existing rows are
   // already `advice.*Instruction` and `status.sessionCursor`: nothing in that bar is a `hero.`,
   // because the bar reports where you are rather than heading the screen. And the naming
-  // families (`label.` `hero.` `step.` `group.` `button.`) are the ones scripts/check-title-case
+  // families (`label.` `hero.` `step.` `group.` `button.`) are the ones the copy contract
   // .mjs reads, where a `{slot}` counts as an uncapitalised word; putting the templated row here
   // keeps R14's gate honest instead of adding a failure it cannot really diagnose.
   'status.bannerIntro': 'Hi, How Are Ya',
@@ -1997,26 +1996,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
  * therefore reaches a skin without being touched.
  */
 export function copy(key: CopyKey, overrides?: Partial<Record<CopyKey, string>>): string {
-  const value = overrides?.[key] ?? DEFAULT_COPY[key];
-  /*
-   * DESIGN MODE, AND NOTHING ELSE, TAKES THE SECOND BRANCH.
-   *
-   * `isMarkingCopyKeys()` is a module-level boolean decided once from `?design=1`
-   * (src/design/copyMarkers.ts records why it is not React state). Outside Design Mode this is
-   * one predictable branch and the IDENTICAL string: same value, same nodes, no wrapper, nothing
-   * added to the DOM. Inside it, the key rides along as Unicode tag characters, which a renderer
-   * draws nothing for, and src/design/CopyEditLayer.tsx turns the marked run into a
-   * `data-copy-key` element the owner can type into.
-   *
-   * WHAT IS DELIBERATELY NOT MARKED. `src/content/bodyEquations.ts`,
-   * `src/content/guidanceReferences.ts`, `src/content/sexRationale.ts`,
-   * `src/content/supplementGuidance.ts`, `src/content/reviewDataNotes.ts` and every other R10
-   * module carry citations, DOIs and structure rather than loose strings, and none of them goes
-   * through this function. They are NOT editable in Design Mode and must not be made so: a
-   * WYSIWYG is how a DOI gets mangled. Only this table and the two skin override tables are in
-   * scope for in-place editing.
-   */
-  return isMarkingCopyKeys() ? markCopyValue(key, value) : value;
+  return overrides?.[key] ?? DEFAULT_COPY[key];
 }
 
 /**

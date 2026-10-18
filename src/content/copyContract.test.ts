@@ -56,7 +56,7 @@ describe('the four cases the plan names', () => {
   it('R14: a lower-case label is flagged, and the skin tables are exempt', () => {
     expect(rules('label.units', 'units on the weight plates', 'DEFAULT_COPY')).toContain('R14');
     // Limelight is deliberately lower case; applying R14 to it would destroy that decision the
-    // first time the rule was obeyed. scripts/check-title-case.mjs skips it for the same reason.
+    // first time the rule was obeyed.
     expect(rules('label.units', 'units on the weight plates', 'LIMELIGHT_COPY')).toEqual([]);
   });
 });
@@ -135,7 +135,7 @@ describe('R11, which is an advisory rather than a gate', () => {
   });
 });
 
-describe('the helpers this module shares with copy.test.ts and check-title-case.mjs', () => {
+describe('the helpers this module shares with copy.test.ts', () => {
   it('counts words the way the contract defines them', () => {
     expect(wordCount('60 kg x 8')).toBe(1); // numerals and units are not words
     expect(wordCount('Reload {sets} Now')).toBe(2); // a slot is a number at runtime

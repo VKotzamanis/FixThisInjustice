@@ -1091,7 +1091,7 @@
  * `--text` is #000000 there, which measures 10.91:1, and near-white on clinical and board, 15.93:1.
  *
  * tokens.css already records the rule this broke: "pink is never type". The rule is even asserted
- * by scripts/alpha-walk-pages.mjs -- but only against the generated review pages, never against the
+ * by review-page generation -- but only against generated review pages, never against the
  * app's own stylesheets, which is why a violation shipped with the check green. Found while
  * verifying brief L (r2.18), which reuses this control on the guidance screen and so doubled the
  * screens it affected. Pre-existing from brief K's body-page references box.
@@ -1131,7 +1131,7 @@
  *
  * THE THIRD INSTANCE of this exact defect. The references control shipped at 1.41:1 and was fixed
  * in aa9fe7a; the feasibility bands were caught at 1.04:1 before shipping. `tokens.css` states the
- * rule -- "state colours are ink, not hues" -- and `alpha-walk-pages.mjs` ASSERTS "pink is never
+ * rule -- "state colours are ink, not hues" -- and review checks assert "pink is never
  * type" and stayed green through all three, because it reads only the generated review pages and
  * never the app's own stylesheets. That gap is the actual defect; this is a symptom.
  *

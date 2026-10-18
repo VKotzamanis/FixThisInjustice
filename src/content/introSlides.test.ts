@@ -30,7 +30,7 @@ describe('the intro slides obey the rules R10 does not exempt', () => {
  * acknowledgement verbatim, which was the right guard while only an agent could change them.
  * The owner now rewrites these same strings himself in Design Mode, so a verbatim pin would fail
  * on every save he makes; what still has to hold is the shape the sequence renders and the
- * single-line form scripts/design-patch.mjs can rewrite.
+ * single-line form.
  */
 describe('the restructured slides', () => {
   it('has five slides: no heading on the first, a heading and led bullets on the rest', () => {
@@ -80,7 +80,7 @@ describe('the ascii figure', () => {
  * AS HE TYPES (src/content/r10Text.ts applies R14 to a field whose path ends in `heading`). That
  * live check is the useful one, and it is not a gate: it warns, and he can export anyway.
  *
- * `scripts/check-title-case.mjs` scans `DEFAULT_COPY` and nothing else, by design, so it would
+ * The copy contract scans `DEFAULT_COPY` and nothing else, by design, so it would
  * never see these. Rather than widen that script - which would change the "0 of N" line CI reads
  * and mix a copy-table gate with a content module - the gate for these four headings lives here,
  * next to the strings it governs, exactly as this file's R5, R6, R11 and URL assertions already do.

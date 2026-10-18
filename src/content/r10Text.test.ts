@@ -143,10 +143,10 @@ describe('the merge gate over the source, which the value scan cannot see', () =
   /*
    * THE APPLIER'S OWN RULE, checked here so it is not first met at export time. A value the source
    * builds by joining two literals across two lines cannot be replaced in place, and
-   * scripts/design-patch.mjs refuses it. A module declared editable whose rows fail this would
+   * A module declared editable whose rows fail this would
    * hand the owner an afternoon of edits that no one can apply.
    *
-   * THE LOCATOR MIRRORS `literalForms` (scripts/design-patch.mjs:435-442) rather than guessing a
+   * THE LOCATOR MIRRORS `literalForms` rather than guessing a
    * subset of it, so the two sides stay in step: each quote style, escaped when the value already
    * contains that quote. The third form is the one this test used to miss - a value holding BOTH
    * an apostrophe and a double quote can only be written single-quoted with `\'` escapes, which is
@@ -187,7 +187,7 @@ describe('the value index', () => {
   });
 
   it('offers no field at all for a string two fields share', () => {
-    // The objection copyMarkers.ts raised against value matching is answered by DROPPING the
+    // The objection against value matching is answered by DROPPING the
     // collision rather than by hoping there is none. Two of the R10 modules quote the same
     // FAO/WHO/UNU sentence, and neither is offered because of it.
     expect(r10ValueCollisions()).toBeGreaterThan(0);

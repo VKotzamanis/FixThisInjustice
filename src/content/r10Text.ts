@@ -5,8 +5,7 @@
  * <!-- decision: r10-is-locked-by-what-it-cites-not-by-being-r10 | status: adopted | supersedes: r10-modules-are-never-editable -->
  *
  * WHAT THIS REPLACES, AND WHY. Design Mode Task 2 shipped with "the R10 modules are not editable",
- * recorded in docs/plans/2026-09-10-16-design-mode.md and restated in src/design/copyEdits.ts and
- * src/design/CopyEditLayer.tsx. The stated reason was sound: those modules "carry citations, DOIs
+ * recorded in docs/plans/2026-09-10-16-design-mode.md. The stated reason was sound: these modules "carry citations, DOIs
  * and structure. They do not pass through `copy()` ... a WYSIWYG is how a DOI gets mangled."
  *
  * The rule was wider than the reason. Measured on this tree, `src/content/introSlides.ts` holds
@@ -39,12 +38,12 @@
  *
  * WHAT IT DOES NOT DECIDE. Whether the applier can rewrite a given row. A value the source builds
  * by concatenating two literals across two lines cannot be replaced in place, and this module
- * cannot tell: it holds the joined string, not the source. `scripts/design-patch.mjs` refuses
+ * cannot tell: it holds the joined string, not the source.
  * such a row by name, exactly as it already refuses a concatenated `copy.ts` row, and
  * `r10Text.test.ts` asserts that every field reported editable today locates cleanly, so a module
  * cannot be declared editable without someone finding out that half its rows cannot be applied.
  *
- * R10 TEXT IS NOT PER SKIN. `copy()` has three tables and src/design/copyEdits.ts spends its
+ * R10 TEXT IS NOT PER SKIN. `copy()` has three tables and
  * header on routing an edit to the right one. These modules have exactly one version of each
  * string, which every skin renders, so an edit here is filed under the module and not under a
  * skin. The panel says so before he types.
@@ -388,7 +387,7 @@ export function r10Lock(id: string): string | null {
  *
  * <!-- decision: r10-text-is-found-by-its-value-not-by-a-marker | status: adopted | supersedes: none -->
  *
- * `copy()` carries its key to the DOM as invisible tag characters, and src/design/copyMarkers.ts
+ * `copy()` returns resolved copy text.
  * records that it REJECTED value matching for that job: "the index is not injective.
  * `button.continue` and `button.introContinue` can hold the same word, and an edit would then be
  * routed to whichever key the index happened to return."
@@ -458,7 +457,7 @@ export function r10ValueCollisions(): number {
  *     `copyContract.checkCopyValue` only applies it when `table === 'DEFAULT_COPY'`. These
  *     modules are not that table. An exclamation mark in the owner's own intro is his to write.
  *   - R14 binds a HEADING only. `IntroSlide.heading` is documented "Title Case noun phrase", and
- *     `check-title-case` is at 0 failures in CI, so a heading retyped in lower case has to be
+ *     headings are checked by the copy contract, so a heading retyped in lower case has to be
  *     flagged AS HE TYPES rather than at merge. It is not applied to body prose, which is
  *     sentences and would fail on its first word.
  *
