@@ -8,9 +8,9 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 ## 1. Broken now
 - B1-B6 fixed 2026-10-18 (`git log --grep '^fix(B'`). Follow-ups from B1:
   - B1a A completion week that ends mid-week is graded against the full weekly target, so finishing on the first slot day reads as a miss and opens the popup. Owner: pro-rate or exempt?
-  - B1b After completion the last review (WeekStamp or Intervention) stays on Today until a new plan starts (`src/ui/views/TodayView.tsx`). Resolves with L5/L7.
+  - B1b DONE 2026-10-18: Today offers Start Next Programme (`src/ui/components/RestartProgramme.tsx`).
   - B1c `src/domain/export/summary.ts:89` still lists stored post-completion reviews.
-  - B1d `setPlan` keeps old reviews (`src/store/index.ts:650`); a leftover review blocks re-grading that week under a new plan. Matters once L5 regenerates plans.
+  - B1d DONE 2026-10-18: re-plan drops reviews of weeks the new programme grades; popup ignores weeks before the current programme (`src/domain/schedule/weekly.ts` `isBeforeProgramme`).
 
 ## 2. Training loop (want, all)
 - L1 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Edit a logged set (today: delete within 6 s undo, relog). `src/ui/views/train/SetRow.tsx`, store has no updateSet.
@@ -18,9 +18,9 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - L3 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Skip / remove / reorder exercises in a session.
 - L4 DONE 2026-10-18 (`docs/design/session-editing.md`). Was: Add a library exercise mid-session. Today only free-text custom (`src/ui/views/train/AddCustomExercise.tsx`), `muscleGroups: []`, counts for no volume, no removal.
 - L1-L4 follow-ups: swap A→B, log on B, swap to C labels B's sets "(bonus)" (data intact); `addBonusExercise` + `session.bonusExerciseIds` only read for sessions opened by older builds (remove later); `anyAppState` (`src/domain/arbitraries.ts`) never generates `edits`; not checked on a phone.
-- L5 Programme follows Settings: changing equipment, days, goal or experience regenerates/updates the plan. Today `generatePlan` has one caller, the wizard (`src/ui/setup/SetupWizard.tsx`), reachable only via Wipe All.
+- L5 DONE 2026-10-18 (`docs/design/programme-lifecycle.md`): Settings "Programme" group (equipment, sessions/week, conditioning) + Update Programme; `restartProgramme` in `src/store/programme.ts`. Gap: training weekdays/times not editable after setup.
 - L6 (design) Open-ended programme, no length input. Owner ask: build the next block from what was logged ("one training ends -> create the next one based on the data logged"). Prior design `docs/design/programme-horizon.md` (copy cycle 1 forward) does NOT meet that ask; `docs/design/jit-scheduler-brief.md` is closer. Remove the wizard `programme` step; wizard tests navigate by counting `next()` presses.
-- L7 (design) After the goal: switch to maintenance. Keep the gym habit, stop weight loss (energy target to maintenance).
+- L7 DONE 2026-10-18: Start Next Programme defaults to maintenance when the latest weigh-in has reached the stored target (fat loss: at/below; gain: at/above). `src/domain/plan/lifecycle.ts`.
 - L8 DONE 2026-10-18: one tap per set (Easy 7 / Solid 8 / Hard 9 / Max 10, `src/domain/training/effort.ts`); a top-of-range set marked Max holds the load (ACSM 2009 + Zourdos 2016, `src/domain/training/progression.ts` `showsRepetitionInReserve`). Not yet shown in LogView, export summary or last-session line.
 - L9 Form videos that play. All 40 `videoQuery` in `src/domain/plan/library.ts` are search text, none an 11-char id, so the embed never runs. 9 of 40 exercises lack form cues.
 - L10 Re-measure body fat after setup (only writer of `baselineBodyFatPct` is the wizard).
