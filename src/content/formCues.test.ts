@@ -135,3 +135,10 @@ describe('FORM_CUES', () => {
     expect(all).not.toMatch(/\s\u2013\s/); // en dash used as a connector
   });
 });
+
+describe('no cue points at the removed pre-training questionnaire (ROADMAP B3)', () => {
+  it('names no screen or questionnaire the app no longer has', () => {
+    const text = JSON.stringify(FORM_CUES) + WARMUP_NOTICE;
+    expect(text).not.toMatch(/pre-participation|questionnaire|readiness screen/i);
+  });
+});

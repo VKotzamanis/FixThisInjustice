@@ -859,3 +859,10 @@ describe('the call-site gate over DEFAULT_COPY', () => {
  * joke is about the app, or about the week, never about the user": nothing in a string says who it
  * points at.
  */
+
+describe('copy promises no streak, a mechanic that was dropped (ROADMAP B5)', () => {
+  it('has no row that mentions a streak', () => {
+    const rows = Object.entries(DEFAULT_COPY).filter(([, v]) => /\bstreaks?\b/i.test(v));
+    expect(rows).toEqual([]);
+  });
+});

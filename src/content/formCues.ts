@@ -394,7 +394,7 @@ export const FORM_CUES: Record<string, FormCue> = {
     ],
     tip: 'Film from the side. The back angle should stay approximately constant through the lift.',
     caution:
-      'The held breath raises arterial pressure sharply. Complete the pre-participation screen before training heavy with a braced breath hold, and seek medical clearance if you have hypertension or another cardiovascular risk factor.',
+      'The held breath raises arterial pressure sharply. Seek medical clearance before training heavy with a braced breath hold if you have hypertension or another cardiovascular risk factor.',
   },
 
   'romanian-deadlift': {

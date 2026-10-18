@@ -1843,7 +1843,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // this bold/underlined/ make it stand out*". The emphasis is CSS on the list item
   // (src/ui/setup/setup.css .wiz-tz-primary), never a mark inside the string.
   'label.timezoneDayBoundary': 'The Day Boundary',
-  'advice.timezoneDayBoundary': 'Every date, streak and weekly close is computed in this zone.',
+  'advice.timezoneDayBoundary': 'Every date and weekly close is computed in this zone.',
   // Bullet two: "There is an option to send *NOTIFICATIONS* to you during the exercise day so
   // you don't forget your gym bag at home". His meaning and his register, inside R3's twelve
   // words; the label above carries the subject so the sentence does not have to repeat it.
