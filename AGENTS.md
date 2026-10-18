@@ -49,7 +49,7 @@ cd worker && npx tsc --noEmit -p . && npx vitest run --maxWorkers=1
 - Wants rulings, not questions. Ask only when the answer changes what the app claims or costs money.
 - Writes long; requirements hide mid-paragraph. Read sentence by sentence.
 - Prefers being contradicted with evidence (file:line) over agreement.
-- Art is his. Placeholders (`ArtworkPlaceholder`) stay until he supplies files; register in `docs/design/2026-09-04-icon-register.csv`.
+- Art: approved set in `src/assets/art/` (owner review 2026-10-18, spec `docs/design/asset-spec-2026-10-18.md`), app icons from his own sprite. New art goes through an owner review page first; register `docs/design/2026-09-04-icon-register.csv`.
 
 ## Map
 - `src/domain`: pure logic (plan generator, progression, nutrition, body fat, schedule, schema, migrations, reminders instants)
