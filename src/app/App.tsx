@@ -31,7 +31,6 @@ import { Spotlight } from '../ui/components/Spotlight';
 import { SpotlightButton } from '../ui/components/SpotlightButton';
 import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
-import { MigrationGate } from '../ui/migration/MigrationGate';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { SetupBannerProvider, useSetupBanner } from '../ui/setup/setupBanner';
@@ -639,13 +638,6 @@ export function App(): ReactElement {
               <UpdatePrompt />
               <SaveErrorBanner />
               <LoadErrorBanner />
-              {/*
-               * The legacy import offer (P7). A PANEL, not a route and not a modal: it is rendered
-               * beside the view switch rather than in place of it, so a user who wants to ignore
-               * the old data can still log a set today. It gates itself on all four of its
-               * conditions and renders null otherwise, so it costs the shell nothing.
-               */}
-              <MigrationGate />
 
               {/*
                * The intro sequence (P10 Brief C), AHEAD of the boot sequence below. A fixed
@@ -692,8 +684,8 @@ export function App(): ReactElement {
             {/*
              * The weekly-miss popup (P6). Outside <main>, as the last child of the CRT root,
              * because it is a modal over the whole app rather than a panel inside the view area.
-             * It gates itself on the pending week, the profile, an idle session and the migration
-             * offer, and renders null otherwise.
+             * It gates itself on the pending week, the profile and an idle session, and renders
+             * null otherwise.
              */}
             <MotivationGate />
 
@@ -702,7 +694,7 @@ export function App(): ReactElement {
              * weekly-miss popup rather than inside <main>, and last because it is the lowest
              * priority interruption of the two: it reports work already done, while the popup
              * asks for a decision about a week that was missed. It gates itself on the plan
-             * CURSOR's block, an idle session, a finished boot and the migration offer, and
+             * CURSOR's block, an idle session, a finished boot and the weekly-miss popup, and
              * renders null otherwise.
              */}
             <PhaseTransitionGate />

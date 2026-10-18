@@ -8,7 +8,6 @@ import { copyFor } from '../../content/copy';
 import { addDays, todayLocal } from '../../domain/dates';
 import { useAppStore } from '../../store';
 import type { AppStore } from '../../store';
-import { LEGACY_V2_KEY } from '../../store/persistence';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
 import { PROFILE_ID, TZ_ATHENS, seedState } from '../../test/scheduleFixtures';
@@ -36,7 +35,12 @@ vi.mock('../../domain/motivation/assets', async (importOriginal) => {
  */
 const TODAY: LocalDate = todayLocal(TZ_ATHENS);
 
-const LEGACY_RAW = '{"schemaVersion":2}';
+/**
+ * The old console's document, under the key that app wrote. Its import is gone (ROADMAP N5),
+ * so nothing reads the key any more; it is seeded only to prove the popup ignores it.
+ */
+const OLD_CONSOLE_KEY = 'fti.console.v2';
+const OLD_CONSOLE_RAW = '{"week":2}';
 
 /** A closed week three sessions short of its target, ending on the given civil day. */
 function miss(end: LocalDate): WeeklyReview {
@@ -62,8 +66,8 @@ const STALE = miss(addDays(TODAY, -20));
 /** Counts the dismissals the popup records. Wraps the real action rather than replacing it. */
 let mark: Mock<AppStore['markMotivationShown']>;
 
-function seed(reviews: WeeklyReview[], legacy: string | null = null): void {
-  installFakeStorage(legacy === null ? {} : { [LEGACY_V2_KEY]: legacy });
+function seed(reviews: WeeklyReview[], oldConsole: string | null = null): void {
+  installFakeStorage(oldConsole === null ? {} : { [OLD_CONSOLE_KEY]: oldConsole });
   useAppStore.setState({
     ...seedState({ labels: ['Push'], weekdays: [1] }),
     weeklyReviews: { [PROFILE_ID]: reviews },
@@ -148,19 +152,14 @@ describe('MotivationGate', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('renders nothing while the legacy migration is still pending', () => {
-    seed([RECENT], LEGACY_RAW);
-    const { container } = render(<MotivationGate />);
-    expect(container).toBeEmptyDOMElement();
-  });
-
-  it('stays closed for the rest of the mount once the migration has been offered', () => {
-    seed([RECENT], LEGACY_RAW);
-    const { container } = render(<MotivationGate />);
-    // applyMigration writes 'done' while the wizard is still on screen making its delete offer,
-    // so an un-latched gate would paint over it.
-    useAppStore.getState().setUi({ legacyMigration: 'done' });
-    expect(container).toBeEmptyDOMElement();
+  it('mounts the popup on a device that still holds the old console document', async () => {
+    // The import used to suppress the popup while `ui.legacyMigration` was 'pending' (the
+    // default every document carries) and this key existed. With the import gone the key
+    // offers nothing, so it must hold nothing back either.
+    seed([RECENT], OLD_CONSOLE_RAW);
+    expect(useAppStore.getState().ui.legacyMigration).toBe('pending');
+    render(<MotivationGate />);
+    expect(await screen.findByTestId('motivation-video')).toBeDefined();
   });
 
   it('renders nothing before setup has produced a profile', () => {

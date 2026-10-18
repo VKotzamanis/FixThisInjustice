@@ -14,7 +14,7 @@ describe('the migration chain is well-formed', () => {
     expect(new Set(froms).size).toBe(froms.length);
   });
 
-  it('is empty at P1; P7 adds the v2 to v3 step', () => {
+  it('is empty: schema 3 is current and the old console import was never a chain step', () => {
     expect(MIGRATIONS).toHaveLength(0);
   });
 });

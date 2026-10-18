@@ -47,9 +47,9 @@ export const CAPSULE_MIN_CHARS = 20;
 /**
  * [characters] The longest note the document can hold.
  *
- * Mirrors MAX_NOTE_CHARS in src/domain/schema.ts, which is module-private there; the same
- * mirror-with-a-comment src/domain/migrations/v2.ts:130 keeps. A note over this bound would
- * pass through the store and fail Zod at the next save, so it is refused at the control.
+ * Mirrors MAX_NOTE_CHARS in src/domain/schema.ts, which is module-private there. A note over
+ * this bound would pass through the store and fail Zod at the next save, so it is refused at
+ * the control.
  */
 export const CAPSULE_MAX_CHARS = 5_000;
 

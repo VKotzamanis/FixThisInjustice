@@ -16,11 +16,9 @@ import type { AppState } from './types';
  * test needs no Node type declarations in the app TypeScript project (security
  * constraint 4: a test that every fixture migrates to the current schema).
  *
- * The glob is `v3-*.json`, not `*.json`. The same directory also holds
- * v2-sample.json, which is a document of the legacy console store under a
- * DIFFERENT localStorage key ("fti.console.v2"). It is not an `fti.v3` payload,
- * carries no schemaVersion, and is not part of the ordered chain, so parseState
- * is not the right assertion for it; src/domain/migrations/v2.test.ts owns it.
+ * The glob is `v3-*.json`, not `*.json`, so only `fti.v3` payloads are asserted
+ * here. (The old console's sample document under "fti.console.v2" went with its
+ * import, ROADMAP N5.)
  */
 const FIXTURES: Record<string, { default: unknown }> = import.meta.glob(
   './migrations/fixtures/v3-*.json',

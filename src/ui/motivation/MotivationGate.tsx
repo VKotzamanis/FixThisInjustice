@@ -9,10 +9,8 @@
 // second time, so this file never writes: it reads the pending week, mounts the modal, and
 // unmounts it because usePendingMotivation has gone null under it.
 
-import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { MotivationModal } from './MotivationModal';
-import { hasLegacyV2 } from '../../store/persistence';
 import { useAppStore } from '../../store';
 import { usePendingMotivation } from '../../store/selectors';
 
@@ -33,7 +31,7 @@ const CLOSED_BY_THE_STORE = (): void => {
 /**
  * Mounts the motivation popup when P3's weekly close has left an unhandled missed week.
  *
- * Four conditions have to hold together, and none of them is a fact the modal can supply for
+ * Three conditions have to hold together, and none of them is a fact the modal can supply for
  * itself:
  *
  *  - a week is pending. `usePendingMotivation` owns that question in full: a miss (delta < 0),
@@ -46,7 +44,10 @@ const CLOSED_BY_THE_STORE = (): void => {
  *    training, once a session has been opened on it" (sessionMirror.ts), so a non-null value
  *    means sets are being logged and a rest timer may be running. Confronting the user with a
  *    missed week mid-workout would interrupt the work that fixes it.
- *  - the legacy migration is not being offered. See the latch below.
+ *
+ * Not gated on the old console's document (`fti.console.v2`). Its import is gone (ROADMAP N5),
+ * so the key offers nothing and holds nothing back; it used to suppress the popup while the
+ * import wizard was on screen.
  *
  * Not gated on the readiness screen. A profile whose `readiness.screenedAt` is still null has
  * just been created, so it has no plan cursor, so `closeWeeks` has produced no WeeklyReview for
@@ -56,37 +57,7 @@ export function MotivationGate(): ReactElement | null {
   const review = usePendingMotivation();
   const profileId = useAppStore((s) => s.activeProfileId);
   const activeAssignmentDate = useAppStore((s) => s.session.activeAssignmentDate);
-  const legacyDecision = useAppStore((s) => s.ui.legacyMigration);
 
-  /*
-   * Read once per mount, as MigrationGate reads it: the legacy key does not appear while the
-   * app is open, and it DISAPPEARS when the wizard's delete step runs, which must not be read
-   * as "the migration is over" a frame before the wizard says so.
-   */
-  const [legacyPresent] = useState<boolean>(() => hasLegacyV2());
-
-  /*
-   * Latched, and deliberately not the live condition alone.
-   *
-   * The live condition is the one MigrationGate mounts on: a legacy document exists and the
-   * decision is still 'pending'. But applyMigration writes ui.legacyMigration = 'done' as part
-   * of the document it installs, while the wizard is still on screen making its last offer to
-   * delete the old data. A gate reading only the live condition would therefore un-suppress
-   * mid-wizard and paint a second modal over a destructive confirmation, with two ModalShells
-   * fighting over focus and the scroll lock.
-   *
-   * The cost of the latch is that a user who migrates or dismisses the offer in this session
-   * sees the popup on the next app open rather than immediately. That is the right way round:
-   * the popup is a once-per-week nudge, and the migration is a one-way data decision.
-   *
-   * Setting state during render is React's documented way to derive state from a changed input;
-   * it re-renders before committing, so no extra paint is shown.
-   */
-  const migrationOffered = legacyPresent && legacyDecision === 'pending';
-  const [suppressedByMigration, setSuppressedByMigration] = useState(migrationOffered);
-  if (migrationOffered && !suppressedByMigration) setSuppressedByMigration(true);
-
-  if (suppressedByMigration) return null;
   if (review === null || profileId === null) return null;
   if (activeAssignmentDate !== null) return null;
 
