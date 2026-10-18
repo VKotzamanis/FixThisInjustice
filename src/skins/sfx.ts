@@ -166,7 +166,7 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
     if (context.state !== 'running') return;
     /*
      * The held buffers belong to exactly one (context, skin) pair, and this is the gate that
-     * keeps docs/sfx.md's promise that sounds under limelight never play under board: after a
+     * keeps docs/sfx.md's promise that sounds under limelight never play under limelight: after a
      * skin change the set is the old skin's, so the moment is silent until the next unlock has
      * decoded the new one. The context half of the pair is the same rule for a context that P4's
      * releaseAudio() closed (sounds off) and rebuilt, or suspended and resumed in place (sounds

@@ -36,7 +36,7 @@
  */
 const UNIT_TOKENS: ReadonlySet<string> = new Set([
   's',
-  // 'S' WAS HERE, and it was the loophole that let the board write "+30 S DELAY" past the word
+  // 'S' WAS HERE, and it was the loophole that let the limelight write "+30 S DELAY" past the word
   // count: `S` is the siemens, and this app measures no conductance. A capital S counts as a
   // word now, so a table that shouts a unit symbol is charged for it (P8 review).
   'kg',
@@ -113,7 +113,7 @@ export function hasUrl(value: string): boolean {
  * "Units on the Weight Plates". "Time Zone". "What You Told Me".
  *
  * TWO THINGS IT DOES NOT TOUCH.
- *   - The SKIN tables. Limelight is deliberately lower case ("go on", "the look") and the board
+ *   - The SKIN tables. Limelight is deliberately lower case ("go on", "the look") and the limelight
  *     is deliberately upper ("PROCEED"); both registers are recorded decisions, and R8 and R9
  *     already scope themselves to the default table for the same reason.
  *   - Unit symbols. R12 guards these: the case IS the quantity, so "(kg)" stays "(kg)" and
@@ -260,8 +260,8 @@ export function quantityAdvisories(value: string): ReadonlyArray<{ wrong: string
 
 /* ---------------------------------------------------------------------------------------------- */
 
-/** The three tables a copy edit can land in. Named by their exported binding, not by skin. */
-export type CopyTableId = 'DEFAULT_COPY' | 'LIMELIGHT_COPY' | 'BOARD_COPY';
+/** The tables a copy edit can land in. Named by their exported binding, not by skin. */
+export type CopyTableId = 'DEFAULT_COPY' | 'LIMELIGHT_COPY';
 
 /**
  * `EVIDENCE` is not one of R1 to R14. It belongs to `src/content/r10Text.ts`, which reuses this
@@ -302,7 +302,7 @@ const LENGTH_CAPS: ReadonlyArray<{ prefix: string; cap: number; rule: CopyRuleId
  *
  * THE PER-TABLE SCOPING IS THE CONTRACT'S, NOT AN INVENTION. R1 to R6 and the URL ban bind every
  * table (copy.test.ts runs them over all three). R8 and R14 bind the DEFAULT table alone: the
- * limelight register is deliberately lower case and the board's is deliberately upper, and
+ * limelight register is deliberately lower case and the limelight's is deliberately upper, and
  * Applying R14 to a skin would destroy
  * two recorded design decisions the first time it was obeyed.
  */

@@ -4,13 +4,13 @@
 //  - The component takes `today` and `weeklySessionTarget`. Without a civil today there is no
 //    way to tell a session still to come from one that was MISSED, and the plan's draft marked
 //    both "not planned", which is the rest-day defect (A48) in a second costume.
-//  - Every label quotes src/content/copy.ts; the draft's literals would have shipped a view
-//    whose copy and whose test could drift apart.
+//  - Every label quotes src/content/copyFor.ts; the draft's literals would have shipped a view
+//    whose copyFor and whose test could drift apart.
 //  - The `// @vitest-environment jsdom` pragma is dropped: vitest.config.ts sets jsdom already.
 
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import type { AssignmentStatus, SessionAssignment } from '../../domain/types';
 import { ComplianceGrid, buildStatusIndex, markFor } from './ComplianceGrid';
 
@@ -105,14 +105,14 @@ describe('ComplianceGrid', () => {
       />,
     );
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-01-05', copy('status.markCompleted'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-01-05', copyFor('limelight', 'status.markCompleted'))),
     ).toBeTruthy();
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-01-07', copy('status.markSkipped'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-01-07', copyFor('limelight', 'status.markSkipped'))),
     ).toBeTruthy();
     // Assigned for a day that has passed and never finished.
     expect(
-      screen.getAllByLabelText(FORMAT.complianceCell('2026-01-09', copy('status.markNotPlanned'))),
+      screen.getAllByLabelText(FORMAT.complianceCell('2026-01-09', copyFor('limelight', 'status.markNotPlanned'))),
     ).toHaveLength(1);
   });
 
@@ -127,7 +127,7 @@ describe('ComplianceGrid', () => {
       />,
     );
     expect(
-      screen.getByLabelText(FORMAT.complianceCell('2026-01-09', copy('status.markMissed'))),
+      screen.getByLabelText(FORMAT.complianceCell('2026-01-09', copyFor('limelight', 'status.markMissed'))),
     ).toBeTruthy();
   });
 
@@ -178,7 +178,7 @@ describe('ComplianceGrid', () => {
         weeklySessionTarget={TARGET}
       />,
     );
-    expect(screen.getByText(copy('advice.noWeeksYet'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noWeeksYet'))).toBeTruthy();
     expect(screen.queryAllByRole('gridcell')).toHaveLength(0);
   });
 });

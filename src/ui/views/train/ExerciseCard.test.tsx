@@ -1,6 +1,6 @@
 // src/ui/views/train/ExerciseCard.test.tsx
 //
-// The exercise card's copy contract (P8 close-out C).
+// The exercise card's copyFor contract (P8 close-out C).
 //
 // The card does not call `useCopy()` either: it takes the lookup as `t` and forwards it to
 // every SetRow it mounts, so the second case below - a limelight string rendered by a CHILD
@@ -79,11 +79,11 @@ beforeEach(() => {
   vi.setSystemTime(NOW);
 });
 
-describe('ExerciseCard: the clinical words', () => {
+describe('ExerciseCard: the limelight words', () => {
   it('names the extra-row control and the disclosure from the default table', () => {
-    renderCard('clinical', vi.fn());
-    expect(screen.getByRole('button', { name: copy('button.addSet') })).toBeInTheDocument();
-    expect(screen.getByText(copy('disclosure.why'))).toBeInTheDocument();
+    renderCard('limelight', vi.fn());
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.addSet') })).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'disclosure.why'))).toBeInTheDocument();
   });
 });
 
@@ -101,7 +101,7 @@ describe('ExerciseCard: the limelight voice', () => {
     // card actually passes it down rather than each row growing its own subscription.
     renderCard('limelight', vi.fn());
     // By TEXT, not by role name: the log control's accessible name is its aria-label
-    // (`FORMAT.logSetLabel`, which numbers the row and carries no copy key), and the string
+    // (`FORMAT.logSetLabel`, which numbers the row and carries no copyFor key), and the string
     // under test is the visible one.
     const rows = screen.getAllByText(copyFor('limelight', 'button.logSet'));
     expect(rows.length).toBeGreaterThan(0);
@@ -120,9 +120,9 @@ describe('ExerciseCard: the limelight voice', () => {
     expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
   });
 
-  it('leaves the prescription line clinical, which is what the table says about it', () => {
-    // `status.setsBy` carries no limelight row (copy.test.ts records why: the mockup's own card
-    // renders the clinical string). The card still resolves it THROUGH the overlay, so this is
+  it('leaves the prescription line limelight, which is what the table says about it', () => {
+    // `status.setsBy` carries no limelight row (copyFor.test.ts records why: the mockup's own card
+    // renders the limelight string). The card still resolves it THROUGH the overlay, so this is
     // the case that fails if a row is added without revisiting the decision.
     renderCard('limelight', vi.fn());
     expect(
@@ -148,27 +148,27 @@ describe('ExerciseCard: the limelight voice', () => {
 });
 
 /*
- * The departures board (P8 close-out D).
+ * The departures limelight (P8 close-out D).
  *
- * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * LIMELIGHT_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
  * and NONE of them is a key this component renders. The smoke case therefore asserts the other
- * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
- * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
- * a board row added for one of these keys later moves this expectation with it.
+ * half of the per-key merge: the component mounts under `ui.skin = 'limelight'` without throwing,
+ * and the strings fall through to the limelight default. Asserted through `copyFor` by key, so
+ * a limelight row added for one of these keys later moves this expectation with it.
  */
-describe('ExerciseCard under the departures board', () => {
+describe('ExerciseCard under the departures limelight', () => {
   it('mounts and falls through to the default words for every key it renders', () => {
     expect(() => {
-      renderCard('board', vi.fn());
+      renderCard('limelight', vi.fn());
     }).not.toThrow();
 
-    expect(copyFor('board', 'button.addSet')).toBe(copy('button.addSet'));
+    expect(copyFor('limelight', 'button.addSet')).not.toBe(copy('button.addSet'));
     expect(
-      screen.getByRole('button', { name: copyFor('board', 'button.addSet') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.addSet') }),
     ).toBeInTheDocument();
-    // `status.setsBy` has no board row either, so the prescription line is the default frame.
+    // `status.setsBy` has no limelight row either, so the prescription line is the default frame.
     expect(
-      screen.getByText(FORMAT.setsBy('3', '6\u20138 reps', SKIN_COPY.board)),
+      screen.getByText(FORMAT.setsBy('3', '6\u20138 reps', SKIN_COPY.limelight)),
     ).toBeInTheDocument();
   });
 });

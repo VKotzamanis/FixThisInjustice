@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode, type ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
-import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copyFor } from '../../content/copy';
 import { formatRest, planRowDomId } from '../format/plan';
 import { requestPlanFocus, usePendingPlanFocus } from '../planFocus';
 import { PlanView, blockOfSession, deloadNote, modifiedSets } from './PlanView';
@@ -26,9 +26,9 @@ import type { SkinId } from '../../domain/types';
  *     are not in the library, so the rows exercise exerciseName's documented fallback.
  *  2. The draft's `usePlan`/`useCursor` are read here as `useActivePlan`/`useActiveCursor`,
  *     which is what the shipped SessionIndicator reads; both spellings are one derivation.
- *  3. Every assertion quotes src/content/copy.ts rather than a literal (copy contract: "test
+ *  3. Every assertion quotes src/content/copyFor.ts rather than a literal (copyFor contract: "test
  *     assertions quote the default table"), so a reworded string fails here rather than
- *     shipping a view whose copy and whose test have drifted apart. The one exception is the
+ *     shipping a view whose copyFor and whose test have drifted apart. The one exception is the
  *     second `deloadNote` case, which asserts a modifier the default table has no entry for
  *     and therefore quotes the FORMAT frame instead.
  */
@@ -109,14 +109,14 @@ afterEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -127,8 +127,8 @@ beforeEach(() => {
 describe('deloadNote', () => {
   it('states the volume cut and that the load is unchanged', () => {
     // The default table's own row, filled by the frame that reads it, so the note the view
-    // prints for the canonical deload is the string the copy contract fixed. The row is a
-    // template since P8 Task 16, so the frame is what renders it and `copy` alone no longer can.
+    // prints for the canonical deload is the string the copyFor contract fixed. The row is a
+    // template since P8 Task 16, so the frame is what renders it and `copyFor` alone no longer can.
     expect(deloadNote(0.5)).toBe(FORMAT.deloadNote(50)); // [%] of planned sets removed
   });
 
@@ -169,10 +169,10 @@ describe('PlanView block strip', () => {
 
     expect(chip(1).textContent).toContain(FORMAT.blockSessions(1, 3));
     const deload = chip(2);
-    expect(deload.textContent).toContain(copy('status.deloadTag'));
+    expect(deload.textContent).toContain(copyFor('limelight', 'status.deloadTag'));
     expect(deload.textContent).toContain(FORMAT.deloadNote(50)); // [%]
     // The ordinary block carries no deload flag: the strip states the cut where it applies.
-    expect(chip(1).textContent).not.toContain(copy('status.deloadTag'));
+    expect(chip(1).textContent).not.toContain(copyFor('limelight', 'status.deloadTag'));
   });
 
   it("highlights the block the cursor stands in, not the first one", () => {
@@ -203,7 +203,7 @@ describe('PlanView week scrubber', () => {
 
   it("scrubs to another week and lists that week's sessions", () => {
     render(<PlanView />);
-    fireEvent.change(screen.getByLabelText(copy('label.week')), { target: { value: '2' } });
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.week')), { target: { value: '2' } });
 
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(2, WEEKS));
     const rows = screen.getAllByTestId('plan-session');
@@ -220,7 +220,7 @@ describe('PlanView sessions', () => {
     expect(rows[0]?.getAttribute('data-cursor')).toBe('false');
     expect(rows[1]?.getAttribute('data-cursor')).toBe('true');
     expect(rows[2]?.getAttribute('data-cursor')).toBe('false');
-    expect(rows[1]?.textContent).toContain(copy('status.nextSession'));
+    expect(rows[1]?.textContent).toContain(copyFor('limelight', 'status.nextSession'));
   });
 
   it('renders each exercise as sets by prescription, with its rest interval', () => {
@@ -251,9 +251,9 @@ describe('PlanView sessions', () => {
     // 3-4 planned sets at setModifier 0.5 is 2 sets: round(1.5) and round(2.0).
     expect(screen.getAllByText(FORMAT.setsBy('2', '6–10 reps'))).toHaveLength(SPW * 2);
     expect(screen.queryByText(FORMAT.setsBy('3–4', '6–10 reps'))).toBeNull();
-    expect(screen.getByText(copy('advice.deloadBlock'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.deloadBlock'))).toBeTruthy();
     // R9: the arithmetic that produced "2" is available, and behind a disclosure.
-    expect(screen.getByTestId('deload-basis').textContent).toContain(copy('disclosure.why'));
+    expect(screen.getByTestId('deload-basis').textContent).toContain(copyFor('limelight', 'disclosure.why'));
   });
 });
 
@@ -328,7 +328,7 @@ describe('PlanView without a plan', () => {
     useAppStore.setState({ plans: {}, cursors: {} });
     render(<PlanView />);
 
-    expect(screen.getByText(copy('hero.noPlan'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.noPlan'))).toBeTruthy();
     expect(screen.queryAllByTestId('plan-session')).toHaveLength(0);
   });
 });
@@ -338,7 +338,7 @@ describe('App wiring', () => {
     useAppStore.getState().wipeAll();
     useAppStore.setState(seed());
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: copy('nav.plan') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.plan') }));
 
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
     expect(useAppStore.getState().ui.lastView).toBe('plan');
@@ -346,27 +346,27 @@ describe('App wiring', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('PlanView under a skin', () => {
-  it('names the view in the limelight words, and in the default ones under clinical', () => {
+  it('names the view in the limelight words, and in the default ones under limelight', () => {
     pinSkin('limelight');
     const view = render(<PlanView />);
     expect(screen.getByText(copyFor('limelight', 'nav.plan'))).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<PlanView />);
-    expect(screen.getByText(copyFor('clinical', 'nav.plan'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'nav.plan'))).toBeInTheDocument();
   });
 
   it('renders each row through the overlay, which has no word for a set count', () => {
     /*
      * P8 close-out D: `SessionCard` takes the skin's table beside its lookup, for the same
      * reason it takes the lookup, and passes it to `FORMAT.setsBy`. The limelight table carries
-     * no `status.setsBy` row (copy.test.ts records why), so the rows read the same under both
+     * no `status.setsBy` row (copyFor.test.ts records why), so the rows read the same under both
      * skins; the assertion is here so that adding one fails a test rather than a plan.
      */
     pinSkin('limelight');

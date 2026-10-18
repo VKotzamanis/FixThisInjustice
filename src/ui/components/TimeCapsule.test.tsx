@@ -21,12 +21,12 @@
 //  3. The draft has no bound on the open date and no upper bound on the note. Both are
 //     asserted here: the date must be between CAPSULE_MIN_DAYS_AHEAD and CAPSULE_MAX_DAYS_AHEAD
 //     days ahead, and the note may not exceed the schema's own note bound.
-//  4. Assertions quote src/content/copy.ts rather than literals (copy contract), so a reworded
+//  4. Assertions quote src/content/copyFor.ts rather than literals (copyFor contract), so a reworded
 //     string fails here instead of shipping a view and a test that disagree.
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { addDays, instantOf } from '../../domain/dates';
 import { TimeCapsuleSchema } from '../../domain/schema';
 import type { EpochMs, LocalDate, LocalTime, TimeCapsule as CapsuleRecord } from '../../domain/types';
@@ -76,19 +76,19 @@ function capsuleInStore(): CapsuleRecord | null {
 
 /** Opens the write dialog from the card. */
 function openWriteDialog(): void {
-  fireEvent.click(screen.getByRole('button', { name: copy('button.writeCapsule') }));
+  fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.writeCapsule') }));
 }
 
 function noteField(): HTMLElement {
-  return screen.getByLabelText(copy('label.capsuleNote'));
+  return screen.getByLabelText(copyFor('limelight', 'label.capsuleNote'));
 }
 
 function dateField(): HTMLElement {
-  return screen.getByLabelText(copy('label.capsuleOpensOn'));
+  return screen.getByLabelText(copyFor('limelight', 'label.capsuleOpensOn'));
 }
 
 function sealButton(): HTMLElement {
-  return screen.getByRole('button', { name: copy('button.sealCapsule') });
+  return screen.getByRole('button', { name: copyFor('limelight', 'button.sealCapsule') });
 }
 
 beforeEach(() => {
@@ -99,14 +99,14 @@ beforeEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -150,13 +150,13 @@ describe('TimeCapsule, writing', () => {
     // not the plan's last day and the advisory line must say so.
     render(<TimeCapsule now={at('2026-11-26', '09:00')} />);
     openWriteDialog();
-    expect(screen.getByText(copy('advice.capsuleDefaultMoved'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.capsuleDefaultMoved'))).toBeInTheDocument();
   });
 
   it("does not say the default moved when the plan's last day is already inside the window", () => {
     render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
     openWriteDialog();
-    expect(screen.queryByText(copy('advice.capsuleDefaultMoved'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'advice.capsuleDefaultMoved'))).toBeNull();
   });
 
   it('seals the note with the chosen date and shows the sealed card', () => {
@@ -301,8 +301,8 @@ describe('TimeCapsule, sealed and opened', () => {
     render(<TimeCapsule now={at('2026-10-30', '12:00')} />);
     expect(screen.getByText(FORMAT.capsuleSealed(PLAN_END, 30))).toBeInTheDocument();
     expect(screen.queryByText(NOTE)).toBeNull();
-    expect(screen.queryByRole('button', { name: copy('button.openCapsule') })).toBeNull();
-    expect(screen.queryByRole('button', { name: copy('button.writeCapsule') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.openCapsule') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.writeCapsule') })).toBeNull();
   });
 
   it('stays sealed at 23:30 on the day before, in the profile zone', () => {
@@ -310,7 +310,7 @@ describe('TimeCapsule, sealed and opened', () => {
     seedCapsule({ opensOn: PLAN_END, opened: false });
     render(<TimeCapsule now={at('2026-11-28', '23:30')} />);
     expect(screen.getByText(FORMAT.capsuleSealed(PLAN_END, 1))).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: copy('button.openCapsule') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.openCapsule') })).toBeNull();
     expect(screen.queryByText(NOTE)).toBeNull();
   });
 
@@ -318,10 +318,10 @@ describe('TimeCapsule, sealed and opened', () => {
     // 2026-11-29 00:30 Athens is still 2026-11-28 in UTC.
     seedCapsule({ opensOn: PLAN_END, opened: false });
     render(<TimeCapsule now={at(PLAN_END, '00:30')} />);
-    expect(screen.getByText(copy('advice.capsuleOpenDatePassed'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.capsuleOpenDatePassed'))).toBeInTheDocument();
     expect(screen.queryByText(NOTE)).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.openCapsule') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.openCapsule') }));
     expect(capsuleInStore()?.opened).toBe(true);
 
     const dialog = screen.getByRole('dialog');
@@ -332,11 +332,11 @@ describe('TimeCapsule, sealed and opened', () => {
   it('stays opened, and re-reads without a second open', () => {
     seedCapsule({ opensOn: PLAN_END, opened: true });
     render(<TimeCapsule now={at('2026-11-30', '12:00')} />);
-    expect(screen.queryByRole('button', { name: copy('button.openCapsule') })).toBeNull();
-    expect(screen.queryByRole('button', { name: copy('button.writeCapsule') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.openCapsule') })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.writeCapsule') })).toBeNull();
     expect(screen.queryByText(NOTE)).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.readCapsule') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.readCapsule') }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText(NOTE)).toBeInTheDocument();
     expect(capsuleInStore()?.opened).toBe(true);
@@ -344,12 +344,12 @@ describe('TimeCapsule, sealed and opened', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('TimeCapsule under a skin', () => {
-  it('heads the capsule in the limelight words, and in the default ones under clinical', () => {
+  it('heads the capsule in the limelight words, and in the default ones under limelight', () => {
     pinSkin('limelight');
     const view = render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
     expect(screen.getByText(copyFor('limelight', 'hero.timeCapsule'))).toBeInTheDocument();
@@ -358,11 +358,11 @@ describe('TimeCapsule under a skin', () => {
     ).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
-    expect(screen.getByText(copyFor('clinical', 'hero.timeCapsule'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'hero.timeCapsule'))).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.writeCapsule') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.writeCapsule') }),
     ).toBeInTheDocument();
   });
 });

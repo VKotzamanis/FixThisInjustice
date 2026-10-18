@@ -18,7 +18,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { ReminderSettingsPanel } from './ReminderSettingsPanel';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { LEAD_MINUTE_CHOICES } from '../../config/reminders';
 import { localTimeOf } from '../../domain/dates';
 import {
@@ -115,7 +115,7 @@ async function click(element: HTMLElement): Promise<void> {
 }
 
 function toggle(): HTMLInputElement {
-  return screen.getByLabelText(copy('label.remindersEnable'));
+  return screen.getByLabelText(copyFor('limelight', 'label.remindersEnable'));
 }
 
 beforeEach(() => {
@@ -164,13 +164,13 @@ describe('switching reminders on', () => {
     });
   });
 
-  it('reports a refused subscription as copy and enables nothing', async () => {
+  it('reports a refused subscription as copyFor and enables nothing', async () => {
     subscribeMock.mockResolvedValue({ ok: false, reason: 'failed' });
     render(<ReminderSettingsPanel />);
     await click(toggle());
 
     await waitFor(() => {
-      expect(screen.getByText(copy('advice.reminderSubscribeFailed'))).toBeInTheDocument();
+      expect(screen.getByText(copyFor('limelight', 'advice.reminderSubscribeFailed'))).toBeInTheDocument();
     });
     expect(settings()?.enabled).toBe(false);
     expect(useAppStore.getState().pushDevice).toBeNull();
@@ -181,14 +181,14 @@ describe('switching reminders on', () => {
     // subscribe() is a caller contract that resolves with {ok, reason} rather than throwing,
     // but nothing in this component enforces that at the type level, and a runtime failure
     // upstream of that contract (e.g. a bug in the client, or a mock in test) must not leave
-    // an unhandled rejection with no user-visible copy and no store write undone.
+    // an unhandled rejection with no user-visible copyFor and no store write undone.
     subscribeMock.mockRejectedValue(new Error('boom'));
     seed({ device: DEVICE });
     render(<ReminderSettingsPanel />);
     await click(toggle());
 
     await waitFor(() => {
-      expect(screen.getByText(copy('advice.reminderSubscribeFailed'))).toBeInTheDocument();
+      expect(screen.getByText(copyFor('limelight', 'advice.reminderSubscribeFailed'))).toBeInTheDocument();
     });
     // Nothing was written before subscribe threw, so "roll back" here means the pre-attempt
     // pushDevice/settings are left exactly as seeded, not merely coincidentally unchanged.
@@ -197,24 +197,24 @@ describe('switching reminders on', () => {
     expect(syncMock).not.toHaveBeenCalled();
   });
 
-  it('reports a denied permission with the copy that names where to allow it', async () => {
+  it('reports a denied permission with the copyFor that names where to allow it', async () => {
     subscribeMock.mockResolvedValue({ ok: false, reason: 'denied' });
     render(<ReminderSettingsPanel />);
     await click(toggle());
 
     await waitFor(() => {
-      expect(screen.getByText(copy('status.remindersDenied'))).toBeInTheDocument();
+      expect(screen.getByText(copyFor('limelight', 'status.remindersDenied'))).toBeInTheDocument();
     });
     expect(settings()?.enabled).toBe(false);
   });
 
-  it('reports a failed upload as copy and keeps the raw error out of the page', async () => {
+  it('reports a failed upload as copyFor and keeps the raw error out of the page', async () => {
     syncMock.mockResolvedValue({ status: 'failed', error: 'HTTP 500' });
     const { container } = render(<ReminderSettingsPanel />);
     await click(toggle());
 
     await waitFor(() => {
-      expect(screen.getByText(copy('advice.reminderSyncFailed'))).toBeInTheDocument();
+      expect(screen.getByText(copyFor('limelight', 'advice.reminderSyncFailed'))).toBeInTheDocument();
     });
     expect(container.textContent).not.toContain('HTTP 500');
     // The subscription itself succeeded, so the preference stands and the next sync retries.
@@ -279,12 +279,12 @@ describe('switching reminders off', () => {
     await waitFor(() => {
       expect(settings()?.enabled).toBe(false);
     });
-    // The local state clears regardless, but the failure must not be silent: there is no copy
+    // The local state clears regardless, but the failure must not be silent: there is no copyFor
     // key specific to an unsubscribe failure (grepped status.reminders*/advice.reminder*), so
     // this reuses advice.reminderSyncFailed, the nearest existing "did not reach the server"
-    // copy for a Worker-side push failure.
+    // copyFor for a Worker-side push failure.
     expect(useAppStore.getState().pushDevice).toBeNull();
-    expect(screen.getByText(copy('advice.reminderSyncFailed'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.reminderSyncFailed'))).toBeInTheDocument();
   });
 });
 
@@ -314,7 +314,7 @@ describe('the schedule controls', () => {
   it('writes the day-of reminder time', () => {
     seed({ enabled: true, device: SYNCED });
     render(<ReminderSettingsPanel />);
-    fireEvent.change(screen.getByLabelText(copy('label.reminderDayOfTime')), {
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.reminderDayOfTime')), {
       target: { value: '07:30' },
     });
     expect(settings()?.dayOfTime).toBe('07:30');
@@ -322,7 +322,7 @@ describe('the schedule controls', () => {
 
   it('hides the schedule controls while reminders are off', () => {
     render(<ReminderSettingsPanel />);
-    expect(screen.queryByLabelText(copy('label.reminderDayOfTime'))).toBeNull();
+    expect(screen.queryByLabelText(copyFor('limelight', 'label.reminderDayOfTime'))).toBeNull();
   });
 });
 
@@ -338,12 +338,12 @@ describe('the status line', () => {
   it('says the schedule has not reached the server yet', () => {
     seed({ enabled: true, device: DEVICE });
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersPending'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersPending'))).toBeInTheDocument();
   });
 
   it('says reminders are off', () => {
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersOff'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersOff'))).toBeInTheDocument();
   });
 
   it('reports the state an imported document leaves behind: enabled, but no device', () => {
@@ -361,8 +361,8 @@ describe('the status line', () => {
      */
     seed({ enabled: true, device: null });
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersNeedReenable'))).toBeInTheDocument();
-    expect(screen.queryByText(copy('status.remindersPending'))).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersNeedReenable'))).toBeInTheDocument();
+    expect(screen.queryByText(copyFor('limelight', 'status.remindersPending'))).toBeNull();
     expect(toggle()).toBeInTheDocument();
     expect(toggle().checked).toBe(true);
     expect(toggle().disabled).toBe(false);
@@ -373,8 +373,8 @@ describe('the status line', () => {
     // simply not acknowledged a schedule yet, and a send really is coming.
     seed({ enabled: true, device: DEVICE });
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersPending'))).toBeInTheDocument();
-    expect(screen.queryByText(copy('status.remindersNeedReenable'))).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersPending'))).toBeInTheDocument();
+    expect(screen.queryByText(copyFor('limelight', 'status.remindersNeedReenable'))).toBeNull();
   });
 });
 
@@ -382,19 +382,19 @@ describe('the three availability states', () => {
   it('renders the install guide and no toggle when the runtime needs an install', () => {
     availabilityMock.mockReturnValue('needs-install');
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersNeedInstall'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersNeedInstall'))).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: copy('hero.installHomeScreen') }),
+      screen.getByRole('heading', { name: copyFor('limelight', 'hero.installHomeScreen') }),
     ).toBeInTheDocument();
-    expect(screen.queryByLabelText(copy('label.remindersEnable'))).toBeNull();
+    expect(screen.queryByLabelText(copyFor('limelight', 'label.remindersEnable'))).toBeNull();
   });
 
   it('reports an unsupported runtime, with no guide and no toggle', () => {
     availabilityMock.mockReturnValue('unsupported');
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersUnsupported'))).toBeInTheDocument();
-    expect(screen.queryByText(copy('hero.installHomeScreen'))).toBeNull();
-    expect(screen.queryByLabelText(copy('label.remindersEnable'))).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersUnsupported'))).toBeInTheDocument();
+    expect(screen.queryByText(copyFor('limelight', 'hero.installHomeScreen'))).toBeNull();
+    expect(screen.queryByLabelText(copyFor('limelight', 'label.remindersEnable'))).toBeNull();
   });
 
   it('offers the toggle when the runtime is ready', () => {
@@ -407,7 +407,7 @@ describe('states the panel cannot act on', () => {
   it('reports a standing block and where to lift it', () => {
     vi.stubGlobal('Notification', { permission: 'denied' });
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersDenied'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersDenied'))).toBeInTheDocument();
   });
 
   it('reports a standing block even after reminders were already switched on', () => {
@@ -418,14 +418,14 @@ describe('states the panel cannot act on', () => {
     seed({ enabled: true, device: SYNCED });
     vi.stubGlobal('Notification', { permission: 'denied' });
     render(<ReminderSettingsPanel />);
-    expect(screen.getByRole('status').textContent).toBe(copy('status.remindersDenied'));
+    expect(screen.getByRole('status').textContent).toBe(copyFor('limelight', 'status.remindersDenied'));
   });
 
   it('says reminders are not set up on this deployment and disables the toggle', async () => {
     config.configured = false;
     config.vapid = null;
     render(<ReminderSettingsPanel />);
-    expect(screen.getByText(copy('status.remindersUnconfigured'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.remindersUnconfigured'))).toBeInTheDocument();
     expect(toggle().disabled).toBe(true);
     await click(toggle());
     expect(subscribeMock).not.toHaveBeenCalled();

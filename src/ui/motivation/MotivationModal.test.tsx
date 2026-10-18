@@ -9,7 +9,7 @@ import {
   probeBundledVideo,
   resolveVideoSrc,
 } from '../../domain/motivation/assets';
-import { copy, copyFor } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { describeMiss } from '../../domain/motivation/trigger';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
@@ -75,7 +75,7 @@ function renderModal(over: Partial<ComponentProps<typeof MotivationModal>> = {})
 }
 
 function dismissButton(): HTMLElement {
-  return screen.getByRole('button', { name: copy('button.dismiss') });
+  return screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') });
 }
 
 beforeEach(() => {
@@ -90,14 +90,14 @@ beforeEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -108,7 +108,7 @@ beforeEach(() => {
 describe('MotivationModal', () => {
   it('states the miss and plays the resolved clip', async () => {
     renderModal();
-    expect(screen.getByRole('heading', { name: copy('hero.weeklyTargetMissed') })).toBeDefined();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') })).toBeDefined();
     expect(screen.getByText(describeMiss(REVIEW))).toBeDefined();
     const video = await screen.findByTestId('motivation-video');
     expect(video.getAttribute('src')).toBe(BLOB_SRC);
@@ -126,7 +126,7 @@ describe('MotivationModal', () => {
     expect(video instanceof HTMLVideoElement && video.muted).toBe(true);
   });
 
-  it('keeps the copy and drops the element when no clip resolves', async () => {
+  it('keeps the copyFor and drops the element when no clip resolves', async () => {
     vi.mocked(resolveVideoSrc).mockResolvedValue({
       src: BUNDLED_VIDEO_SRC,
       revoke: () => {
@@ -143,7 +143,7 @@ describe('MotivationModal', () => {
     expect(dismissButton()).toBeDefined();
   });
 
-  it('hides the element when the clip fails to load, and keeps the copy', async () => {
+  it('hides the element when the clip fails to load, and keeps the copyFor', async () => {
     renderModal();
     const video = await screen.findByTestId('motivation-video');
     fireEvent.error(video);
@@ -170,16 +170,16 @@ describe('MotivationModal', () => {
     // aria-label alone does not name a <video> to JAWS; the role is what makes the name
     // reach the user, and the tap target is a button in every sense but its tag.
     expect(video.getAttribute('role')).toBe('button');
-    expect(screen.getByRole('button', { name: copy('advice.tapForSound') })).toBe(video);
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'advice.tapForSound') })).toBe(video);
 
     await user.click(video);
-    expect(screen.getByRole('button', { name: copy('advice.tapToMute') })).toBe(video);
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'advice.tapToMute') })).toBe(video);
   });
 
   it('follows a mute change made outside the tap handler', async () => {
     renderModal();
     const video = await screen.findByTestId('motivation-video');
-    expect(screen.getByText(copy('advice.tapForSound'))).toBeDefined();
+    expect(screen.getByText(copyFor('limelight', 'advice.tapForSound'))).toBeDefined();
 
     // The element is the source of truth for mute. An engine that refuses the unmute, an OS
     // mute, or a hardware media key moves it with no click for the component to observe, and
@@ -188,14 +188,14 @@ describe('MotivationModal', () => {
     if (video instanceof HTMLVideoElement) video.muted = false;
     fireEvent(video, new Event('volumechange'));
     await waitFor(() => {
-      expect(screen.queryByText(copy('advice.tapForSound'))).toBeNull();
+      expect(screen.queryByText(copyFor('limelight', 'advice.tapForSound'))).toBeNull();
     });
-    expect(video.getAttribute('aria-label')).toBe(copy('advice.tapToMute'));
+    expect(video.getAttribute('aria-label')).toBe(copyFor('limelight', 'advice.tapToMute'));
 
     if (video instanceof HTMLVideoElement) video.muted = true;
     fireEvent(video, new Event('volumechange'));
     await waitFor(() => {
-      expect(screen.getByText(copy('advice.tapForSound'))).toBeDefined();
+      expect(screen.getByText(copyFor('limelight', 'advice.tapForSound'))).toBeDefined();
     });
   });
 
@@ -238,11 +238,11 @@ describe('MotivationModal', () => {
     const user = userEvent.setup();
     renderModal();
     const video = await screen.findByTestId('motivation-video');
-    expect(screen.getByText(copy('advice.tapForSound'))).toBeDefined();
+    expect(screen.getByText(copyFor('limelight', 'advice.tapForSound'))).toBeDefined();
     await user.click(video);
     expect(video instanceof HTMLVideoElement && video.muted).toBe(false);
     expect(play).toHaveBeenCalledTimes(1);
-    expect(screen.queryByText(copy('advice.tapForSound'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'advice.tapForSound'))).toBeNull();
   });
 
   it('revokes the object URL once, on unmount', async () => {
@@ -258,8 +258,8 @@ describe('MotivationModal', () => {
   it('previews without reporting a week', async () => {
     const user = userEvent.setup();
     const { props } = renderModal({ review: null });
-    expect(screen.getByRole('heading', { name: copy('hero.motivationPreview') })).toBeDefined();
-    expect(screen.getByText(copy('advice.motivationPreview'))).toBeDefined();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.motivationPreview') })).toBeDefined();
+    expect(screen.getByText(copyFor('limelight', 'advice.motivationPreview'))).toBeDefined();
     await user.click(dismissButton());
     expect(useAppStore.getState().motivation[PROFILE_ID]).toBeUndefined();
     expect(props.onDismiss).toHaveBeenCalledTimes(1);
@@ -268,7 +268,7 @@ describe('MotivationModal', () => {
   it('names the dialog by its heading', async () => {
     renderModal();
     const dialog = screen.getByRole('dialog');
-    const heading = screen.getByRole('heading', { name: copy('hero.weeklyTargetMissed') });
+    const heading = screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') });
     expect(dialog.getAttribute('aria-modal')).toBe('true');
     expect(dialog.getAttribute('aria-labelledby')).toBe(heading.id);
     await screen.findByTestId('motivation-video');
@@ -276,12 +276,12 @@ describe('MotivationModal', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('MotivationModal under a skin', () => {
-  it('heads the miss in the limelight words, and in the default ones under clinical', () => {
+  it('heads the miss in the limelight words, and in the default ones under limelight', () => {
     pinSkin('limelight');
     const view = renderModal();
     expect(
@@ -292,13 +292,13 @@ describe('MotivationModal under a skin', () => {
     ).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     renderModal();
     expect(
-      screen.getByRole('heading', { name: copyFor('clinical', 'hero.weeklyTargetMissed') }),
+      screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.dismiss') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
     ).toBeInTheDocument();
   });
 });

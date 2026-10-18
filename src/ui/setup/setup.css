@@ -409,7 +409,7 @@
  *
  * Block, so it wraps under the band rather than running on from it, and lighter than the band so
  * the two read as heading-then-detail. `--text-2` is #454545 on limelight's lime ground, measured
- * 4.98:1, which clears WCAG 1.4.3's 4.5:1 for body text; on clinical and board it is the same
+ * 4.98:1, which clears WCAG 1.4.3's 4.5:1 for body text; on limelight and limelight it is the same
  * secondary ink every other note on this screen uses. Never --accent here: that is the 1.41:1
  * pink-on-lime failure the references control already shipped once.
  */
@@ -524,7 +524,7 @@
  * in copy.test.ts and scripts/check-no-emoji.mjs reject them as emoji.
  *
  * Selection is a FILL INVERSION and a border, never a brightness shift: the limelight ground is
- * lime and the board ground is near-black, so "darker when selected" is invisible on one of the
+ * lime and the limelight ground is near-black, so "darker when selected" is invisible on one of the
  * three shipped skins.
  */
 .wiz-choice {
@@ -948,7 +948,7 @@
  * it more 'fun'." STYLE ONLY: nothing here alters the value, which is the user's own text.
  *
  * The display face is `--sans`, which is the skin's display cut (Archivo on limelight, Space Mono
- * on board, Geist on clinical), and the outline is `--accent`, which is that skin's own accent
+ * on limelight, Geist on limelight), and the outline is `--accent`, which is that skin's own accent
  * rather than a colour named here. Never a hex literal, for the reason every other rule in this
  * file gives: a colour that reads on one ground can be invisible on another.
  */
@@ -1036,7 +1036,7 @@
  * here) and white highlight."
  *
  * `var(--accent)` and not a pink literal: on limelight the accent IS fuchsia pink (#FF5FCB), and
- * clinical and board resolve their own, which is the whole point of the token. The white
+ * limelight and limelight resolve their own, which is the whole point of the token. The white
  * highlight is what makes it legal there: round-three section 2.3 measures pink on lime at 1.41:1
  * and BANS pink as type on the lime ground at every size, while pink on white clears it. The
  * highlight is therefore load-bearing rather than decorative, and it is a token
@@ -1088,7 +1088,7 @@
  * `--accent` on limelight is `--pink` #ff5fcb on a `--lime` #8ace00 ground: **1.41:1**. WCAG 1.4.3
  * wants 4.5:1 for text and 1.4.11 wants 3:1 for anything you have to see, so the REFERENCES
  * control was functionally invisible on the default skin -- the one the owner actually tests on.
- * `--text` is #000000 there, which measures 10.91:1, and near-white on clinical and board, 15.93:1.
+ * `--text` is #000000 there, which measures 10.91:1, and near-white on limelight and limelight, 15.93:1.
  *
  * tokens.css already records the rule this broke: "pink is never type". The rule is even asserted
  * by review-page generation -- but only against generated review pages, never against the
@@ -1201,8 +1201,8 @@
  * `--accent` is `--pink` #ff5fcb and the ground is `--lime` #8ace00, which is 1.41:1: illegible.
  * tokens.css says so itself, allowing pink type in exactly one place, inside the black panel
  * where it measures 7.75:1. Headings therefore take `--text`, which is ink on lime at 10.91:1
- * and near-white on the clinical ground. `--text-3` is avoided for anything a reader must read:
- * it is 2.95:1 on the clinical `--bg-2`, so `--text-2` (6.14:1) carries the secondary prose.
+ * and near-white on the limelight ground. `--text-3` is avoided for anything a reader must read:
+ * it is 2.95:1 on the limelight `--bg-2`, so `--text-2` (6.14:1) carries the secondary prose.
  *
  * FOR THE SAME REASON NOTHING HERE PAINTS `--bg-3`. On limelight that token is the black panel
  * while `--text` is black ink, so a panel-coloured strip with ordinary type on it would be black
@@ -1326,7 +1326,7 @@
 }
 
 /*
- * A safety statement. `--warn` is amber on clinical and ink on limelight, which is that skin's
+ * A safety statement. `--warn` is amber on limelight and ink on limelight, which is that skin's
  * own rule: "state colours are ink, not hues". The border means the cue is never colour alone,
  * and the badge spells the word "Caution" besides.
  */
@@ -1409,8 +1409,8 @@
 /*
  * THE CALENDAR'S SURFACE IS THE MEASURED CONSTRAINT, not a style choice.
  *
- * `--band-surface` is `--bg` on clinical, `--board` on board, and the INVERTED PANEL (#000000)
- * on limelight. The three band fills measure 14.05 / 12.56 / 9.84:1 on clinical's ground and
+ * `--band-surface` is `--bg` on limelight, `--limelight` on limelight, and the INVERTED PANEL (#000000)
+ * on limelight. The three band fills measure 14.05 / 12.56 / 9.84:1 on limelight's ground and
  * 1.37 / 1.23 / 1.04:1 on limelight's lime ground, which is below WCAG 1.4.11's 3:1 non-text
  * floor: on that skin the fills are invisible on the bare page and legible only on the panel.
  * The measured table and its sources are in src/ui/styles/tokens.css.

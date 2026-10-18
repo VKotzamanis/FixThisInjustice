@@ -16,7 +16,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { Boot, BootGate, BOOT_LINE_INTERVAL_MS, buildBootLines } from './Boot';
-import { copy, copyFor } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { makeAppState, makePlan, makeProfile, makeUiPrefs } from '../../test/funFixtures';
@@ -53,14 +53,14 @@ afterEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -74,8 +74,10 @@ describe('buildBootLines', () => {
     const text = lines.join('\n');
     expect(text).toContain('Upper / Lower x2'); // makePlan().name
     expect(text).toContain('week 1 of 12'); // nextSessionIndex 0, weeks 12
-    expect(text).toContain('4 sessions per week'); // makePlan().sessionsPerWeek
-    expect(lines[lines.length - 1]).toBe(copy('status.bootReady'));
+    expect(text).toContain(
+      FORMAT.withSlots('status.bootSchedule', { count: 4 }, SKIN_COPY.limelight),
+    ); // makePlan().sessionsPerWeek
+    expect(lines[lines.length - 1]).toBe(copyFor('limelight', 'status.bootReady'));
   });
 
   it('reads the week from the cursor rather than the calendar', () => {
@@ -92,7 +94,7 @@ describe('buildBootLines', () => {
   it('degrades to a two-line boot with no plan', () => {
     const lines = buildBootLines(unseenState({ activeProfileId: null, cursors: {}, plans: {} }));
     expect(lines).toHaveLength(2);
-    expect(lines[1]).toBe(copy('status.bootReady'));
+    expect(lines[1]).toBe(copyFor('limelight', 'status.bootReady'));
   });
 
   it('carries no name, no place, no body composition and no medication', () => {
@@ -113,7 +115,7 @@ describe('Boot', () => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
     });
     expect(bootText().split('\n')).toHaveLength(1);
-    expect(bootText()).toContain('FTI CONSOLE v3');
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootConsole'));
 
     act(() => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
@@ -125,13 +127,13 @@ describe('Boot', () => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS * total);
     });
     expect(bootText().split('\n')).toHaveLength(total);
-    expect(bootText()).toContain(copy('status.bootReady'));
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootReady'));
   });
 
   it('skips to the end on a tap and records the boot as seen', () => {
     render(<Boot />);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.skipBoot') }));
-    expect(bootText()).toContain(copy('status.bootReady'));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.skipBoot') }));
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootReady'));
     expect(useAppStore.getState().ui.bootSeen).toBe(true);
     expect(vi.getTimerCount()).toBe(0);
   });
@@ -139,7 +141,7 @@ describe('Boot', () => {
   it('skips to the end on a key press', () => {
     render(<Boot />);
     fireEvent.keyDown(window, { key: 'a' });
-    expect(bootText()).toContain(copy('status.bootReady'));
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootReady'));
     expect(useAppStore.getState().ui.bootSeen).toBe(true);
   });
 
@@ -164,7 +166,7 @@ describe('Boot', () => {
     });
     // Every line is printed, READY. included, and the boot is NOT yet recorded.
     expect(bootText().split('\n')).toHaveLength(total);
-    expect(bootText()).toContain(copy('status.bootReady'));
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootReady'));
     expect(useAppStore.getState().ui.bootSeen).toBe(false);
 
     act(() => {
@@ -193,7 +195,7 @@ describe('Boot', () => {
     const total = buildBootLines(useAppStore.getState()).length;
     render(<Boot />);
     expect(bootText().split('\n')).toHaveLength(total);
-    expect(bootText()).toContain(copy('status.bootReady'));
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootReady'));
     // No timer, the dwell included: with every line already printed at mount there is no last
     // line to hold, and a 90 ms hold would turn a screen this user never sees into a flash.
     expect(vi.getTimerCount()).toBe(0);
@@ -249,12 +251,12 @@ describe('BootGate', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('Boot under a skin', () => {
-  it('prints the limelight console line, and the default one under clinical', () => {
+  it('prints the limelight console line, and the default one under limelight', () => {
     pinSkin('limelight');
     const view = render(<Boot />);
     act(() => {
@@ -267,14 +269,14 @@ describe('Boot under a skin', () => {
     view.unmount();
 
     useAppStore.setState(unseenState());
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<Boot />);
     act(() => {
       vi.advanceTimersByTime(BOOT_LINE_INTERVAL_MS);
     });
-    expect(bootText()).toContain(copyFor('clinical', 'status.bootConsole'));
+    expect(bootText()).toContain(copyFor('limelight', 'status.bootConsole'));
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.skipBoot') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.skipBoot') }),
     ).toBeInTheDocument();
   });
 });

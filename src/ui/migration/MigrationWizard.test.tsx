@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import raw from '../../domain/migrations/fixtures/v2-sample.json';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { migrateV2 } from '../../domain/migrations/v2';
 import type { MigrationReport } from '../../domain/migrations/v2';
 import { makeBlankState, makePlan, makeProfile } from '../../test/migrationFactories';
@@ -117,19 +117,19 @@ function button(name: string): HTMLElement {
 /** Answer the load-unit question and move to the preview. */
 function preview(unit: 'kg' | 'lb' = 'kg'): void {
   fireEvent.click(
-    screen.getByLabelText(unit === 'kg' ? copy('label.legacyUnitKg') : copy('label.legacyUnitLb')),
+    screen.getByLabelText(unit === 'kg' ? copyFor('limelight', 'label.legacyUnitKg') : copyFor('limelight', 'label.legacyUnitLb')),
   );
-  fireEvent.click(button(copy('button.legacyPreview')));
+  fireEvent.click(button(copyFor('limelight', 'button.legacyPreview')));
 }
 
 /** Open the delete panel from the applied phase. */
 function openDelete(): void {
-  fireEvent.click(button(copy('button.legacyDeleteOld')));
+  fireEvent.click(button(copyFor('limelight', 'button.legacyDeleteOld')));
 }
 
 /** Download the legacy backup, which is the first of the delete step's two gates. */
 function takeBackup(): void {
-  fireEvent.click(button(copy('button.downloadLegacyJson')));
+  fireEvent.click(button(copyFor('limelight', 'button.downloadLegacyJson')));
 }
 
 /** Type into the delete panel's confirmation field. */
@@ -144,7 +144,7 @@ function apply(): void {
   fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm(CONFIRMATION_WORD)), {
     target: { value: CONFIRMATION_WORD },
   });
-  fireEvent.click(button(copy('button.legacyApply')));
+  fireEvent.click(button(copyFor('limelight', 'button.legacyApply')));
 }
 
 let storage: Map<string, string>;
@@ -166,14 +166,14 @@ afterEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -184,25 +184,25 @@ beforeEach(() => {
 describe('MigrationWizard: the explanation', () => {
   it('states what will be imported and what is not deleted before asking anything', () => {
     renderWizard();
-    expect(screen.getByRole('heading', { name: copy('hero.legacyImport') })).toBeTruthy();
-    expect(screen.getByText(copy('advice.legacyFound'))).toBeTruthy();
-    expect(screen.getByText(copy('advice.legacyNothingDeleted'))).toBeTruthy();
-    expect(screen.getByText(copy('disclosure.whatTransfers'))).toBeTruthy();
-    expect(screen.getByText(copy('disclosure.legacyTransfers'))).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.legacyImport') })).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyFound'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyNothingDeleted'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'disclosure.whatTransfers'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'disclosure.legacyTransfers'))).toBeTruthy();
   });
 
   it('shows the body-mass unit as an assumption, with the evidence for it', () => {
     renderWizard();
     expect(screen.getByText(FORMAT.legacyBodyMassAssumed('lb'))).toBeTruthy();
-    expect(screen.getByText(copy('disclosure.legacyBodyMassEvidence'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'disclosure.legacyBodyMassEvidence'))).toBeTruthy();
   });
 
   it('refuses to preview until the load unit has been answered', () => {
     renderWizard();
-    expect(screen.getByText(copy('advice.legacyUnitRequired'))).toBeTruthy();
-    expect(button(copy('button.legacyPreview'))).toBeDisabled();
-    fireEvent.click(screen.getByLabelText(copy('label.legacyUnitKg')));
-    expect(button(copy('button.legacyPreview'))).toBeEnabled();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyUnitRequired'))).toBeTruthy();
+    expect(button(copyFor('limelight', 'button.legacyPreview'))).toBeDisabled();
+    fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.legacyUnitKg')));
+    expect(button(copyFor('limelight', 'button.legacyPreview'))).toBeEnabled();
   });
 });
 
@@ -211,7 +211,7 @@ describe('MigrationWizard: the preview', () => {
     const report = reportFor('kg');
     renderWizard();
     preview('kg');
-    expect(screen.getByRole('heading', { name: copy('hero.legacyPreview') })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.legacyPreview') })).toBeTruthy();
     expect(screen.getByText(FORMAT.legacySets(report.setsMigrated))).toBeTruthy();
     expect(screen.getByText(FORMAT.legacySessions(report.sessionsMigrated))).toBeTruthy();
     expect(screen.getByText(FORMAT.legacyDropped(report.setsSkipped.length))).toBeTruthy();
@@ -242,11 +242,11 @@ describe('MigrationWizard: the preview', () => {
     renderWizard();
     preview('kg');
     const field = screen.getByLabelText(FORMAT.typeToConfirm(CONFIRMATION_WORD));
-    expect(button(copy('button.legacyApply'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyApply'))).toBeDisabled();
     fireEvent.change(field, { target: { value: 'import' } });
-    expect(button(copy('button.legacyApply'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyApply'))).toBeDisabled();
     fireEvent.change(field, { target: { value: CONFIRMATION_WORD } });
-    expect(button(copy('button.legacyApply'))).toBeEnabled();
+    expect(button(copyFor('limelight', 'button.legacyApply'))).toBeEnabled();
   });
 
   it('writes nothing while the preview is on screen', () => {
@@ -264,7 +264,7 @@ describe('MigrationWizard: applying', () => {
     preview('kg');
     apply();
     expect(Object.keys(useAppStore.getState().sets)).toHaveLength(report.setsMigrated);
-    expect(screen.getByRole('heading', { name: copy('hero.legacyDone') })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.legacyDone') })).toBeTruthy();
   });
 
   it('records the decision so the offer is not made again', () => {
@@ -282,59 +282,59 @@ describe('MigrationWizard: applying', () => {
     preview('kg');
     apply();
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
-    expect(screen.getByText(copy('advice.legacyStored'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyStored'))).toBeTruthy();
     openDelete();
     takeBackup();
     typeDeleteWord(DELETE_WORD);
-    fireEvent.click(button(copy('button.legacyDeleteOld')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyDeleteOld')));
     expect(storage.get(LEGACY_V2_KEY)).toBeUndefined();
-    expect(screen.getByText(copy('advice.legacyOldDataDeleted'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyOldDataDeleted'))).toBeTruthy();
   });
 
   it('leaves the legacy key alone when the user keeps it', () => {
     const onFinished = renderWizard();
     preview('kg');
     apply();
-    fireEvent.click(button(copy('button.legacyKeepOld')));
-    expect(screen.getByText(copy('advice.legacyOldDataKept'))).toBeTruthy();
+    fireEvent.click(button(copyFor('limelight', 'button.legacyKeepOld')));
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyOldDataKept'))).toBeTruthy();
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
-    fireEvent.click(button(copy('button.legacyClose')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyClose')));
     expect(onFinished).toHaveBeenCalledTimes(1);
   });
 
   it('withholds the delete when the write could not be confirmed', () => {
-    // An unhydrated store refuses every write, so nothing reached storage and the legacy copy
+    // An unhydrated store refuses every write, so nothing reached storage and the legacy copyFor
     // is the only complete one left. The delete must not be offered.
     useAppStore.setState({ status: { ...useAppStore.getState().status, hydrated: false } });
     renderWizard();
     preview('kg');
     apply();
-    expect(screen.getByText(copy('advice.legacyStoreUnconfirmed'))).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.legacyDeleteOld') })).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyStoreUnconfirmed'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyDeleteOld') })).toBeNull();
   });
 });
 
 describe('MigrationWizard: refusal and dismissal', () => {
   it('shows the reason for a payload that is not JSON, and offers to start clean', () => {
     renderWizard('{not json');
-    expect(screen.getByText(copy('advice.legacyRefused'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyRefused'))).toBeTruthy();
     expect(screen.getByText(/Reason:/)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.legacyPreview') })).toBeNull();
-    expect(button(copy('button.legacyDismiss'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyPreview') })).toBeNull();
+    expect(button(copyFor('limelight', 'button.legacyDismiss'))).toBeTruthy();
   });
 
   it('shows the migration reason for a payload it refuses', () => {
     renderWizard('[1,2,3]');
-    fireEvent.click(screen.getByLabelText(copy('label.legacyUnitKg')));
-    fireEvent.click(button(copy('button.legacyPreview')));
-    expect(screen.getByText(copy('advice.legacyRefused'))).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.legacyUnitKg')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyPreview')));
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyRefused'))).toBeTruthy();
     expect(screen.getByText(FORMAT.legacyRefusedReason('the legacy payload is not a JSON object')))
       .toBeTruthy();
   });
 
   it('records a dismissal in the document and leaves the legacy key in place', () => {
     const onFinished = renderWizard();
-    fireEvent.click(button(copy('button.legacyDismiss')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyDismiss')));
     expect(useAppStore.getState().ui.legacyMigration).toBe('dismissed');
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
     expect(onFinished).toHaveBeenCalledTimes(1);
@@ -346,7 +346,7 @@ describe('MigrationWizard: refusal and dismissal', () => {
 
   it('dismisses from the refusal screen too, without touching the legacy key', () => {
     renderWizard('{not json');
-    fireEvent.click(button(copy('button.legacyDismiss')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyDismiss')));
     expect(useAppStore.getState().ui.legacyMigration).toBe('dismissed');
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
   });
@@ -361,7 +361,7 @@ describe('MigrationWizard: the panel itself', () => {
    */
   it('takes focus when it appears', () => {
     renderWizard();
-    const region = screen.getByRole('region', { name: copy('hero.legacyImport') });
+    const region = screen.getByRole('region', { name: copyFor('limelight', 'hero.legacyImport') });
     expect(document.activeElement).toBe(region);
   });
 
@@ -369,7 +369,7 @@ describe('MigrationWizard: the panel itself', () => {
     renderWizard();
     preview('kg');
     apply();
-    const line = screen.getByText(copy('advice.legacyStored'));
+    const line = screen.getByText(copyFor('limelight', 'advice.legacyStored'));
     const live = line.closest('[aria-live]');
     expect(live).not.toBeNull();
     expect(live?.getAttribute('aria-live')).toBe('polite');
@@ -377,8 +377,8 @@ describe('MigrationWizard: the panel itself', () => {
     openDelete();
     takeBackup();
     typeDeleteWord(DELETE_WORD);
-    fireEvent.click(button(copy('button.legacyDeleteOld')));
-    expect(screen.getByText(copy('advice.legacyOldDataDeleted')).closest('[aria-live]')).toBe(live);
+    fireEvent.click(button(copyFor('limelight', 'button.legacyDeleteOld')));
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyOldDataDeleted')).closest('[aria-live]')).toBe(live);
   });
 });
 
@@ -398,7 +398,7 @@ describe('MigrationWizard: the delete is gated', () => {
   it('holds the delete before the backup has been downloaded', () => {
     reachDeletePanel();
     typeDeleteWord(DELETE_WORD);
-    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
   });
 
@@ -406,14 +406,14 @@ describe('MigrationWizard: the delete is gated', () => {
     reachDeletePanel();
     takeBackup();
     typeDeleteWord('delete');
-    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
   });
 
   it('releases the delete once the backup is taken and the word matches exactly', () => {
     reachDeletePanel();
     takeBackup();
     typeDeleteWord(DELETE_WORD);
-    expect(button(copy('button.legacyDeleteOld'))).toBeEnabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeEnabled();
   });
 
   it('exports every legacy key as one bundle, untouched, not the migrated document', () => {
@@ -423,8 +423,8 @@ describe('MigrationWizard: the delete is gated', () => {
     /*
      * Security recommendation 10 / M5. The gate exported `fti.console.v2` alone while the
      * confirmed action removes all three legacy keys, so two of them were destroyed with no
-     * copy taken. The v2 payload is carried as the RAW text it was read as, never a parse of
-     * it and never the migrated document: this is the last copy of whatever the migration
+     * copyFor taken. The v2 payload is carried as the RAW text it was read as, never a parse of
+     * it and never the migrated document: this is the last copyFor of whatever the migration
      * refused, and the report the user was just shown lists exactly that.
      */
     const [, text] = vi.mocked(downloadText).mock.calls[0] ?? [];
@@ -448,7 +448,7 @@ describe('MigrationWizard: the delete is gated', () => {
   it('names the panel, so it is not an anonymous set of destructive controls', () => {
     reachDeletePanel();
     expect(
-      screen.getByRole('group', { name: copy('label.confirmDeleteLegacy') }),
+      screen.getByRole('group', { name: copyFor('limelight', 'label.confirmDeleteLegacy') }),
     ).toBeTruthy();
   });
 
@@ -456,7 +456,7 @@ describe('MigrationWizard: the delete is gated', () => {
     reachDeletePanel();
     takeBackup();
     typeDeleteWord(DELETE_WORD);
-    fireEvent.click(button(copy('button.legacyDeleteOld')));
+    fireEvent.click(button(copyFor('limelight', 'button.legacyDeleteOld')));
     expect(deleteLegacyV2).toHaveBeenCalledTimes(1);
     expect(storage.get(LEGACY_V2_KEY)).toBeUndefined();
   });
@@ -465,22 +465,22 @@ describe('MigrationWizard: the delete is gated', () => {
     reachDeletePanel();
     takeBackup();
     typeDeleteWord(DELETE_WORD);
-    fireEvent.click(button(copy('button.cancel')));
+    fireEvent.click(button(copyFor('limelight', 'button.cancel')));
     expect(deleteLegacyV2).not.toHaveBeenCalled();
     expect(storage.get(LEGACY_V2_KEY)).toBe(LEGACY_JSON);
     // The offer is still there: cancelling backs out of the confirmation, it decides nothing.
-    expect(button(copy('button.legacyDeleteOld'))).toBeTruthy();
-    expect(button(copy('button.legacyKeepOld'))).toBeTruthy();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeTruthy();
+    expect(button(copyFor('limelight', 'button.legacyKeepOld'))).toBeTruthy();
   });
 
   it('asks for the backup again after a cancel', () => {
     reachDeletePanel();
     takeBackup();
-    fireEvent.click(button(copy('button.cancel')));
+    fireEvent.click(button(copyFor('limelight', 'button.cancel')));
     openDelete();
     typeDeleteWord(DELETE_WORD);
     // The export is a fact about the open panel, not about the session.
-    expect(button(copy('button.legacyDeleteOld'))).toBeDisabled();
+    expect(button(copyFor('limelight', 'button.legacyDeleteOld'))).toBeDisabled();
   });
 });
 
@@ -498,8 +498,8 @@ describe('MigrationWizard: the decision follows the write', () => {
     apply();
     expect(useAppStore.getState().status.lastSaveError).not.toBeNull();
     expect(useAppStore.getState().ui.legacyMigration).toBe('pending');
-    expect(screen.getByText(copy('advice.legacyStoreUnconfirmed'))).toBeTruthy();
-    expect(screen.queryByRole('button', { name: copy('button.legacyDeleteOld') })).toBeNull();
+    expect(screen.getByText(copyFor('limelight', 'advice.legacyStoreUnconfirmed'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.legacyDeleteOld') })).toBeNull();
   });
 
   it('leaves the decision pending when the store refused to write at all', () => {

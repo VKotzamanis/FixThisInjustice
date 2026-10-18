@@ -34,7 +34,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
   vi.setSystemTime(FIXED_NOW);
   useAppStore.getState().wipeAll();
-  useAppStore.setState((s) => ({ ui: { ...s.ui, skin: 'clinical' } }));
+  useAppStore.setState((s) => ({ ui: { ...s.ui, skin: 'limelight' } }));
 });
 
 afterEach(() => {

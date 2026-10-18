@@ -43,7 +43,7 @@ import './views.css';
  *
  * @param setModifier dimensionless multiplier on the planned set count, 1 = unchanged
  * @param overrides   the active skin's table. Pure and optional, so the suite can call this
- *                    with no React tree and read the clinical note.
+ *                    with no React tree and read the limelight note.
  */
 export function deloadNote(
   setModifier: number,
@@ -96,7 +96,7 @@ function SessionCard(props: {
   /*
    * The same skin's table, handed down for the same reason `t` is: `FORMAT.setsBy` reads
    * `status.setsBy` since P8 close-out B, so a card that took only the lookup printed the
-   * clinical set count on every one of up to 48 rows (P8 close-out D).
+   * limelight set count on every one of up to 48 rows (P8 close-out D).
    */
   overrides: Readonly<Partial<Record<CopyKey, string>>>;
 }): JSX.Element {

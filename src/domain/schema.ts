@@ -629,11 +629,14 @@ export const UiPrefsSchema = z.object({
   legacyMigration: z.enum(['pending', 'done', 'dismissed']).default('pending'),
   // Additive. Block index last shown per profile; empty means nothing shown yet.
   lastBlockSeenByProfile: z.record(z.string(), z.int().min(0).max(MAX_BLOCKS)).default({}),
-  // Additive. The three ids are the SkinId union in types.ts, in the same order; the enum and
-  // the type are the two halves the Equal<> parity check in schema.test.ts holds together.
-  // The default is 'limelight', the round-three merge the app ships with, so a document written
-  // before this field existed opens on the shipped look rather than on a set it never chose.
-  skin: z.enum(['clinical', 'limelight', 'board']).default('limelight'),
+  // Old v3 documents may name retired skins. This parse-time repair keeps their remaining
+  // fields untouched without a schema-version bump or a migration step.
+  skin: z
+    .preprocess(
+      (value) => (value === 'clinical' || value === 'board' ? 'limelight' : value),
+      z.literal('limelight'),
+    )
+    .default('limelight'),
   // Additive. Off is the honest default for a feature whose failure mode is a phone shouting in
   // a public gym (round-three plan section 6.2 rule 6).
   sounds: z.boolean().default(false),

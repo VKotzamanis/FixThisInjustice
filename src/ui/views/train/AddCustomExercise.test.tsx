@@ -1,8 +1,8 @@
 // src/ui/views/train/AddCustomExercise.test.tsx
 //
-// The custom-exercise form's copy contract (P8 close-out C).
+// The custom-exercise form's copyFor contract (P8 close-out C).
 //
-// One row of copy.limelight.ts reaches this form: `button.cancel`. The save control, the
+// One row of copyFor.limelight.ts reaches this form: `button.cancel`. The save control, the
 // refusal line and the field name are absent from that table ON PURPOSE - rule 4 of the file's
 // own header keeps the joke off a control whose misreading costs data, and a save that mints a
 // record the sets are then attributed to is exactly that control. The second limelight case
@@ -32,14 +32,14 @@ beforeEach(() => {
   useAppStore.setState(makeAppState());
 });
 
-describe('AddCustomExercise: the clinical words', () => {
+describe('AddCustomExercise: the limelight words', () => {
   it('names the opening control and the field from the default table', () => {
-    renderForm('clinical');
-    expect(screen.getByRole('button', { name: copy('button.addExercise') })).toBeInTheDocument();
+    renderForm('limelight');
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.addExercise') }));
-    expect(screen.getByLabelText(copy('quantity.exerciseName'))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: copy('button.saveExercise') })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addExercise') }));
+    expect(screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') })).toBeInTheDocument();
   });
 
   it('names each modality option from the table while the value stays the enum', () => {
@@ -48,11 +48,11 @@ describe('AddCustomExercise: the clinical words', () => {
      * select read "barbell / dumbbell / machine / cable / bodyweight" in the model's own
      * lower-case identifiers, in every skin, and no table could reach them.
      *
-     * The two halves are asserted separately on purpose: the LABEL is copy and moves with the
+     * The two halves are asserted separately on purpose: the LABEL is copyFor and moves with the
      * table, and the VALUE is the enum the store persists on Exercise.modality and must not.
      */
-    openForm('clinical');
-    const option = screen.getByRole('option', { name: copy('label.modality.barbell') });
+    openForm('limelight');
+    const option = screen.getByRole('option', { name: copyFor('limelight', 'label.modality.barbell') });
     expect(option).toBeInTheDocument();
     expect(option).toHaveValue('barbell');
   });
@@ -60,18 +60,18 @@ describe('AddCustomExercise: the clinical words', () => {
   it('names the length unit in the refusal rather than baking the word in', () => {
     // The bound is ExerciseSchema.name's own; the unit word beside it is `unit.characters`,
     // which was a bare 'characters' passed to the frame from this file (P8 close-out D).
-    openForm('clinical');
-    const field = screen.getByLabelText(copy('quantity.exerciseName'));
+    openForm('limelight');
+    const field = screen.getByLabelText(copyFor('limelight', 'quantity.exerciseName'));
     fireEvent.change(field, { target: { value: '  ' } });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.saveExercise') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }));
 
     expect(
       screen.getByText(
         FORMAT.outOfRange(
-          copy('quantity.exerciseName'),
+          copyFor('limelight', 'quantity.exerciseName'),
           1, // [characters] ExerciseSchema.name minimum
           EXERCISE_NAME_MAX_CHARS, // [characters]
-          copy('unit.characters'),
+          copyFor('limelight', 'unit.characters'),
         ),
       ),
     ).toBeInTheDocument();
@@ -87,7 +87,7 @@ describe('AddCustomExercise: the limelight voice', () => {
     expect(screen.queryByRole('button', { name: copy('button.cancel') })).toBeNull();
   });
 
-  it('leaves the save control and the field name in the clinical words', () => {
+  it('leaves the save control and the field name in the limelight words', () => {
     openForm('limelight');
     // Asserted by key: `copyFor` falling through to the default IS the per-key merge, and this
     // is the branch of it the limelight table's rule 4 relies on.
@@ -100,27 +100,27 @@ describe('AddCustomExercise: the limelight voice', () => {
 });
 
 /*
- * The departures board (P8 close-out D).
+ * The departures limelight (P8 close-out D).
  *
- * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
+ * LIMELIGHT_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
  * and NONE of them is a key this component renders. The smoke case therefore asserts the other
- * half of the per-key merge: the component mounts under `ui.skin = 'board'` without throwing,
- * and the strings fall through to the clinical default. Asserted through `copyFor` by key, so
- * a board row added for one of these keys later moves this expectation with it.
+ * half of the per-key merge: the component mounts under `ui.skin = 'limelight'` without throwing,
+ * and the strings fall through to the limelight default. Asserted through `copyFor` by key, so
+ * a limelight row added for one of these keys later moves this expectation with it.
  */
-describe('AddCustomExercise under the departures board', () => {
+describe('AddCustomExercise under the departures limelight', () => {
   it('mounts and falls through to the default words, modality labels included', () => {
     expect(() => {
-      openForm('board');
+      openForm('limelight');
     }).not.toThrow();
 
-    expect(copyFor('board', 'button.saveExercise')).toBe(copy('button.saveExercise'));
+    expect(copyFor('limelight', 'button.saveExercise')).toBe(copy('button.saveExercise'));
     expect(
-      screen.getByRole('button', { name: copyFor('board', 'button.saveExercise') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.saveExercise') }),
     ).toBeInTheDocument();
     // The five keys P8 close-out D added are in no override table, so the option labels are the
     // default ones and the value is still the enum under every skin.
-    const option = screen.getByRole('option', { name: copyFor('board', 'label.modality.barbell') });
+    const option = screen.getByRole('option', { name: copyFor('limelight', 'label.modality.barbell') });
     expect(option).toHaveValue('barbell');
   });
 });

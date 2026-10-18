@@ -1,5 +1,4 @@
 import { useState, type ReactElement } from 'react';
-import { useSkin } from '../../skins/skinContext';
 import { Icon } from '../../skins/limelight/Icon';
 import type { LimelightIconName } from '../../skins/limelight/icons';
 import './limelight.css';
@@ -33,9 +32,7 @@ export interface MarqueeItem {
  *     reduced-motion user gets. That rule is CSS, not state: it holds before the first paint.
  *  4. IT NEVER BUILDS A STRING. Items arrive formatted; no number is restated here.
  *
- * SKIN. The ticker belongs to limelight and to the departures board, which are the two skins
- * whose whole character is type in motion. Clinical renders nothing: it is the plain, quiet
- * table this app falls back to, and a scrolling banner is not a fact it needs.
+ * The ticker is part of the limelight presentation.
  */
 export function Marquee({
   items,
@@ -44,12 +41,11 @@ export function Marquee({
   items: readonly MarqueeItem[];
   label: string;
 }): ReactElement | null {
-  const skin = useSkin();
   // A latch rather than press-and-hold: a hold is already CSS (:active, :hover, :focus-visible),
   // and a keyboard user needs a state that survives the key coming back up.
   const [paused, setPaused] = useState(false);
 
-  if (skin === 'clinical' || items.length === 0) return null;
+  if (items.length === 0) return null;
 
   // Doubled, so translateX(-50%) lands exactly one loop later on the same pixel.
   const scrolling = [...items, ...items];

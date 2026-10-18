@@ -1,6 +1,6 @@
 // src/ui/views/train/RestTimerPanel.test.tsx
 //
-// The rest panel's copy contract and its zero-crossing sound (P8 close-out C).
+// The rest panel's copyFor contract and its zero-crossing sound (P8 close-out C).
 //
 // Two mocks, both at the module boundary and both for the same reason: jsdom has no Web Audio,
 // so the real `playChime` and `playSfx` would return silently whether or not the effect reached
@@ -69,21 +69,10 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('RestTimerPanel: the clinical words', () => {
-  it('names the interval and its two controls from the default table, without glyphs', () => {
-    const container = renderPanel('clinical');
-    // Copy contract R6: the clinical skin carries no glyph, and the icon set is one skin's.
-    expect(container.querySelectorAll('img.ll-icon')).toHaveLength(0);
-    expect(screen.getByText(copy('status.rest'))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: copy('button.extendRest') })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: copy('button.skipRest') })).toBeInTheDocument();
-  });
-});
-
 describe('RestTimerPanel: the limelight voice', () => {
   it('renders the skin strings on the label and both controls', () => {
     renderPanel('limelight');
-    // By key against copy.limelight.ts, never as a literal.
+    // By key against copyFor.limelight.ts, never as a literal.
     expect(screen.getByText(copyFor('limelight', 'status.rest'))).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }),
@@ -125,7 +114,7 @@ describe('RestTimerPanel: the limelight voice', () => {
     /*
      * P8 close-out D. `FORMAT.restRemaining` reads `status.restRemaining` and this panel now
      * passes `useCopyOverrides()` into it. The limelight table carries no row for that key on
-     * purpose (copy.test.ts records why: the mockup renders "1:47" and the string is two slots
+     * purpose (copyFor.test.ts records why: the mockup renders "1:47" and the string is two slots
      * and a colon), so the readout is the default under every skin, and this case is what would
      * fail if a row were ever added without revisiting that decision.
      */
@@ -139,7 +128,7 @@ describe('RestTimerPanel: the limelight voice', () => {
 
 describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
   it('sounds the sample once when the rest reaches zero, beside the chime', () => {
-    renderPanel('clinical');
+    renderPanel('limelight');
     expect(playSfx).not.toHaveBeenCalled();
 
     expireRest();
@@ -151,7 +140,7 @@ describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
   });
 
   it('does not sound it a second time for the same interval', () => {
-    renderPanel('clinical');
+    renderPanel('limelight');
     expireRest();
     fireEvent(document, new Event('visibilitychange'));
 
@@ -161,50 +150,21 @@ describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
   it('sounds nothing when the interval is extended', () => {
     // Extend mints a NEW timer object, which resets the once-per-timer ref. That reset arms the
     // cues for the extended interval; it must not fire them at the moment Extend was pressed.
-    renderPanel('clinical');
-    fireEvent.click(screen.getByRole('button', { name: copy('button.extendRest') }));
+    renderPanel('limelight');
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }));
 
     expect(playSfx).not.toHaveBeenCalled();
     expect(playChime).not.toHaveBeenCalled();
   });
 
   it('sounds it once for an interval that was extended and then ran out', () => {
-    renderPanel('clinical');
-    fireEvent.click(screen.getByRole('button', { name: copy('button.extendRest') }));
+    renderPanel('limelight');
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }));
     // 30 s past the EXTENDED end, which is REST_S + EXTEND_S after the start.
     vi.setSystemTime(NOW + (REST_S + 30 + 30) * 1000); // [ms] epoch UTC
     fireEvent(document, new Event('visibilitychange'));
 
     expect(playSfx).toHaveBeenCalledTimes(1);
     expect(playSfx).toHaveBeenCalledWith('rest_over');
-  });
-});
-
-/*
- * The departures board (P8 close-out D).
- *
- * BOARD_COPY is a partial table by design (see its header: sixteen design rows plus the nav),
- * so most of this screen falls through to the clinical string under it. One smoke case per
- * Train component asserts BOTH halves of that: the component mounts under `ui.skin = 'board'`
- * without throwing, and the key it renders resolves to whatever `copyFor('board', ...)` says -
- * the board's own word where the table has one, the default where it does not. Asserting by
- * key rather than by literal is what makes the case survive a row being added later.
- */
-describe('RestTimerPanel under the departures board', () => {
-  it('mounts and names the interval and both controls in the board words', () => {
-    // Three of the sixteen rows round two's design table names are this panel's: `status.rest`
-    // is GATE HOLD, and the two controls are the board's own.
-    expect(() => {
-      renderPanel('board');
-    }).not.toThrow();
-
-    expect(screen.getByText(copyFor('board', 'status.rest'))).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: copyFor('board', 'button.extendRest') }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: copyFor('board', 'button.skipRest') }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(copy('status.rest'))).toBeNull();
   });
 });

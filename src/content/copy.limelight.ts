@@ -1,7 +1,7 @@
 import type { CopyKey } from './copy';
 
 /**
- * The limelight copy table, merged over the clinical default per key.
+ * The limelight copy table, merged over the limelight default per key.
  *
  * Source: docs/design/round3/2026-09-01-round3-plan.md, section 3.4 for the twenty rows the design
  * names and sections 3.1-3.3 for the rules every other row here obeys. The register is brat summer
@@ -14,7 +14,7 @@ import type { CopyKey } from './copy';
  *    literal digit appears only where the default has the same digit. Numbers, units and quantity
  *    names belong to the contract, not to the skin: `load`, `body mass`, `beverage intake`, `reps`,
  *    `kg` and `mL` survive the translation unchanged, which is why the coach lines below read as
- *    the clinical sentence with a limelight tag on the end rather than as a rewrite.
+ *    the limelight sentence with a limelight tag on the end rather than as a rewrite.
  * 2. Lower case everywhere except two rows. Round three, section 3.2: `MOTHER` and `LET'S GO BABES`
  *    shout BECAUSE nothing else does, and the uppercase list is closed at three, the third being
  *    the marquee, which is a component rather than a string.
@@ -23,12 +23,12 @@ import type { CopyKey } from './copy';
  *    src/skins/limelight/Icon.tsx.
  * 4. The joke never sits on a control whose misreading costs data. Every string that fronts a
  *    wipe, an import, a legacy delete, an export or a save failure is absent from this table on
- *    purpose, and the clinical sentence stands there in every skin.
+ *    purpose, and the limelight sentence stands there in every skin.
  *
  * WHAT IS NOT HERE, AND WHY. Case alone is not a reason for a row: cloning a string to lower-case
  * it puts the same sentence in two files and makes the second one rot. The skin's own token block
  * is where a blanket lower case belongs, and until it exists an unoverridden string renders in
- * clinical case. Rows exist here only where the WORDS change.
+ * limelight case. Rows exist here only where the WORDS change.
  */
 export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // --- round three, section 3.4: the twenty rows the design names ---
@@ -71,9 +71,9 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // and is a unit token, not a word.
   'status.lastSessionSets': 'last show {date}: {load} \u00d7 {reps}',
   // The suggested-load line's ABSENCE row (whole-app review, item 2). `label.suggestedLoad`
-  // itself stays clinical for the reason copy.test.ts records: its `{kind}` slot arrives already
+  // itself stays limelight for the reason copy.test.ts records: its `{kind}` slot arrives already
   // resolved from a `status.advice*` row this table does not carry, so a camp frame around a
-  // clinical kind would read as two voices in one sentence. That objection does not reach here.
+  // limelight kind would read as two voices in one sentence. That objection does not reach here.
   // This row has NO SLOT: no kind to disagree with, no load to invent, no number at all, which
   // is what makes a word of this table's own safe in a position the sibling row cannot take one.
   //
@@ -103,7 +103,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // next slot", which asserts a weekday this string cannot know; the schedule is the plan's, so
   // the sentence names the slot without naming the day.
   'advice.interventionBody': 'the week flopped, not you. the next slot still stands.',
-  'label.settingsSkin': 'the look',
 
   // --- the controls a user meets in the training and plan flow ---
   /*
@@ -113,7 +112,7 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
    * 'next': a named request outranks the register convention. `button.back` never had one and
    * now inherits "Previous" for the same reason.
    *
-   * The board keeps PROCEED. That skin is a departures concourse and PROCEED is the sign at
+   * The limelight keeps PROCEED. That skin is a departures concourse and PROCEED is the sign at
    * every gate, which is a documented voice rather than an unconsidered default, and it is not
    * the skin this round is being tested on.
    */
@@ -132,7 +131,7 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'button.writeCapsule': 'write it',
   'button.readCapsule': 'read it',
   'button.skipBoot': 'skip it',
-  // The ticker's own control (P8 close-out B). The board already names it in the board's
+  // The ticker's own control (P8 close-out B). The limelight already names it in the limelight's
   // register; without a row here the limelight strip announced itself in sentence case, which is
   // the wart amendment 9 records for the sounds toggle. Three words, so R1 is met, and the
   // uppercase list round three closed is untouched.
@@ -273,24 +272,23 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // The rest timer's notification, which arrives on a lock screen. `button.returnToSession` is
   // "back on stage", so the notification that ends the rest uses the same words.
   'notification.restOver': 'rest over. back on stage.',
-  // A refusal keeps the clinical sentence and takes a camp word in front of it. What the user
+  // A refusal keeps the limelight sentence and takes a camp word in front of it. What the user
   // has to know is that the exercise was NOT added, so that clause is left standing.
   'status.customExerciseRefused': 'nope. the exercise was not added.',
 
   // --- P9 Task 12: the settings screen ---
-  // Three section headings and the empty state. Everything else on this screen stays clinical,
+  // Three section headings and the empty state. Everything else on this screen stays limelight,
   // for the reasons the block below records.
   'hero.profile': 'who you are',
-  'hero.skin': 'the look and the noise', // `label.settingsSkin` and `label.settingsSounds`, joined
   // The reminders section. A call time is when the performer has to be at the theatre, which is
-  // what a session reminder states. The controls inside the section stay clinical: a misread
+  // what a session reminder states. The controls inside the section stay limelight: a misread
   // reminder state costs the user a session.
   'hero.reminders': 'call times',
   // The same sentence as `advice.noProfileTrain`, which the default table also duplicates.
   'advice.noProfileSetupFirst': 'no profile. setup first, babes.',
 
   /*
-   * WHAT STAYS CLINICAL ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
+   * WHAT STAYS LIMELIGHT ON THE FOUR MAIN SCREENS, AND WHY (P9 Task 12).
    *
    * 130 default keys reach Today, Train, Plan or Settings (131 until Brief F Part 3 deleted
    * `label.microPlates`, which reached Settings' now-removed micro-plate checkbox). Twenty-one
@@ -362,7 +360,7 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
    * THE THREE SKIN NAMES (3). Proper nouns, and the id an export carries.
    * src/ui/settings/SkinSettings.test.tsx asserts them as literals under all three skins: a skin
    * that renamed the other two would be a skin the user could not reliably leave:
-   *   option.skinBoard, option.skinClinical, option.skinLimelight
+   *   option.skinLimelight, option.skinLimelight, option.skinLimelight
    *
    * THE NUMBER-ENTRY ERRORS (4). Each states the number the field will accept, which is the whole
    * content of the string:
@@ -370,7 +368,7 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
    *
    * THE PROGRESSION ADVICE KINDS (4). They resolve into the slot of `label.suggestedLoad`, which
    * has no row here for the reason copy.test.ts records, so a camp kind would render inside a
-   * clinical frame. They also name what to do with the barbell, which is an instruction:
+   * limelight frame. They also name what to do with the barbell, which is an instruction:
    *   status.adviceAddLoad, status.adviceDeload, status.adviceExtendReps, status.adviceHold
    *
    * THE EQUIPMENT NAMES (5). A dumbbell is a dumbbell. The picker writes the exercise modality,

@@ -9,7 +9,7 @@ import type { ReactElement } from 'react';
 import { TrainingModalsProvider } from './TrainingModalsProvider';
 import { useVideoModal } from './VideoModal';
 import { VIDEO_INSTANCES } from '../../config/videoInstances';
-import { copy } from '../../content/copy';
+import { copyFor } from '../../content/copy';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
 import { useAppStore } from '../../store';
 
@@ -82,7 +82,7 @@ describe('VideoModal', () => {
     openFrom();
 
     expect(screen.queryByTitle(TITLE)).toBeNull();
-    const link = screen.getByRole('link', { name: copy('button.searchInstance') });
+    const link = screen.getByRole('link', { name: copyFor('limelight', 'button.searchInstance') });
     expect(link.getAttribute('href')).toBe(
       `https://${hostAt(0)}/search?q=${encodeURIComponent(query ?? '')}`,
     );
@@ -101,11 +101,11 @@ describe('VideoModal', () => {
     expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
     expect(frame.getAttribute('loading')).toBe('lazy');
     // The search link falls back to the exercise title when the query is an id (legacy branch).
-    const search = screen.getByRole('link', { name: copy('button.searchInstance') });
+    const search = screen.getByRole('link', { name: copyFor('limelight', 'button.searchInstance') });
     expect(search.getAttribute('href')).toBe(
       `https://${hostAt(0)}/search?q=${encodeURIComponent(TITLE)}`,
     );
-    const watch = screen.getByRole('link', { name: copy('button.openClip') });
+    const watch = screen.getByRole('link', { name: copyFor('limelight', 'button.openClip') });
     expect(watch.getAttribute('href')).toBe(`https://${hostAt(0)}/watch?v=${VIDEO_ID}`);
     expect(watch.getAttribute('rel')).toBe('noopener noreferrer');
   });
@@ -117,10 +117,10 @@ describe('VideoModal', () => {
 
     expect(screen.queryByTitle('Lat pulldown')).toBeNull();
     expect(document.querySelector('iframe')).toBeNull();
-    expect(screen.getByText(copy('advice.noClipRecorded'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noClipRecorded'))).toBeTruthy();
     // With no query the search falls back to the title, so the control is never dead.
     expect(
-      screen.getByRole('link', { name: copy('button.searchInstance') }).getAttribute('href'),
+      screen.getByRole('link', { name: copyFor('limelight', 'button.searchInstance') }).getAttribute('href'),
     ).toBe(`https://${hostAt(0)}/search?q=${encodeURIComponent('Lat pulldown')}`);
   });
 
@@ -128,7 +128,7 @@ describe('VideoModal', () => {
     renderWith(VIDEO_ID, TITLE);
     openFrom();
 
-    const next = screen.getByRole('button', { name: copy('button.nextInstance') });
+    const next = screen.getByRole('button', { name: copyFor('limelight', 'button.nextInstance') });
     for (let i = 1; i < VIDEO_INSTANCES.length; i += 1) {
       fireEvent.click(next);
       expect(screen.getByTitle(TITLE).getAttribute('src')).toContain(`https://${hostAt(i)}/`);
@@ -144,7 +144,7 @@ describe('VideoModal', () => {
     fireEvent.load(screen.getByTitle(TITLE));
     expect(useAppStore.getState().ui.videoInstanceHost).toBe(hostAt(0));
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.nextInstance') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.nextInstance') }));
     fireEvent.load(screen.getByTitle(TITLE));
     expect(useAppStore.getState().ui.videoInstanceHost).toBe(hostAt(1));
   });
@@ -204,7 +204,7 @@ describe('VideoModal', () => {
     expect(screen.queryByRole('dialog')).toBeNull();
 
     openFrom();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.closeModal') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.closeModal') }));
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

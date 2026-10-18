@@ -52,7 +52,7 @@ const STATUS_COPY: Readonly<Record<Exclude<ReminderStatus, 'active'>, CopyKey>> 
  *                   which wall clock it is reported as is a property of the profile, and
  *                   reporting it in the device zone would move the time when the user travels.
  * @param overrides  the active skin's table. Pure and optional, so the suite can call this
- *                   with no React tree and get the clinical sentence it always got.
+ *                   with no React tree and get the limelight sentence it always got.
  */
 export function statusLine(
   status: ReminderStatus,

@@ -28,7 +28,7 @@ export function metWeek(review: WeeklyReview | null): review is WeeklyReview {
  * The stamp that lands on the Today view when the week that has just closed met its target.
  *
  * THE WORD IS `status.weekMetStamp`, which shouts MOTHER on limelight (round three section 3.2)
- * and renders its own plain phrase on clinical and on the board, so the component holds no skin
+ * and renders its own plain phrase on limelight and on the limelight, so the component holds no skin
  * branch: `useCopy()` resolves the row and `Icon` returns null off limelight.
  *
  * IT IS NOT `status.prStamp`, which is what this component read until P8 close-out B. A met week

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import raw from '../../domain/migrations/fixtures/v2-sample.json';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { makeBlankState } from '../../test/migrationFactories';
 import { cancelPendingSave, useAppStore } from '../../store';
 import { LEGACY_V2_KEY } from '../../store/persistence';
@@ -42,7 +42,7 @@ describe('MigrationGate', () => {
   it('offers the import when a legacy document exists and nothing has been decided', () => {
     seed(LEGACY_JSON);
     render(<MigrationGate />);
-    expect(heading(copy('hero.legacyImport'))).toBeTruthy();
+    expect(heading(copyFor('limelight', 'hero.legacyImport'))).toBeTruthy();
   });
 
   it('renders nothing once the import has been done', () => {
@@ -84,34 +84,34 @@ describe('MigrationGate', () => {
   it('keeps the wizard on screen after the import writes the done decision', () => {
     seed(LEGACY_JSON);
     render(<MigrationGate />);
-    fireEvent.click(screen.getByLabelText(copy('label.legacyUnitKg')));
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyPreview') }));
+    fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.legacyUnitKg')));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyPreview') }));
     fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm('IMPORT')), {
       target: { value: 'IMPORT' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyApply') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyApply') }));
     // The decision is already recorded, and the delete offer still has to be made.
     expect(useAppStore.getState().ui.legacyMigration).toBe('done');
-    expect(heading(copy('hero.legacyDone'))).toBeTruthy();
+    expect(heading(copyFor('limelight', 'hero.legacyDone'))).toBeTruthy();
   });
 
   it('stops rendering once the wizard reports it has finished', () => {
     seed(LEGACY_JSON);
     const { container } = render(<MigrationGate />);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyDismiss') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyDismiss') }));
     expect(container).toBeEmptyDOMElement();
   });
 
   it('offers the import again when the decision is put back to pending', () => {
     seed(LEGACY_JSON);
     const { container } = render(<MigrationGate />);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyDismiss') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyDismiss') }));
     expect(container).toBeEmptyDOMElement();
     // The Settings entry point: it writes nothing but the decision.
     act(() => {
       useAppStore.getState().setUi({ legacyMigration: 'pending' });
     });
-    expect(heading(copy('hero.legacyImport'))).toBeTruthy();
+    expect(heading(copyFor('limelight', 'hero.legacyImport'))).toBeTruthy();
   });
   /*
    * Code review finding 8. The gate used to read the legacy text once, in a useState
@@ -125,21 +125,21 @@ describe('MigrationGate', () => {
     const { container } = render(<MigrationGate />);
 
     // Import, then take the gated delete: backup, the word, the confirmation.
-    fireEvent.click(screen.getByLabelText(copy('label.legacyUnitKg')));
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyPreview') }));
+    fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.legacyUnitKg')));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyPreview') }));
     fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm('IMPORT')), {
       target: { value: 'IMPORT' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyApply') }));
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyDeleteOld') }));
-    fireEvent.click(screen.getByRole('button', { name: copy('button.downloadLegacyJson') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyApply') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyDeleteOld') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.downloadLegacyJson') }));
     fireEvent.change(screen.getByLabelText(FORMAT.typeToConfirm('DELETE')), {
       target: { value: 'DELETE' },
     });
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyDeleteOld') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyDeleteOld') }));
     expect(data.get(LEGACY_V2_KEY)).toBeUndefined();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.legacyClose') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.legacyClose') }));
     expect(container).toBeEmptyDOMElement();
 
     // Settings puts the decision back to 'pending'. There is nothing left to import.

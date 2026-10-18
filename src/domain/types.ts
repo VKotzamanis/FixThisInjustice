@@ -253,13 +253,9 @@ export interface SpecimenInventory { profileId: string; acquired: Record<string,
 export interface TimeCapsule { note: string; writtenAt: EpochMs; opensOn: LocalDate; opened: boolean; }
 
 // ---- ui preferences (persisted) ----
-// The three shipped skins, in the order the picker offers them. One id, never a class list:
-// a list can carry two skins at once and the cascade then depends on stylesheet order rather
-// than on state, so the attribute makes the invalid state unrepresentable.
-export type SkinId = 'clinical' | 'limelight' | 'board';
-// skin default 'limelight'; sounds default false (Zod defaults, no version bump). The default
-// is the round-three merge rather than the clinical set the copy contract is written against:
-// clinical stays reachable from the picker and stays the bare `:root` token block.
+/** The sole shipped skin. Kept as a named union so another skin can be added without reshaping UI state. */
+export type SkinId = 'limelight';
+// skin default 'limelight'; sounds default false (Zod defaults, no version bump).
 // milestoneFloorByProfile: the highest [sets] count a set-count milestone has been announced
 // for, per profile. A high-water MARK, not the live counter: deleting a set decrements
 // SpecimenInventory.totalSetsLogged, so a check against the live count re-announces the same

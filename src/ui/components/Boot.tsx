@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
 import './boot.css';
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { AppState } from '../../domain/types';
@@ -45,7 +45,7 @@ export const BOOT_LINE_INTERVAL_MS = 90; // [ms] per line
  */
 export function buildBootLines(
   state: AppState,
-  overrides?: Partial<Record<CopyKey, string>>,
+  overrides: Partial<Record<CopyKey, string>> = SKIN_COPY.limelight,
 ): string[] {
   const ok = copy('status.bootOk', overrides);
   const lines: string[] = [FORMAT.bootStep(copy('status.bootConsole', overrides), ok)];

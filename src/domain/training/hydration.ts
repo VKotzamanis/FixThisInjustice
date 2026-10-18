@@ -147,7 +147,7 @@ export interface HydrationCue {
  *
  * ONE OF THE THREE IS A TEMPLATE AND MUST NOT BE RESOLVED BARE. Since P8 close-out B,
  * `advice.beverageShortfall` carries `{logged}` and `{target}`, because the frame that printed
- * that sentence baked its English into a template literal and was clinical under every skin.
+ * that sentence baked its English into a template literal and was limelight under every skin.
  * A caller that resolves it through `copy()` alone renders the braces; the two volumes are
  * filled by `FORMAT.beverageShortfall`, which is what src/ui/views/train/HydrationBanner.tsx
  * branches to for this kind. The other two rows are complete sentences and resolve directly.

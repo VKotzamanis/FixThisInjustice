@@ -10,7 +10,7 @@
 // that every view named here has a switch arm there.
 //
 // The registry carries no baked `label` any more. It used to be read from the copy table at
-// module load, which made it the CLINICAL string and only ever that: a module constant is
+// module load, which made it the LIMELIGHT string and only ever that: a module constant is
 // baked before any skin is known. Every RENDERER reads `copyKey` through `useCopy()` instead
 // (the tab strip in src/app/App.tsx, the palette in src/ui/components/Spotlight.tsx), and the
 // last two callers with no React tree to read a skin from
@@ -79,9 +79,9 @@ export const VIEW_INSTRUCTIONS: Record<ViewId, CopyKey> = {
 };
 
 /**
- * The name the top bar shows for each view, one per ViewId (round 2, `r2-onboarding.general`).
+ * The name the top bar shows for each view, one per ViewId (round 2, `r2-onlimelighting.general`).
  *
- * "after onboarding, it should just say 'ATLAS' or 'LEG DAY' etc w.r.t. the context of what
+ * "after onlimelighting, it should just say 'ATLAS' or 'LEG DAY' etc w.r.t. the context of what
  * specific page the user is viewing." A `Record`, like `VIEW_INSTRUCTIONS` above and for the same
  * reason: a view added to `VIEWS` with no row here is a compile error rather than a blank banner.
  *

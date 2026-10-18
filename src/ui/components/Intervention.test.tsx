@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { Intervention } from './Intervention';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
 import type { SkinId, WeeklyReview } from '../../domain/types';
@@ -37,19 +37,10 @@ function withSkin(skin: SkinId): void {
 
 beforeEach(() => {
   playSfx.mockClear();
-  withSkin('clinical');
+  withSkin('limelight');
 });
 
 describe('Intervention', () => {
-  it('states the title, the body and the week counts on the clinical skin', () => {
-    render(<Intervention review={HANDLED} />);
-    expect(screen.getByText(copy('hero.weeklyTargetMissed'))).toBeTruthy();
-    expect(screen.getByText(copy('advice.interventionBody'))).toBeTruthy();
-    expect(
-      screen.getByText(FORMAT.withSlots('status.weekDeltaNegative', { completed: 1, target: 4 })),
-    ).toBeTruthy();
-  });
-
   it('carries the limelight body, which is camp nowhere and about the week everywhere', () => {
     withSkin('limelight');
     render(<Intervention review={HANDLED} />);
@@ -67,10 +58,10 @@ describe('Intervention', () => {
     ).toBeTruthy();
   });
 
-  it('keeps the board vocabulary for the same missed week', () => {
-    withSkin('board');
+  it('keeps the limelight vocabulary for the same missed week', () => {
+    withSkin('limelight');
     render(<Intervention review={HANDLED} />);
-    expect(screen.getByText(copyFor('board', 'hero.weeklyTargetMissed'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'hero.weeklyTargetMissed'))).toBeTruthy();
   });
 
   it('stays silent while the popup still owes the user that week', () => {
@@ -93,8 +84,8 @@ describe('Intervention', () => {
    * P9 Task 17. Round three section 4.4 draws `alert` at the motivation title and `heart` at the
    * intervention body, and both now render through SkinLabel. The assertion is on the ICON, not
    * on the words: the words are covered above, and what these two tests pin is that the glyph
-   * arrives on limelight and that nothing but text reaches the other skins, which is copy
-   * contract R6 (clinical is glyph-free) and the board's own no-graphics rule.
+   * arrives on limelight and that nothing but text reaches the other skins, which is copyFor
+   * contract R6 (limelight is glyph-free) and the limelight's own no-graphics rule.
    */
   it('puts the two round-three icons beside the title and the body on limelight', () => {
     withSkin('limelight');
@@ -105,12 +96,6 @@ describe('Intervention', () => {
     expect(body?.querySelectorAll('img.ll-icon')).toHaveLength(1);
     // Decorative: the heading's accessible name is still the string alone.
     expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') }));
-  });
-
-  it('renders no image at all on clinical', () => {
-    const { container } = render(<Intervention review={HANDLED} />);
-    expect(container.querySelectorAll('img')).toHaveLength(0);
-    expect(screen.getByRole('heading', { name: copy('hero.weeklyTargetMissed') }));
   });
 
   it('plays the opening sound once per appearance', () => {

@@ -50,6 +50,16 @@ describe('load', () => {
     if (result.ok) expect(result.state).toEqual(s);
   });
 
+  it.each(['clinical', 'board'] as const)('repairs retired %s skin in a stored v3 document only', (skin) => {
+    const data = installFakeStorage();
+    const expected = defaultState();
+    data.set(STORAGE_KEY, JSON.stringify({ ...expected, ui: { ...expected.ui, skin } }));
+
+    const result = load();
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state).toEqual(expected);
+  });
+
   it('reports non-JSON text as invalid rather than throwing', () => {
     installFakeStorage({ [STORAGE_KEY]: 'not json {' });
     const result = load();
@@ -202,6 +212,13 @@ describe('exportJson and importJson', () => {
     const result = importJson(exportJson(s));
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.state).toEqual(s);
+  });
+
+  it.each(['clinical', 'board'] as const)('repairs retired %s skin in an imported v3 backup only', (skin) => {
+    const expected = defaultState();
+    const result = importJson(JSON.stringify({ ...expected, ui: { ...expected.ui, skin } }));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.state).toEqual(expected);
   });
 
   it('rejects malformed JSON with a message, not an exception', () => {

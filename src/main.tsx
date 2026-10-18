@@ -3,14 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 
 // Self-hosted variable fonts (security constraint 19: no fonts.googleapis.com).
-import '@fontsource-variable/jetbrains-mono';
-import '@fontsource-variable/geist';
-
-// The four faces the two non-clinical skins name in src/ui/styles/tokens.css (P8 Task 12).
-// Self-hosted for the same reason and under the same CSP `font-src 'self'`: a skin that reached
-// for a Google-hosted face would be blocked at runtime rather than at build time. Only the
-// weights the tokens actually use are imported, so a skin nobody selects still costs its faces
-// and nothing more.
+// Self-hosted for the same CSP-safe presentation.
 //
 // LATIN-ONLY entry points, not the bare weight (code review). `@fontsource/<face>/400.css`
 // declares one @font-face per SUBSET - latin, latin-ext, vietnamese - and each one is a separate
@@ -22,9 +15,6 @@ import '@fontsource-variable/geist';
 // dropped from the precache by globIgnores in vite.config.ts instead. That is the same decision
 // reached by the only other means available.
 import '@fontsource-variable/archivo/standard.css';
-import '@fontsource/dm-mono/latin-400.css';
-import '@fontsource/space-mono/latin-400.css';
-import '@fontsource/space-mono/latin-700.css';
 
 import './ui/styles/tokens.css';
 import './ui/styles/crt.css';

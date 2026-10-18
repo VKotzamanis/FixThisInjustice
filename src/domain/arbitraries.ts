@@ -504,7 +504,7 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   // P8 Task 12. Both are additive with a Zod default, so a generated document that omitted
   // them would round-trip to the default rather than to itself and the parity property
   // would fail for a reason that is not a bug.
-  skin: fc.constantFrom('clinical' as const, 'limelight' as const, 'board' as const),
+  skin: fc.constant('limelight' as const),
   sounds: fc.boolean(),
   // The milestone high-water mark, [sets] per profile. Generated for the same reason the two
   // above are: it is additive with a Zod default, so a document that omitted it would

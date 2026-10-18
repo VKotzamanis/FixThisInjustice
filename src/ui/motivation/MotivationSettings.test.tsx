@@ -25,7 +25,7 @@ import {
   resolveVideoSrc,
   saveCustomVideo,
 } from '../../domain/motivation/assets';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import { PROFILE_ID, seedState } from '../../test/scheduleFixtures';
@@ -97,7 +97,7 @@ function callOrder(mock: { mock: { invocationCallOrder: number[] } }, nth: numbe
 }
 
 function chooseLabel(): HTMLElement {
-  return screen.getByLabelText(copy('label.motivationClipChoose'));
+  return screen.getByLabelText(copyFor('limelight', 'label.motivationClipChoose'));
 }
 
 /**
@@ -141,7 +141,7 @@ beforeEach(() => {
       /* the bundled path holds nothing to release */
     },
   });
-  // No clip is deployed in a test build, so the preview renders its copy and no element.
+  // No clip is deployed in a test build, so the preview renders its copyFor and no element.
   vi.mocked(probeBundledVideo).mockResolvedValue(false);
 });
 
@@ -152,14 +152,14 @@ afterEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -171,11 +171,11 @@ describe('MotivationSettings', () => {
   it('stores a picked clip, names it, and reports its size', async () => {
     const user = userEvent.setup();
     render(<MotivationSettings />);
-    expect(screen.getByText(copy('status.motivationClipNone'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.motivationClipNone'))).toBeInTheDocument();
 
     await user.upload(chooseLabel(), videoFile(BYTES_PER_MIB, 'video/mp4', 'holiday.mp4'));
 
-    await pickerSettled(copy('label.motivationClipReplace'));
+    await pickerSettled(copyFor('limelight', 'label.motivationClipReplace'));
     expect(storedId()).not.toBeNull();
     expect(screen.getByText(FORMAT.motivationClipName('holiday.mp4'))).toBeInTheDocument();
     expect(screen.getByText(FORMAT.motivationClipSize('1.0'))).toBeInTheDocument();
@@ -187,7 +187,7 @@ describe('MotivationSettings', () => {
     render(<MotivationSettings />);
 
     await user.upload(chooseLabel(), videoFile(16, 'video/mp4', 'first.mp4'));
-    const picker = await pickerSettled(copy('label.motivationClipReplace'));
+    const picker = await pickerSettled(copyFor('limelight', 'label.motivationClipReplace'));
     const first = storedId();
     expect(first).not.toBeNull();
 
@@ -212,18 +212,18 @@ describe('MotivationSettings', () => {
     const user = userEvent.setup();
     render(<MotivationSettings />);
     await user.upload(chooseLabel(), videoFile(16));
-    await pickerSettled(copy('label.motivationClipReplace'));
+    await pickerSettled(copyFor('limelight', 'label.motivationClipReplace'));
     const id = storedId();
     expect(id).not.toBeNull();
 
-    await user.click(screen.getByRole('button', { name: copy('button.motivationClipRemove') }));
+    await user.click(screen.getByRole('button', { name: copyFor('limelight', 'button.motivationClipRemove') }));
 
     await waitFor(() => {
       expect(storedId()).toBeNull();
     });
     expect(vi.mocked(deleteCustomVideo)).toHaveBeenCalledWith(id);
     expect(id === null ? null : await getCustomVideoUrl(id)).toBeNull();
-    expect(screen.getByText(copy('status.motivationClipNone'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.motivationClipNone'))).toBeInTheDocument();
   });
 
   it('refuses a file over the size limit and leaves the store alone', async () => {
@@ -237,7 +237,7 @@ describe('MotivationSettings', () => {
     await user.upload(chooseLabel(), oversize);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy('status.motivationClipTooLarge'),
+      copyFor('limelight', 'status.motivationClipTooLarge'),
     );
     expect(storedId()).toBeNull();
     expect(setCustomVideo).not.toHaveBeenCalled();
@@ -252,7 +252,7 @@ describe('MotivationSettings', () => {
     });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      copy('status.motivationClipNotVideo'),
+      copyFor('limelight', 'status.motivationClipNotVideo'),
     );
     expect(storedId()).toBeNull();
     expect(setCustomVideo).not.toHaveBeenCalled();
@@ -262,16 +262,16 @@ describe('MotivationSettings', () => {
     const user = userEvent.setup();
     render(<MotivationSettings />);
 
-    await user.click(screen.getByRole('button', { name: copy('button.motivationClipPreview') }));
+    await user.click(screen.getByRole('button', { name: copyFor('limelight', 'button.motivationClipPreview') }));
 
     const dialog = await screen.findByRole('dialog');
     expect(dialog).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: copy('hero.motivationPreview') }),
+      screen.getByRole('heading', { name: copyFor('limelight', 'hero.motivationPreview') }),
     ).toBeInTheDocument();
-    expect(screen.getByText(copy('advice.motivationPreview'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.motivationPreview'))).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: copy('button.dismiss') }));
+    await user.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).toBeNull();
@@ -292,7 +292,7 @@ describe('MotivationSettings', () => {
     const user = userEvent.setup();
     render(<MotivationSettings />);
     await user.upload(chooseLabel(), videoFile(16, 'video/mp4', 'first.mp4'));
-    const picker = await pickerSettled(copy('label.motivationClipReplace'));
+    const picker = await pickerSettled(copyFor('limelight', 'label.motivationClipReplace'));
     const first = storedId();
     expect(first).not.toBeNull();
 
@@ -312,7 +312,7 @@ describe('MotivationSettings', () => {
     const user = userEvent.setup();
     render(<MotivationSettings />);
     await user.upload(chooseLabel(), videoFile(16, 'video/mp4', 'first.mp4'));
-    const picker = await pickerSettled(copy('label.motivationClipReplace'));
+    const picker = await pickerSettled(copyFor('limelight', 'label.motivationClipReplace'));
 
     vi.mocked(deleteCustomVideo).mockRejectedValueOnce(new Error('the delete was refused'));
     await user.upload(picker, videoFile(16, 'video/mp4', 'second.mp4'));
@@ -332,7 +332,7 @@ describe('MotivationSettings', () => {
 
     render(<MotivationSettings />);
     // What a reload shows before the record has been read: that one is stored, and no more.
-    expect(screen.getByText(copy('status.motivationClipStored'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.motivationClipStored'))).toBeInTheDocument();
 
     expect(await screen.findByText(FORMAT.motivationClipName('holiday.mp4'))).toBeInTheDocument();
     expect(screen.getByText(FORMAT.motivationClipSize('2.0'))).toBeInTheDocument(); // MiB
@@ -349,7 +349,7 @@ describe('MotivationSettings', () => {
     });
     await expect(vi.mocked(getCustomVideoMeta).mock.results[0]?.value).resolves.toBeNull();
 
-    expect(screen.getByText(copy('status.motivationClipStored'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'status.motivationClipStored'))).toBeInTheDocument();
     // No name line at all, rather than a name line reading "Clip: undefined".
     const namePrefix = FORMAT.motivationClipName('');
     expect(screen.queryByText((text) => text.startsWith(namePrefix))).toBeNull();
@@ -357,12 +357,12 @@ describe('MotivationSettings', () => {
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('MotivationSettings under a skin', () => {
-  it('names the preview in the limelight words, and in the default ones under clinical', () => {
+  it('names the preview in the limelight words, and in the default ones under limelight', () => {
     pinSkin('limelight');
     const view = render(<MotivationSettings />);
     expect(
@@ -370,10 +370,10 @@ describe('MotivationSettings under a skin', () => {
     ).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<MotivationSettings />);
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.motivationClipPreview') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.motivationClipPreview') }),
     ).toBeInTheDocument();
   });
 });

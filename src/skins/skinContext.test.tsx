@@ -1,5 +1,5 @@
 import { describe, expect, it, afterEach } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import type { JSX } from 'react';
 import { SKIN_IDS, useApplySkin, useSkin } from './skinContext';
 import { useAppStore } from '../store';
@@ -26,8 +26,8 @@ afterEach(() => {
 });
 
 describe('SKIN_IDS', () => {
-  it('lists the three ids in the order the schema enumerates them', () => {
-    expect(SKIN_IDS).toEqual(['clinical', 'limelight', 'board']);
+  it('lists the sole shipped id', () => {
+    expect(SKIN_IDS).toEqual(['limelight']);
   });
 });
 
@@ -40,19 +40,9 @@ describe('useApplySkin', () => {
     }
   });
 
-  it('follows a live skin change through the store', () => {
-    const { getByTestId } = mount('clinical');
-    expect(document.documentElement.getAttribute('data-skin')).toBe('clinical');
-    act(() => {
-      useAppStore.getState().setUi({ skin: 'limelight' });
-    });
-    expect(document.documentElement.getAttribute('data-skin')).toBe('limelight');
-    expect(getByTestId('skin').textContent).toBe('limelight');
-  });
-
   it('clears the attribute when it unmounts, leaving no global state behind', () => {
-    const view = mount('board');
-    expect(document.documentElement.getAttribute('data-skin')).toBe('board');
+    const view = mount('limelight');
+    expect(document.documentElement.getAttribute('data-skin')).toBe('limelight');
     view.unmount();
     expect(document.documentElement.getAttribute('data-skin')).toBeNull();
   });
@@ -60,8 +50,8 @@ describe('useApplySkin', () => {
 
 describe('useSkin', () => {
   it('reads ui.skin from the store, which is the single source of truth', () => {
-    const { getByTestId } = mount('board');
-    expect(getByTestId('skin').textContent).toBe('board');
-    expect(useAppStore.getState().ui.skin).toBe('board');
+    const { getByTestId } = mount('limelight');
+    expect(getByTestId('skin').textContent).toBe('limelight');
+    expect(useAppStore.getState().ui.skin).toBe('limelight');
   });
 });

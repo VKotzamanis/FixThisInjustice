@@ -1,13 +1,12 @@
 import type { ReactElement } from 'react';
 
-import { useSkin } from '../skinContext';
 import { LIMELIGHT_ILLUSTRATIONS, type LimelightIllustrationName } from './illustrations';
 
 /**
  * A limelight mascot illustration.
  *
  * Mirrors `Icon.tsx` deliberately, including the null return on every other skin: the mascots are
- * this skin's voice, and clinical is the plain table the app falls back to. Round 3 drew four of
+ * this skin's voice, and limelight is the plain table the app falls back to. Round 3 drew four of
  * them and none was ever wired; this component is what round 2 of the alpha needed to place two
  * of them (asset manifest, 2026-09-06).
  *
@@ -35,8 +34,6 @@ export function Illustration({
   width?: number;
   height?: number;
 }): ReactElement | null {
-  const skin = useSkin();
-  if (skin !== 'limelight') return null;
   const accessibility =
     label === undefined
       ? ({ alt: '', 'aria-hidden': true } as const)

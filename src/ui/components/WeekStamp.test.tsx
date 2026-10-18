@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { WeekStamp, SPARKLE_COUNT } from './WeekStamp';
+import { WeekStamp } from './WeekStamp';
 import { Intervention } from './Intervention';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
 import { addDays, todayLocal } from '../../domain/dates';
@@ -38,20 +38,10 @@ function withSkin(skin: SkinId): void {
 
 beforeEach(() => {
   playSfx.mockClear();
-  withSkin('clinical');
+  withSkin('limelight');
 });
 
 describe('WeekStamp', () => {
-  it('states the plain phrase and the week counts on the clinical skin', () => {
-    render(<WeekStamp review={MET} />);
-    expect(screen.getByText(copy('status.weekMetStamp'))).toBeTruthy();
-    // A met week is attendance, not a record: the record stamp's own words never appear here.
-    expect(screen.queryByText(copy('status.prStamp'))).toBeNull();
-    expect(
-      screen.getByText(FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 })),
-    ).toBeTruthy();
-  });
-
   it('shouts the limelight word for the same week', () => {
     withSkin('limelight');
     render(<WeekStamp review={MET} />);
@@ -67,33 +57,29 @@ describe('WeekStamp', () => {
     ).toBeTruthy();
   });
 
-  it('uses the board word, and lands the sparkle fan only where the art exists', () => {
-    withSkin('board');
-    render(<WeekStamp review={MET} />);
-    expect(screen.getByText(copyFor('board', 'status.weekMetStamp'))).toBeTruthy();
-    // The board's two stamps are different words, so this assertion is not vacuous.
-    expect(screen.queryByText(copyFor('board', 'status.prStamp'))).toBeNull();
-    expect(document.querySelectorAll('.ll-stamp-sparkle')).toHaveLength(SPARKLE_COUNT);
-    expect(document.querySelectorAll('img.ll-icon')).toHaveLength(0);
-  });
-
   it('reads the beaten week from the sign of the stored delta, never from arithmetic', () => {
     render(<WeekStamp review={BEATEN} />);
     expect(
-      screen.getByText(FORMAT.withSlots('status.weekDeltaPositive', { completed: 5, target: 4 })),
+      screen.getByText(
+        FORMAT.withSlots(
+          'status.weekDeltaPositive',
+          { completed: 5, target: 4 },
+          { 'status.weekDeltaPositive': copyFor('limelight', 'status.weekDeltaPositive') },
+        ),
+      ),
     ).toBeTruthy();
   });
 
   it('says nothing about a missed week, an absent week, or a week the plan was paused in', () => {
     const { rerender } = render(<WeekStamp review={MISSED} />);
-    expect(screen.queryByText(copy('status.weekMetStamp'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'status.weekMetStamp'))).toBeNull();
 
     rerender(<WeekStamp review={null} />);
-    expect(screen.queryByText(copy('status.weekMetStamp'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'status.weekMetStamp'))).toBeNull();
 
     // delta = 0 on a paused week is the pause, not a target met (src/domain/schedule/weekly.ts).
     rerender(<WeekStamp review={PAUSED} />);
-    expect(screen.queryByText(copy('status.weekMetStamp'))).toBeNull();
+    expect(screen.queryByText(copyFor('limelight', 'status.weekMetStamp'))).toBeNull();
   });
 
   it('plays the stamp sound once per appearance and never while hidden', () => {
@@ -141,7 +127,7 @@ describe('WeekStamp while an older week still owes its popup', () => {
   it('renders nothing while the popup owns an older week', () => {
     const miss = pendingMiss();
     useAppStore.setState(
-      makeAppState({ weeklyReviews: { p1: [miss] }, ui: makeUiPrefs({ skin: 'clinical' }) }),
+      makeAppState({ weeklyReviews: { p1: [miss] }, ui: makeUiPrefs({ skin: 'limelight' }) }),
     );
     render(<WeekStamp review={MET} />);
     expect(screen.queryByTestId('week-stamp')).toBeNull();
@@ -150,7 +136,7 @@ describe('WeekStamp while an older week still owes its popup', () => {
   it('renders once that older week has been answered', () => {
     const miss = { ...pendingMiss(), missHandled: true };
     useAppStore.setState(
-      makeAppState({ weeklyReviews: { p1: [miss] }, ui: makeUiPrefs({ skin: 'clinical' }) }),
+      makeAppState({ weeklyReviews: { p1: [miss] }, ui: makeUiPrefs({ skin: 'limelight' }) }),
     );
     render(<WeekStamp review={MET} />);
     expect(screen.queryByTestId('week-stamp')).not.toBeNull();

@@ -74,14 +74,14 @@ function onScreen(): HTMLElement[] {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -528,7 +528,9 @@ describe('useToasts', () => {
     expect(api!.queue).toHaveLength(1);
     // It goes through the named control instead.
     act(() => {
-      fireEvent.click(screen.getByRole('button', { name: DEFAULT_COPY['button.dismiss'] }));
+      fireEvent.click(
+        screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
+      );
     });
     expect(api!.queue).toHaveLength(0);
   });
@@ -538,20 +540,24 @@ describe('useToasts', () => {
     act(() => {
       api!.push({ kind: 'coach', message: 'hold this load' });
     });
-    expect(screen.getByText(DEFAULT_COPY['label.coachNote'])).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: DEFAULT_COPY['button.dismiss'] })).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'label.coachNote'))).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
+    ).toBeInTheDocument();
 
     act(() => {
       api!.clear();
       api!.push({ kind: 'telemetry', message: 'set banked' });
     });
-    expect(screen.getByText(DEFAULT_COPY['label.telemetry'])).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'label.telemetry'))).toBeInTheDocument();
 
     act(() => {
       api!.clear();
       api!.push({ kind: 'milestone', count: 250 });
     });
-    expect(screen.getByText(FORMAT.milestoneSets('250'))).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.milestoneSets('250', SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
   });
 
   it('renders a specimen card from the content module under a copy-table eyebrow', () => {
@@ -561,7 +567,9 @@ describe('useToasts', () => {
     act(() => {
       api!.push({ kind: 'specimen', cardId: 'c005' });
     });
-    expect(screen.getByText(FORMAT.specimenAcquired(card!.rarity))).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.specimenAcquired(card!.rarity, SKIN_COPY.limelight)),
+    ).toBeInTheDocument();
     expect(screen.getByText('Volume and hypertrophy')).toBeInTheDocument();
     expect(screen.getByText(card!.body)).toBeInTheDocument();
     expect(screen.getByText(card!.source.citation)).toBeInTheDocument();
@@ -637,7 +645,7 @@ describe('useToasts', () => {
     });
     // The literal, asserted against the table rather than against the frame: the frame reads
     // the key, so a test that compared frame to frame would agree with itself.
-    expect(screen.getByText('250 sets recorded.')).toBeInTheDocument();
+    expect(screen.getByText('250 sets recorded. no crumbs.')).toBeInTheDocument();
     // A skin overriding the key reaches the rendered string, and may move the slot within it.
     expect(FORMAT.milestoneSets('250', { 'status.milestoneSets': 'Sets banked: {count}' })).toBe(
       'Sets banked: 250',
@@ -668,7 +676,7 @@ describe('useToasts', () => {
  * than of a render, and it is recorded here rather than asserted.
  */
 describe('ToastQueue under a skin', () => {
-  it('renders the limelight milestone and dismissal, and the default ones under clinical', () => {
+  it('renders the limelight milestone and dismissal, and the default ones under limelight', () => {
     pinSkin('limelight');
     const view = renderQueue();
     act(() => {
@@ -682,14 +690,14 @@ describe('ToastQueue under a skin', () => {
     ).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     renderQueue();
     act(() => {
       api!.push({ kind: 'milestone', count: 250 });
     });
-    expect(screen.getByText(FORMAT.milestoneSets('250', SKIN_COPY.clinical))).toBeInTheDocument();
+    expect(screen.getByText(FORMAT.milestoneSets('250', SKIN_COPY.limelight))).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: copyFor('clinical', 'button.dismiss') }),
+      screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
     ).toBeInTheDocument();
   });
 });

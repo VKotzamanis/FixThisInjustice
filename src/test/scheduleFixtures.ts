@@ -84,7 +84,7 @@ export function emptyState(): AppState {
       introSeen: true,
       scanlines: false,
       flicker: false,
-      skin: 'clinical',
+      skin: 'limelight',
     },
   };
 }

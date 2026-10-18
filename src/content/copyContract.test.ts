@@ -98,7 +98,7 @@ describe('the rest of the executable contract', () => {
     expect(hasEmDash('a — b')).toBe(true);
   });
 
-  it('R8 binds the default table alone, because the board shouts on purpose', () => {
+  it('R8 binds the default table alone, because the limelight shouts on purpose', () => {
     expect(rules('status.rest', 'Rest!', 'DEFAULT_COPY')).toContain('R8');
     expect(rules('status.rest', 'rest!', 'LIMELIGHT_COPY')).toEqual([]);
   });

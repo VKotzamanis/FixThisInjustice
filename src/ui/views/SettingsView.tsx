@@ -20,7 +20,7 @@ import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
-import { SkinSettings } from '../settings/SkinSettings';
+import { InteractionSettings } from '../settings/InteractionSettings';
 import './views.css';
 
 /**
@@ -67,7 +67,7 @@ interface SettingsRow {
 const SETTINGS_ROWS: readonly SettingsRow[] = [
   { id: 'reminders', render: () => <ReminderSettingsPanel /> },
   { id: 'motivation-clip', render: () => <MotivationSettings /> },
-  { id: 'skin', render: () => <SkinSettings /> },
+  { id: 'interaction', render: () => <InteractionSettings /> },
   /*
    * Last, and deliberately: the section holds the two destructive controls (P7 Task 6), and a
    * wipe belongs at the bottom of the screen rather than above the fields a user came here to

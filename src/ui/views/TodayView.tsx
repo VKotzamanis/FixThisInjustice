@@ -391,7 +391,7 @@ export function TodayView(): JSX.Element {
     <div className="view today">
       {/*
        * The one strip that moves, above everything, as the design places it. It renders on
-       * limelight and on the board and nothing at all on clinical, so this call site does not
+       * limelight and on the limelight and nothing at all on limelight, so this call site does not
        * ask which skin is active.
        */}
       <Marquee items={marqueeItems} label={c('button.pauseTicker')} />
@@ -411,7 +411,7 @@ export function TodayView(): JSX.Element {
          *
          * THE OVERLAY IS PASSED (P8 close-out B). The mapper has accepted one since it was
          * written and this call site did not supply it, so the one sentence on this screen that
-         * reports a refusal rendered the clinical words while every control beside it followed
+         * reports a refusal rendered the limelight words while every control beside it followed
          * the skin. The date inside it is the domain's either way: the mapper substitutes into a
          * slot and no skin can reach the value.
          */

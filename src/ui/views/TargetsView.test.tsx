@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { statedBeverageTargetML } from '../../domain/nutrition';
 import { asciiBar } from '../components/AsciiBar';
 import { TargetsView } from './TargetsView';
@@ -150,10 +150,10 @@ function storedToday(): unknown {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a view that reads the
  * table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; the skin's own words have their own test at the end of the file.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -289,10 +289,10 @@ describe('TargetsView', () => {
   it('names each bar as an image instead of leaving the glyphs to be read out', () => {
     render(<TargetsView />);
 
-    expect(screen.getByRole('img', { name: copy('label.energyProgress') })).toBe(
+    expect(screen.getByRole('img', { name: copyFor('limelight', 'label.energyProgress') })).toBe(
       screen.getByTestId('kcal-bar'),
     );
-    expect(screen.getByRole('img', { name: copy('label.proteinProgress') })).toBe(
+    expect(screen.getByRole('img', { name: copyFor('limelight', 'label.proteinProgress') })).toBe(
       screen.getByTestId('protein-bar'),
     );
   });
@@ -324,7 +324,7 @@ describe('TargetsView', () => {
 
   /*
    * The litres in the basis sentence are the engine's beverage constant, divided, not a pair
-   * of numbers restated in the copy table where they could drift from what is prescribed.
+   * of numbers restated in the copyFor table where they could drift from what is prescribed.
    */
   it('derives the beverage-basis litres from the engine constant', () => {
     render(<TargetsView />);
@@ -397,13 +397,13 @@ describe('App wiring', () => {
   it('hides every view behind the setup wizard while no profile exists', () => {
     useAppStore.getState().wipeAll();
     render(<App />);
-    expect(screen.queryByRole('button', { name: 'Targets' })).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'nav.targets') })).toBeNull();
     expect(screen.queryByTestId('target-kcal')).toBeNull();
   });
 
   it('reaches the targets view from the navigation', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Targets' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.targets') }));
     expect(screen.getByTestId('target-kcal')).toHaveTextContent(`${String(TARGET_KCAL)} kcal`);
     // The chosen view is remembered, so a reload reopens where the user left off.
     expect(useAppStore.getState().ui.lastView).toBe('targets');
@@ -411,14 +411,14 @@ describe('App wiring', () => {
 
   it('reaches the settings view and switches the display unit without changing storage', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.settings') }));
     fireEvent.change(screen.getByLabelText('Display Unit'), { target: { value: 'imperial' } });
 
     // Display only: the stored baseline is still the canonical kilogram figure.
     expect(useAppStore.getState().profiles['p1']?.units).toBe('imperial');
     expect(useAppStore.getState().profiles['p1']?.body.baselineMassKg).toBe(80); // [kg]
 
-    fireEvent.click(screen.getByRole('button', { name: 'Targets' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.targets') }));
     expect(screen.getByTestId('target-fluid')).toHaveTextContent('101 fl oz'); // 3000 mL
   });
 
@@ -427,33 +427,33 @@ describe('App wiring', () => {
     // Without a name the landmark is announced as an unlabelled "navigation", which tells a
     // screen-reader user nothing about what the six buttons inside it switch between. The
     // name is asserted to EXIST before it is matched: getByRole ignores an undefined name,
-    // so a missing copy key would otherwise make this test pass against a nameless landmark.
-    const name = copy('nav.label');
+    // so a missing copyFor key would otherwise make this test pass against a nameless landmark.
+    const name = copyFor('limelight', 'nav.label');
     expect(typeof name).toBe('string');
     expect(screen.getByRole('navigation', { name })).toBeInTheDocument();
   });
 
   it('offers no profile switcher while only one profile exists', () => {
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Settings' }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.settings') }));
     expect(screen.queryByLabelText('Active profile')).toBeNull();
   });
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('TargetsView under a skin', () => {
-  it('heads the targets in the limelight words, and in the default ones under clinical', () => {
+  it('heads the targets in the limelight words, and in the default ones under limelight', () => {
     pinSkin('limelight');
     const view = render(<TargetsView />);
     expect(screen.getByText(copyFor('limelight', 'hero.dailyTargets'))).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<TargetsView />);
-    expect(screen.getByText(copyFor('clinical', 'hero.dailyTargets'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'hero.dailyTargets'))).toBeInTheDocument();
   });
 });

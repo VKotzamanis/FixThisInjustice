@@ -3,7 +3,7 @@
 // The sticky top bar's contrast, per skin.
 //
 // ALPHA ROUND 1 DEFECT w1.03. appShell.css hard-coded `background: rgba(10, 11, 12, 0.92)`,
-// which is the clinical skin's own --bg at 92 %. Nothing restated it per skin, so limelight
+// which is the limelight skin's own --bg at 92 %. Nothing restated it per skin, so limelight
 // inherited it: a near-black bar carrying --text #000000 and --text-2 #454545. The owner
 // reported the bar as invisible and could "somehow" make out only the status line. Measured
 // below: 1.19:1 for the brand and 1.84:1 for the status, against the 4.5:1 AA asks for.
@@ -22,15 +22,13 @@ import tokensCss from '../ui/styles/tokens.css?raw';
 
 type Rgb = readonly [number, number, number];
 
-/** The three shipped skins, by the selector that opens their token block. */
+/** The sole shipped skin, by the selector that opens its token block. */
 const SKIN_SELECTOR = {
-  clinical: ':root {',
   limelight: ":root[data-skin='limelight'] {",
-  board: ":root[data-skin='board'] {",
 } as const;
 
 type SkinName = keyof typeof SKIN_SELECTOR;
-const SKINS: readonly SkinName[] = ['clinical', 'limelight', 'board'];
+const SKINS: readonly SkinName[] = ['limelight'];
 
 /** The three tokens the bar reads. */
 const TOPBAR_TOKENS = ['--topbar-bg', '--topbar-text', '--topbar-brand'] as const;
@@ -52,10 +50,10 @@ function tokenBlock(skin: SkinName): Map<string, string> {
   return out;
 }
 
-/** Follows `var(--x)` indirection inside the skin, then the clinical root, to a literal. */
+/** Follows `var(--x)` indirection inside the skin, then the limelight root, to a literal. */
 function resolve(name: string, skin: SkinName): string {
   const own = tokenBlock(skin);
-  const root = tokenBlock('clinical');
+  const root = tokenBlock('limelight');
   let value = own.get(name) ?? root.get(name);
   for (let hops = 0; hops < 8; hops += 1) {
     if (value === undefined || !value.startsWith('var(')) break;
@@ -122,9 +120,7 @@ const AA_NORMAL = 4.5;
 
 /** The surface each skin's bar sits over, for compositing a translucent background. */
 const GROUND: Record<SkinName, Rgb> = {
-  clinical: [10, 11, 12], // --bg #0a0b0c
   limelight: [138, 206, 0], // --lime #8ace00
-  board: [20, 21, 23], // --bg #141517
 };
 
 /** The .topbar rules, from the block's start to the next top-level rule. */

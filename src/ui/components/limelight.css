@@ -13,7 +13,7 @@
  * would put three copies of that media query in the bundle.
  *
  * SKIN SCOPE. The class names carry the `ll-` prefix because the design is limelight's, but the
- * components render on more than one skin: the marquee is limelight and board, the stamp and the
+ * components render on more than one skin: the marquee is limelight and limelight, the stamp and the
  * intervention are every skin. Colour therefore comes from the skin tokens, never from a literal;
  * `.ll-panel` and `.ll-display` in src/ui/styles/tokens.css are limelight-scoped already, so the
  * inversion and the offset shadow apply there and nowhere else.

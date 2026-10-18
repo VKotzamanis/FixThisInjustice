@@ -17,7 +17,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import type { KeyboardEvent as ReactKeyboardEvent, ReactElement } from 'react';
-import { copy } from '../../content/copy';
+import { SKIN_COPY, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { PlanTemplate } from '../../domain/types';
@@ -65,7 +65,7 @@ export interface SpotlightArgs {
   /**
    * The active skin's override table, for the view rows' labels.
    *
-   * Optional, and omitting it gives the clinical label VIEWS already carries: this function
+   * Optional, and omitting it gives the limelight label VIEWS already carries: this function
    * is pure and is called directly by its own suite, which has no React tree to read a skin
    * from. The component below passes `useCopyOverrides()`.
    */
@@ -83,7 +83,7 @@ export interface SpotlightArgs {
  * a result performs is asserted without rendering anything.
  */
 export function buildSpotlightItems(args: SpotlightArgs): SpotlightItem[] {
-  const { plan, setView, focusPlanRow, close, overrides } = args;
+  const { plan, setView, focusPlanRow, close, overrides = SKIN_COPY.limelight } = args;
   const items: SpotlightItem[] = [];
 
   for (const view of VIEWS) {

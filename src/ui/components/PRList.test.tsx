@@ -6,11 +6,11 @@
 //    Exercise type requires.
 //  - The list is ordered by DATE, most recent record first, which is the ordering this task's
 //    brief fixes. The plan's draft sorted by exercise name.
-//  - Every string quotes src/content/copy.ts and src/domain/units.ts.
+//  - Every string quotes src/content/copyFor.ts and src/domain/units.ts.
 
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { FORMAT, copy, copyFor } from '../../content/copy';
+import { FORMAT, copyFor } from '../../content/copy';
 import { e1RM } from '../../domain/training/progression';
 import type { Exercise } from '../../domain/types';
 import { formatLoad } from '../../domain/units';
@@ -30,14 +30,14 @@ beforeEach(() => {
 /*
  * The app ships with `ui.skin: 'limelight'` (src/domain/schema.ts), so a component that reads
  * the table through `useCopy()` renders the limelight words unless a test says otherwise. The
- * assertions in this file quote the DEFAULT table, so the skin is pinned to clinical before
+ * assertions in this file quote the DEFAULT table, so the skin is pinned to limelight before
  * each of them; what a skin changes has its own test.
  *
  * A seed that REPLACES `ui` (makeAppState, defaultState, wipeAll) puts the shipped skin back,
  * so it is a named function rather than an inline hook body: a test that reseeds calls it
  * again, after the seed.
  */
-function pinSkin(skin: SkinId = 'clinical'): void {
+function pinSkin(skin: SkinId = 'limelight'): void {
   useAppStore.setState((s) => ({ ui: { ...s.ui, skin } }));
 }
 
@@ -48,7 +48,7 @@ beforeEach(() => {
 describe('PRList', () => {
   it('says so when nothing has been logged', () => {
     render(<PRList sets={[]} library={LIBRARY} units="metric" />);
-    expect(screen.getByText(copy('advice.noSetsLogged'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSetsLogged'))).toBeTruthy();
   });
 
   it('shows the heaviest set and the best estimated 1RM, in kg', () => {
@@ -97,7 +97,7 @@ describe('PRList', () => {
       />,
     );
     expect(screen.getByText(FORMAT.loggedSet(formatLoad(0, 'metric'), '20'))).toBeTruthy();
-    expect(screen.getByText(copy('status.noEstimated1RM'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'status.noEstimated1RM'))).toBeTruthy();
   });
 
   it('orders the list by the date of the record, most recent first', () => {
@@ -127,24 +127,24 @@ describe('PRList', () => {
         units="metric"
       />,
     );
-    expect(screen.getByText(copy('advice.noSetsLogged'))).toBeTruthy();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSetsLogged'))).toBeTruthy();
   });
 });
 
 /*
- * P8 Task 16: the words come from the copy table through `useCopy()`, so `ui.skin` decides
+ * P8 Task 16: the words come from the copyFor table through `useCopy()`, so `ui.skin` decides
  * them. Asserted by KEY through `copyFor`, never as a literal, so the expectation follows the
  * table instead of having to be rewritten beside it.
  */
 describe('PRList under a skin', () => {
-  it('states the empty list in the limelight words, and in the default ones under clinical', () => {
+  it('states the empty list in the limelight words, and in the default ones under limelight', () => {
     pinSkin('limelight');
     const view = render(<PRList sets={[]} library={LIBRARY} units="metric" />);
     expect(screen.getByText(copyFor('limelight', 'advice.noSetsLogged'))).toBeInTheDocument();
     view.unmount();
 
-    pinSkin('clinical');
+    pinSkin('limelight');
     render(<PRList sets={[]} library={LIBRARY} units="metric" />);
-    expect(screen.getByText(copyFor('clinical', 'advice.noSetsLogged'))).toBeInTheDocument();
+    expect(screen.getByText(copyFor('limelight', 'advice.noSetsLogged'))).toBeInTheDocument();
   });
 });
