@@ -118,6 +118,9 @@ describe('Intervention styling', () => {
     render(<Intervention review={HANDLED} />);
     const heading = screen.getByRole('heading', { name: copyFor('limelight', 'hero.weeklyTargetMissed') });
     expect(heading.classList.contains('ll-display')).toBe(true);
-    expect(screen.getByTestId('intervention').querySelectorAll('img.ll-illustration')).toHaveLength(0);
+    // Her sprite sheets (the mascot since 2026-10-18) are spans, so `img` alone would miss them;
+    // `img.ll-icon` is the icon bank's type ornaments (SkinLabel), not a picture of the mascot.
+    const block = screen.getByTestId('intervention');
+    expect(block.querySelectorAll('.ll-sheet, img:not(.ll-icon)')).toHaveLength(0);
   });
 });

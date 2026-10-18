@@ -5,7 +5,7 @@ import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { formatRest } from '../format/plan';
 import { refusalLine } from '../format/refusal';
 import { TodayView } from './TodayView';
-import { LIMELIGHT_ILLUSTRATIONS } from '../../skins/limelight/illustrations';
+import { HER_SHEETS, type HerSheetName } from '../components/herSheets';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
 import {
@@ -547,10 +547,14 @@ describe('TodayView: a refused action', () => {
  * each hero branch, since the branches and the map are two readings of the same precedence.
  */
 describe('TodayView hero: the mascot pose', () => {
-  /** The src of the hero's picture, or null when the hero has none. */
-  function heroPicture(): { src: string | null; width: string | null } | null {
-    const img = document.querySelector('.today-hero img.ll-illustration');
-    return img === null ? null : { src: img.getAttribute('src'), width: img.getAttribute('width') };
+  /** Which of her sheets the hero draws, how many frames and how wide, or null for none. */
+  function heroPicture(): { sheet: string | null; frames: string | null; width: string } | null {
+    const box = document.querySelector<HTMLElement>('.today-hero .ll-sheet');
+    if (box === null) return null;
+    const sheet = box.getAttribute('data-sheet');
+    // The sheet the box draws is the URL the manifest names for that sheet, not just its label.
+    expect(box.style.backgroundImage).toContain(HER_SHEETS[sheet as HerSheetName].src);
+    return { sheet, frames: box.getAttribute('data-frames'), width: box.style.width };
   }
 
   function closedDay(status: 'completed' | 'skipped'): SessionAssignment {
@@ -565,27 +569,27 @@ describe('TodayView hero: the mascot pose', () => {
     };
   }
 
-  it('lifts on a planned day that has not started yet, at 56 px', () => {
+  it('lifts on a planned day that has not started yet: 3 frames at 64 px', () => {
     render(<TodayView />);
-    expect(heroPicture()).toEqual({ src: LIMELIGHT_ILLUSTRATIONS.mascotLifting, width: '56' });
+    expect(heroPicture()).toEqual({ sheet: 'her-lifting', frames: '3', width: '64px' });
   });
 
   it('lifts while the session is in progress', () => {
     withAssignment({ ...closedDay('completed'), status: 'in-progress', completedAt: null });
     render(<TodayView />);
-    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotLifting);
+    expect(heroPicture()).toEqual({ sheet: 'her-lifting', frames: '3', width: '64px' });
   });
 
   it('rests after a completed session', () => {
     withAssignment(closedDay('completed'));
     render(<TodayView />);
-    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotResting);
+    expect(heroPicture()).toEqual({ sheet: 'her-resting', frames: '4', width: '64px' });
   });
 
   it('rests on a rest day', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday: no slot
     render(<TodayView />);
-    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotResting);
+    expect(heroPicture()).toEqual({ sheet: 'her-resting', frames: '4', width: '64px' });
   });
 
   it('wears the crown once the programme is complete', () => {
@@ -596,7 +600,36 @@ describe('TodayView hero: the mascot pose', () => {
       },
     });
     render(<TodayView />);
-    expect(heroPicture()?.src).toBe(LIMELIGHT_ILLUSTRATIONS.mascotCrown);
+    expect(heroPicture()).toEqual({ sheet: 'her-crown', frames: '4', width: '64px' });
+  });
+
+  it('plays two cycles and stops: the hero never loops', () => {
+    render(<TodayView />);
+    const box = document.querySelector<HTMLElement>('.today-hero .ll-sheet');
+    expect(box?.getAttribute('data-sprite')).toBe('playing');
+    expect(box?.style.animationIterationCount).toBe('2'); // [cycles], then frame 0
+    expect(box?.getAttribute('aria-hidden')).toBe('true'); // the heading says what she shows
+  });
+
+  it('holds frame 0 with no animation under prefers-reduced-motion', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })),
+    );
+    try {
+      render(<TodayView />);
+      const box = document.querySelector<HTMLElement>('.today-hero .ll-sheet');
+      expect(box?.getAttribute('data-sprite')).toBe('still');
+      expect(box?.classList.contains('ll-sheet-play')).toBe(false);
+      expect(box?.style.animationIterationCount).toBe('');
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it('shows no picture beside a skipped session', () => {
@@ -623,17 +656,20 @@ describe('TodayView hero: the mascot pose', () => {
       expect({ missHandled, picture: heroPicture() }).toEqual({ missHandled, picture: null });
       // No mascot anywhere on the screen, the intervention block included. (Its small SkinLabel
       // icons are type ornaments round three placed there, not a picture of the mascot.)
-      expect(document.querySelectorAll('.view.today img.ll-illustration')).toHaveLength(0);
+      expect(document.querySelectorAll('.view.today .ll-sheet')).toHaveLength(0);
       unmount();
     }
   });
 
-  it('never shows the flopped mascot, even beside the week stamp', () => {
+  it('shows only lifting, resting or the crown, even beside the week stamp', () => {
     withReview(MET_WEEK);
     render(<TodayView />);
     expect(screen.getByTestId('week-stamp')).toBeTruthy();
-    const sources = [...document.querySelectorAll('img')].map((img) => img.getAttribute('src'));
-    expect(sources).not.toContain(LIMELIGHT_ILLUSTRATIONS.mascotFlop);
+    const sheets = [...document.querySelectorAll('.view.today .ll-sheet')].map((box) =>
+      box.getAttribute('data-sheet'),
+    );
+    // The hero lifts (a planned day) and the stamp wears the crown; no other pose exists to show.
+    expect(sheets).toEqual(['her-lifting', 'her-crown']);
   });
 });
 

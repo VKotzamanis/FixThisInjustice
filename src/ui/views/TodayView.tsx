@@ -6,7 +6,6 @@ import { isAfterProgramme } from '../../domain/schedule/weekly';
 import { nextProgrammeGoal } from '../../domain/plan/lifecycle';
 import type { GoalKind, PlanPause, WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
-import { Illustration } from '../../skins/limelight/Illustration';
 import { useAppStore, type AppStore } from '../../store';
 import {
   useActionError,
@@ -21,7 +20,9 @@ import { latestBodyMassEntry, useActiveProfile } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
 import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
+import { HER_PLAY_CYCLES, HER_SHEETS } from '../components/herSheets';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
+import { SpriteSheet } from '../components/SpriteSheet';
 import { StatusMark } from '../components/StatusMark';
 import { TimeCapsule } from '../components/TimeCapsule';
 import { WeekStamp } from '../components/WeekStamp';
@@ -37,7 +38,7 @@ import {
 import { displayClass } from '../format/display';
 import { refusalLine } from '../format/refusal';
 import { weekDeltaKey } from '../format/weekDelta';
-import { heroPose, heroStateOf, type DayStatus } from './todayHero';
+import { HERO_SCALE, heroPose, heroStateOf, type DayStatus } from './todayHero';
 import './views.css';
 
 /**
@@ -213,9 +214,13 @@ export function TodayView(): JSX.Element {
    * neither of which is shown once the programme is finished.
    */
   const pose = heroPose(heroStateOf(status, finished), !finished && missedWeek(lastReview));
-  // Decorative: every hero's heading says what the picture shows (Illustration.tsx).
+  // Her sheet, decorative (aria-hidden): every hero's heading says what the picture shows. Two
+  // cycles, then frame 0: the marquee stays the one thing that keeps moving on Today. Keyed by
+  // the sheet, so a new pose (lifting to resting on completion) plays rather than cuts.
   const mascot =
-    pose === null ? null : <Illustration name={pose.name} width={pose.size} height={pose.size} />;
+    pose === null ? null : (
+      <SpriteSheet key={pose} sheet={HER_SHEETS[pose]} scale={HERO_SCALE} iterations={HER_PLAY_CYCLES} />
+    );
   /*
    * ROADMAP L7: the goal Start Next Programme preselects, maintenance once the body-mass target
    * was reached (src/domain/plan/lifecycle.ts states the rule). Read only by the finished hero.

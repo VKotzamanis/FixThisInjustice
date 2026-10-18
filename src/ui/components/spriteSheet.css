@@ -1,0 +1,47 @@
+/*
+ * One-row sprite sheets (SpriteSheet.tsx): her three sheets since 2026-10-18 (herSheets.ts).
+ *
+ * THE BOX is one frame at a whole-number scale; the component writes its width and height
+ * [CSS px] and draws the row at (frames x 100%) by 100% of the box, so each source pixel is
+ * scale x scale CSS px. `image-rendering: pixelated` keeps the edges hard.
+ *
+ * THE STEP. A percentage background position puts that fraction of the image on the same
+ * fraction of the box, so 0% shows the first frame and 100% the last, and frame k sits at
+ * k / (frames - 1). The component sets steps(frames, jump-none), which holds exactly those
+ * `frames` values, each for 1 / frames of a cycle, and draws no in-between position.
+ * (steps(n, end) would hold n values that stop one frame short of 100%.)
+ *
+ * FINITE, NO FILL. The component sets a whole number of cycles; when they end, the base rule
+ * takes over again and draws frame 0. Nothing here loops forever: on Today the marquee is the
+ * one thing that keeps moving.
+ *
+ * No colour is set here.
+ */
+.ll-sheet {
+  display: block;
+  flex: none;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  image-rendering: pixelated;
+}
+
+.ll-sheet-play {
+  animation-name: ll-sheet-row;
+}
+
+@keyframes ll-sheet-row {
+  from {
+    background-position-x: 0%;
+  }
+
+  to {
+    background-position-x: 100%;
+  }
+}
+
+/* Frame 0, still. SpriteSheet.tsx also withholds the play class under this setting. */
+@media (prefers-reduced-motion: reduce) {
+  .ll-sheet-play {
+    animation: none;
+  }
+}

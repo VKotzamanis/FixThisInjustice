@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 /**
- * Inline the limelight PNG artwork as base64 data URIs.
+ * Inline the limelight PNG icon bank as base64 data URIs.
  *
  *   npm run icons:build          (or: node scripts/inline-icons.mjs)
  *
- * Inputs are finished artwork, not source: agy-artifacts/icons/*.png (21 files, 32 x 32) and
- * agy-artifacts/mascot-*-256.png (4 files, 256 x 256). Nothing is drawn or re-encoded here; the
- * bytes on disk are base64'd verbatim, so the decoded output is the input file byte for byte.
+ * Inputs are finished artwork, not source: agy-artifacts/icons/*.png (21 files, 32 x 32). Nothing
+ * is drawn or re-encoded here; the bytes on disk are base64'd verbatim, so the decoded output is
+ * the input file byte for byte.
+ *
+ * The four round-three mascot illustrations (agy-artifacts/mascot-*-256.png) were inlined here
+ * too, into src/skins/limelight/illustrations.ts, until her sprite sheets replaced every render of
+ * them (owner request 2026-10-18; src/ui/components/herSheets.ts). The PNGs stay in agy-artifacts.
  *
  * Provenance: own work, generated with Gemini via agy on 2026-09-01. No third-party material is
  * included, so no third-party licence is claimed. Design record:
  * docs/design/round3/2026-09-01-round3-plan.md sections 4.3, 4.4 and 5.1.
  *
- * Determinism. Same inputs must give a byte-identical output, because the generated modules are
+ * Determinism. Same inputs must give a byte-identical output, because the generated module is
  * committed and a test compares the committed text against a fresh build. Three things could break
  * that and each is closed: readdirSync order is filesystem-dependent, so the file list is sorted;
  * Map insertion order is not the emitted order, so the keys are sorted; and nothing here reads a
@@ -32,16 +36,11 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
 export const ICON_DIR = join(ROOT, 'agy-artifacts', 'icons');
-export const ART_DIR = join(ROOT, 'agy-artifacts');
 export const ICON_OUT = join(ROOT, 'src', 'skins', 'limelight', 'icons.ts');
-export const ART_OUT = join(ROOT, 'src', 'skins', 'limelight', 'illustrations.ts');
 
 const ICON_COUNT = 21; // 16 icons plus the 5 panel variants of round three section 4.3
 const ICON_SIDE = 32; // px, the drawn size; the component scales it with image-rendering: pixelated
 const ICON_MAX_BYTES = 1024; // per file; a larger file is a regenerated asset, not a typo
-const ART_SIDE = 256; // px
-const ART_MAX_BYTES = 5120; // per file
-const MASCOT_POSES = ['crown', 'flop', 'lifting', 'resting'];
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 const DATA_URI_PREFIX = 'data:image/png;base64,';
@@ -56,9 +55,9 @@ function pngSize(buffer, file) {
   return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
 }
 
-/** 'barbell-panel' -> 'barbellPanel'; 'mascot-crown-256' -> 'mascotCrown'. */
+/** 'barbell-panel' -> 'barbellPanel'. */
 function camel(stem) {
-  return stem.replace(/-256$/, '').replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase());
+  return stem.replace(/-([a-z0-9])/g, (_, character) => character.toUpperCase());
 }
 
 /** Read one PNG, check it is the expected square and under its ceiling, return the data URI. */
@@ -86,7 +85,7 @@ function renderModule(entries, typeName, constName, header) {
   );
 }
 
-/** The shared provenance block. One statement of it, so the two modules cannot disagree. */
+/** The provenance block of the generated module. */
 function provenance() {
   return (
     ' * Provenance: own work, generated with Gemini via agy on 2026-09-01. No third-party material is\n' +
@@ -111,15 +110,6 @@ function readIcons() {
   return entries;
 }
 
-function readIllustrations() {
-  const entries = new Map();
-  for (const pose of MASCOT_POSES) {
-    const file = join(ART_DIR, `mascot-${pose}-256.png`);
-    entries.set(camel(`mascot-${pose}`), inline(file, ART_SIDE, ART_MAX_BYTES));
-  }
-  return entries;
-}
-
 /** Regenerate src/skins/limelight/icons.ts and return its text. Reads only; writes nothing. */
 export function buildIconsModule() {
   const entries = readIcons();
@@ -137,32 +127,11 @@ export function buildIconsModule() {
   return renderModule(entries, 'LimelightIconName', 'LIMELIGHT_ICONS', header);
 }
 
-/** Regenerate src/skins/limelight/illustrations.ts and return its text. Reads only; writes nothing. */
-export function buildIllustrationsModule() {
-  const entries = readIllustrations();
-  const header =
-    '/*\n' +
-    ' * GENERATED FILE - do not edit by hand. Rebuild with: npm run icons:build\n' +
-    ' * Written by scripts/inline-icons.mjs from agy-artifacts/mascot-*-256.png.\n' +
-    ' *\n' +
-    `${provenance()}\n` +
-    ' *\n' +
-    ` * ${entries.size} files, ${ART_SIDE} x ${ART_SIDE}, ${totalBytes(entries)} B decoded in total: four poses of one character\n` +
-    ' * (section 5). The raw 1024 px generations stay in agy-artifacts and are not inlined.\n' +
-    ' */\n';
-  return renderModule(entries, 'LimelightIllustrationName', 'LIMELIGHT_ILLUSTRATIONS', header);
-}
-
 function main() {
   const icons = buildIconsModule();
-  const illustrations = buildIllustrationsModule();
   writeFileSync(ICON_OUT, icons);
-  writeFileSync(ART_OUT, illustrations);
   // Repo-relative, so the line is the same on any machine and carries no home directory.
-  console.log(
-    `wrote ${relative(ROOT, ICON_OUT)} (${icons.length} B) and ` +
-      `${relative(ROOT, ART_OUT)} (${illustrations.length} B)`,
-  );
+  console.log(`wrote ${relative(ROOT, ICON_OUT)} (${icons.length} B)`);
 }
 
 // Importing this module must not touch the tree; only running it writes.

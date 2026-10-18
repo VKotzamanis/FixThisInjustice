@@ -1,14 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { LIMELIGHT_ICONS } from './icons';
 import type { LimelightIconName } from './icons';
-import { LIMELIGHT_ILLUSTRATIONS } from './illustrations';
-import type { LimelightIllustrationName } from './illustrations';
-// The two generated modules as text, for the drift check and the size budget. ?raw is the same
+// The generated module as text, for the drift check and the size budget. ?raw is the same
 // mechanism src/domain/reminders/payload.test.ts already uses to read a sibling project's source.
+// (The second generated module, the blob illustrations, was removed on 2026-10-18 when her sprite
+// sheets replaced every render of it: src/ui/components/herSheets.ts.)
 import iconsSource from './icons.ts?raw';
-import illustrationsSource from './illustrations.ts?raw';
-// The generator's builders, imported and run in-process: no child process, and nothing is written.
-import { buildIconsModule, buildIllustrationsModule } from '../../../scripts/inline-icons.mjs';
+// The generator's builder, imported and run in-process: no child process, and nothing is written.
+import { buildIconsModule } from '../../../scripts/inline-icons.mjs';
 
 const PREFIX = 'data:image/png;base64,';
 
@@ -60,13 +59,6 @@ const ICON_BYTES: Readonly<Record<LimelightIconName, number>> = {
   stopwatchPanel: 537,
 };
 
-const ILLUSTRATION_BYTES: Readonly<Record<LimelightIllustrationName, number>> = {
-  mascotCrown: 2645,
-  mascotFlop: 2913,
-  mascotLifting: 3947,
-  mascotResting: 4023,
-};
-
 /*
  * The budget, quoted from the plan. Section 4.4: "Total inlined as base64 data URIs: 21 files,
  * 8 072 B raw (7.9 kB), 10 780 B encoded (10.5 kB), measured." Task 13's rationale: "inlined they
@@ -77,10 +69,8 @@ const ILLUSTRATION_BYTES: Readonly<Record<LimelightIllustrationName, number>> = 
  * exact: epsilon = 0. No rounding, no tolerance, no floating point anywhere in these assertions.
  */
 const ICON_RAW_BUDGET = 8072; // B, the sum of the 21 decoded icons
-const ILLUSTRATION_RAW_BUDGET = 13528; // B, the sum of the 4 decoded illustrations
 const ICON_BASE64_BUDGET = 10780; // base64 characters for the 21 icons
-const ILLUSTRATION_BASE64_BUDGET = 18040; // base64 characters for the 4 illustrations
-const MODULE_BUDGET = 33 * 1024; // B, the plan's "33 kB of base64", as the ceiling on both modules
+const MODULE_BUDGET = 33 * 1024; // B, the plan's "33 kB of base64", as the ceiling on the module
 
 describe('limelight icons', () => {
   it('ships the sixteen icons and the five panel variants', () => {
@@ -113,60 +103,20 @@ describe('limelight icons', () => {
   });
 });
 
-describe('limelight illustrations', () => {
-  it('ships the four mascot poses', () => {
-    expect(Object.keys(LIMELIGHT_ILLUSTRATIONS).sort()).toEqual([
-      'mascotCrown',
-      'mascotFlop',
-      'mascotLifting',
-      'mascotResting',
-    ]);
-  });
-
-  it('decodes each illustration to a 256 x 256 PNG under 5 kB', () => {
-    for (const [name, uri] of Object.entries(LIMELIGHT_ILLUSTRATIONS)) {
-      const bytes = decode(uri);
-      const header = pngHeader(bytes);
-      expect({ name, ...header }).toEqual({ name, signature: true, width: 256, height: 256 });
-      expect({ name, under5k: bytes.byteLength < 5120 }).toEqual({ name, under5k: true });
-    }
-  });
-
-  it('pins each illustration to its measured byte length', () => {
-    for (const [name, expectedBytes] of Object.entries(ILLUSTRATION_BYTES)) {
-      const uri = LIMELIGHT_ILLUSTRATIONS[name as LimelightIllustrationName];
-      expect({ name, bytes: decode(uri).byteLength }).toEqual({ name, bytes: expectedBytes });
-    }
-  });
-});
-
 describe('the inlined byte budget', () => {
-  it('holds the decoded totals the plan measured', () => {
+  it('holds the decoded total the plan measured', () => {
     const icons = sum(Object.values(LIMELIGHT_ICONS).map((uri) => decode(uri).byteLength));
-    const illustrations = sum(
-      Object.values(LIMELIGHT_ILLUSTRATIONS).map((uri) => decode(uri).byteLength),
-    );
-    expect({ icons, illustrations, total: icons + illustrations }).toEqual({
-      icons: ICON_RAW_BUDGET,
-      illustrations: ILLUSTRATION_RAW_BUDGET,
-      total: ICON_RAW_BUDGET + ILLUSTRATION_RAW_BUDGET,
-    });
+    expect(icons).toBe(ICON_RAW_BUDGET);
   });
 
-  it('holds the base64 totals the plan measured', () => {
+  it('holds the base64 total the plan measured', () => {
     const icons = sum(Object.values(LIMELIGHT_ICONS).map((uri) => uri.length - PREFIX.length));
-    const illustrations = sum(
-      Object.values(LIMELIGHT_ILLUSTRATIONS).map((uri) => uri.length - PREFIX.length),
-    );
-    expect({ icons, illustrations }).toEqual({
-      icons: ICON_BASE64_BUDGET,
-      illustrations: ILLUSTRATION_BASE64_BUDGET,
-    });
+    expect(icons).toBe(ICON_BASE64_BUDGET);
   });
 
-  it('keeps both generated modules inside the 33 kB ceiling', () => {
-    // Both modules are ASCII, so one character is one byte and String.length is the byte count.
-    const moduleBytes = iconsSource.length + illustrationsSource.length;
+  it('keeps the generated module inside the 33 kB ceiling', () => {
+    // The module is ASCII, so one character is one byte and String.length is the byte count.
+    const moduleBytes = iconsSource.length;
     expect({ moduleBytes, withinBudget: moduleBytes <= MODULE_BUDGET }).toEqual({
       moduleBytes,
       withinBudget: true,
@@ -177,18 +127,16 @@ describe('the inlined byte budget', () => {
     // eslint-disable-next-line no-control-regex -- the point of the test is the byte range itself
     const nonAscii = /[^\x00-\x7f]/;
     expect(nonAscii.test(iconsSource)).toBe(false);
-    expect(nonAscii.test(illustrationsSource)).toBe(false);
   });
 });
 
-describe('the committed generated modules', () => {
+describe('the committed generated module', () => {
   /*
    * A stale commit is the failure mode this file exists for: the artwork changes, nobody re-runs
    * the generator, and the app ships the old pixels while the plan's table says otherwise. The
-   * builders are imported and run here, so the check needs no shell and no build step.
+   * builder is imported and run here, so the check needs no shell and no build step.
    */
-  it('are exactly what the generator produces from the artwork today', () => {
+  it('is exactly what the generator produces from the artwork today', () => {
     expect(iconsSource).toBe(buildIconsModule());
-    expect(illustrationsSource).toBe(buildIllustrationsModule());
   });
 });

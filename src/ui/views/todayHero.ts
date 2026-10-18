@@ -1,26 +1,26 @@
 // src/ui/views/todayHero.ts
 //
-// What the Today hero is showing, and which mascot pose (if any) stands beside it.
+// What the Today hero is showing, and which of her sheets (if any) stands beside it.
 //
-// Stylize survey 2026-10-18, item 5, approved by the owner: every daily state gets a face from
-// the round-three art that already ships (src/skins/limelight/illustrations.ts), except where a
-// picture would comment on the user:
+// Stylize survey 2026-10-18, item 5, approved by the owner: every daily state gets a face,
+// except where a picture would comment on the user. The faces were the round-three blob until the
+// owner's request of 2026-10-18 ("Make her replace every pink sprite"); each blob pose is now her
+// sheet of the same name (src/ui/components/herSheets.ts):
 //
-//   planned (not started)  lifting, 56 px    round three's original spot for it (asset
-//                                             manifest section 0.3); smaller because the
-//                                             session list sits under it
-//   in progress            lifting, 72 px    (placed 2026-09-06, unchanged)
-//   completed              resting, 72 px
-//   rest day               resting, 72 px
-//   programme complete     crown, 72 px
+//   planned (not started)  her-lifting
+//   in progress            her-lifting
+//   completed              her-resting
+//   rest day               her-resting
+//   programme complete     her-crown
 //   skipped, paused        no picture        a skip or a pause may be illness
 //   a missed week shown    no picture        Intervention.tsx's veto: no mascot beside a
 //                                             missed week, in any pose
 //
-// The flopped mascot is excluded by TYPE: HeroPose cannot name it, so no edit to the table can
-// put it on Today without first changing this file's types.
+// A flopped pose is excluded by TYPE: HeroPose is an allowlist of three sheets, so a sheet added
+// to herSheets.ts later cannot reach Today without first changing this file's types.
 
-import type { LimelightIllustrationName } from '../../skins/limelight/illustrations';
+import type { SpriteScale } from '../components/SpriteSheet';
+import type { HerSheetName } from '../components/herSheets';
 
 /** Every display status one civil day can have, in the hero's precedence (TodayView.tsx). */
 export const DAY_STATUSES = [
@@ -39,11 +39,18 @@ export const HERO_STATES = [...DAY_STATUSES, 'programme-complete'] as const;
 
 export type HeroState = (typeof HERO_STATES)[number];
 
-export interface HeroPose {
-  name: Exclude<LimelightIllustrationName, 'mascotFlop'>;
-  /** [CSS px] Drawn width and height. limelight.css caps every mascot at 56 px on a phone. */
-  size: number;
-}
+/** The sheets a hero may show: lifting, resting, the crown. Nothing else, by type. */
+export type HeroPose = Extract<HerSheetName, 'her-lifting' | 'her-resting' | 'her-crown'>;
+
+/**
+ * [CSS px per source px] Her 64 px frames at 1x: 64 CSS px in every state, at every width.
+ *
+ * The blob drew at 56 px (planned) and 72 px, capped at 56 px on a phone so the heading kept the
+ * room. A whole-number scale allows 64 or 128 only; 64 is the nearer to every one of those sizes
+ * and keeps the phone rule. 128 would more than double the picture on a phone and push the
+ * session list down.
+ */
+export const HERO_SCALE: SpriteScale = 1;
 
 /**
  * The hero branch for today's status.
@@ -58,24 +65,19 @@ export function heroStateOf(status: DayStatus, finished: boolean): HeroState {
   return status === 'rest' && finished ? 'programme-complete' : status;
 }
 
-const LIFTING_PLANNED: HeroPose = { name: 'mascotLifting', size: 56 };
-const LIFTING: HeroPose = { name: 'mascotLifting', size: 72 };
-const RESTING: HeroPose = { name: 'mascotResting', size: 72 };
-const CROWN: HeroPose = { name: 'mascotCrown', size: 72 };
-
 /** A Record, so a hero state without a decision here fails the type check. */
 const HERO_POSE: Readonly<Record<HeroState, HeroPose | null>> = {
-  planned: LIFTING_PLANNED,
-  'in-progress': LIFTING,
-  completed: RESTING,
-  rest: RESTING,
-  'programme-complete': CROWN,
+  planned: 'her-lifting',
+  'in-progress': 'her-lifting',
+  completed: 'her-resting',
+  rest: 'her-resting',
+  'programme-complete': 'her-crown',
   skipped: null,
   paused: null,
 };
 
 /**
- * The pose beside the hero, or null for no picture.
+ * Her sheet beside the hero, or null for no picture.
  *
  * @param state the hero branch on screen
  * @param weekMissed a missed week is on Today (its popup still owed, or its intervention block);

@@ -1,9 +1,11 @@
-// The Today hero's mascot pose (stylize survey 2026-10-18, item 5): one mapping from the hero's
-// state to a pose or to no picture, tested over the whole state union so a state added later
-// cannot reach the screen without a decision here.
+// The Today hero's pose (stylize survey 2026-10-18, item 5; her sheets since the owner's request
+// of 2026-10-18): one mapping from the hero's state to one of her sheets or to no picture, tested
+// over the whole state union so a state added later cannot reach the screen without a decision.
 import { describe, expect, it } from 'vitest';
+import { HER_SHEETS } from '../components/herSheets';
 import {
   DAY_STATUSES,
+  HERO_SCALE,
   HERO_STATES,
   heroPose,
   heroStateOf,
@@ -11,19 +13,23 @@ import {
   type HeroState,
 } from './todayHero';
 
-/** The owner-approved map, restated as the expectation (survey item 5, build brief 2026-10-18). */
+/**
+ * The owner-approved map, restated as the expectation (survey item 5, build brief 2026-10-18),
+ * with each blob pose swapped for her sheet of the same name: lifting, resting, crown.
+ */
 const EXPECTED: Readonly<Record<HeroState, HeroPose | null>> = {
-  // Not started yet: round three's original spot for lifting (asset manifest section 0.3), at
-  // 56 px so the session list under it moves down less.
-  planned: { name: 'mascotLifting', size: 56 },
-  'in-progress': { name: 'mascotLifting', size: 72 },
-  completed: { name: 'mascotResting', size: 72 },
-  rest: { name: 'mascotResting', size: 72 },
-  'programme-complete': { name: 'mascotCrown', size: 72 },
+  planned: 'her-lifting',
+  'in-progress': 'her-lifting',
+  completed: 'her-resting',
+  rest: 'her-resting',
+  'programme-complete': 'her-crown',
   // No picture beside a skip or a pause, which may be illness.
   skipped: null,
   paused: null,
 };
+
+/** The sheets a hero may show. Anything else (a flopped pose, say) is a new decision. */
+const ALLOWED: readonly HeroPose[] = ['her-lifting', 'her-resting', 'her-crown'];
 
 describe('heroStateOf', () => {
   it('passes every day status through, except that a rest day ends the programme once finished', () => {
@@ -43,10 +49,17 @@ describe('heroStateOf', () => {
 });
 
 describe('heroPose', () => {
-  it('maps every hero state to the approved pose or to no picture', () => {
+  it('maps every hero state to the approved sheet or to no picture', () => {
     expect([...HERO_STATES].sort()).toEqual(Object.keys(EXPECTED).sort());
     for (const state of HERO_STATES) {
       expect({ state, pose: heroPose(state, false) }).toEqual({ state, pose: EXPECTED[state] });
+    }
+  });
+
+  it('names only sheets that ship', () => {
+    for (const state of HERO_STATES) {
+      const pose = heroPose(state, false);
+      if (pose !== null) expect({ state, ships: pose in HER_SHEETS }).toEqual({ state, ships: true });
     }
   });
 
@@ -58,11 +71,18 @@ describe('heroPose', () => {
     }
   });
 
-  it('never returns the flopped mascot', () => {
+  it('never returns a flopped pose: only lifting, resting or the crown', () => {
     for (const state of HERO_STATES) {
       for (const missed of [false, true]) {
-        expect(heroPose(state, missed)?.name).not.toBe('mascotFlop');
+        const pose = heroPose(state, missed);
+        if (pose !== null) expect(ALLOWED).toContain(pose);
+        expect(pose ?? '').not.toMatch(/flop/);
       }
     }
+  });
+
+  it('draws her 64 px frames at 1x, a whole-number scale', () => {
+    expect(HERO_SCALE).toBe(1);
+    for (const pose of ALLOWED) expect(HER_SHEETS[pose].frameWidth * HERO_SCALE).toBe(64);
   });
 });

@@ -269,35 +269,19 @@
 }
 
 /*
- * The mascot illustrations, placed by the asset manifest of 2026-09-06. Round 3 drew four and
- * wired none; three are placed now: lifting, resting and the crown on the Today hero (one map,
- * src/ui/views/todayHero.ts, stylize survey 2026-10-18 item 5) and the crown beside the week
- * stamp. The flop is placed nowhere.
+ * Her sprite sheets (SpriteSheet.tsx; herSheets.ts), in the places the round-three blob stood
+ * until the owner's request of 2026-10-18: lifting, resting and the crown on the Today hero (one
+ * map, src/ui/views/todayHero.ts, stylize survey 2026-10-18 item 5) and the crown beside the week
+ * stamp. No flopped pose exists.
  *
- * They are DECORATION and behave like it: they never take space from the words, they shrink out
- * of the way on a narrow screen, and they carry an empty alt so a screen reader skips them.
+ * They are DECORATION and behave like it: 64 CSS px at every width (1x, the nearest whole-number
+ * scale to the blob's 56 px phone size), centred above the words, and aria-hidden. Size, frames,
+ * motion and the reduced-motion stop live in spriteSheet.css and the component.
  */
-.ll-illustration {
-  display: block;
+.today-hero .ll-sheet {
   margin: 0 auto 8px;
-  max-width: 100%;
-  height: auto;
 }
 
-.ll-stamp .ll-illustration {
+.ll-stamp .ll-sheet {
   margin: 0 auto 4px;
-}
-
-@media (max-width: 420px) {
-  /* A phone gives the heading the room before it gives the picture the room. */
-  .ll-illustration {
-    width: 56px;
-    height: 56px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ll-illustration {
-    animation: none;
-  }
 }

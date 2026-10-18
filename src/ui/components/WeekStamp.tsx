@@ -3,15 +3,22 @@ import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { WeeklyReview } from '../../domain/types';
 import { Icon } from '../../skins/limelight/Icon';
-import { Illustration } from '../../skins/limelight/Illustration';
 import { playSfx } from '../../skins/sfx';
 import { usePendingMotivation } from '../../store/selectors';
 import { weekDeltaKey } from '../format/weekDelta';
 import { DitherWipe } from './DitherWipe';
+import { HER_PLAY_CYCLES, HER_SHEETS } from './herSheets';
+import { SpriteSheet, type SpriteScale } from './SpriteSheet';
 import './limelight.css';
 
 /** Twelve, as round-three section 2.5 fixed it. The fan tracks are nth-child rules in the sheet. */
 export const SPARKLE_COUNT = 12;
+
+/**
+ * [CSS px per source px] Her 64 px crown frames at 1x: 64 CSS px, the size the blob's crown had
+ * here, so the stamp's box and its sparkle wings keep their proportions.
+ */
+const STAMP_SCALE: SpriteScale = 1;
 
 /**
  * The wipe's area: grid rows 1 to 2 of `.ll-stamp` (mascot, word), never row 3 (the counts). An
@@ -96,8 +103,9 @@ export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactEle
 
   return (
     <section className="ll-stamp" data-testid="week-stamp">
-      {/* Decorative: the stamp's own word carries the meaning. Asset manifest, 2026-09-06. */}
-      <Illustration name="mascotCrown" width={64} height={64} />
+      {/* Her crown (owner request 2026-10-18), decorative: the stamp's own word carries the
+          meaning. Two cycles, then frame 0, like the hero's sheet. */}
+      <SpriteSheet sheet={HER_SHEETS['her-crown']} scale={STAMP_SCALE} iterations={HER_PLAY_CYCLES} />
       <p className="ll-stamp-word ll-display">
         <Icon name="crown" />
         {c('status.weekMetStamp')}

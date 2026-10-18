@@ -306,7 +306,8 @@ describe('MotivationModal styling', () => {
     expect(heading.classList.contains('ll-display')).toBe(true);
     const dialog = screen.getByRole('dialog');
     expect(dialog.classList.contains('ll-panel')).toBe(false);
-    expect(dialog.querySelectorAll('img')).toHaveLength(0);
+    // `.ll-sheet`: her sprite sheets are spans, which an `img` query alone would miss.
+    expect(dialog.querySelectorAll('img, .ll-sheet')).toHaveLength(0);
     await screen.findByTestId('motivation-video');
   });
 });

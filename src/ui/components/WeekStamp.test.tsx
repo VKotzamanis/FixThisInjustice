@@ -7,6 +7,7 @@ import { useAppStore } from '../../store';
 import { makeAppState, makeUiPrefs } from '../../test/funFixtures';
 import { addDays, todayLocal } from '../../domain/dates';
 import type { SkinId, WeeklyReview } from '../../domain/types';
+import { HER_SHEETS } from './herSheets';
 
 // The sound is decorative and the player reaches the store and the Web Audio API, neither of
 // which this suite is about. Mocked at the module boundary so "once per appearance" is counted.
@@ -165,5 +166,48 @@ describe('the stamp and the intervention', () => {
     );
     expect(screen.queryByTestId('week-stamp')).toBeNull();
     expect(screen.queryByTestId('intervention')).not.toBeNull();
+  });
+});
+
+/*
+ * Her crown sheet replaced the blob's crown beside the stamp (owner request 2026-10-18). It is
+ * decoration: the stamp's own word carries the meaning.
+ */
+describe('WeekStamp: her crown', () => {
+  function crown(): HTMLElement | null {
+    return screen.getByTestId('week-stamp').querySelector<HTMLElement>('.ll-sheet');
+  }
+
+  it('wears her crown sheet, 4 frames at 64 px, twice through and then still', () => {
+    render(<WeekStamp review={MET} />);
+    const box = crown();
+    expect(box?.getAttribute('data-sheet')).toBe('her-crown');
+    expect(box?.getAttribute('data-frames')).toBe('4');
+    expect(box?.style.backgroundImage).toContain(HER_SHEETS['her-crown'].src);
+    expect(box?.style.width).toBe('64px'); // [CSS px] 64 px frames at 1x
+    expect(box?.style.animationIterationCount).toBe('2'); // [cycles]
+    expect(box?.getAttribute('aria-hidden')).toBe('true');
+    // A span, not an <img>: the only images left in the stamp are the icon bank's crown and
+    // sparkles (img.ll-icon).
+    expect(screen.getByTestId('week-stamp').querySelectorAll('img:not(.ll-icon)')).toHaveLength(0);
+  });
+
+  it('holds frame 0 with no animation under prefers-reduced-motion', () => {
+    vi.stubGlobal(
+      'matchMedia',
+      vi.fn((query: string) => ({
+        matches: query.includes('prefers-reduced-motion'),
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+      })),
+    );
+    try {
+      render(<WeekStamp review={MET} />);
+      expect(crown()?.getAttribute('data-sprite')).toBe('still');
+      expect(crown()?.classList.contains('ll-sheet-play')).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
