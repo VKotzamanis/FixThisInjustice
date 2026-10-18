@@ -91,6 +91,15 @@ import {
 } from '../../content/reviewDataNotes';
 import { BODY_FAT_CHART_INTRO, BODY_FAT_CHART_PERCENTAGES } from '../../content/bodyFatChart';
 import {
+  BODY_FAT_CHART_CROP,
+  BODY_FAT_CHART_VIEWS,
+  SetupArt,
+  SetupIcon,
+  bodyFatArtId,
+  bodyFatChartArt,
+  type SetupIconId,
+} from './setupArt';
+import {
   SEX_RATIONALE_CUNNINGHAM,
   SEX_RATIONALE_CUNNINGHAM_NOTE,
   SEX_RATIONALE_CUNNINGHAM_TITLE,
@@ -333,10 +342,10 @@ const ACTIVITY_STOP_OPTIONS: { value: number; level: ActivityLevel }[] = ACTIVIT
  * Brief F Part 1b: "Experience" renamed to Gym Comfort IN THE UI ONLY -- the type stays
  * `Experience` (novice | intermediate | advanced), and so does this array; only the copy the
  * three keys resolve to changed, to the owner's own verbatim wording. Each position also carries
- * an icon row id from docs/design/2026-09-04-icon-register.csv: the artwork does not exist yet,
- * so the render below is a labelled ArtworkPlaceholder naming the row, not generated art.
+ * an icon row id from docs/design/2026-09-04-icon-register.csv, which is also the name of the
+ * owner's drawing the option shows (src/ui/setup/setupArt.tsx; approved 2026-10-18).
  */
-const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey; iconRow: string }[] = [
+const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey; iconRow: SetupIconId }[] = [
   { value: 'novice', labelKey: 'option.experienceNovice', iconRow: 'comfort-1-starting' },
   {
     value: 'intermediate',
@@ -357,7 +366,7 @@ const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey; iconRow: strin
  * (src/domain/plan/templates.ts). This is why library.ts needed no retagging: see that type's own
  * comment for the proof that a combination resolves identically to its dominant pure tier.
  */
-export const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey; iconRow: string }[] = [
+export const EQUIPMENT_ACCESS_OPTIONS: { value: EquipmentAccess; labelKey: CopyKey; iconRow: SetupIconId }[] = [
   { value: 'bodyweight', labelKey: 'option.accessBodyweight', iconRow: 'equip-1-bodyweight' },
   {
     value: 'home-and-bodyweight',
@@ -572,30 +581,31 @@ function StepHeading(props: {
 }
 
 /**
- * A labelled empty frame standing in for a measurement-site or body-fat-percentage illustration.
- * Round 1 claims C1.08.5 and C1.08.9: the artwork itself is out of this brief's scope (an
- * original asset, per decision `visual-bodyfat-tracked-not-engine-feeding`, is drawn separately
- * and registered in docs/design/2026-09-04-icon-register.csv, which does not exist yet). This
- * renders the frame at the size and position the real asset will take, captioned in visible text
- * so a screen reader loses nothing while the frame is empty (B15: "a caption for screen-reader
- * users, who get nothing from an image").
+ * A tape-measurement site diagram with its caption (round 1 claims C1.08.5 and C1.08.9). Until
+ * 2026-10-18 this was `ArtworkPlaceholder`, a dashed 64 px frame; the owner's drawing now fills
+ * the same 64 px box, so the row does not reflow. The caption stays visible text, because the
+ * drawing is aria-hidden and the caption is what a screen reader gets (B15: "a caption for
+ * screen-reader users, who get nothing from an image").
  */
-function ArtworkPlaceholder(props: {
-  label: string;
-  className: string;
-  /** docs/design/2026-09-04-icon-register.csv row id, rendered as a data attribute so the
-   * naming lives at the render site rather than only in a comment above the call (Brief F
-   * Part 1b: "leave a comment naming the register row"). Optional: the body step's
-   * measurement-site and body-fat-chart placeholders predate the icon register. */
-  iconRow?: string;
-}): JSX.Element {
+function MeasurementSite(props: { art: SetupIconId; label: string }): JSX.Element {
   return (
-    <div className={props.className} data-icon-row={props.iconRow}>
-      <div className="wiz-placeholder-frame" aria-hidden="true" />
-      <p className="wiz-note wiz-placeholder-caption">{props.label}</p>
+    <div className="wiz-site">
+      <SetupIcon id={props.art} className="wiz-site-art" />
+      <p className="wiz-note wiz-site-caption">{props.label}</p>
     </div>
   );
 }
+
+/*
+ * The waist site per stated sex: the copy key that names it and the diagram that shows it, in
+ * one row so the label and the picture are chosen by one lookup and cannot disagree. Abdomen II
+ * (umbilicus) for male and Abdomen I (minimal width) for female: the two Navy equations read
+ * different sites (NAVY_SITE_LABEL, src/domain/bodyfat.ts).
+ */
+const WAIST_SITE: Readonly<Record<StatedSex, { quantity: CopyKey; art: SetupIconId }>> = {
+  male: { quantity: 'quantity.abdomenII', art: 'tape-abdomen-male' },
+  female: { quantity: 'quantity.abdomenI', art: 'tape-abdomen-female' },
+};
 
 interface DaySlot {
   enabled: boolean;
@@ -1028,13 +1038,23 @@ function SexRationaleModal(props: { onClose: () => void }): JSX.Element {
 }
 
 /**
- * The body-fat visual estimator (C1.08.5, C1.08.9). A placeholder grid, not the drawn asset
- * (B31: the chart ships, but the artwork is separate work; this is the frame it will sit in).
- * A number chosen here fills the percentage field with provenance `visual`, per B31.
+ * The body-fat visual estimator (C1.08.5, C1.08.9). A number chosen here fills the percentage
+ * field with provenance `visual`, per B31.
+ *
+ * Survey item 4 (2026-10-18): each cell shows the owner's front and side drawings for its sex and
+ * percentage, side by side, with the percentage below. Per sex a three-column grid, so the six
+ * percentages fall into two rows. The cell is the same selectable button as before: its
+ * accessible name is the percentage text, the drawings are aria-hidden, and each sex row is a
+ * group named by its sex label so the two "25%" buttons are told apart.
+ *
+ * Each drawing's flex-grow is its crop width and its aspect ratio is its crop box, both read from
+ * BODY_FAT_CHART_CROP: the pair's widths split in proportion to the two crops, so front and side
+ * render at one height and one scale at any cell width (setup.css `.wiz-chart-pair`).
  */
 function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: () => void }): JSX.Element {
   const t = useCopy();
   const headingId = useId();
+  const rowLabelId = useId();
   return (
     <ModalShell
       labelledBy={headingId}
@@ -1056,8 +1076,16 @@ function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: ()
       </h2>
       <p className="wiz-note">{BODY_FAT_CHART_INTRO}</p>
       {(['male', 'female'] as const).map((sex) => (
-        <div key={sex} className="wiz-chart-row">
-          <p className="wiz-label">{t(sex === 'male' ? 'label.sexMale' : 'label.sexFemale')}</p>
+        <div
+          key={sex}
+          className="wiz-chart-row"
+          data-sex={sex}
+          role="group"
+          aria-labelledby={`${rowLabelId}-${sex}`}
+        >
+          <p className="wiz-label" id={`${rowLabelId}-${sex}`}>
+            {t(sex === 'male' ? 'label.sexMale' : 'label.sexFemale')}
+          </p>
           <div className="wiz-chart-frames">
             {BODY_FAT_CHART_PERCENTAGES[sex].map((pct) => (
               <button
@@ -1068,9 +1096,21 @@ function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: ()
                   props.onSelect(pct);
                 }}
               >
-                {/* Placeholder for the silhouette artwork; not drawn in this brief. See
-                    docs/design/2026-09-04-icon-register.csv for the id, prompt and status. */}
-                <span className="wiz-placeholder-frame" aria-hidden="true" />
+                <span className="wiz-chart-pair">
+                  {BODY_FAT_CHART_VIEWS.map((view) => {
+                    const markup = bodyFatChartArt(sex, pct, view);
+                    const { w, h } = BODY_FAT_CHART_CROP[view];
+                    return markup === undefined ? null : (
+                      <SetupArt
+                        key={view}
+                        id={bodyFatArtId(sex, pct, view)}
+                        markup={markup}
+                        className="wiz-chart-fig"
+                        style={{ flexGrow: w, aspectRatio: `${String(w)} / ${String(h)}` }}
+                      />
+                    );
+                  })}
+                </span>
                 <span className="wiz-chart-pct">{`${String(pct)}%`}</span>
               </button>
             ))}
@@ -2756,17 +2796,15 @@ export function SetupWizard(): JSX.Element {
                   />
                   {/* The caption is the site description the NHRC reports print, so the
                       instruction sits beside the field it governs rather than behind a
-                      disclosure (r2.14(ii), and B15: a caption is what a screen reader gets
-                      while the artwork is a frame). NAVY_SITE_LABEL names no neck site. */}
-                  <ArtworkPlaceholder label={t('quantity.neck')} className="wiz-site" />
+                      disclosure (r2.14(ii), and B15: the caption is what a screen reader gets,
+                      since the diagram is aria-hidden). NAVY_SITE_LABEL names no neck site. */}
+                  <MeasurementSite art="tape-neck" label={t('quantity.neck')} />
                 </div>
 
                 <div className="wiz-row wiz-row-site">
                   <UnitInput
                     id="f-waist"
-                    quantity={
-                      statedSex === 'male' ? t('quantity.abdomenII') : t('quantity.abdomenI')
-                    }
+                    quantity={t(WAIST_SITE[statedSex].quantity)}
                     unit={girthUnit(draft.units)}
                     value={draft.waist}
                     error={bodyFieldError(girthError(draft.waist, overrides))}
@@ -2775,9 +2813,9 @@ export function SetupWizard(): JSX.Element {
                       patch({ waist: v });
                     }}
                   />
-                  <ArtworkPlaceholder
+                  <MeasurementSite
+                    art={WAIST_SITE[statedSex].art}
                     label={withoutDashConnector(NAVY_SITE_LABEL[statedSex].waist)}
-                    className="wiz-site"
                   />
                 </div>
 
@@ -2794,9 +2832,9 @@ export function SetupWizard(): JSX.Element {
                         patch({ hip: v });
                       }}
                     />
-                    <ArtworkPlaceholder
+                    <MeasurementSite
+                      art="tape-hip"
                       label={withoutDashConnector(NAVY_SITE_LABEL.female.hip ?? '')}
-                      className="wiz-site"
                     />
                   </div>
                 )}
@@ -3017,15 +3055,15 @@ export function SetupWizard(): JSX.Element {
            * SO IT IS THE SEX CONTROL'S SHAPE, not a second picker pattern invented beside it:
            * `.wiz-choice[role=radiogroup]` labelled by its own `.wiz-label`, one `.wiz-glyph`
            * label per option, the mark as an `aria-hidden` <span> before the text. A <span> and
-           * not `ArtworkPlaceholder`, which renders a <div> and a <p>: a <label>'s content model
-           * is phrasing content, so a paragraph inside it is invalid markup, and the sex control
-           * puts a bare <span> there for the same reason. The option's own text is the caption.
+           * not a <div> or <p>: a <label>'s content model is phrasing content, so a paragraph
+           * inside it is invalid markup, and the sex control puts a bare <span> there for the
+           * same reason. The option's own text is the caption.
            *
            * `Experience` is untouched. This is a CONTROL change: the stored type still has its
            * three values and `draft.experience` still holds one of them.
            *
-           * The artwork does not exist and is the owner's to draw. Each frame names its
-           * docs/design/2026-09-04-icon-register.csv row in `data-icon-row` and draws nothing:
+           * Each 44 px frame names its docs/design/2026-09-04-icon-register.csv row in
+           * `data-icon-row` and holds the owner's drawing for that row (approved 2026-10-18):
            * comfort-1-starting, comfort-2-machines, comfort-3-freeweights.
            */}
           <div className="wiz-field">
@@ -3047,7 +3085,9 @@ export function SetupWizard(): JSX.Element {
                     aria-hidden="true"
                     className="wiz-option-frame"
                     data-icon-row={o.iconRow}
-                  />
+                  >
+                    <SetupIcon id={o.iconRow} />
+                  </span>
                   {t(o.labelKey)}
                 </label>
               ))}
@@ -3073,10 +3113,11 @@ export function SetupWizard(): JSX.Element {
             />
             {/*
              * ROUND 3 TASK 7: one marker per position, and the start, the middle and the end
-             * carry a placeholder icon frame instead of a plain marker (EQUIPMENT_ICON_INDICES
-             * above derives which three). The frames are empty: the artwork is the owner's, and
-             * each names its docs/design/2026-09-04-icon-register.csv row in `data-icon-row`
-             * rather than drawing, generating or substituting a character for it.
+             * carry a 20 px icon instead of a plain marker (EQUIPMENT_ICON_INDICES above derives
+             * which three). Each frame names its docs/design/2026-09-04-icon-register.csv row in
+             * `data-icon-row` and holds the owner's drawing for it (approved 2026-10-18). The two
+             * positions between stay plain markers, as he asked ("3 of them ... have icons"), so
+             * equip-2 and equip-4 have drawings this row does not show.
              *
              * `aria-hidden` for the same reason the activity ticks are: the position is already
              * announced by the live region below.
@@ -3084,7 +3125,9 @@ export function SetupWizard(): JSX.Element {
             <div className="wiz-slider-ticks" aria-hidden="true">
               {EQUIPMENT_ACCESS_OPTIONS.map((o, i) =>
                 EQUIPMENT_ICON_INDICES.includes(i) ? (
-                  <span key={o.value} className="wiz-slider-tick-icon" data-icon-row={o.iconRow} />
+                  <span key={o.value} className="wiz-slider-tick-icon" data-icon-row={o.iconRow}>
+                    <SetupIcon id={o.iconRow} />
+                  </span>
                 ) : (
                   <span key={o.value} className="wiz-slider-tick" />
                 ),
