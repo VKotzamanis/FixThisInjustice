@@ -178,7 +178,20 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     // The coach line is computed against the history BEFORE this set, which is what makes a
     // personal best a comparison rather than a tautology.
     onCoach(coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units), specimen);
-    useAppStore.getState().setRestTimer(startRest(restS, now));
+    // [sets] This set's place in the lifting day, read after logSet so it counts itself. It seeds
+    // the rest game (ROADMAP F1), which rides on the timer and never changes `restS`.
+    const sessionSetOrdinal = Object.values(useAppStore.getState().sets).filter(
+      (s) => s.profileId === profile.id && s.assignmentDate === assignmentDate,
+    ).length;
+    useAppStore.getState().setRestTimer(
+      startRest(restS, now, {
+        exerciseId: exercise.id,
+        sessionId,
+        assignmentDate,
+        setNumber: n, // [sets]
+        sessionSetOrdinal,
+      }),
+    );
   };
 
   const domIdPrefix = `ex-${exercise.id}`;

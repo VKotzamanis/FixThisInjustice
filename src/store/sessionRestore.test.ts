@@ -112,6 +112,7 @@ describe('clearSessionSlice', () => {
 
     expect(useAppStore.getState().session).toEqual({
       restTimer: null,
+      restGameWins: 0,
       activeAssignmentDate: null,
       bonusExerciseIds: [],
       undo: null,

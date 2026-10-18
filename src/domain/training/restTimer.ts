@@ -14,7 +14,7 @@
 // remainingS is time LEFT, so it is non-negative by construction; a negative `deltaS` passed
 // to `extend` shortens the interval.
 import { restSFor } from '../plan/library';
-import type { EpochMs, Exercise, PlannedExercise, Seconds } from '../types';
+import type { EpochMs, Exercise, LocalDate, PlannedExercise, Seconds } from '../types';
 
 /*
  * Rest-interval defaults, content peer review section 9. These three constants are the NAMED
@@ -70,6 +70,27 @@ export interface RestTimer {
   startedAt: EpochMs; // [ms] epoch ms UTC, the instant the rest began
   endsAt: EpochMs; // [ms] epoch ms UTC, the instant it is due to end
   durationS: Seconds; // [s] as originally requested; extensions move endsAt only
+  /**
+   * The rest game this interval offers (ROADMAP F1, docs/design/rest-games.md). Absent on a
+   * timer started before rest games existed, and then no game is offered. Read-only to the
+   * game: nothing in a game writes `startedAt`, `endsAt` or `durationS`. `| undefined` for the
+   * same reason as `SessionAssignment.edits` (types.ts): the mirror's Zod `.optional()` infers it
+   * under exactOptionalPropertyTypes.
+   */
+  game?: RestGameContext | undefined;
+}
+
+/**
+ * The identity of the round one rest interval offers. Session-only, beside the timer rather than
+ * on a LoggedSet: a puzzle is a diversion, not training history. Keeping it on the timer is what
+ * lets a reload restore the SAME round instead of rolling a new one halfway through a rest.
+ */
+export interface RestGameContext {
+  exerciseId: string;
+  sessionId: string;
+  assignmentDate: LocalDate;
+  setNumber: number; // [sets] within this exercise, 1-based
+  sessionSetOrdinal: number; // [sets] within the lifting day, 1-based
 }
 
 /**
@@ -77,8 +98,10 @@ export interface RestTimer {
  * contract in types.ts); it is recorded verbatim so the originally prescribed rest survives
  * any later extension.
  */
-export function startRest(durationS: Seconds, now: EpochMs): RestTimer {
-  return { startedAt: now, endsAt: now + durationS * 1000, durationS }; // [ms] = [s] x 1000
+export function startRest(durationS: Seconds, now: EpochMs, game?: RestGameContext): RestTimer {
+  // The game context is attached, never consulted: both instants depend on `durationS` alone.
+  const timer: RestTimer = { startedAt: now, endsAt: now + durationS * 1000, durationS }; // [ms] = [s] x 1000
+  return game === undefined ? timer : { ...timer, game };
 }
 
 /**

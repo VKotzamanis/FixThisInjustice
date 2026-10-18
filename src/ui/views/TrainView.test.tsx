@@ -1767,3 +1767,47 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
     expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.addExercise') })).toBeNull();
   });
 });
+
+describe('TrainView rest game (ROADMAP F1)', () => {
+  const launch = () => screen.queryByRole('button', { name: copy('button.restWordLaunch') });
+  const board = () => screen.queryByRole('heading', { name: copy('hero.restWord') });
+
+  it('offers the game with the rest a logged set starts, keyed to that set', () => {
+    seedStore(seed());
+    renderTrain();
+    expect(launch()).toBeNull();
+
+    logRow(1, '60', '8');
+
+    expect(useAppStore.getState().session.restTimer?.game).toEqual({
+      exerciseId: UPPER.id,
+      sessionId: 'session-1',
+      assignmentDate: TODAY,
+      setNumber: 1, // [sets]
+      sessionSetOrdinal: 1, // [sets]
+    });
+    expect(launch()).toBeInTheDocument();
+  });
+
+  it('logs the next set with the game open, and that rest and its game end together', () => {
+    seedStore(seed());
+    renderTrain();
+    logRow(1, '60', '8');
+    const first = useAppStore.getState().session.restTimer;
+    fireEvent.click(launch() as HTMLElement);
+    expect(board()).toBeInTheDocument();
+
+    vi.setSystemTime(NOW + 20_000); // [ms] 20 s into the rest, mid-game
+    logRow(2, '60', '8');
+
+    const today = Object.values(useAppStore.getState().sets).filter((s) => s.assignmentDate === TODAY);
+    expect(today.map((s) => s.setNumber).sort()).toEqual([1, 2]);
+    const second = useAppStore.getState().session.restTimer;
+    expect(second?.startedAt).toBe(NOW + 20_000); // [ms] a new rest from the new set
+    expect(second?.durationS).toBe(first?.durationS); // [s] the prescription, untouched by the game
+    expect(second?.game?.sessionSetOrdinal).toBe(2); // [sets]
+    // The old board is gone with its rest; the new rest offers a fresh round.
+    expect(board()).toBeNull();
+    expect(launch()).toBeInTheDocument();
+  });
+});

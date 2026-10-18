@@ -41,7 +41,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
   - Nothing stops a new call site from calling `copy()` without the limelight overlay; `src/content/limelightParity.test.ts` covers the existing render path only.
 
 ## 4. Fun (want, all)
-- F1 (design) Rest games. Word game parked on branch `wip/rest-word-game` (red: tsc `src/store/sessionMirror.ts:170`). More small games later. Constraint: a game must never stretch the prescribed rest (`src/domain/training/restTimer.ts`), must be interruptible, offline, no stored score unless schema change.
+- F1 Rest games. Rest Word (Wordle-style) built on branch `worktree-agent-aa432776b4f6670e4`, not yet merged; design and constraints `docs/design/rest-games.md`. More small games later: add per that note.
 - F2 Limelight voice: the vulgar register the owner asked for; never written (agent chose camp only). Owner's words, his call on lines.
 - F3 Sound effects: player exists (`src/skins/sfx.ts`), zero files in `public/sfx/`. Make them locally with the owner's MIDI/FluidSynth/equation-instrument pipeline (`orchestrate` skill). Formats AAC `.m4a`/MP3.
 - F4 Motivation clip after a missed week: modal built, no clip (`public/media/` empty). Owner picks or films one.

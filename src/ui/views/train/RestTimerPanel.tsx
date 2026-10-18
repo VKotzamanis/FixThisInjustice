@@ -6,15 +6,22 @@
 //
 // Units: instants are epoch ms UTC [ms]; every rest quantity is seconds [s]; the ring's
 // geometry is in SVG user units, which the viewBox maps to px at the rendered size.
+//
+// The rest game (ROADMAP F1, docs/design/rest-games.md) lives inside this panel because it lives
+// inside the rest: offered when a rest that carries a game identity starts, closed when that rest
+// ends, is skipped or is replaced by the next set's rest. It reads the timer and never writes it.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { copy, FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy, useCopyOverrides } from '../../../content/useCopy';
+import { restWordRound } from '../../../domain/fun/restWord';
 import { extend, remainingS, totalS } from '../../../domain/training/restTimer';
+import type { EpochMs } from '../../../domain/types';
 import { SkinLabel } from '../../../skins/limelight/Icon';
 import { playSfx } from '../../../skins/sfx';
 import { useAppStore } from '../../../store';
-import { useRestTimer } from '../../../store/selectors';
-import { playChime, vibrate } from '../../audio/chime';
+import { useRestGameWins, useRestTimer } from '../../../store/selectors';
+import { playChime, unlockAudio, vibrate } from '../../audio/chime';
+import { RestWordGame } from './RestWordGame';
 import '../../styles/train.css';
 
 const RING_RADIUS = 28; // SVG user units, inside the 64-unit viewBox
@@ -22,6 +29,16 @@ const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const EXTEND_S = 30; // [s], the fixed extension `button.extendRest` names
 const TICK_MS = 1000; // [ms]
 const S_PER_MIN = 60; // [s/min]
+
+/**
+ * The game's phase for ONE rest interval, keyed by that interval's `startedAt`. Any other
+ * interval (the next set's rest) reads as 'ready', so a new rest offers a fresh round and an old
+ * board can never carry over. An extension keeps `startedAt`, so it keeps the phase.
+ */
+interface RestGamePhase {
+  startedAt: EpochMs; // [ms] epoch UTC, the interval the phase belongs to
+  phase: 'open' | 'closed';
+}
 
 /** navigator.vibrate's pattern, in milliseconds on / off / on. */
 const VIBRATE_PATTERN = [180, 80, 180]; // [ms]
@@ -61,6 +78,19 @@ export function RestTimerPanel(): ReactElement | null {
   const overrides = useCopyOverrides();
   const [now, setNow] = useState<number>(() => Date.now()); // [ms] epoch UTC
   const firedRef = useRef(false);
+  const restGameWins = useRestGameWins(); // [rounds]
+  const sounds = useAppStore((s) => s.ui.sounds);
+  const [game, setGame] = useState<RestGamePhase | null>(null);
+  const phase = timer !== null && game?.startedAt === timer.startedAt ? game.phase : 'ready';
+  const restOver = timer !== null && remainingS(timer, now) <= 0;
+
+  /*
+   * The game ends with the rest. The render below already hides an open board at zero; this makes
+   * it final, so an extension tapped after the end adds rest time, not a revived round.
+   */
+  useEffect(() => {
+    if (restOver) setGame((g) => (g?.phase === 'open' ? { ...g, phase: 'closed' } : g));
+  }, [restOver]);
 
   /*
    * Tick once per second only while the document is visible, and recompute immediately on
@@ -134,72 +164,112 @@ export function RestTimerPanel(): ReactElement | null {
   const elapsedFraction = Math.min(1, (total - remaining) / total); // dimensionless
   const minutes = Math.floor(remaining / S_PER_MIN); // [min]
   const seconds = remaining % S_PER_MIN; // [s]
+  // A timer restored from an older build carries no game identity, and then no game is offered.
+  const round = timer.game === undefined ? null : restWordRound(timer.game, timer.durationS, restGameWins);
+  // Offered only while the whole round fits in the rest still to run: a round never outlasts it.
+  const offerGame = round !== null && phase === 'ready' && !restOver;
+  const gameFits = round !== null && remaining >= round.durationS; // [s] vs [s]
+  const startedAt = timer.startedAt; // [ms] epoch UTC, the interval a phase is keyed to
 
   return (
     <div className="rest-panel">
-      <div className="rest-ring">
-        {/* Decorative: the remaining time is read from the text beside it, not from the arc. */}
-        <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
-          <circle
-            cx="32"
-            cy="32"
-            r={RING_RADIUS}
-            fill="none"
-            stroke="var(--line-2)"
-            strokeWidth="3"
-          />
-          <circle
-            cx="32"
-            cy="32"
-            r={RING_RADIUS}
-            fill="none"
-            stroke="var(--accent)"
-            strokeWidth="3"
-            strokeDasharray={RING_CIRCUMFERENCE}
-            strokeDashoffset={RING_CIRCUMFERENCE * elapsedFraction}
-            transform="rotate(-90 32 32)"
-            strokeLinecap="round"
-          />
-        </svg>
-        {/* The overlay reaches the readout too (P8 close-out D). No table words it today, and
-            the zero padding stays in the frame: digit count is a property of a clock, not a
-            word a skin may change. */}
-        <span className="rest-time">{FORMAT.restRemaining(minutes, seconds, overrides)}</span>
-      </div>
-      <div className="rest-controls">
-        {/*
-          * Through SkinLabel, so the two icons round three section 4.4 maps to these keys are
-          * reachable: `stopwatchPanel` here and `skip` on the control below (P8 close-out D;
-          * both were mapped when Icon.tsx was written and neither was ever rendered, because
-          * both call sites were a bare `c(key)`). SkinLabel reads the words through the same
-          * table `c` does, so the string is unchanged on every skin, and `Icon` returns null
-          * off limelight, so no other skin gains a glyph.
-          *
-          * `button.extendRest` stays a plain `c` call: section 4.4 gives it no icon, and a
-          * SkinLabel around it would add a wrapper element and nothing else.
-          */}
-        <div className="rest-label">
-          <SkinLabel copyKey="status.rest" />
+      <div className="rest-summary">
+        <div className="rest-ring">
+          {/* Decorative: the remaining time is read from the text beside it, not from the arc. */}
+          <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+            <circle
+              cx="32"
+              cy="32"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="var(--line-2)"
+              strokeWidth="3"
+            />
+            <circle
+              cx="32"
+              cy="32"
+              r={RING_RADIUS}
+              fill="none"
+              stroke="var(--accent)"
+              strokeWidth="3"
+              strokeDasharray={RING_CIRCUMFERENCE}
+              strokeDashoffset={RING_CIRCUMFERENCE * elapsedFraction}
+              transform="rotate(-90 32 32)"
+              strokeLinecap="round"
+            />
+          </svg>
+          {/* The overlay reaches the readout too (P8 close-out D). No table words it today, and
+              the zero padding stays in the frame: digit count is a property of a clock, not a
+              word a skin may change. */}
+          <span className="rest-time">{FORMAT.restRemaining(minutes, seconds, overrides)}</span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            // Through getState(): the store's actions are created once and never replace
-            // themselves, so subscribing to one hands the component an unbound method.
-            useAppStore.getState().setRestTimer(extend(timer, EXTEND_S));
-          }}
-        >
-          {c('button.extendRest')}
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            useAppStore.getState().setRestTimer(null);
-          }}
-        >
-          <SkinLabel copyKey="button.skipRest" />
-        </button>
+        <div className="rest-controls">
+          {/*
+            * Through SkinLabel, so the two icons round three section 4.4 maps to these keys are
+            * reachable: `stopwatchPanel` here and `skip` on the control below (P8 close-out D;
+            * both were mapped when Icon.tsx was written and neither was ever rendered, because
+            * both call sites were a bare `c(key)`). SkinLabel reads the words through the same
+            * table `c` does, so the string is unchanged on every skin, and `Icon` returns null
+            * off limelight, so no other skin gains a glyph.
+            *
+            * `button.extendRest` stays a plain `c` call: section 4.4 gives it no icon, and a
+            * SkinLabel around it would add a wrapper element and nothing else.
+            */}
+          <div className="rest-label">
+            <SkinLabel copyKey="status.rest" />
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              // Through getState(): the store's actions are created once and never replace
+              // themselves, so subscribing to one hands the component an unbound method.
+              useAppStore.getState().setRestTimer(extend(timer, EXTEND_S));
+            }}
+          >
+            {c('button.extendRest')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              useAppStore.getState().setRestTimer(null);
+            }}
+          >
+            <SkinLabel copyKey="button.skipRest" />
+          </button>
+          {offerGame && (
+            <button
+              type="button"
+              className="rest-game-launch"
+              disabled={!gameFits}
+              onClick={() => {
+                // The tap is a user gesture, so it may wake the shared audio context for the
+                // game's cues; with sounds off it is left alone.
+                if (sounds) void unlockAudio();
+                setGame({ startedAt, phase: 'open' });
+              }}
+            >
+              {c('button.restWordLaunch')}
+            </button>
+          )}
+        </div>
       </div>
+      {offerGame && !gameFits && <p className="rest-game-unavailable">{c('status.restWordTooLate')}</p>}
+      {phase === 'open' && !restOver && (
+        <RestWordGame
+          key={startedAt}
+          timer={timer}
+          priorWins={restGameWins}
+          soundsEnabled={sounds}
+          t={c}
+          overrides={overrides}
+          onExit={() => {
+            setGame({ startedAt, phase: 'closed' });
+          }}
+          onWin={() => {
+            useAppStore.getState().recordRestGameWin();
+          }}
+        />
+      )}
     </div>
   );
 }

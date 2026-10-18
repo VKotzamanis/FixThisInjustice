@@ -344,10 +344,21 @@
   font: inherit;
 }
 
+/* A column: the ring and its controls on top, the rest game (ROADMAP F1) under them. */
 .rest-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+  max-width: min(100%, 28rem);
+}
+
+.rest-summary {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .rest-ring {
@@ -510,6 +521,268 @@
   font-size: 0.65rem;
   letter-spacing: 0.12em;
   color: var(--text-3);
+}
+
+/*
+ * ROADMAP F1: the rest game (docs/design/rest-games.md). One compact DOM/CSS board inside the
+ * rest panel: no canvas, image, font request or library.
+ *
+ * Colour. The board is the inverted panel (--panel / --panel-text), the surface this skin
+ * already uses for state, because a lime ground cannot carry white or pink type (tokens.css,
+ * measured ratios). Inside it: white on black 21:1; a hit tile is a pink fill with ink, 7.75:1;
+ * a near tile is a lime fill with ink, 10.91:1; a miss is white on the --fine grey, about 9.6:1
+ * (computed here with the WCAG 2.1 formula, not quoted). Colour never stands alone (WCAG 1.4.1):
+ * a near tile also has a dashed border, a miss has no light border and is struck through.
+ *
+ * Size. Every key is a 44 px target (views.css: 2.75rem at the 16 px root). Six columns need
+ * 6 x 44 + 5 x 2 = 274 px; a 360 px phone leaves 360 - 2 x 14 (main) - 2 x 16 (.view)
+ * - 2 x 2 (border) - 2 x 8 (padding) = 280 px. Below 360 px the grid drops to five columns.
+ */
+.view .rest-game-launch:disabled {
+  opacity: 0.5;
+}
+
+.rest-game-unavailable {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  max-width: 24rem;
+}
+
+.rest-game {
+  align-self: stretch;
+  border: 2px solid var(--line-2);
+  box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0 var(--accent);
+  background: var(--panel);
+  color: var(--panel-text);
+  font-family: var(--mono);
+  padding: 0.5rem;
+}
+
+.rest-game-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.rest-game h3,
+.rest-game p {
+  margin: 0;
+}
+
+.rest-game h3 {
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rest-game-topline p,
+.rest-game-result {
+  color: var(--panel-text);
+  font-size: 0.75rem;
+  margin-top: 0.2rem;
+}
+
+.rest-game-clock {
+  border: 1px solid var(--panel-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  padding: 0.25rem 0.4rem;
+}
+
+.rest-word-playfield {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  align-items: center;
+  margin: 0.6rem 0;
+}
+
+.rest-word-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.rest-word-row {
+  display: flex;
+  gap: 0.18rem;
+}
+
+.rest-word-tile {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--panel-text);
+  background: var(--panel);
+  color: var(--panel-text);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.rest-word-keyboard {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(2.75rem, 1fr));
+  gap: 0.125rem;
+}
+
+/* `.view button` (views.css) is 0,1,1 and full width; two classes outrank it inside the grid. */
+.view .rest-word-key {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  width: 100%;
+  padding: 0;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--panel-text);
+  font: 700 1rem/1 var(--mono);
+  letter-spacing: 0;
+}
+
+/* Delete and Submit close the last row at two columns each; their words may wrap to two lines. */
+.view .rest-word-action {
+  grid-column: span 2;
+  padding: 0 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.1;
+  border-color: var(--accent);
+}
+
+.view .rest-word-key:disabled {
+  opacity: 0.45;
+}
+
+.rest-word-tile.exact,
+.view .rest-word-key.exact {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
+.rest-word-tile.present,
+.view .rest-word-key.present {
+  background: var(--lime);
+  border: 2px dashed var(--ink);
+  color: var(--ink);
+}
+
+.rest-word-tile.absent,
+.view .rest-word-key.absent {
+  background: var(--fine);
+  border-color: var(--fine);
+  color: var(--panel-text);
+  text-decoration: line-through;
+}
+
+.view .rest-game-exit {
+  margin-top: 0.5rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--accent);
+}
+
+/* ASCII art needs a real monospace face: --mono is Archivo, which is proportional. */
+.rest-game-mascot {
+  color: var(--accent);
+  font: 700 0.68rem/0.82rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin: 0;
+  white-space: pre;
+}
+
+.rest-game-mascot-win {
+  animation: rest-game-pop 260ms steps(2, end) 2;
+}
+
+.rest-game-mascot-lose {
+  animation: rest-game-shake 160ms steps(2, end) 3;
+}
+
+/* Original ASCII loss loop: two CSS-swapped text frames, never a downloaded GIF. */
+.rest-loss-chomp {
+  position: relative;
+  width: 5.7rem;
+  height: 1rem;
+  overflow: hidden;
+  color: var(--accent);
+  font: 700 0.7rem/1rem ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.rest-loss-chomp pre {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  white-space: pre;
+}
+
+.rest-loss-chomp-open {
+  animation: rest-game-chomp-open 420ms steps(1, end) infinite;
+}
+
+.rest-loss-chomp-closed {
+  animation: rest-game-chomp-closed 420ms steps(1, end) infinite;
+}
+
+@keyframes rest-game-pop {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes rest-game-shake {
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes rest-game-chomp-open {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes rest-game-chomp-closed {
+  0%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rest-game-mascot-win,
+  .rest-game-mascot-lose,
+  .rest-loss-chomp-open,
+  .rest-loss-chomp-closed {
+    animation: none;
+  }
+
+  /* One still frame: the open mouth. */
+  .rest-loss-chomp-closed {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .rest-panel {
+    align-items: stretch;
+    max-width: none;
+    width: 100%;
+  }
+
+  .rest-summary {
+    justify-content: flex-start;
+  }
+}
+
+/* Under 360 px six 44 px columns no longer fit; five do, and Z + Delete + Submit close the row. */
+@media (max-width: 359px) {
+  .rest-word-keyboard {
+    grid-template-columns: repeat(5, minmax(2.75rem, 1fr));
+  }
 }
 
 /*

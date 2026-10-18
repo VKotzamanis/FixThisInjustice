@@ -13,19 +13,40 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
+import { restWordRound } from '../../../domain/fun/restWord';
+import type { RestGameContext, RestTimer } from '../../../domain/training/restTimer';
 import type { SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
+import { EMPTY_SESSION } from '../../../store/sessionMirror';
 import { makeAppState, makeUiPrefs } from '../../../test/funFixtures';
 import { ICON_FOR_KEY } from '../../../skins/limelight/Icon';
 import { RestTimerPanel } from './RestTimerPanel';
 
 const playChime = vi.hoisted(() => vi.fn(() => true));
 const vibrate = vi.hoisted(() => vi.fn(() => true));
+/*
+ * A running shared context whose oscillator count is the observable difference between a game
+ * cue and silence (the rest-game cues are synthesised on it; src/ui/audio/restGameAudio.ts).
+ */
+const audio = vi.hoisted(() => ({ oscillators: 0 }));
 vi.mock('../../audio/chime', () => ({
   playChime,
   vibrate,
   unlockAudio: vi.fn(() => Promise.resolve(true)),
   releaseAudio: vi.fn(),
+  getAudioContext: () => ({
+    state: 'running',
+    currentTime: 0, // [s] on the context clock
+    destination: {},
+    createOscillator: () => {
+      audio.oscillators += 1;
+      return { type: 'sine', frequency: { value: 0 }, connect: vi.fn(), start: vi.fn(), stop: vi.fn() };
+    },
+    createGain: () => ({
+      gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+      connect: vi.fn(),
+    }),
+  }),
 }));
 
 const playSfx = vi.hoisted(() => vi.fn());
@@ -166,5 +187,134 @@ describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
 
     expect(playSfx).toHaveBeenCalledTimes(1);
     expect(playSfx).toHaveBeenCalledWith('rest_over');
+  });
+});
+
+/*
+ * ROADMAP F1, docs/design/rest-games.md. The game rides on the rest timer: offered when a rest
+ * with a game identity starts, gone when the rest ends, and never a writer of the timer.
+ */
+const GAME: RestGameContext = {
+  exerciseId: 'barbell-back-squat',
+  sessionId: 'session-1',
+  assignmentDate: '2026-03-02',
+  setNumber: 1, // [sets]
+  sessionSetOrdinal: 1, // [sets]
+};
+
+/** A REST_S rest from NOW that offers a game. */
+function gameTimer(): RestTimer {
+  return { startedAt: NOW, endsAt: NOW + REST_S * 1000, durationS: REST_S, game: GAME }; // [ms], [ms], [s]
+}
+
+function renderGamePanel(sounds = false): RestTimer {
+  // A fresh session slice: wins from an earlier case would change the round's difficulty.
+  useAppStore.setState({ ...makeAppState({ ui: makeUiPrefs({ skin: 'limelight', sounds }) }), session: EMPTY_SESSION });
+  const timer = gameTimer();
+  useAppStore.getState().setRestTimer(timer);
+  render(<RestTimerPanel />);
+  return timer;
+}
+
+const gameHeading = () => screen.queryByRole('heading', { name: copy('hero.restWord') });
+
+/** Types the round's own answer on the on-screen keys and submits it. */
+function winRound(): void {
+  const target = restWordRound(GAME, REST_S, 0).target.toUpperCase();
+  for (const letter of target) fireEvent.click(screen.getByRole('button', { name: letter }));
+  fireEvent.click(screen.getByRole('button', { name: copy('button.restWordSubmit') }));
+}
+
+describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
+  beforeEach(() => {
+    audio.oscillators = 0;
+  });
+
+  it('offers one optional round with the rest and never writes the timer', () => {
+    const timer = renderGamePanel();
+    // Offered, not forced: the rest starts with a launch control and no board.
+    expect(gameHeading()).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    expect(gameHeading()).toBeInTheDocument();
+    expect(useAppStore.getState().session.restTimer).toEqual(timer);
+
+    winRound();
+    expect(screen.getByText(copy('status.restWordWon'))).toBeInTheDocument();
+    expect(useAppStore.getState().session.restGameWins).toBe(1); // [rounds]
+    expect(useAppStore.getState().session.restTimer).toEqual(timer);
+
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordExit') }));
+    expect(gameHeading()).toBeNull();
+    expect(useAppStore.getState().session.restTimer).toEqual(timer);
+    // One round per rest: the launch control does not come back for the same interval.
+    expect(screen.queryByRole('button', { name: copy('button.restWordLaunch') })).toBeNull();
+  });
+
+  it('keeps counting the rest down while the game is open', () => {
+    renderGamePanel();
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+
+    vi.setSystemTime(NOW + 30_000); // [ms] 30 s into a 90 s rest
+    fireEvent(document, new Event('visibilitychange'));
+
+    expect(screen.getByText(FORMAT.restRemaining(1, 0))).toBeInTheDocument();
+    expect(gameHeading()).toBeInTheDocument();
+  });
+
+  it('closes the game when the rest ends, and the rest-over cues still fire once', () => {
+    renderGamePanel();
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+
+    expireRest();
+
+    expect(gameHeading()).toBeNull();
+    expect(playChime).toHaveBeenCalledTimes(1);
+    expect(playSfx).toHaveBeenCalledWith('rest_over');
+    expect(useAppStore.getState().session.restTimer?.endsAt).toBe(NOW + REST_S * 1000); // [ms]
+
+    // An extension after the end is a new stretch of rest, not a revived board.
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }));
+    expect(gameHeading()).toBeNull();
+  });
+
+  it('closes with the rest when the rest is skipped', () => {
+    renderGamePanel();
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') }));
+
+    expect(useAppStore.getState().session.restTimer).toBeNull();
+    expect(gameHeading()).toBeNull();
+  });
+
+  it('does not start a round that no longer fits in the prescribed rest', () => {
+    renderGamePanel();
+    vi.setSystemTime(NOW + 50_000); // [ms] 40 s remain; a 90 s rest's round is 45 s
+    fireEvent(document, new Event('visibilitychange'));
+
+    expect(screen.getByRole('button', { name: copy('button.restWordLaunch') })).toBeDisabled();
+    expect(screen.getByText(copy('status.restWordTooLate'))).toBeInTheDocument();
+  });
+
+  it('offers no game on a timer with no game identity, as an older build restores', () => {
+    renderPanel('limelight');
+    expect(screen.queryByRole('button', { name: copy('button.restWordLaunch') })).toBeNull();
+  });
+
+  it('makes no game sound with ui.sounds off', () => {
+    renderGamePanel(false);
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    winRound();
+    expect(screen.getByText(copy('status.restWordWon'))).toBeInTheDocument();
+    expect(audio.oscillators).toBe(0);
+  });
+
+  it('plays the game cue with ui.sounds on', () => {
+    renderGamePanel(true);
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    winRound();
+    expect(screen.getByText(copy('status.restWordWon'))).toBeInTheDocument();
+    expect(audio.oscillators).toBeGreaterThan(0);
   });
 });
