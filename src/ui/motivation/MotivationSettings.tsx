@@ -36,6 +36,7 @@
 // the preview's URL belongs to MotivationModal, whose effect already releases it.
 
 import { useCallback, useEffect, useState, type ChangeEvent, type ReactElement } from 'react';
+import { displayClass } from '../format/display';
 import { MotivationModal } from './MotivationModal';
 import {
   MAX_VIDEO_BYTES,
@@ -225,7 +226,7 @@ export function MotivationSettings(): ReactElement | null {
 
   return (
     <section className="fti-motivation-clip" aria-labelledby="fti-motivation-clip-heading">
-      <h2 id="fti-motivation-clip-heading">{t('hero.motivationVideo')}</h2>
+      <h2 id="fti-motivation-clip-heading" className={displayClass(t('hero.motivationVideo'))}>{t('hero.motivationVideo')}</h2>
       <p className="view-note">
         {shown !== null
           ? FORMAT.motivationClipName(shown.name)

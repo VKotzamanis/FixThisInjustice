@@ -1,4 +1,5 @@
 import { Fragment, useMemo, useRef, useState, type JSX } from 'react';
+import { displayClass } from '../format/display';
 import { UnitInput, loadUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
@@ -361,7 +362,7 @@ export function SettingsView(): JSX.Element {
 
   return (
     <section className="view">
-      <h2>{t('hero.profile')}</h2>
+      <h2 className={displayClass(t('hero.profile'))}>{t('hero.profile')}</h2>
 
       {profileIds.length > 1 && (
         <div className="view-field">
@@ -477,7 +478,7 @@ export function SettingsView(): JSX.Element {
           duplicate sibling key made React hand one component's state to the other. */}
       <ProgrammeSettings key={`programme-${profile.id}`} profile={profile} />
 
-      <h2>{t('hero.equipmentSteps')}</h2>
+      <h2 className={displayClass(t('hero.equipmentSteps'))}>{t('hero.equipmentSteps')}</h2>
       <NumberSetting
         key={`barbell-${units}`}
         id="settings-barbell-step"
@@ -498,7 +499,7 @@ export function SettingsView(): JSX.Element {
           hasMicroPlates/microPlateKg entirely, and only that. */}
       <p className="view-note">{t('advice.loadSteps')}</p>
 
-      <h2>{t('hero.hydration')}</h2>
+      <h2 className={displayClass(t('hero.hydration'))}>{t('hero.hydration')}</h2>
       <NumberSetting
         key="fluid"
         id="settings-fluid-target"

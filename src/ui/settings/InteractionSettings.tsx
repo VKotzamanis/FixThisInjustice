@@ -1,4 +1,5 @@
 import type { ChangeEvent, JSX } from 'react';
+import { displayClass } from '../format/display';
 
 import { sfxPlayer } from '../../skins/sfx';
 import { useCopy } from '../../content/useCopy';
@@ -35,7 +36,7 @@ export function InteractionSettings(): JSX.Element {
 
   return (
     <>
-      <h2>{c('hero.skin')}</h2>
+      <h2 className={displayClass(c('hero.skin'))}>{c('hero.skin')}</h2>
       <label className="view-inline">
         <input type="checkbox" checked={sounds} onChange={onSoundsChange} />
         {c('label.settingsSounds')}

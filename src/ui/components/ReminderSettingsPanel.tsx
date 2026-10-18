@@ -1,4 +1,5 @@
 import { useCallback, useState, type JSX } from 'react';
+import { displayClass } from '../format/display';
 import {
   DEFAULT_REMINDER_SETTINGS,
   LEAD_MINUTE_CHOICES,
@@ -255,7 +256,7 @@ export function ReminderSettingsPanel(): JSX.Element | null {
 
   return (
     <section className="fti-reminders" aria-labelledby="fti-reminders-heading">
-      <h2 id="fti-reminders-heading">{t('hero.reminders')}</h2>
+      <h2 id="fti-reminders-heading" className={displayClass(t('hero.reminders'))}>{t('hero.reminders')}</h2>
       <p role="status">
         {statusLine(status, pushDevice?.lastSyncAt ?? null, profile.timezone, overrides)}
       </p>

@@ -19,6 +19,7 @@
 // straight to Train never passed through Today's Start tap (code review A29); and the session
 // slice is cleared when the session ends, so a reload cannot revive a finished session.
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
@@ -218,7 +219,7 @@ export function TrainView(): ReactElement {
   if (session === null || assignment === null) {
     return (
       <div className="view train">
-        <h2>{c('hero.train')}</h2>
+        <h2 className={displayClass(c('hero.train'))}>{c('hero.train')}</h2>
         <p>{c('advice.noSessionToday')}</p>
         <HydrationBanner profile={profile} date={today} sessionActive={false} />
       </div>
@@ -333,7 +334,7 @@ export function TrainView(): ReactElement {
           <div className="train-eyebrow">
             {FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)}
           </div>
-          <h2>{session.name}</h2>
+          <h2 className={displayClass(session.name)}>{session.name}</h2>
           {block.isDeload && <div className="train-deload">{c('advice.deloadBlock')}</div>}
         </div>
         <RestTimerPanel />

@@ -34,6 +34,7 @@ import {
   formatSets,
   formatWeekday,
 } from '../format/plan';
+import { displayClass } from '../format/display';
 import { refusalLine } from '../format/refusal';
 import { weekDeltaKey } from '../format/weekDelta';
 import './views.css';
@@ -113,6 +114,15 @@ function StatusGlyph(props: { status: DayStatus }): JSX.Element {
 }
 
 /**
+ * The hero's heading. It takes the brat display cut (stylize survey 2026-10-18, item 1) unless
+ * the text carries a numeral, which a session name ("Push 1") or the pause date does:
+ * displayClass decides that for every heading in the app, so this view does not.
+ */
+function HeroName(props: { text: string }): JSX.Element {
+  return <h1 className={displayClass(props.text, 'hero-name')}>{props.text}</h1>;
+}
+
+/**
  * The open pause, read as a stable snapshot.
  *
  * `find` hands back an element of the STORED array, so the result keeps its identity between
@@ -174,7 +184,7 @@ export function TodayView(): JSX.Element {
     return (
       <div className="view today">
         <div className="today-hero">
-          <h1 className="hero-name">{c('hero.noPlan')}</h1>
+          <HeroName text={c('hero.noPlan')} />
           <p className="today-sub">{c('advice.completeSetup')}</p>
         </div>
       </div>
@@ -306,7 +316,7 @@ export function TodayView(): JSX.Element {
         {/* Decorative: the heading already says a session is under way. Round 3 drew this and
             never placed it; the asset manifest of 2026-09-06 put it here. */}
         <Illustration name="mascotLifting" width={72} height={72} />
-        <h1 className="hero-name">{c('hero.sessionInProgress')}</h1>
+        <HeroName text={c('hero.sessionInProgress')} />
         {session !== null && <p className="today-sub">{session.name}</p>}
       </div>
     );
@@ -314,7 +324,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)}</h1>
+        <HeroName text={FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)} />
         <p className="today-sub">{c('advice.pauseHoldsCursor')}</p>
       </div>
     );
@@ -323,9 +333,9 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">
-          {c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
-        </h1>
+        <HeroName
+          text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
+        />
         {session !== null && <p className="today-sub">{session.name}</p>}
         {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
       </div>
@@ -334,7 +344,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{session.name}</h1>
+        <HeroName text={session.name} />
         <p className="today-sub">
           {FORMAT.sessionSummary(
             session.label,
@@ -365,7 +375,7 @@ export function TodayView(): JSX.Element {
         <p className="today-eyebrow">
           {FORMAT.planPosition(shown, total, c('status.planComplete'))}
         </p>
-        <h1 className="hero-name">{c('hero.programmeComplete')}</h1>
+        <HeroName text={c('hero.programmeComplete')} />
         <p className="today-sub">
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
         </p>
@@ -376,7 +386,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
-        <h1 className="hero-name">{c('hero.noSessionToday')}</h1>
+        <HeroName text={c('hero.noSessionToday')} />
         <p className="today-sub">
           {next === null || next.slot === null || next.projectedSession === null
             ? c('advice.noSessionIn14Days')
@@ -643,7 +653,9 @@ export function TodayView(): JSX.Element {
        * of the same string in an aria-label: one string in the DOM, and a reworded heading
        * cannot leave the list announcing the old wording.
        */}
-      <h2 id="today-strip-heading">{c('hero.nextFourteenDays')}</h2>
+      <h2 id="today-strip-heading" className={displayClass(c('hero.nextFourteenDays'))}>
+        {c('hero.nextFourteenDays')}
+      </h2>
       <ol className="today-strip" aria-labelledby="today-strip-heading">
         {upcoming.map((d) => {
           const s = dayStatus(d);

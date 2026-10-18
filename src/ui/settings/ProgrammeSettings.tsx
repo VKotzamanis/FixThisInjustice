@@ -1,4 +1,5 @@
 import { useMemo, useState, type JSX } from 'react';
+import { displayClass } from '../format/display';
 import { useCopy } from '../../content/useCopy';
 import { generatePlan } from '../../domain/plan/generator';
 import {
@@ -32,7 +33,7 @@ export function ProgrammeSettings(props: { profile: Profile }): JSX.Element {
 
   return (
     <>
-      <h2>{t('hero.programme')}</h2>
+      <h2 className={displayClass(t('hero.programme'))}>{t('hero.programme')}</h2>
       <div className="view-field">
         <label htmlFor="settings-equipment">{t('label.equipmentAccess')}</label>
         <select

@@ -21,16 +21,37 @@
   padding: 1rem 1rem 4rem;
 }
 
+/*
+ * View headings are INK. They were --accent, which on limelight is pink on the lime ground at
+ * 1.41:1, a ratio tokens.css bans as type at every size. A heading that carries a numeral keeps
+ * this plain small-capitals form; every other one also takes .ll-display (below).
+ */
 .view h2 {
   font-size: 1rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--accent, #a3e635);
+  color: var(--text);
   margin: 1.5rem 0 0.5rem;
 }
 
 .view h2:first-child {
   margin-top: 0;
+}
+
+/*
+ * The brat headings (stylize survey 2026-10-18, item 1). `.ll-display` in tokens.css supplies the
+ * whole look: the 62 % Archivo cut, weight 800, tight tracking, ink, and the 4 px pink offset
+ * shadow. Only size and case are set here. The copy is written lower case in the limelight voice
+ * and the display line is set as written, the way the week stamp already sets it, so the
+ * uppercase transform above is undone rather than doubled. src/ui/format/display.ts decides
+ * which headings get the class (never one with a numeral).
+ */
+.view h2.ll-display {
+  font-size: 1.5rem;
+  line-height: 1.1;
+  text-transform: none;
+  /* The shadow sits 4 px below and right of the glyphs; this keeps it off the next line. */
+  margin-bottom: 0.75rem;
 }
 
 .view .view-dl {
@@ -169,6 +190,15 @@
   margin: 0 0 0.5rem;
   font-size: 1.4rem;
   line-height: 1.2;
+}
+
+/* The hero in the display cut. At 62 % width the narrow face sets about as many characters per
+ * line at 2rem as the regular face did at 1.4rem, so the size goes up without the line count. */
+.view.today .hero-name.ll-display {
+  font-size: 2rem;
+  line-height: 1.05;
+  margin-bottom: 0.75rem;
+  overflow-wrap: anywhere;
 }
 
 .view.today .today-sub {
