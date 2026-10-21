@@ -1,9 +1,9 @@
 # ROADMAP
 
-Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/private/owner-feedback/restart-2026-10-18.md`). Every item was checked against code on 2026-10-17. Order = priority. Design before building anything marked (design).
+Owner rulings from the restart audit and review pages (2026-10-17/18; verbatim answers in `docs/private/owner-feedback/restart-2026-10-18.md`). Every item was checked against code on 2026-10-17. Order = priority. Design before building anything marked (design).
 
 ## 0. First
-- N1 Owner uses the app at the gym on his phone; collect findings per `docs/runbooks/phone-check.md`. No screen has ever been checked on a device.
+- N1 IN PROGRESS 2026-10-21: owner is using the app on his phone and collecting feedback. Triage each item into this file.
 
 ## 1. Broken now
 - B1-B6 fixed 2026-10-18 (`git log --grep '^fix(B'`). Follow-ups from B1:
@@ -29,7 +29,7 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - L10 Re-measure body fat after setup (only writer of `baselineBodyFatPct` is the wizard).
 
 ## 3. Loose ends (want)
-- N3 Home Screen icon still the previous app's W.CONSOLE logo (`public/icons/`). Owner supplies art.
+- N3 DONE 2026-10-18: app icon = frame 0 of the owner's sprite (`public/icons/`), apple-touch-icon-180 added.
 - N5 DONE 2026-10-18: old-console import removed (~4,000 lines). A device still holding `fti.console.v2` is ignored, never deleted. `ui.legacyMigration` stays in the v3 schema, unused.
 - N4 Daily notes: stored (`AppState.notes`), no UI. Drop: remove field with a coercion so old documents load (rule 7).
 
@@ -37,19 +37,19 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
   - `advice.settingsInstruction` (`src/content/copy.ts`) still lists "skin" among Settings items. Owner's words: ask.
   - `hero.skin` "the look and the noise" now heads only sound + shortcut switches (`src/ui/settings/InteractionSettings.tsx`). Owner's words: ask.
   - Sound and shortcut switches no longer reachable during setup (lived in the removed "Choose Skin" disclosure). Needs owner copy for a new label.
-  - Accent `#a3e635` in `index.html` theme-color, the manifest and `UiPrefs.accent` matches no token.
-  - Dead: sfx skin-switch logic (`src/skins/sfx.ts`), geist/jetbrains entries in `vite.config.ts` globIgnores, 4 unused font packages in `package.json` (@fontsource-variable/geist, @fontsource-variable/jetbrains-mono, @fontsource/dm-mono, @fontsource/space-mono).
+  - DONE: theme-color/manifest now `#8ace00`. `UiPrefs.accent` (`#a3e635`) still stored, read by nothing.
+  - DONE: unused fonts and their globIgnores removed. Sfx per-skin paths kept on purpose (one skin, door left open).
   - Nothing stops a new call site from calling `copy()` without the limelight overlay; `src/content/limelightParity.test.ts` covers the existing render path only.
 
 ## 3b. Art and style (2026-10-18, done unless listed)
 - DONE: approved art wired (body-fat torsos, slider icons, tape diagrams, Atlas glyphs, app icon from owner sprite, badge); all 10 survey items (`docs/design/stylize-survey-2026-10-18.md`); contrast sweep test `src/ui/styles/limeContrast.test.ts`. Review pages: art https://claude.ai/code/artifact/892f9e79-641c-4408-9540-d7810eacda2c, screenshots https://claude.ai/code/artifact/f57b6407-07a7-4d17-b8cb-1296a6b94d61.
 - S1 `.wiz-modal-hrt` pink on white 2.71:1: owner's own request (r2.12 iv), needs his ruling.
-- S2 Ink on black still in `spotlight.css` (`.spotlight-item.is-active`), `konami.css` (`.konami button`), `limelight.css` (`.ll-marquee-strip`).
+- S2 Ink on black still in `src/ui/components/spotlight.css` (`.spotlight-item.is-active`), `src/ui/components/konami.css` (`.konami button`), `src/ui/components/limelight.css` (`.ll-marquee-strip`).
 - S3 `@media (max-width:560px) .wiz-row` never applies (`.wiz .wiz-row` outranks it); wizard radios keep browser blue.
 - S4 Fixture `scripts/alpha-fixture.mjs:134` puts sessions off slot weekdays (Fri/Sun/Tue vs Mon/Wed/Fri), so review screenshots of Log look empty. Log grid shows an unopened past slot day as "not planned", not "missed": owner call.
 - S5 Precache grew to ~1,030 KiB (+141) mostly from inlined SVG; lazy-load the chart art if size matters.
 - S7 2026-10-18 later: her sprite sheets replace the pink blob (Today, week stamp); Train/Log decluttered; warm-up notice once per profile; per-card Atlas icons (37, lazy, precache now ~1.19 MB). Atlas shows no category since the glyphs left (needs owner wording for a text label); glyph-*.svg kept unused.
-- S6 Specimen toast could show the category glyph (`CategoryGlyph`). `INTRO_FIGURE` in `src/content/introSlides.ts` is now unrendered: owner decides whether to delete it.
+- S6 Specimen toast could show the card icon (`CardIcon`, `src/ui/views/atlasArt.tsx`). Category glyphs `src/assets/art/glyph-*.svg` are unused (kept). `INTRO_FIGURE` in `src/content/introSlides.ts` is now unrendered: owner decides whether to delete it.
 
 ## 4. Fun (want, all)
 - F1 DONE 2026-10-18: Rest Word (Wordle-style) offered with each rest, opt-in, closes with the rest; design and constraints `docs/design/rest-games.md`. More small games: add per that note. Gaps: leaving Train mid-rest re-offers the same round; guess results not announced to screen readers; rest-over chime ignores `ui.sounds` (pre-existing).
@@ -57,12 +57,12 @@ Owner rulings from the restart audit (2026-10-17/18; verbatim answers in `docs/p
 - F3 Sound effects: player exists (`src/skins/sfx.ts`), zero files in `public/sfx/`. Make them locally with the owner's MIDI/FluidSynth/equation-instrument pipeline (`orchestrate` skill). Formats AAC `.m4a`/MP3.
 - F4 Motivation clip after a missed week: modal built, no clip (`public/media/` empty). Owner picks or films one.
 - F5 (design) Music in-app through YouTube mirror servers (owner's pick, NewPipe-like). Known costs: widens CSP `media-src`/`connect-src` (`build/cspPlugin.ts`, gated by `scripts/check-dist-csp.sh`); mirrors die and get blocked, so the session must never hang on a dead stream; the existing Invidious list for form videos (`src/config/videoInstances.ts`) shares the problem.
-- F6 Two unused mascot poses (resting, flop), Atlas filters, fuller board-style extras: low priority.
+- F6 Atlas filters; more "her" poses or animations (sheets in `src/assets/sprite/`, component `src/ui/components/SpriteSheet.tsx`): low priority.
 
 ## 5. Later
 - N2 Deploy the reminder Worker (`docs/runbooks/reminders.md`). Needed only for alarms with the screen locked or session reminders.
-- N6 Monochrome Android notification badge (`src/sw.ts` badge is the colour icon).
-- A1 Owner's art: 24 setup icons, 8 Atlas glyphs, app icon, sprite, tape diagrams, body-fat silhouettes. `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-06-asset-prompts.md`, register CSV.
+- N6 DONE 2026-10-18: `public/icons/notification-badge-96.png` (owner sprite outline), `src/sw.ts` badge points at it.
+- A1 DONE 2026-10-18 (see 3b). New art: generate per `docs/design/asset-spec-2026-10-18.md`, owner reviews on an artifact page before wiring, register in the CSV.
 - Wording edits without an editor app: idea is one plain file of all app strings the owner edits directly or via chat (copy tables today: `src/content/copy.ts` + `src/content/copy.limelight.ts`).
 - Copy contract R1-R14 (`docs/design/2026-09-01-copy-contract.md`, `src/content/copyContract.ts`): keep/cut decision deferred.
 

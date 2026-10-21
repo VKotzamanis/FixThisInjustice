@@ -38,14 +38,21 @@ cd worker && npx tsc --noEmit -p . && npx vitest run --maxWorkers=1
 - Expected: zero failing tests (since 2026-10-18).
 
 ## Deploy
-- Push `main` → `.github/workflows/ci.yml` → on success `.github/workflows/deploy.yml` publishes `dist/` to Pages. Rollback: `docs/runbooks/deploy.md`.
-- Confirm the live bundle hash contains your change; a green workflow is not proof.
-- PWA cache: the owner must open a private tab or clear site data to see a new build.
-- Never push, force-push or change repo settings without the owner's yes.
+- Push `main` → `.github/workflows/ci.yml` → on success `.github/workflows/deploy.yml` (jobs `build` AND `deploy`) publishes `dist/` to Pages. Rollback: `docs/runbooks/deploy.md`.
+- Agents cannot push, force-push, rewrite history or set secrets (permission classifier). Commit locally, then give the owner the exact `! cd <repo> && git push origin main` line.
+- After a push: watch CI and Deploy for the pushed SHA, confirm the Deploy run has a `deploy` job (it once lost it to a bad edit), then fetch the live HTML, read `assets/index-*.js`, grep it for a string only your change adds. A green workflow is not proof.
+- PWA cache: the owner closes and reopens the installed app (or accepts the update banner). A private tab is for inspection only: it discards data, never log in one.
+
+## Process lessons (2026-10-18)
+- Worktree git guard: in `.claude/worktrees/*` the rtk wrapper + isolation guard refuse git. Builders must STOP, leave changes uncommitted and list files; the lead copies them into main (after checking main's copies are unchanged since the builder's base), runs Verify, commits. Never bypass with `/usr/bin/git` or plumbing (`update-index`, `write-tree`, `hash-object`, `update-ref`).
+- Codex image generation (`codex exec` with `image_generation`): tell each run to copy ONLY the exact path its own image call returned; parallel runs otherwise copy each other's file. `md5sum` every batch; regenerate duplicates. Attach references with `-i`.
+- Art pipeline: spec + verbatim prompts in `docs/design/asset-spec-2026-10-18.md`; black-on-white (or chroma blue for colour sprites) raster → slice → `potrace` → `currentColor` SVG; pixel sprites snapped to the owner's palette at an integer grid. Owner reviews on an artifact page at real size before wiring; register in the CSV.
+- Screenshots: headless Chromium (`uv run --with playwright`), 2x, seed `docs/feedback/alpha-fixture.json` into `fti.v3` with `ui.introSeen=true`, `ui.scanlines=false`, clock 2026-09-04 America/Chicago. The fixture puts sessions off slot weekdays (Log grid looks empty; ROADMAP S4).
 
 ## Owner
 - Tests on his phone; users mix iPhone and Android.
-- For decisions: publish an artifact that shows the options visually, with an answer box per item; read answers back from its db.
+- For decisions and art: publish an artifact that shows the options or real screenshots visually, with an answer box per item; read answers back from its db (`Artifact read_db`). Quote his notes verbatim into `docs/private/owner-feedback/`.
+- "Her" = his own pixel character (`src/assets/sprite/`); she replaces any mascot. The app icon is her (frame 0).
 - Wants rulings, not questions. Ask only when the answer changes what the app claims or costs money.
 - Writes long; requirements hide mid-paragraph. Read sentence by sentence.
 - Prefers being contradicted with evidence (file:line) over agreement.
@@ -56,7 +63,8 @@ cd worker && npx tsc --noEmit -p . && npx vitest run --maxWorkers=1
 - `src/store`: Zustand store, persistence, session mirror
 - `src/ui`: views (Today, Plan, Train, Targets, Log, Atlas, Settings), setup wizard, intro
 - `src/content`: copy (`src/content/copy.ts` base + `src/content/copy.limelight.ts` overlay), intro prose, cited guidance, specimen cards
-- `src/skins`: skin context, sfx loader
+- `src/skins`: skin context, sfx loader, 21-icon pixel bank
+- `src/assets/art`: traced SVG art (body-fat torsos, setup icons, tape diagrams, `card-*` Atlas icons); `src/assets/sprite`: owner sprite + her sheets
 - `build/`: CSP plugin. `scripts/`: emoji gate, CSP/media/sfx checks, icon inliner, tz city generator, alpha fixture
 - `docs/feedback/alpha-fixture.json`: synthetic data reaching states a fresh install cannot (Settings → Data → import)
 - `docs/private/` (gitignored): owner feedback verbatim, evidence reviews (verified sources), research runs, 2026-10-17 audit. Code comments citing review IDs (A22, M4, C1.09.5…) refer to `docs/private/evidence/`.
