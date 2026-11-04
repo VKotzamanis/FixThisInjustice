@@ -649,9 +649,21 @@ export function prescriptionFor(ex: Exercise, intensity: SlotIntensity): Prescri
     case 'bench-dip':
     case 'inverted-row':
     case 'pike-push-up':
+    case 'incline-push-up':
+    case 'band-row':
+    case 'door-frame-row':
+    case 'bw-reverse-lunge':
+    case 'bw-forward-lunge':
+    case 'bw-split-squat':
+    case 'bw-step-up':
+    case 'bw-squat':
+    case 'bw-single-leg-rdl':
       return { kind: 'amrap', minimum: null };
     case 'plank':
+    case 'side-plank':
       return { kind: 'time', targetS: 60 }; // [s]
+    case 'farmer-carry':
+      return { kind: 'none' };
     case 'rower-intervals':
     case 'stair-climber':
       return { kind: 'duration', targetS: 1200 }; // [s] = 20 min

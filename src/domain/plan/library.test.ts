@@ -63,6 +63,41 @@ const CANONICAL_IDS = [
   'bench-dip',
 ];
 
+/**
+ * The 28 ids P3a added. No cue and no search string yet (wording is out of scope for P3a), so
+ * formCueId and videoQuery are null; FORM_CUE_IDS therefore does not move.
+ */
+const P3A_IDS = [
+  'db-reverse-lunge',
+  'db-walking-lunge',
+  'db-step-up',
+  'db-single-leg-rdl',
+  'bw-reverse-lunge',
+  'bw-forward-lunge',
+  'bw-split-squat',
+  'bw-step-up',
+  'bw-squat',
+  'bw-single-leg-rdl',
+  'barbell-hip-thrust',
+  'glute-bridge',
+  'leg-extension',
+  'db-bench-press',
+  'db-floor-press',
+  'incline-push-up',
+  'cable-triceps-pushdown',
+  'cable-lateral-raise',
+  'seated-cable-row',
+  'door-frame-row',
+  'band-row',
+  'band-pull-apart',
+  'band-lateral-raise',
+  'band-curl',
+  'prone-t-raise',
+  'dead-bug',
+  'side-plank',
+  'farmer-carry',
+];
+
 /** The seven ids added by the Task 3 review, asserted as a group for their shared field shape. */
 const NEW_TIER_IDS = [
   'db-overhead-press',
@@ -92,9 +127,26 @@ const OVERHEAD_PRESSES = ['overhead-press-barbell', 'push-press', 'db-overhead-p
  * judgement about the movement pattern; what the rule then REQUIRES of each family is asserted
  * below, so a re-tag that breaks the rule fails here instead of silently shifting weekly volume.
  */
-const HIP_DOMINANT = ['romanian-deadlift', 'db-romanian-deadlift', 'conventional-deadlift'];
-const HIP_DOMINANT_HYBRID = ['trap-bar-deadlift', 'bulgarian-split-squat'];
-const KNEE_DOMINANT = ['barbell-back-squat', 'leg-press', 'goblet-squat'];
+const HIP_DOMINANT = [
+  'romanian-deadlift',
+  'db-romanian-deadlift',
+  'conventional-deadlift',
+  'db-single-leg-rdl',
+  'bw-single-leg-rdl',
+];
+/** P3a: every split-stance lift (lunges, split squats, step-ups) joins the Bulgarian here. */
+const HIP_DOMINANT_HYBRID = [
+  'trap-bar-deadlift',
+  'bulgarian-split-squat',
+  'db-reverse-lunge',
+  'db-walking-lunge',
+  'db-step-up',
+  'bw-reverse-lunge',
+  'bw-forward-lunge',
+  'bw-split-squat',
+  'bw-step-up',
+];
+const KNEE_DOMINANT = ['barbell-back-squat', 'leg-press', 'goblet-squat', 'bw-squat'];
 
 const TIERS: Equipment[] = ['full-gym', 'dumbbells-only', 'bodyweight'];
 
@@ -109,7 +161,9 @@ const TIERS: Equipment[] = ['full-gym', 'dumbbells-only', 'bodyweight'];
 const NO_DIRECT_EXCEPTIONS: Record<string, string[]> = {
   'full-gym': [],
   'dumbbells-only': [],
-  bodyweight: ['rear-delt', 'side-delt'],
+  // P3a closed both: band-pull-apart and prone-t-raise train the rear delt directly, and
+  // band-lateral-raise the side delt (the latter only with bands; inventory.ts decides who gets it).
+  bodyweight: [],
 };
 
 /**
@@ -156,6 +210,9 @@ function byId(id: string): Exercise {
   return ex;
 }
 
+/** Every id the library must hold: the 40 above plus the 28 P3a ids. */
+const ALL_IDS = [...CANONICAL_IDS, ...P3A_IDS];
+
 describe('exercise library integrity', () => {
   it('has unique, kebab-case ids', () => {
     const ids = EXERCISES.map((e) => e.id);
@@ -163,14 +220,16 @@ describe('exercise library integrity', () => {
     for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 
-  it('is exactly the canonical id set from master plan section 5', () => {
-    expect([...EXERCISES.map((e) => e.id)].sort()).toEqual([...CANONICAL_IDS].sort());
-    expect(EXERCISES.length).toBe(40);
+  it('is exactly the canonical id set from master plan section 5 plus the P3a additions', () => {
+    expect([...EXERCISES.map((e) => e.id)].sort()).toEqual([...ALL_IDS].sort());
+    expect(CANONICAL_IDS.length).toBe(40);
+    expect(P3A_IDS.length).toBe(28);
+    expect(EXERCISES.length).toBe(68);
   });
 
   it('indexes every exercise by id, and the map holds the same object as the array', () => {
     expect(Object.keys(EXERCISE_BY_ID).length).toBe(EXERCISES.length);
-    for (const id of CANONICAL_IDS) {
+    for (const id of ALL_IDS) {
       expect(EXERCISE_BY_ID[id]).toBe(EXERCISES.find((e) => e.id === id));
     }
     for (const e of EXERCISES) expect(EXERCISE_BY_ID[e.id]).toBe(e);
@@ -262,7 +321,7 @@ describe('direct-mover rule (master plan section 5)', () => {
     // The shank is inclined off the floor in the conventional pull; the Romanian variants hold
     // the knee angle, so there is no quadriceps working range to credit at all.
     expect(byId('conventional-deadlift').secondaryMuscles).toContain('quads');
-    for (const id of ['romanian-deadlift', 'db-romanian-deadlift']) {
+    for (const id of ['romanian-deadlift', 'db-romanian-deadlift', 'db-single-leg-rdl', 'bw-single-leg-rdl']) {
       const e = byId(id);
       expect({ id, quads: [...e.muscleGroups, ...e.secondaryMuscles].includes('quads') }).toEqual({
         id,
@@ -272,7 +331,15 @@ describe('direct-mover rule (master plan section 5)', () => {
   });
 
   it('lists rear delt on every row, so the dumbbell row matches the two barbell rows', () => {
-    for (const id of ['barbell-row', 'barbell-row-pendlay', 'db-single-arm-row', 'inverted-row']) {
+    for (const id of [
+      'barbell-row',
+      'barbell-row-pendlay',
+      'db-single-arm-row',
+      'inverted-row',
+      'seated-cable-row',
+      'band-row',
+      'door-frame-row',
+    ]) {
       expect({ id, rearDelt: byId(id).secondaryMuscles.includes('rear-delt') }).toEqual({
         id,
         rearDelt: true,
@@ -340,7 +407,11 @@ describe('the two exercises added by the master plan section 5 rulings', () => {
 
   it('closes the bodyweight biceps and triceps gaps that used to be exceptions', () => {
     const bw = inTier('bodyweight');
-    expect(bw.filter((e) => e.muscleGroups.includes('biceps')).map((e) => e.id)).toEqual(['chin-up']);
+    // P3a: the band curl is the second, for a user with bands (inventory.ts).
+    expect(bw.filter((e) => e.muscleGroups.includes('biceps')).map((e) => e.id)).toEqual([
+      'chin-up',
+      'band-curl',
+    ]);
     expect(bw.filter((e) => e.muscleGroups.includes('triceps')).map((e) => e.id)).toEqual([
       'bench-dip',
     ]);
@@ -394,6 +465,86 @@ describe('the seven equipment-tier exercises added after the Task 3 review', () 
     for (const [id, muscles] of Object.entries(direct)) {
       expect({ id, direct: [...byId(id).muscleGroups].sort() }).toEqual({ id, direct: muscles });
     }
+  });
+});
+
+describe('the 28 P3a basic-pattern exercises', () => {
+  it('carries no cue, no search string and no note (wording is out of scope for P3a)', () => {
+    for (const id of P3A_IDS) {
+      const e = byId(id);
+      expect({ id, cue: e.formCueId, video: e.videoQuery, note: e.note }).toEqual({
+        id,
+        cue: null,
+        video: null,
+        note: null,
+      });
+    }
+  });
+
+  it('leaves the form-cue contract with formCues.ts untouched', () => {
+    for (const id of P3A_IDS) expect(FORM_CUE_IDS).not.toContain(id);
+  });
+
+  it('marks band exercises as bodyweight-loaded: band tension has no plate step', () => {
+    for (const id of ['band-row', 'band-pull-apart', 'band-lateral-raise', 'band-curl']) {
+      const e = byId(id);
+      expect({ id, bw: e.isBodyweight, modality: e.modality }).toEqual({
+        id,
+        bw: true,
+        modality: 'bodyweight',
+      });
+    }
+  });
+
+  it('tags the hip thrust and the glute bridge glutes direct, hamstrings secondary, single-joint', () => {
+    for (const id of ['barbell-hip-thrust', 'glute-bridge']) {
+      const e = byId(id);
+      expect({ id, direct: [...e.muscleGroups], secondary: [...e.secondaryMuscles], cls: e.loadClass }).toEqual({
+        id,
+        direct: ['glutes'],
+        secondary: ['hamstrings'],
+        cls: 'isolation',
+      });
+    }
+  });
+
+  it('credits the farmer carry with no muscle, like the conditioning entries', () => {
+    const carry = byId('farmer-carry');
+    expect({ direct: [...carry.muscleGroups], secondary: [...carry.secondaryMuscles] }).toEqual({
+      direct: [],
+      secondary: [],
+    });
+  });
+
+  it('gives every dumbbell, bench press and row its pattern-mate tags', () => {
+    const pairs: [string, string][] = [
+      ['db-bench-press', 'barbell-bench-press'],
+      ['db-floor-press', 'barbell-bench-press'],
+      ['incline-push-up', 'push-up'],
+      ['seated-cable-row', 'barbell-row'],
+      ['band-row', 'inverted-row'],
+      ['door-frame-row', 'inverted-row'],
+      ['band-pull-apart', 'face-pull'],
+      ['prone-t-raise', 'face-pull'],
+      ['cable-lateral-raise', 'lateral-raise'],
+      ['band-lateral-raise', 'lateral-raise'],
+      ['leg-extension', 'leg-curl-machine'],
+      ['dead-bug', 'plank'],
+      ['side-plank', 'plank'],
+    ];
+    const tags = (id: string) => ({
+      direct: [...byId(id).muscleGroups].sort(),
+      secondary: [...byId(id).secondaryMuscles].sort(),
+    });
+    for (const [id, mate] of pairs) {
+      if (id === 'leg-extension') {
+        expect(tags(id)).toEqual({ direct: ['quads'], secondary: [] });
+        continue;
+      }
+      expect({ id, ...tags(id) }).toEqual({ id, ...tags(mate) });
+    }
+    expect(tags('cable-triceps-pushdown')).toEqual({ direct: ['triceps'], secondary: [] });
+    expect(tags('band-curl')).toEqual({ direct: ['biceps'], secondary: [] });
   });
 });
 

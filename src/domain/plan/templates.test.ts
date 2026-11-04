@@ -422,7 +422,33 @@ describe('prescriptions', () => {
     // take an AMRAP prescription because no load step exists to progress. Asserted at all three
     // intensities because the slot a substitution lands in decides the intensity, and the
     // prescription must not depend on it.
-    const unloaded = ['push-up', 'pull-up', 'chin-up', 'bench-dip', 'inverted-row', 'pike-push-up'];
+    const unloaded = [
+      'push-up',
+      'pull-up',
+      'chin-up',
+      'bench-dip',
+      'inverted-row',
+      'pike-push-up',
+      // P3a: the same rule, applied to the new unloaded compounds (and to the band row, whose
+      // tension has no load step either).
+      'incline-push-up',
+      'band-row',
+      'door-frame-row',
+      'bw-reverse-lunge',
+      'bw-forward-lunge',
+      'bw-split-squat',
+      'bw-step-up',
+      'bw-squat',
+      'bw-single-leg-rdl',
+    ];
+    // Derived, not just listed: every bodyweight-loaded compound bar the weighted pull-up.
+    expect(
+      Object.values(EXERCISE_BY_ID)
+        .filter((e) => e.isBodyweight && e.isCompoundPrimary && e.id !== 'weighted-pull-up')
+        .filter((e) => !['rower-intervals', 'stair-climber', 'walk'].includes(e.id))
+        .map((e) => e.id)
+        .sort(),
+    ).toEqual([...unloaded].sort());
     for (const id of unloaded) {
       const ex = EXERCISE_BY_ID[id];
       expect(ex, id).toBeDefined();
@@ -434,6 +460,15 @@ describe('prescriptions', () => {
         });
       }
     }
+  });
+
+  it('times the side plank like the plank, and sets the farmer carry no target', () => {
+    // No new number: the side plank reuses the plank's legacy 60 s hold, and the carry has no
+    // sourced duration or distance, so it gets the { kind: 'none' } prescription.
+    const side = EXERCISE_BY_ID['side-plank'];
+    const carry = EXERCISE_BY_ID['farmer-carry'];
+    expect(side && prescriptionFor(side, 'light')).toEqual({ kind: 'time', targetS: 60 }); // [s]
+    expect(carry && prescriptionFor(carry, 'light')).toEqual({ kind: 'none' });
   });
 
   it('keeps a rep range where the bodyweight movement can still be loaded or timed', () => {
@@ -465,6 +500,16 @@ describe('rest intervals follow the content review section 9 load classes', () =
     }
   });
 });
+
+/**
+ * Muscles no LIBRARY exercise trains directly in a tier. P3a emptied the bodyweight row: the band
+ * pull-apart and prone T raise (rear delt) and the band lateral raise (side delt) exist now.
+ */
+const NO_DIRECT_LIBRARY: Record<Equipment, string[]> = {
+  'full-gym': [],
+  'dumbbells-only': [],
+  bodyweight: [],
+};
 
 /**
  * Muscles with no DIRECT exercise after substitution, by equipment tier, for every day count.
@@ -584,7 +629,7 @@ describe('equipment resolution', () => {
       const unreachable = MUSCLE_GROUPS.filter((m) => !reachableDirect.has(m)).sort();
       expect({ equipment, unreachable }).toEqual({
         equipment,
-        unreachable: NO_DIRECT_SLOT[equipment],
+        unreachable: NO_DIRECT_LIBRARY[equipment],
       });
     }
   });
