@@ -79,20 +79,43 @@ describe('rest game styles (ROADMAP F1)', () => {
     }
   });
 
-  it('makes every on-screen key at least 44 by 44 px', () => {
+  /** [px] .rest-sheet padding-left and padding-right without a safe-area inset (Task 9 asserts it). */
+  const SHEET_SIDE_PADDING_PX = 12;
+  /** [px] WCAG 2.2 SC 2.5.8 (Level AA) minimum target, "at least 24 by 24 CSS pixels". */
+  const MIN_TARGET_PX = 24;
+
+  it('makes every on-screen key 44 px tall and lets the grid set its width', () => {
     const key = gameRules.find((rule) => rule.selector === '.view .rest-word-key');
     expect(key).toBeDefined();
     const body = key?.body ?? '';
-    expect((remOf(body, 'min-width') ?? 0) * PX_PER_REM).toBeGreaterThanOrEqual(TARGET_PX);
     expect((remOf(body, 'min-height') ?? 0) * PX_PER_REM).toBeGreaterThanOrEqual(TARGET_PX);
+    expect(body).toMatch(/min-width:\s*0;/);
   });
 
-  it('gives the keyboard six fixed columns of at least 44 px, so it fits a 360 px phone', () => {
+  it('lays QWERTY on 20 half-columns whose key is at least 24 px wide from 320 to 412 px', () => {
     const grid = gameRules.find((rule) => rule.selector === '.rest-word-keyboard');
-    const m = /grid-template-columns:\s*repeat\((\d+),\s*minmax\(([\d.]+)rem/.exec(grid?.body ?? '');
-    expect(m).not.toBeNull();
-    expect(Number(m?.[1])).toBe(6);
-    expect(Number(m?.[2]) * PX_PER_REM).toBeGreaterThanOrEqual(TARGET_PX);
+    const body = grid?.body ?? '';
+    expect(body).toMatch(/grid-template-columns:\s*repeat\(20,\s*minmax\(0,\s*1fr\)\)/);
+    const gapPx = (remOf(body, 'column-gap') ?? Number.NaN) * PX_PER_REM; // [px]
+    expect(gapPx).toBe(4);
+    for (const viewport of [320, 360, 390, 412]) {
+      const width = viewport - 2 * SHEET_SIDE_PADDING_PX; // [px] keyboard width
+      const half = (width - 19 * gapPx) / 20; // [px] one half-column
+      const keyPx = 2 * half + gapPx; // [px] a letter spans two half-columns and the gap between
+      expect({ viewport, ok: keyPx >= MIN_TARGET_PX }).toEqual({ viewport, ok: true });
+    }
+  });
+
+  it('sizes the tiles so Rest Word fills, and does not overflow, a 472 px sheet at 390 x 664', () => {
+    const tile = gameRules.find((rule) => rule.selector === '.rest-word-tile');
+    expect(tile?.body).toMatch(/width:\s*clamp\(1\.5rem,\s*calc\(\(100svh - 29\.75rem\) \/ 6\),\s*2\.125rem\)/);
+    const viewportH = 664; // [px] iPhone 13 Safari with its bars
+    const sheetH = viewportH - 12 * PX_PER_REM; // [px] 100svh - 12rem
+    const chrome = 16.5 * PX_PER_REM; // [px] everything but the six tile rows
+    const gaps = 5 * 4; // [px] five 0.25rem row gaps
+    const tilePx = Math.min(34, Math.max(24, (viewportH - 29.75 * PX_PER_REM) / 6)); // [px]
+    expect(sheetH).toBe(472);
+    expect(chrome + gaps + 6 * tilePx).toBeLessThanOrEqual(sheetH + 0.01);
   });
 
   it('has no hover-only control: no rest-game rule depends on :hover', () => {

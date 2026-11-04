@@ -384,8 +384,6 @@ export type CopyKey =
   // --- Rest games (ROADMAP F1, docs/design/rest-games.md) ---
   | 'button.restWordLaunch'
   | 'button.restWordExit'
-  | 'button.restWordDelete'
-  | 'button.restWordSubmit'
   | 'hero.restWord'
   | 'label.restWordBoard'
   | 'label.restWordKeyboard'
@@ -398,6 +396,12 @@ export type CopyKey =
   | 'status.restGameTimeUp'
   | 'status.restGameAnswer'
   | 'status.restGameProgress'
+  // --- Rest Word, QWERTY redesign (P6) ---
+  | 'button.restWordEnter'
+  | 'button.restWordDel'
+  | 'label.restWordExact'
+  | 'label.restWordPresent'
+  | 'label.restWordAbsent'
   | 'button.backToToday'
   | 'label.bonusSet'
   | 'label.suggestedLoad'
@@ -1256,8 +1260,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // skips or extends the prescribed rest, so no string here may promise that it does.
   'button.restWordLaunch': 'Play Word Game',
   'button.restWordExit': 'Exit Game',
-  'button.restWordDelete': 'Delete Letter',
-  'button.restWordSubmit': 'Submit Guess',
   'hero.restWord': 'Rest Word',
   'label.restWordBoard': 'Word Puzzle Board',
   'label.restWordKeyboard': 'Word Puzzle Keyboard',
@@ -1270,6 +1272,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restGameTimeUp': 'Out of time.',
   'status.restGameAnswer': 'The answer was {answer}.',
   'status.restGameProgress': '{done} of {total} done.',
+  // P6 Rest Word: the two action keys are 3 half-columns wide (about 40 px at 320 px), so their
+  // names are short; the tile states are read aloud and printed in the legend.
+  'button.restWordEnter': 'Enter',
+  'button.restWordDel': 'Del',
+  'label.restWordExact': 'Right Spot',
+  'label.restWordPresent': 'Wrong Spot',
+  'label.restWordAbsent': 'Not in Word',
   // Leaves the finished session. Named for the destination, because after the post-session
   // weigh-in there is nothing left to do here.
   'button.backToToday': 'Back to Today',

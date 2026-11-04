@@ -280,7 +280,7 @@ const gameHeading = () => screen.queryByRole('heading', { name: copy('hero.restW
 function winRound(): void {
   const target = restWordRound(GAME, REST_S, 0).target.toUpperCase();
   for (const letter of target) fireEvent.click(screen.getByRole('button', { name: letter }));
-  fireEvent.click(screen.getByRole('button', { name: copy('button.restWordSubmit') }));
+  fireEvent.click(screen.getByRole('button', { name: copy('button.restWordEnter') }));
 }
 
 describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
