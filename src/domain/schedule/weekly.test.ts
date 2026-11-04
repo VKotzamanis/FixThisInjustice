@@ -32,6 +32,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { closeWeeks, isBeforeProgramme, MAX_WEEKS_EVALUATED } from './weekly';
+import { closeStaleSessions, STALE_SESSION_GRACE_MS } from './staleSessions';
+import { makeSet } from '../../test/fixtures';
 import { completeSession, pausePlan, resumePlan, skipSession, startSession } from './cursor';
 import { assignToday, remainingLabelsThisWeek } from './calendar';
 import {
@@ -253,23 +255,19 @@ describe('closeWeeks — counting', () => {
     expect(reviews(out).map((r) => r.weekStart)).toEqual([PREV_MONDAY]);
   });
 
-  it('counts a planned assignment as neither completed nor skipped', () => {
+  it('defers a week containing a planned assignment', () => {
     const planned = assignToday(seed(TZ_ATHENS), PROFILE_ID, PREV_MONDAY, 'Push');
     expect(assignmentOn(planned, PREV_MONDAY)?.status).toBe('planned');
-    const r = reviews(closeWeeks(planned, PROFILE_ID, NOW_MS))[0];
-    expect(r?.completed).toBe(0);
-    expect(r?.skipped).toBe(0);
-    expect(r?.delta).toBe(-3); // a day that was never closed out is a miss, not a skip
+    expect(closeWeeks(planned, PROFILE_ID, NOW_MS)).toBe(planned);
+    expect(reviews(closeWeeks(planned, PROFILE_ID, NOW_MS))).toEqual([]);
   });
 
-  it('counts an in-progress assignment as neither completed nor skipped', () => {
+  it('defers a week containing an in-progress assignment', () => {
     const planned = assignToday(seed(TZ_ATHENS), PROFILE_ID, PREV_MONDAY, 'Push');
     const open = startSession(planned, PROFILE_ID, PREV_MONDAY, NOW_MS - 6 * DAY_MS); // [ms]
     expect(assignmentOn(open, PREV_MONDAY)?.status).toBe('in-progress');
-    const r = reviews(closeWeeks(open, PROFILE_ID, NOW_MS))[0];
-    expect(r?.completed).toBe(0);
-    expect(r?.skipped).toBe(0);
-    expect(r?.delta).toBe(-3);
+    expect(closeWeeks(open, PROFILE_ID, NOW_MS)).toBe(open);
+    expect(reviews(closeWeeks(open, PROFILE_ID, NOW_MS))).toEqual([]);
   });
 
   /*
@@ -529,4 +527,56 @@ describe('closeWeeks — persistence', () => {
     expect(parsed.state.weeklyReviews[PROFILE_ID]).toEqual(reviews(out));
     expect(parsed.state.pauses[PROFILE_ID]).toEqual(pausesOf(out));
   });
+});
+
+describe('closeWeeks — unresolved assignments (AM-6)', () => {
+  it('waits through Sunday activity grace, then counts the session closed past grace', () => {
+    const lastSetAt = instantOf(PREV_SUNDAY, '23:00', TZ_ATHENS); // [ms] local Sunday 23:00
+    const earlyMonday = instantOf(MONDAY, '00:30', TZ_ATHENS); // [ms] local Monday 00:30
+    const opened = startSession(seed(TZ_ATHENS), PROFILE_ID, PREV_SUNDAY, lastSetAt);
+    const state: AppState = {
+      ...opened,
+      sets: {
+        sunday: makeSet({
+          id: 'sunday',
+          profileId: PROFILE_ID,
+          assignmentDate: PREV_SUNDAY,
+          sessionId: 's-1',
+          loggedAt: lastSetAt,
+        }),
+      },
+    };
+    const waiting = closeStaleSessions(state, PROFILE_ID, MONDAY, earlyMonday);
+    expect(waiting.closed).toEqual([]);
+    expect(closeWeeks(waiting.state, PROFILE_ID, earlyMonday)).toBe(state);
+    expect(reviews(closeWeeks(waiting.state, PROFILE_ID, earlyMonday))).toEqual([]);
+
+    const pastGrace = lastSetAt + STALE_SESSION_GRACE_MS + 1; // [ms] epoch, UTC
+    const closed = closeStaleSessions(state, PROFILE_ID, MONDAY, pastGrace);
+    expect(closed.closed).toEqual([{ date: PREV_SUNDAY, sessionId: 's-1', outcome: 'completed' }]);
+    expect(reviews(closeWeeks(closed.state, PROFILE_ID, pastGrace))).toEqual([
+      expect.objectContaining({ weekStart: PREV_MONDAY, completed: 1, delta: -2 }),
+    ]);
+  });
+
+  it.each(['planned', 'in-progress'] as const)(
+    'keeps later weeks waiting behind an earlier %s row',
+    (status) => {
+      const opened = startSession(seed(TZ_ATHENS), PROFILE_ID, PREV_SUNDAY, NOW_MS);
+      const state: AppState = {
+        ...opened,
+        assignments: {
+          [PROFILE_ID]: (opened.assignments[PROFILE_ID] ?? []).map((a) => ({ ...a, status })),
+        },
+      };
+      const later = NOW_MS + 14 * DAY_MS; // [ms] two weeks later
+      expect(reviews(closeWeeks(state, PROFILE_ID, later))).toEqual([]);
+      const resolved = completeSession(state, PROFILE_ID, PREV_SUNDAY, NOW_MS);
+      expect(reviews(closeWeeks(resolved, PROFILE_ID, later)).map((r) => r.weekStart)).toEqual([
+        PREV_MONDAY,
+        MONDAY,
+        '2026-09-14',
+      ]);
+    },
+  );
 });

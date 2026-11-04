@@ -307,6 +307,8 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'status.staleSessionCompleted'
+  | 'status.staleSessionReleased'
   // --- log, export, migration, settings (P7) ---
   | 'advice.noWeeksYet'
   | 'advice.noSetsLogged'
@@ -1130,6 +1132,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R1: the one notice after a session left open on an earlier day was closed.
+  'status.staleSessionCompleted': 'Your unfinished session was closed with its logged sets.',
+  'status.staleSessionReleased': 'Your unstarted session was released. It is next again.',
 
   // --- log, export, migration, settings (P7) ---
   'advice.noWeeksYet': 'No weeks to show.',

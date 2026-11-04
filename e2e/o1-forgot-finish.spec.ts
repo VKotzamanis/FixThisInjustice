@@ -6,7 +6,6 @@ import { chicago, flushWrites, logSet, openApp, readDocument, seedDocument, setC
 import { MONDAY, WEDNESDAY, e2eDocument } from './support/document';
 
 test('O1: a session left open overnight never blocks the next one', async ({ context }) => {
-  test.fail(); // removed by plan Task 6
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '18:00'));
   const monday = await openApp(context);

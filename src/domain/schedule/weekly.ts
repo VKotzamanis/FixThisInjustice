@@ -39,6 +39,7 @@
 
 import { addDays, compareLocalDate, todayLocal, weekStart } from '../dates';
 import { weeklyQuota } from './quota';
+import { isTerminal } from './cursor';
 import type { AppState, EpochMs, LocalDate, PlanCursor, PlanPause, WeeklyReview } from '../types';
 
 /**
@@ -178,15 +179,25 @@ export function closeWeeks(state: AppState, profileId: string, now: EpochMs): Ap
     if (isAfterProgramme(week.start, cursor)) break;
 
     if (!alreadyReviewed.has(week.start)) {
+      // AM-6: a row inside this week may still complete after midnight during its grace.
+      // Hold later weeks too, so the review backlog continues to close in date order.
+      if (
+        assignments.some(
+          (a) =>
+            !isTerminal(a) &&
+            compareLocalDate(a.date, week.start) >= 0 &&
+            compareLocalDate(a.date, week.end) <= 0,
+        )
+      ) {
+        break;
+      }
       evaluated += 1;
       let completed = 0; // [sessions]
       let skipped = 0; // [sessions]
       for (const a of assignments) {
         if (compareLocalDate(a.date, week.start) < 0) continue;
         if (compareLocalDate(week.end, a.date) < 0) continue;
-        // Only the two terminal statuses are counted. A day left 'planned' or 'in-progress' is
-        // neither a session done nor one deliberately given up, so it falls through both
-        // totals and reaches the review as the miss it is.
+        // Every row inside this week is terminal before grading (AM-6).
         if (a.status === 'completed') completed += 1;
         else if (a.status === 'skipped') skipped += 1;
       }

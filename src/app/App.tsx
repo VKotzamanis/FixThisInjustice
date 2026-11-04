@@ -45,6 +45,7 @@ import { downloadText } from './download';
 import { useWeeklyClose } from './useWeeklyClose';
 import { ReminderSync } from './ReminderSync';
 import { UpdatePrompt } from './UpdatePrompt';
+import { StaleSessionNotice } from './StaleSessionNotice';
 import './appShell.css';
 
 /**
@@ -709,6 +710,7 @@ export function App(): ReactElement {
        * live region a screen reader first meets at the moment its content arrives is
        * announced unreliably.
        */}
+      <StaleSessionNotice />
       <ToastQueue />
 
     </ToastProvider>

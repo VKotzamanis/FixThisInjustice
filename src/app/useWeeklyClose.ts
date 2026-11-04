@@ -60,6 +60,9 @@ export function useWeeklyClose(): void {
      * guards can never disagree about what time it is.
      */
     const close = (now: EpochMs): void => {
+      // Spec R1: a session left open on an earlier day is closed BEFORE the weeks are graded, so
+      // the week it belongs to counts it.
+      useAppStore.getState().closeStaleSessions(profileId, now); // [ms] epoch, UTC
       useAppStore.getState().closeWeeks(profileId, now); // [ms] epoch, UTC
     };
 

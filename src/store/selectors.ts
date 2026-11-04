@@ -8,6 +8,7 @@ import type {
   LoggedSet,
   PlanTemplate,
   Profile,
+  SessionAssignment,
   WeeklyReview,
 } from '../domain/types';
 import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
@@ -19,6 +20,7 @@ import type { RestTimer } from '../domain/training/restTimer';
 import type { SaveError } from './index';
 import { useAppStore } from './index';
 import { readRaw } from './persistence';
+import { openAssignment } from '../domain/schedule/staleSessions';
 
 /**
  * The profile the app is currently operating on, or null before setup.
@@ -264,8 +266,8 @@ export function useExerciseHistory(exerciseId: string): LoggedSet[] {
 /**
  * Every set logged against the training day for the active profile, in programme order.
  *
- * The day is the session slice's `activeAssignmentDate` when a session is open, and the
- * profile's civil today otherwise. It is resolved during render rather than inside the memo so
+ * The day is the open assignment's date, then the session slice's `activeAssignmentDate`, then
+ * the profile's civil today. It is resolved during render rather than inside the memo so
  * that it is a dependency: a "YYYY-MM-DD" string compares by value, so an unchanged day costs
  * no re-filtering, and the day rolling over past midnight is what makes the memo recompute.
  * Reading the clock inside the memo instead would serve yesterday's sets until some unrelated
@@ -278,10 +280,15 @@ export function useTodaysSets(): LoggedSet[] {
     s.activeProfileId === null ? null : (s.profiles[s.activeProfileId]?.timezone ?? null),
   );
   const activeDate = useAppStore((s) => s.session.activeAssignmentDate);
+  // Spec R1 / C15: the open session's own date first, from the document, which survives an iOS
+  // relaunch; the mirrored slice date next; the clock last.
+  const openDate = useAppStore((s) =>
+    s.activeProfileId === null ? null : (openAssignment(s, s.activeProfileId)?.date ?? null),
+  );
   // todayLocal throws RangeError on an unusable IANA zone, which the schema refuses at load,
   // so a throw here is a corrupt document reaching the error boundary rather than a state the
   // view should render around (the same rule useNutritionTargets follows).
-  const date = activeDate ?? (timezone === null ? null : todayLocal(timezone));
+  const date = openDate ?? activeDate ?? (timezone === null ? null : todayLocal(timezone));
   return useMemo(() => {
     if (profileId === null || date === null) return [];
     return sortSetHistory(
@@ -290,7 +297,7 @@ export function useTodaysSets(): LoggedSet[] {
   }, [sets, profileId, date]);
 }
 
-/** The running rest interval, or null. Session slice: never persisted, mirrored per tab. */
+/** The running rest interval, or null. Live slice, mirrored per tab and saved on the open row. */
 export function useRestTimer(): RestTimer | null {
   return useAppStore((s) => s.session.restTimer);
 }
@@ -379,4 +386,12 @@ export function usePendingMotivation(): WeeklyReview | null {
         : pendingMotivation({ weeklyReviews, motivation, profiles, cursors }, profileId, now),
     [weeklyReviews, motivation, profiles, cursors, profileId, now],
   );
+}
+
+/**
+ * The active profile's open (in-progress) session, on whatever date it was opened, or null
+ * (spec R1). Returns the stored row itself, so the snapshot is stable between renders.
+ */
+export function useOpenAssignment(): SessionAssignment | null {
+  return useAppStore((s) => (s.activeProfileId === null ? null : openAssignment(s, s.activeProfileId)));
 }

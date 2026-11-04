@@ -15,8 +15,13 @@ import type {
   SetupDraft,
   UiPrefs,
 } from '../domain/types';
-import { defaultState } from '../domain/schema';
-import { compareLocalDate } from '../domain/dates';
+import { SessionAssignmentSchema, defaultState } from '../domain/schema';
+import { compareLocalDate, todayLocal } from '../domain/dates';
+import {
+  closeStaleSessions as closeStaleSessionsPure,
+  openAssignment,
+  type StaleClosure,
+} from '../domain/schedule/staleSessions';
 import { newId } from '../domain/ids';
 import { seedBeverageTargetML } from '../domain/nutrition';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
@@ -109,6 +114,12 @@ export interface StoreStatus {
    * something they did in a previous session. selectState() therefore does not read it.
    */
   lastActionError: string | null;
+  /**
+   * Sessions the last catch-up closed because they were left open on an earlier civil date
+   * (spec R1), for the one notice the shell shows. Not persisted. Optional so the status
+   * literals existing suites build stay valid; undefined and [] both mean nothing to say.
+   */
+  staleClosures?: readonly StaleClosure[] | undefined;
 }
 
 /**
@@ -250,8 +261,21 @@ export interface AppActions {
    * @param now [ms] epoch UTC, the instant of the drink.
    */
   addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void;
-  /** Starts, replaces or clears the rest interval. Session slice only; never persisted. */
+  /**
+   * Starts, replaces or clears the rest interval. Lives in the session slice and, since spec R1,
+   * also on the open assignment in fti.v3, so an iOS relaunch keeps a running rest.
+   */
   setRestTimer(t: RestTimer | null): void;
+  /**
+   * Spec R1: closes this profile's sessions left open on an earlier civil date (completed with
+   * their sets, else released so the session stays next), resets the session slice when anything
+   * closed, and records what closed in status.staleClosures. Returns what it closed.
+   *
+   * @param now [ms] epoch, UTC
+   */
+  closeStaleSessions(profileId: string, now: EpochMs): readonly StaleClosure[];
+  /** Empties status.staleClosures once the shell has shown its notice. */
+  acknowledgeStaleClosures(): void;
   /**
    * Counts one won rest-game round in this lifting day (ROADMAP F1). Session slice only: mirrored
    * to sessionStorage, reset by clearSessionSlice, never written to fti.v3. Touches no timer field.
@@ -378,6 +402,46 @@ function withoutPersisting(mutate: () => void): void {
   }
 }
 
+/**
+ * Spec R1 / audit C04: the running rest also goes onto the OPEN assignment in fti.v3, so an iOS
+ * relaunch that empties sessionStorage keeps it. Written only when the row still parses with the
+ * loader's schema: the store never writes a document it could not read back (spec R5).
+ */
+function withPersistedRest(s: AppState, t: RestTimer | null): AppState['assignments'] {
+  const profileId = s.activeProfileId;
+  if (profileId === null) return s.assignments;
+  const open = openAssignment(s, profileId);
+  if (open === null) return s.assignments;
+  const candidate: SessionAssignment = { ...open };
+  if (t === null) {
+    if (candidate.rest === undefined) return s.assignments;
+    delete candidate.rest;
+  } else {
+    candidate.rest = t;
+  }
+  if (!SessionAssignmentSchema.safeParse(candidate).success) return s.assignments;
+  return {
+    ...s.assignments,
+    [profileId]: (s.assignments[profileId] ?? []).map((a) => (a === open ? candidate : a)),
+  };
+}
+
+/**
+ * The session slice after a document is installed (hydrate, import). An empty slice takes the
+ * rest persisted on the open assignment; a slice the tab's own mirror restored wins. A rest that
+ * has already ended is not revived: its cue would sound on launch for a rest long finished.
+ *
+ * @param now [ms] epoch, UTC
+ */
+export function restoredSession(session: SessionState, state: AppState, now: EpochMs): SessionState {
+  if (session.restTimer !== null) return session;
+  const profileId = state.activeProfileId;
+  if (profileId === null) return session;
+  const rest = openAssignment(state, profileId)?.rest;
+  if (rest === undefined || rest.endsAt <= now) return session;
+  return { ...session, restTimer: rest };
+}
+
 export const useAppStore = create<AppStore>()((set, get) => {
   /*
    * P3's schedule slice, built before the store object so the two transitions that END a
@@ -490,6 +554,7 @@ export const useAppStore = create<AppStore>()((set, get) => {
       if (result.ok) {
         set({
           ...result.state,
+          session: restoredSession(get().session, result.state, Date.now()), // [ms] epoch, UTC
           status: { ...get().status, lastLoadError: null, lastLoadRaw: null, hydrated: true },
         });
         return;
@@ -894,7 +959,8 @@ export const useAppStore = create<AppStore>()((set, get) => {
       const session: SessionState = { ...s.session, restTimer: t };
       // Mirrored: this is the field a mid-session reload must not lose.
       saveSessionMirror(session);
-      return { ...s, session };
+      // Spec R1: and persisted on the open assignment, which an iOS relaunch does not lose.
+      return { ...s, session, assignments: withPersistedRest(s, t) };
     });
   },
 
@@ -958,6 +1024,28 @@ export const useAppStore = create<AppStore>()((set, get) => {
       clearSessionMirror();
       return { ...s, session: EMPTY_SESSION };
     });
+  },
+
+  closeStaleSessions(profileId: string, now: EpochMs): readonly StaleClosure[] {
+    const s = get();
+    const profile = s.profiles[profileId];
+    if (profile === undefined) return [];
+    const today = todayLocal(profile.timezone, now); // the profile's civil date
+    const result = closeStaleSessionsPure(selectState(s), profileId, today, now);
+    if (result.closed.length === 0) return [];
+    set({
+      ...result.state,
+      // The slice described the session just closed (its timer, its day, its bonus cards).
+      session: EMPTY_SESSION,
+      status: { ...get().status, staleClosures: result.closed },
+    });
+    clearSessionMirror();
+    return result.closed;
+  },
+
+  acknowledgeStaleClosures(): void {
+    if ((get().status.staleClosures ?? []).length === 0) return;
+    set({ status: { ...get().status, staleClosures: [] } });
   },
 
   /*
