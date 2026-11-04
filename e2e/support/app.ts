@@ -81,9 +81,15 @@ export async function flushWrites(page: Page): Promise<void> {
   });
 }
 
-/** Taps Start on Today and waits for the Train view's Finish control. */
+/**
+ * Opens Today, taps Start and waits for the Train view's Finish control. A relaunch reopens the
+ * last view (`ui.lastView`), which after a session is Train, so Today is selected first.
+ */
 export async function startFromToday(page: Page): Promise<void> {
-  await page.getByRole('button', { name: LABEL.start }).click();
+  // Action timeouts below the 60 s test timeout: a missing control must FAIL (status 'failed'),
+  // not time the test out ('timedOut'), or a test.fail() repro spec reports an unexpected result.
+  await page.getByRole('navigation').getByRole('button', { name: LABEL.todayTab, exact: true }).click({ timeout: 10_000 });
+  await page.getByRole('button', { name: LABEL.start }).click({ timeout: 10_000 });
   await expect(page.getByRole('button', { name: LABEL.finish })).toBeVisible();
 }
 

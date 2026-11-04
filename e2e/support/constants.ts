@@ -29,6 +29,7 @@ export const PROFILE_ID = 'e2e-profile';
  * task that adds their keys (plan Task 17).
  */
 export const LABEL = {
+  todayTab: 'today',
   start: "LET'S GO BABES",
   finish: "that's a wrap",
   skipToday: 'not today satan',

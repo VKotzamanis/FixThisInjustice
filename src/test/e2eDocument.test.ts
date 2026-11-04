@@ -35,6 +35,7 @@ describe('the e2e document builder', () => {
   });
 
   it('taps the words the app renders on the limelight skin', () => {
+    expect(LABEL.todayTab).toBe(copyFor('limelight', 'nav.today'));
     expect(LABEL.start).toBe(copyFor('limelight', 'button.startSession'));
     expect(LABEL.finish).toBe(copyFor('limelight', 'button.finishSession'));
     expect(LABEL.skipToday).toBe(copyFor('limelight', 'button.skipToday'));
