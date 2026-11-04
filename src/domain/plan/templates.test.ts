@@ -524,7 +524,9 @@ const NO_DIRECT_LIBRARY: Record<Equipment, string[]> = {
 const NO_DIRECT_SLOT: Record<Equipment, string[]> = {
   'full-gym': [],
   'dumbbells-only': [],
-  bodyweight: ['rear-delt', 'side-delt'],
+  // P3a: empty. The band pull-apart and prone T raise (rear delt) and the band lateral raise
+  // (side delt) give the tier direct work; the slots list them, so both gaps closed.
+  bodyweight: [],
 };
 
 /**
@@ -553,7 +555,8 @@ describe('equipment resolution', () => {
   it('skips a candidate already used in the same session', () => {
     expect(slot).toBeDefined();
     if (!slot) return;
-    expect(resolveSlot(slot, 'bodyweight', new Set(['push-up']))).toBeNull();
+    expect(resolveSlot(slot, 'bodyweight', new Set(['push-up']))?.id).toBe('incline-push-up');
+    expect(resolveSlot(slot, 'bodyweight', new Set(['push-up', 'incline-push-up']))).toBeNull();
     expect(resolveSlot(slot, 'full-gym', new Set(['barbell-bench-press']))?.id).toBe(
       'incline-db-press',
     );
@@ -757,6 +760,52 @@ describe('the two combination access levels resolve identically to their dominan
       expect(bandMusclesFor(d, 'full-gym').length).toBeGreaterThanOrEqual(
         bandMusclesFor(d, 'dumbbells-only').length,
       );
+    }
+  });
+});
+
+describe('P3a: lunges and lower days', () => {
+  const LUNGE_FAMILY = new Set([
+    'bulgarian-split-squat',
+    'db-reverse-lunge',
+    'db-walking-lunge',
+    'db-step-up',
+    'bw-reverse-lunge',
+    'bw-forward-lunge',
+    'bw-split-squat',
+    'bw-step-up',
+  ]);
+  it('lists only lunge-family candidates in every lunge slot', () => {
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        for (const slot of session.slots) {
+          if (slot.role !== 'lunge') continue;
+          for (const id of slot.candidates) expect({ d, id, lunge: LUNGE_FAMILY.has(id) }).toEqual({ d, id, lunge: true });
+        }
+      }
+    }
+  });
+
+  it('gives every Lower B and Legs B session a lunge slot', () => {
+    for (const d of [4, 5, 6] as const) {
+      const session = SPLIT_TEMPLATES[d].sessions.find((s) => s.label === 'Lower B' || s.label === 'Legs B');
+      expect(session?.slots.some((slot) => slot.role === 'lunge')).toBe(true);
+    }
+  });
+
+  it('never lists a push-up in any slot of a lower day (audit D08)', () => {
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        if (!/^(Lower|Legs)/.test(session.label)) continue;
+        for (const slot of session.slots) {
+          expect({ d, label: session.label, role: slot.role, pushUp: slot.candidates.some((id) => id.includes('push-up')) }).toEqual({
+            d,
+            label: session.label,
+            role: slot.role,
+            pushUp: false,
+          });
+        }
+      }
     }
   });
 });

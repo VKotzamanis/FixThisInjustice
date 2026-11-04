@@ -348,9 +348,8 @@ describe('swapAlternatives (L2)', () => {
       .find((slot) => slot.candidates.includes('barbell-bench-press'))?.candidates;
     expect(peers).toBeDefined();
     // The curated "best first" list leads, minus the exercise itself.
-    expect(suggested.slice(0, 2).map((e) => e.id)).toEqual(
-      (peers ?? []).filter((id) => id !== 'barbell-bench-press'),
-    );
+    const curated = (peers ?? []).filter((id) => id !== 'barbell-bench-press');
+    expect(suggested.slice(0, curated.length).map((e) => e.id)).toEqual(curated);
     for (const e of suggested) {
       expect({ id: e.id, shares: e.muscleGroups.some((m) => bench.muscleGroups.includes(m)) }).toEqual({
         id: e.id,

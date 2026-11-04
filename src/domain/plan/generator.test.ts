@@ -694,23 +694,27 @@ describe('equipment substitution', () => {
         for (const s of plan.sessions) expect(s.exercises.length).toBeGreaterThan(0);
       }
     }
+    // P3a: the four-day push-up slot moved from Lower B to Upper B (full gym 6,6,6,6 ->
+    // 6,6,7,5); the lunge, band and bodyweight candidates fill the slots the sub-gym tiers used to
+    // drop. These are tier-wide figures (no inventory filter); the inventory matrix below covers
+    // the rest.
     expect(sizes).toEqual({
-      '2': { 'full-gym': [7, 7], 'dumbbells-only': [7, 7], bodyweight: [6, 5] },
-      '3': { 'full-gym': [6, 7, 6], 'dumbbells-only': [6, 7, 6], bodyweight: [4, 6, 3] },
+      '2': { 'full-gym': [7, 7], 'dumbbells-only': [7, 7], bodyweight: [7, 7] },
+      '3': { 'full-gym': [6, 7, 6], 'dumbbells-only': [6, 7, 6], bodyweight: [6, 6, 6] },
       '4': {
-        'full-gym': [6, 6, 6, 6],
-        'dumbbells-only': [6, 6, 6, 5],
-        bodyweight: [3, 4, 4, 4],
+        'full-gym': [6, 6, 7, 5],
+        'dumbbells-only': [6, 6, 7, 5],
+        bodyweight: [6, 5, 7, 5],
       },
       '5': {
         'full-gym': [6, 6, 6, 5, 6],
-        'dumbbells-only': [6, 6, 6, 4, 6],
-        bodyweight: [3, 4, 4, 3, 4],
+        'dumbbells-only': [6, 6, 6, 5, 6],
+        bodyweight: [6, 5, 6, 5, 6],
       },
       '6': {
         'full-gym': [5, 5, 5, 5, 5, 5],
-        'dumbbells-only': [5, 4, 5, 5, 5, 4],
-        bodyweight: [3, 2, 3, 4, 4, 3],
+        'dumbbells-only': [5, 5, 5, 5, 5, 5],
+        bodyweight: [5, 4, 4, 5, 5, 5],
       },
     });
   });
@@ -749,69 +753,10 @@ describe('equipment substitution', () => {
       }
     }
     expect(census).toEqual({
-      '2': {
-        bodyweight: [
-          'Full body A/lateral raise',
-          'Full body B/rear delt',
-          'Full body B/elbow flexion',
-        ],
-      },
-      '3': {
-        bodyweight: [
-          'Full body A/lateral raise',
-          'Full body A/elbow flexion',
-          'Full body B/knee flexion',
-          'Full body C/push-up',
-          'Full body C/rear delt',
-          'Full body C/elbow flexion',
-        ],
-      },
-      '4': {
-        'dumbbells-only': ['Lower B/split squat'],
-        bodyweight: [
-          'Upper A/incline press',
-          'Upper A/lateral raise',
-          'Upper A/elbow flexion',
-          'Lower A/leg press',
-          'Lower A/knee flexion',
-          'Upper B/rear delt',
-          'Upper B/elbow flexion',
-          'Lower B/split squat',
-          'Lower B/lateral raise',
-        ],
-      },
-      '5': {
-        'dumbbells-only': ['Lower B/split squat'],
-        bodyweight: [
-          'Upper A/incline press',
-          'Upper A/lateral raise',
-          'Upper A/elbow flexion',
-          'Lower A/leg press',
-          'Lower A/knee flexion',
-          'Upper B/rear delt',
-          'Upper B/elbow flexion',
-          'Lower B/split squat',
-          'Lower B/lateral raise',
-          'Accessory/rear delt',
-          'Accessory/lateral raise',
-        ],
-      },
-      '6': {
-        'dumbbells-only': ['Pull A/elbow flexion', 'Legs B/split squat'],
-        bodyweight: [
-          'Push A/incline press',
-          'Push A/lateral raise',
-          'Pull A/rear delt',
-          'Pull A/elbow flexion',
-          'Pull A/elbow flexion',
-          'Legs A/leg press',
-          'Legs A/knee flexion',
-          'Push B/lateral raise',
-          'Pull B/rear delt',
-          'Legs B/split squat',
-          'Legs B/lateral raise',
-        ],
-      },
+      '3': { bodyweight: ['Full body B/knee flexion'] },
+      '4': { bodyweight: ['Lower A/knee flexion'] },
+      '5': { bodyweight: ['Lower A/knee flexion'] },
+      '6': { bodyweight: ['Pull A/elbow flexion', 'Legs A/knee flexion'] },
     });
   });
 });
