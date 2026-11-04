@@ -163,3 +163,23 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+
+  # Spec R12: the owner's bugs reproduced in phone emulation (Chromium, iPhone 13 + Pixel 7),
+  # one worker. Playwright 1.63.0 installs Chromium revision 1243, the one the specs were run on.
+  e2e:
+    runs-on: ubuntu-latest
+    env:
+      VITE_REMINDER_API: ${{ vars.VITE_REMINDER_API }}
+      VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run e2e

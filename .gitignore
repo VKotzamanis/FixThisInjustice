@@ -39,3 +39,8 @@ docs/private/
 
 # Raw image-generation originals (provenance, ~17 MB): local only; shipped art is src/assets/art + public/icons.
 agy-artifacts/gen-*/
+
+# Playwright output
+test-results/
+playwright-report/
+blob-report/

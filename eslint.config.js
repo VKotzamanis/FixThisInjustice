@@ -129,6 +129,16 @@ export default tseslint.config(
     },
   },
   {
+    // e2e/ drives the built app from outside. Its page.evaluate callbacks run in the browser
+    // under test and seed or read fti.v3 there; that is a harness, not application code, so the
+    // storage bans are lifted for it alone. The toISOString ban stays.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    rules: {
+      'no-restricted-globals': 'off',
+      'no-restricted-syntax': ['error', noToISOString],
+    },
+  },
+  {
     // eslint.config.js itself is JavaScript and is not in a TypeScript project.
     files: ['**/*.js'],
     extends: [tseslint.configs.disableTypeChecked],

@@ -31,6 +31,7 @@ npx vitest run --maxWorkers=1 src/domain src/content
 npx vitest run --maxWorkers=1 src/ui
 npx vitest run --maxWorkers=1 src/app src/store src/skins src/test src/config build
 npm run build && bash scripts/check-dist-csp.sh
+npm run e2e                          # Playwright 1.63.0, Chromium 1243, iphone13 + pixel7, 1 worker
 cd worker && npx tsc --noEmit -p . && npx vitest run --maxWorkers=1
 ```
 - Machine: 16 GB shared with MATLAB. Always `--maxWorkers=1`, by group. "Test timed out" is not an assertion failure.
