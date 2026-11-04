@@ -311,6 +311,23 @@ describe('the schedule controls', () => {
     expect(settings()?.leadMinutes).toEqual([]);
   });
 
+  it('clearing the day-of time writes nothing and throws nothing', () => {
+    seed({ enabled: true, device: SYNCED });
+    render(<ReminderSettingsPanel />);
+    const input = screen.getByLabelText(copyFor('limelight', 'label.reminderDayOfTime'));
+    const before = useAppStore.getState();
+    const listener = vi.fn();
+    const unsubscribe = useAppStore.subscribe(listener);
+    try {
+      expect(() => fireEvent.change(input, { target: { value: '' } })).not.toThrow();
+      expect(listener).not.toHaveBeenCalled();
+      expect(useAppStore.getState()).toBe(before);
+      expect(input).toHaveValue(before.reminderSettings[before.activeProfileId ?? '']?.dayOfTime);
+    } finally {
+      unsubscribe();
+    }
+  });
+
   it('writes the day-of reminder time', () => {
     seed({ enabled: true, device: SYNCED });
     render(<ReminderSettingsPanel />);

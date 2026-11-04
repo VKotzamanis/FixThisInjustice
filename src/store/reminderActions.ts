@@ -22,6 +22,8 @@
 // Units: PushDevice.createdAt and lastSyncAt are epoch milliseconds, UTC.
 // ReminderSettings.leadMinutes are minutes before a slot's start time.
 
+import { ReminderSettingsSchema } from '../domain/schema';
+import { parseOrThrow } from './validate';
 import { requireProfile } from './scheduleActions';
 import type { AppState, PushDevice, ReminderSettings } from '../domain/types';
 
@@ -73,14 +75,16 @@ export function createReminderActions(deps: ReminderActionDeps): ReminderActions
     setReminderSettings: (profileId, settings) => {
       deps.set((s) => {
         requireProfile(s, 'setReminderSettings', profileId);
-        if (sameSettings(s.reminderSettings[profileId], settings)) return s;
+        // Spec R5 / audit B02: a cleared time input is '', which the loader refuses.
+        const parsed = parseOrThrow(ReminderSettingsSchema, settings, 'setReminderSettings');
+        if (sameSettings(s.reminderSettings[profileId], parsed)) return s;
         return {
           ...s,
           // The array is copied so a caller that keeps mutating the one it passed cannot
           // change the stored document behind the persistence subscription's back.
           reminderSettings: {
             ...s.reminderSettings,
-            [profileId]: { ...settings, leadMinutes: [...settings.leadMinutes] },
+            [profileId]: { ...parsed, leadMinutes: [...parsed.leadMinutes] },
           },
         };
       });

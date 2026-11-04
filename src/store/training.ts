@@ -10,7 +10,6 @@
 //
 // Units, per master plan section 3: mass [kg], volume [mL], duration [s], instants [ms] epoch
 // UTC. Nothing derived is stored (A28).
-import { z } from 'zod';
 import {
   BodyMassEntrySchema,
   ExerciseSchema,
@@ -18,6 +17,7 @@ import {
   LoggedSetSchema,
   SessionAssignmentSchema,
 } from '../domain/schema';
+import { parseOrThrow } from './validate';
 import { compareLocalDate } from '../domain/dates';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
 import {
@@ -64,22 +64,6 @@ export function slotTaken(
       s.exerciseId === set.exerciseId &&
       s.setNumber === set.setNumber,
   );
-}
-
-/**
- * Validates against a schema or throws, naming the field that failed.
- *
- * The message is assembled the way parseState assembles its own — first issue, path then
- * reason — rather than from `error.message`, which in Zod 4 is the serialised issue array and
- * reads as a wall of JSON in a thrown Error.
- */
-function parseOrThrow<S extends z.ZodType>(schema: S, value: unknown, what: string): z.output<S> {
-  const result = schema.safeParse(value);
-  if (result.success) return result.data;
-  const first = result.error.issues[0];
-  const where = first === undefined ? '(root)' : first.path.join('.') || '(root)';
-  const why = first === undefined ? 'unknown validation failure' : first.message;
-  throw new Error(`${what}: ${where}: ${why}`);
 }
 
 /**

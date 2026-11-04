@@ -8,7 +8,7 @@ import {
 } from '../../config/reminders';
 import { FORMAT, copy, type CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
-import { localTimeOf } from '../../domain/dates';
+import { isValidLocalTime, localTimeOf } from '../../domain/dates';
 import {
   pushAvailability,
   subscribe,
@@ -233,8 +233,14 @@ export function ReminderSettingsPanel(): JSX.Element | null {
 
   const handleDayOfTime = useCallback(
     (time: LocalTime): void => {
-      if (profileId === null) return;
-      useAppStore.getState().setReminderSettings(profileId, { ...settings, dayOfTime: time });
+      // Spec R5: a cleared or invalid picker value must never reach the store.
+      if (profileId === null || !isValidLocalTime(time)) return;
+      try {
+        useAppStore.getState().setReminderSettings(profileId, { ...settings, dayOfTime: time });
+      } catch {
+        // AM-9b: the store refused (it wrote nothing), so the controlled field keeps the stored
+        // value. No sync-failure line: nothing was sent, and saying so would be false.
+      }
     },
     [profileId, settings],
   );

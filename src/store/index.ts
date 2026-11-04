@@ -15,7 +15,7 @@ import type {
   SetupDraft,
   UiPrefs,
 } from '../domain/types';
-import { SessionAssignmentSchema, defaultState } from '../domain/schema';
+import { IntakeEntrySchema, ProfileSchema, SessionAssignmentSchema, defaultState } from '../domain/schema';
 import { compareLocalDate, todayLocal } from '../domain/dates';
 import {
   closeStaleSessions as closeStaleSessionsPure,
@@ -23,7 +23,6 @@ import {
   type StaleClosure,
 } from '../domain/schedule/staleSessions';
 import { newId } from '../domain/ids';
-import { seedBeverageTargetML } from '../domain/nutrition';
 import { EXERCISE_BY_ID } from '../domain/plan/library';
 import type { RestTimer } from '../domain/training/restTimer';
 import type { SessionEditOp } from '../domain/training/sessionEdits';
@@ -36,6 +35,8 @@ import { createMotivationActions, type MotivationActions } from './motivationAct
 import { createReminderActions, type ReminderActions } from './reminderActions';
 import { createFunActions, type FunActions } from './funActions';
 import { applyReplacePlan, applyRestartProgramme } from './programme';
+import { applyCompleteSetup, applyCreateProfile, applySetAvailability, type SetupResult } from './setup';
+import { parseOrThrow } from './validate';
 import type { ProgrammeChoice } from '../domain/plan/lifecycle';
 import {
   UNDO_WINDOW_MS,
@@ -206,6 +207,13 @@ export interface AppActions {
   setAvailability(profileId: string, a: Availability): void;
   /** Points the app at another stored profile. Throws on an unknown id. */
   setActiveProfile(id: string): void;
+  /**
+   * Spec R5 / audit A14: the setup wizard's confirm as ONE write. Validates the profile, the
+   * availability and the plan with the loader's schemas, then creates the profile, stores the
+   * availability, starts the plan on `startedOn` and clears the setup draft in a single set().
+   * Throws, writing nothing, on any refusal.
+   */
+  completeSetup(result: SetupResult): void;
 
   // P4
   /**
@@ -689,70 +697,10 @@ export const useAppStore = create<AppStore>()((set, get) => {
   },
 
   createProfile(p: Profile): void {
-    const s = get();
-    // Create, not upsert. Reusing an existing id would silently replace that
-    // profile's record while every log keyed by the id stayed put, leaving a
-    // history that belongs to nobody now stored under someone else's name.
-    // updateProfile is the way to change a profile that exists; a caller that
-    // reaches here with a live id has a bug, and losing a person's identity is
-    // not an acceptable way to report it.
-    if (s.profiles[p.id] !== undefined) {
-      throw new Error(`createProfile: "${p.id}" already exists`);
-    }
-    // The hydration target is a stored preference, not a derived value, so it
-    // has to hold a number from the moment the profile exists. A caller that
-    // left it at 0 gets the IOM 2005 beverage seed for the profile's sex
-    // (nutrition.ts, seedBeverageTargetML) rather than a silent zero target.
-    // With a non-disclosed sex the reference is a RANGE, so the seed function
-    // owns that one conversion and states why; see its comment (decision A1).
-    const stored: Profile =
-      p.hydration.dailyTargetML > 0
-        ? p
-        : {
-            ...p,
-            hydration: { ...p.hydration, dailyTargetML: seedBeverageTargetML(p.body.sex) }, // [mL/day]
-          };
-    set({
-      // Keyed by the profile's own id, which is the invariant the schema's root
-      // refinement checks: profiles[id].id === id.
-      profiles: { ...s.profiles, [stored.id]: stored },
-      activeProfileId: s.activeProfileId ?? stored.id,
-      /*
-       * Seeded here: the six ARRAY-valued per-profile logs. Every later action
-       * that appends to one of them (logIntake, P3's assignments and pauses,
-       * P4's body mass and hydration, P6's weekly reviews) can then read the key
-       * without a guard, and an empty array is the truthful value for a profile
-       * that has logged nothing.
-       *
-       * Deliberately NOT seeded, and each for the same reason — no key is the
-       * honest representation of "not collected yet", and any value written here
-       * would be one the user never supplied:
-       *   availability      no weekday slots collected until the wizard asks
-       *   cursors           no plan; seeding one would need a planId to point at,
-       *                     and useActivePlan could no longer tell "no plan" from
-       *                     "a plan"
-       *   reminderSettings  P5; absent means never configured, not "disabled"
-       *   motivation        P6; absent means nothing has been shown yet
-       *   specimens         P8; absent means nothing drawn
-       *   capsules          P8; absent means no capsule, which is not the same as
-       *                     the null a written-and-opened capsule leaves behind
-       *   customExercises   P4; absent and empty read identically through `?? []`
-       *   notes             P7 migration; same, through `?? {}`
-       * Both of the last two carry Zod defaults at the root, so an absent key
-       * survives a save/load round trip as an empty collection either way.
-       *
-       * `?? []` rather than a bare []: belt and braces behind the duplicate-id
-       * guard above, which already makes a pre-existing array for this id
-       * unreachable. It costs nothing and it must never become a way to erase a
-       * profile's history.
-       */
-      pauses: { ...s.pauses, [stored.id]: s.pauses[stored.id] ?? [] },
-      assignments: { ...s.assignments, [stored.id]: s.assignments[stored.id] ?? [] },
-      bodyMass: { ...s.bodyMass, [stored.id]: s.bodyMass[stored.id] ?? [] },
-      hydration: { ...s.hydration, [stored.id]: s.hydration[stored.id] ?? [] },
-      intake: { ...s.intake, [stored.id]: s.intake[stored.id] ?? [] },
-      weeklyReviews: { ...s.weeklyReviews, [stored.id]: s.weeklyReviews[stored.id] ?? [] },
-    });
+    // Spec R5: create-not-upsert, the beverage seed, the seeded log arrays and the loader's
+    // schema all live in applyCreateProfile (./setup.ts), shared with completeSetup. A refusal
+    // throws before set(), so nothing is written.
+    set(applyCreateProfile(get(), p, 'createProfile'));
   },
 
   updateProfile(id: string, patch: Partial<Profile>): void {
@@ -774,7 +722,9 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // Shallow by contract: a caller patching `body` or `goal` supplies the whole
     // sub-object. `id` is not re-derived from the patch, so a patch carrying a
     // different id cannot move the record away from its key.
-    set({ profiles: { ...s.profiles, [id]: { ...current, ...patch, id } } });
+    // Spec R5: the merged record is parsed with the loader's schema before it is stored.
+    const merged = parseOrThrow(ProfileSchema, { ...current, ...patch, id }, 'updateProfile');
+    set({ profiles: { ...s.profiles, [id]: merged } });
   },
 
   setPlan(profileId: string, plan: PlanTemplate, startedOn: LocalDate): void {
@@ -807,6 +757,13 @@ export const useAppStore = create<AppStore>()((set, get) => {
     clearSessionMirror();
   },
 
+  completeSetup(result: SetupResult): void {
+    const next = applyCompleteSetup(get(), result, newId());
+    // Same as setPlan: the session slice and its mirror go with any earlier schedule.
+    set({ ...next, session: EMPTY_SESSION });
+    clearSessionMirror();
+  },
+
   logIntake(profileId: string, entry: IntakeEntry): void {
     const s = get();
     requireProfile(s, 'logIntake', profileId);
@@ -815,20 +772,19 @@ export const useAppStore = create<AppStore>()((set, get) => {
         `logIntake: entry.profileId "${entry.profileId}" does not match the map key "${profileId}"`,
       );
     }
+    const parsed = parseOrThrow(IntakeEntrySchema, entry, 'logIntake');
     const list = s.intake[profileId] ?? [];
     // One entry per civil date: a second entry for the same date replaces the
     // first, so the daily total the user last typed is the one stored. Kept in
     // date order so every reader can assume it without re-sorting.
-    const next = [...list.filter((e) => e.date !== entry.date), entry].sort((a, b) =>
+    const next = [...list.filter((e) => e.date !== parsed.date), parsed].sort((a, b) =>
       compareLocalDate(a.date, b.date),
     );
     set({ intake: { ...s.intake, [profileId]: next } });
   },
 
   setAvailability(profileId: string, a: Availability): void {
-    const s = get();
-    requireProfile(s, 'setAvailability', profileId);
-    set({ availability: { ...s.availability, [profileId]: a } });
+    set(applySetAvailability(get(), profileId, a, 'setAvailability'));
   },
 
   setActiveProfile(id: string): void {
@@ -1195,3 +1151,4 @@ export function startPersistence(): () => void {
 }
 
 export { defaultState };
+export type { SetupResult } from './setup';

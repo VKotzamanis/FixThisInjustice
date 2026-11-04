@@ -203,6 +203,7 @@ export type CopyKey =
   | 'why.bodyFatEstimate'
   | 'error.valueRequired'
   | 'error.pickOneDay'
+  | 'error.setupRefused'
   | 'error.positive'
   | 'error.wholeNumber'
   // --- targets view, settings and app navigation (P2 Task 8; appended by that task) ---
@@ -983,6 +984,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
     'The figure after ± is the standard error of the US Navy estimate against hydrostatic weighing. It is larger than most changes worth chasing, so track change over time rather than the absolute number.',
   'error.valueRequired': 'Enter a number.',
   'error.pickOneDay': 'Select at least one weekday.',
+  // Spec R5: the wizard refuses what the loader refuses.
+  'error.setupRefused': 'Setup could not be saved. Check each step.',
   'error.positive': 'Enter a number above zero.',
   'error.wholeNumber': 'Enter a whole number.',
 

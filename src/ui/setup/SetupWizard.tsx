@@ -1233,6 +1233,8 @@ export function SetupWizard(): JSX.Element {
   const draft: Draft = buffer ?? committed;
   /** Latched by the first successful confirm; the profile is created exactly once. */
   const [submitted, setSubmitted] = useState(false);
+  /** Spec R5: the store refused the confirm (it wrote nothing); the user is told so here. */
+  const [confirmRefused, setConfirmRefused] = useState(false);
   /*
    * Brief M, claim r2.19: the review step's "Looks Good" acknowledgement. A gesture, not a
    * record, exactly like the intro sequence's own acknowledgement (src/ui/intro/IntroSequence.tsx)
@@ -2246,30 +2248,22 @@ export function SetupWizard(): JSX.Element {
     };
 
     /*
-     * The actions are read at click time rather than selected into the render, for the reason
-     * `App.tsx` reads them the same way: `AppActions` declares them as methods, and holding a
-     * method reference separated from its object is what @typescript-eslint/unbound-method
-     * forbids. Nothing here re-renders on an action changing identity either, so a subscription
-     * would buy nothing.
-     *
-     * Order matters. createProfile must land first: setAvailability and setPlan both throw on a
-     * profile id the store does not know.
+     * Spec R5 / audit A14: ONE store write. completeSetup parses the profile, the availability
+     * and the plan with the loader's schemas and applies them, with the draft cleared, in a
+     * single set(); a refusal throws before anything is written, and a click handler throw
+     * would escape every boundary, so it is caught here and stated.
      */
-    const store = useAppStore.getState();
-    store.createProfile(profile);
-    store.setAvailability(profileId, availability);
-    store.setPlan(profileId, plan, today);
-    /*
-     * C1.G.1: setup is finished, so there is nothing left to resume. The pending debounce
-     * timer is cancelled explicitly, on top of the persistence effect's own cleanup (which
-     * `setSubmitted(true)` below will also trigger): a write already queued before this click
-     * must not resurrect the draft a few hundred milliseconds after it has just been cleared.
-     */
+    try {
+      useAppStore.getState().completeSetup({ profile, availability, plan, startedOn: today });
+    } catch {
+      setConfirmRefused(true);
+      return;
+    }
+    // C1.G.1: the pending draft timer must not resurrect the draft completeSetup just cleared.
     if (draftSaveTimer.current !== null) {
       clearTimeout(draftSaveTimer.current);
       draftSaveTimer.current = null;
     }
-    store.clearSetupDraft();
     setSubmitted(true);
   }
 
@@ -4055,6 +4049,11 @@ export function SetupWizard(): JSX.Element {
           <button type="button" disabled={confirmBlocked || submitted} onClick={confirm}>
             {t('button.confirmStart')}
           </button>
+        )}
+        {confirmRefused && (
+          <p className="wiz-error" role="alert">
+            {t('error.setupRefused')}
+          </p>
         )}
       </div>
     </div>
