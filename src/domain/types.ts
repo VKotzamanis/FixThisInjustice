@@ -135,12 +135,12 @@ export const ACCESS_UNLOCKS: Record<EquipmentAccess, readonly Equipment[]> = {
   "full-gym": ["full-gym"],
 };
 
-/** The home-gym multi-select inventory, setup step 4 (Brief F Part 3). Nothing reads it yet. */
+/** The home-gym multi-select inventory, setup step 4 (Brief F Part 3). Read by src/domain/plan/inventory.ts inventoryOf (P3a). */
 export type HomeEquipmentItem =
   | "treadmill" | "elliptical" | "rowing-machine"
   | "dumbbells-5-20" | "dumbbells-20-40" | "dumbbells-40-plus" // [kg] or [lb] band per the profile's units; the id itself is unit-agnostic
   | "squat-rack" | "cable-machine" | "bench" | "leg-press" | "lat-pulldown" | "smith-machine";
-/** The body-weight-only multi-select inventory, setup step 4 (Brief F Part 3). Nothing reads it yet. */
+/** The portable multi-select inventory, setup step 4 (Brief F Part 3), shown for every access level but full gym since P3a. Read by inventoryOf. */
 export type BodyweightEquipmentItem = "yoga-mat" | "skipping-rope" | "pull-up-bar" | "resistance-bands";
 
 export interface Profile {
@@ -190,8 +190,17 @@ export interface Profile {
   gymCommute: { walks: boolean; minutesEachWay: number | null }; // [min] one way
   /** Setup step 4 multi-select, shown for Home gym or either combination that includes it. */
   homeEquipment: HomeEquipmentItem[];
-  /** Setup step 4 multi-select, shown for Body weight only. */
+  /** Setup step 4 multi-select, shown for every access level except Full gym (P3a). */
   bodyweightEquipment: BodyweightEquipmentItem[];
+  /**
+   * P3a (audit D07): the access level setup asked the two inventory lists at, written by the
+   * wizard on confirm. null or absent = never asked: a profile written before P3a, where an empty
+   * list meant "not asked" rather than "have none". inventoryOf (src/domain/plan/inventory.ts)
+   * reads a list only if it was shown at this access level, and assumes the pre-P3a items for the
+   * rest, so an old profile keeps generating what it did (rule 7). Optional, `| null | undefined`
+   * written out for the same z.infer identity reason as `activityPal` above.
+   */
+  inventoryAnsweredFor?: EquipmentAccess | null | undefined;
   goal: { kind: GoalKind; targetMassKg: Kg | null; targetBodyFatPct: number | null; targetDate: LocalDate | null; };
   supplements: { creatine: boolean; };                     // no medication fields exist by design
   hydration: { dailyTargetML: ML; cupSizeML: ML; weighInOptIn: boolean; }; // cupSizeML is display granularity only; weighInOptIn enables the pre/post-session mass check
@@ -212,7 +221,7 @@ export type Prescription =
 export type Modality = "barbell" | "dumbbell" | "machine" | "cable" | "bodyweight";
 export type LoadClass = "lower-compound" | "upper-compound" | "isolation"; // drives the progression percentage (5 % / 2.5 % / 2.5 %)
 export interface Exercise { id: string; name: string; isBodyweight: boolean; isCompoundPrimary: boolean; modality: Modality; loadClass: LoadClass; muscleGroups: string[]; secondaryMuscles: string[]; equipment: Equipment[]; videoQuery: string | null; formCueId: string | null; note: string | null; } // muscleGroups = direct movers (1.0 set), secondaryMuscles = dynamic assisting movers (0.5 set) for fractional weekly set counting
-// Canonical exercise ids: the 40 slugs listed in docs/plans/2026-09-01-00-master-plan.md §5 (31 ported plus nine equipment-tier additions); src/domain/plan/library.ts is the executable source of truth and its test asserts the set. formCueId === id where a cue exists.
+// Canonical exercise ids: the 40 slugs listed in docs/plans/2026-09-01-00-master-plan.md §5 (31 ported plus nine equipment-tier additions) plus the 28 P3a basic-pattern ids (docs/plans/2026-11-04-p3a-library.md); src/domain/plan/library.ts is the executable source of truth and its test asserts the set. formCueId === id where a cue exists.
 export interface PlannedExercise { exerciseId: string; setsLo: number; setsHi: number; prescription: Prescription; restS: Seconds; }
 export type SessionKind = "lift" | "cardio";
 export interface PlannedSession { id: string; ordinal: number; name: string; kind: SessionKind; label: string; exercises: PlannedExercise[]; } // label e.g. "Push", "Pull", "Legs", "Upper", "Lower", "Full body A". Invariant: plan.sessions[i].ordinal === i + 1; assignToday's swap updates both ordinals. A PlanTemplate belongs to exactly one profile (setPlan always creates a fresh plan id).

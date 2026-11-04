@@ -292,10 +292,14 @@ export const ProfileSchema = z.object({
       minutesEachWay: z.number().min(0).max(MAX_WALK_MINUTES).nullable(), // [min]
     })
     .default({ walks: false, minutesEachWay: null }),
-  // Additive (Brief F Part 3): nothing reads either list yet; both default to empty for a
-  // document written before this change.
+  // Additive (Brief F Part 3): both default to empty for a document written before this change.
+  // P3a reads them through src/domain/plan/inventory.ts inventoryOf, and only when
+  // inventoryAnsweredFor says they were asked: an empty default is "not asked", not "have none".
   homeEquipment: z.array(HomeEquipmentItemSchema).default([]),
   bodyweightEquipment: z.array(BodyweightEquipmentItemSchema).default([]),
+  // Additive (P3a, rule 7): absent on every profile written before P3a and kept absent; a corrupt
+  // value falls back to null, which inventoryOf reads as "never asked", the conservative reading.
+  inventoryAnsweredFor: EquipmentAccessSchema.nullable().catch(null).optional(),
   goal: z.object({
     kind: GoalKindSchema,
     targetMassKg: KgMass.nullable(), // [kg]

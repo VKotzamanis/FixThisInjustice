@@ -14,6 +14,7 @@ import {
   programmeInput,
   sameProgramme,
 } from './lifecycle';
+import { LEGACY_ASSUMED_ITEMS } from './inventory';
 import { makeProfile } from '../../test/fixtures';
 import { targetDateFeasibility } from '../nutrition';
 import { PlanTemplateSchema } from '../schema';
@@ -87,7 +88,23 @@ describe('programmeInput', () => {
       experience: 'intermediate',
       equipment: 'full-gym',
       includeCardio: true,
+      inventory: null, // a full gym: no inventory filter
     });
+  });
+
+  it('passes the profile inventory through inventoryOf (audit D07, rule 7)', () => {
+    const answered = makeProfile({
+      equipment: 'bodyweight',
+      bodyweightEquipment: ['pull-up-bar'],
+      inventoryAnsweredFor: 'bodyweight',
+    });
+    expect(programmeInput(answered, storedPlan(4, false)).inventory).toEqual(
+      new Set(['dumbbells', 'bench', 'pull-up-bar']),
+    );
+    // Never asked: the pre-P3a assumption, so a regenerated plan matches the old one's options.
+    expect(programmeInput(makeProfile({ equipment: 'home' }), storedPlan(4, false)).inventory).toEqual(
+      LEGACY_ASSUMED_ITEMS,
+    );
   });
 
   it('lets a choice override the goal, the split and the conditioning option', () => {
