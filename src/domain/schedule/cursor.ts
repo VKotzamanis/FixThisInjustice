@@ -224,6 +224,39 @@ export function skipSession(
   };
 }
 
+/**
+ * Spec R2: Skip Today POSTPONES. The cursor never moves, so the same session is served on the
+ * next visit; `date` joins cursor.postponed so the forecast serves nothing on it; a planned pick
+ * on `date` is removed. Dates before `date` are pruned: only today and later can still matter.
+ *
+ * A no-op (the argument itself) for a closed day, a day already postponed, or no cursor/plan.
+ * Throws when the day's session has started (in progress, or a pick that already holds sets):
+ * the way out of a started session is Finish, not Skip.
+ */
+export function postponeSession(state: AppState, profileId: string, date: LocalDate): AppState {
+  const r = resolve(state, profileId);
+  if (!r) return state;
+  const day = r.assignments.find((a) => a.date === date) ?? null;
+  if (day !== null && isTerminal(day)) return state;
+  const hasSets = Object.values(state.sets).some(
+    (s) => s.profileId === profileId && s.assignmentDate === date,
+  );
+  if (day?.status === 'in-progress' || (day !== null && hasSets)) {
+    throw new Error(`postponeSession: session already started on ${date}`);
+  }
+  const kept = (r.cursor.postponed ?? []).filter((d) => compareLocalDate(d, date) >= 0);
+  if (day === null && kept.includes(date)) return state;
+  const postponed = kept.includes(date) ? kept : [...kept, date].sort(compareLocalDate);
+  return {
+    ...state,
+    assignments:
+      day === null
+        ? state.assignments
+        : { ...state.assignments, [profileId]: r.assignments.filter((a) => a.date !== date) },
+    cursors: { ...state.cursors, [profileId]: { ...r.cursor, postponed } },
+  };
+}
+
 export function pausePlan(
   state: AppState,
   profileId: string,

@@ -380,6 +380,9 @@ describe('computeReminderInstants', () => {
       EVERY_WEEKDAY,
       '18:00',
     );
+    const availability = state.availability[PROFILE_ID];
+    if (!availability) throw new Error('fixture availability is missing');
+    availability.weeklySessionTarget = EVERY_WEEKDAY.length; // [sessions/week] 7
     const instants = computeReminderInstants(state, PROFILE_ID, '2026-10-26', 21, CAP_NOW);
 
     expect(instants).toHaveLength(MAX_INSTANTS);

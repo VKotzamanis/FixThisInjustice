@@ -41,7 +41,8 @@
 // The window is also computed by projecting the rest of the week rather than by a second,
 // parallel copy of the consumption rule, so the two can never disagree.
 
-import { addDays, daysBetween, isoWeekday, weekEnd } from '../dates';
+import { addDays, compareLocalDate, daysBetween, isoWeekday, weekEnd, weekStart } from '../dates';
+import { weeklyQuota } from './quota';
 import { isPaused, isTerminal, upsertAssignment } from './cursor';
 import type {
   AppState,
@@ -108,6 +109,21 @@ export function projectedCalendar(
   const byDate = assignmentsByDate(state, profileId);
   const byId = new Map<string, PlannedSession>();
   for (const s of plan?.sessions ?? []) byId.set(s.id, s);
+  // Spec R2: a postponed date serves nothing; the session moves to the next day with quota.
+  const postponed = new Set<LocalDate>(cursor?.postponed ?? []);
+  // Spec R3 / AM-5: [sessions/week] the shared forecast and grading quota. Preferred days are where
+  // the forecast PLACES sessions, never a licence to serve more than the split per week.
+  const quota = weeklyQuota(state, profileId);
+  // [sessions] per ISO week, keyed by its Monday: days already holding a session. Seeded with
+  // every recorded day before `from`, so a session done earlier this week counts against it.
+  const usedByWeek = new Map<LocalDate, number>();
+  const recordUsage = (date: LocalDate): void => {
+    const monday = weekStart(date);
+    usedByWeek.set(monday, (usedByWeek.get(monday) ?? 0) + 1);
+  };
+  for (const a of state.assignments[profileId] ?? []) {
+    if (compareLocalDate(a.date, from) < 0) recordUsage(a.date);
+  }
 
   // [sessions] offset into plan.sessions; advanced by the days this walk projects, never by
   // the passage of time. The real cursor is untouched.
@@ -125,9 +141,19 @@ export function projectedCalendar(
       projectedSession = byId.get(assignment.sessionId) ?? null;
       // A terminal day already advanced the real cursor, so the walk must not count it again.
       if (projectedSession && !isTerminal(assignment)) walk += 1;
-    } else if (!paused && slot && plan) {
+      recordUsage(date);
+    } else if (
+      !paused &&
+      slot &&
+      plan &&
+      !postponed.has(date) &&
+      (usedByWeek.get(weekStart(date)) ?? 0) < quota
+    ) {
       projectedSession = plan.sessions[walk] ?? null;
-      if (projectedSession) walk += 1;
+      if (projectedSession) {
+        walk += 1;
+        recordUsage(date);
+      }
     }
 
     out.push({ date, slot, assignment, projectedSession, paused });

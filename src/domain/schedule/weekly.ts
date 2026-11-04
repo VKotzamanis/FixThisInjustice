@@ -38,6 +38,7 @@
 // one.
 
 import { addDays, compareLocalDate, todayLocal, weekStart } from '../dates';
+import { weeklyQuota } from './quota';
 import type { AppState, EpochMs, LocalDate, PlanCursor, PlanPause, WeeklyReview } from '../types';
 
 /**
@@ -151,7 +152,7 @@ export function closeWeeks(state: AppState, profileId: string, now: EpochMs): Ap
   const alreadyReviewed = new Set(existing.map((r) => r.weekStart));
   const assignments = state.assignments[profileId] ?? [];
   const pauses = state.pauses[profileId] ?? [];
-  const target = availability.weeklySessionTarget; // [sessions/week]
+  const target = weeklyQuota(state, profileId); // [sessions/week]
 
   const added: WeeklyReview[] = [];
 
