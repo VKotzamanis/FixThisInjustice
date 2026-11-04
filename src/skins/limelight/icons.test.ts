@@ -31,56 +31,57 @@ function sum(values: readonly number[]): number {
   return values.reduce((total, value) => total + value, 0);
 }
 
-/**
- * Decoded byte length per icon, measured from agy-artifacts/icons on 2026-09-01 and matching the
- * asset table in docs/design/round3/2026-09-01-round3-plan.md section 4.4 entry for entry.
- */
+/** Decoded byte lengths measured from the current agy-artifacts/icons bank. */
 const ICON_BYTES: Readonly<Record<LimelightIconName, number>> = {
   alert: 390,
-  barbell: 188,
+  archivePanel: 334,
+  archive: 298,
   barbellPanel: 214,
-  crown: 393,
+  barbell: 188,
   crownPanel: 420,
+  crown: 393,
+  dropPanel: 498,
   drop: 481,
   fan: 492,
   heart: 356,
   heel: 411,
   lips: 294,
   martini: 459,
-  megaphone: 389,
   megaphonePanel: 455,
+  megaphone: 389,
+  morePanel: 131,
+  more: 121,
   nails: 379,
   pause: 180,
   skip: 319,
   skull: 369,
-  sparkle: 416,
   sparklePanel: 453,
-  stopwatch: 477,
+  sparkle: 416,
   stopwatchPanel: 537,
+  stopwatch: 477,
 };
 
 /*
- * The budget, quoted from the plan. Section 4.4: "Total inlined as base64 data URIs: 21 files,
- * 8 072 B raw (7.9 kB), 10 780 B encoded (10.5 kB), measured." Task 13's rationale: "inlined they
- * are 33 kB of base64 inside a JavaScript chunk the app already fetches". The plan writes 8 072 B
- * as 7.9 kB, so its kB is 1024 B, and 33 kB is 33 792 B.
- *
- * Every quantity below is an integer count of bytes or of base64 characters, so the comparison is
- * exact: epsilon = 0. No rounding, no tolerance, no floating point anywhere in these assertions.
+ * Previous totals and budgets: 8072 B raw, 10780 base64 characters (0% headroom).
+ * Preserve that relative headroom for the expanded bank: 9454 B raw, 12632 base64 characters.
+ * These exact budgets also pin the measured totals; the per-icon table identifies any drift.
  */
-const ICON_RAW_BUDGET = 8072; // B, the sum of the 21 decoded icons
-const ICON_BASE64_BUDGET = 10780; // base64 characters for the 21 icons
+const ICON_RAW_BUDGET = 9454; // B, the sum of the 26 decoded icons
+const ICON_BASE64_BUDGET = 12632; // base64 characters for the 26 icons
 const MODULE_BUDGET = 33 * 1024; // B, the plan's "33 kB of base64", as the ceiling on the module
 
 describe('limelight icons', () => {
-  it('ships the sixteen icons and the five panel variants', () => {
+  it('ships the eighteen icons and the eight panel variants', () => {
     expect(Object.keys(LIMELIGHT_ICONS).sort()).toEqual(Object.keys(ICON_BYTES).sort());
-    expect(Object.keys(LIMELIGHT_ICONS)).toHaveLength(21);
+    expect(Object.keys(LIMELIGHT_ICONS)).toHaveLength(26);
     const panels = Object.keys(LIMELIGHT_ICONS).filter((name) => name.endsWith('Panel'));
     expect(panels.sort()).toEqual([
+      'archivePanel',
       'barbellPanel',
       'crownPanel',
+      'dropPanel',
       'megaphonePanel',
+      'morePanel',
       'sparklePanel',
       'stopwatchPanel',
     ]);
@@ -104,12 +105,12 @@ describe('limelight icons', () => {
 });
 
 describe('the inlined byte budget', () => {
-  it('holds the decoded total the plan measured', () => {
+  it('holds the measured decoded total', () => {
     const icons = sum(Object.values(LIMELIGHT_ICONS).map((uri) => decode(uri).byteLength));
     expect(icons).toBe(ICON_RAW_BUDGET);
   });
 
-  it('holds the base64 total the plan measured', () => {
+  it('holds the measured base64 total', () => {
     const icons = sum(Object.values(LIMELIGHT_ICONS).map((uri) => uri.length - PREFIX.length));
     expect(icons).toBe(ICON_BASE64_BUDGET);
   });
