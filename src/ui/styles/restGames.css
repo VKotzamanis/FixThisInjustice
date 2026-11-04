@@ -1,18 +1,18 @@
 /*
- * ROADMAP F1: the rest game (docs/design/rest-games.md). One compact DOM/CSS board inside the
- * rest panel: no canvas, image, font request or library.
+ * Rest games (ROADMAP F1, P6; docs/design/rest-games.md). Every rest-game rule lives in this sheet:
+ * no canvas, image, font request or library. Sections are marked `===== name =====`; a new game
+ * appends its own section.
  *
- * Colour. The board is the inverted panel (--panel / --panel-text), the surface this skin
- * already uses for state, because a lime ground cannot carry white or pink type (tokens.css,
- * measured ratios). Inside it: white on black 21:1; a hit tile is a pink fill with ink, 7.75:1;
- * a near tile is a lime fill with ink, 10.91:1; a miss is white on the --fine grey, about 9.6:1
- * (computed here with the WCAG 2.1 formula, not quoted). Colour never stands alone (WCAG 1.4.1):
- * a near tile also has a dashed border, a miss has no light border and is struck through.
+ * Colour. Every board is the inverted panel (--panel / --panel-text), the surface this skin already
+ * uses for state, because a lime ground cannot carry white or pink type (tokens.css, measured
+ * ratios). Inside it: white on black 21:1; a pink fill with ink 7.75:1; a lime fill with ink
+ * 10.91:1; white on the --fine grey about 9.6:1 (computed with the WCAG 2.1 formula, not quoted).
+ * Colour never stands alone (WCAG 1.4.1): every state also has a shape or a word.
  *
- * Size. Every key is a 44 px target (views.css: 2.75rem at the 16 px root). Six columns need
- * 6 x 44 + 5 x 2 = 274 px; a 360 px phone leaves 360 - 2 x 14 (main) - 2 x 16 (.view)
- * - 2 x 2 (border) - 2 x 8 (padding) = 280 px. Below 360 px the grid drops to five columns.
+ * Size. Every control is at least 44 px tall (`.view button`, views.css: 2.75rem at the 16 px root).
  */
+
+/* ===== launch ===== */
 .view .rest-game-launch:disabled {
   opacity: 0.5;
 }
@@ -24,21 +24,32 @@
   max-width: 24rem;
 }
 
+/* ===== frame ===== */
+/*
+ * RestGameFrame: name, round clock, Hide and Exit on one row; the rule line; the board or the end
+ * state; the live result line. Inside the sheet (RestGameSheet) the sheet draws the edge, so the
+ * frame draws none. The pink Exit/Hide edge on black is 7.75:1.
+ */
 .rest-game {
-  align-self: stretch;
-  border: 2px solid var(--line-2);
-  box-shadow: var(--shadow-offset, 4px) var(--shadow-offset, 4px) 0 var(--accent);
   background: var(--panel);
   color: var(--panel-text);
   font-family: var(--mono);
-  padding: 0.5rem;
 }
 
 .rest-game-topline {
   display: flex;
   justify-content: space-between;
-  align-items: start;
-  gap: 0.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+
+.rest-game-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  min-width: 0;
 }
 
 .rest-game h3,
@@ -50,22 +61,153 @@
   font-size: 0.9rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  overflow-wrap: anywhere;
 }
 
-.rest-game-topline p,
+.rest-game-rule,
 .rest-game-result {
   color: var(--panel-text);
   font-size: 0.75rem;
-  margin-top: 0.2rem;
+  line-height: 1.125rem;
+  margin-top: 0.375rem;
+}
+
+/* The end state says the result large, in words (the sprite and the colour are extras). */
+.rest-game.result-won .rest-game-result,
+.rest-game.result-lost .rest-game-result,
+.rest-game.result-timeUp .rest-game-result {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 800;
+  text-align: center;
 }
 
 .rest-game-clock {
   border: 1px solid var(--panel-text);
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  padding: 0.25rem 0.4rem;
+  padding: 0.125rem 0.375rem;
 }
 
+.rest-game-actions {
+  display: flex;
+  flex: none;
+  gap: 0.375rem;
+}
+
+/* `.view button` (views.css, 0,1,1) is full width; two classes outrank it. 2.75rem = 44 px. */
+.view .rest-game-exit,
+.view .rest-game-hide {
+  width: auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.625rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--accent);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+}
+
+.rest-game-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.rest-game-answer,
+.rest-game-note {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/*
+ * The owner's sprite in the end state (ownerSprite.css draws it; stylize survey item 7). The board
+ * is black and his drawing is black hair, so the sprite sits on a lime tile, the skin's own ground.
+ * The win is the sprite's own one play; a loss still shakes the tile.
+ */
+.rest-game-mascot {
+  flex: none;
+}
+
+.rest-game-mascot .ll-sprite {
+  background-color: var(--lime);
+}
+
+.rest-game-mascot-lose {
+  animation: rest-game-shake 160ms steps(2, end) 3;
+}
+
+/* Original ASCII loss loop: two CSS-swapped text frames, never a downloaded GIF. The face is the
+   `ll-ascii` stack (tokens.css) on each frame, so the two overlay column for column. */
+.rest-loss-chomp {
+  position: relative;
+  width: 5.7rem;
+  height: 1rem;
+  overflow: hidden;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.7rem;
+  line-height: 1rem;
+}
+
+.rest-loss-chomp pre {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  white-space: pre;
+}
+
+.rest-loss-chomp-open {
+  animation: rest-game-chomp-open 420ms steps(1, end) infinite;
+}
+
+.rest-loss-chomp-closed {
+  animation: rest-game-chomp-closed 420ms steps(1, end) infinite;
+}
+
+@keyframes rest-game-shake {
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes rest-game-chomp-open {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes rest-game-chomp-closed {
+  0%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rest-game-mascot-lose,
+  .rest-loss-chomp-open,
+  .rest-loss-chomp-closed {
+    animation: none;
+  }
+
+  /* One still frame: the open mouth. */
+  .rest-loss-chomp-closed {
+    opacity: 0;
+  }
+}
+
+/* ===== rest-word ===== */
 /* Wraps: a five-letter board (152 px) beside the 80 px sprite is 244 px, 4 px over a 320 px
    phone's 240 px, and the loss loop adds 91 px more; a narrow phone stacks them instead. */
 .rest-word-playfield {
@@ -152,93 +294,6 @@
   border-color: var(--fine);
   color: var(--panel-text);
   text-decoration: line-through;
-}
-
-.view .rest-game-exit {
-  margin-top: 0.5rem;
-  background: var(--panel);
-  color: var(--panel-text);
-  border: 2px solid var(--accent);
-}
-
-/*
- * The owner's sprite in the game (ownerSprite.css draws it; stylize survey item 7). The board is
- * black and his drawing is black hair, so the sprite sits on a lime tile, the skin's own ground.
- * The win is the sprite's own one play; a loss still shakes the tile.
- */
-.rest-game-mascot {
-  flex: none;
-}
-
-.rest-game-mascot .ll-sprite {
-  background-color: var(--lime);
-}
-
-.rest-game-mascot-lose {
-  animation: rest-game-shake 160ms steps(2, end) 3;
-}
-
-/* Original ASCII loss loop: two CSS-swapped text frames, never a downloaded GIF. The face is the
-   `ll-ascii` stack (tokens.css) on each frame, so the two overlay column for column. */
-.rest-loss-chomp {
-  position: relative;
-  width: 5.7rem;
-  height: 1rem;
-  overflow: hidden;
-  color: var(--accent);
-  font-weight: 700;
-  font-size: 0.7rem;
-  line-height: 1rem;
-}
-
-.rest-loss-chomp pre {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  white-space: pre;
-}
-
-.rest-loss-chomp-open {
-  animation: rest-game-chomp-open 420ms steps(1, end) infinite;
-}
-
-.rest-loss-chomp-closed {
-  animation: rest-game-chomp-closed 420ms steps(1, end) infinite;
-}
-
-@keyframes rest-game-shake {
-  25% {
-    transform: translateX(-2px);
-  }
-  75% {
-    transform: translateX(2px);
-  }
-}
-
-@keyframes rest-game-chomp-open {
-  50% {
-    opacity: 0;
-  }
-}
-
-@keyframes rest-game-chomp-closed {
-  0%,
-  50% {
-    opacity: 0;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rest-game-mascot-lose,
-  .rest-loss-chomp-open,
-  .rest-loss-chomp-closed {
-    animation: none;
-  }
-
-  /* One still frame: the open mouth. */
-  .rest-loss-chomp-closed {
-    opacity: 0;
-  }
 }
 
 /* Under 360 px six 44 px columns no longer fit; five do, and Z + Delete + Submit close the row. */

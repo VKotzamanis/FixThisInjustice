@@ -393,6 +393,11 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Rest games, shared frame (P6, docs/design/rest-games.md) ---
+  | 'button.restGameHide'
+  | 'status.restGameTimeUp'
+  | 'status.restGameAnswer'
+  | 'status.restGameProgress'
   | 'button.backToToday'
   | 'label.bonusSet'
   | 'label.suggestedLoad'
@@ -1260,6 +1265,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6: the frame every rest game is drawn in (src/ui/views/train/RestGameFrame.tsx).
+  'button.restGameHide': 'Hide Game',
+  'status.restGameTimeUp': 'Out of time.',
+  'status.restGameAnswer': 'The answer was {answer}.',
+  'status.restGameProgress': '{done} of {total} done.',
   // Leaves the finished session. Named for the destination, because after the post-session
   // weigh-in there is nothing left to do here.
   'button.backToToday': 'Back to Today',

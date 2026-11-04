@@ -2,19 +2,21 @@
 //
 // The rest-game strings (ROADMAP F1, docs/design/rest-games.md) against the copy contract rules
 // the brief names: Title Case for every naming key (R14, `titleCaseOffenders`), a button at most
-// three words (R1), no emoji (R6). The keys are found by their `restWord` stem, not listed, so a
-// key added later is checked without editing this file.
+// three words (R1), no emoji (R6). The keys are found by their `restWord` or `restGame` stem (P6),
+// not listed, so a key added later is checked without editing this file.
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_COPY, LIMELIGHT_COPY, type CopyKey } from './copy';
 import { NAMING_PREFIXES, hasEmoji, titleCaseOffenders, wordCount } from './copyContract';
 
-const REST_GAME_KEYS = (Object.keys(DEFAULT_COPY) as CopyKey[]).filter((key) =>
-  key.includes('restWord'),
+const REST_GAME_KEYS = (Object.keys(DEFAULT_COPY) as CopyKey[]).filter(
+  (key) => key.includes('restWord') || key.includes('restGame'),
 );
 
 describe('rest-game copy (ROADMAP F1)', () => {
   it('exists: the game reads its words from the table', () => {
     expect(REST_GAME_KEYS.length).toBeGreaterThan(0);
+    // The P6 stem is in the filter, so the shared frame's keys are checked too.
+    expect(REST_GAME_KEYS).toContain('status.restGameTimeUp');
   });
 
   it('names every control, heading and label in Title Case (R14)', () => {
