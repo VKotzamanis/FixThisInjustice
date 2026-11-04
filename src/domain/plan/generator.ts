@@ -10,15 +10,16 @@ import type {
   PlannedSession,
   PlanTemplate,
 } from '../types';
+import type { Inventory } from './inventory';
 import { INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
 import {
   prescriptionFor,
-  resolveSlot,
+  resolveWeek,
   restSFor,
   SPLIT_TEMPLATES,
   WEEKLY_SET_BAND,
+  type ResolvedSlot,
   type SessionsPerWeek,
-  type SessionTemplate,
 } from './templates';
 
 /**
@@ -78,6 +79,12 @@ export interface PlanInput {
   experience: Experience;
   equipment: EquipmentAccess;
   includeCardio: boolean;
+  /**
+   * What the user can use beyond the access tier (inventory.ts inventoryOf). Absent or null = no
+   * filter, which is what every caller that predates P3a passes; the wizard and programmeInput
+   * pass inventoryOf(profile) so a profile that never answered gets LEGACY_ASSUMED_ITEMS.
+   */
+  inventory?: Inventory | undefined;
 }
 
 /**
@@ -103,43 +110,29 @@ export const CARDIO_EXERCISE_IDS: readonly string[] = ['rower-intervals', 'stair
 const CARDIO_PREFERENCE = CARDIO_EXERCISE_IDS;
 
 /**
- * SUBSTITUTE, NEVER DROP. Every slot is resolved by the templates' own `resolveSlot`, with the
- * user's equipment and the library the caller passed, so a `dumbbells-only` or `bodyweight` user
- * gets the substitution the candidate list declares (barbell bench press -> incline dumbbell press
- * -> push-up) rather than a shorter session. The generator applies no equipment filter of its own
- * and holds no substitution table: master plan section 5 puts the per-tier claim in the templates,
- * and generator.test.ts asserts that the emitted id sequence equals the templates' resolution slot
- * for slot, so a generator-side drop is a test failure.
- *
- * The one omission is a slot no candidate can fill in this tier and library, which is the omission
- * the templates declare and templates.test.ts enumerates (no curl without a dumbbell; no machine
- * leg curl without a machine; a candidate already used earlier in the same session, which is what
- * keeps an exercise from being prescribed twice in one session). It is reported to the user as
- * reduced volume through volumeReport, never hidden.
+ * SUBSTITUTE, NEVER DROP. Every session comes from the templates' own resolveWeek, with the user's
+ * equipment, inventory and the library the caller passed: each slot takes its first fitting
+ * candidate (barbell bench press -> incline dumbbell press -> dumbbell floor press -> push-up),
+ * and a session left below its floor (templates.ts sessionFloor) is topped up from the region's
+ * floor pool under the weekly volume guard. The generator holds no substitution table of its own;
+ * generator.test.ts asserts the emitted id sequence equals resolveWeek's, session for session.
+ * What resolveWeek still cannot fill is reported as reduced volume through volumeReport.
  */
-function buildSessionExercises(
-  template: SessionTemplate,
+function toPlannedExercises(
+  resolved: readonly ResolvedSlot[],
   sets: { compound: { lo: number; hi: number }; isolation: { lo: number; hi: number } },
-  equipment: EquipmentAccess,
-  library: Readonly<Record<string, Exercise>>,
 ): PlannedExercise[] {
-  const used = new Set<string>();
-  const planned: PlannedExercise[] = [];
-  for (const slot of template.slots) {
-    const ex = resolveSlot(slot, equipment, used, library);
-    if (!ex) continue; // the templates' declared omission: no candidate fits this tier and library
-    used.add(ex.id);
+  return resolved.map(({ slot, exercise: ex }) => {
     const prescription = prescriptionFor(ex, slot.intensity);
     const count = sets[slot.slotClass];
-    planned.push({
+    return {
       exerciseId: ex.id,
       setsLo: count.lo, // [sets]
       setsHi: count.hi, // [sets]
       prescription,
       restS: restSFor(ex, prescription), // [s]
-    });
-  }
-  return planned;
+    };
+  });
 }
 
 /**
@@ -280,10 +273,19 @@ export function generatePlan(input: PlanInput, library: readonly Exercise[]): Pl
   const sets = template.sets[input.experience];
   const cardio = input.includeCardio ? cardioExercise(input.equipment, library) : null;
 
+  // One week resolved once: every week of the programme repeats it (the block modifiers, not
+  // the session content, change across weeks).
+  const resolvedWeek = resolveWeek(
+    input.sessionsPerWeek,
+    input.experience,
+    input.equipment,
+    input.inventory ?? null,
+    byId,
+  );
   const sessions: PlannedSession[] = [];
   for (let week = 1; week <= input.weeks; week += 1) {
     template.sessions.forEach((sessionTemplate, i) => {
-      const exercises = buildSessionExercises(sessionTemplate, sets, input.equipment, byId);
+      const exercises = toPlannedExercises(resolvedWeek[i] ?? [], sets);
       if (exercises.length === 0) {
         // A non-empty library can still fill no slot of a session (every candidate withheld, or
         // none available in this equipment tier). Conditioning is not lifting content, so this is

@@ -1,6 +1,6 @@
 import { ACCESS_UNLOCKS } from '../types';
 import type { Equipment, EquipmentAccess, Exercise, Experience, Prescription } from '../types';
-import { EXERCISE_BY_ID, MUSCLE_GROUPS } from './library';
+import { EXERCISE_BY_ID, INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
 import { fitsInventory, type Inventory } from './inventory';
 
 /**
@@ -813,4 +813,210 @@ export function resolveSlot(
     return ex;
   }
   return null;
+}
+
+/** One resolved entry of a session: the exercise and the slot (or floor slot) it fills. */
+export interface ResolvedSlot {
+  slot: ExerciseSlot;
+  exercise: Exercise;
+}
+
+/**
+ * The template's slots resolved in order, each through resolveSlot with the session's own `used`
+ * set, so no exercise appears twice. A slot no candidate fits is left out here; resolveWeek is
+ * what tops the session up to its floor.
+ */
+export function resolveSession(
+  template: SessionTemplate,
+  equipment: EquipmentAccess,
+  inventory: Inventory = null,
+  library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
+): ResolvedSlot[] {
+  const used = new Set<string>();
+  const out: ResolvedSlot[] = [];
+  for (const slot of template.slots) {
+    const ex = resolveSlot(slot, equipment, used, library, inventory);
+    if (!ex) continue;
+    used.add(ex.id);
+    out.push({ slot, exercise: ex });
+  }
+  return out;
+}
+
+/**
+ * [sets/muscle/week] Top of the ACSM 2026 deceleration range: Currier BS et al. (2026), Med Sci
+ * Sports Exerc 58(4):851-872, DOI 10.1249/mss.0000000000003897. The citable ceiling for the TOP of
+ * a prescribed weekly set interval; templates.test.ts and generator.test.ts bound every cell by it.
+ */
+export const EVIDENCE_CEILING_SETS = 20;
+
+/** [exercises] The floor never asks for fewer than this: the shortest template session (5) minus one. */
+export const SESSION_FLOOR_MIN = 4;
+
+/**
+ * SESSION FLOOR (audit D08). [exercises] A generated session holds at least
+ * max(SESSION_FLOOR_MIN, slots - 1): at most one slot short of its template, never under four.
+ * A HEURISTIC, stated as such: no source sets a minimum exercise count; the figure is chosen so a
+ * sub-gym session keeps the template's shape. resolveWeek tops a short session up from
+ * FLOOR_POOLS, and stops short of the floor only where every remaining pool entry would push a
+ * muscle above the week's band top or past EVIDENCE_CEILING_SETS: the evidence cap outranks the
+ * floor. generator.test.ts lists those cells as a census, asserted as an equality.
+ */
+export function sessionFloor(template: SessionTemplate): number {
+  return Math.max(SESSION_FLOOR_MIN, template.slots.length - 1);
+}
+
+/** What a session trains, read off its label, so a floor fill never puts a press on a pull day. */
+export type SessionRegion = 'push' | 'pull' | 'upper' | 'lower' | 'full';
+
+export function sessionRegion(label: string): SessionRegion {
+  if (/^(Lower|Legs)/.test(label)) return 'lower';
+  if (/^Push/.test(label)) return 'push';
+  if (/^Pull/.test(label)) return 'pull';
+  if (/^Upper/.test(label)) return 'upper';
+  return 'full'; // "Full body A/B/C", "Accessory"
+}
+
+/**
+ * Floor fill candidates by region, best first: the equipment-free and band exercises of that
+ * region, then trunk work. Every entry is filtered by tier and inventory like a slot candidate,
+ * so a user without bands never receives a band exercise here either.
+ */
+export const FLOOR_POOLS: Record<SessionRegion, readonly string[]> = {
+  push: [
+    'pike-push-up',
+    'incline-push-up',
+    'push-up',
+    'bench-dip',
+    'band-lateral-raise',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  pull: [
+    'prone-t-raise',
+    'band-pull-apart',
+    'band-row',
+    'door-frame-row',
+    'band-curl',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  upper: [
+    'prone-t-raise',
+    'band-pull-apart',
+    'door-frame-row',
+    'pike-push-up',
+    'incline-push-up',
+    'band-lateral-raise',
+    'band-curl',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  lower: [
+    'bw-squat',
+    'glute-bridge',
+    'bw-single-leg-rdl',
+    'bw-reverse-lunge',
+    'calf-raise',
+    'nordic-hamstring-curl',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  full: [
+    'prone-t-raise',
+    'band-pull-apart',
+    'door-frame-row',
+    'glute-bridge',
+    'bw-squat',
+    'pike-push-up',
+    'incline-push-up',
+    'calf-raise',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+};
+
+/**
+ * One week of sessions for a split: every session resolved slot by slot, then each session below
+ * its sessionFloor topped up from FLOOR_POOLS[sessionRegion(label)].
+ *
+ * VOLUME GUARD. A pool entry is accepted only if, after crediting it to the WEEK (direct 1.0,
+ * indirect INDIRECT_SET_FRACTION, at the set count its class gets for this experience), no muscle
+ * has a midpoint above WEEKLY_SET_BAND[days][1] or an interval top above EVIDENCE_CEILING_SETS.
+ * So the fill never creates a volume the band tests would reject. A filled entry takes a
+ * synthetic slot: compound-primary exercises a moderate compound slot (inserted after the last
+ * compound, so compounds stay first), the rest a light isolation slot (appended).
+ *
+ * With a full gym, or any tier and a null inventory, every template session already meets its
+ * floor, so this returns exactly the slot resolution; templates.test.ts asserts it.
+ */
+export function resolveWeek(
+  days: SessionsPerWeek,
+  experience: Experience,
+  equipment: EquipmentAccess,
+  inventory: Inventory = null,
+  library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
+): ResolvedSlot[][] {
+  const template = SPLIT_TEMPLATES[days];
+  const sets = template.sets[experience];
+  const bandTop = WEEKLY_SET_BAND[days][1]; // [sets/muscle/week]
+  const mid: Record<string, number> = {}; // [sets/muscle/week] interval midpoints
+  const top: Record<string, number> = {}; // [sets/muscle/week] interval tops
+  const credit = (ex: Exercise, slotClass: SlotClass, sign: 1 | -1): void => {
+    const s = sets[slotClass];
+    const m1 = (sign * (s.lo + s.hi)) / 2;
+    const t1 = sign * s.hi;
+    for (const m of ex.muscleGroups) {
+      mid[m] = (mid[m] ?? 0) + m1;
+      top[m] = (top[m] ?? 0) + t1;
+    }
+    for (const m of ex.secondaryMuscles) {
+      mid[m] = (mid[m] ?? 0) + m1 * INDIRECT_SET_FRACTION;
+      top[m] = (top[m] ?? 0) + t1 * INDIRECT_SET_FRACTION;
+    }
+  };
+  const week = template.sessions.map((s) => resolveSession(s, equipment, inventory, library));
+  for (const session of week) for (const r of session) credit(r.exercise, r.slot.slotClass, 1);
+  const unlocked = ACCESS_UNLOCKS[equipment];
+  return week.map((session, i) => {
+    const sessionTemplate = template.sessions[i];
+    if (sessionTemplate === undefined) return session;
+    const floor = sessionFloor(sessionTemplate);
+    const out = [...session];
+    const used = new Set(out.map((r) => r.exercise.id));
+    for (const id of FLOOR_POOLS[sessionRegion(sessionTemplate.label)]) {
+      if (out.length >= floor) break;
+      const ex = library[id];
+      if (ex === undefined || used.has(id)) continue;
+      if (!ex.equipment.some((tier) => unlocked.includes(tier))) continue;
+      if (!fitsInventory(ex, equipment, inventory)) continue;
+      const slotClass: SlotClass = ex.isCompoundPrimary ? 'compound' : 'isolation';
+      credit(ex, slotClass, 1);
+      const over = [...ex.muscleGroups, ...ex.secondaryMuscles].some(
+        (m) => (mid[m] ?? 0) > bandTop || (top[m] ?? 0) > EVIDENCE_CEILING_SETS,
+      );
+      if (over) {
+        credit(ex, slotClass, -1);
+        continue;
+      }
+      used.add(id);
+      const slot: ExerciseSlot =
+        slotClass === 'compound' ? comp('floor fill', [id]) : iso('floor fill', [id]);
+      if (slotClass === 'compound') {
+        let lastCompound = -1;
+        out.forEach((r, j) => {
+          if (r.exercise.isCompoundPrimary) lastCompound = j;
+        });
+        out.splice(lastCompound + 1, 0, { slot, exercise: ex });
+      } else {
+        out.push({ slot, exercise: ex });
+      }
+    }
+    return out;
+  });
 }
