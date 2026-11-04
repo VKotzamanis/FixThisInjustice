@@ -49,6 +49,24 @@ import type {
 export const UNDO_WINDOW_MS = 6_000;
 
 /**
+ * Audit C03: is this (profile, day, exercise, set number) already logged? The invariant every
+ * reader assumes (ExerciseCard shows the first set per number and counts all of them), enforced
+ * at the one place sets are written.
+ */
+export function slotTaken(
+  state: AppState,
+  set: Pick<LoggedSet, 'profileId' | 'assignmentDate' | 'exerciseId' | 'setNumber'>,
+): boolean {
+  return Object.values(state.sets).some(
+    (s) =>
+      s.profileId === set.profileId &&
+      s.assignmentDate === set.assignmentDate &&
+      s.exerciseId === set.exerciseId &&
+      s.setNumber === set.setNumber,
+  );
+}
+
+/**
  * Validates against a schema or throws, naming the field that failed.
  *
  * The message is assembled the way parseState assembles its own — first issue, path then
@@ -80,6 +98,7 @@ export function applyLogSet(
   input: Omit<LoggedSet, 'id' | 'loggedAt'>,
   id: string,
   now: EpochMs,
+  opts: { allowFinished?: boolean } = {},
 ): AppState {
   // Amended contract (master plan section 6.7): every action that writes a record naming a
   // profile checks that the profile exists. `sets` is keyed by set id, so the schema's root
@@ -87,6 +106,22 @@ export function applyLogSet(
   requireProfile(state, 'logSet', input.profileId);
   const candidate: LoggedSet = { ...input, id, loggedAt: now };
   const loggedSet = parseOrThrow(LoggedSetSchema, candidate, 'logSet');
+  // Audit C10: a finished day is a record. Train's "Add Forgotten Set" is the one explicit way in.
+  const day = (state.assignments[loggedSet.profileId] ?? []).find(
+    (a) => a.date === loggedSet.assignmentDate,
+  );
+  if (
+    day !== undefined &&
+    (day.status === 'completed' || day.status === 'skipped') &&
+    opts.allowFinished !== true
+  ) {
+    throw new Error(`logSet: the session on ${loggedSet.assignmentDate} is already ${day.status}`);
+  }
+  if (slotTaken(state, loggedSet)) {
+    throw new Error(
+      `logSet: set ${String(loggedSet.setNumber)} of ${loggedSet.exerciseId} on ${loggedSet.assignmentDate} is already logged`,
+    );
+  }
   /*
    * P8. `totalSetsLogged` is the ordinal the specimen draw is keyed by (master plan section
    * 10.8, rule 1) and the counter the milestone toasts read, so it moves with the set list and
@@ -148,6 +183,8 @@ export function applyDeleteSet(
  * record the user deleted, not a new record that looks like it.
  */
 export function applyRestoreSet(state: AppState, loggedSet: LoggedSet): AppState {
+  // Audit C03: the slot was filled again since the delete; undo restores nothing.
+  if (slotTaken(state, loggedSet)) return state;
   /*
    * P8. The counter goes back up with the set. applyDeleteSet took it down, and undo restores
    * the record the user deleted, so leaving it down would put `totalSetsLogged` one BELOW the

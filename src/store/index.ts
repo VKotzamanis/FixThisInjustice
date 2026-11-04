@@ -47,6 +47,7 @@ import {
   applyLogSet,
   applyRestoreSet,
   applyUpdateSet,
+  slotTaken,
   type SetMeasurement,
 } from './training';
 import {
@@ -208,13 +209,13 @@ export interface AppActions {
 
   // P4
   /**
-   * Logs one set and reports what it produced. Throws on a set the schema refuses (master plan
-   * section 5: loadKg 0 is valid, negative and non-finite are not; RPE is on the 0.5 grid) or
-   * on a profile that does not exist.
+   * Logs one set and reports what it produced. Throws on a set the schema refuses, on a profile
+   * that does not exist, on a slot already logged (C03), and on a finished session unless
+   * `opts.allowFinished` (C10). Re-filling the slot the undo buffer holds spends the buffer.
    *
    * @param now [ms] epoch UTC, the instant the set was logged.
    */
-  logSet(set: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): LogSetResult;
+  logSet(set: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs, opts?: { allowFinished?: boolean }): LogSetResult;
   /**
    * Removes one set and holds it in the non-persisted undo buffer for UNDO_WINDOW_MS. An
    * unknown id is a no-op and mints no buffer.
@@ -857,11 +858,24 @@ export const useAppStore = create<AppStore>()((set, get) => {
    * store untouched: zustand applies nothing when the updater does not return.
    */
 
-  logSet(input: Omit<LoggedSet, 'id' | 'loggedAt'>, now: EpochMs): LogSetResult {
+  logSet(
+    input: Omit<LoggedSet, 'id' | 'loggedAt'>,
+    now: EpochMs,
+    opts: { allowFinished?: boolean } = {},
+  ): LogSetResult {
     // The id is minted before the write so it can be returned: the caller needs it to offer
     // an undo, and re-deriving it from the document afterwards would mean searching by value.
     const id = newId();
-    set((s) => applyLogSet(s, input, id, now)); // now: [ms] epoch, UTC
+    set((s) => {
+      const next = applyLogSet(s, input, id, now, opts); // now: [ms] epoch, UTC
+      // C03: a set logged into the slot the undo buffer holds spends that buffer in the same
+      // write, so Undo can never put a second set there.
+      const pending = s.session.undo;
+      if (pending !== null && slotTaken(next, pending.set)) {
+        return { ...next, session: { ...s.session, undo: null } };
+      }
+      return next;
+    });
     /*
      * P8. The specimen roll runs HERE, after the updater has returned, and never inside it:
      * React may invoke an updater more than once for a single dispatch, and a roll inside one
@@ -942,8 +956,9 @@ export const useAppStore = create<AppStore>()((set, get) => {
   undoAvailable(now: EpochMs): boolean {
     const pending = get().session.undo;
     // Same comparison undoDelete makes, so the control and the action cannot disagree: the
-    // buffer is spent at `now > expiresAt`, and available at exactly expiresAt.
-    return pending !== null && now <= pending.expiresAt;
+    // buffer is spent at `now > expiresAt`, and available at exactly expiresAt. A slot filled
+    // again since the delete makes the offer void (C03).
+    return pending !== null && now <= pending.expiresAt && !slotTaken(get(), pending.set);
   },
 
   logBodyMass(entry: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void {

@@ -5,7 +5,6 @@ import { chicago, flushWrites, logSet, openApp, readDocument, seedDocument, setC
 import { MONDAY, e2eDocument } from './support/document';
 
 test('C03: undo after delete and relog never duplicates a set', async ({ context }) => {
-  test.fail(); // removed by plan Task 8
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '18:00'));
   const page = await openApp(context);
