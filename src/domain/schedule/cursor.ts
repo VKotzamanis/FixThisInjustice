@@ -162,6 +162,14 @@ function withAssignment(
   return { ...state.assignments, [profileId]: upsertAssignment(assignments, next) };
 }
 
+/** A closed session has no rest running: the persisted timer goes with it (spec R1). */
+function withoutRest(a: SessionAssignment): SessionAssignment {
+  if (a.rest === undefined) return a;
+  const copy = { ...a };
+  delete copy.rest;
+  return copy;
+}
+
 export function startSession(
   state: AppState,
   profileId: string,
@@ -190,7 +198,7 @@ export function completeSession(
   if (!r) return state;
   const a = assignmentFor(r, date, 'completeSession');
   if (!a || isTerminal(a)) return state;
-  const next: SessionAssignment = { ...a, status: 'completed', completedAt: now };
+  const next: SessionAssignment = { ...withoutRest(a), status: 'completed', completedAt: now };
   return {
     ...state,
     assignments: withAssignment(state, profileId, r.assignments, next),
@@ -208,7 +216,7 @@ export function skipSession(
   if (!r) return state;
   const a = assignmentFor(r, date, 'skipSession');
   if (!a || isTerminal(a)) return state;
-  const next: SessionAssignment = { ...a, status: 'skipped', skipReason: reason };
+  const next: SessionAssignment = { ...withoutRest(a), status: 'skipped', skipReason: reason };
   return {
     ...state,
     assignments: withAssignment(state, profileId, r.assignments, next),
