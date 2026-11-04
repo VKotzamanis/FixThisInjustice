@@ -20,6 +20,7 @@ import type { RestGameContext, RestTimer } from '../../../domain/training/restTi
 import { playRestGameCue, type RestGameCue } from '../../audio/restGameAudio';
 import { OwnerSprite } from '../../components/OwnerSprite';
 import { LossChomp } from './PixelMascot';
+import '../../styles/restGames.css';
 
 type RoundResult = 'won' | 'lost' | null;
 

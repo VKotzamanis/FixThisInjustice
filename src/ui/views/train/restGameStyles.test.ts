@@ -1,9 +1,11 @@
 // src/ui/views/train/restGameStyles.test.ts
 //
-// The rest game's CSS guarantees (ROADMAP F1, docs/design/rest-games.md), asserted in the sheet's
-// own text: jsdom performs no layout and evaluates no media query, the same reason
+// The rest games' CSS guarantees (ROADMAP F1, P6, docs/design/rest-games.md), asserted in the
+// sheet's own text: jsdom performs no layout and evaluates no media query, the same reason
 // src/ui/components/Marquee.test.tsx and src/app/topbar.test.ts read their sheets this way.
+// Every rest-game rule lives in restGames.css (P6 Task 1), so every rule of that file is checked.
 import { describe, expect, it } from 'vitest';
+import gamesCss from '../../styles/restGames.css?raw';
 import trainCss from '../../styles/train.css?raw';
 
 interface Rule {
@@ -32,12 +34,13 @@ function blockAt(css: string, at: number): string {
   return '';
 }
 
-const GAME_SELECTOR = /\.rest-(game|word|loss)/;
-const gameRules = rulesOf(trainCss).filter((rule) => GAME_SELECTOR.test(rule.selector));
+/** Any class a rest-game rule names. train.css must hold none of them after the move. */
+const GAME_SELECTOR = /\.rest-(game|word|loss|sheet|picker|plate|react|seq|anagram)/;
+const gameRules = rulesOf(gamesCss);
 
 /** [px per rem] The 16 px root the 44 px target rule in views.css is written against. */
 const PX_PER_REM = 16;
-/** [px] The minimum interactive target (views.css: min-height 2.75rem = 44 px). */
+/** [px] The minimum interactive height (views.css: min-height 2.75rem = 44 px). */
 const TARGET_PX = 44;
 
 function remOf(body: string, property: string): number | null {
@@ -50,14 +53,21 @@ describe('rest game styles (ROADMAP F1)', () => {
     expect(gameRules.length).toBeGreaterThan(0);
   });
 
+  it('keeps every rest-game rule out of train.css', () => {
+    const left = rulesOf(trainCss)
+      .filter((rule) => GAME_SELECTOR.test(rule.selector))
+      .map((rule) => rule.selector);
+    expect(left).toEqual([]);
+  });
+
   it('stops every rest-game animation under prefers-reduced-motion', () => {
     const animated = gameRules
       .filter((rule) => /(^|;|\s)animation:\s*(?!none)/.test(rule.body))
       .map((rule) => rule.selector);
     expect(animated.length).toBeGreaterThan(0);
 
-    const reduced = [...trainCss.matchAll(/@media\s*\(prefers-reduced-motion:\s*reduce\)/g)]
-      .map((m) => blockAt(trainCss, m.index))
+    const reduced = [...gamesCss.matchAll(/@media\s*\(prefers-reduced-motion:\s*reduce\)/g)]
+      .map((m) => blockAt(gamesCss, m.index))
       .join('\n');
     const stopped = rulesOf(reduced)
       .filter((rule) => /animation:\s*none/.test(rule.body))

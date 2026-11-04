@@ -24,6 +24,7 @@ import { playChime, unlockAudio, vibrate } from '../../audio/chime';
 import { prefersReducedMotion } from '../../hooks/reducedMotion';
 import { RestWordGame } from './RestWordGame';
 import '../../styles/train.css';
+import '../../styles/restGames.css';
 
 const RING_RADIUS = 28; // SVG user units, inside the 64-unit viewBox
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
