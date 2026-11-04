@@ -27,7 +27,7 @@
 //
 //   1. THE ERROR IS DOMAIN-MINTED (isDomainMinted). Either a RangeError, which is what
 //      calendar.ts raises for every one of its gates, or a message opening with `"<fn>: "` for
-//      one of the seven schedule entry points, which is the shape cursor.ts stamps on every
+//      one of the eight schedule entry points, which is the shape cursor.ts stamps on every
 //      gate it closes. This is the half that was missing: classifying on the STATE alone made
 //      the state a licence to swallow, so any unrelated throw — a TypeError from a refactor
 //      part-way through, a bug in a helper — arriving while the plan happened to be paused was
@@ -61,6 +61,7 @@ import {
   isPaused,
   isTerminal,
   pausePlan as pausePlanPure,
+  postponeSession as postponeSessionPure,
   resumePlan as resumePlanPure,
   skipSession as skipSessionPure,
   startSession as startSessionPure,
@@ -91,6 +92,8 @@ export interface ScheduleActions {
   startSession(profileId: string, date: LocalDate, now: EpochMs): void;
   completeSession(profileId: string, date: LocalDate, now: EpochMs): void;
   skipSession(profileId: string, date: LocalDate, reason: string | null): void;
+  /** Spec R2: Skip Today postpones; the cursor never moves (src/domain/schedule/cursor.ts). */
+  postponeSession(profileId: string, date: LocalDate): void;
   pausePlan(profileId: string, from: LocalDate, reason: string | null): void;
   resumePlan(profileId: string, to: LocalDate): void;
   assignToday(profileId: string, date: LocalDate, label: string): void;
@@ -189,6 +192,14 @@ export function refusesTransition(state: AppState, profileId: string, date: Loca
   return assignments.some((a) => !isTerminal(a));
 }
 
+/** Is `date` a day postponeSession may refuse: its session started, or a pick that holds sets? */
+export function refusesPostpone(state: AppState, profileId: string, date: LocalDate): boolean {
+  const day = (state.assignments[profileId] ?? []).find((a) => a.date === date);
+  if (day === undefined) return false;
+  if (day.status === 'in-progress') return true;
+  return Object.values(state.sets).some((s) => s.profileId === profileId && s.assignmentDate === date);
+}
+
 /**
  * Is `label` outside what assignToday can honour on `date`?
  *
@@ -207,13 +218,14 @@ export function refusesLabel(
 }
 
 /**
- * The seven domain entry points this slice calls, and the only names a refusal message may
+ * The eight domain entry points this slice calls, and the only names a refusal message may
  * open with. cursor.ts stamps `${fn}: ` on both of its gates, with fn naming the caller.
  */
-const DOMAIN_FUNCTIONS = [
+export const DOMAIN_FUNCTIONS = [
   'startSession',
   'completeSession',
   'skipSession',
+  'postponeSession',
   'pausePlan',
   'resumePlan',
   'assignToday',
@@ -235,7 +247,7 @@ function messageOf(err: unknown): string {
  * a library, a throw from a helper that has no such prefix — is a defect, whatever state it
  * arrived in.
  *
- * The prefix is matched against all seven names rather than only against the caller's own,
+ * The prefix is matched against all eight names rather than only against the caller's own,
  * because the names identify the DOMAIN's vocabulary, not the call site: a message minted by a
  * shared helper on behalf of another entry point is still the domain refusing. It is the state
  * check in attempt() that ties the refusal to this particular call.
@@ -314,6 +326,14 @@ export function createScheduleActions(deps: ScheduleActionDeps): ScheduleActions
         (s) => void requirePlan(s, 'skipSession', profileId),
         (s) => skipSessionPure(s, profileId, date, reason),
         (s) => refusesTransition(s, profileId, date),
+      ),
+
+    postponeSession: (profileId, date) =>
+      attempt(
+        deps,
+        (s) => void requirePlan(s, 'postponeSession', profileId),
+        (s) => postponeSessionPure(s, profileId, date),
+        (s) => refusesPostpone(s, profileId, date),
       ),
 
     // pausePlan and resumePlan cannot throw — an already-paused pause and a resume with no

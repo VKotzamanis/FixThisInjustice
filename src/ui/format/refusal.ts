@@ -23,22 +23,8 @@
 // unrecognised string.
 
 import { FORMAT, copy, type CopyKey } from '../../content/copy';
-
-/**
- * The seven schedule entry points whose names cursor.ts stamps on a message.
- *
- * Kept in step with DOMAIN_FUNCTIONS in src/store/scheduleActions.ts, which is the list the
- * classifier admits: a name that file does not accept never reaches this one.
- */
-const DOMAIN_FUNCTIONS = [
-  'startSession',
-  'completeSession',
-  'skipSession',
-  'pausePlan',
-  'resumePlan',
-  'assignToday',
-  'closeWeeks',
-] as const;
+// The store's own list, so a new schedule action cannot be missing here (rule 2).
+import { DOMAIN_FUNCTIONS } from '../../store/scheduleActions';
 
 /** A LocalDate as the domain writes it into a message. */
 const DATE = String.raw`\d{4}-\d{2}-\d{2}`;
@@ -98,7 +84,7 @@ const PATTERNS: readonly {
   },
 ];
 
-/** The message with its `"<fn>: "` prefix removed, when it carries one of the seven names. */
+/** The message with its `"<fn>: "` prefix removed, when it carries a known schedule name. */
 function withoutFunctionName(message: string): string {
   for (const fn of DOMAIN_FUNCTIONS) {
     const prefix = `${fn}: `;
