@@ -75,6 +75,15 @@ const MAX_NOTE_CHARS = 5_000;
 const MAX_HOSTNAME_CHARS = 253;
 /** [characters] Specimen card id, e.g. "c001". A sanity ceiling, not the shipped length. */
 const MAX_CARD_ID_CHARS = 40;
+/**
+ * [characters] Longest display name a profile holds. Exported so the setup wizard caps and
+ * validates its name field by the number the loader refuses by (audit A01/B02/A08, rule 2).
+ */
+export const PROFILE_DISPLAY_NAME_MAX_CHARS = 80;
+/** [dates] Sanity ceiling on PlanCursor.postponed; postponeSession prunes past dates. */
+const MAX_POSTPONED_DATES = 60;
+/** [sets] Ceiling on a rest game's place in the lifting day; shared with the session mirror (spec R1, AM-3). */
+const MAX_SESSION_SET_ORDINAL = 1_000;
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -248,7 +257,7 @@ const BodyweightEquipmentItemSchema = z.enum([
 
 export const ProfileSchema = z.object({
   id: z.string().min(1),
-  displayName: z.string().min(1).max(80),
+  displayName: z.string().min(1).max(PROFILE_DISPLAY_NAME_MAX_CHARS),
   timezone: TimeZoneSchema,
   units: UnitSystemSchema,
   createdAt: EpochMsSchema,
@@ -431,6 +440,9 @@ export const PlanCursorSchema = z.object({
   nextSessionIndex: z.int().min(0).max(MAX_PLAN_SESSIONS), // [sessions] offset
   startedOn: LocalDateSchema,
   completedOn: LocalDateSchema.nullable(),
+  // Additive and OPTIONAL (spec R2, rule 7): no default, so a document without it parses to
+  // exactly what was stored and an older build that strips it still loads.
+  postponed: z.array(LocalDateSchema).max(MAX_POSTPONED_DATES).optional(),
 });
 
 export const PlanPauseSchema = z.object({
@@ -463,6 +475,25 @@ export const SessionEditsSchema = z.object({
   order: z.array(ExerciseIdSchema).max(MAX_SESSION_EDIT_IDS),
 });
 
+/** Spec R1: the running rest, as src/domain/types.ts RestTimer. Structure and order only. */
+export const RestGameContextSchema = z.object({
+  exerciseId: z.string().min(1).max(200),
+  sessionId: z.string().min(1).max(200),
+  assignmentDate: LocalDateSchema,
+  setNumber: z.int().min(1).max(MAX_SETS), // [sets]
+  sessionSetOrdinal: z.int().min(1).max(MAX_SESSION_SET_ORDINAL), // [sets]
+});
+
+export const RestTimerSchema = z
+  .object({
+    startedAt: EpochMsSchema, // [ms]
+    endsAt: EpochMsSchema, // [ms]
+    durationS: SecondsSchema, // [s]
+    game: RestGameContextSchema.optional(),
+  })
+  // Non-strict: endsAt === startedAt is the zero-length interval startRest(0, t) produces.
+  .refine((t) => t.endsAt >= t.startedAt, { message: 'endsAt is before startedAt' });
+
 export const SessionAssignmentSchema = z.object({
   date: LocalDateSchema,
   sessionId: z.string().min(1),
@@ -478,6 +509,8 @@ export const SessionAssignmentSchema = z.object({
    * malformed value fails like any other malformed record.
    */
   edits: SessionEditsSchema.optional(),
+  // Additive and OPTIONAL (spec R1): the open session's running rest. Same rule 7 shape as edits.
+  rest: RestTimerSchema.optional(),
 });
 
 // ---------------------------------------------------------------------------

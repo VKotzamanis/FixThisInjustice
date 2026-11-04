@@ -4,12 +4,14 @@ import type { z } from 'zod';
 import {
   AppStateSchema,
   CURRENT_SCHEMA_VERSION,
+  PROFILE_DISPLAY_NAME_MAX_CHARS,
   PlannedSessionSchema,
   defaultState,
   parseState,
 } from './schema';
 import { anyAppState, anySetupDraft } from './arbitraries';
 import type { AppState } from './types';
+import { PROFILE_ID, seedState } from '../test/scheduleFixtures';
 
 /**
  * Every captured `fti.v3` fixture, loaded through Vite rather than node:fs so the
@@ -1034,5 +1036,85 @@ describe('the setupDraft field', () => {
     // The rest of the document is untouched by the corruption in one unrelated field.
     expect(result.state.profiles[P1]).toBeDefined();
     expect(result.state.activeProfileId).toBe(P1);
+  });
+});
+
+describe('spec R1/R2 additive fields (rule 7)', () => {
+  const base = (): AppState => seedState({ labels: ['A', 'B', 'C'], weekdays: [1, 3, 5] });
+  const NOW = Date.UTC(2026, 8, 7, 15, 0); // [ms] epoch, UTC
+
+  it('loads a document without the new fields exactly as stored, adding no key', () => {
+    const doc = base();
+    const parsed = parseState(JSON.parse(JSON.stringify(doc)) as unknown);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state).toEqual(doc);
+    expect(Object.keys(parsed.state.cursors[PROFILE_ID] ?? {})).not.toContain('postponed');
+  });
+
+  it('round-trips a running rest on an open assignment and a postponed date', () => {
+    const doc = base();
+    const withFields: AppState = {
+      ...doc,
+      cursors: { [PROFILE_ID]: { ...doc.cursors[PROFILE_ID]!, postponed: ['2026-09-09'] } },
+      assignments: {
+        [PROFILE_ID]: [
+          {
+            date: '2026-09-07',
+            sessionId: 's-1',
+            sourceIndex: 0,
+            status: 'in-progress',
+            startedAt: NOW,
+            completedAt: null,
+            skipReason: null,
+            rest: {
+              startedAt: NOW, // [ms]
+              endsAt: NOW + 90_000, // [ms] 90 s later
+              durationS: 90, // [s]
+              game: {
+                exerciseId: 'ex-1',
+                sessionId: 's-1',
+                assignmentDate: '2026-09-07',
+                setNumber: 1, // [sets]
+                sessionSetOrdinal: 1, // [sets]
+              },
+            },
+          },
+        ],
+      },
+    };
+    const parsed = parseState(JSON.parse(JSON.stringify(withFields)) as unknown);
+    if (!parsed.ok) throw new Error(parsed.error);
+    expect(parsed.state).toEqual(withFields);
+  });
+
+  it('refuses an inverted rest interval', () => {
+    const doc = base();
+    const bad = {
+      ...doc,
+      assignments: {
+        [PROFILE_ID]: [
+          {
+            date: '2026-09-07',
+            sessionId: 's-1',
+            sourceIndex: 0,
+            status: 'in-progress',
+            startedAt: NOW,
+            completedAt: null,
+            skipReason: null,
+            rest: { startedAt: NOW, endsAt: NOW - 1, durationS: 90 },
+          },
+        ],
+      },
+    };
+    expect(parseState(bad).ok).toBe(false);
+  });
+
+  it('caps a display name at the exported bound', () => {
+    expect(PROFILE_DISPLAY_NAME_MAX_CHARS).toBe(80); // [characters]
+    const doc = base();
+    const profile = doc.profiles[PROFILE_ID]!;
+    const long = { ...doc, profiles: { [PROFILE_ID]: { ...profile, displayName: 'A'.repeat(81) } } };
+    const result = parseState(long);
+    expect(result.ok ? null : result.error).toContain('displayName');
   });
 });

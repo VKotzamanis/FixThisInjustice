@@ -220,7 +220,8 @@ export interface PlanBlock { index: number; firstSessionIndex: number; sessionCo
 export interface PlanTemplate { id: string; version: number; name: string; sessionsPerWeek: number; weeks: number; sessions: PlannedSession[]; blocks: PlanBlock[]; }
 
 // ---- cursor, pauses, assignments ----
-export interface PlanCursor { planId: string; nextSessionIndex: number; startedOn: LocalDate; completedOn: LocalDate | null; } // advances only on complete/skip
+// `postponed` (spec R2): the civil dates Skip Today handed back, so the forecast serves nothing on them while the cursor holds. Optional and additive (rule 7): absent means none, and an older build strips it and still loads the document.
+export interface PlanCursor { planId: string; nextSessionIndex: number; startedOn: LocalDate; completedOn: LocalDate | null; postponed?: LocalDate[] | undefined; } // advances only on complete
 export interface PlanPause { id: string; from: LocalDate; to: LocalDate | null; reason: string | null; } // half-open [from, to): `to` is the first active day again; null = still paused
 export type AssignmentStatus = "planned" | "in-progress" | "completed" | "skipped";
 /**
@@ -234,8 +235,29 @@ export interface SessionEdits {
   added: string[];               // exerciseIds added this session, in the order added
   order: string[];               // display order of slot keys; keys missing here follow in default order
 }
+/**
+ * A running rest interval: two absolute instants, never a decremented counter
+ * (src/domain/training/restTimer.ts). Declared here, not in restTimer.ts, because spec R1 stores
+ * it on the open assignment in fti.v3; restTimer.ts re-exports it.
+ */
+export interface RestTimer {
+  startedAt: EpochMs; // [ms] epoch ms UTC, the instant the rest began
+  endsAt: EpochMs; // [ms] epoch ms UTC, the instant it is due to end
+  durationS: Seconds; // [s] as originally requested; extensions move endsAt only
+  /** The rest game this interval offers (ROADMAP F1); absent on older timers. */
+  game?: RestGameContext | undefined;
+}
+/** The identity of the round one rest interval offers (ROADMAP F1). */
+export interface RestGameContext {
+  exerciseId: string;
+  sessionId: string;
+  assignmentDate: LocalDate;
+  setNumber: number; // [sets] within this exercise, 1-based
+  sessionSetOrdinal: number; // [sets] within the lifting day, 1-based
+}
 // `edits` is optional and additive (rule 7): absent means the plan as written, so a document or export written before it existed parses unchanged; no schemaVersion bump.
-export interface SessionAssignment { date: LocalDate; sessionId: string; sourceIndex: number; status: AssignmentStatus; startedAt: EpochMs | null; completedAt: EpochMs | null; skipReason: string | null; edits?: SessionEdits | undefined; }
+// `rest` is optional and additive (spec R1, audit C04/B13): the running rest of the OPEN session, so an iOS relaunch that empties sessionStorage keeps it. Dropped when the session closes.
+export interface SessionAssignment { date: LocalDate; sessionId: string; sourceIndex: number; status: AssignmentStatus; startedAt: EpochMs | null; completedAt: EpochMs | null; skipReason: string | null; edits?: SessionEdits | undefined; rest?: RestTimer | undefined; }
 
 // ---- logs ----
 export interface LoggedSet { id: string; profileId: string; assignmentDate: LocalDate; sessionId: string; exerciseId: string; setNumber: number; isBonus: boolean; loadKg: Kg | null; enteredUnit: UnitSystem; reps: number | null; durationS: Seconds | null; rpe: number | null; loggedAt: EpochMs; } // loadKg 0 is valid (bodyweight); null = not recorded

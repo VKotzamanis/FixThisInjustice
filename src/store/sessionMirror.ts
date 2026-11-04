@@ -19,6 +19,7 @@
 // into a store initialiser that runs before React mounts.
 import { z } from 'zod';
 import { isValidLocalDate } from '../domain/dates';
+import { RestTimerSchema } from '../domain/schema';
 import type { EpochMs, LocalDate, LoggedSet } from '../domain/types';
 import type { RestTimer } from '../domain/training/restTimer';
 
@@ -63,11 +64,9 @@ export const EMPTY_SESSION: SessionState = {
 /**
  * The four durable fields, validated on the way back in.
  *
- * Written out here rather than reused from the domain because a mirror is untrusted input:
- * it is user-editable storage, it can be written by an older build, and it reaches a store
- * initialiser. The bounds are structural (a timer is three finite numbers, a date is a real
- * civil day) and the list of bonus ids is capped so a hand-edited mirror cannot inflate the
- * session.
+ * The rest timer and its game identity use the domain schemas (spec R1, AM-3). The mirror is
+ * user-editable storage, can be written by an older build, and reaches a store initialiser.
+ * The list of bonus ids is capped so a hand-edited mirror cannot inflate the session.
  *
  * Two of the checks are semantic rather than structural, because the structural version of
  * each admitted a payload the app cannot act on (P4 polish items 7):
@@ -85,30 +84,7 @@ export const EMPTY_SESSION: SessionState = {
  * and a partially-trusted mirror would be a third state with no reader.
  */
 const MirrorSchema = z.object({
-  restTimer: z
-    .object({
-      startedAt: z.number().int().finite(), // [ms] epoch UTC
-      endsAt: z.number().int().finite(), // [ms] epoch UTC
-      durationS: z.number().nonnegative().finite(), // [s]
-      // Optional for timers started by older builds. A present context is fully validated rather
-      // than silently stripped, so a reload restores the same seeded puzzle as the live tab.
-      game: z
-        .object({
-          exerciseId: z.string().min(1).max(200),
-          sessionId: z.string().min(1).max(200),
-          assignmentDate: z
-            .string()
-            .refine((d) => isValidLocalDate(d), { message: 'not a calendar-valid game date' }),
-          setNumber: z.number().int().min(1).max(100), // [sets]
-          sessionSetOrdinal: z.number().int().min(1).max(1_000), // [sets]
-        })
-        .optional(),
-    })
-    // Non-strict: endsAt === startedAt is the zero-length interval startRest(0, t) produces.
-    .refine((t) => t.endsAt >= t.startedAt, {
-      message: 'endsAt is before startedAt',
-    })
-    .nullable(),
+  restTimer: RestTimerSchema.nullable(),
   // A missing key is an older pre-game mirror, not a corrupt session. Its safe meaning is no
   // bonus difficulty, so default it rather than dropping an otherwise valid in-progress rest.
   restGameWins: z.number().int().min(0).max(REST_GAME_WINS_MAX).default(0), // [rounds]

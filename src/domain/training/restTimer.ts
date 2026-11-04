@@ -14,7 +14,7 @@
 // remainingS is time LEFT, so it is non-negative by construction; a negative `deltaS` passed
 // to `extend` shortens the interval.
 import { restSFor } from '../plan/library';
-import type { EpochMs, Exercise, LocalDate, PlannedExercise, Seconds } from '../types';
+import type { EpochMs, Exercise, PlannedExercise, RestGameContext, RestTimer, Seconds } from '../types';
 
 /*
  * Rest-interval defaults, content peer review section 9. These three constants are the NAMED
@@ -62,36 +62,10 @@ export const REST_ISOLATION_S: Seconds = 90; // [s]
 export const HEAVY_REP_CEILING = 6; // [repetitions]
 
 /**
- * The persisted shape of a running rest interval. Defined here rather than in types.ts: it is
- * P4-local state, mirrored to sessionStorage by the session slice and never written into the
- * persisted document (master plan section 3 forbids persisting derived values).
+ * The rest interval and its game identity are declared in src/domain/types.ts since spec R1
+ * stores the running rest on the open assignment. Re-exported so existing imports keep working.
  */
-export interface RestTimer {
-  startedAt: EpochMs; // [ms] epoch ms UTC, the instant the rest began
-  endsAt: EpochMs; // [ms] epoch ms UTC, the instant it is due to end
-  durationS: Seconds; // [s] as originally requested; extensions move endsAt only
-  /**
-   * The rest game this interval offers (ROADMAP F1, docs/design/rest-games.md). Absent on a
-   * timer started before rest games existed, and then no game is offered. Read-only to the
-   * game: nothing in a game writes `startedAt`, `endsAt` or `durationS`. `| undefined` for the
-   * same reason as `SessionAssignment.edits` (types.ts): the mirror's Zod `.optional()` infers it
-   * under exactOptionalPropertyTypes.
-   */
-  game?: RestGameContext | undefined;
-}
-
-/**
- * The identity of the round one rest interval offers. Session-only, beside the timer rather than
- * on a LoggedSet: a puzzle is a diversion, not training history. Keeping it on the timer is what
- * lets a reload restore the SAME round instead of rolling a new one halfway through a rest.
- */
-export interface RestGameContext {
-  exerciseId: string;
-  sessionId: string;
-  assignmentDate: LocalDate;
-  setNumber: number; // [sets] within this exercise, 1-based
-  sessionSetOrdinal: number; // [sets] within the lifting day, 1-based
-}
+export type { RestGameContext, RestTimer } from '../types';
 
 /**
  * Starts a rest interval at `now`. `durationS` is expected to be non-negative (the Seconds
