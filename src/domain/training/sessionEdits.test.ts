@@ -337,6 +337,53 @@ describe('addChoices (L4)', () => {
   });
 });
 
+describe('the pickers respect the inventory (audit D07)', () => {
+  const none = new Set<never>();
+  const inUse = new Set<string>();
+
+  it('moves what the inventory lacks from the suggestions to Others, hiding nothing', () => {
+    const pullUp = ex('pull-up');
+    const { suggested, others } = swapAlternatives({
+      original: pullUp,
+      access: 'bodyweight',
+      inventory: none,
+      library: EXERCISES,
+      inUse,
+    });
+    const ids = suggested.map((e) => e.id);
+    expect(ids).not.toContain('chin-up');
+    expect(ids).not.toContain('band-row');
+    expect(ids).toContain('door-frame-row');
+    expect(others.map((e) => e.id)).toContain('chin-up');
+    expect([...suggested, ...others].length).toBe(EXERCISES.length);
+  });
+
+  it('offers the band row once the inventory has bands', () => {
+    const { suggested } = swapAlternatives({
+      original: ex('pull-up'),
+      access: 'bodyweight',
+      inventory: new Set(['resistance-bands'] as const),
+      library: EXERCISES,
+      inUse,
+    });
+    expect(suggested.map((e) => e.id)).toContain('band-row');
+  });
+
+  it('lists only what the inventory allows under fits when adding', () => {
+    const { fits, others } = addChoices({ access: 'home', inventory: new Set(['dumbbells'] as const), library: EXERCISES, inUse });
+    const fitIds = fits.map((e) => e.id);
+    expect(fitIds).toContain('db-floor-press');
+    expect(fitIds).not.toContain('incline-db-press'); // needs a bench
+    expect(fitIds).not.toContain('pull-up'); // needs a bar
+    expect(others.map((e) => e.id)).toContain('incline-db-press');
+  });
+
+  it('filters nothing with a full gym, whatever the inventory', () => {
+    const { others } = addChoices({ access: 'full-gym', inventory: none, library: EXERCISES, inUse });
+    expect(others).toEqual([]);
+  });
+});
+
 describe('swapAlternatives (L2)', () => {
   const bench = ex('barbell-bench-press');
   const inUse = new Set(['barbell-bench-press', 'lat-pulldown', 'plank']);

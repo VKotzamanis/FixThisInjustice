@@ -17,6 +17,7 @@ import {
   type LineupEntry,
   type SessionEditOp,
 } from '../../../domain/training/sessionEdits';
+import type { Inventory } from '../../../domain/plan/inventory';
 import type { EquipmentAccess, Exercise } from '../../../domain/types';
 import '../../styles/train.css';
 
@@ -29,6 +30,8 @@ export interface SessionEditBarProps {
   /** The planned exercise of the slot, whose intent a swap keeps. Null for an added card. */
   original: Exercise | null;
   access: EquipmentAccess;
+  /** inventoryOf(profile); what it lacks moves from the suggestions to Others (audit D07). */
+  inventory?: Inventory | undefined;
   /** Shipped library plus the profile's custom exercises, in library order. */
   library: readonly Exercise[];
   /** Exercise ids the session already holds; never offered again. */
@@ -52,6 +55,7 @@ export function SessionEditBar(props: SessionEditBarProps): ReactElement {
     name,
     original,
     access,
+    inventory,
     library,
     inUse,
     canMoveUp,
@@ -69,8 +73,8 @@ export function SessionEditBar(props: SessionEditBarProps): ReactElement {
     () =>
       original === null || !swapping
         ? { suggested: [], others: [] }
-        : swapAlternatives({ original, access, library, inUse }),
-    [original, swapping, access, library, inUse],
+        : swapAlternatives({ original, access, inventory, library, inUse }),
+    [original, swapping, access, inventory, library, inUse],
   );
   const firstChoice = alternatives.suggested[0]?.id ?? alternatives.others[0]?.id ?? '';
   const selected = choice === '' ? firstChoice : choice;

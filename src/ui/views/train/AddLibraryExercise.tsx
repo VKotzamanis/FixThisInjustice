@@ -10,12 +10,15 @@
 // progression, the rule every added exercise has followed (ExerciseCard.tsx handleLog).
 import { useId, useMemo, useState, type ReactElement } from 'react';
 import { useCopy } from '../../../content/useCopy';
+import type { Inventory } from '../../../domain/plan/inventory';
 import { addChoices } from '../../../domain/training/sessionEdits';
 import type { EquipmentAccess, Exercise } from '../../../domain/types';
 import '../../styles/train.css';
 
 export interface AddLibraryExerciseProps {
   access: EquipmentAccess;
+  /** inventoryOf(profile); what it lacks moves to the "rest of the library" group (audit D07). */
+  inventory?: Inventory | undefined;
   /** Shipped library plus the profile's custom exercises, in library order. */
   library: readonly Exercise[];
   /** Exercise ids the session already holds; never offered. */
@@ -25,7 +28,7 @@ export interface AddLibraryExerciseProps {
 }
 
 export function AddLibraryExercise(props: AddLibraryExerciseProps): ReactElement {
-  const { access, library, inUse, onAdd } = props;
+  const { access, inventory, library, inUse, onAdd } = props;
   // A singleton on the screen, so one subscription of its own (TrainView's note on `c`).
   const c = useCopy();
   const [open, setOpen] = useState(false);
@@ -34,8 +37,8 @@ export function AddLibraryExercise(props: AddLibraryExerciseProps): ReactElement
   const selectId = useId();
 
   const choices = useMemo(
-    () => (open ? addChoices({ access, library, inUse }) : { fits: [], others: [] }),
-    [open, access, library, inUse],
+    () => (open ? addChoices({ access, inventory, library, inUse }) : { fits: [], others: [] }),
+    [open, access, inventory, library, inUse],
   );
   const firstChoice = choices.fits[0]?.id ?? choices.others[0]?.id ?? '';
   const selected = choice === '' ? firstChoice : choice;
