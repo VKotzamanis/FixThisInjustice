@@ -5,6 +5,10 @@
 // knowing anything about clocks or screens.
 
 import type { RestGameContext } from '../training/restTimer';
+import { restGameDifficulty, restGameSeed, restRoundClockS } from './restGames';
+
+// Moved to restGames.ts (P6); re-exported so existing imports keep working.
+export { restGameSeed } from './restGames';
 
 export type RestWordTile = 'absent' | 'present' | 'exact';
 
@@ -35,19 +39,9 @@ const TARGETS_BY_LENGTH: Readonly<Record<number, readonly string[]>> = {
  *   at most half of the band's top (45 of 90, 60 of 120, 90 of 180), so recovery time remains.
  */
 function baseRoundForRest(restS: number): Pick<RestWordRound, 'wordLength' | 'maxGuesses' | 'durationS'> {
-  if (restS <= 90) return { wordLength: 4, maxGuesses: 5, durationS: 45 };
-  if (restS <= 120) return { wordLength: 5, maxGuesses: 6, durationS: 60 };
-  return { wordLength: 5, maxGuesses: 6, durationS: 90 };
-}
-
-/** A stable non-cryptographic hash; repeatability, not secrecy, is the requirement. */
-export function restGameSeed(value: string): number {
-  let hash = 2_166_136_261;
-  for (let i = 0; i < value.length; i += 1) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16_777_619);
-  }
-  return hash >>> 0;
+  const durationS = restRoundClockS(restS); // [s]
+  if (restS <= 90) return { wordLength: 4, maxGuesses: 5, durationS };
+  return { wordLength: 5, maxGuesses: 6, durationS };
 }
 
 /**
@@ -61,7 +55,7 @@ export function restWordRound(
   priorWins: number, // [rounds] won earlier in this lifting day
 ): RestWordRound {
   const base = baseRoundForRest(restS);
-  const difficulty = Math.min(3, Math.floor((context.sessionSetOrdinal - 1 + priorWins) / 3));
+  const difficulty = restGameDifficulty(context, priorWins);
   const targets = TARGETS_BY_LENGTH[base.wordLength];
   if (targets === undefined || targets.length === 0) {
     throw new Error(`No Rest Word targets for ${base.wordLength} letters`);
