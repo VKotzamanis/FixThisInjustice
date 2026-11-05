@@ -167,6 +167,9 @@
   --eyebrow-tracking: 0.24em;
   --eyebrow-stretch: 75%;
   --panel-glow: none;
+  /* The one monospace stack (ASCII bars and art, where # and - must be one width): system faces,
+   * not a costume; Archivo stays the UI face (--mono and --sans). */
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   /*
    * The burn (AM-4a-9, owner approval 2026-11-05: look FAITHFUL, glow ON). A word that burns once
    * (src/ui/effects/burnText.ts) sits on its own ink plate with lime letters; the fire ramp runs
@@ -405,6 +408,9 @@ body {
   --eyebrow-tracking: 0.24em;
   --eyebrow-stretch: 75%;
   --panel-glow: none;
+  /* The one monospace stack (ASCII bars and art, where # and - must be one width): system faces,
+   * not a costume; Archivo stays the UI face (--mono and --sans). */
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
   /*
    * The burn (AM-4a-9, owner approval 2026-11-05: look FAITHFUL, glow ON). A word that burns once
    * (src/ui/effects/burnText.ts) sits on its own ink plate with lime letters; the fire ramp runs
@@ -457,7 +463,7 @@ body {
  * loads the sheets in.
  */
 pre.ll-ascii {
-  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
 }
 
 /* The inverted panel: the marquee strip, the rest panel and the stamp. The one black surface

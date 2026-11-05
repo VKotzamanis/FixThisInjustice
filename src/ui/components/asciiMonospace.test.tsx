@@ -54,7 +54,11 @@ describe('ASCII blocks use a true monospace face', () => {
     // `pre.ll-ascii` is 0,1,1: it outranks `.boot-pre` and `.konami-art` (0,1,0, each setting
     // `font: inherit`) whichever stylesheet the bundle happens to load last.
     expect(rules[0]?.[1]?.trim()).toBe('pre.ll-ascii');
-    expect(rules[0]?.[2]).toContain(`font-family: ${STACK};`);
+    // The stack is one token (rule 2), shared with Log's ASCII progress bar (views.css).
+    expect(rules[0]?.[2]).toContain('font-family: var(--font-mono);');
+    const declared = [...css.matchAll(/--font-mono:\s*([^;]+);/g)].map((m) => m[1]);
+    expect(declared.length).toBeGreaterThan(0);
+    for (const value of declared) expect(value).toBe(STACK);
     expect(rules[0]?.[2]).not.toMatch(/Archivo|var\(--mono\)/);
   });
 });

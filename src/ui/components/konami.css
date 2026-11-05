@@ -42,7 +42,7 @@
   padding: 1rem;
   color: var(--text);
   background: var(--bg-2);
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border: 1px solid var(--line-2);
   font-family: var(--mono, ui-monospace, monospace);
 }
 

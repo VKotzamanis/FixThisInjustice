@@ -16,7 +16,7 @@
   flex-direction: column;
   gap: 0.5rem;
   padding: 0.75rem;
-  border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
+  border: 1px solid var(--line);
   background: var(--bg-2);
 }
 
@@ -40,7 +40,7 @@
   padding: 0 0.75rem;
   color: inherit;
   background: transparent;
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border: 1px solid var(--line-2);
   font: inherit;
   font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
   letter-spacing: 0.06em;
@@ -94,7 +94,7 @@
   padding: 0.5rem;
   color: inherit;
   background: var(--bg);
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border: 1px solid var(--line-2);
   font: inherit;
   font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
 }

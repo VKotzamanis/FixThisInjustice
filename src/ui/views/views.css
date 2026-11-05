@@ -13,8 +13,8 @@
  *   checkbox (the label is the tap area, not the 20 px box inside it).
  *
  * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
- * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined),
- * except `var(--font-mono, ...)`: no --font-mono token exists, so that one renders its fallback.
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined);
+ * --font-mono is a token too (tokens.css), so no rule here relies on a fallback.
  */
 /*
  * One gutter (brief 2.3): main has none at phone width, the view pads max(16 px, the side
@@ -237,7 +237,7 @@
 
 /* The bar is monospace by construction: a proportional font makes # and - different widths. */
 .view .view-progress {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono);
   font-size: 0.85rem;
   margin: 0.5rem 0 0;
 }
@@ -303,7 +303,7 @@
   grid-template-columns: 1fr auto;
   gap: 0 0.75rem;
   padding: 0.4rem 0;
-  border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border-top: 1px solid var(--line-2);
   font-size: 0.85rem;
 }
 
@@ -379,7 +379,7 @@
   align-items: center;
   gap: 0 0.5rem;
   padding: 0.3rem 0.25rem;
-  border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border-top: 1px solid var(--line-2);
   font-size: 0.85rem;
 }
 
@@ -403,7 +403,7 @@
   background-image: repeating-linear-gradient(
     -45deg,
     transparent 0 4px,
-    var(--line-2, rgba(220, 230, 240, 0.16)) 4px 6px
+    var(--line-2) 4px 6px
   );
 }
 
@@ -440,7 +440,7 @@
   min-height: 2.75rem;
   padding: 0.4rem 0.6rem;
   text-align: left;
-  border-color: var(--line-2, rgba(220, 230, 240, 0.16));
+  border-color: var(--line-2);
   font-size: 0.8rem;
   letter-spacing: 0.04em;
 }
@@ -554,7 +554,7 @@
 
 .view.plan .plan-session {
   padding: 0.6rem 0;
-  border-top: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  border-top: 1px solid var(--line-2);
 }
 
 /* The next session's left rule is ink (10.91:1 on lime), where it was pink (1.41:1, under SC
