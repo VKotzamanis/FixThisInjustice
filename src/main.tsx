@@ -17,6 +17,8 @@ import './ui/styles/crt.css';
 import { App } from './app/App';
 import { RootErrorBoundary } from './app/RootErrorBoundary';
 import { notifyUpdateReady } from './app/UpdatePrompt';
+import { startUpdateController } from './app/updateController';
+import { openAssignment } from './domain/schedule/staleSessions';
 import { startPersistence, useAppStore } from './store';
 import { createBrowserBackend } from './store/persistence';
 import { startDurabilityWatch } from './app/storageDurability';
@@ -41,24 +43,29 @@ startDurabilityWatch({
 });
 
 /*
- * Service-worker registration. vite.config.ts sets injectRegister: false
- * because the CSP forbids an inline <script>, so the registration is this call
- * and nothing else. immediate: true registers as soon as this module runs
- * rather than waiting for the window load event, which is what makes a cold
- * first visit installable without a second round trip.
- *
- * registerType is 'prompt', not 'autoUpdate': a waiting worker must not swap
- * the running code out from under a session whose last change has not been
- * flushed. onNeedRefresh hands the apply callback to UpdatePrompt, which is the
- * only thing that can call it, and only when the user clicks.
+ * Service worker and the update model (spec R7): src/app/updateController.ts. vite.config.ts
+ * keeps registerType 'prompt' and injectRegister false (the CSP forbids an inline script), so
+ * this call is the only registration. immediate: true registers as soon as this module runs,
+ * which makes a cold first visit installable without a second round trip.
  */
-const updateServiceWorker = registerSW({
-  immediate: true,
-  onNeedRefresh() {
-    notifyUpdateReady(() => {
-      void updateServiceWorker(true);
-    });
+startUpdateController({
+  register: registerSW,
+  ready: () => useAppStore.getState().status.hydrated,
+  // Any profile's open session counts: the banner, never a reload, while one is open.
+  isSessionOpen: () => {
+    const s = useAppStore.getState();
+    return Object.keys(s.profiles).some((id) => openAssignment(s, id) !== null);
   },
+  // P2 writes each action through to the record store at once (no debounced save), so there is
+  // nothing pending to flush before a reload.
+  flush: () => undefined,
+  reload: () => {
+    window.location.reload();
+  },
+  showBanner: notifyUpdateReady,
+  subscribeStore: (listener) => useAppStore.subscribe(listener),
+  doc: document,
+  win: window,
 });
 
 /*
