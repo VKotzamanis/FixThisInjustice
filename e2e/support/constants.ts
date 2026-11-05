@@ -49,6 +49,12 @@ export const LABEL = {
   editEntry: 'Edit',
   saveEntry: 'Save',
   fluidLoss: 'Fluid loss above 2 %. Replace over the next hours.',
+  // P4a (plan docs/plans/2026-11-04-p4a-shell-design.md Task 17): the bar and the More sheet.
+  targetsTab: 'the numbers',
+  planRow: 'the run',
+  atlasRow: 'the collection',
+  settingsRow: 'backstage',
+  findRow: 'find it',
 } as const;
 
 /** "Set 1 load (kg)": FORMAT.quantityWithUnit(FORMAT.setLoadQuantity(n), 'kg'). */

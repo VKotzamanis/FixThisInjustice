@@ -64,6 +64,12 @@ describe('the e2e document builder', () => {
     expect(LABEL.saveEntry).toBe(copyFor('limelight', 'button.saveEntry'));
     expect(LABEL.fluidLoss).toBe(copyFor('limelight', 'advice.fluidLoss'));
     expect(LABEL.finishAnyway).toBe(copyFor('limelight', 'button.finishAnyway'));
+    expect(LABEL.trainTab).toBe(copyFor('limelight', 'nav.train'));
+    expect(LABEL.targetsTab).toBe(copyFor('limelight', 'nav.targets'));
+    expect(LABEL.planRow).toBe(copyFor('limelight', 'nav.plan'));
+    expect(LABEL.atlasRow).toBe(copyFor('limelight', 'nav.atlas'));
+    expect(LABEL.settingsRow).toBe(copyFor('limelight', 'nav.settings'));
+    expect(LABEL.findRow).toBe(copyFor('limelight', 'button.openSpotlight'));
     expect(massLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.bodyMass'), 'kg'));
     expect(preMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.preSessionBodyMass'), 'kg'));
     expect(postMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.postSessionBodyMass'), 'kg'));
