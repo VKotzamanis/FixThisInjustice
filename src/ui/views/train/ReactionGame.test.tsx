@@ -5,6 +5,7 @@ import { REST_GAME_FORMAT } from '../../../content/restGameFormat';
 import { reactionRound } from '../../../domain/fun/reaction';
 import type { RestTimer } from '../../../domain/training/restTimer';
 import { ReactionGame } from './ReactionGame';
+import { DEFAULT_REST_GAME_HOST, RestGameHostContext } from './restGameHost';
 
 const NOW = Date.UTC(2026, 8, 11, 12, 0, 0); // [ms] epoch UTC
 
@@ -118,6 +119,60 @@ describe('ReactionGame (P6)', () => {
     }
     expect(screen.getByText(copy('status.restWordLost'))).toBeInTheDocument();
     expect(onWin).not.toHaveBeenCalled();
+  });
+
+  describe('while the sheet is hidden (lead ruling R-G1: hidden = no penalty)', () => {
+    const element = (hidden: boolean) => (
+      <RestGameHostContext value={{ ...DEFAULT_REST_GAME_HOST, hidden }}>
+        <ReactionGame
+          timer={TIMER}
+          priorWins={0}
+          soundsEnabled={false}
+          t={copy}
+          overrides={{}}
+          onExit={vi.fn()}
+          onWin={vi.fn()}
+        />
+      </RestGameHostContext>
+    );
+
+    it('voids a trial hidden at go: no miss is counted, and showing again starts a fresh trial', () => {
+      const { container, rerender } = render(element(false));
+      start();
+      advance(ROUND.delaysMs[0] ?? 0);
+      expect(pad(container).classList.contains('is-go')).toBe(true);
+      rerender(element(true));
+      advance(ROUND.goWindowMs * 3); // [ms] far past the go window
+      expect(screen.queryByText(copy('label.restGameReactionMissed'))).toBeNull();
+      expect(screen.getByText(REST_GAME_FORMAT.progress(0, ROUND.trials))).toBeInTheDocument();
+      rerender(element(false));
+      // A fresh trial: the full wait again, then lime, and the tap is timed from the new go.
+      expect(pad(container).textContent).toBe(copy('label.restGameReactionWait'));
+      advance((ROUND.delaysMs[0] ?? 0) - 1);
+      expect(pad(container).classList.contains('is-go')).toBe(false);
+      advance(1);
+      expect(pad(container).classList.contains('is-go')).toBe(true);
+      advance(250);
+      fireEvent.click(pad(container));
+      expect(pad(container).textContent).toBe(REST_GAME_FORMAT.reactionTime(250));
+      expect(screen.getByText(REST_GAME_FORMAT.progress(1, ROUND.trials))).toBeInTheDocument();
+    });
+
+    it('pauses the wait while hidden: the pad never turns lime unseen', () => {
+      const { container, rerender } = render(element(false));
+      start();
+      advance(100);
+      rerender(element(true));
+      advance(10_000); // [ms] longer than any wait
+      expect(pad(container).classList.contains('is-go')).toBe(false);
+      expect(screen.getByText(REST_GAME_FORMAT.progress(0, ROUND.trials))).toBeInTheDocument();
+    });
+
+    it('leaves an unstarted round unstarted', () => {
+      const { rerender } = render(element(true));
+      rerender(element(false));
+      expect(screen.getByRole('button', { name: copy('button.restGameReactionStart') })).toBeInTheDocument();
+    });
   });
 
   it('ends out of time when the round clock runs out first', () => {

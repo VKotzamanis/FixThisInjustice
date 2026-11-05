@@ -5,6 +5,11 @@
 // waiting, solid ink on lime at go), so colour never stands alone. It reads the rest timer and
 // never writes it.
 //
+// Hidden = no penalty (lead ruling R-G1): while the sheet is minimised the trial in progress is
+// voided (never counted as a miss or a foul), the wait and the go window stop, and when the sheet
+// is shown again a fresh trial starts with its full wait. The round clock runs on: it is bounded
+// by the rest, which never stops.
+//
 // Units: instants [ms] epoch UTC; reaction times and waits [ms]; the round clock [s].
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { REST_GAME_FORMAT } from '../../../content/restGameFormat';
@@ -17,6 +22,7 @@ import {
 } from '../../../domain/fun/reaction';
 import { playRestGameCue } from '../../audio/restGameAudio';
 import { RestGameFrame, type RestGameResult } from './RestGameFrame';
+import { useRestGameHost } from './restGameHost';
 import { gameContext, type RestGameCopy, type RestGameProps } from './restGameProps';
 import { useRoundClock } from './useRoundClock';
 import '../../styles/restGames.css';
@@ -30,6 +36,7 @@ type Phase = 'idle' | 'waiting' | 'go' | 'feedback';
 
 export function ReactionGame(props: RestGameProps): ReactElement {
   const { timer, priorWins, soundsEnabled, t, overrides, onExit, onWin } = props;
+  const { hidden } = useRestGameHost();
   const context = gameContext(timer, 'ReactionGame');
   const [round] = useState<ReactionRound>(() => reactionRound(context, timer.durationS, priorWins));
   const clock = useRoundClock(timer, round.durationS);
@@ -39,6 +46,15 @@ export function ReactionGame(props: RestGameProps): ReactElement {
   const goAtRef = useRef(0); // [ms] epoch UTC, the instant the pad turned lime
   const canPlay = result === null && clock.remainingS > 0;
   const summary = reactionSummary(round, trials);
+
+  // R-G1: a Hide voids the running trial. Every started phase falls back to 'waiting', whose
+  // timer below does not run while hidden, so the shown-again pad starts the next trial afresh.
+  // Done while rendering, on the change of `hidden`, so no effect sets state.
+  const [wasHidden, setWasHidden] = useState(hidden);
+  if (hidden !== wasHidden) {
+    setWasHidden(hidden);
+    if (hidden && phase !== 'idle') setPhase('waiting');
+  }
 
   const record = (trial: ReactionTrial): void => {
     const next = [...trials, trial];
@@ -73,7 +89,7 @@ export function ReactionGame(props: RestGameProps): ReactElement {
 
   const trialIndex = trials.length; // [trials] done so far
   useEffect(() => {
-    if (result !== null) return undefined;
+    if (result !== null || hidden) return undefined;
     let id: number | undefined;
     if (phase === 'waiting') {
       id = window.setTimeout(() => {
@@ -92,10 +108,10 @@ export function ReactionGame(props: RestGameProps): ReactElement {
     return () => {
       if (id !== undefined) window.clearTimeout(id);
     };
-  }, [phase, result, trialIndex, round]);
+  }, [phase, result, trialIndex, round, hidden]);
 
   const tap = (): void => {
-    if (!canPlay) return;
+    if (!canPlay || hidden) return;
     if (phase === 'idle') {
       setPhase('waiting');
       return;
