@@ -1,15 +1,17 @@
 // @vitest-environment jsdom
 //
-// P4 Task 8. The modal is reached only through the context provider, so every test here
-// opens it the way the app does: a child component calls useVideoModal().open(). Nothing
-// touches window.__videoModal, because it no longer exists (code review A53).
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+// P4 Task 8, rewritten for ROADMAP L9 (audit E05). The modal is reached only through the context
+// provider, so every test here opens it the way the app does: a child component calls
+// useVideoModal().open(). Nothing touches window.__videoModal (code review A53).
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactElement } from 'react';
 import { TrainingModalsProvider } from './TrainingModalsProvider';
 import { useVideoModal } from './VideoModal';
+import type { VideoRequest } from './VideoModal';
 import { VIDEO_INSTANCES } from '../../config/videoInstances';
 import { copyFor } from '../../content/copy';
+import { FORM_CUES } from '../../content/formCues';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
 import { useAppStore } from '../../store';
 
@@ -21,23 +23,23 @@ function hostAt(index: number): string {
 }
 
 /**
- * The search string the shipped library carries for an exercise. Read from the library
- * rather than hand-written so a drift there fails this test instead of leaving it asserting
- * a string the app never builds.
+ * The request ExerciseCard builds for a library exercise. Read from the library rather than
+ * hand-written, so a drift there fails here instead of leaving the test asserting an id the
+ * app never frames.
  */
-function libraryQuery(id: string): string | null {
+function libraryRequest(id: string): VideoRequest {
   const exercise = EXERCISE_BY_ID[id];
   if (exercise === undefined) throw new Error(`library no longer defines ${id}`);
-  return exercise.videoQuery;
+  return { videoId: exercise.videoId, cueId: exercise.formCueId, title: exercise.name };
 }
 
-function Opener(props: { query: string | null; title: string }): ReactElement {
+function Opener(props: { request: VideoRequest }): ReactElement {
   const modal = useVideoModal();
   return (
     <button
       type="button"
       onClick={() => {
-        modal.open({ query: props.query, title: props.title });
+        modal.open(props.request);
       }}
     >
       open
@@ -45,10 +47,10 @@ function Opener(props: { query: string | null; title: string }): ReactElement {
   );
 }
 
-function renderWith(query: string | null, title: string): void {
+function renderWith(request: VideoRequest): void {
   render(
     <TrainingModalsProvider>
-      <Opener query={query} title={title} />
+      <Opener request={request} />
     </TrainingModalsProvider>,
   );
 }
@@ -61,97 +63,75 @@ function openFrom(): HTMLElement {
   return opener;
 }
 
-const TITLE = 'Barbell bench press';
-const VIDEO_ID = 'dQw4w9WgXcQ'; // 11 URL-safe base64 characters: the legacy embed branch
+const BENCH = libraryRequest('barbell-bench-press');
+const TITLE = BENCH.title;
+const ID = BENCH.videoId ?? '';
+/** First line of the bench press setup cues: proof the cue body rendered. */
+const BENCH_CUE = FORM_CUES['barbell-bench-press']?.setup[0] ?? '';
 
 beforeEach(() => {
   useAppStore.setState({ ui: { ...useAppStore.getState().ui, videoInstanceHost: null } });
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('VideoModal', () => {
   it('renders nothing until it is opened', () => {
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(screen.queryByTitle(TITLE)).toBeNull();
+    expect(document.querySelector('iframe')).toBeNull();
   });
 
-  it('builds the search URL for a library query and frames nothing', () => {
-    const query = libraryQuery('barbell-bench-press');
-    expect(query).not.toBeNull();
-    renderWith(query, TITLE);
-    openFrom();
-
-    expect(screen.queryByTitle(TITLE)).toBeNull();
-    const link = screen.getByRole('link', { name: copyFor('limelight', 'button.searchInstance') });
-    expect(link.getAttribute('href')).toBe(
-      `https://${hostAt(0)}/search?q=${encodeURIComponent(query ?? '')}`,
-    );
-    expect(link.getAttribute('rel')).toBe('noopener noreferrer');
-    expect(link.getAttribute('target')).toBe('_blank');
-  });
-
-  it('embeds an 11-character video id with the sandbox and referrer hardening', () => {
-    renderWith(VIDEO_ID, TITLE);
+  it("frames the library clip in YouTube's privacy-enhanced player, inline and without autoplay", () => {
+    expect(ID).toMatch(/^[A-Za-z0-9_-]{11}$/);
+    renderWith(BENCH);
     openFrom();
 
     const frame = screen.getByTitle(TITLE);
-    expect(frame.getAttribute('src')).toBe(`https://${hostAt(0)}/embed/${VIDEO_ID}?autoplay=1`);
-    // Master plan section 8 and security review M2 / constraint 20, verbatim.
+    expect(frame.getAttribute('src')).toBe(`https://www.youtube-nocookie.com/embed/${ID}?playsinline=1`);
+    expect(frame.getAttribute('src')).not.toContain('autoplay');
+    expect(frame.getAttribute('allow')).not.toContain('autoplay');
+    // Master plan section 8 and security review M2: no top navigation, no popups.
     expect(frame.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin');
-    expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
+    // YouTube's Required Minimum Functionality: the embed needs a Referer; origin only.
+    expect(frame.getAttribute('referrerpolicy')).toBe('strict-origin-when-cross-origin');
     expect(frame.getAttribute('loading')).toBe('lazy');
-    // The search link falls back to the exercise title when the query is an id (legacy branch).
-    const search = screen.getByRole('link', { name: copyFor('limelight', 'button.searchInstance') });
-    expect(search.getAttribute('href')).toBe(
-      `https://${hostAt(0)}/search?q=${encodeURIComponent(TITLE)}`,
-    );
-    const watch = screen.getByRole('link', { name: copyFor('limelight', 'button.openClip') });
-    expect(watch.getAttribute('href')).toBe(`https://${hostAt(0)}/watch?v=${VIDEO_ID}`);
-    expect(watch.getAttribute('rel')).toBe('noopener noreferrer');
+    // No outbound link: the clip plays here, the app is not left (audit E05).
+    expect(screen.queryAllByRole('link')).toEqual([]);
   });
 
-  it('shows the no-clip line and no iframe for an exercise with no video query', () => {
-    expect(libraryQuery('lat-pulldown')).toBeNull();
-    renderWith(null, 'Lat pulldown');
+  it('steps through every mirror with no referrer, then wraps to YouTube', () => {
+    renderWith(BENCH);
     openFrom();
 
-    expect(screen.queryByTitle('Lat pulldown')).toBeNull();
-    expect(document.querySelector('iframe')).toBeNull();
-    expect(screen.getByText(copyFor('limelight', 'advice.noClipRecorded'))).toBeTruthy();
-    // With no query the search falls back to the title, so the control is never dead.
-    expect(
-      screen.getByRole('link', { name: copyFor('limelight', 'button.searchInstance') }).getAttribute('href'),
-    ).toBe(`https://${hostAt(0)}/search?q=${encodeURIComponent('Lat pulldown')}`);
-  });
-
-  it('rotates through every instance and wraps to the first', () => {
-    renderWith(VIDEO_ID, TITLE);
-    openFrom();
-
-    const next = screen.getByRole('button', { name: copyFor('limelight', 'button.nextInstance') });
+    const other = screen.getByRole('button', { name: copyFor('limelight', 'button.otherMirror') });
     for (let i = 1; i < VIDEO_INSTANCES.length; i += 1) {
-      fireEvent.click(next);
-      expect(screen.getByTitle(TITLE).getAttribute('src')).toContain(`https://${hostAt(i)}/`);
+      fireEvent.click(other);
+      const frame = screen.getByTitle(TITLE);
+      expect(frame.getAttribute('src')).toBe(`https://${hostAt(i)}/embed/${ID}`);
+      expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
     }
-    fireEvent.click(next); // one past the end
-    expect(screen.getByTitle(TITLE).getAttribute('src')).toContain(`https://${hostAt(0)}/`);
+    fireEvent.click(other); // one past the end
+    expect(screen.getByTitle(TITLE).getAttribute('src')).toContain(`https://${hostAt(0)}/embed/`);
   });
 
   it('persists the host that loaded, through setUi, on the iframe load event', () => {
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     openFrom();
 
     fireEvent.load(screen.getByTitle(TITLE));
     expect(useAppStore.getState().ui.videoInstanceHost).toBe(hostAt(0));
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.nextInstance') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.otherMirror') }));
     fireEvent.load(screen.getByTitle(TITLE));
     expect(useAppStore.getState().ui.videoInstanceHost).toBe(hostAt(1));
   });
 
   it('opens at the persisted instance', () => {
     useAppStore.setState({ ui: { ...useAppStore.getState().ui, videoInstanceHost: hostAt(2) } });
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     openFrom();
     expect(screen.getByTitle(TITLE).getAttribute('src')).toContain(`https://${hostAt(2)}/`);
   });
@@ -160,13 +140,49 @@ describe('VideoModal', () => {
     useAppStore.setState({
       ui: { ...useAppStore.getState().ui, videoInstanceHost: 'dropped.example' },
     });
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     openFrom();
     expect(screen.getByTitle(TITLE).getAttribute('src')).toContain(`https://${hostAt(0)}/`);
   });
 
+  it('offline: frames nothing, says why, shows the form cues, and frames the clip once online', () => {
+    let online = false;
+    vi.spyOn(window.navigator, 'onLine', 'get').mockImplementation(() => online);
+    renderWith(BENCH);
+    openFrom();
+
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe(copyFor('limelight', 'advice.videoOffline'));
+    expect(screen.getByText(BENCH_CUE)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.otherMirror') })).toBeNull();
+
+    online = true;
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+    expect(screen.getByTitle(TITLE).getAttribute('src')).toContain('https://www.youtube-nocookie.com/embed/');
+  });
+
+  it('null id: frames nothing, says there is no clip, and shows the cues instead', () => {
+    const walk = libraryRequest('walk');
+    expect(walk.videoId).toBeNull();
+    renderWith(walk);
+    openFrom();
+
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe(copyFor('limelight', 'advice.noClipRecorded'));
+    expect(screen.getByText(FORM_CUES['walk']?.setup[0] ?? '-')).toBeTruthy();
+  });
+
+  it('a malformed id is treated as no clip, never put into a frame URL', () => {
+    renderWith({ videoId: 'a"><script>', cueId: null, title: 'Custom' });
+    openFrom();
+    expect(document.querySelector('iframe')).toBeNull();
+    expect(screen.getByRole('status').textContent).toBe(copyFor('limelight', 'advice.noClipRecorded'));
+  });
+
   it('moves focus into the dialog, closes on Escape and returns focus to the opener', () => {
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     const opener = openFrom();
 
     const dialog = screen.getByRole('dialog');
@@ -180,10 +196,11 @@ describe('VideoModal', () => {
   });
 
   it('keeps Tab inside the dialog', () => {
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     openFrom();
     const dialog = screen.getByRole('dialog');
-    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button'));
+    // ModalShell's trap counts the iframe (it can take focus), and here it is the last stop.
+    const focusable = Array.from(dialog.querySelectorAll<HTMLElement>('a[href], button, iframe'));
     const last = focusable[focusable.length - 1];
     const first = focusable[0];
     if (first === undefined || last === undefined) throw new Error('dialog has no focusable child');
@@ -197,7 +214,7 @@ describe('VideoModal', () => {
   });
 
   it('closes on a backdrop click and on the close control', () => {
-    renderWith(VIDEO_ID, TITLE);
+    renderWith(BENCH);
     openFrom();
     const backdrop = screen.getByTestId('video-modal-backdrop');
     fireEvent.click(backdrop);

@@ -1,42 +1,40 @@
 // src/ui/components/VideoModal.tsx
 //
-// The Invidious form-reference modal. Master plan section 8 keeps both the modal and the
-// search-query design; the security review requires the hardening below.
+// The form-reference modal: one curated clip per exercise (ROADMAP L9, audit E05), framed from
+// YouTube's privacy-enhanced player, with the Invidious hosts as "Other Mirror" fallbacks.
 //
-// What changed from legacy/console-video.jsx:
-//   - Reached through React context, never through `window.__videoModal` (code review A53).
-//   - The preferred host goes through `setUi({ videoInstanceHost })`, not localStorage: the
-//     lint gate reserves Web Storage for src/store/persistence.ts.
-//   - The host is recorded when the frame LOADS, not only when the user clicks out (A71).
-//   - The iframe carries `sandbox="allow-scripts allow-same-origin"` and
-//     `referrerPolicy="no-referrer"` (master plan section 8; security review M2 and
-//     constraint 20). The sandbox is the master plan's exact pair, which omits
-//     `allow-top-navigation` and `allow-popups` as M2 requires.
-//   - The host list is src/config/videoInstances.ts, the same module build/cspPlugin.ts reads
-//     to generate `frame-src`, so the modal can never offer a host the CSP would block.
+// What it guarantees:
+//   - Nothing is framed until the user opens the modal; the clip itself starts only on a tap
+//     inside the player (no autoplay, `playsinline=1`; src/config/videoInstances.ts).
+//   - Offline, or for an exercise with no verified clip, it frames nothing and shows the form
+//     cues with a plain line saying why: never a broken iframe.
+//   - The host list is src/config/videoInstances.ts, the module build/cspPlugin.ts reads to
+//     generate `frame-src`, so the modal can never frame a host the CSP would block.
+//   - Every frame carries `sandbox="allow-scripts allow-same-origin"` (master plan section 8;
+//     security review M2: no top navigation, no popups). Its referrer policy is the source's
+//     own: origin-only for YouTube, which requires a Referer, `no-referrer` for the mirrors.
+//   - The preferred source goes through `setUi({ videoInstanceHost })`, never Web Storage, and
+//     is recorded when the frame LOADS (A71).
 //
-// The URLs are not injectable: the host comes from that frozen list, the video id is gated by
-// VIDEO_ID_RE below, and the search term goes through encodeURIComponent.
+// The URL is not injectable: the host comes from that frozen list and the id is gated by
+// VIDEO_ID_RE inside embedUrl.
 
-import { createContext, useContext, useId, useState } from 'react';
+import { createContext, useContext, useId, useState, useSyncExternalStore } from 'react';
 import type { ReactElement } from 'react';
 import { ModalShell } from './ModalShell';
-import { VIDEO_INSTANCES } from '../../config/videoInstances';
+import { FormCueBody } from './FormCuesModal';
+import { VIDEO_INSTANCES, embedUrl } from '../../config/videoInstances';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { useAppStore } from '../../store';
 import '../styles/train.css';
 
-/** 11 URL-safe base64 characters is a YouTube id; anything else is a search query. */
-const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
-
 export interface VideoRequest {
-  /**
-   * `Exercise.videoQuery`: a search string, an 11-character clip id, or null for an exercise
-   * that carries neither. Null is a normal case, not an error (nine library entries).
-   */
-  query: string | null;
-  /** The exercise name, used as the frame's accessible title and as the search fallback. */
+  /** `Exercise.videoId`: an 11-character YouTube id, or null when no clip has been verified. */
+  videoId: string | null;
+  /** `Exercise.formCueId`: the cues shown when the clip cannot play. */
+  cueId: string | null;
+  /** The exercise name: the modal heading and the frame's accessible title. */
   title: string;
 }
 
@@ -64,12 +62,35 @@ function startIndex(preferredHost: string | null): number {
   return found >= 0 ? found : 0;
 }
 
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener('online', onChange);
+  window.addEventListener('offline', onChange);
+  return () => {
+    window.removeEventListener('online', onChange);
+    window.removeEventListener('offline', onChange);
+  };
+}
+
+/**
+ * The browser's own connectivity flag, live. `navigator.onLine === false` means no network at
+ * all; `true` only means some network exists, so a network that cannot reach the host still
+ * frames the player, which then shows its own error inside the frame.
+ */
+function useOnline(): boolean {
+  return useSyncExternalStore(
+    subscribeOnline,
+    () => navigator.onLine,
+    () => true,
+  );
+}
+
 export function VideoModal(props: { request: VideoRequest; onClose: () => void }): ReactElement | null {
   const preferredHost = useAppStore((s) => s.ui.videoInstanceHost);
   // Seeded once per open: the point of persisting a host is that the NEXT exercise opens
   // straight to it, and re-seeding mid-session would undo a rotation the user just made.
   const [index, setIndex] = useState(() => startIndex(preferredHost));
   const [reloadKey, setReloadKey] = useState(0);
+  const online = useOnline();
   const headingId = useId();
   const t = useCopy();
   const overrides = useCopyOverrides();
@@ -80,28 +101,14 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
   // list would otherwise be an `as` cast.
   if (instance === undefined) return null;
 
-  const videoId =
-    props.request.query !== null && VIDEO_ID_RE.test(props.request.query)
-      ? props.request.query
-      : null;
-  // The legacy branch: with a clip id the search falls back to the exercise name, and with no
-  // query at all it does the same, so the outbound control is never dead.
-  const searchTerm = videoId === null ? (props.request.query ?? props.request.title) : props.request.title;
-
-  const embedUrl = `https://${instance.host}/embed/${videoId ?? ''}?autoplay=1`;
-  const watchUrl = `https://${instance.host}/watch?v=${videoId ?? ''}`;
-  const searchUrl = `https://${instance.host}/search?q=${encodeURIComponent(searchTerm)}`;
+  const src = props.request.videoId === null ? null : embedUrl(instance, props.request.videoId);
 
   /*
-   * HONEST LIMITATION. An iframe `load` event also fires for the instance's own error page,
-   * so this records "the host answered", not "the clip played". It is still strictly better
-   * than the legacy behaviour, which recorded a host only when the user clicked the outbound
-   * link, so a user for whom the embed worked re-tried instance 1 every time (A71).
+   * HONEST LIMITATION. An iframe `load` event also fires for a host's own error page, so this
+   * records "the host answered", not "the clip played" (A71).
    */
   const onFrameLoad = (): void => {
     if (instance.host === preferredHost) return;
-    // getState(), like every other action call in this codebase: the actions are created once
-    // and never replace themselves, so subscribing to one buys nothing.
     useAppStore.getState().setUi({ videoInstanceHost: instance.host });
   };
 
@@ -137,48 +144,43 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
         </button>
       </div>
 
-      <div className="vmod-instance">
-        <span className="vmod-inst-host">{instance.host}</span>
-        <span className="vmod-inst-meta">
-          {FORMAT.videoInstanceOf(index + 1, VIDEO_INSTANCES.length, overrides)}
-        </span>
-        <button type="button" onClick={nextInstance}>
-          {t('button.nextInstance')}
-        </button>
-      </div>
-
-      {videoId === null ? (
-        <div className="vmod-search">
-          <h3 className="vmod-search-eyebrow">{t('label.videoSearch')}</h3>
-          <p className="vmod-search-q">{searchTerm}</p>
-          <p className="vmod-search-note">{t('advice.noClipRecorded')}</p>
-        </div>
+      {src !== null && online ? (
+        <>
+          <div className="vmod-instance">
+            <span className="vmod-inst-host">{instance.label}</span>
+            <span className="vmod-inst-meta">
+              {FORMAT.videoInstanceOf(index + 1, VIDEO_INSTANCES.length, overrides)}
+            </span>
+            <button type="button" onClick={nextInstance}>
+              {t('button.otherMirror')}
+            </button>
+          </div>
+          <div className="vmod-frame">
+            <iframe
+              key={`${String(index)}-${String(reloadKey)}`}
+              src={src}
+              title={props.request.title}
+              sandbox="allow-scripts allow-same-origin"
+              referrerPolicy={instance.referrerPolicy}
+              loading="lazy"
+              allow="fullscreen; encrypted-media; picture-in-picture"
+              allowFullScreen
+              onLoad={onFrameLoad}
+            />
+          </div>
+        </>
       ) : (
-        <div className="vmod-frame">
-          <iframe
-            key={`${String(index)}-${String(reloadKey)}`}
-            src={embedUrl}
-            title={props.request.title}
-            sandbox="allow-scripts allow-same-origin"
-            referrerPolicy="no-referrer"
-            loading="lazy"
-            allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            onLoad={onFrameLoad}
-          />
+        <div className="vmod-fallback">
+          <p className="vmod-state" role="status">
+            {src === null ? t('advice.noClipRecorded') : t('advice.videoOffline')}
+          </p>
+          {props.request.cueId !== null && (
+            <div className="fcm-body">
+              <FormCueBody cueId={props.request.cueId} />
+            </div>
+          )}
         </div>
       )}
-
-      <div className="vmod-foot">
-        {videoId !== null && (
-          <a className="vmod-link" href={watchUrl} target="_blank" rel="noopener noreferrer">
-            {t('button.openClip')}
-          </a>
-        )}
-        <a className="vmod-link" href={searchUrl} target="_blank" rel="noopener noreferrer">
-          {t('button.searchInstance')}
-        </a>
-      </div>
     </ModalShell>
   );
 }

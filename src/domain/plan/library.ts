@@ -1,17 +1,22 @@
 import type { Exercise, Prescription, Seconds } from '../types';
 
 /**
- * Exercise library, ported from the legacy `data.js` day tables (names, video search strings,
- * operational notes) and the `console-content.js` FORM_CUES keys (cue ids). Generic only: no
- * personal literal, no medication, no location. Nothing is invented -- where the legacy file
- * carried no video search string, `videoQuery` is null and P4 hides the video control.
+ * Exercise library, ported from the legacy `data.js` day tables (names, operational notes) and
+ * the `console-content.js` FORM_CUES keys (cue ids). Generic only: no personal literal, no
+ * medication, no location. Nothing is invented.
+ *
+ * VIDEO IDS (ROADMAP L9, audit E05, 2026-11-05). `videoId` is one YouTube clip id per row, each
+ * checked against YouTube's oEmbed endpoint and recorded with its title and channel in
+ * docs/design/form-videos.md; formVideos.test.ts holds this table and that one equal. A row
+ * with no verified clip is null, never a guess. It replaces the legacy `videoQuery` search
+ * strings, which no code path could play (E05).
  *
  * P3a (2026-11-04, owner O3 "doesn't have very basic exercises such as lunges", audit D07/D08)
  * added 28 basic-pattern rows at the end of the table: lunges, split squats, step-ups, single-leg
  * Romanian deadlifts, the bodyweight squat, hip thrust and glute bridge, dumbbell bench and floor
  * press, incline push-up, cable and band variants, the door-frame row, the prone T raise, dead
- * bug, side plank and farmer carry. They carry no cue and no search string (formCueId and
- * videoQuery null, wording out of scope), and are tagged by the direct-mover rule below. What
+ * bug, side plank and farmer carry. They carried no cue (formCueId null, wording out of scope)
+ * and are tagged by the direct-mover rule below. What
  * each needs beyond its tier (dumbbells, a bench, a bar, bands) lives in inventory.ts.
  *
  * The first 40 ids are the canonical slugs listed in master plan section 5: the 31 legacy ports, the seven
@@ -20,9 +25,7 @@ import type { Exercise, Prescription, Seconds } from '../types';
  * can reach at all. P4's src/content/formCues.ts is keyed by the same slugs, so
  * `formCueId === id` for every exercise that has a cue; a rename here that is not mirrored
  * there fails the FORM_CUE_IDS test rather than silently losing the cue. The nine added
- * exercises have no legacy cue and no legacy search string, so they carry `formCueId: null`
- * (P4 writes the cues) and a plain "<name> form" `videoQuery` -- invented text is confined to
- * that one mechanical pattern, which library.test.ts asserts character for character.
+ * exercises have no legacy cue, so they carry `formCueId: null` (P4 writes the cues).
  *
  * PORT MAP, legacy name -> id (28 legacy cue objects cover 31 ids because three of them
  * describe two exercises each in bracketed halves and are split in P4):
@@ -193,7 +196,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['chest'],
     secondaryMuscles: ['front-delt', 'triceps'],
     equipment: ['full-gym'],
-    videoQuery: 'bench press perfect form jeff nippard',
+    videoId: 'hWbUlkb5Ms4',
     formCueId: 'barbell-bench-press',
     note: null, // legacy "Start at 65 kg" dropped: an individual literal (content review section 2.1)
   },
@@ -207,7 +210,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['triceps', 'chest'],
     secondaryMuscles: ['front-delt'],
     equipment: ['full-gym'],
-    videoQuery: 'close grip bench press tricep form',
+    videoId: 'nEF0bv2FW94',
     formCueId: 'close-grip-bench-press',
     note: null,
   },
@@ -221,7 +224,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['front-delt'],
     secondaryMuscles: ['side-delt', 'triceps'],
     equipment: ['full-gym'],
-    videoQuery: 'overhead press standing barbell form athlean',
+    videoId: '2yjwXTZQDDI',
     formCueId: 'overhead-press-barbell',
     note: null,
   },
@@ -237,7 +240,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['front-delt'],
     secondaryMuscles: ['side-delt', 'triceps'],
     equipment: ['full-gym'],
-    videoQuery: 'push press form technique jeff nippard',
+    videoId: 'yklSQG1_Ovc',
     formCueId: 'push-press',
     note: null,
   },
@@ -255,7 +258,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // judgement, and it under-counted side-delt volume in the dumbbells-only tier.
     secondaryMuscles: ['side-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'dumbbell overhead press form',
+    videoId: 'qEwKCR5JCog',
     formCueId: null, // P4 writes the cue; no legacy cue object exists for this id
     note: null,
   },
@@ -269,7 +272,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['chest'],
     secondaryMuscles: ['front-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'incline dumbbell press form jeff nippard',
+    videoId: '8iPEnn-ltC8',
     formCueId: 'incline-db-press',
     note: null,
   },
@@ -283,7 +286,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['chest'],
     secondaryMuscles: ['front-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'perfect pushup form athlean',
+    videoId: 'WDIpL0pjun0',
     formCueId: 'push-up',
     note: null, // legacy "Daily push-up sets only" dropped: a personal rule
   },
@@ -302,7 +305,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // This tag is the bodyweight tier's ONLY side-delt stimulus of any kind.
     secondaryMuscles: ['side-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'pike push-up form',
+    videoId: 'XckEEwa1BPI',
     formCueId: null,
     note: null,
   },
@@ -322,7 +325,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['triceps'],
     secondaryMuscles: ['chest', 'front-delt'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'bench dip form',
+    videoId: 'c3ZGl4pAwZ4',
     formCueId: null,
     note: null,
   },
@@ -337,7 +340,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['side-delt'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'lateral raises perfect form jeff nippard',
+    videoId: 'XPPfnSEATJA',
     formCueId: 'lateral-raise',
     note: null,
   },
@@ -354,7 +357,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['rear-delt'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'dumbbell rear-delt fly form',
+    videoId: 'ttvfGg9d76c',
     formCueId: null,
     note: null,
   },
@@ -368,7 +371,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['triceps'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'overhead tricep extension long head form',
+    videoId: '-Vyt2QdsR7E',
     formCueId: 'triceps-overhead-extension',
     // One dumbbell held in both hands, or a cable rope. Load steps follow the dumbbell-pair
     // setting (kg per pair), which over-estimates the step for a single bell; the effect is a
@@ -386,7 +389,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['biceps'],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: 'barbell bicep curl form jeff nippard',
+    videoId: 'dDI8ClxRS04',
     formCueId: 'barbell-curl',
     note: null,
   },
@@ -400,7 +403,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['biceps'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'hammer curl brachialis form',
+    videoId: 'zC3nLlEvin4',
     formCueId: 'hammer-curl',
     note: null,
   },
@@ -417,7 +420,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // Needs only a bar, which every tier assumes; tags nest, so all three (was missing
     // dumbbells-only, which hid the pull-up from that tier entirely).
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'perfect pullup form jeff nippard',
+    videoId: 'XB_7En-zf_M',
     formCueId: 'pull-up',
     note: null,
   },
@@ -436,7 +439,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['biceps', 'lats'],
     secondaryMuscles: ['rear-delt'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'chin-up form',
+    videoId: 'mRy9m2Q9_1I',
     formCueId: null,
     note: null,
   },
@@ -450,7 +453,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['lats'],
     secondaryMuscles: ['biceps', 'mid-back'],
     equipment: ['full-gym'],
-    videoQuery: null, // the legacy combined entry carried only the pull-up search string
+    videoId: 'AOpi-p0cJkc',
     formCueId: 'lat-pulldown',
     note: null,
   },
@@ -475,7 +478,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // pattern: the whole point of the exercise is the added plates, which the dumbbells-only and
     // bodyweight tiers do not have. Plain pull-up covers those tiers.
     equipment: ['full-gym'],
-    videoQuery: 'weighted pullup form progression',
+    videoId: 'HuuyDNGrCI8',
     formCueId: 'weighted-pull-up',
     note: 'External load added by belt or dumbbell.',
   },
@@ -489,7 +492,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['mid-back', 'lats'],
     secondaryMuscles: ['biceps', 'rear-delt'],
     equipment: ['full-gym'],
-    videoQuery: 'pendlay row form technique',
+    videoId: 'cYVkgmPqRMw',
     formCueId: 'barbell-row-pendlay',
     note: null,
   },
@@ -506,7 +509,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // Ported from the legacy "Barbell row (heavier)" entry (P7 migration maps that legacy name
     // to this id). Only the search string carries over; the legacy cue's cheat-rep permission
     // is replaced by the strict standard in P4.
-    videoQuery: 'barbell row form heavy science',
+    videoId: 'bm0_q9bR_HA',
     formCueId: 'barbell-row',
     note: null,
   },
@@ -522,7 +525,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // assists shoulder transverse extension. Its absence here was an omission, not a judgement.
     secondaryMuscles: ['biceps', 'rear-delt'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'single arm dumbbell row form meadows',
+    videoId: 'pYcpY20QaE8',
     formCueId: 'db-single-arm-row',
     note: null,
   },
@@ -539,7 +542,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['mid-back', 'lats'],
     secondaryMuscles: ['rear-delt', 'biceps'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'inverted row form',
+    videoId: 'KOaCM1HMwU0',
     formCueId: null,
     note: null,
   },
@@ -553,7 +556,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['rear-delt'],
     secondaryMuscles: ['mid-back'],
     equipment: ['full-gym'],
-    videoQuery: 'face pulls athlean rear delt form',
+    videoId: 'eTCBSFlCJ_s',
     formCueId: 'face-pull',
     note: null, // legacy "Mandatory, every Pull day, forever" dropped: a personal rule
   },
@@ -569,7 +572,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads'],
     secondaryMuscles: ['glutes', 'hamstrings'],
     equipment: ['full-gym'],
-    videoQuery: 'back squat form squat university',
+    videoId: '-bJIpOq-LWk',
     formCueId: 'barbell-back-squat',
     note: null, // legacy "60% of previous max" dropped: undefined for a new user
   },
@@ -584,7 +587,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads'],
     secondaryMuscles: ['glutes', 'hamstrings'],
     equipment: ['full-gym'],
-    videoQuery: null, // the legacy combined entry carried only the Bulgarian search string
+    videoId: 'p5dCqF7wWUw',
     formCueId: 'leg-press',
     note: null,
   },
@@ -601,7 +604,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads'],
     secondaryMuscles: ['glutes', 'hamstrings'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'goblet squat form',
+    videoId: 'MeIiIdhvXT4',
     formCueId: null,
     note: null,
   },
@@ -617,7 +620,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'bulgarian split squat form jeff nippard',
+    videoId: 'hPlKPjohFS0',
     formCueId: 'bulgarian-split-squat',
     note: 'Rear foot elevated. Unloaded when no dumbbells are available. Log the load as 0.', // legacy "Bulgarian from wk 5" dropped: a personal schedule
   },
@@ -634,7 +637,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings', 'glutes'],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: 'romanian deadlift form jeff nippard',
+    videoId: 'xgusDooVfKU',
     formCueId: 'romanian-deadlift',
     note: null,
   },
@@ -649,7 +652,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings', 'glutes'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: 'dumbbell romanian deadlift form',
+    videoId: 'aa57T45iFSE',
     formCueId: null,
     note: null,
   },
@@ -666,7 +669,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym'],
-    videoQuery: 'trap bar deadlift vs conventional biomechanics',
+    videoId: 'FYx76NSijfU',
     formCueId: 'trap-bar-deadlift',
     note: null, // legacy "Conventional from wk 9. Always first." dropped: a personal schedule
   },
@@ -683,7 +686,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings', 'glutes'],
     secondaryMuscles: ['quads'],
     equipment: ['full-gym'],
-    videoQuery: 'trap bar deadlift vs conventional biomechanics', // one legacy entry, both halves
+    videoId: 'p2OPUi4xGrM',
     formCueId: 'conventional-deadlift',
     note: null,
   },
@@ -697,7 +700,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings'],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: 'lying leg curl form hamstring',
+    videoId: 'vl5nUdE9mWM',
     formCueId: 'leg-curl-machine',
     note: null,
   },
@@ -716,7 +719,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'nordic hamstring curl form',
+    videoId: 'kjv4WQXWl_A',
     formCueId: null,
     note: null,
   },
@@ -730,7 +733,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['calves'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'calf raise form jeff nippard',
+    videoId: 'wxwY7GXxL4k',
     formCueId: 'calf-raise',
     note: 'Machine, dumbbells in hand, or bodyweight on a step.',
   },
@@ -745,7 +748,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['abs'], // the target of the hold, not a stabiliser role
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'plank perfect form athlean',
+    videoId: 'mwlp75MS6Rg',
     formCueId: 'plank',
     note: null,
   },
@@ -759,7 +762,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['abs'],
     secondaryMuscles: [],
     equipment: ['full-gym'], // needs a wheel; not assumed present in a home setting
-    videoQuery: 'ab wheel rollout form athlean',
+    videoId: '_BHKT60P6bc',
     formCueId: 'ab-wheel-rollout',
     note: null,
   },
@@ -774,7 +777,7 @@ const EXERCISE_TABLE: Exercise[] = [
     secondaryMuscles: [],
     // Needs a bar, which every tier assumes for pull-ups; tags nest, so all three.
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: 'hanging knee raise form abs',
+    videoId: 'RD_A-Z15ER4',
     formCueId: 'hanging-knee-raise',
     note: null,
   },
@@ -789,7 +792,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: [],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: 'rowing machine perfect form technique drive',
+    videoId: '4zWu1yuJ0_g',
     formCueId: 'rower-intervals',
     note: '1 min hard / 2 min easy.', // [min] work and recovery, ported verbatim
   },
@@ -803,7 +806,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: [],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: null, // the legacy entry carried no search string
+    videoId: 'ST-5lD69XqU',
     formCueId: 'stair-climber',
     note: 'Steady moderate.',
   },
@@ -817,13 +820,13 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: [],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null, // the legacy entry carried no search string
+    videoId: null, // no verified clip: docs/design/form-videos.md
     formCueId: 'walk',
     note: 'Optional.',
   },
   // ---- P3a basic-pattern additions (2026-11-04, owner O3, audit D07/D08, spec R11) ----
-  // Tagged by the same direct-mover rule as every row above. No cue text and no search string:
-  // formCueId and videoQuery are null (wording is out of scope for P3a). Split-stance lifts are
+  // Tagged by the same direct-mover rule as every row above. No cue text: formCueId is null
+  // (wording is out of scope for P3a). Split-stance lifts are
   // the HIP-DOMINANT HYBRID family (quads and glutes direct, hamstrings secondary), exactly as
   // bulgarian-split-squat; single-leg Romanian deadlifts are HIP-DOMINANT (hamstrings and glutes
   // direct), exactly as db-romanian-deadlift; the bodyweight squat is KNEE-DOMINANT.
@@ -837,7 +840,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: 'Q2k3kYbtOcI',
     formCueId: null,
     note: null,
   },
@@ -851,7 +854,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: 'eFWCn5iEbTU',
     formCueId: null,
     note: null,
   },
@@ -865,7 +868,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: '7AtIjR-QqVA',
     formCueId: null,
     note: null,
   },
@@ -879,7 +882,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings', 'glutes'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: '_DhDkij1vxY',
     formCueId: null,
     note: null,
   },
@@ -893,7 +896,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'Rd986_TXFXc',
     formCueId: null,
     note: null,
   },
@@ -907,7 +910,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'MxfTNXSFiYI',
     formCueId: null,
     note: null,
   },
@@ -921,7 +924,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads', 'glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'JLW4AVzdzTc',
     formCueId: null,
     note: null,
   },
@@ -937,7 +940,7 @@ const EXERCISE_TABLE: Exercise[] = [
     // A stair or a sturdy step is a setup constraint, like the Nordic curl's anchor, not an
     // inventory item a tier can lack; the loaded db-step-up needs the bench (inventory.ts).
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'elhu-WC1qk4',
     formCueId: null,
     note: null,
   },
@@ -951,7 +954,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads'],
     secondaryMuscles: ['glutes', 'hamstrings'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: '8uoaYwS6iFM',
     formCueId: null,
     note: null,
   },
@@ -965,7 +968,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['hamstrings', 'glutes'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'TndTn7CibGY',
     formCueId: null,
     note: null,
   },
@@ -984,7 +987,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym'],
-    videoQuery: null,
+    videoId: 'LM8XHLYJoYs',
     formCueId: null,
     note: null,
   },
@@ -998,7 +1001,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['glutes'],
     secondaryMuscles: ['hamstrings'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'PhTDzR0TpZs',
     formCueId: null,
     note: null,
   },
@@ -1012,7 +1015,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['quads'],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: null,
+    videoId: 'YyvSfVjQeL0',
     formCueId: null,
     note: null,
   },
@@ -1026,7 +1029,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['chest'],
     secondaryMuscles: ['front-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: 'U2wKgoUAEMo',
     formCueId: null,
     note: null,
   },
@@ -1041,7 +1044,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['chest'],
     secondaryMuscles: ['front-delt', 'triceps'],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: 'uUGDRwge4F8',
     formCueId: null,
     note: null,
   },
@@ -1056,7 +1059,7 @@ const EXERCISE_TABLE: Exercise[] = [
     secondaryMuscles: ['front-delt', 'triceps'],
     // Hands on a bench, table or counter: a setup constraint, not an inventory item.
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'Gvm5Q29UHbk',
     formCueId: null,
     note: null,
   },
@@ -1070,7 +1073,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['triceps'],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: null,
+    videoId: '2-LAMcpzODU',
     formCueId: null,
     note: null,
   },
@@ -1084,7 +1087,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['side-delt'],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: null,
+    videoId: 'Z5FA9aq3L6A',
     formCueId: null,
     note: null,
   },
@@ -1099,7 +1102,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['mid-back', 'lats'],
     secondaryMuscles: ['biceps', 'rear-delt'],
     equipment: ['full-gym'],
-    videoQuery: null,
+    videoId: 'UCXxvVItLoM',
     formCueId: null,
     note: null,
   },
@@ -1120,7 +1123,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['mid-back', 'lats'],
     secondaryMuscles: ['biceps', 'rear-delt'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'LSkyinhmA8k',
     formCueId: null,
     note: null,
   },
@@ -1137,7 +1140,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['mid-back', 'lats'],
     secondaryMuscles: ['biceps', 'rear-delt'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'r8NzhNe9Res',
     formCueId: null,
     note: null,
   },
@@ -1152,7 +1155,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['rear-delt'],
     secondaryMuscles: ['mid-back'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'bYsgk9SrJ48',
     formCueId: null,
     note: null,
   },
@@ -1166,7 +1169,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['side-delt'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'yfNg5sFndbw',
     formCueId: null,
     note: null,
   },
@@ -1180,7 +1183,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['biceps'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: '0hZboUNuogA',
     formCueId: null,
     note: null,
   },
@@ -1196,7 +1199,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['rear-delt'],
     secondaryMuscles: ['mid-back'],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'yejKRcxeH90',
     formCueId: null,
     note: null,
   },
@@ -1210,7 +1213,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['abs'],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: 'BZYaCzbP09M',
     formCueId: null,
     note: null,
   },
@@ -1224,7 +1227,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: ['abs'], // the target of the hold, as in the plank row
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoQuery: null,
+    videoId: '44ND4bOB-T0',
     formCueId: null,
     note: null,
   },
@@ -1241,7 +1244,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: [],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only'],
-    videoQuery: null,
+    videoId: 'z7E_YU9P1jU',
     formCueId: null,
     note: null,
   },

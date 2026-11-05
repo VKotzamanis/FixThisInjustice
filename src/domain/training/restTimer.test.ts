@@ -35,7 +35,7 @@ const BASE_EXERCISE: Exercise = {
   muscleGroups: [],
   secondaryMuscles: [],
   equipment: ['full-gym'],
-  videoQuery: null,
+  videoId: null,
   formCueId: null,
   note: null,
 };

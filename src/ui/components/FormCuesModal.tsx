@@ -56,13 +56,45 @@ function CueSection(props: {
   );
 }
 
+/**
+ * The cue text for one cue id, or the "no cues" line. Shared with VideoModal, which shows the
+ * same cues when the clip cannot play (offline, or no clip recorded), so the two modals cannot
+ * render one cue two ways (AGENTS rule 2).
+ */
+export function FormCueBody(props: { cueId: string }): ReactElement {
+  const t = useCopy();
+  const cue = FORM_CUES[props.cueId];
+  if (cue === undefined) return <p className="fcm-none">{t('advice.noFormCues')}</p>;
+  return (
+    <>
+      {cue.caution !== null && (
+        <p className="fcm-caution" role="note">
+          <strong>{t('label.caution')}</strong>: {cue.caution}
+        </p>
+      )}
+      <CueSection heading={t('label.cueSetup')} lines={cue.setup} ordered />
+      <CueSection heading={t('label.cueExecution')} lines={cue.execution} ordered />
+      <CueSection
+        heading={t('label.cueMistakes')}
+        lines={cue.mistakes}
+        ordered={false}
+        className="fcm-danger"
+      />
+      {cue.tip !== null && (
+        <p className="fcm-tip">
+          <strong>{t('label.cueTip')}</strong>: {cue.tip}
+        </p>
+      )}
+    </>
+  );
+}
+
 export function FormCuesModal(props: {
   request: CueRequest;
   onClose: () => void;
 }): ReactElement {
   const headingId = useId();
   const t = useCopy();
-  const cue = FORM_CUES[props.request.exerciseId];
 
   return (
     <ModalShell
@@ -90,30 +122,7 @@ export function FormCuesModal(props: {
       </div>
 
       <div className="fcm-body">
-        {cue === undefined ? (
-          <p className="fcm-none">{t('advice.noFormCues')}</p>
-        ) : (
-          <>
-            {cue.caution !== null && (
-              <p className="fcm-caution" role="note">
-                <strong>{t('label.caution')}</strong>: {cue.caution}
-              </p>
-            )}
-            <CueSection heading={t('label.cueSetup')} lines={cue.setup} ordered />
-            <CueSection heading={t('label.cueExecution')} lines={cue.execution} ordered />
-            <CueSection
-              heading={t('label.cueMistakes')}
-              lines={cue.mistakes}
-              ordered={false}
-              className="fcm-danger"
-            />
-            {cue.tip !== null && (
-              <p className="fcm-tip">
-                <strong>{t('label.cueTip')}</strong>: {cue.tip}
-              </p>
-            )}
-          </>
-        )}
+        <FormCueBody cueId={props.request.exerciseId} />
       </div>
     </ModalShell>
   );

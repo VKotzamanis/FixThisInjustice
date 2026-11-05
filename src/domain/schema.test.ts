@@ -523,6 +523,9 @@ describe('a document written before the section 5 amendments', () => {
     expect(profile?.bodyweightEquipment).toEqual([]);
 
     expect(state.customExercises[P1]?.[0]?.secondaryMuscles).toEqual([]);
+    // ROADMAP L9: the clip id postdates this document; the legacy search string is stripped.
+    expect(state.customExercises[P1]?.[0]?.videoId).toBeNull();
+    expect(state.customExercises[P1]?.[0]).not.toHaveProperty('videoQuery');
 
     expect(state.ui.videoInstanceHost).toBeNull();
     expect(state.ui.legacyMigration).toBe('pending');
@@ -530,6 +533,17 @@ describe('a document written before the section 5 amendments', () => {
     expect(state.ui.milestoneFloorByProfile).toEqual({});
 
     expect(state.notes).toEqual({});
+  });
+
+  it('loads a custom exercise whose stored clip id is malformed as "no clip", not a failed document', () => {
+    const doc = legacyDocument();
+    const bad = { ...(legacyExercise('custom-2') as Record<string, unknown>), videoId: 'not an id' };
+    const good = { ...(legacyExercise('custom-3') as Record<string, unknown>), videoId: 'hWbUlkb5Ms4' };
+    doc.customExercises = { [P1]: [bad, good] };
+    const result = parseState(doc);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.customExercises[P1]?.map((e) => e.videoId)).toEqual([null, 'hWbUlkb5Ms4']);
   });
 
   it('defaults customExercises and notes to empty maps when both are absent', () => {

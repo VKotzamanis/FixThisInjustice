@@ -3,6 +3,7 @@ import type { AppState } from './types';
 import { isValidLocalDate, isValidLocalTime, isValidTimeZone } from './dates';
 import { ACTIVITY_BAND, ACTIVITY_FACTOR } from './nutrition';
 import { migrate } from './migrations';
+import { VIDEO_ID_RE } from '../config/videoInstances';
 
 /** The schema version this build writes and is the ceiling for what it will read. */
 export const CURRENT_SCHEMA_VERSION = 3;
@@ -395,7 +396,13 @@ export const ExerciseSchema = z.object({
    */
   secondaryMuscles: z.array(z.string().min(1)).default([]),
   equipment: z.array(EquipmentSchema),
-  videoQuery: z.string().max(MAX_NOTE_CHARS).nullable(),
+  /**
+   * Additive (2026-11-05, ROADMAP L9): the YouTube clip id, replacing the legacy `videoQuery`
+   * search string, which the parse now strips. Coerced at parse: a record written before the
+   * field (every custom exercise so far) or one holding anything but an 11-character id loads
+   * as "no clip" rather than refusing the whole document (AGENTS rule 7).
+   */
+  videoId: z.string().regex(VIDEO_ID_RE).nullable().catch(null),
   formCueId: z.string().max(120).nullable(),
   note: z.string().max(MAX_NOTE_CHARS).nullable(),
 });

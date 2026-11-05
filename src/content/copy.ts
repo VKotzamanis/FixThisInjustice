@@ -277,9 +277,9 @@ export type CopyKey =
   | 'button.formCues'
   // The one control of the one-time warm-up notice on Train (owner 2026-10-18).
   | 'button.gotIt'
-  | 'button.nextInstance'
-  | 'button.openClip'
-  | 'button.searchInstance'
+  // ROADMAP L9: the form-video modal's source switch and its offline line.
+  | 'button.otherMirror'
+  | 'advice.videoOffline'
   | 'advice.noClipRecorded'
   | 'advice.drinkToThirst'
   | 'advice.beverageShortfall'
@@ -423,7 +423,6 @@ export type CopyKey =
   | 'why.deloadSets'
   // --- video and form-cue modals (P4 Task 8; appended by that task) ---
   | 'label.formReference'
-  | 'label.videoSearch'
   | 'status.videoInstance'
   | 'button.closeModal'
   | 'label.formCues'
@@ -1189,9 +1188,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.formCues': 'Form Cues',
   // Dismisses the one-time warm-up notice on Train; it is not shown again (owner 2026-10-18).
   'button.gotIt': 'Got It',
-  'button.nextInstance': 'Next Instance',
-  'button.openClip': 'Open Clip',
-  'button.searchInstance': 'Search Instance',
+  // Steps the form-video frame to the next source in src/config/videoInstances.ts (ROADMAP L9).
+  'button.otherMirror': 'Other Mirror',
+  // Shown instead of the frame when the browser reports no network; the modal re-frames the
+  // clip on the browser's `online` event, so "once" is what the code does.
+  'advice.videoOffline': 'Offline. The clip plays once you are back online.',
   'advice.noClipRecorded': 'No clip for this exercise.',
   'advice.drinkToThirst': 'Drink to thirst.',
   // template; FORMAT.beverageShortfall. Both volumes arrive formatted by src/domain/units.ts, so
@@ -1422,8 +1423,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // sentence case; the eyebrow's capitals are a text-transform in train.css, so a skin
   // rewriting this string does not have to shout.
   'label.formReference': 'Form Reference',
-  // The heading over the search panel shown when no clip id is recorded for the exercise.
-  'label.videoSearch': 'Search',
   'status.videoInstance': 'instance {shown} of {total}', // template; FORMAT.videoInstanceOf
   // The accessible name of the close control on both dialogs. The glyph itself is the token
   // set's mark, which copy contract R6 admits; this is what a screen reader says instead.

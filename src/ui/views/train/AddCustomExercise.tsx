@@ -114,7 +114,7 @@ export function AddCustomExercise(props: {
       // (what an exercise NEEDS): tag the custom exercise with every tier that access level
       // unlocks, per src/domain/types.ts ACCESS_UNLOCKS.
       equipment: [...ACCESS_UNLOCKS[profile.equipment]],
-      videoQuery: `${trimmed} technique`,
+      videoId: null, // no curated clip for a user-named exercise (docs/design/form-videos.md)
       formCueId: null,
       note: null,
     };
