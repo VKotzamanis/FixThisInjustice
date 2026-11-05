@@ -112,6 +112,45 @@ describe('PlateMathGame (P6)', () => {
     expect(readout('label.restGamePlateOnBar')).toBe('20 kg');
   });
 
+  it('says by how much the bar is over the target, in the profile unit (lead ruling R-G2)', () => {
+    renderGame('metric');
+    const round = plateMathRound(TIMER.game!, TIMER.durationS, 0, 'metric');
+    const target = round.targets[0] ?? Number.NaN; // [kg] whole bar
+    // 25 kg plates until the bar is over; none of the loads on the way may hit the target.
+    let onBar = round.bar; // [kg]
+    while (onBar <= target) {
+      expect(onBar).not.toBe(target);
+      fireEvent.click(screen.getByRole('button', { name: '25 kg' }));
+      onBar += 2 * 25; // [kg] one plate on each side
+    }
+    expect(screen.queryByText(/^Over by/)).not.toBeNull();
+    expect(screen.getByText(REST_GAME_FORMAT.plateOver(`${String(onBar - target)} kg`))).toBeInTheDocument();
+  });
+
+  it('shows no overshoot line at or under the target', () => {
+    renderGame('metric');
+    fireEvent.click(screen.getByRole('button', { name: '1.25 kg' }));
+    expect(screen.queryByText(/^Over by/)).toBeNull();
+  });
+
+  it('takes a loaded plate off when it is tapped, whichever it is (lead ruling R-G2)', () => {
+    renderGame('metric');
+    const round = plateMathRound(TIMER.game!, TIMER.durationS, 0, 'metric');
+    const target = round.targets[0] ?? Number.NaN; // [kg] whole bar
+    // 1.25 kg first (22.5 kg is under every target), then a plate whose loads miss the target.
+    const second = round.plates.find(
+      (plate) => round.bar + 2 * (1.25 + plate) !== target && round.bar + 2 * plate !== target,
+    );
+    if (second === undefined) throw new Error('no second plate that keeps the target unsolved');
+    fireEvent.click(screen.getByRole('button', { name: '1.25 kg' }));
+    fireEvent.click(screen.getByRole('button', { name: `${String(second)} kg` }));
+    // The FIRST plate, not the last: tapping a chip removes that chip.
+    fireEvent.click(screen.getByRole('button', { name: REST_GAME_FORMAT.plateTakeOff('1.25 kg') }));
+    expect(readout('label.restGamePlateOnBar')).toBe(`${String(round.bar + 2 * second)} kg`);
+    expect(screen.queryByRole('button', { name: REST_GAME_FORMAT.plateTakeOff('1.25 kg') })).toBeNull();
+    expect(screen.getByRole('button', { name: REST_GAME_FORMAT.plateTakeOff(`${String(second)} kg`) })).toBeInTheDocument();
+  });
+
   it('counts the targets done', () => {
     renderGame('metric');
     expect(screen.getByText(REST_GAME_FORMAT.progress(0, 3))).toBeInTheDocument();

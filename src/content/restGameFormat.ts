@@ -22,6 +22,14 @@ export const REST_GAME_FORMAT = {
   reactionTime: (ms: number, overrides?: Overrides): string =>
     copy('status.restGameReactionTime', overrides).replace('{ms}', () => String(ms)),
 
+  /** "Over by 5 kg.": how far the loaded bar is past the Plate Math target, already formatted with its unit. */
+  plateOver: (amount: string, overrides?: Overrides): string =>
+    copy('status.restGamePlateOver', overrides).replace('{amount}', () => amount),
+
+  /** "Take Off 20 kg": the accessible name of a loaded plate, which removes it when tapped. */
+  plateTakeOff: (plate: string, overrides?: Overrides): string =>
+    copy('label.restGamePlateTakeOff', overrides).replace('{plate}', () => plate),
+
   /** "Best 250 ms": the fastest clean tap of a Reaction round [ms]. */
   reactionBest: (ms: number, overrides?: Overrides): string =>
     copy('status.restGameReactionBest', overrides).replace('{ms}', () => String(ms)),

@@ -426,6 +426,8 @@ export type CopyKey =
   | 'label.restGamePlateSide'
   | 'label.restGamePlates'
   | 'button.restGamePlateRemove'
+  | 'status.restGamePlateOver'
+  | 'label.restGamePlateTakeOff'
   // --- Rest games, shared frame (P6, docs/design/rest-games.md) ---
   | 'button.restGameHide'
   | 'status.restGameTimeUp'
@@ -1337,6 +1339,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'label.restGamePlateSide': 'One Side',
   'label.restGamePlates': 'Plates',
   'button.restGamePlateRemove': 'Remove Plate',
+  // Lead ruling R-G2: the overshoot amount, and the name of a loaded plate's take-off control.
+  'status.restGamePlateOver': 'Over by {amount}.',
+  'label.restGamePlateTakeOff': 'Take Off {plate}',
   // P6: the frame every rest game is drawn in (src/ui/views/train/RestGameFrame.tsx).
   'button.restGameHide': 'Hide Game',
   'status.restGameTimeUp': 'Out of time.',

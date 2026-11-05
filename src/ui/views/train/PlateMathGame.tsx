@@ -2,7 +2,9 @@
 //
 // Plate Math (P6, R10): tap plates onto one side of the bar until the whole bar matches the
 // target; three targets a round. Arithmetic only, in the profile's units (RestGameHostContext);
-// no health number. It reads the rest timer and never writes it.
+// no health number. It reads the rest timer and never writes it. Over the target, a line says by
+// how much in the profile's unit; a loaded plate is a button that takes that plate off (lead
+// ruling R-G2), and Remove Plate takes off the last one.
 //
 // Units: loads [kg] for a metric profile, [lb] for an imperial one, both sides included; a plate
 // button names ONE plate; instants [ms] epoch UTC; durations [s].
@@ -82,6 +84,14 @@ export function PlateMathGame(props: RestGameProps): ReactElement {
     setSide((value) => value.slice(0, -1));
   };
 
+  /** Takes off the plate at `index` in tap order (R-G2). */
+  const takeOff = (index: number): void => {
+    if (!canPlay) return;
+    setSide((value) => value.filter((_, i) => i !== index));
+  };
+
+  const over = onBar - target; // [kg] or [lb], > 0 when the bar is past the target
+
   return (
     <RestGameFrame
       variant="rest-plate"
@@ -106,12 +116,23 @@ export function PlateMathGame(props: RestGameProps): ReactElement {
           <dd className={onBar > target ? 'rest-plate-over' : undefined}>{formatLoad(onBar, unit)}</dd>
         </div>
       </dl>
+      {over > 0 && <p className="rest-plate-over-note">{REST_GAME_FORMAT.plateOver(formatLoad(over, unit), overrides)}</p>}
 
       <div className="rest-plate-side" role="group" aria-label={t('label.restGamePlateSide')}>
         {side.map((plate, index) => (
-          <span className="rest-plate-chip" key={index}>
+          <button
+            type="button"
+            className="rest-plate-chip"
+            // Tap order is the identity: two plates of one size are two chips.
+            key={index}
+            aria-label={REST_GAME_FORMAT.plateTakeOff(formatLoad(plate, unit), overrides)}
+            disabled={!canPlay}
+            onClick={() => {
+              takeOff(index);
+            }}
+          >
             {formatLoad(plate, unit)}
-          </span>
+          </button>
         ))}
       </div>
 
