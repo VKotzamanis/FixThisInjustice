@@ -34,6 +34,8 @@
 //      pick on any other day wrote a session the calendar does not place there.
 //   5. The reshuffled plan is stored under cursor.planId, the key every read in this module
 //      resolves the plan by, not under plan.id.
+//   6. (P3 D15) The window also ends at the last index of the cursor's block: a swap never
+//      carries a session across a training/deload boundary.
 //
 // Every refusal is shared with remainingLabelsThisWeek through one predicate (gateReason), so
 // the two cannot drift: the labels offered are exactly the labels honoured.
@@ -43,6 +45,7 @@
 
 import { addDays, compareLocalDate, daysBetween, isoWeekday, weekEnd, weekStart } from '../dates';
 import { weeklyQuota, type ScheduleState } from './quota';
+import { blockFor } from '../training/progression';
 import { isPaused, isTerminal, upsertAssignment } from './cursor';
 import type {
   AppState,
@@ -283,7 +286,19 @@ function withSpan(
   base: WindowBase,
 ): SwapWindow {
   const span = weekSpan(state, profileId, date); // [sessions] >= 1
-  return { ...base, end: Math.min(base.target + span - 1, base.plan.sessions.length - 1) };
+  /*
+   * D15: never past the end of the block the cursor stands in. Blocks are positional (a deload
+   * is a run of positions), so inside one block a swap moves only the rotation label.
+   */
+  const block = blockFor(base.plan, base.target);
+  const blockLast =
+    block.sessionCount > 0
+      ? block.firstSessionIndex + block.sessionCount - 1 // [sessions] offset, inclusive
+      : base.plan.sessions.length - 1; // a plan with no blocks is one block
+  return {
+    ...base,
+    end: Math.min(base.target + span - 1, base.plan.sessions.length - 1, blockLast),
+  };
 }
 
 function swapWindow(state: AppState, profileId: string, date: LocalDate): SwapWindow | null {

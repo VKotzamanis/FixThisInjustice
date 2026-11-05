@@ -15,6 +15,7 @@ import { MAX_HORIZON_MS, MAX_INSTANTS } from '../../config/reminders';
 import { instantOf } from '../dates';
 import { projectedCalendar } from '../schedule/calendar';
 import { isTerminal } from '../schedule/cursor';
+import { sessionTitle } from '../schedule/rotation';
 import type { AppState, EpochMs, LocalDate, ReminderInstant } from '../types';
 
 /** [ms/min] */
@@ -85,7 +86,7 @@ export function computeReminderInstants(
     // Copy contract (master plan §3): the connector is a comma. Master §6.6's draft body used
     // an em dash, which that contract bans; the wording is otherwise unchanged.
     const title = `${session.label} today`;
-    const body = `${session.name} at ${slot.startTime}, session ${session.ordinal} of ${totalSessions}`;
+    const body = `${sessionTitle(plan, session)} at ${slot.startTime}, session ${session.ordinal} of ${totalSessions}`;
 
     const dayOfAt = instantOf(day.date, settings.dayOfTime, timezone); // [ms] epoch, UTC
     if (dayOfAt > now && dayOfAt <= horizonEnd) {

@@ -21,6 +21,7 @@ import { copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { PlanTemplate } from '../../domain/types';
+import { sessionTitle } from '../../domain/schedule/rotation';
 import { useAppStore } from '../../store';
 import { useActivePlan } from '../../store/selectors';
 import { exerciseName } from '../format/plan';
@@ -113,7 +114,7 @@ export function buildSpotlightItems(args: SpotlightArgs): SpotlightItem[] {
         // Through the library, so a row reads "Barbell bench press" and not its id. The
         // documented fallback prints the id when the library no longer holds the exercise.
         label: exerciseName(planned.exerciseId),
-        hint: session.name,
+        hint: plan === null ? session.label : sessionTitle(plan, session),
         run: () => {
           setView('plan');
           focusPlanRow({ sessionId: session.id, exerciseId: planned.exerciseId });

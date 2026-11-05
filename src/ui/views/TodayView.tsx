@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { FORMAT, type CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
+import { sessionTitle } from '../../domain/schedule/rotation';
 import { isInProgramme, reviewVerdict } from '../../domain/schedule/weekly';
 import { nextProgrammeGoal } from '../../domain/plan/lifecycle';
 import type { GoalKind, PlanPause, WeeklyReview } from '../../domain/types';
@@ -354,7 +355,7 @@ export function TodayView(): JSX.Element {
         <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName text={c('hero.sessionInProgress')} />
-        {session !== null && <p className="today-sub">{session.name}</p>}
+        {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
       </div>
     );
   } else if (status === 'paused') {
@@ -375,7 +376,7 @@ export function TodayView(): JSX.Element {
         <HeroName
           text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
         />
-        {session !== null && <p className="today-sub">{session.name}</p>}
+        {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
         {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
       </div>
     );
@@ -384,7 +385,7 @@ export function TodayView(): JSX.Element {
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
         {mascot}
-        <HeroName text={session.name} />
+        <HeroName text={sessionTitle(plan, session)} />
         <p className="today-sub">
           {FORMAT.sessionSummary(
             session.label,

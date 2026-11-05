@@ -91,7 +91,7 @@ afterEach(() => {
 describe('TodayView hero: a session is scheduled today', () => {
   it('states the session, the cursor position, the label and the slot time', () => {
     render(<TodayView />);
-    expect(screen.getByText('Push 1')).toBeTruthy();
+    expect(screen.getByText('Week 1 Push')).toBeTruthy(); // D09: title from the position
     expect(screen.getByText(FORMAT.planPosition(1, TOTAL, ''))).toBeTruthy();
     expect(screen.getByText(FORMAT.sessionSummary('Push', '07:00', 2))).toBeTruthy();
   });
@@ -391,7 +391,7 @@ describe('TodayView: train something else today', () => {
       'Legs',
       'Pull',
     ]);
-    expect(screen.getByText('Legs 2')).toBeTruthy();
+    expect(screen.getByText('Week 1 Legs')).toBeTruthy(); // D09/D15: week of the position it now holds
   });
 
   it('withdraws the control once no label is on offer', () => {
@@ -777,7 +777,7 @@ describe('App wiring', () => {
     setState(seed());
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.today') }));
-    expect(screen.getByText('Push 1')).toBeTruthy();
+    expect(screen.getByText('Week 1 Push')).toBeTruthy(); // D09: title from the position
     /*
      * Scoped to the view. P3 Task 6 mounted Task 7's SessionIndicator in the top bar, so the
      * same cursor position is now on screen twice by design: once in the header, once in this

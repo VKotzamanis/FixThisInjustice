@@ -27,6 +27,7 @@ import { todayLocal } from '../../domain/dates';
 import { crossedMilestones } from '../../domain/fun/blocks';
 import { inventoryOf } from '../../domain/plan/inventory';
 import { EXERCISES } from '../../domain/plan/library';
+import { sessionTitle } from '../../domain/schedule/rotation';
 import type { CoachLine } from '../../domain/training/coach';
 import { preSessionMass } from '../../domain/training/hydration';
 import { IDENTITY_BLOCK, blockFor } from '../../domain/training/progression';
@@ -357,6 +358,10 @@ export function TrainView(): ReactElement {
     preSessionMassKg === null &&
     todaysSets.length === 0;
 
+  // D09: the programme week comes from the session's position, never from its baked name.
+  const title = plan === null ? session.label : sessionTitle(plan, session);
+
+
   return (
     <div className="view train">
       <div className="train-header">
@@ -364,7 +369,7 @@ export function TrainView(): ReactElement {
           <div className="train-eyebrow">
             {FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)}
           </div>
-          <h2 className={displayClass(session.name)}>{session.name}</h2>
+          <h2 className={displayClass(title)}>{title}</h2>
           {block.isDeload && <div className="train-deload">{c('advice.deloadBlock')}</div>}
         </div>
         <RestTimerPanel />
