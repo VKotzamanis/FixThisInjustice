@@ -8,14 +8,14 @@ Single source of current state. Update in place. Last update: 2026-10-21.
 
 ## Next job
 1. Owner phone feedback (he is collecting it now; new agent session). Triage each item against `docs/ROADMAP.md`; log his words verbatim in `docs/private/owner-feedback/` (gitignored).
-2. Owner wording calls pending: new copy keys are base-table only, no limelight voice yet (session editing, effort taps, programme lifecycle, Rest Word, warm-up notice "Got It"); ROADMAP N7, S1, S7.
+2. Owner wording calls pending: new copy keys are base-table only, no limelight voice yet (session editing, effort taps, programme lifecycle, rest games (P6), warm-up notice "Got It"); ROADMAP N7, S1, S7.
 3. Then ROADMAP open items: R4, B1a, B1c, L6 (design), L9, L10, F2-F5.
 
 ## What exists (2026-10-18 build)
 - Cleanup: docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE + runbooks + design; review-catalogue machinery, both design tools, clinical/board skins, old-console import removed.
 - Fixes: B1-B6; review R1-R3, R5, R6.
 - Training loop: edit/swap/skip/reorder/add exercises in a session (L1-L4), Update Programme from Settings + Start Next Programme + maintenance after goal (L5, L7, B1b, B1d), one-tap effort per set with a sourced hold rule (L8).
-- Fun: Rest Word game (F1).
+- Fun: rest games (F1, P6): Rest Word (QWERTY), Plate Math, Reaction, Sequence Recall, Gym Anagram, in a bottom sheet over Train with a picker. `docs/design/rest-games.md`.
 - Art (owner-reviewed on artifact pages): body-fat front+side torsos (men 10-35 %, women 20-45 %), slider icons, tape diagrams, 37 per-card Atlas icons (lazy), app icon + badge from the owner's own sprite, "her" sprite sheets (lifting/resting/crown) replacing the pink blob. Spec `docs/design/asset-spec-2026-10-18.md`; register `docs/design/2026-09-04-icon-register.csv`.
 - Style: brat headings, pink stickers, status marks, lit-sign panels, rest-over flash, dither wipe, contrast sweep test (`src/ui/styles/limeContrast.test.ts`). Survey `docs/design/stylize-survey-2026-10-18.md`.
 - Train/Log decluttered; warm-up + medical-clearance notice shows once per profile ("Got It"), not in Form Cues.
@@ -33,7 +33,7 @@ Single source of current state. Update in place. Last update: 2026-10-21.
 ## Never done / not working
 - Reminder Worker never deployed (`worker/wrangler.toml` placeholders): reminders show "not set up"; no rest alarm with the screen locked (web limit, `docs/ARCHITECTURE.md`).
 - No sound files (`public/sfx/`), no motivation clip (`public/media/`).
-- Nothing tested on iOS Safari/Android hardware by an agent; layout checked only in headless Chromium at 320/400 px.
+- Nothing tested on iOS Safari/Android hardware by an agent; layout checked only in headless Chromium at 320/400 px. P6 sheet not measured: e2e/p6-rest-sheet.spec.ts is written but its run happens in main after the P6 merge (port 4174 belongs to the main track).
 
 ## Doc drift (known)
 - Older docs cite drifted paths/lines: `docs/design/programme-horizon.md` (planned files never built), `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-06-asset-prompts.md` (superseded by asset-spec-2026-10-18), `docs/design/2026-09-01-copy-contract.md`, runbooks. Re-derive before trusting a line number.

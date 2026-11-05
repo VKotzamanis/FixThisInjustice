@@ -12,10 +12,11 @@
 // Rows added to the fixture after the snapshot, on purpose, each with the string it ships: the
 // session-editing keys (docs/design/session-editing.md, "Copy keys added"), the four one-tap
 // effort keys `button.effort{Easy,Solid,Hard,Max}` (ROADMAP L8), the programme lifecycle keys
-// (docs/design/programme-lifecycle.md, "Copy keys") and the eleven rest-game keys whose name
-// contains `restWord` (ROADMAP F1, docs/design/rest-games.md; base table only, no limelight
-// override), and `button.gotIt`, the one control of the one-time warm-up notice on Train (owner
-// 2026-10-18; base table only), and `status.staleSession{Completed,Released}` for the
+// (docs/design/programme-lifecycle.md, "Copy keys"), the rest-game keys whose name contains
+// `restWord` or `restGame` (ROADMAP F1 and P6, docs/design/rest-games.md; base table only, no
+// limelight override; P6 retired three of the first eleven, listed in REMOVED_KEYS), and
+// `button.gotIt`, the one control of the one-time warm-up notice on Train (owner 2026-10-18; base
+// table only), and `status.staleSession{Completed,Released}` for the
 // stale-session notice (spec R1, Task 6; base table only). No snapshot row was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
