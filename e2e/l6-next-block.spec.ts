@@ -50,8 +50,16 @@ test('L6: finishing the last session of a 12-week plan leaves the next block on 
   if (plan === undefined) throw new Error('fixture: plan');
   const availability = base.availability[PROFILE_ID];
   if (availability === undefined) throw new Error('fixture: availability');
+  // A user standing at session 36 has already passed every earlier block boundary; without this
+  // the fixture's "seen block 0" opens the block-6 cutscene at launch, covering the tab bar.
+  const lastBlock = blocks[blocks.length - 1]?.index ?? 0; // [blocks] 0-based PlanBlock.index
   await seedDocument(context, {
     ...base,
+    ui: {
+      ...base.ui,
+      lastBlockSeenByProfile: { [PROFILE_ID]: lastBlock },
+      lastBlockSeenByPlan: { [PLAN_ID]: lastBlock },
+    },
     plans: { [PLAN_ID]: { ...plan, name: 'Full body x3, 12 weeks, maintenance', sessionsPerWeek: SPW, weeks: WEEKS, sessions, blocks } },
     // Monday, Tuesday, Wednesday, Friday preferred, three a week: Monday's session leaves Tuesday
     // with quota, so the next block's first session is served the next day.
@@ -74,6 +82,11 @@ test('L6: finishing the last session of a 12-week plan leaves the next block on 
 
   await setClock(context, chicago(TUESDAY, '10:00'));
   const tuesday = await openApp(context);
+  // The cursor now stands in the appended next block, so the block-boundary cutscene is due
+  // (PhaseTransitionGate); a user closes it with its own button before reaching Today.
+  const cutscene = tuesday.getByTestId('phase-transition');
+  await cutscene.getByRole('button', { name: 'Next', exact: true }).click({ timeout: 10_000 }); // copy.ts button.continue
+  await expect(cutscene).toHaveCount(0);
   await tuesday.getByRole('navigation').getByRole('button', { name: LABEL.todayTab, exact: true }).click({ timeout: 10_000 });
   // Session 37 is week 13's first session; the hero names it by position (rotation.ts sessionTitle).
   await expect(tuesday.getByRole('heading', { level: 1, name: /Week 13 Full body A/ })).toBeVisible();
