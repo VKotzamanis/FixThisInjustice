@@ -41,6 +41,7 @@ import { createMotivationActions, type MotivationActions } from './motivationAct
 import { createReminderActions, type ReminderActions } from './reminderActions';
 import { createFunActions, type FunActions } from './funActions';
 import { applyReplacePlan, applyRestartProgramme } from './programme';
+import { applyUpdateAvailability } from './availability';
 import { applyCompleteSetup, applyCreateProfile, applySetAvailability, type SetupResult } from './setup';
 import { parseOrThrow } from './validate';
 import type { ProgrammeChoice } from '../domain/plan/lifecycle';
@@ -218,6 +219,13 @@ export interface AppActions {
   logIntake(profileId: string, entry: IntakeEntry): void;
   /** The weekday slots and weekly session target the wizard collects; P3 consumes them. */
   setAvailability(profileId: string, a: Availability): void;
+  /**
+   * Audit D05/D16: the Settings availability editor. Grades every week that has already ended
+   * under the availability it ran with, then stores the new days and target, parsed with the
+   * loader's schema. Calendar only: plan and cursor untouched. Throws, writing nothing, on a
+   * refusal. `now` [ms] epoch, UTC.
+   */
+  updateAvailability(profileId: string, a: Availability, now: EpochMs): void;
   /** Points the app at another stored profile. Throws on an unknown id. */
   setActiveProfile(id: string): void;
   /**
@@ -815,6 +823,10 @@ export const useAppStore = create<AppStore>()((set, get) => {
 
   setAvailability(profileId: string, a: Availability): void {
     set(applySetAvailability(get(), profileId, a, 'setAvailability'));
+  },
+
+  updateAvailability(profileId: string, a: Availability, now: EpochMs): void {
+    set(applyUpdateAvailability(get(), profileId, a, now));
   },
 
   setActiveProfile(id: string): void {
