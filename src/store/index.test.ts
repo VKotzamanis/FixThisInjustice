@@ -72,7 +72,7 @@ describe('import and export', () => {
     expect(text).toBe(exportJson(next));
 
     useAppStore.getState().replaceState(defaultState());
-    expect(useAppStore.getState().importJson(text)).toEqual({ ok: true });
+    expect(useAppStore.getState().importJson(text)).toEqual({ ok: true, quarantine: [] });
     expect(useAppStore.getState().activeProfileId).toBe('p');
   });
 
@@ -107,7 +107,7 @@ describe('import and export', () => {
         },
       });
       const text = exportJson({ ...defaultState(), activeProfileId: null });
-      expect(useAppStore.getState().importJson(text)).toEqual({ ok: true });
+      expect(useAppStore.getState().importJson(text)).toEqual({ ok: true, quarantine: [] });
       expect(seen).toHaveLength(1);
     } finally {
       useAppStore.setState({ replaceState: real });

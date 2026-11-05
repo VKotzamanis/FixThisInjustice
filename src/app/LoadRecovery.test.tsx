@@ -1,9 +1,10 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { copyFor } from '../content/copy';
 import { defaultState, useAppStore } from '../store';
 import { createMemoryBackend } from '../store/db/memoryBackend';
 import { App } from './App';
+import { makeBlankState } from '../test/migrationFactories';
 import { preloadRoutes } from './routes';
 
 // Audit E09: App's split screens render on their first frame only once loaded.
@@ -53,5 +54,20 @@ describe('a refused document opens the recovery screen (B01/B17/B18)', () => {
     await useAppStore.getState().hydrate(backend);
     render(<App />);
     expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.storageUnreadable') })).toBeInTheDocument();
+  });
+
+  it('imports a backup with an unreadable record: the rest loads and writing reopens (audit B04)', async () => {
+    const backend = createMemoryBackend({ legacy: '{"week":999}' });
+    await useAppStore.getState().hydrate(backend);
+    render(<App />);
+    const doc = JSON.parse(JSON.stringify(makeBlankState())) as Record<string, unknown>;
+    doc.sets = { bad: { id: 'bad', rpe: 7.3 } };
+    const file = new File([JSON.stringify(doc)], 'backup.json', { type: 'application/json' });
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.importBackup')), { target: { files: [file] } });
+    await waitFor(() => {
+      expect(useAppStore.getState().status.lastLoadError).toBeNull();
+    });
+    expect(useAppStore.getState().status.quarantine?.map((q) => q.key)).toEqual(['bad']);
+    expect(Object.keys(useAppStore.getState().profiles)).toEqual(Object.keys(makeBlankState().profiles));
   });
 });

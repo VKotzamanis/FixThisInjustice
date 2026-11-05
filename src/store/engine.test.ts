@@ -157,7 +157,7 @@ describe('wipe and replace (R13, B14)', () => {
   it('an import replaces every record and reopens writing after a refused load', async () => {
     const backend = createMemoryBackend({ legacy: '{"week":999}' });
     await boot(backend);
-    expect(useAppStore.getState().importJson(exportJson(alpha()))).toEqual({ ok: true });
+    expect(useAppStore.getState().importJson(exportJson(alpha()))).toEqual({ ok: true, quarantine: [] });
     await whenPersisted();
     expect(backend.commits).toHaveLength(1);
     expect(backend.commits[0]?.clear).toBe(true);
