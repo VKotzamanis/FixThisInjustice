@@ -215,6 +215,7 @@ describe('SettingsView data section', () => {
     render(<DataSection />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
     expect(storage.has(STORAGE_KEY)).toBe(false); // the records went first, synchronously here
