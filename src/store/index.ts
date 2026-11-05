@@ -440,7 +440,6 @@ export function selectState(s: AppStore): AppState {
     specimens: s.specimens,
     capsules: s.capsules,
     customExercises: s.customExercises,
-    notes: s.notes,
     setupDraft: s.setupDraft,
     ui: s.ui,
   };

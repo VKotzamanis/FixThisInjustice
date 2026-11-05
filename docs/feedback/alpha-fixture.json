@@ -8824,13 +8824,11 @@
     }
   },
   "customExercises": {},
-  "notes": {},
   "setupDraft": null,
   "ui": {
     "bootSeen": false,
     "introSeen": false,
     "lastView": "today",
-    "accent": "#a3e635",
     "scanlines": true,
     "flicker": false,
     "density": "normal",

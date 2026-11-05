@@ -131,7 +131,7 @@ describe('setUi', () => {
     expect(ui.lastView).toBe('train');
     expect(ui.bootSeen).toBe(true);
     // Untouched preferences survive the shallow patch.
-    expect(ui.accent).toBe(before.ui.accent);
+    expect(ui.scanlines).toBe(before.ui.scanlines);
     expect(ui.density).toBe(before.ui.density);
     // Nothing outside ui moved.
     expect(useAppStore.getState().profiles).toBe(before.profiles);

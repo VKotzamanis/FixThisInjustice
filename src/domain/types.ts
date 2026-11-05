@@ -331,7 +331,7 @@ export type SkinId = 'limelight';
 // documents, read before the per-profile value (src/domain/fun/blocks.ts lastBlockSeen).
 // installNudgeDismissed: this device's user dismissed the install card (spec R8,
 // src/app/InstallCard.tsx). OPTIONAL `true`, absent until dismissed, exactly as above.
-export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; lastBlockSeenByPlan?: Record<string, number> | undefined; installNudgeDismissed?: true | undefined; }
+export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; lastBlockSeenByPlan?: Record<string, number> | undefined; installNudgeDismissed?: true | undefined; }
 
 // ---- setup draft (persisted so a closed browser does not lose in-progress setup) ----
 /*
@@ -495,7 +495,6 @@ export interface AppState {
   specimens: Record<string, SpecimenInventory>;
   capsules: Record<string, TimeCapsule | null>;
   customExercises: Record<string, Exercise[]>;     // by profileId; user-added exercises with generated ids (never positional)
-  notes: Record<string, Record<LocalDate, string>>; // by profileId then local day; migrated from legacy daily notes
   setupDraft: SetupDraft | null;                     // C1.G.1; null once there is nothing in progress
   ui: UiPrefs;
 }

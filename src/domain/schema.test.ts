@@ -95,7 +95,7 @@ describe('fixtures', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.customExercises).toEqual({});
-    expect(result.state.notes).toEqual({});
+    expect(result.state).not.toHaveProperty('notes');
     expect(result.state.ui.videoInstanceHost).toBeNull();
     expect(result.state.ui.legacyMigration).toBe('pending');
     expect(result.state.ui.lastBlockSeenByProfile).toEqual({});
@@ -532,7 +532,7 @@ describe('a document written before the section 5 amendments', () => {
     expect(state.ui.lastBlockSeenByProfile).toEqual({});
     expect(state.ui.milestoneFloorByProfile).toEqual({});
 
-    expect(state.notes).toEqual({});
+    expect(state).not.toHaveProperty('notes');
   });
 
   it('loads a custom exercise whose stored clip id is malformed as "no clip", not a failed document', () => {
@@ -546,12 +546,12 @@ describe('a document written before the section 5 amendments', () => {
     expect(result.state.customExercises[P1]?.map((e) => e.videoId)).toEqual([null, 'hWbUlkb5Ms4']);
   });
 
-  it('defaults customExercises and notes to empty maps when both are absent', () => {
+  it('defaults customExercises to an empty map when absent; notes is retired (ROADMAP N4)', () => {
     const result = parseState(legacyDocument());
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.state.customExercises).toEqual({});
-    expect(result.state.notes).toEqual({});
+    expect(result.state).not.toHaveProperty('notes');
   });
 
   it('gives each parse its own default objects, not a shared reference', () => {
@@ -567,7 +567,6 @@ describe('a document written before the section 5 amendments', () => {
     expect(second.ok).toBe(true);
     if (!first.ok || !second.ok) return;
 
-    expect(first.state.notes).not.toBe(second.state.notes);
     expect(first.state.customExercises).not.toBe(second.state.customExercises);
     expect(first.state.ui.lastBlockSeenByProfile).not.toBe(
       second.state.ui.lastBlockSeenByProfile,
@@ -585,14 +584,12 @@ describe('a document written before the section 5 amendments', () => {
       second.state.profiles[P1]?.bodyweightEquipment,
     );
 
-    first.state.notes[P1] = { '2026-01-05': 'written into the first parse' };
     first.state.customExercises[P1] = [];
     first.state.ui.lastBlockSeenByProfile[P1] = 4;
     first.state.ui.milestoneFloorByProfile[P1] = 50; // [sets]
     const firstReadiness = first.state.profiles[P1]?.readiness;
     if (firstReadiness !== undefined) firstReadiness.flagged = true;
 
-    expect(second.state.notes).toEqual({});
     expect(second.state.customExercises).toEqual({});
     expect(second.state.ui.lastBlockSeenByProfile).toEqual({});
     expect(second.state.ui.milestoneFloorByProfile).toEqual({});
@@ -673,7 +670,6 @@ describe('Profile.inventoryAnsweredFor (P3a, rule 7)', () => {
 function oneProfileDocument(): Record<string, unknown> {
   const doc = legacyDocument();
   doc.customExercises = {};
-  doc.notes = {};
   return doc;
 }
 
@@ -700,7 +696,7 @@ describe('record keys must agree with the entity they store', () => {
   it('accepts a document whose keys all agree', () => {
     const doc = oneProfileDocument();
     doc.sets = { 'set-1': loggedSet('set-1') };
-    doc.notes = { [P1]: { '2026-09-01': 'a note' } };
+    doc.capsules = { [P1]: null };
     const result = parseState(doc);
     expect(result.ok).toBe(true);
     if (!result.ok) throw new Error(result.error);
@@ -725,10 +721,10 @@ describe('record keys must agree with the entity they store', () => {
 
   it('rejects a per-profile map keyed by an id no profile owns', () => {
     const doc = oneProfileDocument();
-    doc.notes = { ghost: { '2026-09-01': 'orphan' } };
+    doc.capsules = { ghost: null };
     const result = parseState(doc);
     expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.error).toContain('notes.ghost');
+    if (!result.ok) expect(result.error).toContain('capsules.ghost');
   });
 
   it('rejects an activeProfileId that names no profile', () => {
@@ -756,8 +752,8 @@ describe('the ordinal ledger refuses a key the store could not have written', ()
    * document was edited or corrupted outside the app. Salvaging it would leave an ordinal ledger
    * that no longer accounts for the acquisitions beside it, and that ledger is the only thing
    * stopping a delete-and-relog rerolling a drop (master plan section 10.8, rule 3): a silently
-   * shortened ledger hands back the farm the rule closes. `notes` already makes the same call for
-   * its inner local-date keys, and master plan section 8 states the governing constraint -
+   * shortened ledger hands back the farm the rule closes. Master plan section 8 states the
+   * governing constraint -
    * import validation is the critical fix; nothing enters the store unvalidated.
    */
   it('rejects a zero-padded ordinal and names the offending key in the path', () => {

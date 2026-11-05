@@ -91,7 +91,7 @@ function replaceButton(): HTMLElement {
 /** A valid document that differs from the fixture, so an import of it is observable. */
 function otherDocument(): string {
   const seeded = makeBlankState();
-  seeded.ui.accent = '#ffffff';
+  seeded.ui.flicker = !seeded.ui.flicker;
   return JSON.stringify(seeded);
 }
 
@@ -390,7 +390,7 @@ describe('ExportView', () => {
     render(<ExportView />);
     const exported = useAppStore.getState().exportJson();
     const seeded = makeBlankState();
-    seeded.ui.accent = '#ffffff';
+    seeded.ui.flicker = !seeded.ui.flicker;
     useAppStore.getState().replaceState(seeded);
     expect(useAppStore.getState().exportJson()).not.toBe(exported);
 

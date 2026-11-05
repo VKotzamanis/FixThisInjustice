@@ -448,15 +448,6 @@ export const anyTimeCapsule: fc.Arbitrary<TimeCapsule> = fc.record({
   opened: fc.boolean(),
 });
 
-/** One profile's daily notes, keyed by local day. */
-const anyNotesForProfile: fc.Arbitrary<Record<LocalDate, string>> = fc
-  .array(fc.tuple(anyLocalDate, fc.string({ maxLength: 120 })), { maxLength: 3 })
-  .map((pairs) => {
-    const out: Record<LocalDate, string> = {};
-    for (const [date, text] of pairs) out[date] = text;
-    return out;
-  });
-
 /**
  * base64url is the encoding the Web Push API uses for the subscription keys
  * (RFC 8291 / RFC 4648 section 5): the URL-safe alphabet, no padding.
@@ -498,7 +489,6 @@ export const anyPushDevice: fc.Arbitrary<PushDevice> = fc.record({
 export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   bootSeen: fc.boolean(),
   lastView: anyText,
-  accent: fc.constantFrom('#a3e635', '#67e8f9', '#fbbf24'),
   scanlines: fc.boolean(),
   flicker: fc.boolean(),
   density: fc.constantFrom('compact' as const, 'normal' as const),
@@ -667,7 +657,6 @@ export const anyAppState: fc.Arbitrary<AppState> = fc
       specimens: byProfile(anySpecimenInventory),
       capsules: byProfile(fc.option(anyTimeCapsule, { nil: null })),
       customExercises: byProfile(fc.array(anyExercise, { maxLength: 2 })),
-      notes: byProfile(anyNotesForProfile),
       setupDraft: fc.option(anySetupDraft, { nil: null }),
       ui: anyUiPrefs,
     });

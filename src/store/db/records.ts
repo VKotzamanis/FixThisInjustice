@@ -30,7 +30,6 @@ export const MAP_STORES = [
   'specimens',
   'capsules',
   'customExercises',
-  'notes',
 ] as const satisfies readonly (keyof AppState)[];
 export type MapStore = (typeof MAP_STORES)[number];
 
