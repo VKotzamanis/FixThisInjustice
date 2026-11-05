@@ -31,6 +31,16 @@
 
 ---
 
+## Amendments (lead rulings, 2026-11-05; binding, override task text)
+
+Owner answers: docs/private/owner-feedback/phone-week-2026-11-04.md ("Design review page answers").
+- AM-4a-1 Ticker KEPT (owner rejected removal: "I specifically want the moving banner"). Task 8: no ticker removal and none of its 9 keys deleted. The header stays ONE 44 px row (+ safe-area top): brand, then the page title with a min-width floor that fits the widest nav label, then the ticker taking the remaining width (`flex: 1 1 0; min-width: 0`). Fix the ticker's text colour (black on black today, audit F06) through tokens; contrast >= 4.5:1 asserted by the Task 18 sweep. Reduced motion keeps the static single item.
+- AM-4a-2 Approved by the owner: bottom tab bar Today/Train/Targets/Log/More with More = Plan/Atlas/Settings/Find (Task 7), the icons archive/archive-panel, more/more-panel, drop-panel (wire them; register status -> approved 2026-11-05), the display-shadow scaling (Task 3), and P3's `postponed` Log mark.
+- AM-4a-3 Vignette: NO default change for new installs (owner could not judge it). Drop that part of Task 8.
+- AM-4a-4 Since this plan was written, main gained: P3 (Training Days editor in Settings, 7-cell Log grid, positional session titles, wizard fixes, intro replay), P5 (Today weigh-in + fluid quick add, Log weigh-in list, Settings profile editor + PAL slider, Targets history), P6 (rest-game sheet over Train, restGames.css), P4b platform tasks 1,2,3,7,8,10,11 (src/domain/zod.ts is the only zod import; build-info.json; durability in Settings > Data). Apply the token system, `:where()` base rules, type floor, sticker/primary rules and safe areas to those surfaces too; anchor edits by content.
+- AM-4a-5 e2e/p6-rest-sheet.spec.ts: remove the `test.fail(width === 390, ...)` line once the 44 px header lands (Task 8), and extend the "Log above the sheet" assertion from 390 px to all four widths (measured failing at 360/412 too with the 85 px header).
+- AM-4a-6 After P4a, run P4b Tasks 4, 5, 6, 9, 12 (update controller, banner under the header, route-level code splitting, install card, game sheet chunk) on top, then the full gates once.
+
 ## File Structure
 
 | Path | Status | Responsibility | Task |
