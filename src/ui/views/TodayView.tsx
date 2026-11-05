@@ -40,6 +40,7 @@ import { refusalLine } from '../format/refusal';
 import { weekDeltaKey } from '../format/weekDelta';
 import { HERO_SCALE, heroPose, heroStateOf, type DayStatus } from './todayHero';
 import './views.css';
+import { MeasurementsPanel } from '../measurements/MeasurementsPanel';
 
 /**
  * The Today view.
@@ -659,6 +660,8 @@ export function TodayView(): JSX.Element {
        * Not after Programme Complete (ROADMAP B1b): the last review stood there until a new plan
        * started, which nothing on screen offered; Start Next Programme above takes its place.
        */}
+      {/* Spec R9 / audit G02: a weigh-in any day, not only inside a session. */}
+      <MeasurementsPanel profile={profile} today={today} />
       {!finished && <WeekStamp review={lastReview} />}
       {!finished && <Intervention review={lastReview} />}
 

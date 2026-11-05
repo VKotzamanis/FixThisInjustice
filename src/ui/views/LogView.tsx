@@ -41,6 +41,7 @@ import { BodyMassChart } from '../components/BodyMassChart';
 import { ComplianceGrid } from '../components/ComplianceGrid';
 import { PRList } from '../components/PRList';
 import './views.css';
+import { BodyMassLog } from '../measurements/BodyMassLog';
 
 /**
  * [weeks] Most weeks the compliance grid will draw. A programme begun years ago would
@@ -194,6 +195,8 @@ export function LogView(): ReactElement {
           {targets !== null && <p>{targets.basis.rateRule}</p>}
         </div>
       </details>
+      {/* Spec R9 / audit G03: every entry editable and deletable with undo. */}
+      <BodyMassLog profile={profile} />
 
       <h3>{t('hero.compliance')}</h3>
       <ComplianceGrid

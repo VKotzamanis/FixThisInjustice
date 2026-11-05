@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { ToastProvider } from '../components/ToastQueue';
 import { App } from '../../app/App';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { formatRest } from '../format/plan';
@@ -20,6 +22,11 @@ import {
   seedState,
 } from '../../test/scheduleFixtures';
 import type { AppState, SessionAssignment, SkinId, WeeklyReview } from '../../domain/types';
+
+/** P5: the measurement panels raise undo toasts, so every render sits inside the provider. */
+function render(ui: ReactElement): ReturnType<typeof rtlRender> {
+  return rtlRender(<ToastProvider>{ui}</ToastProvider>);
+}
 
 /*
  * Deviations from the P3 plan's literal draft, recorded here and in the task report:
@@ -1191,5 +1198,13 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
     const goal = within(nextPanel()).getByLabelText(copyFor('limelight', 'label.goal'));
     expect((goal as HTMLSelectElement).value).toBe('muscle-gain');
     expect(screen.queryByText(copyFor('limelight', 'advice.targetReachedMaintenance'))).toBeNull();
+  });
+});
+
+describe('body mass on Today (spec R9, audit G02)', () => {
+  it('offers the weigh-in on a day with no session', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday: no preferred slot
+    render(<TodayView />);
+    expect(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeTruthy();
   });
 });

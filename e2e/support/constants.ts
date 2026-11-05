@@ -38,6 +38,11 @@ export const LABEL = {
   looksGood: 'Looks Good',
   recoveryHeading: 'Stored Data Could Not Be Read',
   writesPaused: 'Nothing is saved until you import a backup',
+  logTab: 'the archive',
+  logBodyMass: 'Log Body Mass',
+  editEntry: 'Edit',
+  saveEntry: 'Save',
+  fluidLoss: 'Fluid loss above 2 %. Replace over the next hours.',
 } as const;
 
 /** "Set 1 load (kg)": FORMAT.quantityWithUnit(FORMAT.setLoadQuantity(n), 'kg'). */
@@ -58,4 +63,19 @@ export function logLabel(n: number): string {
 /** "Delete set 1": FORMAT.deleteSetLabel(n). */
 export function deleteLabel(n: number): string {
   return `Delete set ${String(n)}`;
+}
+
+/** "Body mass (kg)": FORMAT.quantityWithUnit(copy('quantity.bodyMass'), 'kg'). */
+export function massLabel(): string {
+  return 'Body mass (kg)';
+}
+
+/** "Pre-session body mass (kg)". */
+export function preMassLabel(): string {
+  return 'Pre-session body mass (kg)';
+}
+
+/** "Post-session body mass (kg)". */
+export function postMassLabel(): string {
+  return 'Post-session body mass (kg)';
 }

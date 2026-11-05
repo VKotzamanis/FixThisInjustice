@@ -310,6 +310,13 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'hero.measurements'
+  | 'status.massLogged'
+  | 'status.massDeleted'
+  | 'button.editEntry'
+  | 'button.deleteEntry'
+  | 'button.saveEntry'
+  | 'button.showAllEntries'
   | 'label.massRole'
   | 'option.massRoleMorning'
   | 'option.massRolePre'
@@ -1153,6 +1160,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R9 / audit G02, G03: the weigh-in log on Today and on Log, each with a 6 s Undo.
+  'hero.measurements': 'Weigh-Ins',
+  'status.massLogged': 'Weigh-in logged.',
+  'status.massDeleted': 'Weigh-in deleted.',
+  'button.editEntry': 'Edit',
+  'button.deleteEntry': 'Delete',
+  'button.saveEntry': 'Save',
+  'button.showAllEntries': 'Show All',
   // Spec R9 / audit G12: when a body mass was taken. The role decides the trend and the 2 % pair.
   'label.massRole': 'Weighed',
   'option.massRoleMorning': 'Morning',
