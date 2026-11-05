@@ -195,3 +195,21 @@ describe('ExerciseCard: the limelight voice', () => {
     expect(limelight).not.toBe(FORMAT.withSlots(line.key, line.params));
   });
 });
+
+describe('ExerciseCard: one active row (brief 4.2 d)', () => {
+  it('renders exactly one Log button in an open card, and moves it to the next set after a log', () => {
+    renderCard('limelight', vi.fn());
+    expect(screen.getAllByRole('button', { name: /^Log set \d+$/ })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: FORMAT.logSetLabel(1) })).toBeInTheDocument();
+    logRow(1, '60', '8');
+    expect(screen.getAllByRole('button', { name: /^Log set \d+$/ })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: FORMAT.logSetLabel(2) })).toBeInTheDocument();
+  });
+
+  it('a tap on a pending line makes that set the active row', () => {
+    renderCard('limelight', vi.fn());
+    fireEvent.click(screen.getByText(FORMAT.setCounter(3, 3, SKIN_COPY.limelight)));
+    expect(screen.getByRole('button', { name: FORMAT.logSetLabel(3) })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: FORMAT.logSetLabel(1) })).toBeNull();
+  });
+});

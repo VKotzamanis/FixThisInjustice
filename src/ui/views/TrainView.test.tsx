@@ -349,7 +349,7 @@ describe('TrainView unit handling (master plan section 7, P4 units gate)', () =>
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByLabelText(FORMAT.setBodyweightQuantity(1)));
+    fireEvent.click(screen.getByRole('switch', { name: FORMAT.setBodyweightQuantity(1) }));
     fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), {
       target: { value: '12' },
     });
@@ -482,8 +482,9 @@ describe('TrainView progression surface (master plan section 7, P4 units gate)',
     renderTrain();
 
     // setsLo 3 x setModifier 0.5, rounded = 2 rows, load held (master plan section 5).
-    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(2)} (kg)`)).toBeInTheDocument();
-    expect(screen.queryByLabelText(`${FORMAT.setLoadQuantity(3)} (kg)`)).toBeNull();
+    // Brief 4.2: set 1 is the active row, set 2 a pending line; there is no set 3.
+    expect(screen.getByText(FORMAT.setCounter(2, 2, SKIN_COPY.limelight))).toBeInTheDocument();
+    expect(screen.queryByText(FORMAT.setCounter(3, 2, SKIN_COPY.limelight))).toBeNull();
     expect(screen.getByText(copyFor('limelight', 'advice.deloadBlock'))).toBeInTheDocument();
   });
 });

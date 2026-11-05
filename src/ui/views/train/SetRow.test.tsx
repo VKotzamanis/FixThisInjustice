@@ -144,7 +144,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     renderRow({ logged: loggedSet({ loadKg: 0, reps: 12 }), onEdit });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
 
-    const toggle = screen.getByLabelText(FORMAT.setBodyweightQuantity(1));
+    const toggle = screen.getByRole('switch', { name: FORMAT.setBodyweightQuantity(1) });
     expect(toggle).toBeChecked();
     fireEvent.click(toggle);
     fireEvent.change(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`), {
@@ -365,5 +365,35 @@ describe('SetRow: the limelight voice', () => {
     const control = screen.getByRole('button', { name: FORMAT.logSetLabel(1) });
     expect(control.textContent).toBe(propLabel);
     expect(control.textContent).not.toBe(copyFor('limelight', 'button.logSet'));
+  });
+});
+
+describe('SetRow: active, pending and latest (brief 4.2)', () => {
+  it('a pending row is one button that activates the row, with no fields and no Log', () => {
+    const onActivate = vi.fn();
+    renderRow({ mode: 'pending', onActivate });
+    expect(screen.queryByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toBeNull();
+    expect(screen.queryByRole('button', { name: FORMAT.logSetLabel(1) })).toBeNull();
+    fireEvent.click(screen.getByRole('button'));
+    expect(onActivate).toHaveBeenCalledTimes(1);
+  });
+
+  it('the active row has one Log button, the primary sticker', () => {
+    renderRow({});
+    const log = screen.getByRole('button', { name: FORMAT.logSetLabel(1) });
+    expect(log.classList.contains('is-primary')).toBe(true);
+  });
+
+  it('the bodyweight control is a labelled switch, not a 20 px checkbox', () => {
+    renderRow({});
+    const toggle = screen.getByRole('switch', { name: FORMAT.setBodyweightQuantity(1) });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(toggle).toBeChecked();
+  });
+
+  it('offers the effort taps only under the latest logged set', () => {
+    renderRow({ logged: loggedSet(), showEffort: false });
+    expect(screen.queryByRole('group', { name: FORMAT.setEffortQuantity(1) })).toBeNull();
   });
 });

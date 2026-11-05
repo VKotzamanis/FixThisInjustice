@@ -26,7 +26,7 @@ import type { Kg, LoggedSet, Prescription, Seconds, UnitSystem } from '../../../
 import { displayLoad, formatLoad } from '../../../domain/units';
 import { implausibleLoad } from '../../../domain/training/plausibility';
 import { UnitInput, loadUnit, storedLoadKg } from '../../components/UnitInput';
-import { NO_VALUE, SECONDS_UNIT } from '../../format/plan';
+import { NO_VALUE, SECONDS_UNIT, formatPrescription } from '../../format/plan';
 import '../../styles/train.css';
 
 /**
@@ -146,6 +146,15 @@ export interface SetRowProps {
   onEffort: (rpe: number) => boolean;
   onDelete: () => void;
   /**
+   * Brief 4.2: an unlogged row is the card's ONE active row (fields, toggle, Log) or a pending
+   * 44 px line that becomes active on a tap. Default 'active', so a lone row is always usable.
+   */
+  mode?: 'active' | 'pending';
+  /** A pending line's tap: make this set the active row. */
+  onActivate?: () => void;
+  /** Brief 4.2: the effort taps show only under the most recently logged set. Default true. */
+  showEffort?: boolean;
+  /**
    * [kg] The load a new set is compared against (spec R4): this exercise's latest loaded set
    * today, else the suggestion; null for none. Optional so existing callers compile.
    */
@@ -190,6 +199,9 @@ export function SetRow(props: SetRowProps): ReactElement {
     onEdit,
     onEffort,
     onDelete,
+    mode = 'active',
+    onActivate,
+    showEffort = true,
     referenceKg = null,
   } = props;
 
@@ -338,6 +350,16 @@ export function SetRow(props: SetRowProps): ReactElement {
 
   const marker = isBonus ? t('label.bonusSet') : FORMAT.setCounter(n, targetSets, overrides);
 
+  if (logged === null && !editing && mode === 'pending') {
+    // Brief 4.2: one 44 px line, the set and its target; a tap makes it the active row.
+    return (
+      <button type="button" className="set-row pending" onClick={onActivate}>
+        <span className="set-marker">{marker}</span>
+        <span className="set-target">{formatPrescription(prescription)}</span>
+      </button>
+    );
+  }
+
   if (logged !== null && !editing) {
     // ROADMAP L8. The recorded effort as its control's word, or as its number when no control
     // writes that value; nothing when none is recorded, which is when the controls are offered.
@@ -368,7 +390,7 @@ export function SetRow(props: SetRowProps): ReactElement {
           * One tap, optional: skipping leaves rpe null. Offered after the log, so the rest timer
           * the log started is already running and nothing here waits for an answer.
           */}
-        {logged.rpe === null && (
+        {logged.rpe === null && showEffort && (
           <EffortChoices
             t={t}
             n={n}
@@ -387,7 +409,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     );
   }
 
-  const rowClass = editing ? 'set-row editing' : isBonus ? 'set-row bonus' : 'set-row';
+  const rowClass = editing ? 'set-row editing' : isBonus ? 'set-row active bonus' : 'set-row active';
 
   return (
     <div className={rowClass}>
@@ -482,17 +504,18 @@ export function SetRow(props: SetRowProps): ReactElement {
         />
       )}
       <div className="set-actions">
-        <div className="unit-input">
-          <label htmlFor={`${domIdPrefix}-set-${n}-bw`}>{FORMAT.setBodyweightQuantity(n)}</label>
-          <input
-            id={`${domIdPrefix}-set-${n}-bw`}
-            type="checkbox"
-            checked={bodyweight}
-            onChange={(e) => {
-              setBodyweight(e.target.checked);
-            }}
-          />
-        </div>
+        {/* Brief 4.2 (e): a 44 px labelled switch; the old 20 x 20 checkbox missed the target. */}
+        <button
+          type="button"
+          role="switch"
+          className="set-bw"
+          aria-checked={bodyweight}
+          onClick={() => {
+            setBodyweight((b) => !b);
+          }}
+        >
+          {FORMAT.setBodyweightQuantity(n)}
+        </button>
         {editing ? (
           <>
             <button
@@ -511,6 +534,7 @@ export function SetRow(props: SetRowProps): ReactElement {
         ) : (
           <button
             type="button"
+            className="is-primary"
             onClick={() => {
               submit();
             }}

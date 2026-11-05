@@ -264,9 +264,9 @@
   grid-column: 1 / -1;
 }
 
-/* The toggle keeps its own width; Log takes the rest of the line. Before the editing rule below,
- * which gives Save and Cancel equal halves at the same specificity. */
-.set-row:not(.done) .set-actions > .unit-input {
+/* The bodyweight switch keeps its own width; Log takes the rest of the line. Before the editing
+ * rule below, which gives Save and Cancel equal halves at the same specificity. */
+.set-row:not(.done) .set-actions > .set-bw {
   flex: none;
 }
 
@@ -346,7 +346,7 @@
    * the room above the rest sheet at 320-360 px (14.4 px [px] line, was 1.5 = 18 px). */
   line-height: 1.2;
   letter-spacing: 0.06em;
-  color: var(--text-3);
+  color: var(--ink);
 }
 
 /* Lime with ink type (10.91:1), as `.view input[type='text']`, which outranks this rule inside a
@@ -726,4 +726,57 @@
   align-items: end;
   flex-wrap: wrap;
   margin: 0.75rem 0;
+}
+
+/* Brief 4.2: the active row's two fields side by side, 56 px tall, 20 px tabular digits. */
+.set-row.active .unit-input input {
+  min-height: var(--tap-primary);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.set-row.active .set-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: stretch;
+}
+
+.set-row.active .set-actions > .is-primary {
+  flex: 1 1 auto;
+}
+
+/* The bodyweight switch: 44 px, its label visible; pressed state by fill and by aria-checked. */
+.view .set-bw {
+  width: auto;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.view .set-bw[aria-checked='true'] {
+  background: var(--panel);
+  color: var(--panel-text);
+}
+
+/* A pending set: one 44 px line, the set and its target; a tap makes it the active row. */
+.view .set-row.pending {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
+  text-align: left;
+}
+
+/* Brief 4.2: a collapsed card is a 56 px head row with done/total. */
+.ex-head {
+  min-height: var(--tap-primary);
+}
+
+/* Form Reference and Form Cues share one row, two half-width 44 px buttons. */
+.ex-links {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
 }

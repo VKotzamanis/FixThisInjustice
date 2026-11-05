@@ -123,6 +123,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   const video = useVideoModal();
   const cues = useFormCuesModal();
   const [bonusRows, setBonusRows] = useState(0);
+  /** Brief 4.2: the set the user tapped to make active; null = the first unlogged set. */
+  const [chosenN, setChosenN] = useState<number | null>(null);
   /** C08: the coach line for the set just logged on this card, shown under that set. */
   const [coach, setCoach] = useState<{ n: number; line: CoachLine } | null>(null);
 
@@ -181,6 +183,15 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
           : null;
   const maxLoggedNumber = todaysSets.reduce((m, s) => Math.max(m, s.setNumber), 0);
   const rowCount = Math.max(targetSets, maxLoggedNumber) + bonusRows;
+  // Brief 4.2: ONE active row per card: the tapped set if it is still unlogged, else the first
+  // unlogged one. [sets], 1-based.
+  const isLogged = (n: number): boolean => todaysSets.some((s) => s.setNumber === n);
+  const firstOpen = Array.from({ length: rowCount }, (_, i) => i + 1).find((n) => !isLogged(n)) ?? null;
+  const activeN = chosenN !== null && chosenN <= rowCount && !isLogged(chosenN) ? chosenN : firstOpen;
+  // The most recently logged set of this card: the only one that offers the effort taps.
+  const latestId =
+    todaysSets.reduce<LoggedSet | null>((a, s) => (a === null || s.loggedAt > a.loggedAt ? s : a), null)?.id ??
+    null;
 
   // restS 0 in the plan means "use the cited default for this exercise and rep range".
   const restS = planned.restS > 0 ? planned.restS : defaultRestS(planned, library); // [s]
@@ -310,42 +321,6 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
             </span>
           </div>
 
-          {/*
-            * The advice line, except in a deload block, where the engine returns the same
-            * sentence for every exercise and TrainView's header has already stated it once.
-            * The same sentence twice on one screen is noise; the block's arithmetic is still
-            * in the disclosure below.
-            */}
-          {advice.kind !== 'deload' && <p className="ex-reason">{advice.reason}</p>}
-          {/* R9: the percentage, the plate rounding and the set tally live behind here. */}
-          <details className="ex-why">
-            <summary>{t('disclosure.why')}</summary>
-            <p>{advice.why}</p>
-          </details>
-
-          <div className="ex-links">
-            {exercise.videoQuery !== null && (
-              <button
-                type="button"
-                onClick={() => {
-                  video.open({ query: exercise.videoQuery, title: exercise.name });
-                }}
-              >
-                {t('button.formReference')}
-              </button>
-            )}
-            {exercise.formCueId !== null && FORM_CUES[exercise.formCueId] !== undefined && (
-              <button
-                type="button"
-                onClick={() => {
-                  cues.open({ exerciseId: exercise.formCueId ?? '', title: exercise.name });
-                }}
-              >
-                {t('button.formCues')}
-              </button>
-            )}
-          </div>
-
           <div className="set-list">
             {Array.from({ length: rowCount }, (_, i) => i + 1).map((n) => {
               const logged = todaysSets.find((s) => s.setNumber === n) ?? null;
@@ -353,6 +328,11 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
               return (
                 <Fragment key={n}>
                 <SetRow
+                  mode={n === activeN ? 'active' : 'pending'}
+                  onActivate={() => {
+                    setChosenN(n);
+                  }}
+                  showEffort={logged !== null && logged.id === latestId}
                   t={t}
                   overrides={overrides}
                   domIdPrefix={domIdPrefix}
@@ -429,12 +409,49 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
             <button
               type="button"
               onClick={() => {
+                // The user asked for this row: it becomes the active one.
+                setChosenN(rowCount + 1);
                 setBonusRows((b) => b + 1);
               }}
             >
               {t('button.addSet')}
             </button>
           )}
+          {/*
+            * The advice line, except in a deload block, where the engine returns the same
+            * sentence for every exercise and TrainView's header has already stated it once.
+            * The same sentence twice on one screen is noise; the block's arithmetic is still
+            * in the disclosure below.
+            */}
+          {advice.kind !== 'deload' && <p className="ex-reason">{advice.reason}</p>}
+          {/* R9: the percentage, the plate rounding and the set tally live behind here. */}
+          <details className="ex-why">
+            <summary>{t('disclosure.why')}</summary>
+            <p>{advice.why}</p>
+          </details>
+
+          <div className="ex-links">
+            {exercise.videoQuery !== null && (
+              <button
+                type="button"
+                onClick={() => {
+                  video.open({ query: exercise.videoQuery, title: exercise.name });
+                }}
+              >
+                {t('button.formReference')}
+              </button>
+            )}
+            {exercise.formCueId !== null && FORM_CUES[exercise.formCueId] !== undefined && (
+              <button
+                type="button"
+                onClick={() => {
+                  cues.open({ exerciseId: exercise.formCueId ?? '', title: exercise.name });
+                }}
+              >
+                {t('button.formCues')}
+              </button>
+            )}
+          </div>
           {children}
         </div>
       )}
