@@ -231,11 +231,12 @@ describe('SettingsView data section', () => {
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
     // The refusal must not hold the wipe back: a document left intact because a clip could
-    // not be removed is the failure mode this branch exists to prevent.
+    // not be removed is the failure mode this branch exists to prevent. Since audit B14 the
+    // records go first (synchronously here), so the key is gone before the clip refusal lands.
+    expect(storage.has(STORAGE_KEY)).toBe(false);
     await waitFor(() => {
-      expect(storage.has(STORAGE_KEY)).toBe(false);
+      expect(screen.getByRole('alert').textContent).toBe(copyFor('limelight', 'advice.clipClearFailed'));
     });
-    expect(screen.getByRole('alert').textContent).toBe(copyFor('limelight', 'advice.clipClearFailed'));
   });
 
   it('says nothing about the clip when it was cleared', async () => {
