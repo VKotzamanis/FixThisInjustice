@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { App } from './App';
 import { RootErrorBoundary } from './RootErrorBoundary';
-import { SAVE_DEBOUNCE_MS, defaultState, startPersistence, useAppStore } from '../store';
+import { defaultState, useAppStore, whenPersisted } from '../store';
 import { STORAGE_KEY } from '../store/persistence';
+import { bootMemoryStore, storedDocument } from '../store/testBackend';
+import { createMemoryBackend } from '../store/db/memoryBackend';
 import { installFakeStorage } from '../store/testStorage';
 
 /** A child that throws during render, so the boundary catches without the store. */
@@ -12,11 +13,14 @@ function Boom(): never {
   throw new Error('render exploded');
 }
 
-/** Teardown for a persistence subscription a test started; run even on failure. */
-let stopPersistence: (() => void) | null = null;
+/** A child that reads the store during render, as every view does. */
+function ReadsTheStore(): null {
+  useAppStore.getState().exportJson();
+  return null;
+}
 
 /**
- * The real hydrate action, captured once before any test replaces it.
+ * The real exportJson action, captured once before any test replaces it.
  *
  * eslint-disable justification: unbound-method guards against a method losing
  * its receiver, and a zustand action has none — every action in src/store is a
@@ -24,7 +28,7 @@ let stopPersistence: (() => void) | null = null;
  * is the only way to put it back after a test has swapped it out.
  */
 // eslint-disable-next-line @typescript-eslint/unbound-method
-const REAL_HYDRATE = useAppStore.getState().hydrate;
+const REAL_EXPORT_JSON = useAppStore.getState().exportJson;
 
 beforeEach(() => {
   useAppStore.setState({
@@ -40,12 +44,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  useAppStore.setState({ hydrate: REAL_HYDRATE });
-  if (stopPersistence !== null) {
-    const stop = stopPersistence;
-    stopPersistence = null;
-    stop();
-  }
+  useAppStore.setState({ exportJson: REAL_EXPORT_JSON });
   vi.useRealTimers();
 });
 
@@ -55,19 +54,14 @@ function silenceReactErrorLog(): void {
 }
 
 /**
- * Makes hydrate throw, so the boundary has something to catch.
+ * Makes a store read throw, so the boundary has something to catch.
  *
- * Installed through setState and undone in afterEach rather than with
- * vi.spyOn. zustand's set() copies the whole state object, so a spy taken on
- * one snapshot is carried by value into every snapshot after it, while
- * restoreMocks restores only the object the spy was taken from. The mock
- * therefore outlived its test and threw inside every later test that called
- * hydrate() — the same class of leak the store suite's teardown registry
- * exists to stop.
+ * Installed through setState and undone in afterEach rather than with vi.spyOn: zustand's set()
+ * copies the whole state object, so a spy taken on one snapshot outlives restoreMocks.
  */
-function makeHydrateThrow(): void {
+function makeStoreThrow(): void {
   useAppStore.setState({
-    hydrate: () => {
+    exportJson: () => {
       throw new Error('store is unreadable');
     },
   });
@@ -84,14 +78,14 @@ describe('RootErrorBoundary', () => {
     expect(screen.getByText('all good')).toBeInTheDocument();
   });
 
-  it('renders the recovery UI when the store throws on hydrate', () => {
+  it('renders the recovery UI when a store read throws during render', () => {
     silenceReactErrorLog();
     installFakeStorage();
-    makeHydrateThrow();
+    makeStoreThrow();
 
     render(
       <RootErrorBoundary>
-        <App />
+        <ReadsTheStore />
       </RootErrorBoundary>,
     );
 
@@ -103,12 +97,12 @@ describe('RootErrorBoundary', () => {
   it('exports the raw stored document from the recovery UI', async () => {
     silenceReactErrorLog();
     installFakeStorage({ [STORAGE_KEY]: '{"broken":true}' });
-    makeHydrateThrow();
+    makeStoreThrow();
 
     const onDownload = vi.fn();
     render(
       <RootErrorBoundary onDownload={onDownload}>
-        <App />
+        <ReadsTheStore />
       </RootErrorBoundary>,
     );
 
@@ -121,12 +115,12 @@ describe('RootErrorBoundary', () => {
   it('requires an export and a typed confirmation before clearing', async () => {
     silenceReactErrorLog();
     const data = installFakeStorage({ [STORAGE_KEY]: '{"broken":true}' });
-    makeHydrateThrow();
+    makeStoreThrow();
 
     const onDownload = vi.fn();
     render(
       <RootErrorBoundary onDownload={onDownload}>
-        <App />
+        <ReadsTheStore />
       </RootErrorBoundary>,
     );
 
@@ -169,27 +163,15 @@ describe('RootErrorBoundary', () => {
     expect(document.activeElement).toBe(screen.getByRole('alert'));
   });
 
-  it('clears durably: a write already in the debounce cannot re-create the key', () => {
+  it('clears durably: a change still waiting to commit cannot re-create a record', async () => {
     silenceReactErrorLog();
-    vi.useFakeTimers();
-    const data = installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
-    // Hydrated and with no load error, so the subscription is allowed to write.
-    useAppStore.setState({
-      status: {
-        lastSaveError: null,
-        lastLoadError: null,
-        lastLoadRaw: null,
-        hydrated: true,
-        lastActionError: null,
-      },
-    });
-    stopPersistence = startPersistence();
+    const backend = await bootMemoryStore({ legacy: JSON.stringify(defaultState()) });
 
-    // One unsaved change, still inside the coalescing window.
+    // One change, queued in this task and not yet committed.
     useAppStore.getState().setUi({ lastView: 'train' });
 
     render(
-      <RootErrorBoundary onDownload={vi.fn()}>
+      <RootErrorBoundary onDownload={vi.fn()} backend={backend}>
         <Boom />
       </RootErrorBoundary>,
     );
@@ -197,13 +179,52 @@ describe('RootErrorBoundary', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
     fireEvent.change(screen.getByLabelText(/type DELETE/i), { target: { value: 'DELETE' } });
     fireEvent.click(screen.getByRole('button', { name: 'Clear stored data' }));
+    await whenPersisted();
 
-    expect(data.has(STORAGE_KEY)).toBe(false);
-    // clearStorage() alone would let the queued write land one debounce later
-    // and put the document straight back. Master plan §3: the clear path must
-    // cancel the pending write.
-    vi.advanceTimersByTime(Math.max(1_000, SAVE_DEBOUNCE_MS * 4));
-    expect(data.has(STORAGE_KEY)).toBe(false);
+    // Master plan section 3: the clear path drops the pending change, so nothing lands after it.
+    expect(storedDocument(backend.disk)).toEqual(defaultState());
+    expect(backend.disk.legacy).toBeNull();
+  });
+
+  it('exports the records in the database, not the legacy key (R13, B04)', async () => {
+    silenceReactErrorLog();
+    installFakeStorage({ [STORAGE_KEY]: '{"legacy":true}' });
+    const backend = await bootMemoryStore({ legacy: JSON.stringify(defaultState()) });
+    useAppStore.getState().setUi({ lastView: 'atlas' });
+    await whenPersisted();
+
+    const onDownload = vi.fn();
+    render(
+      <RootErrorBoundary onDownload={onDownload} backend={backend}>
+        <Boom />
+      </RootErrorBoundary>,
+    );
+    await waitFor(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
+      expect(onDownload).toHaveBeenLastCalledWith(
+        'fixthisinjustice-recovery.json',
+        expect.stringContaining('"lastView": "atlas"'),
+      );
+    });
+  });
+
+  it('clears the database even when the store is not running (no engine)', async () => {
+    silenceReactErrorLog();
+    const backend = createMemoryBackend({ legacy: JSON.stringify(defaultState()) });
+    // Records exist on disk; this page never hydrated, so the store has no engine.
+    await backend.commit({ clear: false, puts: [{ store: 'app', key: 'ui', value: defaultState().ui }], deletes: [] }, 0, 3);
+    render(
+      <RootErrorBoundary onDownload={vi.fn()} backend={backend}>
+        <Boom />
+      </RootErrorBoundary>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
+    fireEvent.change(screen.getByLabelText(/type DELETE/i), { target: { value: 'DELETE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear stored data' }));
+    await waitFor(() => {
+      expect(backend.disk.records.get('app')?.size ?? 0).toBe(0);
+    });
+    expect(backend.disk.legacy).toBeNull();
   });
 });
 

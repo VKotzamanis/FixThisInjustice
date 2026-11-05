@@ -1,5 +1,13 @@
 import type { AppState } from '../domain/types';
-import { parseState } from '../domain/schema';
+import { CURRENT_SCHEMA_VERSION, parseState } from '../domain/schema';
+import { messageOf } from './db/errors';
+import { migrate } from '../domain/migrations';
+import { assembleState, type QuarantinedRecord, type StoredRecords } from './db/assemble';
+import type { MetaRecord, RecordBackend } from './db/backend';
+import { broadcastRevisionChannel } from './db/channel';
+import { idbRecordStore } from './db/idb';
+import type { Preserved, Repair } from './db/preserve';
+import { APP_STORE, MAP_STORES, SINGLETON_KEYS, groupRecords, splitDocument, type RecordPut } from './db/records';
 
 /**
  * The one storage key, owned by the one module allowed to touch Web Storage
@@ -47,103 +55,6 @@ export type SaveResult = { ok: true } | { ok: false; reason: SaveFailure; error:
 export type ImportResult = { ok: true; state: AppState } | { ok: false; error: string };
 
 /**
- * A quota failure must never be swallowed (finding H3 / A42: the legacy store
- * discarded it and kept rendering healthy-looking in-memory data). Browsers
- * disagree on how they report it, so check the standard name, the Firefox
- * legacy name, and both legacy DOMException codes.
- *
- * The check is structural rather than `e instanceof DOMException`: the thrown
- * value can come from another realm (an iframe, a worker) where instanceof
- * fails against this realm's constructor, and the legacy Safari form is not a
- * DOMException at all. Name and code are what the platform actually guarantees.
- */
-function isQuotaExceeded(e: unknown): boolean {
-  if (typeof e !== 'object' || e === null) return false;
-  const name: unknown = Reflect.get(e, 'name');
-  const code: unknown = Reflect.get(e, 'code');
-  return (
-    name === 'QuotaExceededError' ||
-    name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    code === 22 || // DOMException.QUOTA_EXCEEDED_ERR
-    code === 1014 // Firefox NS_ERROR_DOM_QUOTA_REACHED
-  );
-}
-
-/**
- * The thrown value's message, read structurally for the same reason
- * isQuotaExceeded is: jsdom's DOMException is not an instanceof this realm's
- * Error, and a cross-realm throw is not either, so `e instanceof Error` would
- * silently degrade a real message to "Name: message" from String(e).
- */
-function messageOf(e: unknown): string {
-  if (typeof e === 'object' && e !== null) {
-    const message: unknown = Reflect.get(e, 'message');
-    if (typeof message === 'string' && message.length > 0) return message;
-  }
-  return String(e);
-}
-
-/** Reads and validates the persisted document. Never throws. */
-export function load(): LoadResult {
-  let text: string | null;
-  try {
-    text = localStorage.getItem(STORAGE_KEY);
-  } catch (e) {
-    // Storage can be unavailable outright: Safari private browsing, a blocked
-    // third-party context, or a user setting that disables site data.
-    return { ok: false, reason: 'unavailable', error: messageOf(e), raw: null };
-  }
-
-  if (text === null) return { ok: false, reason: 'absent', error: 'no stored document', raw: null };
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch (e) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: `stored document is not JSON: ${messageOf(e)}`,
-      raw: text,
-    };
-  }
-
-  const parsed = parseState(raw);
-  if (!parsed.ok) return { ok: false, reason: 'invalid', error: parsed.error, raw: text };
-  return { ok: true, state: parsed.state };
-}
-
-/**
- * Writes the document. The caller surfaces a failed write; it is never silent.
- *
- * Serialisation and storage are separate steps because they fail for opposite
- * reasons and need opposite advice. A store that is full or unreachable leaves
- * the in-memory document intact, so "export it now" is the recovery; a document
- * JSON.stringify cannot handle would break that export too, and the fault is in
- * the state, not the browser. Folding both into 'unavailable' told the user to
- * do the one thing that could not work.
- */
-export function save(state: AppState): SaveResult {
-  let text: string;
-  try {
-    text = JSON.stringify(state);
-  } catch (e) {
-    return { ok: false, reason: 'serialize', error: messageOf(e) };
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY, text);
-    return { ok: true };
-  } catch (e) {
-    return {
-      ok: false,
-      reason: isQuotaExceeded(e) ? 'quota' : 'unavailable',
-      error: messageOf(e),
-    };
-  }
-}
-
-/**
  * The raw stored text, unvalidated. The crash-recovery UI needs this: when the
  * store itself threw, a validated read is exactly what is not available, and the
  * user's data still has to be exportable.
@@ -171,33 +82,6 @@ export function clearStorage(): void {
   }
 }
 
-/** What another instance did to the document, as this instance's `storage` event reports it. */
-export interface ExternalWrite {
-  /**
-   * True when the other instance removed the key or cleared storage. Read from
-   * `event.newValue === null` (amendment AM-10), never from a re-read: a re-read races any
-   * later write and would let this instance mistake a removal for a rewrite.
-   */
-  removed: boolean;
-}
-
-/**
- * Audit B03 stopgap (spec P1): another instance of the app (a second tab, the installed app
- * beside a browser tab) wrote or removed the document. Browsers fire `storage` in every OTHER
- * same-origin document, never in the writer. `key === null` is a `clear()`. Returns the
- * unsubscribe. P2's IndexedDB engine replaces this with BroadcastChannel and a revision.
- */
-export function onExternalWrite(listener: (w: ExternalWrite) => void): () => void {
-  const handler = (e: StorageEvent): void => {
-    if (e.key !== null && e.key !== STORAGE_KEY) return;
-    listener({ removed: e.newValue === null });
-  };
-  window.addEventListener('storage', handler);
-  return () => {
-    window.removeEventListener('storage', handler);
-  };
-}
-
 /**
  * Pretty-printed export. Covers the whole persisted surface (constraint 10) with one
  * deliberate hole: `pushDevice`.
@@ -210,8 +94,9 @@ export function onExternalWrite(listener: (w: ExternalWrite) => void): () => voi
  * overwrite its schedule. Nothing else in the document confers an ability on a reader.
  *
  * The field is set to null HERE, in the export projection, and never in state: the running
- * app keeps its device and its subscription, and `save()` (which does its own
- * JSON.stringify) still persists it to this browser's own storage, where it belongs.
+ * app keeps its device and its subscription, and the IndexedDB records (and the AM-P2-1
+ * rollback mirror, its own JSON.stringify) still keep it in this browser's storage, where it
+ * belongs.
  *
  * Present and null rather than absent, so the file shows the reader that the field exists and
  * was emptied on purpose, and so `parseState` takes its nullable branch.
@@ -255,3 +140,169 @@ export function importJson(text: string): ImportResult {
  * deleted them were dropped (ROADMAP N5, owner ruling 2026-10-18); a device that still holds
  * them keeps them exactly as stored, because removing a user's data is not this code's decision.
  */
+
+/*
+ * ---- Spec R13: the IndexedDB engine's entry points ----
+ */
+
+/**
+ * Amendment AM-P2-1: the rollback mirror. Writes the document text to fti.v3 so a pre-P2 build,
+ * which reads only this key, loads data at most one app session old. Best effort by ruling: a
+ * full or unreachable store is logged and ignored, because the records in IndexedDB are the
+ * copy that counts and the banner must not accuse a write that did succeed there.
+ */
+export function writeLegacyMirror(text: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, text);
+  } catch (e) {
+    console.warn(`fti.v3 rollback mirror not written: ${messageOf(e)}`);
+  }
+}
+
+/** The legacy-key half of the browser backend: fti.v3 is read once and removed only by a wipe. */
+export function createBrowserBackend(): RecordBackend {
+  const records = idbRecordStore();
+  const channel = broadcastRevisionChannel();
+  return {
+    read: () => records.read(),
+    commit: (ops, base, version) => records.commit(ops, base, version),
+    announce: (revision) => {
+      channel.announce(revision);
+    },
+    onAnnounce: (listener) => channel.subscribe(listener),
+    readLegacy: readRaw,
+    removeLegacy: clearStorage,
+    writeLegacy: writeLegacyMirror,
+  };
+}
+
+/**
+ * The stored records as one unvalidated document, for the recovery export of a refused load
+ * (audit B04: the backup is what is stored, not the in-memory default). Pretty-printed like
+ * exportJson so a user can read and repair it.
+ */
+export function rawDocumentText(meta: MetaRecord | null, records: StoredRecords): string {
+  const doc: Record<string, unknown> = { schemaVersion: meta?.schemaVersion ?? CURRENT_SCHEMA_VERSION };
+  for (const store of MAP_STORES) doc[store] = Object.fromEntries(records.get(store) ?? new Map<string, unknown>());
+  const app = records.get(APP_STORE) ?? new Map<string, unknown>();
+  for (const key of SINGLETON_KEYS) if (app.has(key)) doc[key] = app.get(key);
+  return `${JSON.stringify(doc, null, 2)}\n`;
+}
+
+export type LoadOutcome =
+  | {
+      ok: true;
+      state: AppState;
+      /** [commits] The stored revision this state was read at; 0 when nothing is stored yet. */
+      revision: number;
+      quarantine: readonly QuarantinedRecord[];
+      repairs: readonly Repair[];
+      preserved: Preserved;
+      /** True when this boot imported fti.v3 into the empty database. */
+      imported: boolean;
+    }
+  | { ok: false; reason: 'absent'; revision: 0 }
+  | { ok: false; reason: 'invalid' | 'unavailable'; error: string; raw: string | null; revision: number };
+
+/**
+ * Reads the stored records into a document (spec R13). On a database nothing has written yet,
+ * imports fti.v3 first, in ONE transaction that refuses if another instance imported meanwhile,
+ * and leaves fti.v3 exactly as it was, as a fallback backup (AGENTS.md rule 7). Never throws.
+ */
+export async function loadDocument(backend: RecordBackend, attempt = 0): Promise<LoadOutcome> {
+  const read = await backend.read();
+  if (!read.ok) {
+    return { ok: false, reason: 'unavailable', error: read.error, raw: backend.readLegacy(), revision: 0 };
+  }
+  if (read.meta === null) {
+    const text = backend.readLegacy();
+    if (text === null) return { ok: false, reason: 'absent', revision: 0 };
+    const imported = await importLegacy(backend, text);
+    if (imported === 'stale' && attempt === 0) return loadDocument(backend, 1);
+    if (imported === 'stale') {
+      return { ok: false, reason: 'unavailable', error: 'the database kept changing during the import', raw: text, revision: 0 };
+    }
+    if (!imported.ok) return { ...imported, raw: text, revision: 0 };
+    const assembled = assembleState(groupRecords(imported.puts));
+    if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error, raw: text, revision: imported.revision };
+    return { ...assembled, revision: imported.revision, imported: true };
+  }
+  const raw = (): string => rawDocumentText(read.meta, read.records);
+  if (read.meta.schemaVersion > CURRENT_SCHEMA_VERSION) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `saved by a newer version of the app (schema ${String(read.meta.schemaVersion)}, this build understands ${String(CURRENT_SCHEMA_VERSION)})`,
+      raw: raw(),
+      revision: read.meta.revision,
+    };
+  }
+  const assembled = assembleState(read.records);
+  if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error, raw: raw(), revision: read.meta.revision };
+  return { ...assembled, revision: read.meta.revision, imported: false };
+}
+
+type ImportOutcome =
+  | { ok: true; revision: number; puts: RecordPut[] }
+  | { ok: false; reason: 'invalid' | 'unavailable'; error: string }
+  | 'stale';
+
+/** fti.v3 -> raw records, written verbatim (unknown keys and invalid records included). */
+async function importLegacy(backend: RecordBackend, text: string): Promise<ImportOutcome> {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, reason: 'invalid', error: `stored document is not JSON: ${messageOf(e)}` };
+  }
+  if (typeof doc !== 'object' || doc === null || Array.isArray(doc)) {
+    return { ok: false, reason: 'invalid', error: 'not a JSON object' };
+  }
+  const version: unknown = Reflect.get(doc, 'schemaVersion');
+  if (typeof version !== 'number' || !Number.isInteger(version)) {
+    return { ok: false, reason: 'invalid', error: 'missing or non-integer schemaVersion' };
+  }
+  const migrated = migrate(doc, version, CURRENT_SCHEMA_VERSION);
+  if (!migrated.ok) return { ok: false, reason: 'invalid', error: migrated.error };
+  if (typeof migrated.value !== 'object' || migrated.value === null) {
+    return { ok: false, reason: 'invalid', error: 'not a JSON object' };
+  }
+  const split = splitDocument(migrated.value as Record<string, unknown>);
+  if (!split.ok) return { ok: false, reason: 'invalid', error: split.error };
+  const committed = await backend.commit({ clear: false, puts: split.puts, deletes: [] }, 0, CURRENT_SCHEMA_VERSION);
+  if (committed.ok) return { ok: true, revision: committed.revision, puts: split.puts };
+  if (committed.reason === 'stale') return 'stale';
+  return { ok: false, reason: 'unavailable', error: committed.error };
+}
+
+/**
+ * The stored records as export text for a recovery screen (audit B04: the backup is what is
+ * stored, not the in-memory default); fti.v3 while the database holds nothing. Never throws.
+ */
+export async function readStoredText(backend: RecordBackend = createBrowserBackend()): Promise<string | null> {
+  const read = await backend.read();
+  if (read.ok && read.meta !== null) return rawDocumentText(read.meta, read.records);
+  return backend.readLegacy();
+}
+
+/**
+ * Empties every record store and removes fti.v3 without going through the store: the root
+ * boundary's clear, which must work when the store is what failed. Resolves true when the
+ * database clear committed.
+ */
+export async function clearDatabase(backend: RecordBackend = createBrowserBackend()): Promise<boolean> {
+  const read = await backend.read();
+  const base = read.ok ? (read.meta?.revision ?? 0) : 0; // [commits]
+  const result = await backend.commit({ clear: true, puts: [], deletes: [] }, base, CURRENT_SCHEMA_VERSION);
+  backend.removeLegacy();
+  if (result.ok) backend.announce(result.revision);
+  return result.ok;
+}
+
+/**
+ * Audit B04: the records this build could not read and the answers it repaired, as stored, in
+ * one file the user can keep or send. Separate from exportJson, whose format is unchanged.
+ */
+export function exportUnreadable(quarantine: readonly QuarantinedRecord[], repairs: readonly Repair[]): string {
+  return `${JSON.stringify({ quarantined: quarantine, repairs }, null, 2)}\n`;
+}

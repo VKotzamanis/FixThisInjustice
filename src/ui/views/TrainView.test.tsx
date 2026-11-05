@@ -40,8 +40,9 @@ import type {
   UnitSystem,
 } from '../../domain/types';
 import { NO_VALUE } from '../format/plan';
-import { flushSave, startPersistence, useAppStore } from '../../store';
-import { STORAGE_KEY } from '../../store/persistence';
+import { useAppStore, whenPersisted } from '../../store';
+import { bootMemoryStore } from '../../store/testBackend';
+import { createMemoryBackend } from '../../store/db/memoryBackend';
 import { EMPTY_SESSION } from '../../store/sessionMirror';
 import { installFakeStorage } from '../../store/testStorage';
 import { UNDO_WINDOW_MS } from '../../store/training';
@@ -1244,41 +1245,29 @@ describe('TrainView one-time warm-up notice', () => {
     expect(screen.getByRole('button', { name: gotIt() })).toBeInTheDocument();
   });
 
-  it('never shows it again once dismissed: not after a remount, not after a reload', () => {
-    const storage = installFakeStorage();
-    seedStore(seed());
-    // hydrate() against the empty fake storage takes the "absent" branch: it only marks the
-    // store hydrated, which is what lets the persistence subscription write (canPersist).
-    useAppStore.getState().hydrate();
-    const stop = startPersistence();
-    try {
-      const first = renderTrain();
-      fireEvent.click(screen.getByRole('button', { name: gotIt() }));
-      expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
-      // Keyed by the profile that dismissed it, and by nothing else.
-      expect(useAppStore.getState().ui.warmupNoticeDismissedByProfile).toEqual({ 'profile-1': true });
+  it('never shows it again once dismissed: not after a remount, not after a reload', async () => {
+    // Seeded as the stored document, so the boot imports it and a relaunch reads it back.
+    useAppStore.setState({ session: { ...EMPTY_SESSION } });
+    const backend = await bootMemoryStore({ legacy: JSON.stringify(seed()) });
+    const first = renderTrain();
+    fireEvent.click(screen.getByRole('button', { name: gotIt() }));
+    expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+    // Keyed by the profile that dismissed it, and by nothing else.
+    expect(useAppStore.getState().ui.warmupNoticeDismissedByProfile).toEqual({ 'profile-1': true });
 
-      // Leaving Train and coming back.
-      first.unmount();
-      const second = renderTrain();
-      expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
-      second.unmount();
+    // Leaving Train and coming back.
+    first.unmount();
+    const second = renderTrain();
+    expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
+    second.unmount();
 
-      // A reload: the debounced write is committed, the in-memory document is thrown away
-      // (with the subscription stopped, so the reset itself is not saved), and the store is
-      // read back from storage.
-      flushSave();
-      stop();
-      expect(storage.get(STORAGE_KEY)).toContain('warmupNoticeDismissedByProfile');
-      useAppStore.getState().replaceState(defaultState());
-      useAppStore.getState().hydrate();
-      expect(useAppStore.getState().status.lastLoadError).toBeNull();
-      renderTrain();
-      expect(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') })).toBeInTheDocument();
-      expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
-    } finally {
-      stop();
-    }
+    // A relaunch: the change is committed, then a new boot reads the same records back.
+    await whenPersisted();
+    await useAppStore.getState().hydrate(createMemoryBackend({ disk: backend.disk }));
+    expect(useAppStore.getState().status.lastLoadError).toBeNull();
+    renderTrain();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') })).toBeInTheDocument();
+    expect(screen.queryByText(WARMUP_NOTICE)).toBeNull();
   });
 
   it('shows it to a profile that has not dismissed it, even when another profile has', () => {

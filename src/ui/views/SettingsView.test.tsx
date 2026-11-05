@@ -477,7 +477,7 @@ describe('the Programme group in Settings (L5)', () => {
 
     const s = useAppStore.getState();
     expect(planId()).not.toBe(before);
-    expect(s.plans[before]).toBeDefined(); // the replaced plan is history, kept
+    expect(s.plans[before]).toBeUndefined(); // nothing was logged under it: pruned (audit D14)
     expect(s.cursors['p1']).toMatchObject({
       nextSessionIndex: 0,
       startedOn: todayLocal('Europe/Athens', Date.now()),

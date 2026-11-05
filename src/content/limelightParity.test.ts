@@ -25,7 +25,11 @@
 // and `error.nameTooLong` and `error.startTimeRequired` for the wizard (spec R5, Task 15; base
 // table only), and the four recovery-screen keys `hero.storedDataRefused`,
 // `hero.storageUnreadable`, `status.writesPaused`, `label.importBackup` (B01, Task 17; base table
-// only). No snapshot row was changed to add them.
+// only), and the four unreadable-records keys `hero.unreadableRecords`,
+// `advice.unreadableRecordsKept`, `button.exportUnreadable`, `status.recordsUnreadable` (spec
+// R13, P2 Task 8; base table only), and `banner.storageNearlyFull.{tag,body}` for the
+// near-quota banner (audit B05, P2 Task 11; base table only). No snapshot row was changed to add
+// them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';

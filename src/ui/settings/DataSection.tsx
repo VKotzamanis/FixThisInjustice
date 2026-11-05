@@ -5,8 +5,9 @@ import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import { useCopy } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { clearAssetStorage } from '../../domain/motivation/assets';
-import { useAppStore } from '../../store';
+import { useAppStore, whenPersisted } from '../../store';
 import { ExportView } from '../views/ExportView';
+import { UnreadableRecords } from './UnreadableRecords';
 
 /**
  * The Data section of Settings: the exports and the wipe (P7 Task 6, master plan section 3).
@@ -40,6 +41,32 @@ import { ExportView } from '../views/ExportView';
 /** The word master plan section 3 fixes for every destructive confirmation. */
 export const CONFIRM_WORD = 'DELETE';
 
+/**
+ * [ms] How long the wipe waits for the clip store before reporting that the clip may remain
+ * (audit B14). An engineering bound, not a measurement: long enough for a healthy IndexedDB
+ * clear on a slow phone, short enough that a hung open is reported while the user is still here.
+ */
+export const CLIP_CLEAR_TIMEOUT_MS = 5_000;
+
+/** Rejects when `p` has not settled within `ms` [ms]. */
+function withinMs<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`no answer within ${String(ms)} ms`));
+    }, ms);
+    p.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
+}
+
 type OpenPanel = 'none' | 'wipe';
 
 export function DataSection(): JSX.Element {
@@ -66,38 +93,28 @@ export function DataSection(): JSX.Element {
     // renders in between -- and closing first means it is never the armed panel.
     setOpen('none');
     /*
-     * The clip store FIRST, then the document (security recommendation 10 / M5). The wipe used
-     * to call wipeAll() alone, which empties `fti.v3` and this app's session mirror; the
-     * motivation clip the user chose lives in IndexedDB and survived a wipe that told them
-     * everything on the device had been removed. Clearing it before the document is emptied
-     * also keeps the two in the only order that can be recovered from: a clip cleared after
-     * the document is gone would be cleared out of a store nothing is left to describe.
-     *
-     * A refusal does NOT hold the wipe back. `clearAssetStorage` rejects on a quota refusal, on
-     * Safari private mode and on an upgrade another tab is blocking, and a document left intact
-     * because a clip could not be removed is a worse outcome than a clip left behind: the user
-     * asked for their records to be gone. The refusal is reported instead.
-     *
-     * The line reporting it is state on THIS section, so it is only seen where the section is
-     * still mounted after the wipe. Inside SettingsView it is not: a wipe leaves no profile and
-     * that view then renders its 'set up first' paragraph in place of every row. Carrying the
-     * message across that unmount needs a host that outlives the wipe, which is a change to
-     * App.tsx rather than to this file.
+     * Audit B14 / spec R13: the records FIRST (wipeAll empties every store in one transaction,
+     * then removes fti.v3), the clip store after, time-boxed. A clip store that refuses or never
+     * answers does not hold the wipe back: the records are already gone, and the line below says
+     * the clip may still be on the device (security recommendation 10 / M5: the wipe covers the
+     * clip too). The line is state on THIS section, so it is seen only where the section stays
+     * mounted after the wipe (SettingsView renders its 'set up first' paragraph instead).
      */
+    useAppStore.getState().wipeAll();
     void (async () => {
+      await whenPersisted();
       try {
-        await clearAssetStorage();
+        await withinMs(clearAssetStorage(), CLIP_CLEAR_TIMEOUT_MS);
       } catch {
-        // The reason is not shown: it is an IndexedDB message the user cannot act on, and the
-        // one actionable fact -- the clip may still be on the device -- is in the copy line.
+        // The reason is not shown: it is an IndexedDB message the user cannot act on.
         setClipUncleared(true);
       }
-      useAppStore.getState().wipeAll();
     })();
   };
 
   return (
     <>
+      <UnreadableRecords />
       {/*
        * Export first, and it renders its own heading. A user who arrives here to destroy
        * something passes the control that keeps a copy of it on the way in.

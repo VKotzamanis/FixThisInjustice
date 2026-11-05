@@ -4,7 +4,7 @@ Single source of current state. Update in place. Last update: 2026-11-04.
 
 ## Live
 - https://vkotzamanis.github.io/FixThisInjustice/ serves everything built 2026-10-18 (verified by bundle content, not workflow status). Owner started using it on his phone 2026-10-21.
-- Data lives only in each user's browser (`fti.v3`). Users install to Home Screen (iOS Safari can wipe non-installed site data after ~7 days) and export JSON backups from Settings → Data.
+- Data lives only in each user's browser (`fti.v3`; after P2 ships, IndexedDB `fti`, with `fti.v3` kept as the first-boot import source and the AM-P2-1 rollback mirror). Users install to Home Screen (iOS Safari can wipe non-installed site data after ~7 days) and export JSON backups from Settings → Data.
 
 ## Next job
 1. Owner phone feedback (he is collecting it now; new agent session). Triage each item against `docs/ROADMAP.md`; log his words verbatim in `docs/private/owner-feedback/` (gitignored).
@@ -24,6 +24,7 @@ Single source of current state. Update in place. Last update: 2026-11-04.
 ## Gates
 - All commands in `AGENTS.md` → Verify. Expected: zero failing tests (2,904 app + 148 worker on 2026-10-18).
 - E2E: `npm run e2e` (Playwright 1.63.0, Chromium 1243, projects iphone13 + pixel7, 1 worker; CI job `e2e`). Specs reproduce O1, O2, C02, A01/B02, A02, C03, B01 (plan `docs/plans/2026-11-04-p0-p1-unblock.md`); all green.
+- Storage (P2, plan `docs/plans/2026-11-04-p2-storage.md`): IndexedDB engine; unit suites run on `src/store/db/memoryBackend.ts`, IndexedDB paths on fake-indexeddb 6.2.5; e2e `p2-storage.spec.ts` covers two pages, a renderer crash and a corrupted record (Chromium only; iOS WebKit not run).
 - Privacy: `scripts/check-private.sh` uses `docs/private/privacy-pattern.txt` locally and repo secret `PRIVACY_PATTERN` in CI (set 2026-10-18; CI prints PASS). On a fresh clone without the file it prints SKIPPED.
 - Precache ~1.19 MB (37 card icons are lazy chunks, precached).
 
@@ -41,6 +42,7 @@ Single source of current state. Update in place. Last update: 2026-11-04.
 - Older docs cite drifted paths/lines: `docs/design/programme-horizon.md` (planned files never built), `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-06-asset-prompts.md` (superseded by asset-spec-2026-10-18), `docs/design/2026-09-01-copy-contract.md`, runbooks. Re-derive before trusting a line number.
 
 ## Decisions log
+- 2026-11-04 P2 storage (AM-P2-1): `fti.v3` rollback mirror written on hide/pagehide (`src/store/index.ts` `writeRollbackMirror`). Remove it two releases after P2 ships.
 - 2026-10-18 restart: platform stays a web page (TypeScript); limelight only; owner-private material in gitignored `docs/private/`; history scrubbed. Owner answers: `docs/private/owner-feedback/restart-2026-10-18.md`.
 - 2026-10-18 art: owner rejected the generic stick-figure icon and blob-based icons; app icon = frame 0 of his own GIF sprite; "her" replaces every pink blob; per-card Atlas icons; body-fat chart as torsos with landmark lines (silhouettes "not descriptive").
 - 2026-10-18 Train/Log: "keep it simple when we train", "too verbose": warm-up notice off Train (once-only), attendance rows "date n/m", records two lines.

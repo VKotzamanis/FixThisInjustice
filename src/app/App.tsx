@@ -45,9 +45,11 @@ import { TrainView } from '../ui/views/TrainView';
 import { downloadText } from './download';
 import { LoadRecovery } from './LoadRecovery';
 import { useWeeklyClose } from './useWeeklyClose';
+import { useStorageEstimate } from './useStorageEstimate';
 import { ReminderSync } from './ReminderSync';
 import { UpdatePrompt } from './UpdatePrompt';
 import { StaleSessionNotice } from './StaleSessionNotice';
+import { UnreadableNotice } from './UnreadableNotice';
 import './appShell.css';
 
 /**
@@ -245,24 +247,6 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
 }
 
 /**
- * Reads the persisted document exactly once per mount, during render, so a
- * throw is caught by RootErrorBoundary. A useState lazy initializer is the
- * documented way to run a synchronous once-per-mount side effect where an
- * effect would fire too late for the boundary to help: an error boundary
- * catches a throw from render, but a throw inside a useEffect callback reaches
- * it only after the commit, and the placeholder tree would flash first.
- *
- * hydrate() is idempotent, so StrictMode's double invocation in development
- * costs one extra read and changes nothing.
- */
-function useHydrateOnce(): void {
-  useState(() => {
-    useAppStore.getState().hydrate();
-    return true;
-  });
-}
-
-/**
  * What a save failure means and what can still be done about it.
  *
  * `recovery` distinguishes the two cases the user has to act on differently:
@@ -392,6 +376,27 @@ function LoadErrorBanner(): ReactElement | null {
         }}
       >
         {t('button.exportStoredData')}
+      </button>
+    </div>
+  );
+}
+
+/** Audit B05: the origin is near its storage quota; the in-memory export is the backup. */
+function StorageNearlyFullBanner(): ReactElement | null {
+  const nearlyFull = useAppStore((s) => s.status.storageNearlyFull === true);
+  const t = useCopy();
+  if (!nearlyFull) return null;
+  return (
+    <div className="banner" role="status">
+      <span className="banner-tag">{t('banner.storageNearlyFull.tag')}</span>
+      <span>{t('banner.storageNearlyFull.body')}</span>
+      <button
+        type="button"
+        onClick={() => {
+          downloadText('fixthisinjustice-export.json', useAppStore.getState().exportJson());
+        }}
+      >
+        {t('button.exportData')}
       </button>
     </div>
   );
@@ -545,9 +550,8 @@ function TopbarTicker(): ReactElement | null {
 export function App(): ReactElement {
   /*
    * The skin, mirrored onto <html data-skin> for the two attribute-scoped token blocks in
-   * src/ui/styles/tokens.css (P8 Task 12). First, and before useHydrateOnce: it is an effect,
-   * so it runs after the commit either way, and the reading order is the one that has to be
-   * obvious. Unconditional, like every hook in this component.
+   * src/ui/styles/tokens.css (P8 Task 12). First: it is an effect, so it runs after the commit
+   * either way, and the reading order is the one that has to be obvious. Unconditional, like every hook in this component.
    */
   useApplySkin();
   /*
@@ -562,15 +566,14 @@ export function App(): ReactElement {
    * sounds off the player fetches nothing at all (src/skins/sfx.ts).
    */
   useFirstGestureUnlock();
-  useHydrateOnce();
   /*
-   * After useHydrateOnce, which reads the document during render, so the first run of the
-   * closure sees the stored profile rather than the default one. Both orders would in fact
-   * work — the closure is an effect and effects run after the commit — but the reading order
-   * is the one that has to be obvious. Before any conditional return, so the hook order is
+   * The document is already in the store: main.tsx awaits hydrate() before the first render
+   * (spec R13), so the first run of the closure sees the stored profile. Before any
+   * conditional return, so the hook order is
    * stable, and it is a no-op until a profile exists.
    */
   useWeeklyClose();
+  useStorageEstimate();
   const profile = useActiveProfile();
   // Audit B01: a refused or unreadable document replaces intro, boot, setup and the views.
   const loadError = useLoadError();
@@ -643,6 +646,7 @@ export function App(): ReactElement {
               <UpdatePrompt />
               <SaveErrorBanner />
               <LoadErrorBanner />
+              <StorageNearlyFullBanner />
 
               {/*
                * The intro sequence (P10 Brief C), AHEAD of the boot sequence below. A fixed
@@ -727,6 +731,7 @@ export function App(): ReactElement {
        * announced unreliably.
        */}
       <StaleSessionNotice />
+      <UnreadableNotice />
       <ToastQueue />
 
     </ToastProvider>

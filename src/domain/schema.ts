@@ -156,7 +156,9 @@ const PercentSchema = z.number().min(0).max(100);
  * INVENT an answer the user never gave and would silently feed a sex-specific coefficient into
  * three engines; `nd` records the absence, which is what a value we cannot read actually means.
  */
-const SexSchema = z.enum(['male', 'female', 'nd']).catch('nd');
+/** Audit B10: the same enum without its repair, so a repaired stored value can be detected. */
+export const SexEnumSchema = z.enum(['male', 'female', 'nd']);
+const SexSchema = SexEnumSchema.catch('nd');
 /**
  * Master plan section 10.1: the three FAO/WHO/UNU 2004 PAL bands the content
  * review verified. The five-band form with invented midpoints was rejected.
@@ -199,13 +201,9 @@ const PAL_MIN = ACTIVITY_BAND.sedentary[0]; // [PAL] FAO sedentary floor
 const PAL_MAX = ACTIVITY_BAND.vigorous[1]; // [PAL] FAO vigorous ceiling
 const PAL_REPAIR = ACTIVITY_FACTOR.moderate; // [PAL] the moderate band's floor
 
-const ActivityPalSchema = z
-  .number()
-  .min(PAL_MIN)
-  .max(PAL_MAX)
-  .nullable()
-  .catch(null)
-  .optional(); // [PAL]
+/** Audit B10: the PAL rule without its repair, so a repaired stored value can be detected. */
+export const ActivityPalStrictSchema = z.number().min(PAL_MIN).max(PAL_MAX).nullable(); // [PAL]
+const ActivityPalSchema = ActivityPalStrictSchema.catch(null).optional(); // [PAL]
 const GoalKindSchema = z.enum(['fat-loss', 'muscle-gain', 'recomposition', 'maintenance']);
 const ExperienceSchema = z.enum(['novice', 'intermediate', 'advanced']);
 /** What an EXERCISE needs. Unchanged by Brief F: no exercise tag is retagged. */
@@ -231,9 +229,12 @@ const EquipmentAccessSchema = z.enum([
  * not fail the whole document over one field, the same reasoning as every other `.catch()` in
  * this file.
  */
-const ProfileEquipmentSchema = z
-  .preprocess((value) => (value === 'dumbbells-only' ? 'home' : value), EquipmentAccessSchema)
-  .catch('full-gym');
+/** Audit B10: the migration without its repair, so a repaired stored value can be detected. */
+export const ProfileEquipmentStrictSchema = z.preprocess(
+  (value) => (value === 'dumbbells-only' ? 'home' : value),
+  EquipmentAccessSchema,
+);
+const ProfileEquipmentSchema = ProfileEquipmentStrictSchema.catch('full-gym');
 const HomeEquipmentItemSchema = z.enum([
   'treadmill',
   'elliptical',

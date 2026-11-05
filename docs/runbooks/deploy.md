@@ -15,6 +15,7 @@
 - Site: Actions → "Deploy to GitHub Pages" → last good run → Re-run all jobs (allowed 30 days, 50 re-runs). Older: `git revert` and push.
 - Worker: `npx wrangler rollback` in `worker/` (`docs/runbooks/reminders.md`).
 - Data: lives in each user's browser; a deploy never touches it. Schema changes must keep old documents loading (AGENTS rule 7).
+- Rolling back past P2 (IndexedDB engine): the old build reads only `fti.v3`, which P2 refreshes on hide/pagehide (amendment AM-P2-1), so it shows data at most one app session old. Rolling forward again does NOT re-import writes the old build made during the rollback window (the new build reads IndexedDB, which already has records). If that window matters, export JSON from the old build and import it in the new one (Settings > Data).
 
 ## Known risk
 - GitHub Pages project site shares its origin with every Pages project on the account: any of them can read this app's storage. Publish nothing untrusted on the account. A custom domain closes it.

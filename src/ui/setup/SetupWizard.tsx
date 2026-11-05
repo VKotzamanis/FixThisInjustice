@@ -86,7 +86,7 @@ import {
   storedLoadKg,
   storedMassKg,
 } from '../components/UnitInput';
-import { flushSave, useAppStore } from '../../store';
+import { useAppStore, whenPersisted } from '../../store';
 import {
   BODY_EQUATIONS,
   BODY_EQUATIONS_LEAD,
@@ -276,10 +276,10 @@ const SHAKE_DURATION_MS = 400; // [ms], matches the .wiz-shake keyframe duration
 const FAILED_NEXT_VIBRATE_MS = 120;
 /*
  * [ms] C1.G.1: how long the wizard waits after the last keystroke before handing the store a
- * new draft to persist. A SEPARATE coalescing step from the store's own write-to-storage
- * debounce (src/store/index.ts SAVE_DEBOUNCE_MS = 250 ms): that one softens how often the
- * finished document reaches Web Storage; this one softens how often typing here hands the store
- * a new object to begin with, which would otherwise re-render every store subscriber on every
+ * new draft to persist. The store itself has no write debounce since P2 (spec R13, audit B08:
+ * each action's records are committed to IndexedDB in one transaction, src/store/index.ts
+ * startPersistence); this one softens how often typing here hands the store a new object to
+ * begin with, which would otherwise re-render every store subscriber, and commit, on every
  * character.
  */
 const SETUP_DRAFT_SAVE_DEBOUNCE_MS = 400;
@@ -1336,9 +1336,10 @@ export function SetupWizard(): JSX.Element {
 
   /*
    * Audit A07: the last keystrokes reach storage when the app is backgrounded. iOS may kill a
-   * suspended PWA without another event, and the store's own pagehide/visibilitychange flush
-   * (src/store/index.ts startPersistence) cannot see a draft still waiting in the timer above,
-   * so the wizard hands it over and flushes the store itself.
+   * suspended PWA without another event, and the store's engine (src/store/index.ts
+   * startPersistence) cannot see a draft still waiting in the timer above, so the wizard hands
+   * it over and starts the IndexedDB commit at once (whenPersisted() hands the queued records
+   * to the commit chain synchronously instead of one microtask later).
    */
   useEffect(() => {
     const flush = (): void => {
@@ -1355,7 +1356,7 @@ export function SetupWizard(): JSX.Element {
         // Spec R5 (review N4), as in the timer above: a refused draft writes nothing; an event
         // listener must not throw. Whatever else is pending is still flushed.
       }
-      flushSave();
+      void whenPersisted();
     };
     const onVisibility = (): void => {
       if (document.visibilityState === 'hidden') flush();

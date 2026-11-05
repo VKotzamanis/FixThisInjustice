@@ -107,17 +107,18 @@ export function applyReplacePlan(
   const stored: PlanTemplate = { ...plan, id: planId };
   // [d] Monday of the week the new programme starts in: the first week closeWeeks grades.
   const firstWeek = weekStart(startedOn);
-  return {
+  const replaced: AppState = {
     ...s,
     /*
-     * The replaced plan is KEPT (master plan section 6.7). Every LoggedSet
+     * The replaced plan is KEPT while history names it (master plan section 6.7). Every LoggedSet
      * carries the `sessionId` of the session it was logged under, and `plans`
      * is the only place that id resolves to a name, an ordinal or an exercise
      * list. Deleting the plan on re-planning severed every set logged before
      * the change from its session — the sets survived, but nothing could say
      * what they were sets OF. The cursor, not the contents of this map, is
      * what identifies the active plan, so an unreferenced plan here is history
-     * rather than an orphan. It is bounded by how often a user re-plans.
+     * rather than an orphan. A replaced plan that nothing names any more is
+     * dropped below (audit D14).
      */
     plans: { ...s.plans, [stored.id]: stored },
     cursors: {
@@ -171,4 +172,25 @@ export function applyReplacePlan(
       ),
     },
   };
+  // Audit D14: a replaced plan nothing points into any more is dropped in the same transition.
+  return { ...replaced, plans: referencedPlans(replaced) };
+}
+
+/**
+ * Audit D14: `plans` without the plans nothing needs. A plan stays while any cursor names it, or
+ * while any logged set or stored assignment (any profile) names one of its sessions: `plans` is
+ * the only place a session id resolves to a name, an ordinal or an exercise list. Everything else
+ * is a superseded plan with no history behind it, and it only costs storage. Returns `s.plans`
+ * itself when nothing is dropped.
+ */
+export function referencedPlans(s: AppState): AppState['plans'] {
+  const sessionIds = new Set<string>();
+  for (const set of Object.values(s.sets)) sessionIds.add(set.sessionId);
+  for (const rows of Object.values(s.assignments)) for (const a of rows) sessionIds.add(a.sessionId);
+  const current = new Set(Object.values(s.cursors).map((c) => c.planId));
+  const kept: AppState['plans'] = {};
+  for (const [id, plan] of Object.entries(s.plans)) {
+    if (current.has(id) || plan.sessions.some((session) => sessionIds.has(session.id))) kept[id] = plan;
+  }
+  return Object.keys(kept).length === Object.keys(s.plans).length ? s.plans : kept;
 }

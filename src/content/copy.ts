@@ -43,6 +43,8 @@ export type CopyKey =
   | 'banner.saveUnavailable.body'
   | 'banner.saveFailed.tag'
   | 'banner.saveFailed.body'
+  | 'banner.storageNearlyFull.tag'
+  | 'banner.storageNearlyFull.body'
   | 'banner.loadInvalid.tag'
   | 'banner.loadInvalid.body'
   | 'button.exportData'
@@ -310,6 +312,10 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'hero.unreadableRecords'
+  | 'advice.unreadableRecordsKept'
+  | 'button.exportUnreadable'
+  | 'status.recordsUnreadable'
   | 'hero.storedDataRefused'
   | 'hero.storageUnreadable'
   | 'status.writesPaused'
@@ -763,6 +769,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'banner.saveUnavailable.body': 'Storage is unavailable here. Export now.',
   'banner.saveFailed.tag': 'SAVE FAILED',
   'banner.saveFailed.body': 'The change could not be saved. The stored copy is unchanged.',
+  // Audit B05: warned before the quota is reached.
+  'banner.storageNearlyFull.tag': 'STORAGE NEARLY FULL',
+  'banner.storageNearlyFull.body': 'Storage is nearly full. Export a backup now.',
   'banner.loadInvalid.tag': 'INVALID DATA',
   // The validation reason is the only value in it, so the row carries the slot rather than an
   // example of one: FORMAT.loadInvalid READS this key (P9 Task 15), which is what lets a skin
@@ -1211,6 +1220,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R13 / audit B01, B04, B10: records the last load could not read, kept as stored.
+  'hero.unreadableRecords': 'Unreadable Records',
+  'advice.unreadableRecordsKept': 'Kept exactly as stored. The app does not use them.',
+  'button.exportUnreadable': 'Export Unreadable',
+  'status.recordsUnreadable': 'Some stored records could not be read. Settings lists them.',
   // Audit B01/B17/B18: the recovery screen that replaces intro and setup on a refused document.
   'hero.storedDataRefused': 'Stored Data Could Not Be Read',
   'hero.storageUnreadable': 'Storage Is Not Available',
@@ -2205,6 +2219,10 @@ export const FORMAT = {
   /** "Step 1 of 8: Units". Contract R5: a colon, not a dash. */
   stepOf: (index: number, total: number, title: string): string =>
     `Step ${index} of ${total}: ${title}`,
+
+  /** Audit B10: `profiles.p1.body.sex: stored "x", read as "nd"`. Values arrive JSON-encoded. */
+  repairedAnswer: (where: string, stored: string, readAs: string): string =>
+    `${where}: stored ${stored}, read as ${readAs}`,
 
   /**
    * "Setup: Personal Information". Round 1 claim C1.02.6. A frame rather than a literal at the

@@ -1,14 +1,20 @@
 // e2e/support/app.ts
 //
-// Browser-side helpers. The document is seeded by an init script BEFORE the app's own scripts
-// run, guarded by a marker key, so a relaunch (a new page in the same context, which is how an
-// installed app's cold start is simulated: sessionStorage is new, localStorage is kept) reads
-// what the previous page wrote instead of the seed.
+// Browser-side helpers. The document is seeded into fti.v3 by an init script BEFORE the app's own
+// scripts run, guarded by a marker key; the app's first boot imports it into IndexedDB `fti`
+// (spec R13). A relaunch (a new page in the same context, which is how an installed app's cold
+// start is simulated: sessionStorage is new, localStorage and IndexedDB are kept) reads the
+// records the previous page wrote, never the seed again.
 import { expect, type BrowserContext, type Page } from '@playwright/test';
 import type { AppState } from '../../src/domain/types';
 import {
   E2E_BASE_URL,
   LABEL,
+  RECORD_APP_STORE,
+  RECORD_DB_NAME,
+  RECORD_MAP_STORES,
+  RECORD_META_KEY,
+  RECORD_SINGLETONS,
   SEEDED_MARKER_KEY,
   STORAGE_KEY,
   logLabel,
@@ -65,20 +71,107 @@ export async function readRaw(page: Page): Promise<string | null> {
   return page.evaluate((key) => window.localStorage.getItem(key), STORAGE_KEY);
 }
 
+/** Every record in the page's IndexedDB `fti`, by store then key, and the meta record. */
+export async function readRecords(page: Page): Promise<{ meta: unknown; stores: Record<string, Record<string, unknown>> }> {
+  const stores = await page.evaluate(async (name) => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open(name);
+      request.onsuccess = () => {
+        resolve(request.result);
+      };
+      request.onerror = () => {
+        reject(request.error ?? new Error('open failed'));
+      };
+    });
+    const out: Record<string, Record<string, unknown>> = {};
+    const names = Array.from({ length: db.objectStoreNames.length }, (_, i) => db.objectStoreNames.item(i) ?? '');
+    for (const store of names) {
+      const os = db.transaction(store, 'readonly').objectStore(store);
+      const read = <T,>(request: IDBRequest<T>): Promise<T> =>
+        new Promise<T>((resolve, reject) => {
+          request.onsuccess = () => {
+            resolve(request.result);
+          };
+          request.onerror = () => {
+            reject(request.error ?? new Error('read failed'));
+          };
+        });
+      const [keys, values] = await Promise.all([read(os.getAllKeys()), read(os.getAll())]);
+      // Every record key the app writes is a string (src/store/db/records.ts); anything else is shown as JSON.
+      out[store] = Object.fromEntries(
+        keys.map((key, i): [string, unknown] => [typeof key === 'string' ? key : JSON.stringify(key), values[i]]),
+      );
+    }
+    db.close();
+    return out;
+  }, RECORD_DB_NAME);
+  return { meta: stores[RECORD_APP_STORE]?.[RECORD_META_KEY] ?? null, stores };
+}
+
+/** The stored records as one RAW document (unvalidated), for assertions. Throws before an import. */
 export async function readDocument(page: Page): Promise<AppState> {
-  const text = await readRaw(page);
-  if (text === null) throw new Error(`no document under ${STORAGE_KEY}`);
-  return JSON.parse(text) as AppState;
+  const { meta, stores } = await readRecords(page);
+  if (meta === null) throw new Error(`no records in IndexedDB ${RECORD_DB_NAME}`);
+  const doc: Record<string, unknown> = { schemaVersion: Reflect.get(meta as object, 'schemaVersion') };
+  for (const store of RECORD_MAP_STORES) doc[store] = stores[store] ?? {};
+  for (const key of RECORD_SINGLETONS) doc[key] = stores[RECORD_APP_STORE]?.[key] ?? null;
+  return doc as unknown as AppState;
+}
+
+/** [commits] The stored revision, 0 before anything is written. */
+async function revisionOf(page: Page): Promise<number> {
+  const { meta } = await readRecords(page);
+  const revision: unknown = typeof meta === 'object' && meta !== null ? Reflect.get(meta, 'revision') : 0;
+  return typeof revision === 'number' ? revision : 0;
 }
 
 /**
- * Writes any debounced change now: the store flushes on `pagehide` (src/store/index.ts
- * startPersistence), so this dispatches one instead of sleeping past SAVE_DEBOUNCE_MS.
+ * Waits until every commit has landed: spec R13 commits each action at once (no debounce), so
+ * this polls the revision until two reads 150 ms apart agree (at most 7.5 s). Node's timer, so
+ * the page's fake clock does not affect it.
  */
 export async function flushWrites(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    window.dispatchEvent(new PageTransitionEvent('pagehide'));
-  });
+  let last = -1;
+  for (let i = 0; i < 50; i += 1) {
+    const revision = await revisionOf(page);
+    if (revision === last) return;
+    last = revision;
+    await new Promise((resolve) => setTimeout(resolve, 150)); // [ms]
+  }
+  throw new Error('writes did not settle within 7.5 s');
+}
+
+/** Rewrites one stored record behind the app's back, as disk corruption or a newer build would. */
+export async function corruptRecord(page: Page, store: string, key: string, patch: Record<string, unknown>): Promise<void> {
+  await page.evaluate(
+    async ({ name, store: s, key: k, patch: p }) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open(name);
+        request.onsuccess = () => {
+          resolve(request.result);
+        };
+        request.onerror = () => {
+          reject(request.error ?? new Error('open failed'));
+        };
+      });
+      const tx = db.transaction(s, 'readwrite');
+      const os = tx.objectStore(s);
+      const get = os.get(k);
+      get.onsuccess = () => {
+        os.put({ ...(get.result as Record<string, unknown>), ...p }, k);
+      };
+      await new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => {
+          resolve();
+        };
+        tx.onerror = () => {
+          reject(tx.error ?? new Error('write failed'));
+        };
+      });
+      db.close();
+    },
+    { name: RECORD_DB_NAME, store, key, patch },
+  );
 }
 
 /**

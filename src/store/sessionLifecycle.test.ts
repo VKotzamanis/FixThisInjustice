@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { defaultState, useAppStore } from './index';
-import { STORAGE_KEY } from './persistence';
+import { createMemoryBackend } from './db/memoryBackend';
 import { EMPTY_SESSION } from './sessionMirror';
 import { installFakeStorage } from './testStorage';
 import { useTodaysSets } from './selectors';
@@ -46,27 +46,25 @@ describe('the running rest lives on the open assignment (R1, audit C04/B13)', ()
     expect(useAppStore.getState().session.restTimer).toEqual(rest);
   });
 
-  it('hydrate restores a still-running rest into an empty slice (an iOS relaunch)', () => {
+  it('hydrate restores a still-running rest into an empty slice (an iOS relaunch)', async () => {
     const doc = openMonday();
     const stored: AppState = {
       ...doc,
       assignments: { [PROFILE_ID]: (doc.assignments[PROFILE_ID] ?? []).map((a) => ({ ...a, rest })) },
     };
-    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) });
     vi.spyOn(Date, 'now').mockReturnValue(MON_1800 + 30_000); // [ms] 30 s into the rest
-    useAppStore.getState().hydrate();
+    await useAppStore.getState().hydrate(createMemoryBackend({ legacy: JSON.stringify(stored) }));
     expect(useAppStore.getState().session.restTimer).toEqual(rest);
   });
 
-  it('hydrate does not revive a rest that has already ended', () => {
+  it('hydrate does not revive a rest that has already ended', async () => {
     const doc = openMonday();
     const stored: AppState = {
       ...doc,
       assignments: { [PROFILE_ID]: (doc.assignments[PROFILE_ID] ?? []).map((a) => ({ ...a, rest })) },
     };
-    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(stored) });
     vi.spyOn(Date, 'now').mockReturnValue(MON_1800 + 600_000); // [ms] 10 min later
-    useAppStore.getState().hydrate();
+    await useAppStore.getState().hydrate(createMemoryBackend({ legacy: JSON.stringify(stored) }));
     expect(useAppStore.getState().session.restTimer).toBeNull();
   });
 });
