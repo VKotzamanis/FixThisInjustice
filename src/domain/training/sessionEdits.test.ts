@@ -13,6 +13,7 @@ import {
   addBlockedIds,
   addChoices,
   applySessionEdit,
+  replaceChoices,
   sessionLineup,
   swapAlternatives,
   unplannedSlot,
@@ -434,5 +435,124 @@ describe('swapAlternatives (L2)', () => {
     });
     expect(suggested.map((e) => e.id)).not.toContain('custom-1');
     expect(others.map((e) => e.id)).toContain('custom-1');
+  });
+});
+
+describe('replaceChoices (owner: replace an exercise when you start it)', () => {
+  const pushdown = ex('cable-triceps-pushdown');
+  /** Synthetic triceps movers in library order: a cable peer, then a dumbbell one, then a machine one. */
+  const cablePeer: Exercise = { ...pushdown, id: 'syn-cable-rope', name: 'Rope pushdown', modality: 'cable' };
+  const dbPeer: Exercise = { ...pushdown, id: 'syn-db-kickback', name: 'Kickback', modality: 'dumbbell' };
+  const machinePeer: Exercise = { ...pushdown, id: 'syn-machine-dip', name: 'Machine dip', modality: 'machine' };
+  const library = [pushdown, cablePeer, dbPeer, machinePeer];
+
+  it('recommends the first same-muscle exercise on a different implement than the current one', () => {
+    const r = replaceChoices({
+      original: pushdown,
+      current: pushdown,
+      access: 'full-gym',
+      library,
+      inUse: new Set([pushdown.id]),
+    });
+    expect(r.backToPlan).toBeNull();
+    expect(r.recommended?.id).toBe('syn-db-kickback');
+    expect(r.sameMuscle.map((e) => e.id)).toEqual(['syn-cable-rope', 'syn-machine-dip']);
+    expect(r.others).toEqual([]);
+  });
+
+  it('does the same on the shipped library: the cable pushdown is replaced off the cable stack', () => {
+    const r = replaceChoices({
+      original: pushdown,
+      current: pushdown,
+      access: 'full-gym',
+      library: EXERCISES,
+      inUse: new Set([pushdown.id]),
+    });
+    const { suggested } = swapAlternatives({
+      original: pushdown,
+      access: 'full-gym',
+      library: EXERCISES,
+      inUse: new Set([pushdown.id]),
+    });
+    expect(r.recommended).toEqual(suggested.find((e) => e.modality !== 'cable'));
+    expect(r.recommended?.muscleGroups).toContain('triceps');
+  });
+
+  it('falls back to the first suggestion when every one shares the current modality', () => {
+    const r = replaceChoices({
+      original: pushdown,
+      current: pushdown,
+      access: 'full-gym',
+      library: [pushdown, cablePeer],
+      inUse: new Set([pushdown.id]),
+    });
+    expect(r.recommended?.id).toBe('syn-cable-rope');
+    expect(r.sameMuscle).toEqual([]);
+  });
+
+  it('recommends nothing when nothing shares a direct mover', () => {
+    const r = replaceChoices({
+      original: pushdown,
+      current: pushdown,
+      access: 'full-gym',
+      library: [pushdown, ex('barbell-back-squat')],
+      inUse: new Set([pushdown.id]),
+    });
+    expect(r.recommended).toBeNull();
+    expect(r.sameMuscle).toEqual([]);
+    expect(r.others.map((e) => e.id)).toEqual(['barbell-back-squat']);
+  });
+
+  it('offers the way back to the plan once the slot is swapped, and keeps it out of every list', () => {
+    const r = replaceChoices({
+      original: pushdown,
+      current: dbPeer,
+      access: 'full-gym',
+      library,
+      inUse: new Set([dbPeer.id]),
+    });
+    expect(r.backToPlan?.id).toBe(pushdown.id);
+    // Compared with the CURRENT exercise (dumbbell): the cable rope is the first other implement.
+    expect(r.recommended?.id).toBe('syn-cable-rope');
+    expect(r.sameMuscle.map((e) => e.id)).toEqual(['syn-machine-dip']);
+    const listed = [r.recommended, ...r.sameMuscle, ...r.others].map((e) => e?.id);
+    expect(listed).not.toContain(pushdown.id);
+    expect(listed).not.toContain(dbPeer.id);
+  });
+
+  it('inherits the access and inventory filter: what does not fit moves to others', () => {
+    const r = replaceChoices({
+      original: ex('pull-up'),
+      current: ex('pull-up'),
+      access: 'bodyweight',
+      inventory: new Set<never>(),
+      library: EXERCISES,
+      inUse: new Set(['pull-up']),
+    });
+    const suggestedIds = [r.recommended, ...r.sameMuscle].map((e) => e?.id);
+    expect(suggestedIds).not.toContain('chin-up'); // needs a bar
+    expect(suggestedIds).toContain('door-frame-row');
+    for (const e of [r.recommended, ...r.sameMuscle]) {
+      expect(e?.equipment.some((t) => ACCESS_UNLOCKS.bodyweight.includes(t))).toBe(true);
+    }
+    expect(r.others.map((e) => e.id)).toContain('chin-up');
+  });
+
+  it('never offers an exercise the session already holds', () => {
+    const r = replaceChoices({
+      original: pushdown,
+      current: pushdown,
+      access: 'full-gym',
+      library,
+      inUse: new Set([pushdown.id, dbPeer.id]),
+    });
+    expect(r.recommended?.id).toBe('syn-machine-dip');
+    const listed = [r.recommended, ...r.sameMuscle, ...r.others].map((e) => e?.id);
+    expect(listed).not.toContain(dbPeer.id);
+  });
+
+  it('recommends nothing for an added card (no planned exercise)', () => {
+    const r = replaceChoices({ original: null, current: pushdown, access: 'full-gym', library, inUse: new Set() });
+    expect(r).toEqual({ backToPlan: null, recommended: null, sameMuscle: [], others: [] });
   });
 });

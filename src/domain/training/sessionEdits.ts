@@ -501,3 +501,52 @@ export function swapAlternatives(input: SwapAlternativesInput): {
   const others = library.filter((e) => !taken.has(e.id) && !inUse.has(e.id));
   return { suggested, others };
 }
+
+export interface ReplaceChoicesInput extends Omit<SwapAlternativesInput, 'original'> {
+  /** The PLANNED exercise of the slot. Null for an added card, which has no slot to replace. */
+  original: Exercise | null;
+  /** What the slot holds now: the planned exercise, or the substitute it was swapped to. */
+  current: Exercise;
+}
+
+export interface ReplaceChoices {
+  /** The planned exercise when the slot is currently swapped away from it, else null. */
+  backToPlan: Exercise | null;
+  /** The one row the Replace sheet emphasises, or null when nothing shares a direct mover. */
+  recommended: Exercise | null;
+  /** The rest of swapAlternatives' suggestions, in its order. */
+  sameMuscle: Exercise[];
+  /** swapAlternatives' others, as returned (minus the planned exercise, offered as backToPlan). */
+  others: Exercise[];
+}
+
+/**
+ * The Replace sheet's rows (owner: "if the machine is taken or you just dont feel like it you can
+ * place replace when you start the exercise and another tricep exercise would be recommended").
+ * One rule, no second ranking: it reorders nothing swapAlternatives returns, it only picks which
+ * suggestion to emphasise.
+ *
+ * `recommended` is the first suggestion whose `modality` differs from the CURRENT exercise's,
+ * else the first suggestion. Both of the owner's reasons (the station is taken, not in the mood)
+ * are served first by a different implement, and a same-modality alternative often needs the
+ * same station: a cable pushdown and a cable overhead extension share one cable stack.
+ * Rejected: a random or cycling pick (unpredictable at the gym: the same tap must show the same
+ * row); a stored "reason" prompt (one more tap and a schema field, for no better pick).
+ *
+ * The planned exercise is never `recommended`: when the slot is swapped it is `backToPlan`, which
+ * is offered whatever the inventory says, since the plan put it there and the swap op always
+ * accepts it (applySessionEdit, "Back to the plan").
+ */
+export function replaceChoices(input: ReplaceChoicesInput): ReplaceChoices {
+  const { original, current } = input;
+  if (original === null) return { backToPlan: null, recommended: null, sameMuscle: [], others: [] };
+  const { suggested, others } = swapAlternatives({ ...input, original });
+  const candidates = suggested.filter((e) => e.id !== original.id);
+  const recommended = candidates.find((e) => e.modality !== current.modality) ?? candidates[0] ?? null;
+  return {
+    backToPlan: current.id === original.id ? null : original,
+    recommended,
+    sameMuscle: candidates.filter((e) => e !== recommended),
+    others: others.filter((e) => e.id !== original.id),
+  };
+}
