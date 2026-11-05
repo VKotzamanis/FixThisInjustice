@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { copy } from '../../content/copy';
+import { copy, copyFor } from '../../content/copy';
 import { makeExercise } from '../../test/fixtures';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
 import type { AppState, BodyMassEntry, LoggedSet, WeeklyReview } from '../types';
@@ -186,8 +186,10 @@ describe('buildSummary', () => {
     expect(out).toContain('2026-01-19');
   });
 
-  it('says no sets have been logged when none have', () => {
-    expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain(copy('advice.noSetsLogged'));
+  it('says no sets have been logged when none have, in the skin the app shows (ROADMAP N7)', () => {
+    // limelight overrides this key; the summary used to print the base-table sentence.
+    expect(copyFor('limelight', 'advice.noSetsLogged')).not.toBe(copy('advice.noSetsLogged'));
+    expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain(copyFor('limelight', 'advice.noSetsLogged'));
   });
 
   it('states records in the profile unit', () => {
