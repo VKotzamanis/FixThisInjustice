@@ -6,7 +6,7 @@
 //
 // Units: every load is canonical kg here and is formatted for display only at the boundary,
 // by src/domain/units.ts. Rest is seconds. Instants are epoch ms UTC.
-import { useMemo, useState, type ReactElement, type ReactNode } from 'react';
+import { Fragment, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import { FORMAT, type CopyKey } from '../../../content/copy';
 import { FORM_CUES } from '../../../content/formCues';
 import { coachLine, type CoachLine } from '../../../domain/training/coach';
@@ -123,6 +123,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   const video = useVideoModal();
   const cues = useFormCuesModal();
   const [bonusRows, setBonusRows] = useState(0);
+  /** C08: the coach line for the set just logged on this card, shown under that set. */
+  const [coach, setCoach] = useState<{ n: number; line: CoachLine } | null>(null);
 
   // Today's own sets never feed the suggestion: the rule advances only after a COMPLETED
   // session (code review A22), so a set logged an hour ago must not move the suggestion the
@@ -224,7 +226,10 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     const { id, specimen } = result;
     // The coach line is computed against the history BEFORE this set, which is what makes a
     // personal best a comparison rather than a tautology.
-    onCoach(coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units), specimen);
+    const line = coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units);
+    // C08: inline under this set; the view still hears it for milestones and specimens.
+    setCoach({ n, line });
+    onCoach(line, specimen);
     // C10: a forgotten set added after Finish starts no rest.
     if (!amending) {
       // [sets] This set's place in the lifting day, read after logSet so it counts itself. It
@@ -346,8 +351,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
               const logged = todaysSets.find((s) => s.setNumber === n) ?? null;
               if (readOnly && logged === null) return null; // C10: a finished day shows what was done
               return (
+                <Fragment key={n}>
                 <SetRow
-                  key={n}
                   t={t}
                   overrides={overrides}
                   domIdPrefix={domIdPrefix}
@@ -410,6 +415,12 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                     onDeleted();
                   }}
                 />
+                  {coach !== null && coach.n === n && logged !== null && (
+                    <p className="set-coach" role="status">
+                      {FORMAT.withSlots(coach.line.key, coach.line.params, overrides)}
+                    </p>
+                  )}
+                </Fragment>
               );
             })}
           </div>

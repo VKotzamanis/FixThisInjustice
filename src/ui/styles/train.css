@@ -193,12 +193,20 @@
 
 /* --- Train view (mounted by P4 Task 10; the classes the plan's markup names) --- */
 
-.train-header {
+/* Brief 4.2: the one row above the cards, name left, position right. */
+.train-title-row {
   display: flex;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  gap: var(--space-3);
+  margin: 0 0 var(--space-3);
+}
+
+.train-title-row h2 {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .ex-card {
@@ -525,10 +533,18 @@
 
 /* --- Train view, the classes P4 Task 10's markup adds beyond the block above --- */
 
-.train-eyebrow {
-  font-size: var(--text-xs);
+.train-position {
+  font-size: var(--text-sm);
   letter-spacing: 0.12em;
   color: var(--text-3);
+  white-space: nowrap;
+}
+
+/* C08: the coach line under the set it is about; ink on lime, 14 px, never over a control. */
+.set-coach {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink);
 }
 
 /* Ink, weighted, where it was pink type on lime (1.41:1). The sentence says what it is. */

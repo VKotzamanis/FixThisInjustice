@@ -684,8 +684,7 @@ describe('TrainView set logging feedback', () => {
 
     logRow(1, '60', '8');
 
-    // The coach line has the higher priority of the two, so the card is the toast behind it.
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
+    // C08: the coach line is inline, so the card is the toast on screen.
     expect(screen.getByText(card.title)).toBeInTheDocument();
     expect(useAppStore.getState().specimens['profile-1']?.acquired[card.id]).toBeDefined();
   });
@@ -775,10 +774,7 @@ describe('TrainView set logging feedback', () => {
 
     logRow(1, '60', '8');
 
-    // The coach line is the only toast the relog may raise. The card is already owned, so a
-    // second card toast would be an acquisition the store never made.
-    expect(screen.queryByText(card.title)).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }));
+    // C08: no toast at all: the coach line is inline, and the card is already owned.
     expect(screen.queryByText(card.title)).toBeNull();
 
     // ...and neither the collection nor the ordinal ledger moved.
@@ -2065,5 +2061,35 @@ describe('Finish (audit C12)', () => {
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
     expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.finishAnyway') })).toBeNull();
     expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
+  });
+});
+
+describe('the Train layout (brief 4.2; C08)', () => {
+  it('puts only the title row above the cards: name, then the position to its right', () => {
+    seedStore(withSkin(seed(), 'limelight'));
+    const { container } = renderTrain();
+    const row = container.querySelector('.train-title-row');
+    // D09 (P3): the title is positional, the programme week and the session label.
+    expect(row?.querySelector('h2')?.textContent).toBe('Week 1 Upper');
+    expect(row?.querySelector('.train-position')?.textContent).toBe(
+      FORMAT.sessionEyebrow(1, 'Upper', SKIN_COPY.limelight),
+    );
+    const stack = container.querySelector('.ex-stack');
+    // Nothing but the title row, the deload line and the warm-up notice precedes the cards.
+    const before = [...(container.querySelector('.view.train')?.children ?? [])].filter(
+      (el) => stack !== null && el.compareDocumentPosition(stack) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(before.map((el) => el.className).filter((c) => !/train-title-row|train-deload|train-warmup/.test(c))).toEqual([]);
+  });
+
+  it('shows the coach line under the set it is about, not as a toast (C08)', () => {
+    seedStore(withSkin(seed(), 'limelight'));
+    const { container } = renderTrain();
+    logRow(1, '60', '8');
+    const line = container.querySelector('p.set-coach');
+    expect(line?.textContent).toContain(
+      FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 }, SKIN_COPY.limelight),
+    );
+    expect(screen.queryByTestId('toast')).toBeNull();
   });
 });

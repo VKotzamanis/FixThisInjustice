@@ -111,18 +111,14 @@ export function TrainView(): ReactElement {
   useWakeLock(open !== null && viewActive);
 
   const onSetLogged = useCallback(
-    (line: CoachLine, specimen: string | null) => {
+    // `_line`: the coach line itself is ExerciseCard's to show (C08); this handler reads the specimen.
+    (_line: CoachLine, specimen: string | null) => {
       // C03: re-filling the deleted set's slot spent the store's undo buffer; withdraw the offer.
       if (undoToastId.current !== null && useAppStore.getState().session.undo === null) {
         dismiss(undoToastId.current);
         undoToastId.current = null;
       }
-      /*
-       * P4 review item 2: the coach line arrives as a copy KEY and its values, and is resolved
-       * here, at the boundary. The domain names which sentence to say; this file says it in the
-       * words src/content/copy.ts holds, so P8's skin overlay reaches it.
-       */
-      push({ kind: line.tone, message: FORMAT.withSlots(line.key, line.params, overrides) });
+      // C08: the coach line is rendered inline by ExerciseCard under the set it is about.
       if (profileId === null) return;
 
       /*
@@ -174,7 +170,7 @@ export function TrainView(): ReactElement {
        */
       if (specimen !== null) push({ kind: 'specimen', cardId: specimen });
     },
-    [push, dismiss, profileId, overrides],
+    [push, dismiss, profileId],
   );
 
   const onDeleted = useCallback(() => {
@@ -418,18 +414,17 @@ export function TrainView(): ReactElement {
 
   return (
     <div className="view train">
-      <div className="train-header">
-        <div>
-          <div className="train-eyebrow">
-            {FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)}
-          </div>
-          <h2 className={displayClass(title)}>{title}</h2>
-          {block.isDeload && <div className="train-deload">{c('advice.deloadBlock')}</div>}
-        </div>
-        <RestTimerPanel />
+      {/*
+        * Brief 4.2: nothing above set 1 but this row. The position sits to the RIGHT of the name
+        * (craft floor: no label above a heading); the rest bar is docked (RestTimerPanel, below).
+        */}
+      <div className="train-title-row">
+        <h2 className={displayClass(title)}>{title}</h2>
+        <span className="train-position">
+          {FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)}
+        </span>
       </div>
-
-      <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
+      {block.isDeload && <p className="train-deload">{c('advice.deloadBlock')}</p>}
 
       {showWarmup && (
         <div className="train-warmup" role="note">
@@ -499,6 +494,8 @@ export function TrainView(): ReactElement {
           );
         })}
       </div>
+
+      <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
 
       {finished && !amending && (
         <button
@@ -617,6 +614,8 @@ export function TrainView(): ReactElement {
           </button>
         </div>
       )}
+      {/* C05: docked above the tab bar (train.css); last in reading order. */}
+      <RestTimerPanel />
     </div>
   );
 }
