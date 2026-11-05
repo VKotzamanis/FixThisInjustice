@@ -19,6 +19,7 @@ import { MAX_PLAN_WEEKS } from '../limits';
 import {
   bandForWeek,
   CONSISTENT_SKIP_MIN,
+  CONSISTENT_SWAP_MIN,
   cyclesOf,
   ensureRunway,
   INITIAL_WEEKS,
@@ -402,7 +403,51 @@ describe('ensureRunway: the rules, on a full-gym 4-day plan', () => {
   const swapEdits = (session: PlannedSession): DayPlan =>
     session.label === upper.label ? { edits: { swaps: { [fromId]: toId }, skipped: [], added: [], order: [] } } : {};
 
-  it('adopts a swap the user trained in the latest session of that label', () => {
+  /** Plan indexes of the upper label's sessions in cycle 0, in order. */
+  const upperIndexes = planOf(s0)
+    .sessions.slice(0, cycleLen)
+    .flatMap((s, i) => (s.label === upper.label ? [i] : []));
+  /** Swap only in the latest `n` sessions of the upper label. */
+  const swapLatest = (n: number, sub = toId) => (_session: PlannedSession, i: number): DayPlan =>
+    upperIndexes.slice(-n).includes(i)
+      ? { edits: { swaps: { [fromId]: sub }, skipped: [], added: [], order: [] } }
+      : {};
+  const upperNext = (s: AppState): PlannedSession | undefined =>
+    weekAt(planOf(s), cycleLen).find((x) => x.label === upper.label);
+
+  it('derives the swap threshold from the skip threshold (one "consistent" rule)', () => {
+    expect(CONSISTENT_SWAP_MIN).toBe(CONSISTENT_SKIP_MIN);
+    expect(upperIndexes.length).toBeGreaterThan(CONSISTENT_SWAP_MIN);
+  });
+
+  it('does not adopt a swap made in only the latest session of that label (R-A)', () => {
+    const s1 = trainUntil(s0, 4, cycleLen, swapLatest(1));
+    expect(upperNext(s1)?.exercises[0]?.exerciseId).toBe(fromId);
+  });
+
+  it('adopts a swap made in each of the latest CONSISTENT_SWAP_MIN sessions of that label (R-A)', () => {
+    const s1 = trainUntil(s0, 4, cycleLen, swapLatest(CONSISTENT_SWAP_MIN));
+    expect(upperNext(s1)?.exercises[0]).toEqual(substitutePlanned(upper.exercises[0]!, EXERCISE_BY_ID[toId]!));
+  });
+
+  it('does not adopt when the latest sessions swapped to different substitutes (R-A)', () => {
+    const other =
+      swapAlternatives({
+        original: EXERCISE_BY_ID[fromId]!,
+        access: 'full-gym',
+        inventory: null,
+        library: EXERCISES,
+        inUse: new Set([...upper.exercises.map((e) => e.exerciseId), toId]),
+      }).suggested.find((e) => e.id !== fromId)?.id ?? '';
+    expect(other).not.toBe('');
+    const last = upperIndexes.at(-1);
+    const s1 = trainUntil(s0, 4, cycleLen, (session, i) =>
+      swapLatest(CONSISTENT_SWAP_MIN, i === last ? other : toId)(session, i),
+    );
+    expect(upperNext(s1)?.exercises[0]?.exerciseId).toBe(fromId);
+  });
+
+  it('adopts a swap the user trained in every session of that label', () => {
     expect(toId).not.toBe('');
     const s1 = trainUntil(s0, 4, cycleLen, swapEdits);
     const next = weekAt(planOf(s1), cycleLen).find((s) => s.label === upper.label);

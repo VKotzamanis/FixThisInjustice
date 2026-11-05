@@ -9,8 +9,8 @@
 // (Today strip, reminders, .ics, Plan tab) always has a schedule, and it decides the CONTENT of
 // every cycle nobody has started from the cycle that last ended:
 //
-//   - a slot the user swapped (SessionEdits.swaps) and trained on in the latest completed
-//     session of that label takes the substitute;
+//   - a slot the user swapped (SessionEdits.swaps) to the same substitute and trained on in each
+//     of the latest CONSISTENT_SWAP_MIN completed sessions of that label takes the substitute;
 //   - a slot skipped in every completed, logged session of that label (at least
 //     CONSISTENT_SKIP_MIN of them) takes the first inventory-fitting alternative for the same
 //     slot (sessionEdits.ts swapAlternatives: the template's own peers first);
@@ -82,6 +82,15 @@ export const LOW_ADHERENCE_FRACTION = 0.5;
  * least this many. One skip is a bad day, not a pattern.
  */
 export const CONSISTENT_SKIP_MIN = 2;
+
+/**
+ * [sessions] PRODUCT RULE, NOT EVIDENCE (lead ruling 2026-11-05, owner may tune; no source and
+ * none claimed): a swap is adopted into the next cycle only when the SAME substitute was swapped
+ * in and trained (a non-bonus set) in each of the latest this-many completed sessions of the
+ * label. One "consistent = 2 sessions" rule with the skip threshold, so derived from it (rule 2):
+ * a one-day Replace ("the machine is taken today") never rewrites the next block.
+ */
+export const CONSISTENT_SWAP_MIN = CONSISTENT_SKIP_MIN;
 
 /** A cycle: the half-open session range [start, end) of one normal block and its deload. */
 export interface Cycle {
@@ -296,10 +305,16 @@ export function deriveWeek(ctx: EngineContext, evidence: Cycle | null, baseEnd: 
       );
       const inUse = new Set(session.exercises.map((e) => e.exerciseId));
 
-      // 1. Swap adoption: the latest completed occurrence decides.
-      const latest = withKey.at(-1);
-      const sub = latest?.edits?.swaps[key];
-      if (latest !== undefined && sub !== undefined && !inUse.has(sub) && logged(ctx, latest.date, sub)) {
+      // 1. Swap adoption: the same substitute, swapped in and trained, in each of the latest
+      //    CONSISTENT_SWAP_MIN completed sessions of the label. Fewer sessions: no adoption.
+      const recent = withKey.slice(-CONSISTENT_SWAP_MIN);
+      const sub = recent[0]?.edits?.swaps[key];
+      if (
+        recent.length >= CONSISTENT_SWAP_MIN &&
+        sub !== undefined &&
+        !inUse.has(sub) &&
+        recent.every((r) => r.edits?.swaps[key] === sub && logged(ctx, r.date, sub))
+      ) {
         const ex = ctx.byId.get(sub);
         if (ex !== undefined && tryChange(si, ei, substitutePlanned(planned, ex))) {
           changes.push({ kind: 'adopt-swap', label: session.label, from: key, to: sub });
