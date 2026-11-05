@@ -54,7 +54,6 @@ import {
   DEFAULT_STACK_STEP,
   GOAL_AXES_BY_KIND,
   GOAL_KIND_BY_AXES,
-  KG_PER_LB,
   type ActivityLevel,
   type Availability,
   type AvailabilitySlot,
@@ -85,6 +84,16 @@ import {
   storedLoadKg,
   storedMassKg,
 } from '../components/UnitInput';
+import {
+  UNIT,
+  ageYearsError,
+  heightCmError,
+  heightCmFromParts,
+  massDomainError,
+  requiredInRange,
+  requiredIntegerInRange,
+  round1,
+} from './fieldRules';
 import { useAppStore } from '../../store';
 import {
   BODY_EQUATIONS,
@@ -226,17 +235,7 @@ const STEP_GROUP: Record<StepId, SetupGroup | null> = {
   review: null,
 };
 
-/*
- * Units, not copy: a unit label is part of the contract and never changes with a skin
- * (copy contract, "Numbers, units and quantity names are part of the contract"). The mass and
- * load labels come from UNIT_LABEL through UnitInput; these are the ones UNIT_LABEL does not
- * carry because they are the same in both unit systems.
- */
-const UNIT = { years: 'years', weeks: 'weeks', minutes: 'min', m: 'm', cm: 'cm', ft: 'ft', inch: 'in', pct: '%' };
-
-const CM_PER_INCH = 2.54; // [cm/in] exact by definition
-const CM_PER_METRE = 100; // [cm/m]
-const INCHES_PER_FOOT = 12; // [in/ft]
+// UNIT, CM_PER_INCH, CM_PER_METRE and INCHES_PER_FOOT live in ./fieldRules (spec R9, rule 2).
 const SECONDS_PER_MINUTE = 60; // [s/min]
 const DEFAULT_SESSION_DURATION_MIN = 60; // [min]
 const DEFAULT_START_TIME = '07:30'; // [HH:mm] local
@@ -742,43 +741,7 @@ function toggleItem<T>(list: readonly T[], item: T): T[] {
   return list.includes(item) ? list.filter((x) => x !== item) : [...list, item];
 }
 
-/** Round to 0.1 for a bound shown in a message. Display resolution only, never storage. */
-function round1(value: number): number {
-  return Math.round(value * 10) / 10;
-}
-
-interface Bound {
-  lo: number;
-  hi: number;
-}
-
-/**
- * A bound rounded INWARD to 0.1, for message text.
- *
- * Rounding to nearest prints a bound that is itself refused: the 30 kg floor is 66.1387 lb,
- * which rounds to 66.1 lb, and 66.1 lb converts back to 29.98 kg. Every endpoint this returns
- * converts to a value strictly inside the bound it came from, so a user who types the number
- * the message names is accepted.
- */
-function inwardBound(bound: Bound): Bound {
-  return { lo: Math.ceil(bound.lo * 10) / 10, hi: Math.floor(bound.hi * 10) / 10 };
-}
-
-/**
- * A canonical kg bound expressed in the display unit, for message text only. The conversion is
- * the exact inverse of toStoredMass (1 lb = 0.45359237 kg exactly, master plan section 3), not
- * displayMass, because displayMass rounds to nearest and a message bound must round inward.
- */
-function massBoundInDisplayUnit(kgBound: Bound, units: UnitSystem): Bound {
-  if (units === 'metric') return inwardBound(kgBound); // [kg]
-  return inwardBound({ lo: kgBound.lo / KG_PER_LB, hi: kgBound.hi / KG_PER_LB }); // [lb]
-}
-
-/** The stature domain in inches, inward-rounded, for the imperial height message. */
-const HEIGHT_BOUND_IN: Bound = inwardBound({
-  lo: NUTRITION_DOMAIN.heightCm.lo / CM_PER_INCH, // [in]
-  hi: NUTRITION_DOMAIN.heightCm.hi / CM_PER_INCH, // [in]
-});
+// round1, Bound, inwardBound, massBoundInDisplayUnit and HEIGHT_BOUND_IN: ./fieldRules.
 
 /** The ids of the messages currently on screen, for aria-describedby, or undefined when none is. */
 function describedBy(...ids: (string | null)[]): string | undefined {
@@ -786,65 +749,7 @@ function describedBy(...ids: (string | null)[]): string | undefined {
   return shown.length === 0 ? undefined : shown.join(' ');
 }
 
-/** Required numeric field: empty is an error, and so is a value outside the bound. */
-function requiredInRange(
-  quantity: string,
-  text: string,
-  bound: Bound,
-  overrides: Readonly<Partial<Record<CopyKey, string>>>,
-  unit?: string,
-): string | null {
-  const value = parseDecimal(text);
-  if (value === null) return copy('error.valueRequired', overrides);
-  if (value < bound.lo || value > bound.hi) {
-    return FORMAT.outOfRange(quantity, bound.lo, bound.hi, unit);
-  }
-  return null;
-}
-
-/**
- * Required whole-number count. `Math.round` is never applied to a user value: the schema stores
- * `birthYear`, `weeklySessionTarget` and the plan's `weeks` as `z.int()`, so a fraction is
- * refused here, visibly, rather than rounded into the document behind the user's back.
- */
-function requiredIntegerInRange(
-  quantity: string,
-  text: string,
-  bound: Bound,
-  overrides: Readonly<Partial<Record<CopyKey, string>>>,
-  unit?: string,
-): string | null {
-  const value = parseDecimal(text);
-  if (value === null) return copy('error.valueRequired', overrides);
-  if (!Number.isInteger(value)) return copy('error.wholeNumber', overrides);
-  if (value < bound.lo || value > bound.hi) {
-    return FORMAT.outOfRange(quantity, bound.lo, bound.hi, unit);
-  }
-  return null;
-}
-
-/**
- * A body mass entered in the display unit, validated in CANONICAL kg after the exact conversion.
- *
- * This is not the same test as comparing the entered number against a rounded display bound, and
- * the difference is a crash: 66.1 lb clears a 66.1 lb floor, converts to 29.98 kg, and
- * computeTargets throws RangeError on it while Review renders (master plan section 6.3). The
- * rounded bound appears in the message text and nowhere else.
- */
-function massDomainError(
-  quantity: string,
-  text: string,
-  units: UnitSystem,
-  overrides: Readonly<Partial<Record<CopyKey, string>>>,
-): string | null {
-  const kg = storedMassKg(text, units); // [kg] exact
-  if (kg === null) return copy('error.valueRequired', overrides);
-  if (kg < NUTRITION_DOMAIN.massKg.lo || kg > NUTRITION_DOMAIN.massKg.hi) {
-    const shown = massBoundInDisplayUnit(NUTRITION_DOMAIN.massKg, units); // [lb] or [kg]
-    return FORMAT.outOfRange(quantity, shown.lo, shown.hi, massUnit(units));
-  }
-  return null;
-}
+// requiredInRange, requiredIntegerInRange and massDomainError: ./fieldRules (G06, rule 2).
 
 /** A load increment: strictly positive, and no larger than the schema's per-step cap. */
 function stepError(
@@ -1524,18 +1429,16 @@ export function SetupWizard(): JSX.Element {
    * 5 inches or 5.45". Either field may be blank and counts as zero, so 1 m 78 and 5 ft 0 both
    * work; both blank is null, which is a missing entry rather than a zero one.
    */
-  const heightCm = useMemo((): number | null => {
-    if (draft.units === 'metric') {
-      const metres = parseDecimal(draft.heightM);
-      const centimetres = parseDecimal(draft.heightCm);
-      if (metres === null && centimetres === null) return null;
-      return (metres ?? 0) * CM_PER_METRE + (centimetres ?? 0); // [cm]
-    }
-    const feet = parseDecimal(draft.heightFt);
-    const inches = parseDecimal(draft.heightIn);
-    if (feet === null && inches === null) return null;
-    return ((feet ?? 0) * INCHES_PER_FOOT + (inches ?? 0)) * CM_PER_INCH; // [cm] exact
-  }, [draft.units, draft.heightM, draft.heightCm, draft.heightFt, draft.heightIn]);
+  const heightCm = useMemo(
+    (): number | null =>
+      heightCmFromParts(draft.units, {
+        m: draft.heightM,
+        cm: draft.heightCm,
+        ft: draft.heightFt,
+        inch: draft.heightIn,
+      }), // [cm] exact
+    [draft.units, draft.heightM, draft.heightCm, draft.heightFt, draft.heightIn],
+  );
 
   const massKg = useMemo(
     () => storedMassKg(draft.mass, draft.units), // [kg] exact
@@ -1587,39 +1490,10 @@ export function SetupWizard(): JSX.Element {
       ? FORMAT.withSlots('error.nameTooLong', { max: PROFILE_DISPLAY_NAME_MAX_CHARS }, overrides)
       : null;
 
-  const ageError =
-    ageYears === null
-      ? t('error.valueRequired')
-      : !Number.isInteger(ageYears)
-        ? t('error.wholeNumber')
-        : ageYears < NUTRITION_DOMAIN.ageYears.lo ||
-            ageYears > NUTRITION_DOMAIN.ageYears.hi
-          ? FORMAT.outOfRange(
-              t('quantity.age'),
-              NUTRITION_DOMAIN.ageYears.lo,
-              NUTRITION_DOMAIN.ageYears.hi,
-              UNIT.years,
-            )
-          : null;
+  // Spec R9 / audit G06: the same two rules the Settings profile editor applies (./fieldRules).
+  const ageError = ageYearsError(ageYears, overrides);
 
-  const heightError =
-    heightCm === null
-      ? t('error.valueRequired')
-      : heightCm < NUTRITION_DOMAIN.heightCm.lo || heightCm > NUTRITION_DOMAIN.heightCm.hi
-        ? draft.units === 'metric'
-          ? FORMAT.outOfRange(
-              t('quantity.height'),
-              NUTRITION_DOMAIN.heightCm.lo,
-              NUTRITION_DOMAIN.heightCm.hi,
-              UNIT.cm,
-            )
-          : FORMAT.outOfRange(
-              t('quantity.height'),
-              HEIGHT_BOUND_IN.lo,
-              HEIGHT_BOUND_IN.hi,
-              UNIT.inch,
-            )
-        : null;
+  const heightError = heightCmError(heightCm, draft.units, overrides);
 
   const massError = massDomainError(
     copy('quantity.bodyMass', overrides),
