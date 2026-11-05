@@ -164,8 +164,9 @@ describe('VideoModal', () => {
   });
 
   it('null id: frames nothing, says there is no clip, and shows the cues instead', () => {
-    const walk = libraryRequest('walk');
-    expect(walk.videoId).toBeNull();
+    // Every library row now carries a clip (walk got one 2026-11-05), so the null case is the
+    // walk row with its id removed: the path a custom exercise or a retired id takes.
+    const walk = { ...libraryRequest('walk'), videoId: null };
     renderWith(walk);
     openFrom();
 

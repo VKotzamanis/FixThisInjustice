@@ -12,7 +12,7 @@ One YouTube clip per library exercise, played in-app by `src/ui/components/Video
 - Re-verify before a release that touches this table: rerun the oEmbed call for every id; a non-200 id becomes `null` (never a guessed replacement) until a new id is verified.
 
 ## Null ids
-- `walk`: no clip picked. The results were gait-correction videos (physiotherapy and posture channels, 0:45 to 12:10), not a demo of the prescribed easy walk. The modal shows the form cues and "no clip yet".
+- None. `walk` was null until 2026-11-05 (first search returned only gait-correction clips); see its row.
 
 ## Title differs from the library row (judged from title and channel; no clip was watched)
 - `db-rear-delt-fly`: "Dumbbell Bent-Over Raise", another name for the same movement.
@@ -23,6 +23,7 @@ One YouTube clip per library exercise, played in-app by `src/ui/components/Video
 - `bw-step-up`: "Step Ups/Downs"; the title does not say unloaded.
 - `ab-wheel-rollout`: "Strengthening the core: Ab Wheel".
 - `rower-intervals`, `stair-climber`: machine technique, not an interval session.
+- `walk`: "How to Power Walk", a brisker pace than the prescribed easy walk; picked from title, channel and its description ("a properly executed power walk"); not watched (second search 2026-11-05, queries on fitness, treadmill, incline and power walking; physiotherapy gait-correction and pain-relief clips rejected as out of scope).
 
 ## Table
 
@@ -67,7 +68,7 @@ One YouTube clip per library exercise, played in-app by `src/ui/components/Video
 | `hanging-knee-raise` | `RD_A-Z15ER4` | Hanging Knee Raise | Renaissance Periodization | 0:09 | 2026-11-05 |
 | `rower-intervals` | `4zWu1yuJ0_g` | Correct Rowing Machine Technique, Improve Your Rowing  \| Concept2 | concept2usa | 1:54 | 2026-11-05 |
 | `stair-climber` | `ST-5lD69XqU` | How to use a Stair Climber \| Planet Fitness | Planet Fitness | 1:31 | 2026-11-05 |
-| `walk` | null | - | - | - | - |
+| `walk` | `gknH0pQwohc` | How to Power Walk \| LIVESTRONG | LIVESTRONG | 1:13 | 2026-11-05 |
 | `db-reverse-lunge` | `Q2k3kYbtOcI` | Dumbbell Reverse Lunge | OPEX Fitness | 0:12 | 2026-11-05 |
 | `db-walking-lunge` | `eFWCn5iEbTU` | Dumbbell Walking Lunge | Renaissance Periodization | 0:10 | 2026-11-05 |
 | `db-step-up` | `7AtIjR-QqVA` | Dumbbell Step Ups - Leg Exercise - Bodybuilding.com | Bodybuilding.com | 0:48 | 2026-11-05 |

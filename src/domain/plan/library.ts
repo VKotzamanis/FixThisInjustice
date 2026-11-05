@@ -820,7 +820,7 @@ const EXERCISE_TABLE: Exercise[] = [
     muscleGroups: [],
     secondaryMuscles: [],
     equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
-    videoId: null, // no verified clip: docs/design/form-videos.md
+    videoId: 'gknH0pQwohc',
     formCueId: 'walk',
     note: 'Optional.',
   },
