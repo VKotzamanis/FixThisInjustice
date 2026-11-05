@@ -19,6 +19,7 @@ import { RestGameHostContext, type RestGameHost } from './restGameHost';
 import { RestGamePicker, type RestGamePickerTag } from './RestGamePicker';
 import { gameContext } from './restGameProps';
 import { useSheetDismiss } from './useSheetDismiss';
+import '../../components/panelEffects.css';
 import '../../styles/restGames.css';
 
 export interface RestGameSheetProps {
@@ -110,7 +111,8 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
       {minimised && entry !== null && (
         <div className="rest-sheet-bar">
           {clock !== undefined && <span className="rest-sheet-clock">{clock}</span>}
-          <span className="rest-sheet-bar-name">{t(entry.titleKey)}</span>
+          {/* AM-4a-7 effect 4: the game's name on the bar is a panel eyebrow (panelEffects.css). */}
+          <span className="rest-sheet-bar-name ll-eyebrow">{t(entry.titleKey)}</span>
           <button
             type="button"
             className="rest-sheet-show"

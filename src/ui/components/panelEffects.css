@@ -1,0 +1,49 @@
+/*
+ * Panel effects (plan AM-4a-7, effects 2 and 4; the owner adopted them 2026-11-05 from the
+ * phone-glow reference). Tokens only (tokens.css): no hex here, no blur, no animation.
+ *
+ * ECHO: a WORD on a black panel gets a hollow copy offset down-right by --echo-offset, stroked
+ * --echo-stroke in --echo-color (pink, 7.75:1 on black). The ghost is aria-hidden, so the word is
+ * read once, and the contrast sweep reads the fill (lime 10.91:1 or white 21:1 on black). Never
+ * on digits (a numeral takes no shadow, DESIGN.md) and never on lime ground, where the 62 % cut
+ * fills its counters with the stroke.
+ */
+.ll-echo {
+  position: relative;
+  display: inline-block;
+}
+
+.ll-echo-fill {
+  /* Positioned and after the ghost in the DOM, so it paints over the copy with no z-index. */
+  position: relative;
+  text-shadow: var(--panel-glow);
+}
+
+.ll-echo-ghost {
+  position: absolute;
+  top: var(--echo-offset);
+  left: var(--echo-offset);
+  width: 100%;
+  white-space: nowrap;
+  color: transparent;
+  -webkit-text-stroke: var(--echo-stroke) var(--echo-color);
+  pointer-events: none;
+  user-select: none;
+}
+
+/*
+ * EYEBROW on a panel: a condensed, tracked label, 12 px [px], lime on black (10.91:1). Only on a
+ * panel, and never above a heading on lime ground (craft floor). --panel-glow is the owner's
+ * switch (none by default, AM-4a-8).
+ */
+.ll-eyebrow {
+  font-family: var(--sans);
+  font-size: var(--eyebrow-size);
+  font-weight: 800;
+  font-stretch: var(--eyebrow-stretch);
+  line-height: 1.2;
+  letter-spacing: var(--eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--lime);
+  text-shadow: var(--panel-glow);
+}

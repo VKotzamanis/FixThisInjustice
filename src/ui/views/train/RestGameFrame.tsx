@@ -7,6 +7,7 @@
 import { useId, type ReactElement, type ReactNode, type Ref } from 'react';
 import { FORMAT, type CopyKey } from '../../../content/copy';
 import { REST_GAME_FORMAT } from '../../../content/restGameFormat';
+import { Echo } from '../../components/Echo';
 import { OwnerSprite } from '../../components/OwnerSprite';
 import { LossChomp } from './PixelMascot';
 import { useRestGameHost } from './restGameHost';
@@ -56,7 +57,10 @@ export function RestGameFrame(props: RestGameFrameProps): ReactElement {
     >
       <div className="rest-game-topline">
         <div className="rest-game-heading">
-          <h3 id={titleId}>{t(props.titleKey)}</h3>
+          {/* AM-4a-7 effect 2: the game's name is a word on the black sheet, so it echoes. */}
+          <h3 id={titleId}>
+            <Echo text={t(props.titleKey)} />
+          </h3>
           <span className="rest-game-clock" role="timer">
             {FORMAT.restRemaining(clock.minutes, clock.seconds, overrides)}
           </span>

@@ -7,6 +7,7 @@ import { useId, type ReactElement } from 'react';
 import type { CopyKey } from '../../../content/copy';
 import type { RestGameFamily } from '../../../domain/fun/restGames';
 import { REST_GAME_CATALOG } from './restGameCatalog';
+import { Echo } from '../../components/Echo';
 
 export type RestGamePickerTag = 'suggested' | 'lastPlayed';
 
@@ -32,7 +33,9 @@ export function RestGamePicker(props: RestGamePickerProps): ReactElement {
   return (
     <div className="rest-game rest-picker" role="group" aria-labelledby={titleId}>
       <div className="rest-game-topline">
-        <h3 id={titleId}>{t('hero.restGamePicker')}</h3>
+        <h3 id={titleId}>
+          <Echo text={t('hero.restGamePicker')} />
+        </h3>
         <div className="rest-game-actions">
           <button type="button" className="rest-game-exit" onClick={onClose}>
             {t('button.restGameNotNow')}

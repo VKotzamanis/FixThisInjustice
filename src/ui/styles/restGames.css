@@ -740,12 +740,12 @@
   margin: 0 auto;
 }
 
+/* The game's name takes the panel eyebrow (.ll-eyebrow, panelEffects.css; AM-4a-7 effect 4). */
 .rest-sheet-bar-name {
-  font-family: var(--mono);
-  font-size: 0.9rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .view .rest-sheet-show {
