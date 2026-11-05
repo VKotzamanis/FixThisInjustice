@@ -61,7 +61,7 @@ describe('SessionIndicator', () => {
 
   it('reads the session number from the cursor, not the calendar', () => {
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 1/6');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 1');
   });
 
   it('reports the cursor position in a 48 session plan', () => {
@@ -74,14 +74,14 @@ describe('SessionIndicator', () => {
       }),
     );
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 12/48');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 12');
   });
 
   it('reports a finished programme without overrunning the total', () => {
     setCursor({ nextSessionIndex: 6, completedOn: MONDAY });
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator').textContent).toBe(
-      `S 6/6 ${copyFor('limelight', 'status.planComplete')}`,
+      `S 6 ${copyFor('limelight', 'status.planComplete')}`,
     );
   });
 
@@ -91,22 +91,22 @@ describe('SessionIndicator', () => {
     // still must not print a position the plan does not contain.
     setCursor({ nextSessionIndex: 9 });
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 6/6');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 6');
   });
 
   it('prints no position for a plan with no sessions', () => {
     useAppStore.setState(seedState({ labels: [], weekdays: [1, 3, 5], startedOn: MONDAY }));
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 0/0');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 0');
   });
 
   it('moves when the store cursor changes', () => {
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 1/6');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 1');
     act(() => {
       setCursor({ nextSessionIndex: 3 });
     });
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 4/6');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 4');
   });
 
   it('does not move when only the clock advances', () => {
@@ -115,13 +115,13 @@ describe('SessionIndicator', () => {
     // is attendance-driven (master plan section 6.4), so the indicator must not budge.
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + 60 * DAY_MS); // [ms] epoch, UTC
     render(<SessionIndicator />);
-    expect(screen.getByTestId('session-indicator').textContent).toBe('S 1/6');
+    expect(screen.getByTestId('session-indicator').textContent).toBe('S 1');
   });
 
   it('carries an accessible label from the copy table', () => {
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(1, '', SKIN_COPY.limelight),
     );
   });
 
@@ -130,7 +130,6 @@ describe('SessionIndicator', () => {
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
       FORMAT.planPositionLabel(
-        6,
         6,
         copyFor('limelight', 'hero.programmeComplete'),
         SKIN_COPY.limelight,
@@ -161,7 +160,7 @@ describe('SessionIndicator under a skin', () => {
     pinSkin('limelight');
     render(<SessionIndicator />);
     expect(screen.getByTestId('session-indicator')).toHaveAccessibleName(
-      FORMAT.planPositionLabel(1, 6, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(1, '', SKIN_COPY.limelight),
     );
   });
 });

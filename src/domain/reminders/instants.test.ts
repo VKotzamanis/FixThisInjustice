@@ -130,7 +130,7 @@ describe('computeReminderInstants', () => {
     );
     const first = instants[0];
     expect(first?.title).toBe('Upper today');
-    expect(first?.body).toBe('Week 2 Upper at 18:00, session 3 of 24'); // D09: title from the position
+    expect(first?.body).toBe('Week 2 Upper at 18:00, session 3'); // D09: title from the position
     // Copy contract (master plan section 3): no em dash or en dash as a sentence connector.
     for (const i of instants) {
       expect(i.title).not.toMatch(/[–—]/);

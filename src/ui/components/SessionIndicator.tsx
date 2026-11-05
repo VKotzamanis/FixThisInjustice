@@ -1,6 +1,7 @@
 // src/ui/components/SessionIndicator.tsx
 //
-// "S n/N" — the position the plan cursor is actually at. This replaces the legacy "D n/168"
+// "S n" — the position the plan cursor is actually at (no "/N" since ROADMAP L6: the programme
+// is open-ended, so the session list's length is a runway, not a total). This replaces the legacy "D n/168"
 // indicator, which counted calendar days since the start date and therefore reported a
 // position the user had not reached (code review A11, A12). The cursor is attendance-driven
 // (master plan section 6.4: it advances only on complete or skip), so this component reads
@@ -22,7 +23,7 @@ export function SessionIndicator(): ReactElement | null {
   // Both hooks run before this return, so the early exit does not change the hook order.
   if (plan === null || cursor === null) return null;
 
-  const total = plan.sessions.length; // [sessions] the whole programme
+  const total = plan.sessions.length; // [sessions] materialised so far; a clamp, never shown
   /*
    * 1-based for display. nextSessionIndex is 0-based and its terminal value is
    * sessions.length (master plan section 6.7: "nextSessionIndex never exceeds
@@ -45,7 +46,6 @@ export function SessionIndicator(): ReactElement | null {
       role="img"
       aria-label={FORMAT.planPositionLabel(
         shown,
-        total,
         complete ? t('hero.programmeComplete') : '',
         overrides,
       )}
@@ -58,7 +58,7 @@ export function SessionIndicator(): ReactElement | null {
        */
       style={{ fontVariantNumeric: 'tabular-nums' }}
     >
-      {FORMAT.planPosition(shown, total, complete ? t('status.planComplete') : '')}
+      {FORMAT.planPosition(shown, complete ? t('status.planComplete') : '')}
     </span>
   );
 }

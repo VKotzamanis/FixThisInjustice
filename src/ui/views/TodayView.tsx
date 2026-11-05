@@ -215,12 +215,12 @@ export function TodayView(): JSX.Element {
   const session =
     open !== null ? (plan.sessions.find((s) => s.id === open.sessionId) ?? null) : day.projectedSession;
   const sessionDate = open !== null ? open.date : today;
-  const total = plan.sessions.length; // [sessions]
+  const total = plan.sessions.length; // [sessions] materialised so far: a clamp, never an "of N"
   const finished = cursor.completedOn !== null;
   // [sessions] 1-based, clamped: the cursor stops AT the plan length, so the last session must
   // not be reported as "S 7/6" once it is closed.
   const shown = Math.min(cursor.nextSessionIndex + 1, total);
-  const position = FORMAT.planPosition(shown, total, '');
+  const position = FORMAT.planPosition(shown, '');
   const canRun = status === 'planned' || status === 'in-progress';
   /*
    * Spec R3 (D02): any day without a session of its own can train the cursor's next one. The
@@ -272,7 +272,7 @@ export function TodayView(): JSX.Element {
    * has to survive every other line being scrolled away.
    */
   const marqueeItems: MarqueeItem[] = [
-    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, total, '', overrides) },
+    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, '', overrides) },
   ];
   /*
    * THE POPUP OWNS AN UNACKNOWLEDGED MISS, so the ticker stays off it.
@@ -439,7 +439,7 @@ export function TodayView(): JSX.Element {
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
         </p>
         <p className="today-position">
-          {FORMAT.planPosition(shown, total, c('status.planComplete'))}
+          {FORMAT.planPosition(shown, c('status.planComplete'))}
         </p>
       </div>
     );

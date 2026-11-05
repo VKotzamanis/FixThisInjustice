@@ -37,6 +37,14 @@ describe('A06: a stored draft resumes on a screen that exists', () => {
     expect(restoreStepIndex({ stepIndex: 0, stepId: 'goal' })).toBe(STEPS.indexOf('goal'));
   });
 
+  it('resumes a draft saved under the eight-step wizard by its step id (ROADMAP L6)', () => {
+    // Under the old STEPS guidance was index 6 and review 7; the id still finds them.
+    expect(restoreStepIndex({ stepIndex: 6, stepId: 'guidance' })).toBe(STEPS.indexOf('guidance'));
+    expect(restoreStepIndex({ stepIndex: 7, stepId: 'review' })).toBe(STEPS.indexOf('review'));
+    // A draft parked on the removed programme step (old index 5) opens on the step after it.
+    expect(restoreStepIndex({ stepIndex: 5, stepId: 'programme' })).toBe(STEPS.indexOf('guidance'));
+  });
+
   it('clamps a stale index, ignores an unknown id, and starts a missing draft at 0', () => {
     expect(restoreStepIndex({ stepIndex: 8 })).toBe(STEPS.length - 1);
     expect(restoreStepIndex({ stepIndex: 3, stepId: 'retired-step' })).toBe(3);

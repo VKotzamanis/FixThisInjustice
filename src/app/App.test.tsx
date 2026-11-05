@@ -313,7 +313,7 @@ describe('top bar', () => {
     expect(staticCopy).not.toBeNull();
     expect(staticCopy?.textContent).toContain(copy('advice.todayInstruction'));
     expect(staticCopy?.textContent).toContain(
-      FORMAT.planPositionLabel(1, LABELS.length, '', LIMELIGHT_COPY),
+      FORMAT.planPositionLabel(1, '', LIMELIGHT_COPY),
     );
   });
 
@@ -329,10 +329,10 @@ describe('top bar', () => {
       (node) => node.textContent,
     );
     expect(lines).toContain(copy('advice.todayInstruction'));
-    // "ep. 1 of 6": limelight's own row for status.sessionCursor (copy.limelight.ts), read
+    // "ep. 1": limelight's own row for status.sessionCursor (copy.limelight.ts), read
     // through the overrides FORMAT.planPositionLabel takes, never a calendar day (code review
     // A11).
-    expect(lines).toContain(FORMAT.planPositionLabel(1, LABELS.length, '', LIMELIGHT_COPY));
+    expect(lines).toContain(FORMAT.planPositionLabel(1, '', LIMELIGHT_COPY));
   });
 });
 
@@ -1167,9 +1167,8 @@ describe('the top bar banner', () => {
     for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
-    next(); // 6 programme length, 12 weeks by default
-    next(); // 7 guidance
-    next(); // 8 review
+    next(); // 6 guidance (ROADMAP L6 removed the programme-length step)
+    next(); // 7 review
   }
 
   it('greets on the intro, which is the first thing a fresh document shows', () => {

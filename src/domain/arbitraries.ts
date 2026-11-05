@@ -605,7 +605,6 @@ const anySetupAnswers: fc.Arbitrary<SetupAnswers> = fc.record({
     7: anyDaySlot,
   }),
   weeklySessionTarget: anyDraftText,
-  weeks: anyDraftText,
   includeCardio: fc.boolean(),
 });
 

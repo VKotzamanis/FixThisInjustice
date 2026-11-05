@@ -28,8 +28,11 @@
 // only), and the four unreadable-records keys `hero.unreadableRecords`,
 // `advice.unreadableRecordsKept`, `button.exportUnreadable`, `status.recordsUnreadable` (spec
 // R13, P2 Task 8; base table only), and `banner.storageNearlyFull.{tag,body}` for the
-// near-quota banner (audit B05, P2 Task 11; base table only). No snapshot row was changed to add
-// them.
+// near-quota banner (audit B05, P2 Task 11; base table only), and `advice.programmeContinues`
+// on the wizard review (ROADMAP L6; base table only). No snapshot row was changed to add them.
+//
+// Rows CHANGED on purpose (ROADMAP L6, docs/design/programme-horizon.md Q4: an open-ended
+// programme has no N, so every "of N" goes): `status.bootWeek` and `status.sessionCursor`.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
@@ -104,6 +107,8 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
     'P6 QWERTY keyboard: its submit key is 3 half-columns wide and reads button.restWordEnter',
   'button.restWordLaunch':
     'P6: the launch control opens a picker of five games now and reads button.restGameLaunch',
+  'step.programme': 'ROADMAP L6: the programme-length step was removed; the programme is open-ended',
+  'quantity.programmeWeeks': 'ROADMAP L6: the length field went with the programme-length step',
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];

@@ -246,7 +246,7 @@ export const REVIEW_DAYS: SetupDraft['days'] = {
 };
 
 /**
- * A setup draft parked on the Review step (STEPS index 7 in SetupWizard.tsx) with every step
+ * A setup draft parked on the Review step (STEPS index 6 in SetupWizard.tsx since ROADMAP L6) with every step
  * answered validly; `patch` breaks exactly the field a spec is about.
  */
 export function reviewDraft(patch: Partial<SetupDraft> = {}): SetupDraft {
@@ -287,9 +287,8 @@ export function reviewDraft(patch: Partial<SetupDraft> = {}): SetupDraft {
     sessionsPerWeek: 3,
     days: REVIEW_DAYS,
     weeklySessionTarget: '3',
-    weeks: '12',
     includeCardio: false,
-    stepIndex: 7,
+    stepIndex: 6,
     buffer: null,
     ...patch,
   };

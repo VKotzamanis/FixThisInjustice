@@ -540,8 +540,9 @@ describe('the FORMAT frames reach a skin', () => {
   });
 
   it('reads the session cursor from the table, so a skin reaches the indicator', () => {
-    expect(FORMAT.planPositionLabel(12, 48, '')).toBe('Session 12 of 48');
-    expect(FORMAT.planPositionLabel(12, 48, '', SKIN_COPY.limelight)).toBe('ep. 12 of 48');
+    // ROADMAP L6: no "of N"; the programme is open-ended.
+    expect(FORMAT.planPositionLabel(12, '')).toBe('Session 12');
+    expect(FORMAT.planPositionLabel(12, '', SKIN_COPY.limelight)).toBe('ep. 12');
   });
 });
 

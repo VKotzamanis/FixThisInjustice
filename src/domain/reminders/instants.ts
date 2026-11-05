@@ -69,7 +69,6 @@ export function computeReminderInstants(
   if (plan === undefined) return [];
 
   const timezone = profile.timezone;
-  const totalSessions = plan.sessions.length; // [sessions]
   // Longest lead first, so a day's instants come out in the order the user meets them and a
   // duplicate entry in settings cannot produce two instants sharing one key.
   const leads = [...new Set(settings.leadMinutes)].sort((a, b) => b - a); // [min]
@@ -86,7 +85,8 @@ export function computeReminderInstants(
     // Copy contract (master plan §3): the connector is a comma. Master §6.6's draft body used
     // an em dash, which that contract bans; the wording is otherwise unchanged.
     const title = `${session.label} today`;
-    const body = `${sessionTitle(plan, session)} at ${slot.startTime}, session ${session.ordinal} of ${totalSessions}`;
+    // No "of N" (ROADMAP L6): the programme is open-ended.
+    const body = `${sessionTitle(plan, session)} at ${slot.startTime}, session ${session.ordinal}`;
 
     const dayOfAt = instantOf(day.date, settings.dayOfTime, timezone); // [ms] epoch, UTC
     if (dayOfAt > now && dayOfAt <= horizonEnd) {

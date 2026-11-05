@@ -41,12 +41,8 @@ import {
   showsPortableEquipment,
 } from '../../domain/plan/inventory';
 import { EXERCISES } from '../../domain/plan/library';
-import {
-  PLAN_WEEKS_MAX,
-  PLAN_WEEKS_MIN,
-  generatePlan,
-  volumeReport,
-} from '../../domain/plan/generator';
+import { generatePlan, volumeReport } from '../../domain/plan/generator';
+import { INITIAL_WEEKS } from '../../domain/plan/engine';
 import { SPLIT_TEMPLATES, type SessionsPerWeek } from '../../domain/plan/templates';
 import {
   DEFAULT_BARBELL_STEP,
@@ -184,7 +180,6 @@ export const STEPS = [
   'body',
   'training',
   'goal',
-  'programme',
   'guidance',
   'review',
 ] as const;
@@ -215,7 +210,6 @@ const STEP_TITLE_KEY: Record<StepId, CopyKey> = {
   body: 'step.body',
   training: 'step.training',
   goal: 'step.goal',
-  programme: 'step.programme',
   guidance: 'step.guidance',
   review: 'step.review',
 };
@@ -245,7 +239,6 @@ const STEP_GROUP: Record<StepId, SetupGroup | null> = {
   body: 'personal',
   training: 'goal',
   goal: 'goal',
-  programme: 'goal',
   guidance: 'personal',
   review: null,
 };
@@ -254,7 +247,6 @@ const STEP_GROUP: Record<StepId, SetupGroup | null> = {
 const SECONDS_PER_MINUTE = 60; // [s/min]
 const DEFAULT_SESSION_DURATION_MIN = 60; // [min]
 const DEFAULT_START_TIME = '07:30'; // [HH:mm] local
-const DEFAULT_WEEKS = 12; // [weeks], inside PLAN_WEEKS_MIN..PLAN_WEEKS_MAX
 const DEFAULT_SESSIONS_PER_WEEK: SessionsPerWeek = 4; // [sessions/week]
 const DEFAULT_CUP_ML = 250; // [mL] display granularity for the hydration view only
 const DEFAULT_DISPLAY_NAME = 'Operator'; // used only when the optional name is left blank
@@ -700,7 +692,6 @@ function initialDraft(): Draft {
       7: defaultDay(),
     },
     weeklySessionTarget: String(DEFAULT_SESSIONS_PER_WEEK),
-    weeks: String(DEFAULT_WEEKS),
     includeCardio: false,
   };
 }
@@ -1834,14 +1825,6 @@ export function SetupWizard(): JSX.Element {
           overrides,
         );
 
-  const weeksError = requiredIntegerInRange(
-    copy('quantity.programmeWeeks', overrides),
-    draft.weeks,
-    { lo: PLAN_WEEKS_MIN, hi: PLAN_WEEKS_MAX },
-    overrides,
-    UNIT.weeks,
-  );
-
   const BLOCKED: Record<StepId, boolean> = {
     units: false,
     timezone: timezoneError !== null,
@@ -1883,7 +1866,6 @@ export function SetupWizard(): JSX.Element {
       weeklyTargetError !== null ||
       Object.values(durationErrors).some((e) => e !== null) ||
       Object.values(startTimeErrors).some((e) => e !== null),
-    programme: weeksError !== null,
     guidance: false,
     /*
      * Brief M, claim r2.19: Confirm (gated through `confirmBlocked` below, which is
@@ -1965,27 +1947,17 @@ export function SetupWizard(): JSX.Element {
 
   // ---- derived plan and targets ---------------------------------------------------------
 
-  const weeksTyped = parseDecimal(draft.weeks);
-  /*
-   * The preview falls back to the default while the entry is unusable; it is never the typed
-   * value adjusted. Rounding or clamping here would show a plan for a length the user did not
-   * ask for, and the Programme step blocks on exactly the same conditions, so the plan that is
-   * stored is always the number the user typed.
-   */
-  const weeks =
-    weeksTyped !== null &&
-    Number.isInteger(weeksTyped) &&
-    weeksTyped >= PLAN_WEEKS_MIN &&
-    weeksTyped <= PLAN_WEEKS_MAX
-      ? weeksTyped // [weeks]
-      : DEFAULT_WEEKS; // [weeks]
-
   const plan = useMemo(
     () =>
       generatePlan(
         {
           sessionsPerWeek: draft.sessionsPerWeek,
-          weeks,
+          /*
+           * ROADMAP L6: no programme length is asked. The plan is materialised INITIAL_WEEKS deep
+           * and the programme engine keeps it going from what is logged (src/domain/plan/
+           * engine.ts), so the preview and the stored plan are the same build.
+           */
+          weeks: INITIAL_WEEKS, // [weeks] materialisation depth, not a length
           goal: draft.goalKind,
           experience: draft.experience,
           equipment: draft.equipment,
@@ -2010,7 +1982,6 @@ export function SetupWizard(): JSX.Element {
       draft.includeCardio,
       draft.homeEquipment,
       draft.bodyweightEquipment,
-      weeks,
     ],
   );
 
@@ -3346,7 +3317,7 @@ export function SetupWizard(): JSX.Element {
        * the training frequency is KNOWN before the target date is chosen, and it still is: this
        * block renders above the target-date field and the feasibility calendar on the same
        * screen, and `feasibilityOf` reads `draft.sessionsPerWeek` at render, not at step change.
-       * The step COUNT is unchanged; the wizard is still the eight steps STEPS declares.
+       * The wizard is the steps STEPS declares (seven since ROADMAP L6 removed the programme step).
        *
        * A SEPARATE `step === 'goal'` block rather than one merged fieldset, and it carries the
        * step's heading because it is now the first thing on the step: each group keeps its own
@@ -3374,6 +3345,18 @@ export function SetupWizard(): JSX.Element {
             </select>
           </div>
           <p className="wiz-note">{SPLIT_TEMPLATES[draft.sessionsPerWeek].note}</p>
+          {/* ROADMAP L6: moved here from the removed programme-length step. */}
+          <label className="wiz-inline">
+            <input
+              type="checkbox"
+              checked={draft.includeCardio}
+              onChange={(e) => {
+                patch({ includeCardio: e.target.checked });
+              }}
+            />
+            {t('label.includeCardio')}
+          </label>
+          <p className="wiz-note">{t('advice.deloadEveryFourth')}</p>
 
           {WEEKDAYS.map((d) => (
             <div key={d.value}>
@@ -3769,34 +3752,6 @@ export function SetupWizard(): JSX.Element {
       )}
 
 
-      {step === 'programme' && (
-        <fieldset>
-          <StepHeading title={t(STEP_TITLE_KEY.programme)} headingRef={headingRef} />
-          <UnitInput
-            id="f-weeks"
-            quantity={t('quantity.programmeWeeks')}
-            unit={UNIT.weeks}
-            step="1"
-            value={draft.weeks}
-            error={weeksError}
-            onChange={(v) => {
-              patch({ weeks: v });
-            }}
-          />
-          <p className="wiz-note">{t('advice.deloadEveryFourth')}</p>
-          <label className="wiz-inline">
-            <input
-              type="checkbox"
-              checked={draft.includeCardio}
-              onChange={(e) => {
-                patch({ includeCardio: e.target.checked });
-              }}
-            />
-            {t('label.includeCardio')}
-          </label>
-        </fieldset>
-      )}
-
       {step === 'guidance' && (
         <div>
           {/* The screen renders its own sections, so this step's heading stands above them.
@@ -3955,11 +3910,8 @@ export function SetupWizard(): JSX.Element {
           <fieldset>
             <legend>{t('hero.programme')}</legend>
             <p data-testid="split-summary">
-              {FORMAT.splitSummary(
-                SPLIT_TEMPLATES[draft.sessionsPerWeek].name,
-                weeks,
-                plan.sessions.length,
-              )}{' '}
+              {FORMAT.splitSummary(SPLIT_TEMPLATES[draft.sessionsPerWeek].name, draft.sessionsPerWeek)}{' '}
+              {t('advice.programmeContinues')}{' '}
               {FORMAT.muscleList(t('label.inTargetRange'), volume.inBand, t('label.none'))}{' '}
               {FORMAT.muscleList(
                 t('label.maintenanceOnly'),

@@ -106,7 +106,7 @@ describe('TodayView hero: a session is scheduled today', () => {
   it('states the session, the cursor position, the label and the slot time', () => {
     render(<TodayView />);
     expect(screen.getByText('Week 1 Push')).toBeTruthy(); // D09: title from the position
-    expect(screen.getByText(FORMAT.planPosition(1, TOTAL, ''))).toBeTruthy();
+    expect(screen.getByText(FORMAT.planPosition(1, ''))).toBeTruthy();
     expect(screen.getByText(FORMAT.sessionSummary('Push', '07:00', 2))).toBeTruthy();
   });
 
@@ -251,7 +251,7 @@ describe('TodayView hero: the other states', () => {
     expect(screen.getByText(copyFor('limelight', 'hero.programmeComplete'))).toBeTruthy();
     expect(screen.getByText(FORMAT.programmeClosed(TOTAL, MONDAY))).toBeTruthy();
     expect(
-      screen.getByText(FORMAT.planPosition(TOTAL, TOTAL, copyFor('limelight', 'status.planComplete'))),
+      screen.getByText(FORMAT.planPosition(TOTAL, copyFor('limelight', 'status.planComplete'))),
     ).toBeTruthy();
   });
 
@@ -775,7 +775,7 @@ describe('TodayView: one whole training day', () => {
 
     fireEvent.click(button('button.markCompleted'));
     expect(screen.getByText(copyFor('limelight', 'hero.sessionCompleted'))).toBeTruthy();
-    expect(screen.getByText(FORMAT.planPosition(2, TOTAL, ''))).toBeTruthy();
+    expect(screen.getByText(FORMAT.planPosition(2, ''))).toBeTruthy();
 
     const rows = screen.getAllByTestId('strip-day');
     expect(rows[0]?.getAttribute('data-status')).toBe('completed');
@@ -799,7 +799,7 @@ describe('App wiring', () => {
      * query would just be ambiguous.
      */
     expect(
-      within(screen.getByRole('main')).getByText(FORMAT.planPosition(1, TOTAL, '')),
+      within(screen.getByRole('main')).getByText(FORMAT.planPosition(1, '')),
     ).toBeTruthy();
     expect(useAppStore.getState().ui.lastView).toBe('today');
   });
@@ -864,7 +864,7 @@ describe('TodayView: the ticker', () => {
 
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(1, '', SKIN_COPY.limelight),
     ]);
   });
 
@@ -876,7 +876,7 @@ describe('TodayView: the ticker', () => {
     expect(screen.getByRole('button', { name: copyFor('limelight', 'button.pauseTicker') })).toBeTruthy();
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(1, '', SKIN_COPY.limelight),
       FORMAT.withSlots('status.weekDeltaZero', { completed: 4, target: 4 }, SKIN_COPY.limelight),
     ]);
   });
@@ -892,7 +892,7 @@ describe('TodayView: the ticker', () => {
 
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(1, '', SKIN_COPY.limelight),
     ]);
   });
 
@@ -903,7 +903,7 @@ describe('TodayView: the ticker', () => {
 
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(1, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(1, '', SKIN_COPY.limelight),
       FORMAT.withSlots('status.weekDeltaNegative', { completed: 1, target: 4 }, SKIN_COPY.limelight),
     ]);
   });
@@ -989,7 +989,7 @@ describe('TodayView: the week that has just closed', () => {
     expect(screen.queryByTestId('intervention')).toBeNull();
     const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
     expect(lines.map((node) => node.textContent)).toEqual([
-      FORMAT.planPositionLabel(TOTAL, TOTAL, '', SKIN_COPY.limelight),
+      FORMAT.planPositionLabel(TOTAL, '', SKIN_COPY.limelight),
     ]);
   });
 });

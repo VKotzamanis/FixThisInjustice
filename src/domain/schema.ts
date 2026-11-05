@@ -793,8 +793,9 @@ const SetupDaySlotSchema = z.object({
 });
 
 /**
- * [step index] Sanity ceiling. STEPS in src/ui/setup/SetupWizard.tsx has 8 entries (0-7); the
- * bound stays 8 because a stored draft at 8 must keep parsing (rule 7: `.catch(null)` would drop
+ * [step index] Sanity ceiling. STEPS in src/ui/setup/SetupWizard.tsx has 7 entries (0-6) since
+ * ROADMAP L6 removed the programme step; the bound stays 8 because a stored draft at 8 must keep
+ * parsing (rule 7: `.catch(null)` would drop
  * the whole draft). The wizard clamps on restore and prefers `stepId` (audit A06).
  */
 const MAX_SETUP_DRAFT_STEP_INDEX = 8;
@@ -874,7 +875,6 @@ const SetupAnswersShapeSchema = z.object({
     7: SetupDaySlotSchema,
   }),
   weeklySessionTarget: z.string().max(MAX_DRAFT_TEXT_CHARS),
-  weeks: z.string().max(MAX_DRAFT_TEXT_CHARS),
   includeCardio: z.boolean(),
 });
 
