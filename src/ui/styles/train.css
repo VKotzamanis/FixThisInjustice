@@ -352,65 +352,86 @@
   font: inherit;
 }
 
-/* A column: the ring and its controls on top, the rest game (ROADMAP F1) under them. */
-.rest-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-end;
-  max-width: min(100%, 28rem);
-}
-
 /*
- * THE REST SIGN (stylize survey item 3). `.rest-summary` carries `.ll-panel` (tokens.css), the
- * black sign round three named for this panel, so the ring, the clock and the controls read off
- * black: lime numerals and track at 10.91:1, the pink arc at 7.75:1, the white label at 21:1 (the
- * fine-print grey it had is 2.2:1 on black, computed with the WCAG 2.1 formula). The lime
- * `stopwatchPanel` icon was drawn for this ground; on the lime page its outline vanished.
+ * The rest bar (audit C05; docs/design/p4-design-brief.md 4.2): docked above the tab bar while a
+ * rest runs, so the remaining time is on screen at every scroll position of Train.
  */
+.rest-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--dock-bottom);
+  z-index: var(--z-dock);
+}
+
 .rest-summary {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  padding: 0.5rem 0.75rem;
-  border: 2px solid var(--line-2);
-}
-
-.rest-ring {
   position: relative;
-  width: 64px;
-  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  box-sizing: border-box;
+  height: var(--restbar-h);
+  padding: 0 max(var(--gutter), env(safe-area-inset-right)) 0 max(var(--gutter), env(safe-area-inset-left));
+  border-top: 2px solid var(--ink);
 }
 
-.rest-ring-track {
-  stroke: var(--lime);
-}
-
-.rest-ring-arc {
-  stroke: var(--pink);
+/* Elapsed rest, a 4 px pink strip on the top edge; its width moves once a second, never tweened. */
+.rest-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 4px;
+  background: var(--accent);
 }
 
 .rest-time {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  color: var(--lime);
+  margin-right: auto;
+  font-size: var(--text-xl);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  color: var(--lime);
 }
 
-/*
- * The controls on the sign: lime fill, ink type (10.91:1), a 2 px ink edge that holds on the pink
- * rest-over fill too. `.view button` (views.css) would paint them lime with INHERITED type, which
- * on this panel is white on lime, 1.92:1. Scoped to `.rest-controls` so the game's keys, which
- * sit inside `.rest-panel` with rules of their own, are untouched.
- */
+.rest-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Lime on the panel, ink type and edge (10.91:1), 44 px; the game launcher is a 44 x 44 icon. */
 .view .rest-controls button {
-  color: var(--ink);
+  width: auto;
+  min-width: var(--tap);
+  min-height: var(--tap);
+  padding: 0 var(--space-3);
   background: var(--lime);
+  color: var(--ink);
   border: 2px solid var(--ink);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+/* At zero the digits turn ink with the sign's pink flip (.rest-summary.rest-over). */
+.rest-summary.rest-over .rest-time {
+  color: var(--ink);
+}
+
+/* The page under Train scrolls far enough that the last control clears the bar. */
+.view.train:has(.rest-panel) {
+  padding-bottom: calc(var(--restbar-h) + var(--space-6));
+}
+
+/* Text for assistive technology only. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /*
@@ -431,10 +452,6 @@
 .rest-summary.rest-over .rest-time,
 .rest-summary.rest-over .rest-label {
   color: inherit;
-}
-
-.rest-summary.rest-over .rest-ring-track {
-  stroke: currentColor;
 }
 
 .rest-summary.rest-over-pulse {
@@ -641,29 +658,10 @@
   align-items: end;
 }
 
-.rest-controls {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 .rest-label {
   font-size: var(--text-xs);
   letter-spacing: 0.12em;
   color: var(--panel-text);
-}
-
-@media (max-width: 480px) {
-  .rest-panel {
-    align-items: stretch;
-    max-width: none;
-    width: 100%;
-  }
-
-  .rest-summary {
-    justify-content: flex-start;
-  }
 }
 
 /*

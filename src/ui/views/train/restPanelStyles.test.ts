@@ -43,8 +43,9 @@ const MAX_PULSE_HZ = 2; // [1/s]
 describe('rest sign styles (stylize survey item 3)', () => {
   it('runs on black: lime numerals and track, pink arc, white label', () => {
     expect(bodyOf('.rest-time')).toMatch(/color:\s*var\(--lime\)/);
-    expect(bodyOf('.rest-ring-track')).toMatch(/stroke:\s*var\(--lime\)/);
-    expect(bodyOf('.rest-ring-arc')).toMatch(/stroke:\s*var\(--pink\)/);
+    // C05: the ring is gone; a 4 px pink strip on the bar's top edge shows elapsed rest.
+    expect(bodyOf('.rest-progress')).toMatch(/height:\s*4px;/);
+    expect(bodyOf('.rest-progress')).toMatch(/background:\s*var\(--accent\);/);
     expect(bodyOf('.rest-label')).toMatch(/color:\s*var\(--panel-text\)/);
   });
 
@@ -92,5 +93,36 @@ describe('rest sign styles (stylize survey item 3)', () => {
     const sign = rulesOf(CSS).filter((rule) => /\.rest-(summary|ring|time|label|controls|over)/.test(rule.selector));
     expect(sign.length).toBeGreaterThan(0);
     expect(sign.filter((rule) => literal.test(rule.body)).map((rule) => rule.selector)).toEqual([]);
+  });
+});
+
+describe('the docked rest bar (C05, brief 4.2)', () => {
+  it('docks above the tab bar at the dock rung, full width', () => {
+    const b = bodyOf('.rest-panel');
+    expect(b).toMatch(/position:\s*fixed;/);
+    expect(b).toMatch(/bottom:\s*var\(--dock-bottom\);/);
+    expect(b).toMatch(/left:\s*0;/);
+    expect(b).toMatch(/right:\s*0;/);
+    expect(b).toMatch(/z-index:\s*var\(--z-dock\);/);
+  });
+
+  it('is one 56 px row with gutter padding', () => {
+    const b = bodyOf('.rest-summary');
+    expect(b).toMatch(/height:\s*var\(--restbar-h\);/);
+    expect(b).toMatch(/display:\s*flex;/);
+    expect(b).toMatch(/padding:\s*0 max\(var\(--gutter\), env\(safe-area-inset-right\)\) 0 max\(var\(--gutter\), env\(safe-area-inset-left\)\);/);
+  });
+
+  it('sets the digits in lime, 24 px, tabular', () => {
+    const b = bodyOf('.rest-time');
+    expect(b).toMatch(/font-size:\s*var\(--text-xl\);/);
+    expect(b).toMatch(/font-variant-numeric:\s*tabular-nums;/);
+    expect(b).toMatch(/color:\s*var\(--lime\);/);
+  });
+
+  it('pads the Train page by the bar while a rest shows', () => {
+    expect(bodyOf('.view.train:has(.rest-panel)')).toMatch(
+      /padding-bottom:\s*calc\(var\(--restbar-h\) \+ var\(--space-6\)\);/,
+    );
   });
 });

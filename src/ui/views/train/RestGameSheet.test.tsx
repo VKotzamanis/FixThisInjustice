@@ -6,6 +6,8 @@ import type { RestTimer } from '../../../domain/training/restTimer';
 import { REST_GAME_CATALOG } from './restGameCatalog';
 import { forgetRestGameChoice, rememberRestGameChoice } from './restGameChoice';
 import { RestGameSheet } from './RestGameSheet';
+import { entryOf } from '../../nav/history';
+import { openOverlay } from '../../overlay/overlayStack';
 
 const NOW = Date.UTC(2026, 8, 11, 12, 0, 0); // [ms] epoch UTC
 
@@ -56,8 +58,13 @@ describe('RestGameSheet (P6)', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
     vi.setSystemTime(NOW);
     forgetRestGameChoice();
-    // Stubbed so a closed sheet's step back never reaches a later case (restoreMocks restores it).
-    back = vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    // A traversal that lands without moving: the stack swallows its own popstate (one per go),
+    // so every case starts with nothing in flight, and jsdom's history never walks off its start.
+    back = vi.spyOn(window.history, 'go').mockImplementation(() => {
+      setTimeout(() => {
+        window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state as unknown }));
+      }, 0);
+    });
   });
 
   afterEach(() => {
@@ -110,38 +117,41 @@ describe('RestGameSheet (P6)', () => {
     expect(second.onClose).toHaveBeenCalledWith(true);
   });
 
-  it('closes on Escape, unless a modal dialog above it owns the key', () => {
+  it('closes on Escape, unless an overlay opened above it takes the key first (one stack, R6)', () => {
     const { onClose } = renderSheet();
-    const modal = document.createElement('div');
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
-    document.body.append(modal);
+    const above = vi.fn();
+    const modal = openOverlay(above, { modal: true });
     fireEvent.keyDown(window, { key: 'Escape' });
+    expect(above).toHaveBeenCalledTimes(1);
     expect(onClose).not.toHaveBeenCalled();
-    modal.remove();
+    modal.release();
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
-  it('closes on Back, and ignores a traversal that lands on its own entry', () => {
+  it('pushes one history entry and closes on Back (R6)', async () => {
+    // An earlier case's close is a real history.go(-1) that jsdom delivers on a later task; the
+    // stack defers pushes until its own traversal has landed, so let it land first.
+    await new Promise((resolve) => {
+      setTimeout(resolve, 20); // [ms]
+    });
     const push = vi.spyOn(window.history, 'pushState');
     const { onClose } = renderSheet();
     expect(push).toHaveBeenCalledTimes(1);
-    expect(push.mock.calls[0]?.[0]).toEqual({ ftiRestGameSheet: true });
+    expect(entryOf(push.mock.calls[0]?.[0])).toMatchObject({ depth: 1 });
     act(() => {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: { ftiRestGameSheet: true } }));
-    });
-    expect(onClose).not.toHaveBeenCalled();
-    act(() => {
-      window.dispatchEvent(new PopStateEvent('popstate', { state: null }));
+      window.dispatchEvent(new PopStateEvent('popstate', { state: { fti: { view: 'train', depth: 0 } } }));
     });
     expect(onClose).toHaveBeenCalledWith(false);
   });
 
-  it('steps back over its own history entry when it closes any other way', () => {
+  it('steps back over its own history entry when it closes any other way', async () => {
     const { unmount } = renderSheet();
-    unmount();
-    expect(back).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      unmount();
+      await Promise.resolve(); // the step-back is issued in a microtask (src/ui/nav/history.ts)
+    });
+    expect(back).toHaveBeenCalledWith(-1);
   });
 
   it('hides the round behind a bar and shows the same board again', () => {
@@ -167,5 +177,21 @@ describe('RestGameSheet (P6)', () => {
   it('takes focus when it opens, so a hardware key reaches the game', () => {
     renderSheet();
     expect(document.activeElement).toBe(screen.getByRole('dialog', { name: copy('label.restGameSheet') }));
+  });
+  it('shows the remaining rest in its top row and in its minimised bar (brief 5.1)', () => {
+    render(
+      <RestGameSheet
+        timer={TIMER}
+        priorWins={0}
+        soundsEnabled={false}
+        units="metric"
+        t={copy}
+        overrides={{}}
+        clock="1:30"
+        onClose={() => undefined}
+        onWin={() => undefined}
+      />,
+    );
+    expect(screen.getByText('1:30')).toBeInTheDocument();
   });
 });

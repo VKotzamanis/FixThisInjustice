@@ -5,7 +5,7 @@
 // backgrounded and chimed a minute late).
 //
 // Units: instants are epoch ms UTC [ms]; every rest quantity is seconds [s]; the ring's
-// geometry is in SVG user units, which the viewBox maps to px at the rendered size.
+// strip is a percentage of the bar's width (C05: the ring is gone).
 //
 // The rest game (ROADMAP F1, P6, docs/design/rest-games.md) belongs to this panel because it lives
 // inside the rest: offered when a rest that carries a game identity starts, played in a bottom
@@ -14,13 +14,13 @@
 // both to the sheet as props (the P1 interface contract) and no game writes either.
 //
 // The rest-over CUES are not here: src/app/RestController.tsx fires them on any view (C06).
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useId, useState, type ReactElement } from 'react';
 import { FORMAT } from '../../../content/copy';
 import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { restRoundClockS } from '../../../domain/fun/restGames';
 import { extend, remainingS, totalS } from '../../../domain/training/restTimer';
 import type { EpochMs } from '../../../domain/types';
-import { SkinLabel } from '../../../skins/limelight/Icon';
+import { Icon, SkinLabel } from '../../../skins/limelight/Icon';
 import { useAppStore } from '../../../store';
 import { useRestGameWins, useRestTimer } from '../../../store/selectors';
 import { unlockAudio } from '../../audio/chime';
@@ -29,8 +29,6 @@ import { RestGameSheet } from './RestGameSheet';
 import '../../styles/train.css';
 import '../../styles/restGames.css';
 
-const RING_RADIUS = 28; // SVG user units, inside the 64-unit viewBox
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 const EXTEND_S = 30; // [s], the fixed extension `button.extendRest` names
 const TICK_MS = 1000; // [ms]
 const S_PER_MIN = 60; // [s/min]
@@ -61,6 +59,7 @@ export function RestTimerPanel(): ReactElement | null {
   const [game, setGame] = useState<RestGamePhase | null>(null);
   // Read once at mount, as Boot and PhaseTransition read it: it picks the rest-over sign's pulse.
   const [reduced] = useState<boolean>(prefersReducedMotion);
+  const tooLateId = useId(); // the too-late message the disabled game button points at
   const phase = timer !== null && game?.startedAt === timer.startedAt ? game.phase : 'ready';
   const restOver = timer !== null && remainingS(timer, now) <= 0;
 
@@ -122,6 +121,7 @@ export function RestTimerPanel(): ReactElement | null {
   const offerGame = roundS !== null && phase === 'ready' && !restOver;
   const gameFits = roundS !== null && remaining >= roundS; // [s] vs [s]
   const startedAt = timer.startedAt; // [ms] epoch UTC, the interval a phase is keyed to
+  const clock = FORMAT.restRemaining(minutes, seconds, overrides); // one formatted clock: bar and sheet
   /*
    * THE LIT SIGN (stylize survey item 3). The ring, the clock and the controls sit on the black
    * `.ll-panel`, which is where the lime `stopwatchPanel` icon was drawn to sit. At zero the sign
@@ -136,64 +136,24 @@ export function RestTimerPanel(): ReactElement | null {
 
   return (
     <div className="rest-panel">
-      <div className={signClass}>
-        <div className="rest-ring">
-          {/* Decorative: the remaining time is read from the text beside it, not from the arc.
-              Stroke colours come from train.css (lime track, pink arc on the black panel). */}
-          <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
-            <circle
-              className="rest-ring-track"
-              cx="32"
-              cy="32"
-              r={RING_RADIUS}
-              fill="none"
-              strokeWidth="3"
-            />
-            <circle
-              className="rest-ring-arc"
-              cx="32"
-              cy="32"
-              r={RING_RADIUS}
-              fill="none"
-              strokeWidth="3"
-              strokeDasharray={RING_CIRCUMFERENCE}
-              strokeDashoffset={RING_CIRCUMFERENCE * elapsedFraction}
-              transform="rotate(-90 32 32)"
-              strokeLinecap="round"
-            />
-          </svg>
-          {/* The overlay reaches the readout too (P8 close-out D). No table words it today, and
-              the zero padding stays in the frame: digit count is a property of a clock, not a
-              word a skin may change. */}
-          <span className="rest-time">{FORMAT.restRemaining(minutes, seconds, overrides)}</span>
+      {/*
+        * C05, brief 4.2: one 56 px bar docked above the tab bar. The digits are the signal; the
+        * strip on the top edge shows the elapsed fraction and never tweens (limelight.css: no
+        * quantity animates). The label stays a polite live region, visually hidden: the state is
+        * in the digits (0:00) and the pink flip, and a screen reader hears the words.
+        */}
+      <div className={signClass} role="group" aria-label={c('status.rest')}>
+        <span className="rest-progress" aria-hidden="true" style={{ width: `${String(elapsedFraction * 100)}%` }} />
+        <span className="rest-time">{clock}</span>
+        <div className="rest-label visually-hidden" aria-live="polite">
+          {restOver ? <span className="ll-label">{c('notification.restOver')}</span> : <SkinLabel copyKey="status.rest" />}
         </div>
         <div className="rest-controls">
-          {/*
-            * Through SkinLabel, so the two icons round three section 4.4 maps to these keys are
-            * reachable: `stopwatchPanel` here and `skip` on the control below (P8 close-out D;
-            * both were mapped when Icon.tsx was written and neither was ever rendered, because
-            * both call sites were a bare `c(key)`). SkinLabel reads the words through the same
-            * table `c` does, so the string is unchanged on every skin, and `Icon` returns null
-            * off limelight, so no other skin gains a glyph.
-            *
-            * `button.extendRest` stays a plain `c` call: section 4.4 gives it no icon, and a
-            * SkinLabel around it would add a wrapper element and nothing else.
-            */}
-          <div className="rest-label" aria-live="polite">
-            {restOver ? (
-              <span className="ll-label">{c('notification.restOver')}</span>
-            ) : (
-              <SkinLabel copyKey="status.rest" />
-            )}
-          </div>
           <button
             type="button"
             onClick={() => {
-              // C07: every Extend tap is a gesture, so it wakes an iOS context that a lock or an
-              // app switch interrupted; with sounds off it is left alone.
+              // C07: every Extend tap is a gesture; with sounds off the context is left alone.
               if (sounds) void unlockAudio();
-              // Through getState(): the store's actions are created once and never replace
-              // themselves, so subscribing to one hands the component an unbound method.
               useAppStore.getState().setRestTimer(extend(timer, EXTEND_S));
             }}
           >
@@ -211,6 +171,8 @@ export function RestTimerPanel(): ReactElement | null {
             <button
               type="button"
               className="rest-game-launch"
+              aria-label={c('button.restGameLaunch')}
+              aria-describedby={gameFits ? undefined : tooLateId}
               disabled={!gameFits}
               onClick={() => {
                 // The tap is a user gesture, so it may wake the shared audio context for the
@@ -219,12 +181,16 @@ export function RestTimerPanel(): ReactElement | null {
                 setGame({ startedAt, phase: 'open' });
               }}
             >
-              {c('button.restGameLaunch')}
+              <Icon name="sparklePanel" width={32} height={32} />
             </button>
           )}
         </div>
       </div>
-      {offerGame && !gameFits && <p className="rest-game-unavailable">{c('status.restWordTooLate')}</p>}
+      {offerGame && !gameFits && (
+        <p id={tooLateId} className="rest-game-unavailable visually-hidden">
+          {c('status.restWordTooLate')}
+        </p>
+      )}
       {phase === 'open' && !restOver && (
         <RestGameSheet
           key={startedAt}
@@ -234,6 +200,7 @@ export function RestTimerPanel(): ReactElement | null {
           units={units}
           t={c}
           overrides={overrides}
+          clock={clock}
           onClose={(played) => {
             // A round played spends this rest's one offer; a picker closed unplayed leaves it.
             setGame(played ? { startedAt, phase: 'closed' } : null);

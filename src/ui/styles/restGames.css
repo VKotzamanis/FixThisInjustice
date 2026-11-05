@@ -643,6 +643,19 @@
   line-height: 1.125rem;
 }
 
+/* The launcher on the docked rest bar (train.css): a 44 x 44 icon button. */
+.view .rest-controls .rest-game-launch {
+  width: var(--tap);
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rest-game-launch img {
+  image-rendering: pixelated;
+}
+
 /* ===== sheet ===== */
 /*
  * The game host (plan D1): a non-modal bottom sheet fixed over Train, out of the page flow, so the
@@ -683,6 +696,29 @@
 .rest-sheet:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -4px;
+}
+
+/*
+ * Brief 5.1: minimised, the sheet IS the rest bar: it docks exactly over it (one 56 px row:
+ * time, game name, Show Game) at the sheet rung, so the two never stack.
+ */
+.rest-sheet.is-minimised {
+  bottom: var(--dock-bottom);
+  box-sizing: border-box;
+  height: var(--restbar-h);
+  max-height: var(--restbar-h);
+  padding-top: 0;
+  padding-bottom: 0;
+  display: flex;
+  align-items: center;
+}
+
+.rest-sheet-clock {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--lime);
 }
 
 .rest-sheet-body {
@@ -728,7 +764,7 @@ body.rest-sheet-open .view.train {
 }
 
 body.rest-sheet-min .view.train {
-  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+  padding-bottom: calc(var(--restbar-h) + var(--space-6));
 }
 
 @keyframes rest-sheet-in {

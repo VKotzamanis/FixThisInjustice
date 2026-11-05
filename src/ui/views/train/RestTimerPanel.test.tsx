@@ -165,16 +165,16 @@ describe('RestTimerPanel: the lit sign (stylize survey item 3)', () => {
     expect(vibrate).not.toHaveBeenCalled();
   });
 
-  it('draws the ring, the clock and the controls on the black panel', () => {
+  it('is one row on the black panel: the clock, +30 s, i am ready and the game icon button', () => {
     const container = renderPanel('limelight');
     const panel = sign(container);
     expect(panel?.classList.contains('ll-panel')).toBe(true);
     expect(panel?.classList.contains('rest-over')).toBe(false);
-    // The ring takes its colours from the sheet, not from inline presentation attributes.
-    expect(container.querySelector('circle.rest-ring-track')?.getAttribute('stroke')).toBeNull();
-    expect(container.querySelector('circle.rest-ring-arc')?.getAttribute('stroke')).toBeNull();
-    // The stopwatchPanel icon (lime, drawn for a black ground) sits inside the panel now.
-    expect(panel?.querySelector('.rest-label img.ll-icon')).not.toBeNull();
+    // C05: no ring; a strip whose width is the elapsed fraction.
+    expect(container.querySelector('svg')).toBeNull();
+    expect(container.querySelector('.rest-progress')).not.toBeNull();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') })).toBeInTheDocument();
   });
 
   it('turns to the pulsing rest-over state, in words as well as colour, when the rest ends', () => {
@@ -269,7 +269,7 @@ describe('RestTimerPanel: the rest game (ROADMAP F1, P6)', () => {
     forgetRestGameChoice();
     // The sheet steps back over its own history entry when it closes; jsdom would deliver that
     // popstate to a later case's sheet, so the traversal is stubbed (restoreMocks restores it).
-    vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    vi.spyOn(window.history, 'go').mockImplementation(() => undefined);
   });
 
   it('offers one optional round with the rest and never writes the timer', () => {
@@ -311,7 +311,8 @@ describe('RestTimerPanel: the rest game (ROADMAP F1, P6)', () => {
     vi.setSystemTime(NOW + 30_000); // [ms] 30 s into a 90 s rest
     fireEvent(document, new Event('visibilitychange'));
 
-    expect(screen.getByText(FORMAT.restRemaining(1, 0))).toBeInTheDocument();
+    // The bar's clock (the sheet's top row repeats it, brief 5.1).
+    expect(document.querySelector('.rest-summary .rest-time')?.textContent).toBe(FORMAT.restRemaining(1, 0));
     expect(gameHeading()).toBeInTheDocument();
   });
 

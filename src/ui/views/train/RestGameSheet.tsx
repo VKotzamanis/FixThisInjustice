@@ -32,6 +32,8 @@ export interface RestGameSheetProps {
   /** played: true once a round was started, so the rest's one offer is spent. */
   onClose: (played: boolean) => void;
   onWin: () => void;
+  /** The remaining rest as the panel formats it ("1:30"); shown in the top row and the bar. */
+  clock?: string;
 }
 
 /** Classes on <body> that pad the Train page under the sheet (restGames.css, sheet section). */
@@ -43,7 +45,7 @@ interface PickerOpening {
 }
 
 export function RestGameSheet(props: RestGameSheetProps): ReactElement {
-  const { timer, priorWins, soundsEnabled, units, t, overrides, onClose, onWin } = props;
+  const { timer, priorWins, soundsEnabled, units, t, overrides, onClose, onWin, clock } = props;
   const context = gameContext(timer, 'RestGameSheet');
   // Read once when the sheet opens, so the list never reorders under the user's thumb.
   const [opening] = useState<PickerOpening>(() => {
@@ -102,6 +104,7 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
     >
       {minimised && entry !== null && (
         <div className="rest-sheet-bar">
+          {clock !== undefined && <span className="rest-sheet-clock">{clock}</span>}
           <span className="rest-sheet-bar-name">{t(entry.titleKey)}</span>
           <button
             type="button"
@@ -116,6 +119,7 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
       )}
       {/* Hidden, not unmounted: the round, its clock and its board survive Hide. */}
       <div className="rest-sheet-body" hidden={minimised}>
+        {clock !== undefined && <p className="rest-sheet-clock">{clock}</p>}
         {entry === null ? (
           <RestGamePicker
             families={opening.order}

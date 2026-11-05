@@ -192,3 +192,17 @@ describe('rest-game styles: every family (P6)', () => {
     }
   });
 });
+
+describe('the game sheet and the dock (P4a, brief 5.1)', () => {
+  const rule = (selector: string): string => gameRules.find((r) => r.selector === selector)?.body ?? '';
+
+  it('sits on the sheet rung, above the dock and the tab bar', () => {
+    expect(rule('.rest-sheet')).toMatch(/z-index:\s*var\(--z-sheet\);/);
+  });
+
+  it('minimised, docks exactly over the rest bar, one 56 px row, so the two never stack', () => {
+    const b = rule('.rest-sheet.is-minimised');
+    expect(b).toMatch(/bottom:\s*var\(--dock-bottom\);/);
+    expect(b).toMatch(/height:\s*var\(--restbar-h\);/);
+  });
+});

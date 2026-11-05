@@ -954,13 +954,12 @@ describe('TrainView rest timer', () => {
     expect(useAppStore.getState().session.restTimer).toBeNull();
   });
 
-  it('recomputes on visibilitychange after a background jump and chimes exactly once', () => {
+  it('recomputes on visibilitychange after a background jump and sounds nothing itself', () => {
     seedStore(seed());
     useAppStore
       .getState()
       .setRestTimer({ startedAt: NOW, endsAt: NOW + 90_000, durationS: 90 });
     renderTrain();
-    expect(playChime).not.toHaveBeenCalled();
 
     // Ten minutes backgrounded. remainingS is a function of endsAt, so it reads 0 rather than
     // a frozen count (master plan section 7, P4 timer gate).
@@ -968,44 +967,10 @@ describe('TrainView rest timer', () => {
     fireEvent(document, new Event('visibilitychange'));
 
     expect(screen.getByText(FORMAT.restRemaining(0, 0))).toBeInTheDocument();
-    expect(playChime).toHaveBeenCalledTimes(1);
-    expect(vibrate).toHaveBeenCalledTimes(1);
-
-    fireEvent(document, new Event('visibilitychange'));
-    expect(playChime).toHaveBeenCalledTimes(1);
-  });
-
-  it('posts a service-worker notification when the page is hidden at zero', async () => {
-    const showNotification = vi.fn<(title: string, options?: NotificationOptions) => Promise<void>>(
-      () => Promise.resolve(),
-    );
-    Object.defineProperty(navigator, 'serviceWorker', {
-      value: { ready: Promise.resolve({ showNotification }) },
-      configurable: true,
-    });
-    Object.defineProperty(globalThis, 'Notification', {
-      value: { permission: 'granted' },
-      configurable: true,
-      writable: true,
-    });
-    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
-
-    seedStore(seed());
-    useAppStore
-      .getState()
-      .setRestTimer({ startedAt: NOW, endsAt: NOW + 90_000, durationS: 90 });
-    renderTrain();
-
-    vi.setSystemTime(NOW + 10 * MINUTE_MS);
-    fireEvent(document, new Event('visibilitychange'));
-
-    await waitFor(() => {
-      expect(showNotification).toHaveBeenCalledWith(copyFor('limelight', 'notification.restOver'), { tag: 'rest' });
-    });
-
-    hidden.mockRestore();
-    Reflect.deleteProperty(navigator, 'serviceWorker');
-    Reflect.deleteProperty(globalThis, 'Notification');
+    // C06: the cues (chime once per interval, vibration, the hidden-page notification) belong to
+    // src/app/RestController.tsx, mounted by the shell; RestController.test.tsx pins them.
+    expect(playChime).not.toHaveBeenCalled();
+    expect(vibrate).not.toHaveBeenCalled();
   });
 });
 
@@ -1881,7 +1846,7 @@ describe('TrainView rest game (ROADMAP F1, P6)', () => {
   beforeEach(() => {
     forgetRestGameChoice();
     // The sheet steps back over its own history entry when it closes (useSheetDismiss).
-    vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+    vi.spyOn(window.history, 'go').mockImplementation(() => undefined);
   });
 
   it('offers the game with the rest a logged set starts, keyed to that set', () => {
