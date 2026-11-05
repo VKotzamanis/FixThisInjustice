@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from 'react';
+import { useState, type ReactElement } from 'react';
 import { Icon } from '../../skins/limelight/Icon';
 import type { LimelightIconName } from '../../skins/limelight/icons';
 import './limelight.css';
@@ -14,11 +14,6 @@ import './limelight.css';
 export interface MarqueeItem {
   readonly icon: LimelightIconName;
   readonly text: string;
-  /**
-   * What the moving track draws in place of `text` (the session counter's bare number in the burn
-   * face, owner review item 10). The static, announced line is always `text`.
-   */
-  readonly visual?: ReactNode;
 }
 
 /**
@@ -36,6 +31,9 @@ export interface MarqueeItem {
  *     strip and shows the first item alone, so the caller's first item is the item a
  *     reduced-motion user gets. That rule is CSS, not state: it holds before the first paint.
  *  4. IT NEVER BUILDS A STRING. Items arrive formatted; no number is restated here.
+ *  5. IT CARRIES TEXT ONLY. No canvas, no burn: the session counter once rode the track as a
+ *     13-16 px lit numeral and read as a tiny badge (owner report on 4a27393); the burn is
+ *     display-size only (SessionNumber in the view's heading).
  *
  * The ticker is part of the limelight presentation.
  */
@@ -83,7 +81,7 @@ export function Marquee({
           {scrolling.map((item, index) => (
             <span className="ll-marquee-item" key={`${String(index)}-${item.text}`}>
               <Icon name={item.icon} />
-              <span className="ll-marquee-text">{item.visual ?? item.text}</span>
+              <span className="ll-marquee-text">{item.text}</span>
               <Icon name="sparklePanel" />
             </span>
           ))}

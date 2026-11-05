@@ -104,10 +104,11 @@ afterEach(() => {
 
 /**
  * The hero's counter as the user reads it (owner review item 10: the bare number, "12"). Read
- * from its own slot: a bare digit is ambiguous as a page-wide text query.
+ * from its own slot, the heading row (owner report on 4a27393): a bare digit is ambiguous as a
+ * page-wide text query.
  */
 function heroPosition(root: ParentNode = document): string | null | undefined {
-  return root.querySelector('.today-position')?.textContent;
+  return root.querySelector('.today-heading-row .session-number-wrap')?.textContent;
 }
 
 describe('TodayView hero: a session is scheduled today', () => {
@@ -1266,20 +1267,27 @@ describe('Today: Start is the hero (brief 4.1)', () => {
     const { container } = render(<TodayView />);
     const start = button('button.startSession');
     expect(start.classList.contains('is-primary')).toBe(true);
+    // The heading row is the counter and the name (owner report on 4a27393); Start follows it.
     const name = container.querySelector('.today-hero h1');
-    expect(name?.nextElementSibling).toBe(start);
+    expect(name?.parentElement?.classList.contains('today-heading-row')).toBe(true);
+    expect(name?.parentElement?.nextElementSibling).toBe(start);
     const sub = container.querySelector('.today-hero .today-sub');
     expect(start.compareDocumentPosition(sub as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(container.querySelectorAll('.is-primary')).toHaveLength(1);
   });
 
-  it('puts no label above the hero name: the position line follows it', () => {
+  it('puts no label above the hero name: the counter leads it in one heading row', () => {
+    // Owner report on 4a27393: the counter on its own 12 px line read as "very small and out of
+    // place"; it is the screen's one display-size numeral, beside the heading.
     const { container } = render(<TodayView />);
     const hero = container.querySelector('.today-hero');
-    const position = hero?.querySelector('.today-position');
-    const name = hero?.querySelector('h1');
-    expect(position).not.toBeNull();
-    expect((name as Node).compareDocumentPosition(position as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const row = hero?.querySelector('.today-heading-row');
+    expect(row?.firstElementChild?.classList.contains('session-number-wrap')).toBe(true);
+    expect(row?.lastElementChild?.tagName).toBe('H1');
+    expect(hero?.querySelectorAll('.session-number')).toHaveLength(1);
+    expect(hero?.querySelector('.today-position')).toBeNull();
+    // The view's marquee line is text, never the counter.
+    expect(container.querySelector('.ll-marquee .session-number')).toBeNull();
   });
 
   it('keeps Start out of the secondary controls', () => {

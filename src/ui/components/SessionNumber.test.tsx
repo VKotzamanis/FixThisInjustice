@@ -5,7 +5,11 @@ import { act, render, screen } from '@testing-library/react';
 import { FORMAT } from '../../content/copy';
 import { createBurn } from '../effects/burnText';
 import { resetSessionMoments } from '../effects/burnMoments';
+import { ViewActiveContext } from '../nav/viewActive';
 import { SessionNumber } from './SessionNumber';
+import sessionNumberCss from './sessionNumber.css?raw';
+import trainCss from '../styles/train.css?raw';
+import tokensCss from '../styles/tokens.css?raw';
 
 vi.mock('../effects/burnText', () => ({ createBurn: vi.fn(() => null) }));
 vi.mock('../effects/litText', () => ({ renderLit: vi.fn(() => null), litSwitchOn: vi.fn(() => false) }));
@@ -95,6 +99,42 @@ describe('SessionNumber (review item 10)', () => {
     expect(create).toHaveBeenCalledTimes(1);
     const host = create.mock.calls[0]?.[0];
     expect(host?.closest('[hidden]')).toBeNull();
+  });
+
+  it('claims an advance seen behind another view once that view comes on screen', () => {
+    // The counter left the always-shown header ticker (owner report on 4a27393), so Today kept
+    // mounted behind Train (a finish that stays for the post-session weigh-in) must still burn.
+    const at = (active: boolean, shown: number) => (
+      <ViewActiveContext value={active}>
+        <SessionNumber planId="p" shown={shown} />
+      </ViewActiveContext>
+    );
+    const { rerender } = render(at(true, 3));
+    rerender(at(false, 4));
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(create).not.toHaveBeenCalled();
+    rerender(at(true, 4));
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+    rerender(at(false, 4));
+    rerender(at(true, 4));
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it('is set at the rest-over word size, read from the one token both rules use', () => {
+    // Rule 2 (derive, never copy): neither sheet restates the size; the token names it once.
+    const fontSizeOf = (css: string, selector: string): string | undefined =>
+      new RegExp(`${selector.replace('.', '\\.')} \\{[^}]*font-size:\\s*([^;]+);`).exec(css)?.[1]?.trim();
+    expect(fontSizeOf(sessionNumberCss, '.session-number-word')).toBe('var(--burn-word-size)');
+    expect(fontSizeOf(trainCss, '.rest-over-word')).toMatch(/^var\(--burn-word-size\)/);
+    expect(tokensCss.match(/--burn-word-size:\s*var\(--text-lg\);/g)).toHaveLength(2);
   });
 
   it('appends a status word after the number, outside the burn', () => {

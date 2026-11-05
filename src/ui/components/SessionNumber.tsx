@@ -15,6 +15,7 @@ import { FORMAT } from '../../content/copy';
 import { useCopyOverrides } from '../../content/useCopy';
 import { claimSessionAdvance } from '../effects/burnMoments';
 import { BurnWord } from '../effects/BurnWord';
+import { useViewActive } from '../nav/viewActive';
 import './sessionNumber.css';
 
 export interface SessionNumberProps {
@@ -26,7 +27,7 @@ export interface SessionNumberProps {
   suffix?: string;
 }
 
-/** Laid out and not inside a view kept mounted but hidden (the marquee's track is aria-hidden). */
+/** Laid out and not inside a view kept mounted but hidden. */
 function rendered(el: Element | null): boolean {
   return el !== null && el.closest('[hidden]') === null && el.getClientRects().length > 0;
 }
@@ -37,10 +38,14 @@ export function SessionNumber(props: SessionNumberProps): ReactElement {
   const ref = useRef<HTMLSpanElement>(null);
   // The number whose advance this renderer claimed; it keys the burn, so it burns once.
   const [burnt, setBurnt] = useState<number | null>(null);
+  // Re-checked when the view comes on screen: the counter is no longer in the always-shown header
+  // ticker, so a view kept mounted behind another (Today behind Train after a finish that stays
+  // for the post-session weigh-in) must still claim the advance when the user reaches it.
+  const active = useViewActive();
 
   useEffect(() => {
-    if (rendered(ref.current) && claimSessionAdvance(planId, shown)) setBurnt(shown);
-  }, [planId, shown]);
+    if (active && rendered(ref.current) && claimSessionAdvance(planId, shown)) setBurnt(shown);
+  }, [planId, shown, active]);
 
   const text = FORMAT.planPosition(shown, '');
   return (

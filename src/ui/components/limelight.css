@@ -40,7 +40,10 @@
   border-bottom: 3px solid var(--line-2);
   padding: 0 8px;
   background: var(--bg-3);
-  color: var(--text);
+  /* The ground is the panel (--bg-3), so the type is the panel's (21:1). It took --text (ink,
+   * 1:1) and showed only while its one item was the counter's own ink plate; the item is text
+   * now (owner report on 4a27393), so the Panel Owns Its Colours rule has to hold here. */
+  color: var(--panel-text);
   font: inherit;
   text-align: left;
   cursor: pointer;

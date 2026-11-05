@@ -3,10 +3,32 @@
  * burn's face as the rest-over word sets it (Archivo, heavy, normal width: WebKit's canvas has
  * no fontStretch, so a wide cut would burn narrower than the word), on the burn's ink plate
  * (burnWord.css: lime on ink, 10.91:1). Tabular figures: the number changes in a fixed slot.
+ *
+ * Display size only (owner report on 4a27393, "the numbers that glow appear very small and out
+ * of place"): the rest-over word's size, from the one token both rules read, so the plate is
+ * sized to the numeral wherever it sits (Today's heading row, beside Train's title). Never in a
+ * marquee or a text-size line.
  */
 .session-number-word {
   font-family: var(--sans);
+  font-size: var(--burn-word-size); /* [px] tokens.css */
   font-weight: 900;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+}
+
+/* Today: the counter leads the session heading, baseline to the heading's first line. */
+.today-heading-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.today-heading-row .hero-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.today-heading-row .session-number-wrap {
+  flex: 0 0 auto;
 }

@@ -99,15 +99,17 @@ test('panel words are lit still frames, each a 2D canvas, the words still named'
 });
 
 // Owner answer to review item 10 (2026-11-05): the counter is the bare number, named "Session n",
-// and burns once, in one renderer, when a completed session advances it.
+// and burns once, in one renderer, when a completed session advances it. Since the owner's report
+// on 4a27393 it lives only in the view's heading (Today's heading row after the finish), never in
+// a marquee, whose line stays the text "Session n".
 test('the session counter is the bare number and burns once on a completed session', async ({ context }) => {
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '18:00'));
   const page = await openApp(context);
-  const headerNumber = page.locator('.topbar .session-number').first();
-  await expect(headerNumber).toHaveText('1');
+  const heroNumber = page.locator('.view-slot:not([hidden]) .today-heading-row .session-number');
+  await expect(heroNumber).toHaveText('1');
+  await expect(heroNumber).toHaveAccessibleName('Session 1');
   await expect(page.locator('.topbar .ll-marquee-static')).toContainText('Session 1');
-  await expect(page.locator('.view-slot:not([hidden]) .today-position').getByRole('img', { name: 'Session 1' })).toBeVisible();
   const webgl = await hasWebgl(page);
   await startFromToday(page);
   await logSet(page, 1, '60', '5');
@@ -118,7 +120,8 @@ test('the session counter is the bare number and burns once on a completed sessi
   await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 200); // [ms] epoch
   await page.getByRole('button', { name: LABEL.finish }).dispatchEvent('click');
   await page.getByRole('button', { name: LABEL.finishAnyway, exact: true }).dispatchEvent('click');
-  await expect(headerNumber).toHaveText('2');
+  await expect(heroNumber).toHaveText('2');
+  await expect(page.locator('.topbar .ll-marquee-static')).toContainText('Session 2');
   const burning = page.locator('.session-number canvas.burn-canvas');
   if (webgl) {
     let stepped = 0; // [ms]
@@ -130,5 +133,5 @@ test('the session counter is the bare number and burns once on a completed sessi
   }
   await page.clock.runFor(1_400); // [ms] past the 1.2 s burn
   await expect(burning).toHaveCount(0);
-  await expect(headerNumber).toHaveText('2');
+  await expect(heroNumber).toHaveText('2');
 });

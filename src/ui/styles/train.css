@@ -391,7 +391,7 @@
  * reads lime on ink (10.91:1) on the pink bar and burns once after the pulse. */
 .rest-over-word {
   margin-right: auto;
-  font-size: var(--text-lg);
+  font-size: var(--burn-word-size); /* [px] tokens.css, shared with the session counter */
   font-weight: 800;
   line-height: 1.4;
   text-transform: uppercase;

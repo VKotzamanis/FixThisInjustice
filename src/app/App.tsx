@@ -53,7 +53,6 @@ import { AtlasView, IntroGate, LogView, SettingsView, SetupWizard } from './rout
 import { UnreadableNotice } from './UnreadableNotice';
 import { BRAND_SHORT } from './brand';
 import { LitWord } from '../ui/effects/LitWord';
-import { SessionNumber } from '../ui/components/SessionNumber';
 import './appShell.css';
 
 /**
@@ -550,11 +549,8 @@ function TopbarTicker(): ReactElement | null {
         complete ? t('hero.programmeComplete') : '',
         overrides,
       ),
-      // Owner review item 10: the track shows the bare number in the burn face, burning once on
-      // a completed session; the announced line above stays "Session n".
-      visual: (
-        <SessionNumber planId={cursor.planId} shown={shown} suffix={complete ? t('status.planComplete') : ''} />
-      ),
+      // Plain text: the burning counter is display-size only, in the view's heading (owner
+      // report on 4a27393), never a canvas on the moving strip.
     });
   }
 

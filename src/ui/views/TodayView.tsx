@@ -223,6 +223,17 @@ export function TodayView(): JSX.Element {
   const shown = Math.min(cursor.nextSessionIndex + 1, total);
   // Owner review item 10: the bare number in the burn face, burning once on a completed session.
   const position = <SessionNumber planId={cursor.planId} shown={shown} />;
+  /*
+   * The hero's heading row: the counter leads the heading at display size, the screen's one
+   * SessionNumber (owner report on 4a27393: the 12 px counter on a line of its own read as "very
+   * small and out of place"). Every hero with a plan carries it; the marquee lines stay text.
+   */
+  const headingRow = (text: string, counter: JSX.Element = position): JSX.Element => (
+    <div className="today-heading-row">
+      {counter}
+      <HeroName text={text} />
+    </div>
+  );
   const canRun = status === 'planned' || status === 'in-progress';
   /*
    * Spec R3 (D02): any day without a session of its own can train the cursor's next one. The
@@ -274,7 +285,7 @@ export function TodayView(): JSX.Element {
    * has to survive every other line being scrolled away.
    */
   const marqueeItems: MarqueeItem[] = [
-    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, '', overrides), visual: position },
+    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, '', overrides) },
   ];
   /*
    * THE POPUP OWNS AN UNACKNOWLEDGED MISS, so the ticker stays off it.
@@ -374,18 +385,16 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         {mascot}
-        <HeroName text={c('hero.sessionInProgress')} />
+        {headingRow(c('hero.sessionInProgress'))}
         {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
-        <p className="today-position">{position}</p>
       </div>
     );
   } else if (status === 'paused') {
     hero = (
       <div className="today-hero">
         {mascot}
-        <HeroName text={FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)} />
+        {headingRow(FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides))}
         <p className="today-sub">{c('advice.pauseHoldsCursor')}</p>
-        <p className="today-position">{position}</p>
       </div>
     );
   } else if (status === 'completed' || status === 'skipped') {
@@ -393,19 +402,16 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         {mascot}
-        <HeroName
-          text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
-        />
+        {headingRow(c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped'))}
         {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
         {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
-        <p className="today-position">{position}</p>
       </div>
     );
   } else if (session !== null) {
     hero = (
       <div className="today-hero">
         {mascot}
-        <HeroName text={sessionTitle(plan, session)} />
+        {headingRow(sessionTitle(plan, session))}
         {startButton}
         <p className="today-sub">
           {FORMAT.sessionSummary(
@@ -414,7 +420,6 @@ export function TodayView(): JSX.Element {
             session.exercises.length,
           )}
         </p>
-        <p className="today-position">{position}</p>
         <ul className="session-list">
           {session.exercises.map((ex) => (
             <li key={ex.exerciseId} className="sess-row">
@@ -436,12 +441,12 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         {mascot}
-        <HeroName text={c('hero.programmeComplete')} />
+        {headingRow(
+          c('hero.programmeComplete'),
+          <SessionNumber planId={cursor.planId} shown={shown} suffix={c('status.planComplete')} />,
+        )}
         <p className="today-sub">
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
-        </p>
-        <p className="today-position">
-          <SessionNumber planId={cursor.planId} shown={shown} suffix={c('status.planComplete')} />
         </p>
       </div>
     );
@@ -450,7 +455,7 @@ export function TodayView(): JSX.Element {
     hero = (
       <div className="today-hero">
         {mascot}
-        <HeroName text={c('hero.noSessionToday')} />
+        {headingRow(c('hero.noSessionToday'))}
         {startButton}
         <p className="today-sub">
           {next === null || next.slot === null || next.projectedSession === null
@@ -462,7 +467,6 @@ export function TodayView(): JSX.Element {
                 overrides,
               )}
         </p>
-        <p className="today-position">{position}</p>
       </div>
     );
   }

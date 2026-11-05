@@ -262,7 +262,6 @@
  * 44 px minimum target and the 16 px font size, and the skip-reason field is a
  * `.view input[type='text']` for the same reason. Nothing below overrides either.
  */
-.view.today .today-position,
 .view.today .today-eyebrow {
   margin: 0 0 0.25rem;
   font-size: 0.75rem;

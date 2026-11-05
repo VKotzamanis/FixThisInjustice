@@ -186,6 +186,10 @@
   --burn-mid: #ff4fd8;
   --burn-hot: var(--panel-text);
   --burn-glow: #ee7392;
+  /* [px] The one size a burning or lit word is set at: the rest-over word (train.css) and the
+   * session counter (sessionNumber.css). The burn cannot read at text size (owner report on
+   * 4a27393: "the numbers that glow appear very small"), so it is display-only. */
+  --burn-word-size: var(--text-lg);
   /*
    * The lit word (review item 8): the burn's shader as one still frame, flames off, in lime
    * accents. Uniform order as --burn-*: resting letter, deep, mid, hot, glow. Every glyph tone is
@@ -441,6 +445,10 @@ body {
   --burn-mid: #ff4fd8;
   --burn-hot: var(--panel-text);
   --burn-glow: #ee7392;
+  /* [px] The one size a burning or lit word is set at: the rest-over word (train.css) and the
+   * session counter (sessionNumber.css). The burn cannot read at text size (owner report on
+   * 4a27393: "the numbers that glow appear very small"), so it is display-only. */
+  --burn-word-size: var(--text-lg);
   /*
    * The lit word (review item 8): the burn's shader as one still frame, flames off, in lime
    * accents. Uniform order as --burn-*: resting letter, deep, mid, hot, glow. Every glyph tone is
