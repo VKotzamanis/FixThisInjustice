@@ -391,6 +391,14 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Gym Anagram (P6) ---
+  | 'hero.restGameAnagram'
+  | 'advice.restGameAnagramRule'
+  | 'label.restGameAnagramLetters'
+  | 'label.restGameAnagramAnswer'
+  | 'button.restGameAnagramUndo'
+  | 'button.restGameAnagramClear'
+  | 'status.restGameAnagramWrong'
   // --- Sequence Recall (P6) ---
   | 'hero.restGameSequence'
   | 'advice.restGameSequenceRule'
@@ -1294,6 +1302,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6 Gym Anagram (src/ui/views/train/GymAnagramGame.tsx).
+  'hero.restGameAnagram': 'Gym Anagram',
+  'advice.restGameAnagramRule': 'Tap the letters in order to spell the gym word.',
+  'label.restGameAnagramLetters': 'Scrambled Letters',
+  'label.restGameAnagramAnswer': 'Your Answer',
+  'button.restGameAnagramUndo': 'Undo Letter',
+  'button.restGameAnagramClear': 'Clear Answer',
+  'status.restGameAnagramWrong': 'Not that word. Try again.',
   // P6 Sequence Recall (src/ui/views/train/SequenceRecallGame.tsx).
   'hero.restGameSequence': 'Sequence Recall',
   'advice.restGameSequenceRule': 'Watch the pads light up, then tap them in order.',
