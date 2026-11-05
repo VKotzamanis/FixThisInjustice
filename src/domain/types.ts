@@ -321,7 +321,9 @@ export type SkinId = 'limelight';
 // Train (owner 2026-10-18, "Showing it once is ok"). OPTIONAL, not defaulted, so a document or
 // export written before it existed parses to exactly what was stored; `| undefined` is spelled
 // out for type identity with z.infer under exactOptionalPropertyTypes (see activityPal).
-export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; }
+// lastBlockSeenByPlan (P3 D13): the block last announced per plan id; OPTIONAL, absent on older
+// documents, read before the per-profile value (src/domain/fun/blocks.ts lastBlockSeen).
+export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; lastBlockSeenByPlan?: Record<string, number> | undefined; }
 
 // ---- setup draft (persisted so a closed browser does not lose in-progress setup) ----
 /*
@@ -456,6 +458,11 @@ export interface SetupAnswers {
 export interface SetupDraft extends SetupAnswers {
   /** Index into STEPS (src/ui/setup/SetupWizard.tsx), so a reload reopens on the same screen. */
   stepIndex: number;
+  /**
+   * The STEPS id of the same screen (audit A06). Optional and additive: absent on drafts written
+   * before it; the wizard restores by id when it knows it, else clamps stepIndex.
+   */
+  stepId?: string | undefined;
   /** The step in progress, or null when nothing has been typed since the last Next or Back. */
   buffer: SetupAnswers | null;
 }

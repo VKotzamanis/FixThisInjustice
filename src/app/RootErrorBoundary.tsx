@@ -42,6 +42,8 @@ interface Props {
   children: ReactNode;
   /** Test seam. Production passes nothing and the real download runs. */
   onDownload?: (filename: string, text: string) => void;
+  /** Injected by tests; the app reloads the page (audit A12). */
+  onReload?: () => void;
 }
 
 interface State {
@@ -123,6 +125,15 @@ export class RootErrorBoundary extends Component<Props, State> {
    * function that touches no store state, which makes the pair reachable even
    * then.
    */
+  /** Audit A12: an installed iOS app has no browser reload button, so the screen offers one. */
+  private readonly handleReload = (): void => {
+    if (this.props.onReload !== undefined) {
+      this.props.onReload();
+      return;
+    }
+    window.location.reload();
+  };
+
   private readonly handleClear = (): void => {
     try {
       useAppStore.getState().wipeAll();
@@ -153,6 +164,10 @@ export class RootErrorBoundary extends Component<Props, State> {
         <h1>The app could not start</h1>
         <p>Your data is unchanged. Export it before clearing.</p>
         <pre>{error.message}</pre>
+
+        <button type="button" onClick={this.handleReload}>
+          Reload
+        </button>
 
         <button type="button" onClick={this.handleExport}>
           Export stored data

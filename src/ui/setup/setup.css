@@ -228,6 +228,9 @@
 .wiz dd {
   margin: 0;
   text-align: right;
+  /* Audit A17: an unbroken 80-character name overflowed the review and covered Looks Good. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 24rem) {

@@ -69,6 +69,7 @@ import {
   type MuscleAxis,
   type Profile,
   type SetupAnswers,
+  type SetupDraft,
   type Sex,
   type StatedSex,
   type UnitSystem,
@@ -85,7 +86,7 @@ import {
   storedLoadKg,
   storedMassKg,
 } from '../components/UnitInput';
-import { useAppStore } from '../../store';
+import { flushSave, useAppStore } from '../../store';
 import {
   BODY_EQUATIONS,
   BODY_EQUATIONS_LEAD,
@@ -136,6 +137,7 @@ import {
 import { vibrate } from '../audio/chime';
 import { ModalShell } from '../components/ModalShell';
 import { GuidanceScreen } from './GuidanceScreen';
+import { convertBodyAnswers } from './unitSwitch';
 import { usePublishSetupBanner } from './setupBanner';
 import {
   ACTIVITY_LEVEL_EXAMPLES,
@@ -179,6 +181,19 @@ export const STEPS = [
 ] as const;
 
 export type StepId = (typeof STEPS)[number];
+
+/**
+ * Audit A06: the step a stored draft resumes on. By `stepId` when it names a step that still
+ * exists, else the stored index clamped into STEPS, so a stale or out-of-range index (a draft
+ * saved under a longer step list, or a hand-edited one) can never open "Step 9 of 8" with no way
+ * forward.
+ */
+export function restoreStepIndex(draft: Pick<SetupDraft, 'stepIndex' | 'stepId'> | null): number {
+  if (draft === null) return 0;
+  const byId = draft.stepId === undefined ? -1 : (STEPS as readonly string[]).indexOf(draft.stepId);
+  if (byId >= 0) return byId;
+  return Math.min(Math.max(0, Math.trunc(draft.stepIndex)), STEPS.length - 1);
+}
 
 /*
  * The step titles as KEYS, not as resolved strings. A module constant is evaluated once at
@@ -304,7 +319,7 @@ const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
   cunningham: 'Cunningham',
 };
 
-const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
+export const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
   { value: 1, labelKey: 'weekday.monday' },
   { value: 2, labelKey: 'weekday.tuesday' },
   { value: 3, labelKey: 'weekday.wednesday' },
@@ -1213,8 +1228,8 @@ export function SetupWizard(): JSX.Element {
    * The UNCOMMITTED half of the two tiers, r2.11 / plan decision A2: "the data of a field cell
    * should not be replaced at the entry point (store it as temp), but it should be replaced only
    * when NEXT is pressed." Every control on every step writes here; Next merges this into
-   * `committed` and clears it, and Back clears it without merging, which is what makes Back
-   * non-destructive.
+   * `committed` and clears it. Back keeps it (audit A05), so a look back loses nothing typed, and
+   * still commits nothing.
    *
    * It is RESTORED from storage, not started empty, and that is the whole point of persisting two
    * tiers rather than one. Round 1's most valued behaviour (C1.G.1) is that setup survives a
@@ -1224,8 +1239,8 @@ export function SetupWizard(): JSX.Element {
   const [buffer, setBuffer] = useState<Draft | null>(
     () => useAppStore.getState().setupDraft?.buffer ?? null,
   );
-  const [stepIndex, setStepIndex] = useState<number>(
-    () => useAppStore.getState().setupDraft?.stepIndex ?? 0,
+  const [stepIndex, setStepIndex] = useState<number>(() =>
+    restoreStepIndex(useAppStore.getState().setupDraft),
   );
   /*
    * What the screen renders and what every validator below reads: the committed answers with the
@@ -1288,17 +1303,26 @@ export function SetupWizard(): JSX.Element {
    */
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftSaveMounted = useRef(false);
+  /** Audit A07: the draft the timer will hand the store, so backgrounding can hand it now. */
+  const pendingDraft = useRef<SetupDraft | null>(null);
   useEffect(() => {
     if (!draftSaveMounted.current) {
       draftSaveMounted.current = true;
       return;
     }
-    if (submitted) return;
+    if (submitted) {
+      pendingDraft.current = null; // setup is done: nothing may resurrect the draft
+      return;
+    }
+    // BOTH tiers, separately (A2). The committed answers spread flat, exactly as before; the
+    // step in progress rides beside them under `buffer` and never overwrites them. The step id
+    // rides beside the index (A06).
+    const next: SetupDraft = { ...committed, stepIndex, stepId: STEPS[stepIndex] ?? STEPS[0], buffer };
+    pendingDraft.current = next;
     draftSaveTimer.current = setTimeout(() => {
-      // BOTH tiers, separately (A2). The committed answers spread flat, exactly as before; the
-      // step in progress rides beside them under `buffer` and never overwrites them.
+      pendingDraft.current = null;
       try {
-        useAppStore.getState().saveSetupDraft({ ...committed, stepIndex, buffer });
+        useAppStore.getState().saveSetupDraft(next);
       } catch {
         // Spec R5 (review N4): the store refused a draft the loader could not reload (a field
         // over its bound) and wrote nothing, so the last valid draft stays stored. A timer
@@ -1309,6 +1333,40 @@ export function SetupWizard(): JSX.Element {
       if (draftSaveTimer.current !== null) clearTimeout(draftSaveTimer.current);
     };
   }, [committed, buffer, stepIndex, submitted]);
+
+  /*
+   * Audit A07: the last keystrokes reach storage when the app is backgrounded. iOS may kill a
+   * suspended PWA without another event, and the store's own pagehide/visibilitychange flush
+   * (src/store/index.ts startPersistence) cannot see a draft still waiting in the timer above,
+   * so the wizard hands it over and flushes the store itself.
+   */
+  useEffect(() => {
+    const flush = (): void => {
+      const next = pendingDraft.current;
+      if (next === null) return;
+      if (draftSaveTimer.current !== null) {
+        clearTimeout(draftSaveTimer.current);
+        draftSaveTimer.current = null;
+      }
+      pendingDraft.current = null;
+      try {
+        useAppStore.getState().saveSetupDraft(next);
+      } catch {
+        // Spec R5 (review N4), as in the timer above: a refused draft writes nothing; an event
+        // listener must not throw. Whatever else is pending is still flushed.
+      }
+      flushSave();
+    };
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []);
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
 
@@ -1470,15 +1528,6 @@ export function SetupWizard(): JSX.Element {
   }
 
   /**
-   * Back: the step's answers are DISCARDED rather than committed (A2, "Back does not commit").
-   * The committed answers are what the previous step renders, so a user who typed something on a
-   * step and then went back finds the screen as they last confirmed it, not half-edited.
-   */
-  function discardStep(): void {
-    setBuffer(null);
-  }
-
-  /**
    * `error.valueRequired` hidden until Next has been pressed on this step, everywhere else shown
    * as computed. Only the "enter a number" message is gated: an out-of-range or malformed value
    * the user has just typed is informative the moment it appears, and every existing domain-guard
@@ -1492,9 +1541,16 @@ export function SetupWizard(): JSX.Element {
     return bodyNextAttempted ? error : null;
   }
 
-  /** Switching unit re-seeds every equipment step in the new unit. */
+  /**
+   * Audit A04 (plan ruling PR-8): switching unit CONVERTS what was typed (body mass, target mass,
+   * girths, stature) into the new unit, where it used to reinterpret "80" kg as "80" lb. The
+   * equipment steps are re-seeded in the new unit, as before: a converted 2.5 kg step is 5.51 lb,
+   * a plate nobody owns.
+   */
   function setUnits(units: UnitSystem): void {
+    if (units === draft.units) return;
     patch({
+      ...convertBodyAnswers(draft, units),
       units,
       barbellStep: String(DEFAULT_BARBELL_STEP[units]),
       dumbbellStep: String(DEFAULT_DUMBBELL_STEP[units]),
@@ -1704,19 +1760,18 @@ export function SetupWizard(): JSX.Element {
     !tapeIncomplete &&
     tapeEstimate === null;
 
+  /*
+   * Audit A09: each guard sits on the predicate that renders its field. With the load steps
+   * hidden (Body weight only), a value cleared earlier must not block Next with no field to fix.
+   */
+  const loadStepsShown = showsLoadSteps(draft.equipment);
   const stepErrors = {
-    barbell: stepError(
-      copy('quantity.barbellStep', overrides),
-      draft.barbellStep,
-      draft.units,
-      overrides,
-    ),
-    dumbbell: stepError(
-      copy('quantity.dumbbellStep', overrides),
-      draft.dumbbellStep,
-      draft.units,
-      overrides,
-    ),
+    barbell: loadStepsShown
+      ? stepError(copy('quantity.barbellStep', overrides), draft.barbellStep, draft.units, overrides)
+      : null,
+    dumbbell: loadStepsShown
+      ? stepError(copy('quantity.dumbbellStep', overrides), draft.dumbbellStep, draft.units, overrides)
+      : null,
     /*
      * NO `stack` ENTRY, round 3 Task 8. The weight-stack field is off the screen, so an error
      * about it would block Next on a message with no field to correct it in -- the exact defect
@@ -2158,8 +2213,16 @@ export function SetupWizard(): JSX.Element {
     // Idempotent by latch, not by the disabled attribute alone: a double tap can deliver two
     // clicks before React has re-rendered the button, and each one would create a new profile.
     if (submitted || confirmBlocked) return;
-    const barbellKg = storedLoadKg(draft.barbellStep, draft.units); // [kg]
-    const dumbbellPairKg = storedLoadKg(draft.dumbbellStep, draft.units); // [kg]
+    /*
+     * A09: a hidden load step can neither block nor break Confirm. An unusable hidden value is
+     * replaced by the unit's default, the value the field is seeded with.
+     */
+    const loadStepKg = (text: string, fallback: number): number | null =>
+      loadStepsShown || stepError('', text, draft.units, overrides) === null
+        ? storedLoadKg(text, draft.units)
+        : storedLoadKg(String(fallback), draft.units);
+    const barbellKg = loadStepKg(draft.barbellStep, DEFAULT_BARBELL_STEP[draft.units]); // [kg]
+    const dumbbellPairKg = loadStepKg(draft.dumbbellStep, DEFAULT_DUMBBELL_STEP[draft.units]); // [kg]
     const stackKg = storedLoadKg(draft.stackStep, draft.units); // [kg]
     /*
      * Brief I Part 2. Where the body-fat route was open, the stored target mass is the one that
@@ -4085,8 +4148,8 @@ export function SetupWizard(): JSX.Element {
           <button
             type="button"
             onClick={() => {
-              // A2: Back discards the step in progress instead of committing it.
-              discardStep();
+              // A05 (plan ruling PR-9): Back keeps the step in progress. It still does not
+              // commit: only Next replaces the stored answers (A2).
               setStepIndex((n) => n - 1);
             }}
           >

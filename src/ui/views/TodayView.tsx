@@ -2,7 +2,8 @@ import { useEffect, useRef, useState, type JSX } from 'react';
 import { FORMAT, type CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
-import { isAfterProgramme } from '../../domain/schedule/weekly';
+import { sessionTitle } from '../../domain/schedule/rotation';
+import { isInProgramme, reviewVerdict } from '../../domain/schedule/weekly';
 import { nextProgrammeGoal } from '../../domain/plan/lifecycle';
 import type { GoalKind, PlanPause, WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
@@ -230,7 +231,8 @@ export function TodayView(): JSX.Element {
   // is the store's own, sorted oldest first by closeWeeks(). A stored week after the one the
   // programme completed in is skipped: builds before ROADMAP B1's fix graded those as misses,
   // and documents saved then still hold them.
-  const graded = reviews.filter((r) => !isAfterProgramme(r.weekStart, cursor));
+  // D11: only this programme's weeks; a review of the plan Start Next Programme replaced is history.
+  const graded = reviews.filter((r) => isInProgramme(r.weekStart, cursor));
   const lastReview: WeeklyReview | null =
     graded.length === 0 ? null : (graded[graded.length - 1] ?? null);
   /*
@@ -279,10 +281,9 @@ export function TodayView(): JSX.Element {
    * still asking about that same week is the duplication code review A59 recorded, and it is the
    * same rule Intervention.tsx already applies to the block further down the screen.
    *
-   * `paused` stays beside it for the reason weekly.ts gives: a paused week carries delta = 0 by
-   * construction, and "target met" would report a week in which nothing was scheduled.
+   * reviewVerdict (weekly.ts) drops a week that asked for nothing, and a legacy paused review.
    */
-  if (lastReview !== null && !lastReview.paused && lastReview.missHandled) {
+  if (lastReview !== null && reviewVerdict(lastReview) !== 'none' && lastReview.missHandled) {
     marqueeItems.push({
       icon: lastReview.delta < 0 ? 'skull' : 'crownPanel',
       text: FORMAT.withSlots(
@@ -354,7 +355,7 @@ export function TodayView(): JSX.Element {
         <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName text={c('hero.sessionInProgress')} />
-        {session !== null && <p className="today-sub">{session.name}</p>}
+        {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
       </div>
     );
   } else if (status === 'paused') {
@@ -375,7 +376,7 @@ export function TodayView(): JSX.Element {
         <HeroName
           text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
         />
-        {session !== null && <p className="today-sub">{session.name}</p>}
+        {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
         {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
       </div>
     );
@@ -384,7 +385,7 @@ export function TodayView(): JSX.Element {
       <div className="today-hero">
         <p className="today-eyebrow">{position}</p>
         {mascot}
-        <HeroName text={session.name} />
+        <HeroName text={sessionTitle(plan, session)} />
         <p className="today-sub">
           {FORMAT.sessionSummary(
             session.label,

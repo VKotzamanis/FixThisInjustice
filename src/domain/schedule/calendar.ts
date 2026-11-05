@@ -34,6 +34,8 @@
 //      pick on any other day wrote a session the calendar does not place there.
 //   5. The reshuffled plan is stored under cursor.planId, the key every read in this module
 //      resolves the plan by, not under plan.id.
+//   6. (P3 D15) The window also ends at the last index of the cursor's block: a swap never
+//      carries a session across a training/deload boundary.
 //
 // Every refusal is shared with remainingLabelsThisWeek through one predicate (gateReason), so
 // the two cannot drift: the labels offered are exactly the labels honoured.
@@ -42,7 +44,8 @@
 // parallel copy of the consumption rule, so the two can never disagree.
 
 import { addDays, compareLocalDate, daysBetween, isoWeekday, weekEnd, weekStart } from '../dates';
-import { weeklyQuota } from './quota';
+import { weeklyQuota, type ScheduleState } from './quota';
+import { blockFor } from '../training/progression';
 import { isPaused, isTerminal, upsertAssignment } from './cursor';
 import type {
   AppState,
@@ -68,7 +71,7 @@ export interface CalendarDay {
  * weekday, and a day is one training day whichever way the user filled the form, so a
  * duplicate must never consume a second session.
  */
-function slotsByWeekday(state: AppState, profileId: string): Map<IsoWeekday, AvailabilitySlot> {
+function slotsByWeekday(state: ScheduleState, profileId: string): Map<IsoWeekday, AvailabilitySlot> {
   const map = new Map<IsoWeekday, AvailabilitySlot>();
   for (const slot of state.availability[profileId]?.slots ?? []) {
     if (!map.has(slot.weekday)) map.set(slot.weekday, slot);
@@ -76,7 +79,7 @@ function slotsByWeekday(state: AppState, profileId: string): Map<IsoWeekday, Ava
   return map;
 }
 
-function assignmentsByDate(state: AppState, profileId: string): Map<LocalDate, SessionAssignment> {
+function assignmentsByDate(state: ScheduleState, profileId: string): Map<LocalDate, SessionAssignment> {
   const map = new Map<LocalDate, SessionAssignment>();
   for (const a of state.assignments[profileId] ?? []) map.set(a.date, a);
   return map;
@@ -90,7 +93,7 @@ function assignmentsByDate(state: AppState, profileId: string): Map<LocalDate, S
  *         Infinity would not terminate. Mirrors addDays' guard in src/domain/dates.ts.
  */
 export function projectedCalendar(
-  state: AppState,
+  state: ScheduleState,
   profileId: string,
   from: LocalDate,
   days: number,
@@ -283,7 +286,19 @@ function withSpan(
   base: WindowBase,
 ): SwapWindow {
   const span = weekSpan(state, profileId, date); // [sessions] >= 1
-  return { ...base, end: Math.min(base.target + span - 1, base.plan.sessions.length - 1) };
+  /*
+   * D15: never past the end of the block the cursor stands in. Blocks are positional (a deload
+   * is a run of positions), so inside one block a swap moves only the rotation label.
+   */
+  const block = blockFor(base.plan, base.target);
+  const blockLast =
+    block.sessionCount > 0
+      ? block.firstSessionIndex + block.sessionCount - 1 // [sessions] offset, inclusive
+      : base.plan.sessions.length - 1; // a plan with no blocks is one block
+  return {
+    ...base,
+    end: Math.min(base.target + span - 1, base.plan.sessions.length - 1, blockLast),
+  };
 }
 
 function swapWindow(state: AppState, profileId: string, date: LocalDate): SwapWindow | null {

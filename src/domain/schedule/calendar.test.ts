@@ -540,3 +540,21 @@ describe('assignToday', () => {
     expect(cursorOf(next).nextSessionIndex).toBe(0);
   });
 });
+
+describe('D15: plot twist stays inside the cursor block', () => {
+  const ABC = ['A', 'B', 'C', 'A', 'B', 'C', 'A', 'B', 'C', 'A', 'B', 'C'];
+  const BLOCKS = [
+    { index: 0, firstSessionIndex: 0, sessionCount: 9, setModifier: 1, loadModifier: 1, isDeload: false },
+    { index: 1, firstSessionIndex: 9, sessionCount: 3, setModifier: 0.5, loadModifier: 1, isDeload: true },
+  ];
+  it('offers only labels from the block the cursor stands in, and refuses one past its end', () => {
+    // Cursor on index 8, the last session of the training block, on a Monday of Mon/Wed/Fri.
+    const s = seedState({ labels: ABC, weekdays: [1, 3, 5], nextSessionIndex: 8, blocks: BLOCKS });
+    expect(remainingLabelsThisWeek(s, PROFILE_ID, MONDAY)).toEqual(['C']);
+    expect(() => assignToday(s, PROFILE_ID, MONDAY, 'A')).toThrow(RangeError);
+  });
+  it('still swaps inside one block', () => {
+    const s = seedState({ labels: ABC, weekdays: [1, 3, 5], nextSessionIndex: 6, blocks: BLOCKS });
+    expect(remainingLabelsThisWeek(s, PROFILE_ID, MONDAY)).toEqual(['A', 'B', 'C']);
+  });
+});

@@ -254,6 +254,19 @@ describe('LogView compliance', () => {
     ).toBeTruthy();
   });
 
+  it('marks a preferred day nobody opened as missed, not "not planned" (D06)', () => {
+    render(<LogView />);
+    // Week of 2026-02-16 has no rows at all: its three preferred days are owed.
+    for (const date of ['2026-02-16', '2026-02-18', '2026-02-20']) {
+      expect(
+        screen.getByLabelText(FORMAT.complianceCell(date, copyFor('limelight', 'status.markMissed'))),
+      ).toBeTruthy();
+    }
+    expect(
+      screen.getByLabelText(FORMAT.complianceCell('2026-02-17', copyFor('limelight', 'status.markNotPlanned'))),
+    ).toBeTruthy();
+  });
+
   it('shows one row per week from the plan start through today, and no earlier', () => {
     render(<LogView />);
     const rows = screen.getAllByRole('rowheader').map((n) => n.getAttribute('aria-label'));
@@ -307,7 +320,8 @@ describe('LogView compliance', () => {
     );
     render(<LogView />);
     const rows = screen.getAllByRole('rowheader').map((n) => n.getAttribute('aria-label'));
-    expect(rows).toEqual([FORMAT.complianceWeek('2026-02-09', 1, TARGET)]);
+    // D03: completed on Wednesday, so Monday and Wednesday were the days asked for.
+    expect(rows).toEqual([FORMAT.complianceWeek('2026-02-09', 1, 2)]);
   });
 
   it('says so before any week exists', () => {

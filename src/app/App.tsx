@@ -32,6 +32,7 @@ import { SpotlightButton } from '../ui/components/SpotlightButton';
 import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
+import { SetupErrorBoundary } from '../ui/setup/SetupErrorBoundary';
 import { SetupWizard } from '../ui/setup/SetupWizard';
 import { SetupBannerProvider, useSetupBanner } from '../ui/setup/setupBanner';
 import { AtlasView } from '../ui/views/AtlasView';
@@ -678,7 +679,14 @@ export function App(): ReactElement {
                 <>
                   <IntroGate />
                   {introSeen && <BootGate />}
-                  {profile === null ? <SetupWizard /> : <ViewShell />}
+                  {profile === null ? (
+                    // Audit A12: a wizard throw stays inside setup, with Restart Setup and Reload.
+                    <SetupErrorBoundary>
+                      <SetupWizard />
+                    </SetupErrorBoundary>
+                  ) : (
+                    <ViewShell />
+                  )}
                 </>
               )}
             </main>

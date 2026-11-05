@@ -87,9 +87,9 @@ describe('pendingMotivation', () => {
     expect(pendingMotivation(stateOf([paused]), 'p1', NOW)).toBeNull();
   });
 
-  it('never returns a paused week even if its delta is negative', () => {
-    const paused = review({ paused: true, completed: 0, delta: -4 });
-    expect(pendingMotivation(stateOf([paused]), 'p1', NOW)).toBeNull();
+  it('returns a partly paused week whose unpaused days still fell short (D10)', () => {
+    const shortfall = review({ paused: true, target: 1, completed: 0, delta: -1 });
+    expect(pendingMotivation(stateOf([shortfall]), 'p1', NOW)).toEqual(shortfall);
   });
 
   it('ignores a week whose miss was already handled', () => {

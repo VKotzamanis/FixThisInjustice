@@ -208,7 +208,7 @@ describe('PlanView week scrubber', () => {
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(2, WEEKS));
     const rows = screen.getAllByTestId('plan-session');
     expect(rows).toHaveLength(SPW);
-    expect(rows[0]?.textContent).toContain('Push 4');
+    expect(rows[0]?.textContent).toContain('Week 2 Push'); // D09: index 3 is week 2 at 3 a week
   });
 });
 

@@ -430,3 +430,29 @@ describe('PhaseTransition under a skin', () => {
     ).toBeInTheDocument();
   });
 });
+
+describe('PhaseTransitionGate in a second programme (D13)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    useAppStore.setState({ ...makeAppState(), session: { ...EMPTY_SESSION } });
+    pinSkin();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('fires for block 1 of a new plan although the profile marker still says 5', () => {
+    useAppStore.setState((s) => ({
+      cursors: { p1: cursorAt(BLOCK_ONE_START) },
+      ui: { ...s.ui, lastBlockSeenByProfile: { p1: 5 }, lastBlockSeenByPlan: { 'plan-upper-lower': 0 } },
+    }));
+    render(<PhaseTransitionGate />);
+    expect(screen.getByText(headingFor(1, 2))).toBeInTheDocument();
+    act(() => {
+      vi.advanceTimersByTime(6000); // [ms]
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.continue') }));
+    expect(useAppStore.getState().ui.lastBlockSeenByPlan).toEqual({ 'plan-upper-lower': 1 });
+    expect(useAppStore.getState().ui.lastBlockSeenByProfile.p1).toBe(1);
+  });
+});

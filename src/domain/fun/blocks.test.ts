@@ -18,6 +18,7 @@ import {
   crossedMilestones,
   currentBlockIndex,
   isBlockBoundary,
+  lastBlockSeen,
 } from './blocks';
 import { makeAppState, makePlan } from '../../test/funFixtures';
 import type {
@@ -304,5 +305,16 @@ describe('blockStats', () => {
       tonnageKg: 0, // [kg]
       specimensOwned: 1,
     });
+  });
+});
+
+describe('lastBlockSeen (D13): the cut-scene marker is per programme', () => {
+  const ui = { lastBlockSeenByProfile: { p1: 5 }, lastBlockSeenByPlan: { 'plan-2': 0 } };
+  it('reads the plan key first', () => {
+    expect(lastBlockSeen(ui, 'p1', 'plan-2')).toBe(0);
+  });
+  it('falls back to the per-profile value a document from before D13 holds, then to 0', () => {
+    expect(lastBlockSeen(ui, 'p1', 'plan-1')).toBe(5);
+    expect(lastBlockSeen({ lastBlockSeenByProfile: {} }, 'p1', 'plan-1')).toBe(0);
   });
 });

@@ -6,7 +6,7 @@ import { KG_PER_LB } from './types';
 const ML_PER_US_FL_OZ = 29.5735295625; // [mL/fl oz]
 
 /** 1 international inch = 2.54 cm exactly, by definition since 1959. */
-const CM_PER_IN = 2.54; // [cm/in]
+export const CM_PER_IN = 2.54; // [cm/in] exact by definition
 
 /**
  * Guards the binary-float division inside achievableLoad. Dimensionless: it is
@@ -68,6 +68,12 @@ export function toStoredMass(entered: number, units: UnitSystem): Kg {
  */
 export function toStoredGirthCm(entered: number, units: UnitSystem): number {
   return units === 'imperial' ? entered * CM_PER_IN : entered; // [cm]
+}
+
+/** A girth or stature for display, 0.1 resolution: [cm] metric, [in] imperial. */
+export function displayGirth(cm: number, units: UnitSystem): number {
+  const shown = units === 'imperial' ? cm / CM_PER_IN : cm; // [in] or [cm]
+  return Math.round(shown * 10) / 10;
 }
 
 /**

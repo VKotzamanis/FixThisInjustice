@@ -22,12 +22,13 @@
 //   in-progress  a solid triangle (Today only)
 //   paused       two bars (Today only; the row itself keeps its hatched band)
 //   rest         a dash (Today only)
+//   postponed    a ring with an arrow (Log grid; spec R2, P3 D06)
 // StatusMark.test.tsx holds every pair of ink layers distinct.
 
 import type { ReactElement } from 'react';
 import './statusMark.css';
 
-/** Every state either view can show. Today's DayStatus and the grid's ComplianceMark are subsets. */
+/** Every state either view can show. Today's DayStatus and the Log grid's DayMark (minus blank) are subsets. */
 export const MARK_KINDS = [
   'completed',
   'missed',
@@ -37,6 +38,7 @@ export const MARK_KINDS = [
   'in-progress',
   'paused',
   'rest',
+  'postponed',
 ] as const;
 
 export type MarkKind = (typeof MARK_KINDS)[number];
@@ -165,6 +167,23 @@ export const MARK_GRIDS: Readonly<Record<MarkKind, MarkGrid>> = {
       '............',
     ],
   },
+  // Spec R2: Skip Today hands the day back; a ring with an arrow pointing on to a later day.
+  postponed: {
+    ink: [
+      '############',
+      '#..........#',
+      '#..........#',
+      '#.....#....#',
+      '#.....##...#',
+      '#.########.#',
+      '#.########.#',
+      '#.....##...#',
+      '#.....#....#',
+      '#..........#',
+      '#..........#',
+      '############',
+    ],
+  },
   rest: {
     ink: [
       '............',
@@ -230,6 +249,7 @@ const SHAPE_ID: Readonly<Record<MarkKind, string>> = {
   'in-progress': 'triangle',
   paused: 'bars',
   rest: 'dash',
+  postponed: 'ring-arrow',
 };
 
 /**

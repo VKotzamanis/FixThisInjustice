@@ -8,6 +8,7 @@ import { buildSummary } from '../../domain/export/summary';
 import { todayLocal } from '../../domain/dates';
 import { projectedCalendar } from '../../domain/schedule/calendar';
 import { isTerminal } from '../../domain/schedule/cursor';
+import { sessionTitle } from '../../domain/schedule/rotation';
 import { parseState } from '../../domain/schema';
 import { useAppStore, selectState } from '../../store';
 import { downloadText } from '../../app/download';
@@ -133,7 +134,10 @@ export function ExportView(): JSX.Element {
         startTime: day.slot.startTime,
         durationS: day.slot.expectedDurationS, // [s]
         summary: day.projectedSession.label,
-        description: day.projectedSession.name,
+        description: sessionTitle(
+          { sessionsPerWeek: state.plans[state.cursors[profileId]?.planId ?? '']?.sessionsPerWeek ?? 0 },
+          day.projectedSession,
+        ),
         alarmLeadMinutes: ALARM_LEAD_MINUTES, // [min]
       });
     }

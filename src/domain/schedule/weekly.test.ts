@@ -31,7 +31,7 @@
 // whatever guards that module grows.
 
 import { describe, expect, it } from 'vitest';
-import { closeWeeks, isBeforeProgramme, MAX_WEEKS_EVALUATED } from './weekly';
+import { closeWeeks, isBeforeProgramme, isInProgramme, MAX_WEEKS_EVALUATED, reviewVerdict } from './weekly';
 import { closeStaleSessions, STALE_SESSION_GRACE_MS } from './staleSessions';
 import { makeSet } from '../../test/fixtures';
 import { completeSession, pausePlan, resumePlan, skipSession, startSession } from './cursor';
@@ -296,13 +296,21 @@ describe('closeWeeks — counting', () => {
 });
 
 describe('closeWeeks — pauses', () => {
-  it('a paused week never yields a negative delta', () => {
+  it('grades a partly paused week against its unpaused preferred days (D10)', () => {
     const paused = pausePlan(seed(TZ_ATHENS), PROFILE_ID, PREV_WEDNESDAY, 'illness');
     const r = reviews(closeWeeks(paused, PROFILE_ID, NOW_MS))[0];
+    // Mon/Wed/Fri preferred, paused from Wednesday on: only Monday could be asked for.
     expect(r?.paused).toBe(true);
-    expect(r?.delta).toBe(0);
-    expect(r?.completed).toBe(0);
-    expect(r?.missHandled).toBe(true);
+    expect(r?.target).toBe(1); // [sessions/week]
+    expect(r?.completed).toBe(0); // [sessions]
+    expect(r?.delta).toBe(-1); // [sessions/week]
+    expect(r?.missHandled).toBe(false);
+  });
+
+  it('asks nothing of a week paused from its first day', () => {
+    const paused = pausePlan(seed(TZ_ATHENS), PROFILE_ID, PREV_MONDAY, null);
+    const r = reviews(closeWeeks(paused, PROFILE_ID, NOW_MS))[0];
+    expect(r).toMatchObject({ paused: true, target: 0, completed: 0, delta: 0, missHandled: true });
   });
 
   it("detects a pause that only overlaps the week's last day", () => {
@@ -452,8 +460,8 @@ describe('closeWeeks — programme completion', () => {
     ]);
   });
 
-  it('grades the completion week against the full target, as a miss when it fell short', () => {
-    // Two sessions, finished on Wednesday of the first week: 2 of 3 is a miss like any other.
+  it('grades the completion week against the days up to the last session (D03)', () => {
+    // Two sessions, finished on Wednesday of the first week: Friday was never part of it.
     let s = seedState({
       labels: ['Push', 'Legs'],
       weekdays: [...MWF],
@@ -470,9 +478,37 @@ describe('closeWeeks — programme completion', () => {
     expect(reviews(out)[0]).toMatchObject({
       weekStart: PREV_MONDAY,
       completed: 2, // [sessions]
-      delta: -1, // [sessions/week] completed − target
-      missHandled: false,
+      target: 2, // [sessions/week] Monday and Wednesday
+      delta: 0, // [sessions/week] completed − target
+      missHandled: true,
     });
+  });
+
+  it('grades a first week begun on Wednesday against Wednesday and Friday only (D03)', () => {
+    let s = seedState({ labels: LABELS, weekdays: [...MWF], weeklySessionTarget: 3, startedOn: PREV_WEDNESDAY, timezone: TZ_ATHENS });
+    s = completeSession(s, PROFILE_ID, PREV_WEDNESDAY, NOW_MS - 5 * DAY_MS); // [ms]
+    s = completeSession(s, PROFILE_ID, PREV_FRIDAY, NOW_MS - 3 * DAY_MS); // [ms]
+    expect(reviews(closeWeeks(s, PROFILE_ID, NOW_MS))[0]).toMatchObject({
+      weekStart: PREV_MONDAY,
+      target: 2, // [sessions/week]
+      completed: 2, // [sessions]
+      delta: 0,
+      missHandled: true,
+    });
+  });
+
+  it('never regrades a stored week after the target changes (D16)', () => {
+    const once = closeWeeks(seed(TZ_ATHENS), PROFILE_ID, NOW_MS);
+    expect(reviews(once)[0]?.target).toBe(3);
+    const availability = once.availability[PROFILE_ID];
+    if (availability === undefined) throw new Error('fixture: no availability');
+    const lowered: AppState = {
+      ...once,
+      availability: { [PROFILE_ID]: { ...availability, weeklySessionTarget: 1 } },
+    };
+    const later = closeWeeks(lowered, PROFILE_ID, NOW_MS + 7 * DAY_MS); // [ms] one week on
+    expect(reviews(later)[0]).toEqual(reviews(once)[0]);
+    expect(reviews(later)[1]?.target).toBe(1); // the new week uses the new quota
   });
 });
 
@@ -520,7 +556,7 @@ describe('closeWeeks — persistence', () => {
     const paused = pausePlan(seed(TZ_ATHENS), PROFILE_ID, PREV_WEDNESDAY, 'illness');
     const out = closeWeeks(paused, PROFILE_ID, NOW_MS);
     expect(reviews(out)[0]?.paused).toBe(true);
-    expect(reviews(out)[0]?.delta).toBe(0); // completed − target would have been −3
+    expect(reviews(out)[0]?.delta).toBe(-1); // [sessions/week] Monday was the one day asked for (D10)
     const parsed = parseState(JSON.parse(JSON.stringify(out)) as unknown);
     expect(parsed.ok ? '' : parsed.error).toBe('');
     if (!parsed.ok) return;
@@ -579,4 +615,30 @@ describe('closeWeeks — unresolved assignments (AM-6)', () => {
       ]);
     },
   );
+});
+
+describe('reviewVerdict (PR-2, D10): one reading of a stored review', () => {
+  const base = { target: 3, completed: 3, delta: 0 };
+  it('is missed whenever delta is negative, paused or not', () => {
+    expect(reviewVerdict({ target: 1, completed: 0, delta: -1 })).toBe('missed');
+  });
+  it('is met when the week asked for something and got all of it', () => {
+    expect(reviewVerdict(base)).toBe('met');
+    expect(reviewVerdict({ target: 2, completed: 3, delta: 1 })).toBe('met');
+  });
+  it('is none for a week that asked for nothing, and for a legacy paused review', () => {
+    expect(reviewVerdict({ target: 0, completed: 0, delta: 0 })).toBe('none');
+    // Written before D10: paused weeks stored delta 0 against the full target.
+    expect(reviewVerdict({ target: 3, completed: 0, delta: 0 })).toBe('none');
+  });
+});
+
+describe('isInProgramme (D11)', () => {
+  const cursor = { startedOn: '2026-09-09', completedOn: '2026-09-23' };
+  it('is false before the start week and after the completion week, true between', () => {
+    expect(isInProgramme(PREV_MONDAY, cursor)).toBe(false);
+    expect(isInProgramme(MONDAY, cursor)).toBe(true); // the start week, begun midweek
+    expect(isInProgramme('2026-09-21', cursor)).toBe(true); // the completion week
+    expect(isInProgramme('2026-09-28', cursor)).toBe(false);
+  });
 });

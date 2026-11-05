@@ -4,6 +4,7 @@ import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { PlanBlock, PlannedSession } from '../../domain/types';
+import { sessionTitle } from '../../domain/schedule/rotation';
 import { useActiveCursor } from '../../store/scheduleSelectors';
 import { useActivePlan } from '../../store/selectors';
 import {
@@ -86,6 +87,8 @@ export function blockOfSession(
 /** One session and its exercises, as the block it sits in prescribes them. */
 function SessionCard(props: {
   session: PlannedSession;
+  /** D09: "Week N <label>" from the session's position (domain/schedule/rotation.ts). */
+  title: string;
   block: PlanBlock | null;
   isNext: boolean;
   /*
@@ -114,7 +117,7 @@ function SessionCard(props: {
             invariant sessions[i].ordinal === i + 1 is maintained by the domain, including
             across assignToday's swap, so it is read rather than recomputed from the index. */}
         <span className="ps-ordinal">{String(session.ordinal).padStart(2, '0')}</span>
-        <h3 className="ps-name">{session.name}</h3>
+        <h3 className="ps-name">{props.title}</h3>
         <span className="ps-label">{session.label}</span>
         {isNext && <span className="ps-cursor">{t('status.nextSession')}</span>}
       </div>
@@ -318,6 +321,7 @@ export function PlanView(): JSX.Element {
             <SessionCard
               key={session.id}
               session={session}
+              title={sessionTitle(plan, session)}
               block={blockOfSession(plan.blocks, index)}
               isNext={index === cursor.nextSessionIndex}
               t={t}

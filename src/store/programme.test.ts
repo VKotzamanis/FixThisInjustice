@@ -168,3 +168,16 @@ describe('restartProgramme', () => {
     }).toThrow(/no programme/);
   });
 });
+
+describe('the cut-scene marker of a new programme (D13)', () => {
+  it('starts the new plan at block 0 and keeps every other plan entry', () => {
+    const before = seedProfileWithPlan();
+    useAppStore.getState().setUi({ lastBlockSeenByPlan: { [before.id]: 5, other: 2 }, lastBlockSeenByProfile: { p1: 5 } });
+    useAppStore.getState().restartProgramme('p1', {}, '2026-12-07');
+    const s = useAppStore.getState();
+    const after = currentPlan();
+    expect(s.ui.lastBlockSeenByPlan).toEqual({ [before.id]: 5, other: 2, [after.id]: 0 });
+    const parsed = parseDocument(s.exportJson());
+    expect(parsed.ok ? parsed.state.ui.lastBlockSeenByPlan : parsed.error).toEqual(s.ui.lastBlockSeenByPlan);
+  });
+});

@@ -29,6 +29,9 @@ const BULLET_SEPARATOR = ': ';
  * mark rules live in src/ui/intro/emphasis.ts.
  */
 
+/** Audit A13: the keys that act like a tap. Any other key (Tab, a modifier) does nothing. */
+const ADVANCE_KEYS: ReadonlySet<string> = new Set(['Enter', ' ', 'ArrowRight']);
+
 const FIGURE_SLIDE_COUNT = 4;
 const ACKNOWLEDGEMENT_INDEX = 3;
 const LAST_INDEX = INTRO_SLIDES.length - 1;
@@ -55,6 +58,8 @@ export function IntroSequence(): ReactElement {
   const acknowledgementId = useId();
   const [acknowledged, setAcknowledged] = useState(false);
   const keepAcknowledgementOpen = useCallback((): void => undefined, []);
+  /** The typewriter's pending timers, so a tap can finish the text at once (audit A13). */
+  const typing = useRef<number[]>([]);
 
   const finish = useCallback((): void => {
     if (finishedRef.current) return;
@@ -64,6 +69,13 @@ export function IntroSequence(): ReactElement {
 
   const advance = useCallback((): void => {
     if (acknowledgementOpen || leaving) return;
+    // Audit A13: a tap while the text is still typing completes it; the next tap moves on.
+    if (shown < text.length) {
+      for (const handle of typing.current) window.clearTimeout(handle);
+      typing.current = [];
+      setShown(text.length);
+      return;
+    }
     if (index === ACKNOWLEDGEMENT_INDEX) {
       setAcknowledgementOpen(true);
       return;
@@ -77,7 +89,7 @@ export function IntroSequence(): ReactElement {
       setIndex(index + 1);
       setLeaving(false);
     }, INTRO_FADE_OUT_MS);
-  }, [acknowledgementOpen, finish, index, leaving]);
+  }, [acknowledgementOpen, finish, index, leaving, shown, text.length]);
 
   useEffect(() => {
     if (reduced) {
@@ -89,13 +101,16 @@ export function IntroSequence(): ReactElement {
     for (let character = 0; character < text.length; character += 1) {
       handles.push(window.setTimeout(() => setShown(character + 1), (character + 1) * INTRO_CHAR_INTERVAL_MS));
     }
+    typing.current = handles;
     return () => {
       for (const handle of handles) window.clearTimeout(handle);
     };
   }, [index, reduced, text]);
 
   useEffect(() => {
-    const onKey = (): void => advance();
+    const onKey = (event: KeyboardEvent): void => {
+      if (ADVANCE_KEYS.has(event.key)) advance();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [advance]);

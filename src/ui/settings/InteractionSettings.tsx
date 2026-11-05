@@ -48,6 +48,15 @@ export function InteractionSettings(): JSX.Element {
       </label>
       <p className="view-note">{c('advice.hotkeysKeyboardOnly')}</p>
       <p className="view-note">{c('advice.hotkeysOff')}</p>
+      {/* Audit A13: the intro can be read again; it records itself seen when it ends. */}
+      <button
+        type="button"
+        onClick={() => {
+          useAppStore.getState().setUi({ introSeen: false });
+        }}
+      >
+        {c('button.replayIntro')}
+      </button>
     </>
   );
 }

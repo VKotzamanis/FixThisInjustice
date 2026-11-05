@@ -2410,7 +2410,7 @@ describe('r2.11 / decision A2: a step commits on Next, and Back does not commit'
     expect(useAppStore.getState().setupDraft?.buffer).toBeNull();
   });
 
-  it('discards the step in progress on Back rather than committing it', () => {
+  it('keeps the step in progress across Back (A05), committing only on Next', () => {
     render(<SetupWizard />);
     next();
     next();
@@ -2427,7 +2427,7 @@ describe('r2.11 / decision A2: a step commits on Next, and Back does not commit'
     setValue(/^How should I refer to you\?$/i, 'Ada');
     fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
     next(); // forward again, to the body step
-    expect(screen.getByLabelText(/^How should I refer to you\?$/i)).toHaveValue('Grace');
+    expect(screen.getByLabelText(/^How should I refer to you\?$/i)).toHaveValue('Ada');
   });
 });
 
@@ -3056,17 +3056,7 @@ describe('Brief I Part 2: the body-fat target', () => {
     next();
     next();
 
-    /*
-     * THE AVAILABILITY FIELDS ARE ANSWERED AGAIN, and this is decision A2 rather than a defect:
-     * "Back discards the step in progress instead of committing it." The answers above were made
-     * on the goal step and Next was never pressed on it, so Back discarded them along with the
-     * out-of-domain target this test is really about. That was true of the goal step's own fields
-     * before round 3 too; the only change is that availability is now among them.
-     */
-    setValue(/sessions per week/i, '2');
-    fireEvent.click(screen.getByLabelText('Monday'));
-    fireEvent.click(screen.getByLabelText('Tuesday'));
-    setValue(/weekly session target/i, '2');
+    // A05: Back kept the goal step's availability answers, so they are still there.
 
     // The invalid body mass is still in the draft and its field is gone. Next is free again.
     expect(screen.queryByLabelText(/target body mass/i)).toBeNull();

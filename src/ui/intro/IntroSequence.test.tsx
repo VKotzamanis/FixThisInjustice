@@ -12,8 +12,10 @@ function introBody(): string {
   return screen.getByTestId('intro-body').textContent ?? '';
 }
 
+/** One slide on: A13's first Enter completes the typing, the second moves on. */
 function advance(): void {
-  fireEvent.keyDown(window, { key: 'a' });
+  fireEvent.keyDown(window, { key: 'Enter' });
+  fireEvent.keyDown(window, { key: 'Enter' });
   act(() => void vi.advanceTimersByTime(180));
 }
 
@@ -44,13 +46,26 @@ describe('IntroSequence', () => {
     expect(screen.queryByRole('button', { name: /skip/i })).toBeNull();
   });
 
-  it('advances one slide per click or key press', () => {
+  it('completes the typing on the first tap and advances on the second (A13)', () => {
     render(<IntroSequence />);
+    fireEvent.click(screen.getByTestId('intro-body'));
+    act(() => void vi.advanceTimersByTime(180));
+    // Still the first slide, its text complete rather than 10 characters in (180 ms / 18 ms).
+    expect(screen.queryByText(INTRO_SLIDES[1]?.heading ?? '__no heading__')).toBeNull();
+    expect(introBody().length).toBeGreaterThan(10);
     fireEvent.click(screen.getByTestId('intro-body'));
     act(() => void vi.advanceTimersByTime(180));
     expect(screen.getByRole('heading')).toHaveTextContent(INTRO_SLIDES[1]?.heading ?? '');
     advance();
     expect(screen.getByRole('heading')).toHaveTextContent(INTRO_SLIDES[2]?.heading ?? '');
+  });
+
+  it('ignores keys other than Enter, Space and ArrowRight (A13)', () => {
+    render(<IntroSequence />);
+    fireEvent.keyDown(window, { key: 'a' });
+    fireEvent.keyDown(window, { key: 'Tab' });
+    act(() => void vi.advanceTimersByTime(10 * INTRO_CHAR_INTERVAL_MS));
+    expect(introBody()).toHaveLength(10); // still typing slide 1, untouched by either key
   });
 
   it('requires the acknowledgement checkbox before Continue is enabled', () => {

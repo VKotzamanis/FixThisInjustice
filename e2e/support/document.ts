@@ -24,7 +24,10 @@ export const MONDAY = '2026-09-07';
 export const TUESDAY = '2026-09-08';
 export const WEDNESDAY = '2026-09-09';
 
-/** Session names in plan order; the Train view's h2 shows the open one. */
+/**
+ * Rotation labels in plan order (P3 D09): Today's h1 and Train's h2 show "Week N <label>", so a
+ * spec that looks for 'Lower A' finds the heading by substring.
+ */
 export const SESSION_NAMES = ['Lower A', 'Upper A', 'Lower B', 'Upper B', 'Lower C', 'Upper C'] as const;
 
 function session(index: number, name: string): PlannedSession {
@@ -32,9 +35,9 @@ function session(index: number, name: string): PlannedSession {
   return {
     id: `e2e-s${String(index + 1)}`,
     ordinal: index + 1, // invariant: sessions[i].ordinal === i + 1
-    name,
+    name: `Week ${String(Math.floor(index / 3) + 1)} ${name}`, // the generator's format, 3 a week
     kind: 'lift',
-    label: lower ? 'Lower' : 'Upper',
+    label: name,
     exercises: [
       {
         exerciseId: lower ? 'barbell-back-squat' : 'barbell-bench-press',

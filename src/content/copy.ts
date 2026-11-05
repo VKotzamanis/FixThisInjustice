@@ -488,6 +488,16 @@ export type CopyKey =
   | 'status.markMissed'
   | 'status.markPlanned'
   | 'status.markNotPlanned'
+  | 'status.markPostponed'
+  | 'status.markOutsideProgramme'
+  | 'hero.trainingDays'
+  | 'advice.trainingDaysCalendarOnly'
+  | 'button.saveTrainingDays'
+  | 'error.availabilityRefused'
+  | 'hero.setupFailed'
+  | 'advice.setupRestartClearsDraft'
+  | 'button.restartSetup'
+  | 'button.replayIntro'
   | 'status.noEstimated1RM'
   | 'status.estimated1RM'
   | 'status.complianceWeek'
@@ -1473,6 +1483,20 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.markMissed': 'Missed',
   'status.markPlanned': 'Planned',
   'status.markNotPlanned': 'Not planned',
+  // D06: Skip Today handed the day back (spec R2); a day outside the programme's span.
+  'status.markPostponed': 'Postponed',
+  'status.markOutsideProgramme': 'Outside the programme',
+  // D05: the Settings availability editor.
+  'hero.trainingDays': 'Training Days',
+  'advice.trainingDaysCalendarOnly': 'Changes the calendar only. Your programme stays as it is.',
+  'button.saveTrainingDays': 'Save Days',
+  'error.availabilityRefused': 'These days could not be saved. Nothing was changed.',
+  // A12: the setup wizard's own error boundary.
+  'hero.setupFailed': 'Setup Hit a Problem',
+  'advice.setupRestartClearsDraft': 'Restart Setup clears only the answers typed in setup.',
+  'button.restartSetup': 'Restart Setup',
+  // A13: Settings replays the intro.
+  'button.replayIntro': 'Replay Intro',
   // Shown where the Epley equation has no defensible input: no external load, or no set
   // inside its validity domain of ten repetitions.
   'status.noEstimated1RM': 'No estimated 1RM',

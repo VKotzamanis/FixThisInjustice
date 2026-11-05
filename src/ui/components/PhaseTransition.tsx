@@ -26,7 +26,7 @@ import type { ReactElement } from 'react';
 import './phaseTransition.css';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
-import { blockStats, currentBlockIndex, isBlockBoundary } from '../../domain/fun/blocks';
+import { blockStats, currentBlockIndex, isBlockBoundary, lastBlockSeen } from '../../domain/fun/blocks';
 import type { BlockStats } from '../../domain/fun/blocks';
 import type { UnitSystem } from '../../domain/types';
 import { UNIT_LABEL, displayMass } from '../../domain/units';
@@ -223,6 +223,7 @@ export function PhaseTransitionGate(): ReactElement | null {
   const sets = useAppStore((s) => s.sets);
   const specimens = useAppStore((s) => s.specimens);
   const seenMap = useAppStore((s) => s.ui.lastBlockSeenByProfile);
+  const seenByPlan = useAppStore((s) => s.ui.lastBlockSeenByPlan);
   const bootSeen = useAppStore((s) => s.ui.bootSeen);
   const activeAssignmentDate = useAppStore((s) => s.session.activeAssignmentDate);
   // The missed-week popup's own question, read through the selector that owns it so the two
@@ -258,12 +259,15 @@ export function PhaseTransitionGate(): ReactElement | null {
    * The write is through getState(), the repo's convention for calling a store action: a bound
    * action read as a hook trips @typescript-eslint/unbound-method.
    */
+  const planId = cursor?.planId ?? null;
   const onClose = useCallback((): void => {
-    if (profileId === null || currentIndex === null) return;
-    useAppStore
-      .getState()
-      .setUi({ lastBlockSeenByProfile: { ...seenMap, [profileId]: currentIndex } });
-  }, [profileId, currentIndex, seenMap]);
+    if (profileId === null || currentIndex === null || planId === null) return;
+    // D13: recorded per plan (read first) and per profile (what an older build reads).
+    useAppStore.getState().setUi({
+      lastBlockSeenByPlan: { ...(seenByPlan ?? {}), [planId]: currentIndex },
+      lastBlockSeenByProfile: { ...seenMap, [profileId]: currentIndex },
+    });
+  }, [profileId, planId, currentIndex, seenMap, seenByPlan]);
 
   // Every hook above is called unconditionally; the decisions come after them.
   if (pendingMiss !== null) return null;
@@ -271,7 +275,9 @@ export function PhaseTransitionGate(): ReactElement | null {
   if (profileId === null || currentIndex === null || stats === null) return null;
   const profile = profiles[profileId];
   if (profile === undefined) return null;
-  if (!isBlockBoundary(seenMap[profileId] ?? 0, currentIndex)) return null;
+  if (planId === null) return null;
+  const seen = lastBlockSeen({ lastBlockSeenByProfile: seenMap, lastBlockSeenByPlan: seenByPlan }, profileId, planId);
+  if (!isBlockBoundary(seen, currentIndex)) return null;
 
   return (
     <PhaseTransition
