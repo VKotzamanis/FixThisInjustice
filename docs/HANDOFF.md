@@ -3,8 +3,8 @@
 Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place when your job is done; facts that last belong in `docs/STATUS.md`.
 
 ## State
-- main: merge 9456106 (Job 3) + docs commit, pushed 2026-11-05. Before it, live was 04ce22b; 0d07655's Pages deployment was cancelled 3x by GitHub (re-run of a cancelled SHA cannot succeed: `docs/runbooks/deploy.md`).
-- First action: `gh run list --limit 4`; confirm CI and Deploy (jobs `build` AND `deploy`) for HEAD, then `curl -s "https://vkotzamanis.github.io/FixThisInjustice/build-info.json?x=$RANDOM"` names HEAD's short SHA and the live `assets/index-*.js` contains "Replace". If not, fix and push (owner standing order).
+- Live: 4a27393 (merge 9456106 + docs), verified 2026-11-05 (CI + Deploy green, `build-info.json` = 4a27393, bundle contains `replaceExercise`). 0d07655's own Pages deployment was cancelled 3x by GitHub (a re-run of a cancelled SHA cannot succeed: `docs/runbooks/deploy.md`); it is live inside 4a27393.
+- First action: `gh run list --limit 4`; if CI or Deploy failed on the latest commit, `gh run view <id> --log-failed`, fix and push (owner standing order).
 - Last full Verify (merged tree, 2026-11-05): vitest 1632 + 1486 + 698 (264/264 files), e2e 194 passed + 3 skipped (`p4a-shots`, opt-in), worker 157, tsc/eslint/emoji/private/CSP pass.
 - Worktrees and side branches: none (removed 2026-11-05). New parallel tracks: `git worktree add ../FixThisInjustice-<name> -b <branch>`, `cp -al node_modules`, delete `.tmp`, `.vite`, `.vitest`. Check the path does not already exist first.
 

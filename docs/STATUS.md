@@ -3,7 +3,7 @@
 Single source of current state. Update in place. Last update: 2026-11-05.
 
 ## Live
-- https://vkotzamanis.github.io/FixThisInjustice/ serves main 04ce22b (2026-11-05, `build-info.json`). 0d07655's Pages deployment was cancelled by GitHub three times (`docs/runbooks/deploy.md`); it ships with the Job 3 push (merge 9456106 + docs). Live check of that push: `docs/HANDOFF.md` State.
+- https://vkotzamanis.github.io/FixThisInjustice/ serves main 4a27393 (2026-11-05: CI verify + e2e + worker green, Deploy build + deploy green, `build-info.json` = 4a27393, live bundle contains `replaceExercise`). It includes 0d07655, whose own Pages deployment GitHub cancelled three times (`docs/runbooks/deploy.md`).
 - Data lives in each user's browser: IndexedDB `fti` (per-record, quarantine), `fti.v3` kept as first-boot import source and AM-P2-1 rollback mirror. Users install to Home Screen and export JSON backups (share sheet) from Settings → Data.
 
 ## Next job
