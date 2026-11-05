@@ -44,9 +44,9 @@ describe('form video ids', () => {
   it('dates every recorded id and explains every null one', () => {
     const rows = docRows();
     for (const r of rows.filter((x) => x.videoId !== null)) {
-      expect({ exercise: r.exercise, verified: r.verified }).toEqual({
+      expect({ exercise: r.exercise, dated: /^\d{4}-\d{2}-\d{2}$/.test(r.verified) }).toEqual({
         exercise: r.exercise,
-        verified: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+        dated: true,
       });
     }
     const nullSection = doc.split('## Null ids')[1]?.split('\n## ')[0] ?? '';
