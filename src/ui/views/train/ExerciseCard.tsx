@@ -24,6 +24,7 @@ import type {
 import { formatLoad } from '../../../domain/units';
 import { useAppStore, type LogSetResult } from '../../../store';
 import { useExerciseHistory } from '../../../store/selectors';
+import { unlockAudio } from '../../audio/chime';
 import { useFormCuesModal } from '../../components/FormCuesModal';
 import { useVideoModal } from '../../components/VideoModal';
 import { formatPrescription } from '../../format/plan';
@@ -184,6 +185,9 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
 
   /** Returns false when the store refused the set (AM-12); the row then shows the refusal. */
   const handleLog = (n: number, loadKg: Kg, entry: SetEntry): boolean => {
+    // C07: every Log tap is a gesture; it wakes an iOS context a lock or an app switch
+    // interrupted, so the rest this log starts can chime at its end. Sounds off: left alone.
+    if (useAppStore.getState().ui.sounds) void unlockAudio();
     const set: Omit<LoggedSet, 'id' | 'loggedAt'> = {
       profileId: profile.id,
       assignmentDate,

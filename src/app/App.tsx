@@ -49,6 +49,7 @@ import { LoadRecovery } from './LoadRecovery';
 import { useWeeklyClose } from './useWeeklyClose';
 import { useStorageEstimate } from './useStorageEstimate';
 import { ReminderSync } from './ReminderSync';
+import { RestController } from './RestController';
 import { UpdatePrompt } from './UpdatePrompt';
 import { StaleSessionNotice } from './StaleSessionNotice';
 import { UnreadableNotice } from './UnreadableNotice';
@@ -189,6 +190,8 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
 
   return (
     <>
+      {/* C06: the rest-over cues fire on whichever view is shown, not only on Train. */}
+      <RestController />
       <Spotlight open={spotlightOpen} onClose={closeSpotlight} />
       <ViewStack view={view} />
       {/* Brief 2.2: the fixed bottom bar; More opens the sheet with the other views and the palette. */}

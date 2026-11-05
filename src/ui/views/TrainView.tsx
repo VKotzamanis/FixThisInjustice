@@ -15,10 +15,9 @@
 //
 // Three master-plan section 6.5 obligations are discharged here rather than in a component:
 // the screen wake lock is held for as long as this view is mounted; the audio context is
-// unlocked on the first pointer event that reaches this view, because a user who navigated
-// straight to Train never passed through Today's Start tap (code review A29); and the session
+// re-unlocked on every Log and Extend tap (C07); and the session
 // slice is cleared when the session ends, so a reload cannot revive a finished session.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactElement } from 'react';
 import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
@@ -50,7 +49,7 @@ import { useAppStore, type FinishSnapshot } from '../../store';
 import { UNDO_WINDOW_MS } from '../../store/training';
 import { BodyMassForm } from '../measurements/BodyMassForm';
 import { useActiveProfile, useOpenAssignment, useTodaysSets } from '../../store/selectors';
-import { releaseAudio, unlockAudio } from '../audio/chime';
+import { releaseAudio } from '../audio/chime';
 import { useToastActions } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useViewActive } from '../nav/viewActive';
@@ -110,16 +109,6 @@ export function TrainView(): ReactElement {
   // surfaced: a session that cannot dim-lock the screen still has a working timer.
   const viewActive = useViewActive();
   useWakeLock(open !== null && viewActive);
-
-  useEffect(() => {
-    const handler = (): void => {
-      void unlockAudio();
-    };
-    window.addEventListener('pointerdown', handler, { once: true });
-    return () => {
-      window.removeEventListener('pointerdown', handler);
-    };
-  }, []);
 
   const onSetLogged = useCallback(
     (line: CoachLine, specimen: string | null) => {

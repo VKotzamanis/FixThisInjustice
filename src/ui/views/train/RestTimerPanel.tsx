@@ -12,17 +12,18 @@
 // sheet (RestGameSheet) fixed over Train, closed when that rest ends, is skipped or is replaced by
 // the next set's rest. This panel is the ONLY reader of the timer and of the wins count; it hands
 // both to the sheet as props (the P1 interface contract) and no game writes either.
-import { useEffect, useRef, useState, type ReactElement } from 'react';
-import { copy, FORMAT, type CopyKey } from '../../../content/copy';
+//
+// The rest-over CUES are not here: src/app/RestController.tsx fires them on any view (C06).
+import { useEffect, useState, type ReactElement } from 'react';
+import { FORMAT } from '../../../content/copy';
 import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { restRoundClockS } from '../../../domain/fun/restGames';
 import { extend, remainingS, totalS } from '../../../domain/training/restTimer';
 import type { EpochMs } from '../../../domain/types';
 import { SkinLabel } from '../../../skins/limelight/Icon';
-import { playSfx } from '../../../skins/sfx';
 import { useAppStore } from '../../../store';
 import { useRestGameWins, useRestTimer } from '../../../store/selectors';
-import { playChime, unlockAudio, vibrate } from '../../audio/chime';
+import { unlockAudio } from '../../audio/chime';
 import { prefersReducedMotion } from '../../hooks/reducedMotion';
 import { RestGameSheet } from './RestGameSheet';
 import '../../styles/train.css';
@@ -44,36 +45,6 @@ interface RestGamePhase {
   phase: 'open' | 'closed';
 }
 
-/** navigator.vibrate's pattern, in milliseconds on / off / on. */
-const VIBRATE_PATTERN = [180, 80, 180]; // [ms]
-
-/**
- * A local notification for a rest that ended while the page was hidden (master plan section
- * 6.5). It is posted through the service-worker registration, which is the only route a PWA
- * has to a notification on Android and iOS; `new Notification()` is not supported there.
- *
- * Every failure is swallowed and none of them is reported: a push-less registration, a revoked
- * permission, a browser with no service worker at all. The visual timer and the chime already
- * ran, so there is nothing for the user to act on.
- *
- * A plain function, so it takes the skin overlay as an ARGUMENT rather than reading a hook: it
- * is called from an effect, not from a render, and `useCopy` may not be called from either.
- *
- * @param overrides the active skin's override table, from `useCopyOverrides()` at the call site.
- */
-async function notifyRestOver(overrides: Partial<Record<CopyKey, string>>): Promise<void> {
-  if (!('serviceWorker' in navigator)) return;
-  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  try {
-    const registration = await navigator.serviceWorker.ready;
-    await registration.showNotification(copy('notification.restOver', overrides), { tag: 'rest' });
-  } catch {
-    // Deliberately not an empty block: no-empty forbids that, and there is genuinely nothing
-    // to recover. The chime and the ring are the primary cues; this is the third one.
-    return;
-  }
-}
-
 export function RestTimerPanel(): ReactElement | null {
   const timer = useRestTimer();
   // Above the `timer === null` return below, so the hooks run on every render of this component
@@ -81,7 +52,6 @@ export function RestTimerPanel(): ReactElement | null {
   const c = useCopy();
   const overrides = useCopyOverrides();
   const [now, setNow] = useState<number>(() => Date.now()); // [ms] epoch UTC
-  const firedRef = useRef(false);
   const restGameWins = useRestGameWins(); // [rounds]
   const sounds = useAppStore((s) => s.ui.sounds);
   // The active profile's units, for Plate Math; read here so no game reads the store.
@@ -136,35 +106,6 @@ export function RestTimerPanel(): ReactElement | null {
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [timer]);
-
-  /*
-   * The zero-crossing cues, fired exactly once per timer. The ref is reset when the timer
-   * IDENTITY changes (a new rest, or an extension, both of which produce a new object), which
-   * is what makes "once" mean once per interval rather than once per mount.
-   */
-  useEffect(() => {
-    firedRef.current = false;
-  }, [timer]);
-
-  useEffect(() => {
-    if (timer === null || firedRef.current) return;
-    if (remainingS(timer, now) > 0) return;
-    firedRef.current = true;
-    playChime();
-    /*
-     * The rest-over sound (P8 Task 15), beside the chime rather than instead of it: the chime is
-     * the shipped cue and this is the skin's own sample, and both are gated inside their own
-     * modules by `ui.sounds`. It sits after `firedRef` is set, so the once-per-timer guard
-     * covers it too - an extension mints a NEW timer object, which resets the ref and arms both
-     * cues for the extended interval rather than firing them at the moment Extend was pressed.
-     */
-    playSfx('rest_over');
-    // navigator.vibrate is not implemented in Safari on iOS or iPadOS at any version
-    // (REFERENCES.md, caniuse.com/mdn-api_navigator_vibrate), so this is an Android-only cue
-    // and must never be the only one. chime.ts feature-detects it and returns false otherwise.
-    vibrate(VIBRATE_PATTERN);
-    if (document.hidden) void notifyRestOver(overrides);
-  }, [timer, now, overrides]);
 
   if (timer === null) return null;
 
@@ -248,6 +189,9 @@ export function RestTimerPanel(): ReactElement | null {
           <button
             type="button"
             onClick={() => {
+              // C07: every Extend tap is a gesture, so it wakes an iOS context that a lock or an
+              // app switch interrupted; with sounds off it is left alone.
+              if (sounds) void unlockAudio();
               // Through getState(): the store's actions are created once and never replace
               // themselves, so subscribing to one hands the component an unbound method.
               useAppStore.getState().setRestTimer(extend(timer, EXTEND_S));

@@ -79,7 +79,13 @@ export function getAudioContext(): AudioContext | null {
 export async function unlockAudio(): Promise<boolean> {
   const ctx = getAudioContext();
   if (ctx === null) return false;
-  if (ctx.state === 'suspended') {
+  /*
+   * C07: iOS moves a backgrounded app's context to 'interrupted' and it needs resume() from a
+   * gesture like 'suspended' does (MDN BaseAudioContext.state, read 2026-11-04). TypeScript's
+   * AudioContextState lists only suspended, running and closed, hence the string compare.
+   */
+  const before: string = ctx.state;
+  if (before === 'suspended' || before === 'interrupted') {
     try {
       await ctx.resume();
     } catch {

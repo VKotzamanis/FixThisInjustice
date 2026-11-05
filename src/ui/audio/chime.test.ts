@@ -291,3 +291,20 @@ describe('vibrate', () => {
     expect(spy).toHaveBeenCalledWith([180, 80, 180]);
   });
 });
+
+/** iOS: a backgrounded app's context is 'interrupted' (MDN BaseAudioContext.state). */
+class InterruptedAudioContext extends FakeAudioContext {
+  constructor() {
+    super();
+    (this as { state: string }).state = 'interrupted';
+  }
+}
+
+describe('unlock after an iOS interruption (audit C07)', () => {
+  it('resumes an interrupted context from the gesture and reports it running', async () => {
+    vi.stubGlobal('AudioContext', InterruptedAudioContext);
+    const { unlockAudio } = await loadChime();
+    await expect(unlockAudio()).resolves.toBe(true);
+    expect(onlyContext().resumeCalls).toBe(1);
+  });
+});

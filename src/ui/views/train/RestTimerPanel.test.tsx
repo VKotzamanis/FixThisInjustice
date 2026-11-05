@@ -1,6 +1,6 @@
 // src/ui/views/train/RestTimerPanel.test.tsx
 //
-// The rest panel's copy contract and its zero-crossing sound (P8 close-out C).
+// The rest panel's copy contract; it sounds nothing itself (C06: src/app/RestController.tsx).
 //
 // Two mocks, both at the module boundary and both for the same reason: jsdom has no Web Audio,
 // so the real `playChime` and `playSfx` would return silently whether or not the effect reached
@@ -148,49 +148,6 @@ describe('RestTimerPanel: the limelight voice', () => {
   });
 });
 
-describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
-  it('sounds the sample once when the rest reaches zero, beside the chime', () => {
-    renderPanel('limelight');
-    expect(playSfx).not.toHaveBeenCalled();
-
-    expireRest();
-
-    expect(playSfx).toHaveBeenCalledTimes(1);
-    expect(playSfx).toHaveBeenCalledWith('rest_over');
-    // Beside, not instead of: the chime is the shipped cue and the sample is the skin's.
-    expect(playChime).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not sound it a second time for the same interval', () => {
-    renderPanel('limelight');
-    expireRest();
-    fireEvent(document, new Event('visibilitychange'));
-
-    expect(playSfx).toHaveBeenCalledTimes(1);
-  });
-
-  it('sounds nothing when the interval is extended', () => {
-    // Extend mints a NEW timer object, which resets the once-per-timer ref. That reset arms the
-    // cues for the extended interval; it must not fire them at the moment Extend was pressed.
-    renderPanel('limelight');
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }));
-
-    expect(playSfx).not.toHaveBeenCalled();
-    expect(playChime).not.toHaveBeenCalled();
-  });
-
-  it('sounds it once for an interval that was extended and then ran out', () => {
-    renderPanel('limelight');
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.extendRest') }));
-    // 30 s past the EXTENDED end, which is REST_S + EXTEND_S after the start.
-    vi.setSystemTime(NOW + (REST_S + 30 + 30) * 1000); // [ms] epoch UTC
-    fireEvent(document, new Event('visibilitychange'));
-
-    expect(playSfx).toHaveBeenCalledTimes(1);
-    expect(playSfx).toHaveBeenCalledWith('rest_over');
-  });
-});
-
 /*
  * Stylize survey item 3: the rest is a black lit sign (`.ll-panel`), and when it runs out the sign
  * turns pink and says so. The colours and the pulse are CSS (restPanelStyles.test.ts reads the
@@ -199,6 +156,14 @@ describe('RestTimerPanel: the rest-over sound (P8 Task 15)', () => {
  */
 describe('RestTimerPanel: the lit sign (stylize survey item 3)', () => {
   const sign = (container: HTMLElement): Element | null => container.querySelector('.rest-summary');
+
+  it('sounds nothing itself: the app-level RestController owns the cues (C06)', () => {
+    renderPanel('limelight');
+    expireRest();
+    expect(playChime).not.toHaveBeenCalled();
+    expect(playSfx).not.toHaveBeenCalled();
+    expect(vibrate).not.toHaveBeenCalled();
+  });
 
   it('draws the ring, the clock and the controls on the black panel', () => {
     const container = renderPanel('limelight');
@@ -224,9 +189,8 @@ describe('RestTimerPanel: the lit sign (stylize survey item 3)', () => {
     expect(panel?.classList.contains('rest-over')).toBe(true);
     expect(panel?.classList.contains('rest-over-pulse')).toBe(true);
     expect(label?.textContent).toBe(copyFor('limelight', 'notification.restOver'));
-    // Timing and sounds are untouched: the clock still reads zero and the cues fired once.
+    // Timing is untouched: the clock still reads zero.
     expect(screen.getByText(FORMAT.restRemaining(0, 0))).toBeInTheDocument();
-    expect(playChime).toHaveBeenCalledTimes(1);
   });
 
   it('under prefers-reduced-motion changes state once, steady, with no pulse', () => {
@@ -351,7 +315,7 @@ describe('RestTimerPanel: the rest game (ROADMAP F1, P6)', () => {
     expect(gameHeading()).toBeInTheDocument();
   });
 
-  it('closes the game when the rest ends, and the rest-over cues still fire once', () => {
+  it('closes the game when the rest ends', () => {
     renderGamePanel();
     openRestWord();
 
@@ -359,8 +323,6 @@ describe('RestTimerPanel: the rest game (ROADMAP F1, P6)', () => {
 
     expect(gameHeading()).toBeNull();
     expect(screen.queryByRole('dialog')).toBeNull();
-    expect(playChime).toHaveBeenCalledTimes(1);
-    expect(playSfx).toHaveBeenCalledWith('rest_over');
     expect(useAppStore.getState().session.restTimer?.endsAt).toBe(NOW + REST_S * 1000); // [ms]
 
     // An extension after the end is a new stretch of rest, not a revived board.

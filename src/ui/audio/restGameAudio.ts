@@ -42,8 +42,8 @@ export function midiToHz(midi: number): number {
 /**
  * Schedules one original cue when `soundsOn` (the user's `ui.sounds`, read by the caller) is true
  * and the shared context is already unlocked and running. The setting is checked FIRST, before
- * the context is even looked up, so sounds off is silence on every device. Unlike the rest-over
- * chime, a game cue is decoration, not an alarm, so it obeys the switch. This function never
+ * the context is even looked up, so sounds off is silence on every device. Like the rest-over chime
+ * (C11, src/app/RestController.tsx), a game cue obeys the switch. This function never
  * resumes a context: a timer expiry is not a gesture.
  *
  * @returns true when the notes were scheduled, false for silence.
