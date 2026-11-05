@@ -423,3 +423,20 @@ describe('LogView under a skin', () => {
     expect(screen.getByText(copyFor('limelight', 'hero.compliance'))).toBeInTheDocument();
   });
 });
+
+describe('one body-mass point per day (audit G12)', () => {
+  it('plots a pre/post pair as one point and never the post-session mass', () => {
+    useAppStore.setState(
+      seed({
+        bodyMass: {
+          [PROFILE_ID]: [
+            { ...mass('2026-02-16', 93.5, 'pre'), role: 'pre' }, // [kg]
+            { ...mass('2026-02-16', 91.8, 'post'), role: 'post' }, // [kg] 1.8 % lighter after training
+          ],
+        },
+      }),
+    );
+    const { container } = render(<LogView />);
+    expect(container.querySelectorAll("[data-testid='measured-point']")).toHaveLength(1);
+  });
+});

@@ -83,3 +83,18 @@ describe('AmrapSpark', () => {
     expect(axis).toContain(FORMAT.repsCount(15));
   });
 });
+
+describe('time on the x axis (audit G18)', () => {
+  it('spaces points by weeks, so a ten-week gap is drawn as one', () => {
+    const { container } = render(
+      <AmrapSpark
+        sets={[set('2026-01-05', 10), set('2026-01-12', 11), set('2026-03-23', 12)]} // weeks 0, 1, 11
+        exercise={PUSHUP}
+      />,
+    );
+    const xs = [...container.querySelectorAll("[data-testid='amrap-point']")].map((c) => Number(c.getAttribute('cx')));
+    const [a, b, c] = xs;
+    if (a === undefined || b === undefined || c === undefined) throw new Error('expected three points');
+    expect(c - b).toBeCloseTo(10 * (b - a), 0); // [viewBox units] ten weeks against one
+  });
+});

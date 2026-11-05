@@ -22,6 +22,7 @@
 import type { ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { addDays, compareLocalDate, daysBetween } from '../../domain/dates';
+import type { ProjectionAnchor } from '../../domain/measurements';
 import type { BodyMassEntry, Kg, LocalDate, UnitSystem } from '../../domain/types';
 import { formatMass } from '../../domain/units';
 
@@ -48,6 +49,11 @@ export interface BodyMassChartProps {
   today: LocalDate;
   /** Rendered height in CSS pixels; the viewBox is fixed and scales into it. */
   height?: number; // [px]
+  /**
+   * Audit G11: where the dashed line starts, the current programme's start and the mass measured
+   * then (measurements.ts projectionAnchor). Absent: the baseline, as before.
+   */
+  projectionFrom?: ProjectionAnchor | undefined;
 }
 
 const VIEW_W = 640; // viewBox units
@@ -108,11 +114,17 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
   // domain (lastDay, above) reaches: a long horizonDays or a future-dated weigh-in widens the
   // AXIS so those points are visible, but the engine's rate was only ever stated through today,
   // so drawing the dashed line any further would extrapolate a rate nobody gave.
-  const rate = expectedRateKgPerWeek; // [kg/week]
+  const rate = expectedRateKgPerWeek; // [kg/week] signed, negative = loss
   const todayDay = daysBetween(baselineDate, today); // [d] relative to baselineDate
   const projEndDay = Math.min(lastDay, Math.max(firstDay, todayDay)); // [d] clamped to today
-  const projStartKg = rate === null ? null : baselineKg + (rate * firstDay) / 7; // [kg]
-  const projEndKg = rate === null ? null : baselineKg + (rate * projEndDay) / 7; // [kg]
+  // Audit G11: the line starts at the anchor (programme start), not at the profile baseline.
+  const anchor = props.projectionFrom;
+  const anchorDay = anchor === undefined ? 0 : daysBetween(baselineDate, anchor.date); // [d]
+  const anchorKg = anchor === undefined ? baselineKg : anchor.massKg; // [kg]
+  const projStartDay = anchor === undefined ? firstDay : Math.max(firstDay, anchorDay); // [d]
+  const drawn = rate !== null && projStartDay <= projEndDay;
+  const projStartKg = drawn ? anchorKg + (rate * (projStartDay - anchorDay)) / 7 : null; // [kg]
+  const projEndKg = drawn ? anchorKg + (rate * (projEndDay - anchorDay)) / 7 : null; // [kg]
 
   // ---- vertical domain: masses -----------------------------------------------------------
   // The baseline is always in the domain: it is the reference the projection starts from, and
@@ -237,7 +249,7 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
       {projStartKg !== null && projEndKg !== null && (
         <path
           data-testid="projection"
-          d={`M ${coord(xAt(firstDay))} ${coord(yAt(projStartKg))} L ${coord(xAt(projEndDay))} ${coord(yAt(projEndKg))}`}
+          d={`M ${coord(xAt(projStartDay))} ${coord(yAt(projStartKg))} L ${coord(xAt(projEndDay))} ${coord(yAt(projEndKg))}`}
           fill="none"
           stroke="var(--chart-line)"
           strokeWidth="1.25"

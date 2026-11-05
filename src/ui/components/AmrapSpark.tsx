@@ -14,7 +14,8 @@
 // Nothing animates, so prefers-reduced-motion has nothing to suppress. Colours are tokens from
 // src/ui/styles/tokens.css, so the chart follows the skin.
 
-import type { ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
+import { daysBetween } from '../../domain/dates';
 import { FORMAT } from '../../content/copy';
 import { useCopyOverrides } from '../../content/useCopy';
 import { weeklyAmrapMax } from '../../domain/training/records';
@@ -44,7 +45,8 @@ export function AmrapSpark(props: AmrapSparkProps): ReactElement {
   // Before the empty-series return, so the hook count does not depend on the data.
   const overrides = useCopyOverrides();
   const height = props.height ?? DEFAULT_HEIGHT;
-  const series = weeklyAmrapMax(sets, exercise.id);
+  // Audit G21: one scan of the set list per change of it, not per render.
+  const series = useMemo(() => weeklyAmrapMax(sets, exercise.id), [sets, exercise.id]);
 
   const first = series[0];
   const last = series[series.length - 1];
@@ -57,17 +59,19 @@ export function AmrapSpark(props: AmrapSparkProps): ReactElement {
 
   // A single week has no horizontal span, and a series of all-zero reps has no vertical one.
   // Both denominators are floored at 1 so no coordinate can become 0/0.
-  const span = Math.max(1, series.length - 1); // [weeks]
+  // Audit G18: x is weeks since the first point, so a ten-week gap is drawn as ten weeks.
+  const weeksFromFirst = (weekStart: string): number => daysBetween(first.weekStart, weekStart) / 7; // [weeks]
+  const span = Math.max(1, weeksFromFirst(last.weekStart)); // [weeks]
   const top = Math.max(1, best); // [repetitions]
 
-  /** @param i index into the weekly series */
-  const xAt = (i: number): number => PAD_L + (i / span) * (VIEW_W - PAD_L - PAD_R);
+  /** @param weekStart the point's ISO week start; x is weeks since the first point */
+  const xAt = (weekStart: string): number => PAD_L + (weeksFromFirst(weekStart) / span) * (VIEW_W - PAD_L - PAD_R);
   /** @param reps [repetitions] */
   const yAt = (reps: number): number =>
     VIEW_H - PAD_B - (reps / top) * (VIEW_H - PAD_T - PAD_B);
 
   const path = series
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${coord(xAt(i))} ${coord(yAt(p.reps))}`)
+    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${coord(xAt(p.weekStart))} ${coord(yAt(p.reps))}`)
     .join(' ');
 
   return (
@@ -125,11 +129,11 @@ export function AmrapSpark(props: AmrapSparkProps): ReactElement {
           {last.weekStart}
         </text>
         <path d={path} fill="none" stroke="var(--chart-actual)" strokeWidth="1.5" />
-        {series.map((p, i) => (
+        {series.map((p) => (
           <circle
             key={p.weekStart}
             data-testid="amrap-point"
-            cx={coord(xAt(i))}
+            cx={coord(xAt(p.weekStart))}
             cy={coord(yAt(p.reps))}
             r="2.5"
             fill="var(--chart-marker)"
