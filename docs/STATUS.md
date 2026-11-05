@@ -40,7 +40,7 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 - Pre-scrub backup outside the repo: `~/Desktop/Claude/backups/FixThisInjustice-2026-10-18/`. Raw image originals (17 MB) local only: `agy-artifacts/gen-2026-10-18/` (gitignored).
 
 ## Never done / not working
-- Reminder Worker never deployed (`worker/wrangler.toml` placeholders): reminders show "not set up"; no rest alarm with the screen locked (web limit, `docs/ARCHITECTURE.md`).
+- Reminder Worker never deployed (`worker/wrangler.toml` placeholders): decided not to ship for now (owner, 2026-11-05; ROADMAP N2). Reminders show "not set up"; no rest alarm with the screen locked (web limit, `docs/ARCHITECTURE.md`).
 - No sound files (`public/sfx/`), no motivation clip (`public/media/`).
 - Nothing tested on iOS Safari/Android hardware by an agent; layout checked only in headless Chromium at 320/400 px. P6 sheet measured 2026-11-04 (e2e/p6-rest-sheet.spec.ts, Chromium iPhone 13/Pixel 7 emulation): keys >= 44 px tall and 26/30/33/35 px wide at 320/360/390/412, no sideways scroll, sheet 466-472 px; since P4a Task 8 (44 px header) the next set's Log button sits above the sheet at all four widths (bottom 181 px vs sheet top 192/195/198/198 px at 320/360/390/412 after the P4a active row, 2026-11-05).
 

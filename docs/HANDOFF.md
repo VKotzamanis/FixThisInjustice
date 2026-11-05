@@ -41,9 +41,9 @@ Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it 
 9. Nord Glow reference (fonts, effects, licences): `docs/private/design-2026-11-04/phone-glow-reference.md`.
 10. Programme engine: `docs/design/programme-engine.md`, `src/domain/plan/engine.ts`. Form videos: `docs/design/form-videos.md`.
 
-## Job 1: DONE 2026-11-05 (items 8 and 10; item 11 still open, see below)
+## Job 1: DONE 2026-11-05 (items 8 and 10; item 11 moved to Job 3)
 - Commits: 0bb58c6 (static lit renderer `src/ui/effects/litText.ts`: ONE shared offscreen WebGL context, frames cached as 2D canvases, max 64; `--lit-*` tokens; `--panel-glow` on), 3a9aa71 (`LitWord`, BurnWord `rest="lit"`), 41928bf (header brand + title, lime tab labels, rest-over word at rest, rest-sheet eyebrow), fe78282 (counter: bare number, `SessionNumber`, burns once per completed session via `burnMoments.claimSessionAdvance`, named "Session n"; limelight `status.sessionCursor` row removed, fixture updated), 265e796 (glow fade inside the lit canvas; e2e in `e2e/burn.spec.ts`), 6e65668 (glow room in the title/tab clips; `litText.widthMatches` refuses a frame whose width differs from the DOM word), 289b586 (counter at normal width).
-- Decisions: the current tab label stays plain ink on its pink sticker (lime on pink 1.41:1); `status.sessionEyebrow` ("ep. 1, Lower A" on Train) still says "ep.": owner's call; `SessionIndicator` is not mounted anywhere, it only got the bare number through `FORMAT.planPosition`; with `--panel-glow` on, `Echo` words also get the static CSS glow.
+- Decisions: the current tab label stays plain ink on its pink sticker (lime on pink 1.41:1); `status.sessionEyebrow` on Train is now "1, Lower A", the number a `SessionNumber` (owner item 10 note; `FORMAT.sessionEyebrowParts`); `SessionIndicator` is not mounted anywhere, it only got the bare number through `FORMAT.planPosition`; with `--panel-glow` on, `Echo` words also get the static CSS glow.
 - Follow-up DONE: burn haze rectangle. One glow fade for burn and lit (`burnText.ts` `GLOW_FADE`, `edgeFade`, `glowFade`; `uFade` switch removed); glow and flame tongues reach alpha 0 at the outermost canvas pixel; glyph pixels unchanged (headless Chromium readback, border alpha 134 -> 0). Test `burnText.test.ts` "fades glow and flames to zero alpha".
 - WebKit canvas has no fontStretch: the 75 % tab labels and the 75 % eyebrow stay plain CSS text (glow shadow) on iOS; the header title, brand, rest-over word and counter (100 %) are lit. Owner still to see both on a phone.
 
@@ -58,7 +58,7 @@ Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it 
   - Render it in the burn font and shader, and burn it once when the number advances (a completed session), using burnMoments' once-per-moment rule.
   - Keep an accessible name ("Session 12").
   - This edits owner copy on his own instruction (AGENTS rule 4 satisfied: he asked).
-- Item 11 (`tuning/adaptation`, "change" with 50 and 2 = the current defaults, empty note): ASK the owner what he wants changed before touching `LOW_ADHERENCE_FRACTION` / `CONSISTENT_SKIP_MIN` (`src/domain/plan/engine.ts`).
+- Item 11 (`tuning/adaptation`): owner clarified 2026-11-05; see Job 3.
 - Verify:
   - unit tests for the static shader variant and the counter;
   - e2e (`e2e/burn.spec.ts` pattern) on chromium and webkit;
@@ -67,7 +67,7 @@ Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it 
   - Machine is 16 GB shared: `--maxWorkers=1`, one heavy process at a time.
 
 ## Job 2: owner-gated items (do only when he answers)
-- Reminder Worker deploy. Needs his `npx wrangler login` in `worker/`, then follow `docs/runbooks/reminders.md`. Put `ADMIN_CONTACT` (his email) in as a Worker SECRET, never in `worker/wrangler.toml` (public repo, rule 10). Set the GitHub repo variables `VITE_REMINDER_API` and `VITE_VAPID_PUBLIC_KEY`, then push.
+- Reminders: owner decided "Skip reminders" (2026-11-05): ROADMAP N2 not shipped for now. Do not deploy the Worker unless he reopens it.
 - Real-device checks he must report:
   - iPhone notch and home-bar insets;
   - burn on iOS (canvas has no fontStretch in WebKit; GPU precision);
@@ -76,6 +76,18 @@ Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it 
   - the YouTube player inside the sandboxed frame.
 - Form-cue text for 38 exercises: his wording; do not write it.
 - Moving-banner content: his job "for another time".
+
+## Job 3 (owner item 11, 2026-11-05)
+- Owner, verbatim (`docs/private/owner-feedback/phone-week-2026-11-04.md`, "Item 11 clarification"): "For 11 I said that It should a a general option to replace exarcises. For example if at one day you have to do triceps at the cable machine and the machine is taken or you just dont feel like it you can place replace when you start the exercise and another tricep exercise would be reccomended. And I also said that from my knowledge if you keep doing the same exercises over oand over again there is a plateu and you would need to change your regiment. These can be things the next agent will search and address."
+- (a) Replace, one tap, at the START of each exercise (machine taken / does not feel like it):
+  - prominent "Replace" in the exercise card header (`src/ui/views/train/ExerciseCard.tsx`);
+  - recommends same-muscle alternatives that fit the equipment inventory;
+  - build on the existing swap: `swapAlternatives` (`src/domain/training/sessionEdits.ts:474`), `src/ui/views/train/SessionEditBar.tsx`; no second alternatives rule;
+  - keep the progression rules (ROADMAP R4, `progressionHistory` in `src/domain/training/progression.ts`).
+- (b) Plateau / exercise variation over time:
+  - research FIRST (AGENTS rule 1): peer-reviewed sources on exercise variation vs repeated exercises for strength/hypertrophy and plateaus; record each with its DOI in `docs/private/evidence/` or `src/content/guidanceReferences.ts`;
+  - then extend the next-block rule (`src/domain/plan/engine.ts`) with a sourced rotation policy; no unsourced coefficient. No source: ship nothing.
+- Item 11's two numbers (50 %, 2: `LOW_ADHERENCE_FRACTION`, `CONSISTENT_SKIP_MIN`, `src/domain/plan/engine.ts`) stay unless the research says otherwise.
 
 ## Known follow-ups (agent-fixable, low priority)
 - `ModalShell` `onClose` is a fresh arrow every render (audit A16 note).

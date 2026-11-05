@@ -1535,10 +1535,11 @@ describe('TrainView: the limelight voice', () => {
     seedStore(withSkin(seed({ sets: metTopHistory(UPPER.id, 60) }), 'limelight'));
     renderTrain();
 
-    // Session 1, label 'Upper', from the seeded plan.
-    expect(
-      screen.getByText(FORMAT.sessionEyebrow(1, 'Upper', SKIN_COPY.limelight)),
-    ).toBeInTheDocument();
+    // Session 1, label 'Upper', from the seeded plan. The number is a SessionNumber (owner
+    // review item 10), so the eyebrow is read as the row's text, not one text node.
+    expect(document.querySelector('.train-position')?.textContent).toBe(
+      FORMAT.sessionEyebrow(1, 'Upper', SKIN_COPY.limelight),
+    );
     expect(
       screen.getByText(
         FORMAT.lastSessionSets(YESTERDAY, '60 kg', '8, 8, 8', SKIN_COPY.limelight),
@@ -1550,7 +1551,9 @@ describe('TrainView: the limelight voice', () => {
     ).toBeGreaterThan(0);
     // The base-table forms are gone from the screen, which is what makes the three above
     // assertions about the table rather than about a string that happens to match.
-    expect(screen.queryByText(FORMAT.sessionEyebrow(1, 'Upper'))).toBeNull();
+    expect(document.querySelector('.train-position')?.textContent).not.toBe(
+      FORMAT.sessionEyebrow(1, 'Upper'),
+    );
     expect(screen.queryByText(FORMAT.setCounter(1, 3))).toBeNull();
   });
 
@@ -2086,6 +2089,15 @@ describe('the Train layout (brief 4.2; C08)', () => {
     expect(row?.querySelector('.train-position')?.textContent).toBe(
       FORMAT.sessionEyebrow(1, 'Upper', SKIN_COPY.limelight),
     );
+    // Owner review item 10: "1, Upper", the number in the burn face (SessionNumber), named
+    // "Session 1" for assistive technology, never "ep. 1".
+    expect(row?.querySelector('.train-position')?.textContent).toBe('1, Upper');
+    const position = row?.querySelector<HTMLElement>('.train-position');
+    expect(position).not.toBeNull();
+    if (position) {
+      const num = within(position).getByRole('img', { name: 'Session 1' });
+      expect(num.textContent).toBe('1');
+    }
     const stack = container.querySelector('.ex-stack');
     // Nothing but the title row, the deload line and the warm-up notice precedes the cards.
     const before = [...(container.querySelector('.view.train')?.children ?? [])].filter(

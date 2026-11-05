@@ -60,7 +60,7 @@ Owner rulings from the restart audit and review pages (2026-10-17/18; verbatim a
 - F6 Atlas filters; more "her" poses or animations (sheets in `src/assets/sprite/`, component `src/ui/components/SpriteSheet.tsx`): low priority.
 
 ## 5. Later
-- N2 Deploy the reminder Worker (`docs/runbooks/reminders.md`). Needed only for alarms with the screen locked or session reminders.
+- N2 Deploy the reminder Worker (`docs/runbooks/reminders.md`). Decided not to ship for now (owner, 2026-11-05). Was needed only for alarms with the screen locked or session reminders.
 - N6 DONE 2026-10-18: `public/icons/notification-badge-96.png` (owner sprite outline), `src/sw.ts` badge points at it.
 - A1 DONE 2026-10-18 (see 3b). New art: generate per `docs/design/asset-spec-2026-10-18.md`, owner reviews on an artifact page before wiring, register in the CSV.
 - Wording edits without an editor app: idea is one plain file of all app strings the owner edits directly or via chat (copy tables today: `src/content/copy.ts` + `src/content/copy.limelight.ts`).

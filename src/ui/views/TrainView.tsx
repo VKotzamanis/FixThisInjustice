@@ -59,6 +59,7 @@ import { ExerciseCard, targetSetsFor } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
 import { RestTimerPanel } from './train/RestTimerPanel';
 import { SessionEditBar } from './train/SessionEditBar';
+import { SessionNumber } from '../components/SessionNumber';
 import '../styles/train.css';
 import './views.css';
 
@@ -412,6 +413,23 @@ export function TrainView(): ReactElement {
   const title = plan === null ? session.label : sessionTitle(plan, session);
 
 
+  /*
+   * Owner review item 10: the eyebrow's number is the session counter (SessionNumber: burn face,
+   * named "Session n"). It burns only through claimSessionAdvance's once-per-advance rule, so
+   * Train adds no burn of its own. A frame without `{ordinal}` falls back to the plain text.
+   */
+  const eyebrowParts = FORMAT.sessionEyebrowParts(session.label, overrides);
+  const eyebrow =
+    eyebrowParts === null || cursor === null ? (
+      FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)
+    ) : (
+      <>
+        {eyebrowParts[0]}
+        <SessionNumber planId={cursor.planId} shown={session.ordinal} />
+        {eyebrowParts[1]}
+      </>
+    );
+
   return (
     <div className="view train">
       {/*
@@ -420,9 +438,7 @@ export function TrainView(): ReactElement {
         */}
       <div className="train-title-row">
         <h2 className={displayClass(title)}>{title}</h2>
-        <span className="train-position">
-          {FORMAT.sessionEyebrow(session.ordinal, session.label, overrides)}
-        </span>
+        <span className="train-position">{eyebrow}</span>
       </div>
       {block.isDeload && <p className="train-deload">{c('advice.deloadBlock')}</p>}
 

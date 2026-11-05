@@ -2626,6 +2626,23 @@ export const FORMAT = {
       .replace('{label}', () => label),
 
   /**
+   * The eyebrow split around its number, [before, after], for a caller that renders the number
+   * itself (Train's SessionNumber, owner review item 10). `{label}` is substituted first-come in
+   * the frame only, so a label that spells a slot stays the user's text. Null when the frame has
+   * no `{ordinal}` slot: the caller then shows `sessionEyebrow` as plain text.
+   */
+  sessionEyebrowParts: (
+    label: string,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): [string, string] | null => {
+    const frame = copy('status.sessionEyebrow', overrides);
+    const at = frame.indexOf('{ordinal}');
+    if (at < 0) return null;
+    const fill = (part: string): string => part.replace('{label}', () => label);
+    return [fill(frame.slice(0, at)), fill(frame.slice(at + '{ordinal}'.length))];
+  },
+
+  /**
    * "SET 2/3": the set's position in the count this block prescribes, after the modifier. Reads
    * `status.setCounter` (P8 close-out B).
    */

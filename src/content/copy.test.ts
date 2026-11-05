@@ -356,7 +356,8 @@ describe('the limelight table', () => {
      * each traced to a position the limelight mockup actually draws
      * (docs/design/round3/2026-09-01-design-I-limelight.html):
      *
-     *   status.sessionEyebrow   the train system bar, "upper . ep. 12", and the today sub-line
+     *   status.sessionEyebrow   the train system bar, "upper . ep. 12" (now the bare number,
+     *                           owner review item 10), and the today sub-line
      *   status.setCounter       the ticker item, "set 3 of 3 . bench"
      *   status.lastSessionSets  no mockup row; this table's own word for a session, which
      *                           `nav.train`, `hero.sessionInProgress` and `status.bootSchedule`
@@ -365,7 +366,9 @@ describe('the limelight table', () => {
      * The four that stay on the base table are asserted below, so a later row cannot be added without
      * answering the reason recorded against it.
      */
-    expect(LIMELIGHT_COPY['status.sessionEyebrow']).toBe('ep. {ordinal}, {label}');
+    // Owner answer to review item 10 (2026-11-05): the bare number, no "ep." (SessionNumber
+    // renders `{ordinal}` in the burn face on Train; FORMAT.sessionEyebrowParts).
+    expect(LIMELIGHT_COPY['status.sessionEyebrow']).toBe('{ordinal}, {label}');
     expect(LIMELIGHT_COPY['status.setCounter']).toBe('set {n} of {targetSets}');
     expect(LIMELIGHT_COPY['status.lastSessionSets']).toBe(
       'last show {date}: {load} \u00d7 {reps}',
@@ -406,8 +409,12 @@ describe('the limelight table', () => {
     // the list is still closed at two WORDS: `status.weekMetStamp` is the same MOTHER as
     // `status.prStamp`, at the key the week stamp reads after the two stamps were split
     // (a met week is not a personal record). A fourth shouted word would fail this.
+    // A row with no cased letter outside its slots (`status.sessionEyebrow`, "{ordinal}, {label}"
+    // since owner review item 10) says no word, so it neither shouts nor counts against the list.
+    const cased = (value: string): boolean =>
+      withoutSlots(value).toUpperCase() !== withoutSlots(value).toLowerCase();
     const shouted = entriesOf(LIMELIGHT_COPY)
-      .filter(([, value]) => withoutSlots(value) === withoutSlots(value).toUpperCase())
+      .filter(([, value]) => cased(value) && withoutSlots(value) === withoutSlots(value).toUpperCase())
       .map(([key]) => key)
       .sort();
     expect(shouted).toEqual(['button.startSession', 'status.prStamp', 'status.weekMetStamp']);
@@ -652,6 +659,16 @@ describe('the converted frames render the base-table string they replaced', () =
     for (const value of rendered) {
       expect({ value, slot: /\{[a-zA-Z]+\}/.test(value) }).toEqual({ value, slot: false });
     }
+  });
+
+  it('splits the eyebrow around its number, so Train can render the number itself', () => {
+    // Owner review item 10: the number is a SessionNumber (burn face), the rest stays text.
+    expect(FORMAT.sessionEyebrowParts('Upper')).toEqual(['SESSION ', ', Upper']);
+    expect(FORMAT.sessionEyebrowParts('Lower A', LIMELIGHT_COPY)).toEqual(['', ', Lower A']);
+    // A label that spells a slot is the user's data, never re-substituted.
+    expect(FORMAT.sessionEyebrowParts('{ordinal}', LIMELIGHT_COPY)).toEqual(['', ', {ordinal}']);
+    // An overlay that drops the number has no place for one: null, the caller shows the text.
+    expect(FORMAT.sessionEyebrowParts('Upper', { 'status.sessionEyebrow': '{label}' })).toBeNull();
   });
 
   it('lets an overlay reach all nine, which is the point of the conversion', () => {

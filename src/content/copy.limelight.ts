@@ -57,11 +57,12 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // TrainView, a row here would have rendered nowhere, which is why they arrive now.
   //
   // The eyebrow is the mockup's train system bar, "upper . ep. 12", and the today screen's own
-  // sub-line under the session name. Since review item 10 the counter shows the bare number (no
-  // `status.sessionCursor` row below); whether "ep." goes here too is the owner's call. `{label}` is the PLAN's session name and `{date}` is a
+  // sub-line under the session name. Owner answer to review item 10 (2026-11-05: "Just change the
+  // "EP.12" to just the number"): no "ep." here either; Train renders `{ordinal}` as a
+  // SessionNumber (burn face). `{label}` is the PLAN's session name and `{date}` is a
   // LocalDate: a slot filled from the user's own data is outside the copy contract, and this
   // table neither lower-cases nor restates one.
-  'status.sessionEyebrow': 'ep. {ordinal}, {label}',
+  'status.sessionEyebrow': '{ordinal}, {label}',
   // The mockup's ticker item, "set 3 of 3 . bench". The quantity name `set` is the contract's
   // (R11) and survives; the separator is the only thing this row changes.
   'status.setCounter': 'set {n} of {targetSets}',
