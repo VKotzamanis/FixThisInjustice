@@ -443,6 +443,7 @@ export type CopyKey =
   | 'hero.setupFailed'
   | 'advice.setupRestartClearsDraft'
   | 'button.restartSetup'
+  | 'button.replayIntro'
   | 'status.noEstimated1RM'
   | 'status.estimated1RM'
   | 'status.complianceWeek'
@@ -1384,6 +1385,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'hero.setupFailed': 'Setup Hit a Problem',
   'advice.setupRestartClearsDraft': 'Restart Setup clears only the answers typed in setup.',
   'button.restartSetup': 'Restart Setup',
+  // A13: Settings replays the intro.
+  'button.replayIntro': 'Replay Intro',
   // Shown where the Epley equation has no defensible input: no external load, or no set
   // inside its validity domain of ten repetitions.
   'status.noEstimated1RM': 'No estimated 1RM',

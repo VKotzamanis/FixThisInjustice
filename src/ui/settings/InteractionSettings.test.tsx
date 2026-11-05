@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InteractionSettings } from './InteractionSettings';
 import { copyFor } from '../../content/copy';
@@ -93,5 +93,14 @@ describe('InteractionSettings', () => {
     expect(ui.sounds).toBe(true);
     expect(ui.lastView).toBe('train');
     expect(sfx.unlock).not.toHaveBeenCalled();
+  });
+});
+
+describe('Replay Intro (A13)', () => {
+  it('sets the intro unseen, so the app shows it again', () => {
+    useAppStore.setState(makeAppState({ ui: makeUiPrefs({ skin: 'limelight', introSeen: true }) }));
+    render(<InteractionSettings />);
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.replayIntro') }));
+    expect(useAppStore.getState().ui.introSeen).toBe(false);
   });
 });
