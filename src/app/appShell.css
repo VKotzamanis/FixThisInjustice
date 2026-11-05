@@ -39,6 +39,32 @@
 }
 
 /*
+ * Ruling R-HDR: below 400 px the header shows "FTI" (index.html's apple-mobile-web-app-title)
+ * instead of the full name, so the ticker keeps >= 120 px [px] at 320 px: 288 px row - 25 px
+ * brand - at most 129 px title (7rem cap + 8 + 8 + 1) - 8 px gap = 126 px. The full name is
+ * clipped, not removed, so a screen reader still hears it; the short form is aria-hidden.
+ */
+.topbar .brand-short {
+  display: none;
+}
+
+@media (max-width: 399.98px) {
+  .topbar .brand-short {
+    display: inline;
+  }
+
+  .topbar .brand-full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+/*
  * The page title (round 2, r2-onboarding.general), read with the brand behind a 1 px rule.
  * AM-4a-1: it keeps its own width up to a cap and the ticker takes what is left, so the ticker
  * can never squeeze it to one letter (F07). The cap, 7rem = 112 px [px] at the 16 px root, holds

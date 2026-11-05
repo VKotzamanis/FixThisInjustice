@@ -53,6 +53,7 @@ import { RestController } from './RestController';
 import { UpdatePrompt } from './UpdatePrompt';
 import { StaleSessionNotice } from './StaleSessionNotice';
 import { UnreadableNotice } from './UnreadableNotice';
+import { BRAND_SHORT } from './brand';
 import './appShell.css';
 
 /**
@@ -633,8 +634,19 @@ export function App(): ReactElement {
              */}
             <ReminderSync />
             <header className="topbar">
+              {/*
+               * Ruling R-HDR: below 400 px the brand is the compact BRAND_SHORT (index.html's
+               * apple-mobile-web-app-title), so the kept ticker gets >= 120 px at 320 px
+               * (appShell.css; measured in e2e/p4a-shell.spec.ts). The full name stays in the
+               * accessibility tree at every width; the short form is the visual stand-in.
+               */}
               <span className="brand">
-                FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+                <span className="brand-full">
+                  FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+                </span>
+                <span className="brand-short" aria-hidden="true">
+                  {BRAND_SHORT}
+                </span>
               </span>
               {/*
                * Where the user is, appended to the fixed brand (round 2, r2-onboarding.general).

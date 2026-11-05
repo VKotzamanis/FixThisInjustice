@@ -18,6 +18,8 @@
 import { describe, expect, it } from 'vitest';
 
 import shellCss from './appShell.css?raw';
+import indexHtml from '../../index.html?raw';
+import { BRAND_SHORT } from './brand';
 import tokensCss from '../ui/styles/tokens.css?raw';
 
 type Rgb = readonly [number, number, number];
@@ -227,5 +229,20 @@ describe('one-line header with safe area (P4 brief 2.1, AM-4a-1; F04, F06, F07, 
   it('main has no side gutter of its own (brief 2.3: one gutter, on .view)', () => {
     const phone = shellCss.slice(shellCss.indexOf('@media (max-width: 820px)'));
     expect(phone).toMatch(/main \{\s*padding:\s*var\(--space-4\) 0 calc\(var\(--tabbar-h\) \+ env\(safe-area-inset-bottom\) \+ var\(--space-4\)\);/);
+  });
+});
+
+describe('compact brand below 400 px (ruling R-HDR)', () => {
+  it("is index.html's apple-mobile-web-app-title, one source for the short name", () => {
+    const m = /<meta name="apple-mobile-web-app-title" content="([^"]+)"/.exec(indexHtml);
+    expect(m?.[1]).toBe(BRAND_SHORT);
+  });
+
+  it('swaps the full name for the short one under 400 px and keeps the full name readable', () => {
+    const at = shellCss.indexOf('@media (max-width: 399.98px)');
+    expect(at).toBeGreaterThan(-1);
+    const block = shellCss.slice(at, shellCss.indexOf('\n}\n', at));
+    expect(block).toMatch(/\.topbar \.brand-short \{\s*display:\s*inline;/);
+    expect(block).toMatch(/\.topbar \.brand-full \{[^}]*clip-path:\s*inset\(50%\);/);
   });
 });
