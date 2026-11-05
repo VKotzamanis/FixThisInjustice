@@ -208,29 +208,69 @@ function activeAssignment(
 /**
  * The body-mass entry that counts as this session's PRE-session mass, or null.
  *
- * The latest entry logged at or before `startedAt` and no more than
- * PRE_SESSION_MASS_WINDOW_MS before it. Exported because the Train view needs
- * exactly the reference the post-session cue's own guard uses (P4 polish item
- * 2): the > 2 % comparison is meaningful only against the mass this session
- * started from, and the view previously compared against
- * Profile.body.baselineMassKg - a mass from whenever the profile was set up,
- * which reports the programme's mass change rather than the session's fluid
- * loss and can manufacture or mask the flag on its own.
+ * Spec R9 / audit G01: by ROLE first. An entry the user tagged `pre` counts when it was logged
+ * no more than PRE_SESSION_MASS_WINDOW_MS before the session started and no later than the
+ * session ended (`endedAt`, null while it is open): Today's Start tap stamps `startedAt` before
+ * Train can show the field, so the old "logged at or before startedAt" rule refused every mass
+ * the field ever stored and the 2 % check could never fire. An untagged or `morning` entry keeps
+ * the old rule (logged within the window at or before `startedAt`). A `post` entry never counts.
+ * A tagged `pre` entry wins over an untagged one; ties go to the latest `loggedAt`, never to
+ * array position (the store sorts bodyMass by civil DATE only).
  *
- * Ties are broken by the latest `loggedAt`, never by array position: the store
- * keeps bodyMass sorted by civil DATE, so two entries on one day arrive in
- * insertion order and position is not a fact about when they were measured.
+ * Exported because the Train view needs exactly the reference the post-session cue's own guard
+ * uses: the > 2 % comparison is meaningful only against the mass this session started from.
+ *
+ * @param startedAt [ms] epoch UTC, the session's start
+ * @param endedAt [ms] epoch UTC, the session's completion, or null while it is open
  */
 export function preSessionMass(
   masses: readonly BodyMassEntry[],
-  startedAt: EpochMs, // [ms] epoch UTC
+  startedAt: EpochMs,
+  endedAt: EpochMs | null = null,
+): BodyMassEntry | null {
+  let best: BodyMassEntry | null = null;
+  const tagged = (e: BodyMassEntry): boolean => e.role === 'pre';
+  for (const entry of masses) {
+    const { loggedAt } = entry; // [ms] epoch UTC
+    if (entry.role === 'post') continue;
+    if (startedAt - loggedAt > PRE_SESSION_MASS_WINDOW_MS) continue; // too stale to compare
+    if (tagged(entry)) {
+      if (endedAt !== null && loggedAt > endedAt) continue; // after the session: not its start
+    } else if (loggedAt > startedAt) {
+      continue; // untagged and after the session began: not a pre-session mass
+    }
+    if (
+      best === null ||
+      (tagged(entry) && !tagged(best)) ||
+      (tagged(entry) === tagged(best) && loggedAt > best.loggedAt)
+    ) {
+      best = entry;
+    }
+  }
+  return best;
+}
+
+/**
+ * The body-mass entry that counts as this session's POST-session mass, or null (spec R9, G01).
+ * A `post` entry logged after the session started (the user may weigh in before tapping Finish),
+ * or an untagged one logged at or after `completedAt`. A `pre` or `morning` entry never counts.
+ * The latest by `loggedAt`.
+ *
+ * @param startedAt [ms] epoch UTC
+ * @param completedAt [ms] epoch UTC
+ */
+export function postSessionMass(
+  masses: readonly BodyMassEntry[],
+  startedAt: EpochMs,
+  completedAt: EpochMs,
 ): BodyMassEntry | null {
   let best: BodyMassEntry | null = null;
   for (const entry of masses) {
-    const { loggedAt } = entry; // [ms] epoch UTC
-    if (loggedAt > startedAt) continue; // after the session began: not a pre-session mass
-    if (startedAt - loggedAt > PRE_SESSION_MASS_WINDOW_MS) continue; // too stale to compare
-    if (best === null || loggedAt > best.loggedAt) best = entry;
+    const counts =
+      entry.role === 'post'
+        ? entry.loggedAt >= startedAt
+        : entry.role === undefined && entry.loggedAt >= completedAt;
+    if (counts && (best === null || entry.loggedAt > best.loggedAt)) best = entry;
   }
   return best;
 }
@@ -317,8 +357,8 @@ export function hydrationCue(
     // vacuous. Residual limitation, inherited by the > 2 % comparison the view
     // then makes: within the window the app still cannot tell a mass taken at the
     // gym door from one taken 5 h earlier.
-    const hasPreSessionMass = preSessionMass(masses, startedAt) !== null;
-    const hasPostSessionMass = masses.some((b) => b.loggedAt >= completedAt);
+    const hasPreSessionMass = preSessionMass(masses, startedAt, completedAt) !== null;
+    const hasPostSessionMass = postSessionMass(masses, startedAt, completedAt) !== null;
     if (hasPreSessionMass && !hasPostSessionMass) {
       return {
         kind: 'post-session-weigh',
