@@ -1925,7 +1925,8 @@ describe('the open session (spec R1; audit C01, C10, C03)', () => {
   it('shows a session opened on an earlier day and logs against that day', () => {
     seedStore(seedOpenOn(YESTERDAY));
     renderTrain();
-    expect(screen.getByRole('heading', { name: 'Upper A' })).toBeInTheDocument();
+    // P3 D09: the title comes from the session's position (rotation.ts), not its baked name.
+    expect(screen.getByRole('heading', { name: 'Week 1 Upper' })).toBeInTheDocument();
     logRow(1, '60', '8');
     expect(Object.values(useAppStore.getState().sets).map((s) => s.assignmentDate)).toEqual([YESTERDAY]);
   });
