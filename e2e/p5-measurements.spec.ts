@@ -1,7 +1,7 @@
 // Spec R9 / audit G02, G03 (and G01, Task 7): measurements on the phone.
 import { expect, test } from '@playwright/test';
-import { LABEL, PROFILE_ID, massLabel } from './support/constants';
-import { chicago, flushWrites, openApp, readDocument, seedDocument, setClock } from './support/app';
+import { LABEL, PROFILE_ID, massLabel, postMassLabel, preMassLabel } from './support/constants';
+import { chicago, flushWrites, logSet, openApp, readDocument, seedDocument, setClock, startFromToday } from './support/app';
 import { MONDAY, TUESDAY, WEDNESDAY, bodyMassEntry, e2eDocument } from './support/document';
 
 test('G02: a morning weigh-in on a rest day, from Today', async ({ context }) => {
@@ -38,4 +38,20 @@ test('G03: a typo weigh-in is corrected in place from the Log', async ({ context
   const masses = (await readDocument(page)).bodyMass[PROFILE_ID] ?? [];
   expect(masses).toHaveLength(2);
   expect(masses.find((e) => e.id === 'typo')?.massKg).toBe(80.2); // [kg]
+});
+
+test('G01: a pre-session weigh-in after Start makes the 2 % fluid-loss flag fire', async ({ context }) => {
+  await seedDocument(context, e2eDocument({ weighInOptIn: true }));
+  await setClock(context, chicago(MONDAY, '18:00'));
+  const page = await openApp(context);
+  await startFromToday(page);
+  await page.getByLabel(preMassLabel(), { exact: true }).fill('80');
+  await page.getByRole('button', { name: LABEL.logBodyMass, exact: true }).click();
+  // Before G01 the field stayed on screen: every mass it stored was "after Start".
+  await expect(page.getByLabel(preMassLabel(), { exact: true })).toHaveCount(0);
+  await logSet(page, 1, '60', '5');
+  await page.getByRole('button', { name: LABEL.finish }).dispatchEvent('click');
+  await page.getByLabel(postMassLabel(), { exact: true }).fill('77.5'); // [kg] 3.1 % below 80
+  await page.getByRole('button', { name: LABEL.logBodyMass, exact: true }).click();
+  await expect(page.getByText(LABEL.fluidLoss)).toBeVisible();
 });

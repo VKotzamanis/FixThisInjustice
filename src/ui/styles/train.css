@@ -972,7 +972,6 @@
   color: var(--danger);
 }
 
-.mass-quick-log,
 .post-session {
   display: flex;
   gap: 0.5rem;

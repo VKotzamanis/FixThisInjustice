@@ -1016,16 +1016,10 @@ describe('TrainView hydration and body mass', () => {
     expect(entry?.volumeML).toBe(250); // [mL]
   });
 
-  it('logs a body mass entry from the quick log', () => {
+  it('offers no mid-session weigh-in: Today carries it (spec R9, audit G12)', () => {
     seedStore(seed());
     renderTrain();
-
-    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`), {
-      target: { value: '94.4' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
-
-    expect(useAppStore.getState().bodyMass['profile-1']?.[0]?.massKg).toBe(94.4); // [kg]
+    expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeNull();
   });
 
   it('offers a pre-session mass at session start when the profile opted in', () => {
@@ -1039,10 +1033,9 @@ describe('TrainView hydration and body mass', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
 
-    expect(useAppStore.getState().bodyMass['profile-1']?.[0]?.massKg).toBe(96); // [kg]
-    // Once it is on record the prompt is done; the ordinary in-session quick log takes over.
+    // Spec R9 / audit G01: stored by role, so it counts although Start was tapped first.
+    expect(useAppStore.getState().bodyMass['profile-1']?.[0]).toMatchObject({ massKg: 96, role: 'pre', date: TODAY }); // [kg]
     expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.preSessionBodyMass')} (kg)`)).toBeNull();
-    expect(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeInTheDocument();
   });
 
   it('offers no pre-session mass to a profile that did not opt in', () => {
@@ -1050,7 +1043,7 @@ describe('TrainView hydration and body mass', () => {
     renderTrain();
 
     expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.preSessionBodyMass')} (kg)`)).toBeNull();
-    expect(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeInTheDocument();
+    expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeNull();
   });
 
   it('flags a post-session loss above 2 % of the PRE-SESSION mass', () => {
@@ -1086,6 +1079,22 @@ describe('TrainView hydration and body mass', () => {
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
 
     expect(screen.queryByText(copyFor('limelight', 'advice.fluidLoss'))).toBeNull();
+  });
+
+  it('fires the fluid-loss flag from a pre mass logged after Start (audit G01)', () => {
+    seedStore(seed({ weighInOptIn: true }));
+    renderTrain();
+    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.preSessionBodyMass')} (kg)`), {
+      target: { value: '95' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`), {
+      target: { value: '92' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
+    expect(screen.getByText(copyFor('limelight', 'advice.fluidLoss'))).toBeInTheDocument();
+    expect(useAppStore.getState().bodyMass['profile-1']?.map((e) => e.role)).toEqual(['pre', 'post']);
   });
 });
 

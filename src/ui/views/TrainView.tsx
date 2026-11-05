@@ -28,7 +28,13 @@ import { crossedMilestones } from '../../domain/fun/blocks';
 import { inventoryOf } from '../../domain/plan/inventory';
 import { EXERCISES } from '../../domain/plan/library';
 import type { CoachLine } from '../../domain/training/coach';
-import { preSessionMass } from '../../domain/training/hydration';
+import { latestTrendEntry } from '../../domain/measurements';
+import {
+  DEHYDRATION_LOSS_FRACTION,
+  bodyMassLossFraction,
+  exceedsDehydrationThreshold,
+  preSessionMass,
+} from '../../domain/training/hydration';
 import { IDENTITY_BLOCK, blockFor } from '../../domain/training/progression';
 import {
   addBlockedIds,
@@ -37,22 +43,24 @@ import {
   sessionLineup,
   type SessionEditOp,
 } from '../../domain/training/sessionEdits';
-import type { Exercise } from '../../domain/types';
+import type { BodyMassRole, Exercise, Kg } from '../../domain/types';
 import { playSfx } from '../../skins/sfx';
 import { useAppStore } from '../../store';
+import { BodyMassForm } from '../measurements/BodyMassForm';
 import { useActiveProfile, useOpenAssignment, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
 import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { AddCustomExercise } from './train/AddCustomExercise';
 import { AddLibraryExercise } from './train/AddLibraryExercise';
-import { BodyMassQuickLog } from './train/BodyMassQuickLog';
 import { ExerciseCard } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
 import { RestTimerPanel } from './train/RestTimerPanel';
 import { SessionEditBar } from './train/SessionEditBar';
 import '../styles/train.css';
 import './views.css';
+
+const PERCENT = 100; // [%] per unit fraction
 
 export function TrainView(): ReactElement {
   const profile = useActiveProfile();
@@ -76,13 +84,15 @@ export function TrainView(): ReactElement {
    * subscriptions behind one field that changes at most once a session. `c` is passed to
    * ExerciseCard as `t` and forwarded to SetRow from there, and `overrides` rides beside it for
    * the frames that carry a value (P8 close-out D); the singleton children (RestTimerPanel,
-   * HydrationBanner, AddCustomExercise, BodyMassQuickLog) read both hooks themselves, because
+   * HydrationBanner, AddCustomExercise, BodyMassForm) read both hooks themselves, because
    * one subscription each is not worth a prop.
    */
   const c = useCopy();
   const overrides = useCopyOverrides();
 
   const [openId, setOpenId] = useState<string | null>(null);
+  /** [%] The session's fluid loss to one decimal when it exceeded the threshold, else null (G01). */
+  const [fluidLossPct, setFluidLossPct] = useState<string | null>(null);
   // Audit C10: a finished session is read-only until the user opens it for a forgotten set.
   const [amending, setAmending] = useState(false);
   // Audit C03: the undo offer on screen, withdrawn once its slot is logged again.
@@ -243,7 +253,9 @@ export function TrainView(): ReactElement {
   const preSessionMassKg =
     assignment === null || assignment.startedAt === null
       ? null
-      : (preSessionMass(bodyMass[profileId] ?? [], assignment.startedAt)?.massKg ?? null); // [kg]
+      : (preSessionMass(bodyMass[profileId] ?? [], assignment.startedAt, assignment.completedAt)?.massKg ?? null); // [kg]
+  // [kg] Spec R4: a weigh-in is compared with the newest trend mass, else the setup baseline.
+  const latestMassKg: Kg = latestTrendEntry(bodyMass[profileId] ?? [])?.massKg ?? profile.body.baselineMassKg;
 
   if (session === null || assignment === null) {
     return (
@@ -343,6 +355,19 @@ export function TrainView(): ReactElement {
     // control below returns to Today once it is entered. Everyone else leaves at once.
     if (!profile.hydration.weighInOptIn) {
       useAppStore.getState().setUi({ lastView: 'today' });
+    }
+  };
+
+  /** Logs one weigh-in of this session, on the session's own date (spec R1). False when refused. */
+  const logWeighIn = (massKg: Kg, role: BodyMassRole): boolean => {
+    try {
+      useAppStore.getState().logBodyMass(
+        { profileId, date: assignment.date, massKg, enteredUnit: profile.units, bodyFatPct: null, role }, // [kg]
+        Date.now(), // [ms] epoch UTC
+      );
+      return true;
+    } catch {
+      return false;
     }
   };
 
@@ -472,25 +497,14 @@ export function TrainView(): ReactElement {
       )}
 
       {asksPreSessionMass && (
-        <BodyMassQuickLog
+        <BodyMassForm
           profile={profile}
-          date={today}
-          // The reference itself: there is nothing to compare it against, so no flag.
-          preSessionMassKg={null}
-          id="body-mass-pre-session"
+          idPrefix="body-mass-pre-session"
           quantity={c('quantity.preSessionBodyMass')}
-        />
-      )}
-
-      {!completed && !asksPreSessionMass && (
-        <BodyMassQuickLog
-          profile={profile}
-          date={today}
-          // A weigh-in taken mid-session is neither half of the pair, so it raises no flag:
-          // null disables the comparison rather than making one against the wrong reference.
-          preSessionMassKg={null}
-          id="body-mass-quick"
-          quantity={c('quantity.bodyMass')}
+          role="pre"
+          referenceKg={latestMassKg}
+          submitLabel={c('button.logBodyMass')}
+          onSubmit={(massKg) => logWeighIn(massKg, 'pre')}
         />
       )}
 
@@ -502,13 +516,35 @@ export function TrainView(): ReactElement {
 
       {completed && profile.hydration.weighInOptIn && (
         <div className="post-session">
-          <BodyMassQuickLog
+          <BodyMassForm
             profile={profile}
-            date={today}
-            preSessionMassKg={preSessionMassKg} // [kg] this session's own starting mass, or null
-            id="body-mass-post-session"
+            idPrefix="body-mass-post-session"
             quantity={c('quantity.postSessionBodyMass')}
+            role="post"
+            referenceKg={preSessionMassKg} // [kg] this session's own starting mass, or null
+            submitLabel={c('button.logBodyMass')}
+            onSubmit={(massKg) => {
+              if (!logWeighIn(massKg, 'post')) return false;
+              // Sign convention: bodyMassLossFraction is POSITIVE for a loss (Sawka 2007, > 2 %).
+              setFluidLossPct(
+                preSessionMassKg !== null && exceedsDehydrationThreshold(preSessionMassKg, massKg)
+                  ? (bodyMassLossFraction(preSessionMassKg, massKg) * PERCENT).toFixed(1) // [%]
+                  : null,
+              );
+              return true;
+            }}
           />
+          {fluidLossPct !== null && (
+            <>
+              <p className="fcm-caution" role="alert">
+                {c('advice.fluidLoss')}
+              </p>
+              <details className="fcm-why">
+                <summary>{c('disclosure.why')}</summary>
+                <p>{FORMAT.fluidLossWhy(fluidLossPct, DEHYDRATION_LOSS_FRACTION * PERCENT, overrides)}</p>
+              </details>
+            </>
+          )}
           <button
             type="button"
             onClick={() => {
