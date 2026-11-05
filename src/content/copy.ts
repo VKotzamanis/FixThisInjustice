@@ -440,6 +440,9 @@ export type CopyKey =
   | 'advice.trainingDaysCalendarOnly'
   | 'button.saveTrainingDays'
   | 'error.availabilityRefused'
+  | 'hero.setupFailed'
+  | 'advice.setupRestartClearsDraft'
+  | 'button.restartSetup'
   | 'status.noEstimated1RM'
   | 'status.estimated1RM'
   | 'status.complianceWeek'
@@ -1377,6 +1380,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.trainingDaysCalendarOnly': 'Changes the calendar only. Your programme stays as it is.',
   'button.saveTrainingDays': 'Save Days',
   'error.availabilityRefused': 'These days could not be saved. Nothing was changed.',
+  // A12: the setup wizard's own error boundary.
+  'hero.setupFailed': 'Setup Hit a Problem',
+  'advice.setupRestartClearsDraft': 'Restart Setup clears only the answers typed in setup.',
+  'button.restartSetup': 'Restart Setup',
   // Shown where the Epley equation has no defensible input: no external load, or no set
   // inside its validity domain of ten repetitions.
   'status.noEstimated1RM': 'No estimated 1RM',

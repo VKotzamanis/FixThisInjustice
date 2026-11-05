@@ -206,3 +206,18 @@ describe('RootErrorBoundary', () => {
     expect(data.has(STORAGE_KEY)).toBe(false);
   });
 });
+
+describe('RootErrorBoundary reload (A12)', () => {
+  it('offers Reload, because an installed app has no browser reload button', () => {
+    silenceReactErrorLog();
+    installFakeStorage();
+    const onReload = vi.fn();
+    render(
+      <RootErrorBoundary onReload={onReload}>
+        <Boom />
+      </RootErrorBoundary>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Reload' }));
+    expect(onReload).toHaveBeenCalledTimes(1);
+  });
+});
