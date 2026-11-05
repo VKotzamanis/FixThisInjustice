@@ -32,7 +32,12 @@ export interface RestGameSheetProps {
   /** played: true once a round was started, so the rest's one offer is spent. */
   onClose: (played: boolean) => void;
   onWin: () => void;
-  /** The remaining rest as the panel formats it ("1:30"); shown in the top row and the bar. */
+  /**
+   * The remaining rest as the panel formats it ("1:30"), shown in the minimised bar, which sits
+   * exactly over the rest bar (brief 5.1). Not repeated in the open sheet: the 30 px [px] row
+   * made the 390 x 664 sheet scroll inside its 472 px cap (e2e/p6-rest-sheet.spec.ts), and the
+   * round clock above the board never outlasts the rest (restRoundClockS).
+   */
   clock?: string;
 }
 
@@ -119,7 +124,6 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
       )}
       {/* Hidden, not unmounted: the round, its clock and its board survive Hide. */}
       <div className="rest-sheet-body" hidden={minimised}>
-        {clock !== undefined && <p className="rest-sheet-clock">{clock}</p>}
         {entry === null ? (
           <RestGamePicker
             families={opening.order}

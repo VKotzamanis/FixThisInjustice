@@ -264,6 +264,23 @@
   grid-column: 1 / -1;
 }
 
+/*
+ * The active row drops its counter line from view: both field labels already name the set
+ * ("Set 2 load (kg)", "Set 2 reps") and the card head carries done/total. The 27 px [px] line
+ * (19 px text + 8 px gap) is what kept header + active row (44 + 159 px) from fitting above the
+ * rest-game sheet's 192 px band (e2e/p6-rest-sheet.spec.ts, measured 2026-11-05). Clipped, not
+ * removed, so a screen reader still reads "set 2 of 3" before the fields.
+ */
+.set-row.active > .set-marker {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* The bodyweight switch keeps its own width; Log takes the rest of the line. Before the editing
  * rule below, which gives Save and Cancel equal halves at the same specificity. */
 .set-row:not(.done) .set-actions > .set-bw {
