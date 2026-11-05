@@ -758,6 +758,12 @@ export const UiPrefsSchema = z.object({
   // Additive, optional (P3 D13): the block index last shown per PLAN id, so a new programme's
   // cut-scenes fire from its own first block. Absent on documents written before it (rule 7).
   lastBlockSeenByPlan: z.record(z.string(), z.int().min(0).max(MAX_BLOCKS)).optional(),
+  /*
+   * Additive and OPTIONAL (spec R8). The install card was dismissed on this device. Same shape
+   * of fact as the warm-up dismissal above: `true` or absent, so an old document or export
+   * parses to exactly what was stored (rule 7). CURRENT_SCHEMA_VERSION stays 3.
+   */
+  installNudgeDismissed: z.literal(true).optional(),
 });
 
 // ---------------------------------------------------------------------------

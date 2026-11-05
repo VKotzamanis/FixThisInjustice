@@ -329,7 +329,9 @@ export type SkinId = 'limelight';
 // out for type identity with z.infer under exactOptionalPropertyTypes (see activityPal).
 // lastBlockSeenByPlan (P3 D13): the block last announced per plan id; OPTIONAL, absent on older
 // documents, read before the per-profile value (src/domain/fun/blocks.ts lastBlockSeen).
-export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; lastBlockSeenByPlan?: Record<string, number> | undefined; }
+// installNudgeDismissed: this device's user dismissed the install card (spec R8,
+// src/app/InstallCard.tsx). OPTIONAL `true`, absent until dismissed, exactly as above.
+export interface UiPrefs { bootSeen: boolean; introSeen: boolean; lastView: string; accent: string; scanlines: boolean; flicker: boolean; density: "compact" | "normal"; videoInstanceHost: string | null; legacyMigration: "pending" | "done" | "dismissed"; lastBlockSeenByProfile: Record<string, number>; skin: SkinId; sounds: boolean; milestoneFloorByProfile: Record<string, number>; hotkeys: boolean; warmupNoticeDismissedByProfile?: Record<string, true> | undefined; lastBlockSeenByPlan?: Record<string, number> | undefined; installNudgeDismissed?: true | undefined; }
 
 // ---- setup draft (persisted so a closed browser does not lose in-progress setup) ----
 /*

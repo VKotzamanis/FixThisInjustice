@@ -533,6 +533,8 @@ export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
     fc.dictionary(anyId, fc.constant(true as const), { maxKeys: 2 }),
     { nil: undefined },
   ),
+  // The install card's dismissal: optional `true`, absence generated too (spec R8).
+  installNudgeDismissed: fc.option(fc.constant(true as const), { nil: undefined }),
 });
 
 /**

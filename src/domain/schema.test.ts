@@ -474,6 +474,32 @@ describe('UiPrefs.warmupNoticeDismissedByProfile (owner 2026-10-18, rule 7)', ()
   });
 });
 
+describe('UiPrefs.installNudgeDismissed (spec R8, rule 7)', () => {
+  it('keeps the dismissal through a save and load', () => {
+    const doc = storedBeforeWarmupDismissal();
+    doc.ui = { ...(doc.ui as Record<string, unknown>), installNudgeDismissed: true };
+    const result = parseState(throughJson(doc));
+    expect(result.ok ? null : result.error).toBeNull();
+    if (!result.ok) return;
+    expect(result.state.ui.installNudgeDismissed).toBe(true);
+  });
+
+  it('loads a document stored without the field, unchanged', () => {
+    const stored = storedBeforeWarmupDismissal();
+    expect('installNudgeDismissed' in (stored.ui as Record<string, unknown>)).toBe(false);
+    const result = parseState(stored);
+    expect(result.ok ? null : result.error).toBeNull();
+    if (!result.ok) return;
+    expect(result.state).toStrictEqual(stored);
+  });
+
+  it('refuses any value but true', () => {
+    const doc = storedBeforeWarmupDismissal();
+    doc.ui = { ...(doc.ui as Record<string, unknown>), installNudgeDismissed: false };
+    expect(parseState(doc).ok).toBe(false);
+  });
+});
+
 describe('a document written before the section 5 amendments', () => {
   it('backfills every default, at the root, the profile and the exercise', () => {
     const doc = legacyDocument();

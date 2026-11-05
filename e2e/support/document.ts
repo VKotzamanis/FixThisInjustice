@@ -71,6 +71,12 @@ export interface DocumentOptions {
   bodyMass?: BodyMassEntry[];
   /** Pre/post-session weigh-in opt-in. Default false. */
   weighInOptIn?: boolean;
+  /**
+   * true: the install card (spec R8) is still undismissed, as on a fresh browser tab. Default
+   * false: a returning user who dismissed it, like the warm-up notice above, so layout specs
+   * measure the views they test rather than the card.
+   */
+  installCard?: boolean;
 }
 
 /** A logged set of the e2e profile, Monday, session 1, squat; patch what the spec needs. */
@@ -123,6 +129,7 @@ export function e2eDocument(opts: DocumentOptions = {}): AppState {
     milestoneFloorByProfile: {},
     hotkeys: true,
     warmupNoticeDismissedByProfile: withProfile ? { [PROFILE_ID]: true } : {},
+    ...(opts.installCard === true ? {} : { installNudgeDismissed: true as const }),
   };
   const empty: AppState = {
     schemaVersion: 3,

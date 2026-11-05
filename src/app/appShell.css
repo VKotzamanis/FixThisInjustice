@@ -336,3 +336,43 @@ main {
   color: var(--ink);
   cursor: pointer;
 }
+
+/*
+ * The install card (spec R8, src/app/InstallCard.tsx): informational, so the accent top rule
+ * rather than danger, and never a thick side rule (craft floor). Tokens only.
+ */
+.install-card {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--gutter);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--accent);
+  background: var(--bg-2);
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.install-card h3 {
+  margin: 0;
+  flex: 1 1 100%;
+  font-size: var(--text-md);
+  color: var(--text);
+}
+
+.install-card .fti-reminders-install {
+  flex: 1 1 100%;
+}
+
+.install-card button {
+  font: inherit;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--ink);
+  background: var(--accent);
+  color: var(--ink);
+  cursor: pointer;
+}

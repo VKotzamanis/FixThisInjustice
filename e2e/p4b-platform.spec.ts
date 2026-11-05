@@ -1,6 +1,6 @@
 // P4b platform checks that only a real browser can make (spec R7/R8, audit E06, E11, E15).
 import { expect, test } from '@playwright/test';
-import { chicago, openApp, seedDocument, setClock } from './support/app';
+import { chicago, flushWrites, openApp, readDocument, seedDocument, setClock } from './support/app';
 import { MONDAY, e2eDocument } from './support/document';
 
 test('E11: a cold load raises no CSP violation', async ({ context }) => {
@@ -40,4 +40,17 @@ test('E15: with sounds on, a launch asks the network for no sound file that does
   await page.locator('main').click({ position: { x: 5, y: 5 } }); // the first gesture unlocks audio
   await page.waitForTimeout(1_000); // [ms]
   expect(sfxRequests).toEqual([]);
+});
+
+test('R8: the install card shows in a browser tab after setup and stays dismissed', async ({ context }) => {
+  await seedDocument(context, e2eDocument({ installCard: true }));
+  const page = await openApp(context);
+  const card = page.locator('section.install-card');
+  await expect(card).toBeVisible();
+  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(card).toHaveCount(0);
+  await flushWrites(page);
+  expect((await readDocument(page)).ui.installNudgeDismissed).toBe(true);
+  const again = await openApp(context);
+  await expect(again.locator('section.install-card')).toHaveCount(0);
 });

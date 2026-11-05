@@ -46,6 +46,7 @@ import { useStorageEstimate } from './useStorageEstimate';
 import { ReminderSync } from './ReminderSync';
 import { RestController } from './RestController';
 import { UpdatePrompt } from './UpdatePrompt';
+import { InstallCard } from './InstallCard';
 import { StaleSessionNotice } from './StaleSessionNotice';
 // Audit E09: split screens, loaded on first use; same names, so the JSX below is unchanged.
 import { AtlasView, IntroGate, LogView, SettingsView, SetupWizard } from './routes';
@@ -662,6 +663,8 @@ export function App(): ReactElement {
 
             <main>
               <UpdatePrompt />
+              {/* Spec R8: install guidance on every view after setup, until dismissed. */}
+              <InstallCard />
               <SaveErrorBanner />
               <LoadErrorBanner />
               <StorageNearlyFullBanner />

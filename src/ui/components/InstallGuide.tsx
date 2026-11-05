@@ -1,4 +1,5 @@
-import { type JSX } from 'react';
+import { useId, type JSX } from 'react';
+import type { CopyKey } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
 
 /**
@@ -23,13 +24,22 @@ import { useCopy } from '../../content/useCopy';
  * No screenshots. A screenshot of a platform control ages out with the next OS release and
  * cannot be read aloud, so each step names the control in words instead.
  */
-export function InstallGuide(): JSX.Element {
+export function InstallGuide(props: {
+  /**
+   * Why install, under the heading. The reminder panel keeps the default (notifications need an
+   * installed app); the install card (spec R8) passes null and states no reason.
+   */
+  reason?: CopyKey | null;
+} = {}): JSX.Element {
   const t = useCopy();
+  // Unique per mount: the install card and the reminder panel's guide can be on screen together.
+  const headingId = useId();
+  const reason = props.reason === undefined ? 'advice.installOnlyInstalledApp' : props.reason;
 
   return (
-    <aside className="fti-reminders-install" aria-labelledby="fti-install-heading">
-      <h3 id="fti-install-heading">{t('hero.installHomeScreen')}</h3>
-      <p>{t('advice.installOnlyInstalledApp')}</p>
+    <aside className="fti-reminders-install" aria-labelledby={headingId}>
+      <h3 id={headingId}>{t('hero.installHomeScreen')}</h3>
+      {reason !== null && <p>{t(reason)}</p>}
 
       <h4>{t('label.installIos')}</h4>
       <ol>

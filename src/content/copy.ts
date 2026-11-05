@@ -588,6 +588,7 @@ export type CopyKey =
   | 'status.installAndroidMenu'
   | 'status.installAndroidInstall'
   | 'status.installAndroidOpen'
+  | 'button.installApp'
   // --- motivation modal (P6 Task 4; appended by that task) ---
   | 'advice.tapForSound'
   | 'advice.tapToMute'
@@ -1680,6 +1681,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.installAndroidMenu': 'Open the browser menu, the three dots.',
   'status.installAndroidInstall': 'Tap Install app, then confirm.',
   'status.installAndroidOpen': 'Open the app from the home screen icon.',
+  // Spec R8: Chromium's own install dialog, from the install card (src/app/InstallCard.tsx).
+  'button.installApp': 'Install App',
 
   // --- motivation modal (P6 Task 4; appended by that task) ---
   // The clip autoplays muted, which is the only autoplay any engine allows; sound needs a
