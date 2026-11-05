@@ -34,7 +34,7 @@ Single source of current state. Update in place. Last update: 2026-11-04.
 ## Never done / not working
 - Reminder Worker never deployed (`worker/wrangler.toml` placeholders): reminders show "not set up"; no rest alarm with the screen locked (web limit, `docs/ARCHITECTURE.md`).
 - No sound files (`public/sfx/`), no motivation clip (`public/media/`).
-- Nothing tested on iOS Safari/Android hardware by an agent; layout checked only in headless Chromium at 320/400 px. P6 sheet not measured: e2e/p6-rest-sheet.spec.ts is written but its run happens in main after the P6 merge (port 4174 belongs to the main track).
+- Nothing tested on iOS Safari/Android hardware by an agent; layout checked only in headless Chromium at 320/400 px. P6 sheet measured 2026-11-04 (e2e/p6-rest-sheet.spec.ts, Chromium iPhone 13/Pixel 7 emulation): keys >= 44 px tall and 26/30/33/35 px wide at 320/360/390/412, no sideways scroll, sheet 466-472 px; at 390 x 664 the next set's Log button (bottom 225 px) sits under the sheet top (198 px) because the header is 85 px: expected failure until P4a Task 8 (44 px header); Hide shows the row in one tap meanwhile.
 
 ## Doc drift (known)
 - Older docs cite drifted paths/lines: `docs/design/programme-horizon.md` (planned files never built), `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-06-asset-prompts.md` (superseded by asset-spec-2026-10-18), `docs/design/2026-09-01-copy-contract.md`, runbooks. Re-derive before trusting a line number.
