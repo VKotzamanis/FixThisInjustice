@@ -63,7 +63,7 @@ describe('the fixture reaches the states a fresh install cannot', () => {
   it('dates every assignment and set on one of the profile\'s slot weekdays (ROADMAP S4)', () => {
     // A LocalDate's weekday is calendar arithmetic, zone-free: parse it as a UTC midnight.
     const weekdayOf = (date: string): number => new Date(`${date}T00:00:00Z`).getUTCDay(); // 0 = Sunday
-    const slotDays = new Set((doc.availability[PROFILE_ID]?.slots ?? []).map((s) => s.weekday));
+    const slotDays = new Set<number>((doc.availability[PROFILE_ID]?.slots ?? []).map((s) => s.weekday));
     expect([...slotDays].sort()).toEqual([1, 3, 5]);
     const assignmentDays = (doc.assignments[PROFILE_ID] ?? []).map((a) => a.date);
     const setDays = Object.values(doc.sets).map((s) => s.assignmentDate);
