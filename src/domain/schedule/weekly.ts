@@ -5,9 +5,11 @@
 // is the input P6 uses to decide whether a week was lost.
 //
 // delta = completed − target [sessions/week], signed: negative means sessions missed.
-// A week overlapped by any pause is paused = true and delta = 0, so a deliberate pause can
-// never register as a miss. missHandled starts false only when delta < 0; a week that met or
-// beat its target has nothing left for P6 to act on.
+// target is the week's PRO-RATED expectation (quota.ts expectedSessions, P3 D03/D10): the
+// quota, capped by the preferred days the programme spanned that week and did not pause. A week
+// begun midweek, ended early or partly paused is graded on what it could hold; `paused` records
+// that a pause touched the week and no longer zeroes delta. missHandled starts false only when
+// delta < 0; a week that met or beat its target has nothing left for P6 to act on.
 //
 // Scope of the walk: the evaluation window is the MAX_WEEKS_EVALUATED weeks ending with the
 // current one, intersected with the plan's own lifetime. The first evaluable week is therefore
@@ -32,13 +34,13 @@
 // nothing to close returns the same state reference, so a caller may use identity to detect
 // a no-op, and a second call with the same `now` adds nothing.
 //
-// Known limitation (master plan §6.4, amendment P3 item 8): `target` is the CURRENT
-// Availability.weeklySessionTarget at evaluation time. No target history is stored, so a
-// backlog of old weeks closed after the user changes their target is judged against the new
-// one.
+// History (D16): a review is written once and never recomputed (`alreadyReviewed` below), and
+// its `target` is stored on it. The availability editor closes every ended week before it
+// stores new days (src/store/availability.ts), so a later change never regrades a past week.
+// A week AM-6 still holds open at that moment is graded later, with the new availability.
 
 import { addDays, compareLocalDate, todayLocal, weekStart } from '../dates';
-import { weeklyQuota } from './quota';
+import { expectedSessions } from './quota';
 import { isTerminal } from './cursor';
 import type { AppState, EpochMs, LocalDate, PlanCursor, PlanPause, WeeklyReview } from '../types';
 
@@ -153,7 +155,6 @@ export function closeWeeks(state: AppState, profileId: string, now: EpochMs): Ap
   const alreadyReviewed = new Set(existing.map((r) => r.weekStart));
   const assignments = state.assignments[profileId] ?? [];
   const pauses = state.pauses[profileId] ?? [];
-  const target = weeklyQuota(state, profileId); // [sessions/week]
 
   const added: WeeklyReview[] = [];
 
@@ -202,7 +203,9 @@ export function closeWeeks(state: AppState, profileId: string, now: EpochMs): Ap
         else if (a.status === 'skipped') skipped += 1;
       }
       const paused = pauseOverlapsWeek(pauses, week);
-      const delta = paused ? 0 : completed - target; // [sessions/week]
+      // D03/D10: graded against what this week could hold; stored on the review (D16).
+      const target = expectedSessions(state, profileId, week.start, week.end); // [sessions/week]
+      const delta = completed - target; // [sessions/week], signed: negative = sessions missed
       added.push({
         profileId,
         weekStart: week.start,

@@ -42,7 +42,7 @@
 // parallel copy of the consumption rule, so the two can never disagree.
 
 import { addDays, compareLocalDate, daysBetween, isoWeekday, weekEnd, weekStart } from '../dates';
-import { weeklyQuota } from './quota';
+import { weeklyQuota, type ScheduleState } from './quota';
 import { isPaused, isTerminal, upsertAssignment } from './cursor';
 import type {
   AppState,
@@ -68,7 +68,7 @@ export interface CalendarDay {
  * weekday, and a day is one training day whichever way the user filled the form, so a
  * duplicate must never consume a second session.
  */
-function slotsByWeekday(state: AppState, profileId: string): Map<IsoWeekday, AvailabilitySlot> {
+function slotsByWeekday(state: ScheduleState, profileId: string): Map<IsoWeekday, AvailabilitySlot> {
   const map = new Map<IsoWeekday, AvailabilitySlot>();
   for (const slot of state.availability[profileId]?.slots ?? []) {
     if (!map.has(slot.weekday)) map.set(slot.weekday, slot);
@@ -76,7 +76,7 @@ function slotsByWeekday(state: AppState, profileId: string): Map<IsoWeekday, Ava
   return map;
 }
 
-function assignmentsByDate(state: AppState, profileId: string): Map<LocalDate, SessionAssignment> {
+function assignmentsByDate(state: ScheduleState, profileId: string): Map<LocalDate, SessionAssignment> {
   const map = new Map<LocalDate, SessionAssignment>();
   for (const a of state.assignments[profileId] ?? []) map.set(a.date, a);
   return map;
@@ -90,7 +90,7 @@ function assignmentsByDate(state: AppState, profileId: string): Map<LocalDate, S
  *         Infinity would not terminate. Mirrors addDays' guard in src/domain/dates.ts.
  */
 export function projectedCalendar(
-  state: AppState,
+  state: ScheduleState,
   profileId: string,
   from: LocalDate,
   days: number,
