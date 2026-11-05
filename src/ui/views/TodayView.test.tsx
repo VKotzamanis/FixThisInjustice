@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
 import { addDays, todayLocal } from '../../domain/dates';
 import type { ReactElement } from 'react';
@@ -23,6 +23,12 @@ import {
   seedState,
 } from '../../test/scheduleFixtures';
 import type { AppState, SessionAssignment, SkinId, WeeklyReview } from '../../domain/types';
+import { preloadRoutes } from '../../app/routes';
+
+// Audit E09: App's split screens render on their first frame only once loaded.
+beforeAll(async () => {
+  await preloadRoutes();
+});
 
 /** P5: the measurement panels raise undo toasts, so every render sits inside the provider. */
 function render(ui: ReactElement): ReturnType<typeof rtlRender> {

@@ -37,6 +37,8 @@ export type CopyKey =
   | 'banner.update.tag'
   | 'banner.update.body'
   | 'button.reload'
+  | 'advice.screenLoadFailed'
+  | 'button.tryAgain'
   | 'banner.saveQuota.tag'
   | 'banner.saveQuota.body'
   | 'banner.saveUnavailable.tag'
@@ -801,6 +803,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'banner.update.tag': 'UPDATE READY',
   'banner.update.body': 'A new version is ready.',
   'button.reload': 'Reload',
+  // Audit E09: a split screen whose chunk did not load (src/app/lazyRoute.tsx).
+  'advice.screenLoadFailed': 'This screen did not load.',
+  'button.tryAgain': 'Try Again',
   'banner.saveQuota.tag': 'STORAGE FULL',
   'banner.saveQuota.body': 'Storage is full. Export now.',
   'banner.saveUnavailable.tag': 'NO STORAGE',

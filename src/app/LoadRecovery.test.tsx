@@ -1,9 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { copyFor } from '../content/copy';
 import { defaultState, useAppStore } from '../store';
 import { createMemoryBackend } from '../store/db/memoryBackend';
 import { App } from './App';
+import { preloadRoutes } from './routes';
+
+// Audit E09: App's split screens render on their first frame only once loaded.
+beforeAll(async () => {
+  await preloadRoutes();
+});
 
 vi.mock('./download', () => ({ downloadText: vi.fn() }));
 

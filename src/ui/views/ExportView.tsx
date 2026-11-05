@@ -14,6 +14,7 @@ import { useAppStore, selectState } from '../../store';
 import { downloadText } from '../../app/download';
 import { saveFile } from '../../app/saveFile';
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
+import { CONFIRM_WORD } from '../components/confirmWord';
 import './views.css';
 
 /**
@@ -65,8 +66,6 @@ const CALENDAR_DAYS = 28;
 const ALARM_LEAD_HOURS = 2;
 const ALARM_LEAD_MINUTES = ALARM_LEAD_HOURS * 60;
 
-/** The word master plan section 3 fixes for every destructive confirmation. */
-const CONFIRM_WORD = 'DELETE';
 
 export function ExportView(): JSX.Element {
   const t = useCopy();

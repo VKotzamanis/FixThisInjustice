@@ -2,6 +2,7 @@ import { useState, type JSX } from 'react';
 import { displayClass } from '../format/display';
 
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
+import { CONFIRM_WORD } from '../components/confirmWord';
 import { useCopy } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { clearAssetStorage } from '../../domain/motivation/assets';
@@ -48,8 +49,6 @@ const DURABILITY_COPY: Readonly<Record<Exclude<Durability, 'unknown'>, CopyKey>>
  * disclosure built that way could not be driven by a test at all (measured 2026-09-02).
  */
 
-/** The word master plan section 3 fixes for every destructive confirmation. */
-export const CONFIRM_WORD = 'DELETE';
 
 /**
  * [ms] How long the wipe waits for the clip store before reporting that the clip may remain

@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
 import { FORMAT, copyFor } from '../../content/copy';
@@ -8,6 +8,12 @@ import { TargetsView } from './TargetsView';
 import { useAppStore } from '../../store';
 import type { PlanTemplate, Profile } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
+import { preloadRoutes } from '../../app/routes';
+
+// Audit E09: App's split screens render on their first frame only once loaded.
+beforeAll(async () => {
+  await preloadRoutes();
+});
 
 /**
  * The clock is pinned: the age term of Mifflin-St Jeor is derived from the civil year

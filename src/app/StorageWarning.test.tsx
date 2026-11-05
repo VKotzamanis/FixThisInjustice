@@ -1,9 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { copyFor } from '../content/copy';
 import { checkStorageEstimate, defaultState, useAppStore } from '../store';
 import { installFakeStorage } from '../store/testStorage';
 import { App } from './App';
+import { preloadRoutes } from './routes';
+
+// Audit E09: App's split screens render on their first frame only once loaded.
+beforeAll(async () => {
+  await preloadRoutes();
+});
 
 beforeEach(() => {
   installFakeStorage();

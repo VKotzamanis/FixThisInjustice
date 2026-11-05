@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StrictMode, type ReactElement } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
@@ -15,6 +15,12 @@ import { useAppStore } from '../../store';
 import { MONDAY, NOW_MS, seedState } from '../../test/scheduleFixtures';
 import type { AppState, PlanBlock } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
+import { preloadRoutes } from '../../app/routes';
+
+// Audit E09: App's split screens render on their first frame only once loaded.
+beforeAll(async () => {
+  await preloadRoutes();
+});
 
 /*
  * Deviations from the P3 plan's literal draft for this task, recorded here and in the task

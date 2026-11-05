@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '../ui/styles/crt.css';
@@ -22,6 +22,12 @@ import { MONDAY, NOW_MS, PROFILE_ID, TZ_ATHENS, seedState } from '../test/schedu
 import { VIEWS } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { resetPlanBrowse } from '../ui/planBrowse';
+import { preloadRoutes } from './routes';
+
+// Audit E09: App's split screens render on their first frame only once loaded.
+beforeAll(async () => {
+  await preloadRoutes();
+});
 
 const copy = (key: CopyKey): string => copyFor('limelight', key);
 

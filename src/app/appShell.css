@@ -293,3 +293,46 @@ main {
   margin: var(--space-2) auto 0;
   pointer-events: auto;
 }
+
+/*
+ * A split screen while its chunk loads (src/app/lazyRoute.tsx, audit E09): an empty box that
+ * holds the view's place, so the footer does not jump up and back. 60vh is a layout bound, not
+ * a measured view height.
+ */
+.route-loading {
+  min-height: 60vh;
+}
+
+/*
+ * The retry panel: the shell banner's look (a 3 px danger top rule, never a thick side rule), so
+ * a failure reads like the app's other failures. Tokens only.
+ */
+.route-failed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3) var(--gutter);
+  margin-bottom: var(--space-4);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--danger);
+  background: var(--bg-2);
+  font-family: var(--sans);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.route-failed p {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+
+.route-failed button {
+  font: inherit;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--ink);
+  background: var(--accent);
+  color: var(--ink);
+  cursor: pointer;
+}

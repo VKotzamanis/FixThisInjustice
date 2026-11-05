@@ -9,7 +9,7 @@ import { FORMAT } from '../content/copy';
 import { useCopy } from '../content/useCopy';
 import { useAppStore } from '../store';
 import { ConfirmDestructive } from '../ui/components/ConfirmDestructive';
-import { CONFIRM_WORD } from '../ui/settings/DataSection';
+import { CONFIRM_WORD } from '../ui/components/confirmWord';
 
 export function LoadRecovery(): ReactElement {
   const t = useCopy();
