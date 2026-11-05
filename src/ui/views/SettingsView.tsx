@@ -23,6 +23,7 @@ import { GOAL_OPTIONS } from '../components/RestartProgramme';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { InteractionSettings } from '../settings/InteractionSettings';
+import { AvailabilitySettings } from '../settings/AvailabilitySettings';
 import { ProgrammeSettings } from '../settings/ProgrammeSettings';
 import './views.css';
 
@@ -477,6 +478,8 @@ export function SettingsView(): JSX.Element {
       {/* A key of its own: TimeZoneSetting above is a sibling keyed by the bare profile id, and a
           duplicate sibling key made React hand one component's state to the other. */}
       <ProgrammeSettings key={`programme-${profile.id}`} profile={profile} />
+      {/* Audit D05: training days, times and the weekly target; calendar only. */}
+      <AvailabilitySettings key={`availability-${profile.id}`} profile={profile} />
 
       <h2 className={displayClass(t('hero.equipmentSteps'))}>{t('hero.equipmentSteps')}</h2>
       <NumberSetting

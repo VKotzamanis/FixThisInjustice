@@ -436,6 +436,10 @@ export type CopyKey =
   | 'status.markNotPlanned'
   | 'status.markPostponed'
   | 'status.markOutsideProgramme'
+  | 'hero.trainingDays'
+  | 'advice.trainingDaysCalendarOnly'
+  | 'button.saveTrainingDays'
+  | 'error.availabilityRefused'
   | 'status.noEstimated1RM'
   | 'status.estimated1RM'
   | 'status.complianceWeek'
@@ -1368,6 +1372,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // D06: Skip Today handed the day back (spec R2); a day outside the programme's span.
   'status.markPostponed': 'Postponed',
   'status.markOutsideProgramme': 'Outside the programme',
+  // D05: the Settings availability editor.
+  'hero.trainingDays': 'Training Days',
+  'advice.trainingDaysCalendarOnly': 'Changes the calendar only. Your programme stays as it is.',
+  'button.saveTrainingDays': 'Save Days',
+  'error.availabilityRefused': 'These days could not be saved. Nothing was changed.',
   // Shown where the Epley equation has no defensible input: no external load, or no set
   // inside its validity domain of ten repetitions.
   'status.noEstimated1RM': 'No estimated 1RM',

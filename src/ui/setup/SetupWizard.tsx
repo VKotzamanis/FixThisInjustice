@@ -304,7 +304,7 @@ const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
   cunningham: 'Cunningham',
 };
 
-const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
+export const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
   { value: 1, labelKey: 'weekday.monday' },
   { value: 2, labelKey: 'weekday.tuesday' },
   { value: 3, labelKey: 'weekday.wednesday' },
