@@ -298,3 +298,11 @@ export async function clearDatabase(backend: RecordBackend = createBrowserBacken
   if (result.ok) backend.announce(result.revision);
   return result.ok;
 }
+
+/**
+ * Audit B04: the records this build could not read and the answers it repaired, as stored, in
+ * one file the user can keep or send. Separate from exportJson, whose format is unchanged.
+ */
+export function exportUnreadable(quarantine: readonly QuarantinedRecord[], repairs: readonly Repair[]): string {
+  return `${JSON.stringify({ quarantined: quarantine, repairs }, null, 2)}\n`;
+}

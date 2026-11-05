@@ -7,6 +7,7 @@ import { todayLocal } from '../../domain/dates';
 import { clearAssetStorage } from '../../domain/motivation/assets';
 import { useAppStore } from '../../store';
 import { ExportView } from '../views/ExportView';
+import { UnreadableRecords } from './UnreadableRecords';
 
 /**
  * The Data section of Settings: the exports and the wipe (P7 Task 6, master plan section 3).
@@ -98,6 +99,7 @@ export function DataSection(): JSX.Element {
 
   return (
     <>
+      <UnreadableRecords />
       {/*
        * Export first, and it renders its own heading. A user who arrives here to destroy
        * something passes the control that keeps a copy of it on the way in.

@@ -47,6 +47,7 @@ import { useWeeklyClose } from './useWeeklyClose';
 import { ReminderSync } from './ReminderSync';
 import { UpdatePrompt } from './UpdatePrompt';
 import { StaleSessionNotice } from './StaleSessionNotice';
+import { UnreadableNotice } from './UnreadableNotice';
 import './appShell.css';
 
 /**
@@ -698,6 +699,7 @@ export function App(): ReactElement {
        * announced unreliably.
        */}
       <StaleSessionNotice />
+      <UnreadableNotice />
       <ToastQueue />
 
     </ToastProvider>
