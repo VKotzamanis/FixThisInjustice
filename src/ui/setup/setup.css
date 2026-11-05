@@ -116,8 +116,8 @@
 
 .wiz input[type='checkbox'],
 .wiz input[type='radio'] {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
   flex: none;
 }
 
@@ -231,12 +231,6 @@
   /* Audit A17: an unbroken 80-character name overflowed the review and covered Looks Good. */
   min-width: 0;
   overflow-wrap: anywhere;
-}
-
-@media (max-width: 24rem) {
-  .wiz .wiz-row {
-    flex-direction: column;
-  }
 }
 
 /*
@@ -512,7 +506,7 @@
 }
 
 @media (max-width: 560px) {
-  .wiz-row {
+  .wiz .wiz-row {
     display: grid;
     /* minmax(0, 1fr), never a bare 1fr: see the .wiz-row comment above. A bare `1fr` is
        `minmax(auto, 1fr)`, and that `auto` is the number field's intrinsic width, which is what
@@ -521,14 +515,14 @@
     gap: 10px;
   }
   /* Feet and inches stay paired: they are one quantity in two boxes, not two quantities. */
-  .wiz-row-tight {
+  .wiz .wiz-row-tight {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   /*
    * r2.14(ii): each girth field pairs with its diagram in a two-column row. The diagram column is
    * the placeholder's own width and does not grow; the input takes the rest and may shrink.
    */
-  .wiz-row-site {
+  .wiz .wiz-row-site {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
   }
@@ -1537,6 +1531,26 @@
   color: var(--band-surface-text);
 }
 
+/* A11: below 24 rem the band spans the viewport, so each of seven columns is >= 44 px wide. */
+@media (max-width: 24rem) {
+  .wiz .wiz-calendar {
+    margin-inline: calc(-1 * var(--gutter));
+    padding-inline: 0;
+    border-inline: 0;
+    border-radius: 0;
+  }
+}
+
+/* A11 (cont.): the calendar's fieldset adds 12 px padding + 1 px border a side inside the 16 px
+ * gutter, so the gutter-sized bleed above only reaches the viewport edge when that fieldset gives
+ * up its side inset. Its legend and other fields then sit on the 16 px gutter like the rest. */
+@media (max-width: 24rem) {
+  .wiz fieldset:has(.wiz-calendar) {
+    padding-inline: 0;
+    border-inline: 0;
+  }
+}
+
 .wiz .wiz-calendar-head {
   display: flex;
   align-items: center;
@@ -1568,7 +1582,7 @@
 
 .wiz .wiz-calendar-grid {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 2px;
 }
 
@@ -1584,9 +1598,8 @@
 }
 
 /*
- * One day. 44 px minimum in BOTH directions, so the grid is tappable on a 320 px phone at seven
- * columns (320 px less the wizard's padding leaves about 41 px per column, so the cells sit
- * shoulder to shoulder with no gap to spare; `gap` is 2 px rather than 0 for that reason).
+ * One day. 44 px tall; 44 px wide at 320 px because the calendar bleeds to the viewport edge below
+ * 24 rem ((320 - 6 x 2) / 7 = 44.0 px; A11).
  */
 .wiz .wiz-calendar-day {
   min-height: 2.75rem;

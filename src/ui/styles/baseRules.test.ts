@@ -6,6 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import tokensCss from './tokens.css?raw';
 import viewsCss from '../views/views.css?raw';
+import setupCss from '../setup/setup.css?raw';
 
 interface Rule {
   selector: string;
@@ -96,5 +97,46 @@ describe('type scale (brief 3.1)', () => {
   it('body text is 16 px', () => {
     expect(tokensCss).toMatch(/body \{[^}]*font-size:\s*var\(--text-md\);/);
     expect(tokensCss).not.toMatch(/body \{[^}]*font-size:\s*13px;/);
+  });
+});
+
+describe('display shadow, sub-headings, range, wizard rows and calendar (brief 3.1-4.3, A10, A11)', () => {
+  const setup = rulesOf(setupCss);
+  const setupBody = (selector: string): string[] => setup.filter((r) => r.selector === selector).map((r) => r.body);
+
+  it('the display shadow offset scales with the type', () => {
+    expect(tokensCss).toMatch(
+      /\.ll-display \{[^}]*text-shadow:\s*var\(--shadow-offset-display\) var\(--shadow-offset-display\) 0 var\(--pink\);/,
+    );
+  });
+
+  it('a view sub-heading is 20 px bold with no shadow', () => {
+    const b = body('.view h3');
+    expect(b).toMatch(/font-size:\s*var\(--text-lg\);/);
+    expect(b).toMatch(/font-weight:\s*700;/);
+    expect(b).toMatch(/text-shadow:\s*none;/);
+  });
+
+  it('the Plan range is a 4 px ink track with a 24 px ink thumb', () => {
+    expect(body(".view.plan .plan-scrub input[type='range']::-webkit-slider-runnable-track")).toMatch(/height:\s*4px;/);
+    expect(body(".view.plan .plan-scrub input[type='range']::-webkit-slider-thumb")).toMatch(/width:\s*24px;/);
+  });
+
+  it('A10: the phone row rule restates .wiz .wiz-row so it out-ranks the desktop flex row', () => {
+    expect(setupBody('.wiz .wiz-row').some((b) => /display:\s*grid;/.test(b))).toBe(true);
+    expect(setupBody('.wiz .wiz-row-tight').some((b) => /grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\);/.test(b))).toBe(true);
+    expect(setupBody('.wiz .wiz-row').some((b) => /flex-direction:\s*column;/.test(b))).toBe(false);
+  });
+
+  it('A11: seven columns at a 2 px gap, full bleed under 24 rem: 44 px cells at 320 px', () => {
+    const grid = setupBody('.wiz .wiz-calendar-grid').join('');
+    expect(grid).toMatch(/grid-template-columns:\s*repeat\(7, minmax\(0, 1fr\)\);/);
+    expect(grid).toMatch(/gap:\s*2px;/);
+    const bleed = setupBody('.wiz .wiz-calendar').join('');
+    expect(bleed).toMatch(/margin-inline:\s*calc\(-1 \* var\(--gutter\)\);/);
+    expect(bleed).toMatch(/padding-inline:\s*0;/);
+    const viewport = 320; // [px]
+    const cell = (viewport - 6 * 2) / 7; // [px]
+    expect(cell).toBeGreaterThanOrEqual(44);
   });
 });

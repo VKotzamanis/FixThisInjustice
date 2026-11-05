@@ -50,8 +50,17 @@
   font-size: 1.5rem;
   line-height: 1.1;
   text-transform: none;
-  /* The shadow sits 4 px below and right of the glyphs; this keeps it off the next line. */
+  /* The shadow sits max(2px, 0.1em) below and right of the glyphs; this keeps it off the next line. */
   margin-bottom: 0.75rem;
+}
+
+/* Brief 3.2: a sub-heading (Body Mass, the attendance) is 20 px bold, never the display cut. */
+.view h3 {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.2;
+  text-shadow: none;
+  margin: var(--space-5) 0 var(--space-2);
 }
 
 .view .view-dl {
@@ -471,6 +480,38 @@
   min-height: 2.75rem;
   /* Ink, 10.91:1 on the lime page; the pink thumb and fill were 1.41:1 (SC 1.4.11 asks 3:1). */
   accent-color: var(--ink);
+}
+
+/* Brief 4.3: a 4 px ink track and a 24 px ink thumb; never the platform's white track. */
+.view.plan .plan-scrub input[type='range'] {
+  appearance: none;
+  background: transparent;
+}
+
+.view.plan .plan-scrub input[type='range']::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--ink);
+}
+
+.view.plan .plan-scrub input[type='range']::-moz-range-track {
+  height: 4px;
+  background: var(--ink);
+}
+
+.view.plan .plan-scrub input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  margin-top: -10px; /* [px] (24 - 4) / 2 centres the thumb on the track */
+  background: var(--ink);
+  border: 2px solid var(--lime);
+}
+
+.view.plan .plan-scrub input[type='range']::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  background: var(--ink);
+  border: 2px solid var(--lime);
 }
 
 .view.plan .plan-week-label {

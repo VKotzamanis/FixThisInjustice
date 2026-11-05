@@ -57,6 +57,7 @@ import {
 import type { SpecimenCard, SpecimenRarity } from '../../content/specimenCards';
 import type { SpecimenInventory } from '../../domain/types';
 import { ModalShell } from '../components/ModalShell';
+import { displayClass } from '../format/display';
 import { prefersReducedMotion } from '../hooks/reducedMotion';
 import { useAppStore } from '../../store';
 import { CardIcon, UnknownMark } from './atlasArt';
@@ -190,7 +191,7 @@ export function AtlasView(): ReactElement {
 
   return (
     <section className="view atlas">
-      <h2>{t('hero.atlas')}</h2>
+      <h2 className={displayClass(t('hero.atlas'))}>{t('hero.atlas')}</h2>
       <p className="view-note">{t('advice.atlas')}</p>
       <p className="atlas-total">
         <span className="atlas-count-label">{t('label.atlasCollected')}</span>{' '}

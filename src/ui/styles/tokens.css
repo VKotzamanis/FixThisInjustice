@@ -390,7 +390,7 @@ body {
   letter-spacing: var(--display-tracking);
   word-spacing: var(--display-word-spacing);
   color: var(--ink);
-  text-shadow: var(--shadow-offset) var(--shadow-offset) 0 var(--pink);
+  text-shadow: var(--shadow-offset-display) var(--shadow-offset-display) 0 var(--pink);
 }
 
 /*
