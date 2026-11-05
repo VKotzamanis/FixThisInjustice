@@ -14,7 +14,7 @@ import {
 } from '../../domain/dates';
 import { dailyBeverageTargetML, statedBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
-import type { ActivityLevel, Experience, Profile, UnitSystem } from '../../domain/types';
+import type { Experience, Profile, UnitSystem } from '../../domain/types';
 import { displayLoad, displayVolume, formatBeverageTarget, toStoredLoad, toStoredVolume, UNIT_LABEL } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
@@ -23,6 +23,7 @@ import { GOAL_OPTIONS } from '../components/RestartProgramme';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { InteractionSettings } from '../settings/InteractionSettings';
+import { ActivitySlider } from '../settings/ActivitySlider';
 import { ProfileEditor } from '../settings/ProfileEditor';
 import { ProgrammeSettings } from '../settings/ProgrammeSettings';
 import './views.css';
@@ -36,12 +37,6 @@ import './views.css';
  * so a baked label would be whatever skin was active when the module first loaded and would
  * never move again; the view resolves it per render through `useCopy()`.
  */
-const ACTIVITY_OPTIONS: { value: ActivityLevel; labelKey: CopyKey }[] = [
-  { value: 'sedentary', labelKey: 'option.activitySedentary' },
-  { value: 'moderate', labelKey: 'option.activityModerate' },
-  { value: 'vigorous', labelKey: 'option.activityVigorous' },
-];
-
 const EXPERIENCE_OPTIONS: { value: Experience; labelKey: CopyKey }[] = [
   { value: 'novice', labelKey: 'option.experienceNovice' },
   { value: 'intermediate', labelKey: 'option.experienceIntermediate' },
@@ -409,23 +404,8 @@ export function SettingsView(): JSX.Element {
       {/* Spec R9 / audit G06, G05: the setup facts, editable with the wizard's rules. */}
       <ProfileEditor key={`editor-${profile.id}-${profile.units}`} profile={profile} />
 
-      <div className="view-field">
-        <label htmlFor="settings-activity">{t('label.activity')}</label>
-        <select
-          id="settings-activity"
-          value={profile.activity}
-          onChange={(e) => {
-            const next = ACTIVITY_OPTIONS.find((o) => o.value === e.target.value);
-            if (next !== undefined) updateProfile({ activity: next.value });
-          }}
-        >
-          {ACTIVITY_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {t(o.labelKey)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Audit G04: the nine-stop slider writes the PAL (and its band); a band-only select did nothing. */}
+      <ActivitySlider key={`activity-${profile.id}`} profile={profile} />
 
       <div className="view-field">
         <label htmlFor="settings-experience">{t('label.experience')}</label>

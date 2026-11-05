@@ -8,6 +8,7 @@
 // Units: mass [kg], body fat [% of body mass], dates LocalDate in the profile's zone, instants
 // [ms] epoch UTC. No health coefficient lives here (AGENTS rule 1): the one number,
 // BODY_MASS_PLAUSIBLE_FRACTION, is spec R4's data-entry sanity bound.
+import { bandOfPal, palOf } from './activity';
 import { compareLocalDate } from './dates';
 import type { NutritionInput } from './nutrition';
 import { weeklyQuota } from './schedule/quota';
@@ -133,9 +134,9 @@ export function nutritionInputFor(
     heightCm: profile.body.heightCm, // [cm]
     massKg,
     bodyFatPct,
-    activity: profile.activity,
-    // Brief G: the PAL wins over `activity`'s band floor when it is a number.
-    activityPal: profile.activityPal ?? null,
+    // Audit G04: one activity value. palOf is the PAL, else the band floor (the old fallback).
+    activity: bandOfPal(palOf(profile)),
+    activityPal: palOf(profile), // [PAL]
     goal: profile.goal.kind,
     sessionsPerWeek,
     creatine: profile.supplements.creatine,
