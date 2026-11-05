@@ -25,7 +25,8 @@ import { useAppStore } from '../../../store';
 import { useRestGameWins, useRestTimer } from '../../../store/selectors';
 import { unlockAudio } from '../../audio/chime';
 import { prefersReducedMotion } from '../../hooks/reducedMotion';
-import { RestGameSheet } from './RestGameSheet';
+// F14: the sheet is its own chunk (restGameRoute.ts); same name, so the JSX is unchanged.
+import { RestGameSheet } from './restGameRoute';
 import { REST_OVER_GRACE_MS } from '../../../app/RestController';
 import { BurnWord } from '../../effects/BurnWord';
 import { restOverWordOf, START_DELAY_REST_MS } from '../../effects/burnMoments';

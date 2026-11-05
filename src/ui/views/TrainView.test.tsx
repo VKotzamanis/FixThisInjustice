@@ -17,7 +17,7 @@
 //  - The audio module is mocked at the module boundary: jsdom has no Web Audio, so the real
 //    playChime would return false without telling this suite whether it was reached.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
 import { SPECIMEN_CARDS } from '../../content/specimenCards';
@@ -53,6 +53,12 @@ import { ToastProvider, ToastQueue } from '../components/ToastQueue';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
 import { TrainView } from './TrainView';
 import { forgetRestGameChoice } from './train/restGameChoice';
+import { preloadRestGames } from './train/restGameRoute';
+
+// F14: the game sheet renders on its first frame only once its chunk is loaded.
+beforeAll(async () => {
+  await preloadRestGames();
+});
 
 // vi.mock is hoisted above the imports by vitest, so the module below is already the double
 // when TrainView imports it.

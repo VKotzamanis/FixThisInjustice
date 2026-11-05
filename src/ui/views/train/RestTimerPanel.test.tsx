@@ -11,7 +11,7 @@
 // dispatching `visibilitychange`, which is the recomputation path master plan section 6.5
 // specifies and the one a backgrounded PWA actually takes.
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
 import { restWordRound } from '../../../domain/fun/restWord';
 import type { RestGameContext, RestTimer } from '../../../domain/training/restTimer';
@@ -22,6 +22,12 @@ import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../..
 import { ICON_FOR_KEY } from '../../../skins/limelight/Icon';
 import { forgetRestGameChoice } from './restGameChoice';
 import { RestTimerPanel } from './RestTimerPanel';
+import { preloadRestGames } from './restGameRoute';
+
+// F14: the game sheet renders on its first frame only once its chunk is loaded.
+beforeAll(async () => {
+  await preloadRestGames();
+});
 
 const playChime = vi.hoisted(() => vi.fn(() => true));
 const vibrate = vi.hoisted(() => vi.fn(() => true));

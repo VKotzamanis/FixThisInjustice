@@ -29,6 +29,7 @@ const SPLIT: Readonly<Record<string, readonly string[]>> = {
   'ui/views/SettingsView': [],
   'ui/settings/DataSection': ['ui/views/SettingsView.tsx'],
   'ui/views/ExportView': ['ui/settings/DataSection.tsx'],
+  'ui/views/train/RestGameSheet': [],
 };
 
 /** Static, value-level import specifiers of one file (type-only imports are erased). */

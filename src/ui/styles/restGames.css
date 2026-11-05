@@ -793,3 +793,12 @@ body.rest-sheet-min .view.train {
     animation: none;
   }
 }
+
+/*
+ * F14: while the sheet's chunk loads (precached, so milliseconds) lazyRoute renders its
+ * placeholder inside the fixed rest panel; there it must take no height, or it would stand
+ * 60vh tall over Train and catch taps (appShell.css .route-loading is sized for views).
+ */
+.rest-panel .route-loading {
+  min-height: 0;
+}
