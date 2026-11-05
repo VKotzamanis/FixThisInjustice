@@ -3,13 +3,11 @@
 Single source of current state. Update in place. Last update: 2026-11-05.
 
 ## Live
-- https://vkotzamanis.github.io/FixThisInjustice/ serves everything built 2026-10-18 (verified by bundle content, not workflow status). Owner started using it on his phone 2026-10-21.
-- Data lives only in each user's browser (`fti.v3`; after P2 ships, IndexedDB `fti`, with `fti.v3` kept as the first-boot import source and the AM-P2-1 rollback mirror). Users install to Home Screen (iOS Safari can wipe non-installed site data after ~7 days) and export JSON backups from Settings → Data.
+- https://vkotzamanis.github.io/FixThisInjustice/ serves main 6164a9c (2026-11-05; CI verify + worker + e2e chromium/webkit green, deploy green). The AAA rebuild (P0-P8) is live: see `docs/HANDOFF.md`.
+- Data lives in each user's browser: IndexedDB `fti` (per-record, quarantine), `fti.v3` kept as first-boot import source and AM-P2-1 rollback mirror. Users install to Home Screen and export JSON backups (share sheet) from Settings → Data.
 
 ## Next job
-1. Owner phone feedback (he is collecting it now; new agent session). Triage each item against `docs/ROADMAP.md`; log his words verbatim in `docs/private/owner-feedback/` (gitignored).
-2. Owner wording calls pending: new copy keys are base-table only, no limelight voice yet (session editing, effort taps, programme lifecycle, rest games (P6), warm-up notice "Got It"); ROADMAP N7, S1, S7.
-3. Then ROADMAP open items: L9 (form cue text), F2-F5; audit 2026-11-04 leftovers A01 (target-mass field bound, R12 property), A06 residual, A15/A16 (wizard split).
+- Read `docs/HANDOFF.md` first: owner answers to implement (panel text in the burn shader look, counter as a bare number with the burn), open owner items (tuning confirm, reminders deploy, device checks, form-cue text), where everything lives.
 
 ## What exists (2026-10-18 build)
 - Cleanup: docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE + runbooks + design; review-catalogue machinery, both design tools, clinical/board skins, old-console import removed.
