@@ -14,6 +14,8 @@ test('P3: a missed Monday reads missed, Wednesday counts, the week grades 1 of 3
   const wednesday = await openApp(context);
   await startFromToday(wednesday);
   await wednesday.getByRole('button', { name: LABEL.finish }).click({ timeout: 10_000 });
+  // P5 audit C12: Finish with sets missing asks once; this session logged none.
+  await wednesday.getByRole('button', { name: LABEL.finishAnyway, exact: true }).click({ timeout: 10_000 });
   await flushWrites(wednesday);
   await wednesday.close();
 

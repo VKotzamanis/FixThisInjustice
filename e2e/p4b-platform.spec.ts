@@ -1,7 +1,7 @@
 // P4b platform checks that only a real browser can make (spec R7/R8, audit E06, E11, E15).
 import { expect, test } from '@playwright/test';
-import { openApp, seedDocument } from './support/app';
-import { e2eDocument } from './support/document';
+import { chicago, openApp, seedDocument, setClock } from './support/app';
+import { MONDAY, e2eDocument } from './support/document';
 
 test('E11: a cold load raises no CSP violation', async ({ context }) => {
   await context.addInitScript(() => {
@@ -29,6 +29,9 @@ test('E15: with sounds on, a launch asks the network for no sound file that does
   const doc = e2eDocument();
   doc.ui.sounds = true;
   await seedDocument(context, doc);
+  // The programme's first day: no closed week, so no missed-week popup covers the page (P3's
+  // weekly close offers one for any miss within 14 days of the real clock).
+  await setClock(context, chicago(MONDAY, '10:00'));
   const sfxRequests: string[] = [];
   context.on('request', (request) => {
     if (request.url().includes('/sfx/')) sfxRequests.push(request.url());
