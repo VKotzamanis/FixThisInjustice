@@ -7,7 +7,9 @@ import {
   displayMass,
   formatLoad,
   formatMass,
+  displayVolume,
   formatVolume,
+  toStoredVolume,
   stepFor,
   toStoredGirthCm,
   toStoredLoad,
@@ -136,7 +138,7 @@ describe('formatting', () => {
 
   it('formats volume in whole units', () => {
     expect(formatVolume(500, 'metric')).toBe('500 mL');
-    expect(formatVolume(500, 'imperial')).toBe('17 fl oz');
+    expect(formatVolume(500, 'imperial')).toBe('16.9 fl oz');
   });
 
   it('labels both unit systems', () => {
@@ -205,5 +207,20 @@ describe('girth entry converts at the storage boundary', () => {
   it('labels the girth unit by the unit system, which is the defect this fixes', () => {
     expect(UNIT_LABEL.metric.girth).toBe('cm');
     expect(UNIT_LABEL.imperial.girth).toBe('in');
+  });
+});
+
+describe('volumes in the display unit (audit G14, G23)', () => {
+  it('prints fl oz to 0.1, so a cup and its sum agree', () => {
+    expect(formatVolume(250, 'imperial')).toBe('8.5 fl oz'); // [mL] -> [fl oz]
+    expect(formatVolume(750, 'imperial')).toBe('25.4 fl oz');
+    expect(formatVolume(3000, 'metric')).toBe('3000 mL');
+  });
+
+  it('stores a typed volume as whole mL and shows it back', () => {
+    expect(toStoredVolume(8, 'imperial')).toBe(237); // [mL] 8 x 29.5735 rounded to the schema's integer
+    expect(toStoredVolume(330, 'metric')).toBe(330);
+    expect(displayVolume(237, 'imperial')).toBe(8); // [fl oz] to 0.1
+    expect(displayVolume(3000, 'metric')).toBe(3000);
   });
 });

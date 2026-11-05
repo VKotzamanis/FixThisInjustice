@@ -15,7 +15,7 @@ import {
 import { dailyBeverageTargetML, statedBeverageTargetML } from '../../domain/nutrition';
 import { ProfileSchema } from '../../domain/schema';
 import type { ActivityLevel, Experience, Profile, UnitSystem } from '../../domain/types';
-import { displayLoad, formatBeverageTarget, toStoredLoad } from '../../domain/units';
+import { displayLoad, displayVolume, formatBeverageTarget, toStoredLoad, toStoredVolume, UNIT_LABEL } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
@@ -349,16 +349,19 @@ export function SettingsView(): JSX.Element {
       : t('error.outsideAccepted');
   };
 
-  const fluidError = (value: number | null): string | null => {
-    if (value === null) return t('error.valueRequired');
-    // A zero or negative daily target is a broken DENOMINATOR, not a preference: P4 renders
-    // hydration as volume/target. updateProfile throws on it, so it is caught here first.
-    if (!(value > 0)) return t('error.positive');
-    const patched = { ...profile.hydration, dailyTargetML: value }; // [mL/day]
-    return ProfileSchema.shape.hydration.safeParse(patched).success
-      ? null
-      : t('error.outsideAccepted');
-  };
+  /** A volume field of `hydration`, refused as the schema would refuse it (G14). [display unit] */
+  const volumeError =
+    (field: 'dailyTargetML' | 'cupSizeML') =>
+    (value: number | null): string | null => {
+      if (value === null) return t('error.valueRequired');
+      const ml = toStoredVolume(value, units); // [mL]
+      // A zero or negative target is a broken DENOMINATOR (volume/target), not a preference, and
+      // a zero cup logs nothing; updateProfile throws on the first, the schema on neither, so
+      // both are caught here.
+      if (!(ml > 0)) return t('error.positive');
+      const patched = { ...profile.hydration, [field]: ml }; // [mL]
+      return ProfileSchema.shape.hydration.safeParse(patched).success ? null : t('error.outsideAccepted');
+    };
 
   return (
     <section className="view">
@@ -501,17 +504,29 @@ export function SettingsView(): JSX.Element {
 
       <h2 className={displayClass(t('hero.hydration'))}>{t('hero.hydration')}</h2>
       <NumberSetting
-        key="fluid"
+        key={`fluid-${units}`}
         id="settings-fluid-target"
         quantity={t('quantity.dailyBeverageTarget')}
-        /* Entered and stored in mL either way: the canonical volume unit has no display form
-           in this field, because a fractional fluid ounce would round on every keystroke. */
-        unit="mL"
-        initial={String(profile.hydration.dailyTargetML)}
-        validate={fluidError}
+        // Audit G14: asked and shown in the display unit, stored as whole mL (toStoredVolume).
+        unit={UNIT_LABEL[units].volume}
+        initial={String(displayVolume(profile.hydration.dailyTargetML, units))}
+        validate={volumeError('dailyTargetML')}
         commit={(value) => {
           updateProfile({
-            hydration: { ...profile.hydration, dailyTargetML: value }, // [mL/day]
+            hydration: { ...profile.hydration, dailyTargetML: toStoredVolume(value, units) }, // [mL/day]
+          });
+        }}
+      />
+      <NumberSetting
+        key={`cup-${units}`}
+        id="settings-cup-size"
+        quantity={t('quantity.cupSize')}
+        unit={UNIT_LABEL[units].volume}
+        initial={String(displayVolume(profile.hydration.cupSizeML, units))}
+        validate={volumeError('cupSizeML')}
+        commit={(value) => {
+          updateProfile({
+            hydration: { ...profile.hydration, cupSizeML: toStoredVolume(value, units) }, // [mL]
           });
         }}
       />

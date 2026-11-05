@@ -520,3 +520,24 @@ describe('the Programme group in Settings (L5)', () => {
     expect(updateButton()).toBeNull();
   });
 });
+
+describe('fluid fields in the display unit (audit G14)', () => {
+  it('asks an imperial user for fl oz and stores whole mL', async () => {
+    useAppStore.getState().updateProfile(useAppStore.getState().activeProfileId ?? '', { units: 'imperial' });
+    render(<SettingsView />);
+    const target = screen.getByLabelText('Daily beverage target (fl oz)');
+    await userEvent.clear(target);
+    await userEvent.type(target, '100{Enter}');
+    const id = useAppStore.getState().activeProfileId ?? '';
+    expect(useAppStore.getState().profiles[id]?.hydration.dailyTargetML).toBe(2957); // [mL/day]
+  });
+
+  it('makes the cup size editable', async () => {
+    render(<SettingsView />);
+    const cup = screen.getByLabelText(`${copy('quantity.cupSize')} (mL)`);
+    await userEvent.clear(cup);
+    await userEvent.type(cup, '330{Enter}');
+    const id = useAppStore.getState().activeProfileId ?? '';
+    expect(useAppStore.getState().profiles[id]?.hydration.cupSizeML).toBe(330); // [mL]
+  });
+});

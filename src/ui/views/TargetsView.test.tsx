@@ -178,6 +178,15 @@ describe('asciiBar', () => {
 });
 
 describe('TargetsView', () => {
+  it('states the stored fluid target, with the IOM figure as the reference beside it (G14)', () => {
+    useAppStore.getState().updateProfile('p1', {
+      hydration: { ...PROFILE.hydration, dailyTargetML: 2500 }, // [mL/day] edited in Settings
+    });
+    render(<TargetsView />);
+    expect(screen.getByTestId('target-fluid')).toHaveTextContent('2500 mL');
+    expect(screen.getByTestId('fluid-reference')).toHaveTextContent(FORMAT.beverageDefault('3000 mL'));
+  });
+
   it('shows the computed targets with their units', () => {
     render(<TargetsView />);
     expect(screen.getByTestId('target-kcal')).toHaveTextContent(`${String(TARGET_KCAL)} kcal`);
@@ -419,7 +428,7 @@ describe('App wiring', () => {
     expect(useAppStore.getState().profiles['p1']?.body.baselineMassKg).toBe(80); // [kg]
 
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.targets') }));
-    expect(screen.getByTestId('target-fluid')).toHaveTextContent('101 fl oz'); // 3000 mL
+    expect(screen.getByTestId('target-fluid')).toHaveTextContent('101.4 fl oz'); // 3000 mL
   });
 
   it('gives the view navigation an accessible name', () => {

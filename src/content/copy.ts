@@ -310,6 +310,11 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'quantity.drinkVolume'
+  | 'button.logDrink'
+  | 'status.drinkLogged'
+  | 'quantity.cupSize'
+  | 'label.fluidProgress'
   | 'hero.measurements'
   | 'status.massLogged'
   | 'status.massDeleted'
@@ -1160,6 +1165,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R9 / audit G07, G14: the always-available fluid quick add and the editable cup.
+  'quantity.drinkVolume': 'Drink volume',
+  'button.logDrink': 'Log Drink',
+  'status.drinkLogged': 'Drink logged.',
+  'quantity.cupSize': 'Cup size',
+  'label.fluidProgress': 'Fluid Against Target',
   // Spec R9 / audit G02, G03: the weigh-in log on Today and on Log, each with a 6 s Undo.
   'hero.measurements': 'Weigh-Ins',
   'status.massLogged': 'Weigh-in logged.',

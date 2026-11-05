@@ -320,7 +320,7 @@ function latestMark(marks: readonly EpochMs[]): EpochMs {
  *     of the profile's own editable target.
  */
 export function hydrationCue(
-  state: AppState,
+  state: Pick<AppState, 'profiles' | 'assignments' | 'hydration' | 'bodyMass'>,
   profileId: string,
   now: EpochMs, // [ms] epoch UTC
   sessionActive: boolean,

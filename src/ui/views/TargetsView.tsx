@@ -11,7 +11,7 @@ import { volumeReport } from '../../domain/plan/generator';
 import { EXERCISES } from '../../domain/plan/library';
 import { IntakeEntrySchema } from '../../domain/schema';
 import type { IntakeEntry, Profile } from '../../domain/types';
-import { displayMass, formatBeverageTarget } from '../../domain/units';
+import { displayMass, formatBeverageTarget, formatVolume } from '../../domain/units';
 import { useAppStore } from '../../store';
 import {
   useActivePlan,
@@ -158,7 +158,9 @@ export function TargetsView(): JSX.Element {
           {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
         </dd>
         <dt>{t('label.fluid')}</dt>
-        <dd data-testid="target-fluid">{formatBeverageTarget(targets.fluidML, profile.units)}</dd>
+        {/* Audit G14: ONE fluid target, the stored and editable one the quick add and the banner
+            measure against; the IOM 2005 figure is the reference beside it. */}
+        <dd data-testid="target-fluid">{formatVolume(profile.hydration.dailyTargetML, profile.units)}</dd>
         <dt>{t('label.expectedRate')}</dt>
         <dd data-testid="target-rate">{rateText(targets, profile, overrides)}</dd>
         <dt>{t('label.creatineDose')}</dt>
@@ -166,6 +168,11 @@ export function TargetsView(): JSX.Element {
           {targets.creatineG === null ? t('label.none') : FORMAT.grams(targets.creatineG)}
         </dd>
       </dl>
+      <p className="view-note" data-testid="fluid-reference">
+        {targets.fluidML.kind === 'stated'
+          ? FORMAT.beverageDefault(formatBeverageTarget(targets.fluidML, profile.units))
+          : FORMAT.beveragePerSex(formatBeverageTarget(targets.fluidML, profile.units))}
+      </p>
 
       {/* R9: the derivation, and the intermediate quantities it passes through. */}
       <details data-testid="basis">
