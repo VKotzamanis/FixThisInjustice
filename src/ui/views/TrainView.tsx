@@ -25,6 +25,7 @@ import { WARMUP_NOTICE } from '../../content/formCues';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { crossedMilestones } from '../../domain/fun/blocks';
+import { inventoryOf } from '../../domain/plan/inventory';
 import { EXERCISES } from '../../domain/plan/library';
 import type { CoachLine } from '../../domain/training/coach';
 import { preSessionMass } from '../../domain/training/hydration';
@@ -189,6 +190,9 @@ export function TrainView(): ReactElement {
     for (const e of profileId === null ? [] : (customExercises[profileId] ?? [])) map[e.id] = e;
     return map;
   }, [customExercises, profileId]);
+
+  // Audit D07: the swap and add pickers suggest only what the profile's inventory allows.
+  const inventory = useMemo(() => (profile === null ? null : inventoryOf(profile)), [profile]);
 
   if (profile === null || profileId === null) {
     return <p className="view">{c('advice.noProfileTrain')}</p>;
@@ -408,6 +412,7 @@ export function TrainView(): ReactElement {
                   name={bonus ? FORMAT.bonusExerciseName(exercise.name) : exercise.name}
                   original={entry.kind === 'added' ? null : (library[entry.key] ?? null)}
                   access={profile.equipment}
+                  inventory={inventory}
                   library={libraryList}
                   inUse={inUse}
                   canMoveUp={slotIndex > 0}
@@ -429,6 +434,7 @@ export function TrainView(): ReactElement {
         <div className="ex-add">
           <AddLibraryExercise
             access={profile.equipment}
+            inventory={inventory}
             library={libraryList}
             // The store's own 'add' refusal set (review R3): it also holds a planned exercise
             // whose slot was swapped away, which the cards on screen (`inUse`) no longer show.

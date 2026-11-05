@@ -6,7 +6,15 @@ import type { Exercise, Prescription, Seconds } from '../types';
  * personal literal, no medication, no location. Nothing is invented -- where the legacy file
  * carried no video search string, `videoQuery` is null and P4 hides the video control.
  *
- * Ids are the 40 canonical slugs listed in master plan section 5: the 31 legacy ports, the seven
+ * P3a (2026-11-04, owner O3 "doesn't have very basic exercises such as lunges", audit D07/D08)
+ * added 28 basic-pattern rows at the end of the table: lunges, split squats, step-ups, single-leg
+ * Romanian deadlifts, the bodyweight squat, hip thrust and glute bridge, dumbbell bench and floor
+ * press, incline push-up, cable and band variants, the door-frame row, the prone T raise, dead
+ * bug, side plank and farmer carry. They carry no cue and no search string (formCueId and
+ * videoQuery null, wording out of scope), and are tagged by the direct-mover rule below. What
+ * each needs beyond its tier (dumbbells, a bench, a bar, bands) lives in inventory.ts.
+ *
+ * The first 40 ids are the canonical slugs listed in master plan section 5: the 31 legacy ports, the seven
  * equipment-tier exercises the Task 3 review added, and two more (chin-up, bench-dip) from the
  * section 5 rulings, so the dumbbells-only and bodyweight tiers reach every declared muscle they
  * can reach at all. P4's src/content/formCues.ts is keyed by the same slugs, so
@@ -101,8 +109,8 @@ import type { Exercise, Prescription, Seconds } from '../types';
  *   muscle        full-gym   dumbbells-only   bodyweight
  *   chest            D             D              D
  *   front-delt       D             D              D
- *   side-delt        D             D              s   <- secondary only; see below
- *   rear-delt        D             D              s   <- secondary only; see below
+ *   side-delt        D             D              D   <- band-lateral-raise (P3a; bands only)
+ *   rear-delt        D             D              D   <- band-pull-apart, prone-t-raise (P3a)
  *   triceps          D             D              D   <- bench-dip closed this
  *   biceps           D             D              D   <- chin-up closed this
  *   lats             D             D              D
@@ -113,9 +121,11 @@ import type { Exercise, Prescription, Seconds } from '../types';
  *   calves           D             D              D
  *   abs              D             D              D
  *
- * The bodyweight column is the honest limit of an unloaded tier and is reported, not papered
- * over. Two groups have no direct row there and the generator reports both as maintenance-only
- * (master plan section 5):
+ * Before P3a two groups had no direct row in the bodyweight tier; the paragraph below is kept as
+ * the record of why. P3a closed both by adding exercises, not by re-tagging: the prone T raise
+ * (no equipment) and the band pull-apart for the rear delt, the band lateral raise for the side
+ * delt. A user without bands still has no direct side-delt row, which inventory.ts enforces and
+ * the generator's volume report shows. The pre-P3a record (master plan section 5):
  *   side delt -- no unloaded exercise abducts the humerus against gravity through a working
  *     range; the load has to be in the hand. It is worked as an assisting mover by the pike
  *     push-up, which is a correction to the older "no side-delt stimulus at all" wording in
@@ -810,6 +820,430 @@ const EXERCISE_TABLE: Exercise[] = [
     videoQuery: null, // the legacy entry carried no search string
     formCueId: 'walk',
     note: 'Optional.',
+  },
+  // ---- P3a basic-pattern additions (2026-11-04, owner O3, audit D07/D08, spec R11) ----
+  // Tagged by the same direct-mover rule as every row above. No cue text and no search string:
+  // formCueId and videoQuery are null (wording is out of scope for P3a). Split-stance lifts are
+  // the HIP-DOMINANT HYBRID family (quads and glutes direct, hamstrings secondary), exactly as
+  // bulgarian-split-squat; single-leg Romanian deadlifts are HIP-DOMINANT (hamstrings and glutes
+  // direct), exactly as db-romanian-deadlift; the bodyweight squat is KNEE-DOMINANT.
+  {
+    id: 'db-reverse-lunge',
+    name: 'Dumbbell reverse lunge',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'dumbbell',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'db-walking-lunge',
+    name: 'Dumbbell walking lunge',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'dumbbell',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'db-step-up',
+    name: 'Dumbbell step-up',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'dumbbell',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'db-single-leg-rdl',
+    name: 'Dumbbell single-leg Romanian deadlift',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'dumbbell',
+    loadClass: 'lower-compound',
+    muscleGroups: ['hamstrings', 'glutes'],
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bw-reverse-lunge',
+    name: 'Reverse lunge',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bw-forward-lunge',
+    name: 'Forward lunge',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bw-split-squat',
+    name: 'Split squat',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bw-step-up',
+    name: 'Step-up',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads', 'glutes'],
+    secondaryMuscles: ['hamstrings'],
+    // A stair or a sturdy step is a setup constraint, like the Nordic curl's anchor, not an
+    // inventory item a tier can lack; the loaded db-step-up needs the bench (inventory.ts).
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bw-squat',
+    name: 'Bodyweight squat',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'lower-compound',
+    muscleGroups: ['quads'],
+    secondaryMuscles: ['glutes', 'hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'bw-single-leg-rdl',
+    name: 'Single-leg Romanian deadlift',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'lower-compound',
+    muscleGroups: ['hamstrings', 'glutes'],
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'barbell-hip-thrust',
+    name: 'Barbell hip thrust',
+    isBodyweight: false,
+    // Single-joint (hip extension at a held knee angle), so isolation by the bench-dip comment's
+    // multi-joint rule: loadClass drives the progression step and rest, not a taxonomy label.
+    isCompoundPrimary: false,
+    modality: 'barbell',
+    loadClass: 'isolation',
+    // Glutes are the prime mover. The knee is held bent, which shortens the hamstrings at the
+    // knee, so they assist hip extension rather than drive it: secondary. Same judgement as the
+    // Nordic exception above, stated rather than forced into the hip-dominant family.
+    muscleGroups: ['glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'glute-bridge',
+    name: 'Glute bridge',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    muscleGroups: ['glutes'],
+    secondaryMuscles: ['hamstrings'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'leg-extension',
+    name: 'Leg extension (machine)',
+    isBodyweight: false,
+    isCompoundPrimary: false,
+    modality: 'machine',
+    loadClass: 'isolation',
+    muscleGroups: ['quads'],
+    secondaryMuscles: [],
+    equipment: ['full-gym'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'db-bench-press',
+    name: 'Dumbbell bench press',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'dumbbell',
+    loadClass: 'upper-compound',
+    muscleGroups: ['chest'],
+    secondaryMuscles: ['front-delt', 'triceps'],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'db-floor-press',
+    name: 'Dumbbell floor press',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'dumbbell',
+    loadClass: 'upper-compound',
+    // The bench press pattern with the floor stopping the elbows: chest still the prime mover.
+    muscleGroups: ['chest'],
+    secondaryMuscles: ['front-delt', 'triceps'],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'incline-push-up',
+    name: 'Incline push-up',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'upper-compound',
+    muscleGroups: ['chest'],
+    secondaryMuscles: ['front-delt', 'triceps'],
+    // Hands on a bench, table or counter: a setup constraint, not an inventory item.
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'cable-triceps-pushdown',
+    name: 'Cable triceps pushdown',
+    isBodyweight: false,
+    isCompoundPrimary: false,
+    modality: 'cable',
+    loadClass: 'isolation',
+    muscleGroups: ['triceps'],
+    secondaryMuscles: [],
+    equipment: ['full-gym'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'cable-lateral-raise',
+    name: 'Cable lateral raise',
+    isBodyweight: false,
+    isCompoundPrimary: false,
+    modality: 'cable',
+    loadClass: 'isolation',
+    muscleGroups: ['side-delt'],
+    secondaryMuscles: [],
+    equipment: ['full-gym'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'seated-cable-row',
+    name: 'Seated cable row',
+    isBodyweight: false,
+    isCompoundPrimary: true,
+    modality: 'cable',
+    loadClass: 'upper-compound',
+    // Same muscle map as every other row, rear delt included (the elbow passes the torso).
+    muscleGroups: ['mid-back', 'lats'],
+    secondaryMuscles: ['biceps', 'rear-delt'],
+    equipment: ['full-gym'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  /*
+   * RESISTANCE-BAND ROWS. Band tension is not a load in kg and has no plate step, so these carry
+   * `isBodyweight: true` and `modality: 'bodyweight'`: progression.ts then extends reps instead
+   * of suggesting a load, and units.ts stepFor() returns 0 kg (no quantisation). They need the
+   * `resistance-bands` inventory item (inventory.ts), which is how a user without bands is kept
+   * from being prescribed one.
+   */
+  {
+    id: 'band-row',
+    name: 'Band row',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'upper-compound',
+    muscleGroups: ['mid-back', 'lats'],
+    secondaryMuscles: ['biceps', 'rear-delt'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'door-frame-row',
+    name: 'Door-frame row',
+    isBodyweight: true,
+    isCompoundPrimary: true,
+    modality: 'bodyweight',
+    loadClass: 'upper-compound',
+    // Holding a door frame and leaning back: the inverted row's pattern and muscle map with a
+    // steeper body angle. A sturdy door frame is a setup constraint, not an inventory item, so
+    // this is the one horizontal pull a user with no bar and no bands can do.
+    muscleGroups: ['mid-back', 'lats'],
+    secondaryMuscles: ['biceps', 'rear-delt'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'band-pull-apart',
+    name: 'Band pull-apart',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    // Face-pull map: horizontal abduction with retraction as part of the movement.
+    muscleGroups: ['rear-delt'],
+    secondaryMuscles: ['mid-back'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'band-lateral-raise',
+    name: 'Band lateral raise',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    muscleGroups: ['side-delt'],
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'band-curl',
+    name: 'Band curl',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    muscleGroups: ['biceps'],
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'prone-t-raise',
+    name: 'Prone T raise',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    // Face down, arms out to the side, lifted: the rear-delt fly pattern with the arm's own
+    // weight, so the band pull-apart's map. The no-equipment rear-delt option.
+    muscleGroups: ['rear-delt'],
+    secondaryMuscles: ['mid-back'],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'dead-bug',
+    name: 'Dead bug',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    muscleGroups: ['abs'],
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'side-plank',
+    name: 'Side plank',
+    isBodyweight: true,
+    isCompoundPrimary: false,
+    modality: 'bodyweight',
+    loadClass: 'isolation',
+    muscleGroups: ['abs'], // the target of the hold, as in the plank row
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only', 'bodyweight'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
+  },
+  {
+    id: 'farmer-carry',
+    name: 'Farmer carry',
+    isBodyweight: false,
+    isCompoundPrimary: false,
+    modality: 'dumbbell',
+    loadClass: 'isolation',
+    // NO muscle groups, on the conditioning entries' reasoning: grip and trunk work isometrically
+    // (stabilisers earn no set credit under the direct-mover rule) and the forearm and trapezius
+    // are not in MUSCLE_GROUPS. Prescribed with no target (templates.ts prescriptionFor).
+    muscleGroups: [],
+    secondaryMuscles: [],
+    equipment: ['full-gym', 'dumbbells-only'],
+    videoQuery: null,
+    formCueId: null,
+    note: null,
   },
 ];
 

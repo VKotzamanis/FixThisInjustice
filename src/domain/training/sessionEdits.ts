@@ -7,6 +7,7 @@
 // Units: set counts [sets], rest [s], rep ranges [repetitions]; every prescription and rest
 // interval here comes from src/domain/plan/templates.ts and library.ts, never from a literal
 // restated in this file (rule 2).
+import { fitsInventory, type Inventory } from '../plan/inventory';
 import { SPLIT_TEMPLATES, prescriptionFor, restSFor, slotIntensityOf } from '../plan/templates';
 import { ACCESS_UNLOCKS } from '../types';
 import type {
@@ -356,6 +357,8 @@ export function applySessionEdit(
 
 export interface AddChoicesInput {
   access: EquipmentAccess;
+  /** inventoryOf(profile) (src/domain/plan/inventory.ts). Absent = no filter. */
+  inventory?: Inventory | undefined;
   /** Shipped library plus the profile's custom exercises. */
   library: readonly Exercise[];
   /** Exercise ids the session already holds. */
@@ -364,13 +367,18 @@ export interface AddChoicesInput {
 
 /**
  * What to offer when the user adds an exercise mid-session (ROADMAP L4): the exercises the
- * equipment unlocks (ACCESS_UNLOCKS) first, then the rest of the library, custom ones
- * included. Nothing the session already holds. The free-text custom form stays the fallback.
+ * equipment unlocks (ACCESS_UNLOCKS) and the inventory allows (fitsInventory, audit D07) first,
+ * then the rest of the library, custom ones included. Nothing the session already holds. The
+ * free-text custom form stays the fallback.
  */
 export function addChoices(input: AddChoicesInput): { fits: Exercise[]; others: Exercise[] } {
   const unlocked = ACCESS_UNLOCKS[input.access];
   const open = input.library.filter((e) => !input.inUse.has(e.id));
-  const fits = open.filter((e) => e.equipment.some((tier) => unlocked.includes(tier)));
+  const fits = open.filter(
+    (e) =>
+      e.equipment.some((tier) => unlocked.includes(tier)) &&
+      fitsInventory(e, input.access, input.inventory ?? null),
+  );
   const fitIds = new Set(fits.map((e) => e.id));
   return { fits, others: open.filter((e) => !fitIds.has(e.id)) };
 }
@@ -408,6 +416,8 @@ export interface SwapAlternativesInput {
   /** The PLANNED exercise of the slot (not its current substitute), whose intent the swap keeps. */
   original: Exercise;
   access: EquipmentAccess;
+  /** inventoryOf(profile) (src/domain/plan/inventory.ts). Absent = no filter. */
+  inventory?: Inventory | undefined;
   /** Shipped library plus the profile's custom exercises. */
   library: readonly Exercise[];
   /** Exercise ids the session already holds, the slot's current one included. */
@@ -420,8 +430,9 @@ export interface SwapAlternativesInput {
  * `suggested`, best first: the planned exercise itself when the slot has been swapped away
  * from it; then the template peers; then any library exercise sharing a DIRECT mover
  * (`muscleGroups`, counted 1.0 set) with the planned one. Only exercises the user's equipment
- * unlocks (ACCESS_UNLOCKS) are suggested. `others`: everything else in the library, custom
- * exercises included, for the gym that has what the profile says it does not.
+ * unlocks (ACCESS_UNLOCKS) and inventory allows (fitsInventory, audit D07) are suggested.
+ * `others`: everything else in the library, custom exercises included, for the gym that has
+ * what the profile says it does not.
  *
  * Nothing already in the session is offered: one exercise is one card.
  */
@@ -430,9 +441,11 @@ export function swapAlternatives(input: SwapAlternativesInput): {
   others: Exercise[];
 } {
   const { original, access, library, inUse } = input;
+  const inventory = input.inventory ?? null;
   const byId = new Map(library.map((e) => [e.id, e]));
   const unlocked = ACCESS_UNLOCKS[access];
-  const fits = (e: Exercise): boolean => e.equipment.some((tier) => unlocked.includes(tier));
+  const fits = (e: Exercise): boolean =>
+    e.equipment.some((tier) => unlocked.includes(tier)) && fitsInventory(e, access, inventory);
   const sharesDirectMover = (e: Exercise): boolean =>
     e.muscleGroups.some((m) => original.muscleGroups.includes(m));
 

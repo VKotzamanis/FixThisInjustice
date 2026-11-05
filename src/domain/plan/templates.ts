@@ -1,6 +1,7 @@
 import { ACCESS_UNLOCKS } from '../types';
 import type { Equipment, EquipmentAccess, Exercise, Experience, Prescription } from '../types';
-import { EXERCISE_BY_ID, MUSCLE_GROUPS } from './library';
+import { EXERCISE_BY_ID, INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
+import { fitsInventory, type Inventory } from './inventory';
 
 /**
  * Split templates for 2-6 training days.
@@ -206,36 +207,87 @@ const iso = (role: string, candidates: string[]): ExerciseSlot => ({
  * then take a chin-up ON TOP of its two hammer-curl slots, giving an advanced user 20.25
  * biceps sets/week at five days against a 14-18 band, range top 22.5. Substituting a vertical
  * pull into a horizontal-pull slot is the smaller error: it is one movement pattern off in one
- * tier, against a volume claim the review's band would not support. */
-const HORIZONTAL_PRESS = ['barbell-bench-press', 'incline-db-press', 'push-up'];
-const INCLINE_PRESS = ['incline-db-press', 'push-up'];
+ * tier, against a volume claim the review's band would not support.
+ *
+ * P3a (2026-11-04, owner O3, audit D07/D08). New candidates go AFTER the existing ones, so a
+ * full-gym user is prescribed what they were, with two deliberate exceptions that move no volume:
+ *   - the split-squat slot is now LUNGE and leads with db-walking-lunge, which carries the
+ *     Bulgarian split squat's exact muscle tags, so the owner sees a lunge on Lower B / Legs B and
+ *     every weekly figure is unchanged (templates.test.ts four-day case, set for set);
+ *   - the four-day push-up slot moved from Lower B to Upper B (audit D08: "Lower B contains
+ *     push-up"). Same exercises per week, so the same weekly volume.
+ * In the sub-gym tiers three orders are load-bearing for the band ceiling, each measured:
+ *   - LEG_PRESS tries bw-squat before the Bulgarian, so Lower A keeps the knee-dominant pair the
+ *     full gym has (squat + leg press); a second split-stance lift there put glutes above the
+ *     band top at four, five and six days.
+ *   - HINGE keeps the Nordic curl ahead of the bodyweight single-leg RDL, for the same reason.
+ *   - HORIZONTAL_PULL_B tries the band row before the chin-up: with bands, the band curl already
+ *     gives the tier direct biceps work, and chin-up plus band curl put biceps above the band.
+ * The door-frame row closes the last gap: it is the only horizontal pull a user with no bar and
+ * no bands can do. */
+const HORIZONTAL_PRESS = [
+  'barbell-bench-press',
+  'incline-db-press',
+  'db-bench-press',
+  'db-floor-press',
+  'push-up',
+  'incline-push-up',
+];
+const INCLINE_PRESS = ['incline-db-press', 'push-up', 'incline-push-up'];
+const PUSH_UP = ['push-up', 'incline-push-up'];
 const TRICEPS_PRESS = ['close-grip-bench-press', 'bench-dip'];
 const VERTICAL_PRESS = ['overhead-press-barbell', 'db-overhead-press', 'pike-push-up'];
 const EXPLOSIVE_PRESS = ['push-press', 'db-overhead-press', 'pike-push-up'];
 const VERTICAL_PULL_A = ['lat-pulldown', 'pull-up'];
 const VERTICAL_PULL_B = ['pull-up', 'lat-pulldown'];
 const VERTICAL_PULL_CHIN = ['lat-pulldown', 'chin-up'];
-const HORIZONTAL_PULL_A = ['barbell-row-pendlay', 'db-single-arm-row', 'inverted-row'];
-const HORIZONTAL_PULL_B = ['db-single-arm-row', 'barbell-row-pendlay', 'chin-up'];
-const SQUAT = ['barbell-back-squat', 'goblet-squat', 'bulgarian-split-squat'];
-const LEG_PRESS = ['leg-press', 'goblet-squat', 'bulgarian-split-squat'];
+const HORIZONTAL_PULL_A = [
+  'barbell-row-pendlay',
+  'seated-cable-row',
+  'db-single-arm-row',
+  'inverted-row',
+  'band-row',
+  'door-frame-row',
+];
+const HORIZONTAL_PULL_B = [
+  'db-single-arm-row',
+  'barbell-row-pendlay',
+  'seated-cable-row',
+  'band-row',
+  'chin-up',
+  'door-frame-row',
+];
+const SQUAT = ['barbell-back-squat', 'goblet-squat', 'bulgarian-split-squat', 'bw-squat'];
+const LEG_PRESS = ['leg-press', 'goblet-squat', 'bw-squat', 'bulgarian-split-squat', 'bw-step-up'];
 const DEADLIFT = ['trap-bar-deadlift', 'conventional-deadlift', 'bulgarian-split-squat'];
-const SPLIT_SQUAT = ['bulgarian-split-squat'];
+const LUNGE = [
+  'db-walking-lunge',
+  'bulgarian-split-squat',
+  'db-reverse-lunge',
+  'db-step-up',
+  'bw-reverse-lunge',
+  'bw-split-squat',
+  'bw-forward-lunge',
+];
 const HINGE = [
   'romanian-deadlift',
   'conventional-deadlift',
   'db-romanian-deadlift',
+  'db-single-leg-rdl',
   'nordic-hamstring-curl',
+  'bw-single-leg-rdl',
+  'barbell-hip-thrust',
+  'glute-bridge',
 ];
 const LEG_CURL = ['leg-curl-machine', 'nordic-hamstring-curl'];
 const CALF = ['calf-raise'];
-const LATERAL = ['lateral-raise'];
-const REAR_DELT = ['face-pull', 'db-rear-delt-fly'];
-const CURL_A = ['barbell-curl', 'hammer-curl'];
-const CURL_B = ['hammer-curl', 'barbell-curl'];
-const CORE_PLANK = ['plank'];
-const CORE_HANG = ['hanging-knee-raise', 'plank'];
-const CORE_WHEEL = ['ab-wheel-rollout', 'plank'];
+const LATERAL = ['lateral-raise', 'cable-lateral-raise', 'band-lateral-raise'];
+const REAR_DELT = ['face-pull', 'db-rear-delt-fly', 'band-pull-apart', 'prone-t-raise'];
+const CURL_A = ['barbell-curl', 'hammer-curl', 'band-curl'];
+const CURL_B = ['hammer-curl', 'barbell-curl', 'band-curl'];
+const CORE_PLANK = ['plank', 'dead-bug'];
+const CORE_HANG = ['hanging-knee-raise', 'plank', 'dead-bug'];
+const CORE_WHEEL = ['ab-wheel-rollout', 'plank', 'dead-bug'];
 
 /**
  * In-band muscles per day count and equipment tier, in sets/muscle/week against WEEKLY_SET_BAND.
@@ -278,27 +330,37 @@ const BAND_MUSCLES: Record<SessionsPerWeek, Record<Equipment, readonly MuscleGro
       'quads',
       'rear-delt',
     ],
-    // The chin-up is this tier's one biceps-direct exercise and the two-day template has one
-    // pulling slot for it, which leaves the biceps below the floor rather than out of the plan.
-    bodyweight: ['abs', 'chest', 'front-delt', 'glutes', 'hamstrings', 'lats', 'quads'],
+    // P3a: the band curl and the band pull-apart fill the two isolation slots the tier used to
+    // drop, which brings biceps and rear delt into this low band.
+    bodyweight: [
+      'abs',
+      'biceps',
+      'chest',
+      'front-delt',
+      'glutes',
+      'hamstrings',
+      'lats',
+      'quads',
+      'rear-delt',
+    ],
   },
   // Band 9-15 sets/muscle/week.
   3: {
     'full-gym': ['biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'mid-back', 'quads'],
     'dumbbells-only': ['biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'quads'],
-    bodyweight: ['glutes', 'lats', 'quads'],
+    bodyweight: ['biceps', 'chest', 'lats', 'mid-back', 'quads'],
   },
   // Band 12-16 sets/muscle/week.
   4: {
     'full-gym': ['biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'quads'],
-    'dumbbells-only': ['biceps', 'lats'],
-    bodyweight: ['lats'],
+    'dumbbells-only': ['biceps', 'glutes', 'hamstrings', 'lats', 'quads'],
+    bodyweight: ['biceps', 'lats', 'quads'],
   },
   // Band 14-18 sets/muscle/week.
   5: {
     'full-gym': ['abs', 'biceps', 'chest', 'glutes', 'hamstrings', 'lats', 'mid-back', 'quads'],
-    'dumbbells-only': ['abs', 'biceps', 'lats'],
-    bodyweight: ['abs', 'lats'],
+    'dumbbells-only': ['abs', 'biceps', 'glutes', 'hamstrings', 'lats', 'quads'],
+    bodyweight: ['abs', 'biceps', 'lats', 'mid-back', 'quads'],
   },
   // Band 16-20 sets/muscle/week.
   6: {
@@ -314,8 +376,17 @@ const BAND_MUSCLES: Record<SessionsPerWeek, Record<Equipment, readonly MuscleGro
       'quads',
       'side-delt',
     ],
-    'dumbbells-only': ['abs', 'front-delt', 'lats', 'side-delt'],
-    bodyweight: ['abs', 'lats'],
+    'dumbbells-only': [
+      'abs',
+      'biceps',
+      'front-delt',
+      'glutes',
+      'hamstrings',
+      'lats',
+      'quads',
+      'side-delt',
+    ],
+    bodyweight: ['abs', 'front-delt', 'lats', 'mid-back', 'quads', 'side-delt'],
   },
 };
 
@@ -343,6 +414,9 @@ export function bandMusclesFor(
  *   barbell-row -- carries the same tags as barbell-row-pendlay, which leads HORIZONTAL_PULL_A.
  *     It exists so P7 can migrate the legacy "Barbell row (heavier)" log entries onto a canonical
  *     id, not so the generator can prescribe it.
+ * P3a adds three more, for the same reasons: leg-extension and cable-triceps-pushdown are
+ * isolation work with no isolation slot of their kind (the triceps-overhead-extension argument),
+ * and farmer-carry credits no muscle. All three are reachable from the swap and add pickers.
  * library.test.ts owns the library's own coverage claims; this note exists so a reader does not
  * take the gap for an oversight.
  */
@@ -415,7 +489,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
           heavy('deadlift', DEADLIFT),
           comp('incline press', INCLINE_PRESS),
           comp('horizontal pull', HORIZONTAL_PULL_B),
-          comp('push-up', ['push-up']),
+          comp('push-up', PUSH_UP),
           iso('rear delt', REAR_DELT),
           iso('elbow flexion', CURL_B),
         ],
@@ -459,6 +533,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
           comp('vertical pull', VERTICAL_PULL_B),
           comp('vertical press', VERTICAL_PRESS),
           comp('horizontal pull', HORIZONTAL_PULL_B),
+          comp('push-up', PUSH_UP),
           iso('rear delt', REAR_DELT),
           iso('elbow flexion', CURL_B),
         ],
@@ -467,8 +542,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
         label: 'Lower B',
         slots: [
           heavy('deadlift', DEADLIFT),
-          comp('split squat', SPLIT_SQUAT),
-          comp('push-up', ['push-up']),
+          comp('lunge', LUNGE),
           iso('lateral raise', LATERAL),
           iso('calf', CALF),
           iso('core', CORE_HANG),
@@ -521,7 +595,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
         label: 'Lower B',
         slots: [
           heavy('deadlift', DEADLIFT),
-          comp('split squat', SPLIT_SQUAT),
+          comp('lunge', LUNGE),
           iso('lateral raise', LATERAL),
           iso('calf', CALF),
           iso('core', CORE_HANG),
@@ -530,7 +604,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
       {
         label: 'Accessory',
         slots: [
-          comp('push-up', ['push-up']),
+          comp('push-up', PUSH_UP),
           iso('rear delt', REAR_DELT),
           iso('lateral raise', LATERAL),
           iso('calf', CALF),
@@ -582,7 +656,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
         label: 'Push B',
         slots: [
           heavy('triceps press', TRICEPS_PRESS),
-          comp('push-up', ['push-up']),
+          comp('push-up', PUSH_UP),
           comp('explosive press', EXPLOSIVE_PRESS),
           iso('lateral raise', LATERAL),
           iso('core', CORE_WHEEL),
@@ -602,7 +676,7 @@ export const SPLIT_TEMPLATES: Record<SessionsPerWeek, SplitTemplate> = {
         label: 'Legs B',
         slots: [
           heavy('deadlift', DEADLIFT),
-          comp('split squat', SPLIT_SQUAT),
+          comp('lunge', LUNGE),
           iso('lateral raise', LATERAL),
           iso('core', CORE_HANG),
           iso('calf', CALF),
@@ -649,9 +723,21 @@ export function prescriptionFor(ex: Exercise, intensity: SlotIntensity): Prescri
     case 'bench-dip':
     case 'inverted-row':
     case 'pike-push-up':
+    case 'incline-push-up':
+    case 'band-row':
+    case 'door-frame-row':
+    case 'bw-reverse-lunge':
+    case 'bw-forward-lunge':
+    case 'bw-split-squat':
+    case 'bw-step-up':
+    case 'bw-squat':
+    case 'bw-single-leg-rdl':
       return { kind: 'amrap', minimum: null };
     case 'plank':
+    case 'side-plank':
       return { kind: 'time', targetS: 60 }; // [s]
+    case 'farmer-carry':
+      return { kind: 'none' };
     case 'rower-intervals':
     case 'stair-climber':
       return { kind: 'duration', targetS: 1200 }; // [s] = 20 min
@@ -691,10 +777,10 @@ export function slotIntensityOf(p: Prescription): SlotIntensity {
 export { restSFor } from './library';
 
 /**
- * First candidate that the LIBRARY holds, the equipment ACCESS unlocks, and the session has not
- * already used. Returns null only when no candidate clears all three, which is the sole omission
- * a split template declares: a slot is dropped rather than filled with something it does not
- * train.
+ * First candidate that the LIBRARY holds, the equipment ACCESS unlocks, the INVENTORY allows
+ * (inventory.ts fitsInventory; null = no filter, the default) and the session has not already
+ * used. Returns null only when no candidate clears all four; resolveWeek then tops the session up
+ * to its floor rather than leaving it short.
  *
  * Takes an `EquipmentAccess` (what the USER has), not an `Equipment` (what an exercise needs):
  * Brief F Part 2. `ACCESS_UNLOCKS[equipment]` is the set of exercise tiers that access level
@@ -715,6 +801,7 @@ export function resolveSlot(
   equipment: EquipmentAccess,
   used: ReadonlySet<string>,
   library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
+  inventory: Inventory = null,
 ): Exercise | null {
   const unlocked = ACCESS_UNLOCKS[equipment];
   for (const id of slot.candidates) {
@@ -722,7 +809,214 @@ export function resolveSlot(
     if (!ex) continue;
     if (used.has(ex.id)) continue;
     if (!ex.equipment.some((tier) => unlocked.includes(tier))) continue;
+    if (!fitsInventory(ex, equipment, inventory)) continue;
     return ex;
   }
   return null;
+}
+
+/** One resolved entry of a session: the exercise and the slot (or floor slot) it fills. */
+export interface ResolvedSlot {
+  slot: ExerciseSlot;
+  exercise: Exercise;
+}
+
+/**
+ * The template's slots resolved in order, each through resolveSlot with the session's own `used`
+ * set, so no exercise appears twice. A slot no candidate fits is left out here; resolveWeek is
+ * what tops the session up to its floor.
+ */
+export function resolveSession(
+  template: SessionTemplate,
+  equipment: EquipmentAccess,
+  inventory: Inventory = null,
+  library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
+): ResolvedSlot[] {
+  const used = new Set<string>();
+  const out: ResolvedSlot[] = [];
+  for (const slot of template.slots) {
+    const ex = resolveSlot(slot, equipment, used, library, inventory);
+    if (!ex) continue;
+    used.add(ex.id);
+    out.push({ slot, exercise: ex });
+  }
+  return out;
+}
+
+/**
+ * [sets/muscle/week] Top of the ACSM 2026 deceleration range: Currier BS et al. (2026), Med Sci
+ * Sports Exerc 58(4):851-872, DOI 10.1249/mss.0000000000003897. The citable ceiling for the TOP of
+ * a prescribed weekly set interval; templates.test.ts and generator.test.ts bound every cell by it.
+ */
+export const EVIDENCE_CEILING_SETS = 20;
+
+/** [exercises] The floor never asks for fewer than this: the shortest template session (5) minus one. */
+export const SESSION_FLOOR_MIN = 4;
+
+/**
+ * SESSION FLOOR (audit D08). [exercises] A generated session holds at least
+ * max(SESSION_FLOOR_MIN, slots - 1): at most one slot short of its template, never under four.
+ * A HEURISTIC, stated as such: no source sets a minimum exercise count; the figure is chosen so a
+ * sub-gym session keeps the template's shape. resolveWeek tops a short session up from
+ * FLOOR_POOLS, and stops short of the floor only where every remaining pool entry would push a
+ * muscle above the week's band top or past EVIDENCE_CEILING_SETS: the evidence cap outranks the
+ * floor. generator.test.ts lists those cells as a census, asserted as an equality.
+ */
+export function sessionFloor(template: SessionTemplate): number {
+  return Math.max(SESSION_FLOOR_MIN, template.slots.length - 1);
+}
+
+/** What a session trains, read off its label, so a floor fill never puts a press on a pull day. */
+export type SessionRegion = 'push' | 'pull' | 'upper' | 'lower' | 'full';
+
+export function sessionRegion(label: string): SessionRegion {
+  if (/^(Lower|Legs)/.test(label)) return 'lower';
+  if (/^Push/.test(label)) return 'push';
+  if (/^Pull/.test(label)) return 'pull';
+  if (/^Upper/.test(label)) return 'upper';
+  return 'full'; // "Full body A/B/C", "Accessory"
+}
+
+/**
+ * Floor fill candidates by region, best first: the equipment-free and band exercises of that
+ * region, then trunk work. Every entry is filtered by tier and inventory like a slot candidate,
+ * so a user without bands never receives a band exercise here either.
+ */
+export const FLOOR_POOLS: Record<SessionRegion, readonly string[]> = {
+  push: [
+    'pike-push-up',
+    'incline-push-up',
+    'push-up',
+    'bench-dip',
+    'band-lateral-raise',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  pull: [
+    'prone-t-raise',
+    'band-pull-apart',
+    'band-row',
+    'door-frame-row',
+    'band-curl',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  upper: [
+    'prone-t-raise',
+    'band-pull-apart',
+    'door-frame-row',
+    'pike-push-up',
+    'incline-push-up',
+    'band-lateral-raise',
+    'band-curl',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  lower: [
+    'bw-squat',
+    'glute-bridge',
+    'bw-single-leg-rdl',
+    'bw-reverse-lunge',
+    'calf-raise',
+    'nordic-hamstring-curl',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+  full: [
+    'prone-t-raise',
+    'band-pull-apart',
+    'door-frame-row',
+    'glute-bridge',
+    'bw-squat',
+    'pike-push-up',
+    'incline-push-up',
+    'calf-raise',
+    'dead-bug',
+    'side-plank',
+    'plank',
+  ],
+};
+
+/**
+ * One week of sessions for a split: every session resolved slot by slot, then each session below
+ * its sessionFloor topped up from FLOOR_POOLS[sessionRegion(label)].
+ *
+ * VOLUME GUARD. A pool entry is accepted only if, after crediting it to the WEEK (direct 1.0,
+ * indirect INDIRECT_SET_FRACTION, at the set count its class gets for this experience), no muscle
+ * has a midpoint above WEEKLY_SET_BAND[days][1] or an interval top above EVIDENCE_CEILING_SETS.
+ * So the fill never creates a volume the band tests would reject. A filled entry takes a
+ * synthetic slot: compound-primary exercises a moderate compound slot (inserted after the last
+ * compound, so compounds stay first), the rest a light isolation slot (appended).
+ *
+ * With a full gym, or any tier and a null inventory, every template session already meets its
+ * floor, so this returns exactly the slot resolution; templates.test.ts asserts it.
+ */
+export function resolveWeek(
+  days: SessionsPerWeek,
+  experience: Experience,
+  equipment: EquipmentAccess,
+  inventory: Inventory = null,
+  library: Readonly<Record<string, Exercise>> = EXERCISE_BY_ID,
+): ResolvedSlot[][] {
+  const template = SPLIT_TEMPLATES[days];
+  const sets = template.sets[experience];
+  const bandTop = WEEKLY_SET_BAND[days][1]; // [sets/muscle/week]
+  const mid: Record<string, number> = {}; // [sets/muscle/week] interval midpoints
+  const top: Record<string, number> = {}; // [sets/muscle/week] interval tops
+  const credit = (ex: Exercise, slotClass: SlotClass, sign: 1 | -1): void => {
+    const s = sets[slotClass];
+    const m1 = (sign * (s.lo + s.hi)) / 2;
+    const t1 = sign * s.hi;
+    for (const m of ex.muscleGroups) {
+      mid[m] = (mid[m] ?? 0) + m1;
+      top[m] = (top[m] ?? 0) + t1;
+    }
+    for (const m of ex.secondaryMuscles) {
+      mid[m] = (mid[m] ?? 0) + m1 * INDIRECT_SET_FRACTION;
+      top[m] = (top[m] ?? 0) + t1 * INDIRECT_SET_FRACTION;
+    }
+  };
+  const week = template.sessions.map((s) => resolveSession(s, equipment, inventory, library));
+  for (const session of week) for (const r of session) credit(r.exercise, r.slot.slotClass, 1);
+  const unlocked = ACCESS_UNLOCKS[equipment];
+  return week.map((session, i) => {
+    const sessionTemplate = template.sessions[i];
+    if (sessionTemplate === undefined) return session;
+    const floor = sessionFloor(sessionTemplate);
+    const out = [...session];
+    const used = new Set(out.map((r) => r.exercise.id));
+    for (const id of FLOOR_POOLS[sessionRegion(sessionTemplate.label)]) {
+      if (out.length >= floor) break;
+      const ex = library[id];
+      if (ex === undefined || used.has(id)) continue;
+      if (!ex.equipment.some((tier) => unlocked.includes(tier))) continue;
+      if (!fitsInventory(ex, equipment, inventory)) continue;
+      const slotClass: SlotClass = ex.isCompoundPrimary ? 'compound' : 'isolation';
+      credit(ex, slotClass, 1);
+      const over = [...ex.muscleGroups, ...ex.secondaryMuscles].some(
+        (m) => (mid[m] ?? 0) > bandTop || (top[m] ?? 0) > EVIDENCE_CEILING_SETS,
+      );
+      if (over) {
+        credit(ex, slotClass, -1);
+        continue;
+      }
+      used.add(id);
+      const slot: ExerciseSlot =
+        slotClass === 'compound' ? comp('floor fill', [id]) : iso('floor fill', [id]);
+      if (slotClass === 'compound') {
+        let lastCompound = -1;
+        out.forEach((r, j) => {
+          if (r.exercise.isCompoundPrimary) lastCompound = j;
+        });
+        out.splice(lastCompound + 1, 0, { slot, exercise: ex });
+      } else {
+        out.push({ slot, exercise: ex });
+      }
+    }
+    return out;
+  });
 }

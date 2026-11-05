@@ -1913,9 +1913,14 @@ describe('Brief F: the equipment sliders', () => {
     expect(screen.getByText('40 lb and above')).toBeInTheDocument();
   });
 
-  it('shows the body weight only multi-select for Body Weight Only alone, and stores the selections', () => {
+  it('shows the portable multi-select for every position but Full Gym, and stores the selections', () => {
     toTrainingStep();
-    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '2' } }); // Home Gym
+    // P3a (audit D07): the home positions ask about the bar and bands too.
+    for (const index of ['1', '2', '3']) {
+      fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: index } });
+      expect(screen.getByText('Pull-Up Bar')).toBeInTheDocument();
+    }
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '4' } }); // Full Gym
     expect(screen.queryByText('Yoga Mat')).not.toBeInTheDocument();
     fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '0' } }); // Body Weight Only
     expect(screen.getByText('Yoga Mat')).toBeInTheDocument();
@@ -1924,6 +1929,23 @@ describe('Brief F: the equipment sliders', () => {
     finishFromTraining();
     expect(confirmedProfile().bodyweightEquipment.sort()).toEqual(['pull-up-bar', 'yoga-mat']);
     expect(confirmedProfile().homeEquipment).toEqual([]);
+    expect(confirmedProfile().inventoryAnsweredFor).toBe('bodyweight');
+  });
+
+  it('builds the stored plan from the inventory: no bar ticked, no bar exercise (audit D07)', () => {
+    toTrainingStep();
+    fireEvent.change(screen.getByLabelText(/^equipment access$/i), { target: { value: '0' } }); // Body Weight Only
+    fireEvent.click(screen.getByLabelText('Yoga Mat'));
+    finishFromTraining();
+    const state = useAppStore.getState();
+    const profile = confirmedProfile();
+    const cursor = state.cursors[profile.id];
+    const plan = cursor ? state.plans[cursor.planId] : undefined;
+    expect(plan).toBeDefined();
+    const ids = new Set(plan?.sessions.flatMap((s) => s.exercises.map((e) => e.exerciseId)));
+    for (const barOnly of ['pull-up', 'chin-up', 'inverted-row', 'hanging-knee-raise']) {
+      expect({ barOnly, planned: ids.has(barOnly) }).toEqual({ barOnly, planned: false });
+    }
   });
 
   it('clears a home equipment selection made under one position once the slider leaves every position that shows it', () => {

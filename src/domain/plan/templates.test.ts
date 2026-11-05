@@ -2,9 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { EXERCISES, EXERCISE_BY_ID, INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
 import {
   bandMusclesFor,
+  FLOOR_POOLS,
   prescriptionFor,
+  resolveSession,
   resolveSlot,
+  resolveWeek,
   restSFor,
+  sessionFloor,
+  sessionRegion,
   slotIntensityOf,
   SPLIT_TEMPLATES,
   WEEKLY_SET_BAND,
@@ -203,12 +208,10 @@ function weeklyFractionalSets(
     acc.hi += hi;
     acc.mid += (lo + hi) / 2;
   };
-  for (const session of template.sessions) {
-    const used = new Set<string>();
-    for (const slot of session.slots) {
-      const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
-      if (!ex) continue;
-      used.add(ex.id);
+  // resolveWeek, not a slot loop: the band claim is about what the generator emits, floor fill
+  // included (with a null inventory the fill never fires; asserted below).
+  for (const session of resolveWeek(d, experience, ACCESS_FOR_TIER[equipment])) {
+    for (const { slot, exercise: ex } of session) {
       const sets = template.sets[experience][slot.slotClass];
       for (const m of ex.muscleGroups) credit(m, sets.lo, sets.hi);
       for (const m of ex.secondaryMuscles) {
@@ -422,7 +425,33 @@ describe('prescriptions', () => {
     // take an AMRAP prescription because no load step exists to progress. Asserted at all three
     // intensities because the slot a substitution lands in decides the intensity, and the
     // prescription must not depend on it.
-    const unloaded = ['push-up', 'pull-up', 'chin-up', 'bench-dip', 'inverted-row', 'pike-push-up'];
+    const unloaded = [
+      'push-up',
+      'pull-up',
+      'chin-up',
+      'bench-dip',
+      'inverted-row',
+      'pike-push-up',
+      // P3a: the same rule, applied to the new unloaded compounds (and to the band row, whose
+      // tension has no load step either).
+      'incline-push-up',
+      'band-row',
+      'door-frame-row',
+      'bw-reverse-lunge',
+      'bw-forward-lunge',
+      'bw-split-squat',
+      'bw-step-up',
+      'bw-squat',
+      'bw-single-leg-rdl',
+    ];
+    // Derived, not just listed: every bodyweight-loaded compound bar the weighted pull-up.
+    expect(
+      Object.values(EXERCISE_BY_ID)
+        .filter((e) => e.isBodyweight && e.isCompoundPrimary && e.id !== 'weighted-pull-up')
+        .filter((e) => !['rower-intervals', 'stair-climber', 'walk'].includes(e.id))
+        .map((e) => e.id)
+        .sort(),
+    ).toEqual([...unloaded].sort());
     for (const id of unloaded) {
       const ex = EXERCISE_BY_ID[id];
       expect(ex, id).toBeDefined();
@@ -434,6 +463,15 @@ describe('prescriptions', () => {
         });
       }
     }
+  });
+
+  it('times the side plank like the plank, and sets the farmer carry no target', () => {
+    // No new number: the side plank reuses the plank's legacy 60 s hold, and the carry has no
+    // sourced duration or distance, so it gets the { kind: 'none' } prescription.
+    const side = EXERCISE_BY_ID['side-plank'];
+    const carry = EXERCISE_BY_ID['farmer-carry'];
+    expect(side && prescriptionFor(side, 'light')).toEqual({ kind: 'time', targetS: 60 }); // [s]
+    expect(carry && prescriptionFor(carry, 'light')).toEqual({ kind: 'none' });
   });
 
   it('keeps a rep range where the bodyweight movement can still be loaded or timed', () => {
@@ -467,6 +505,16 @@ describe('rest intervals follow the content review section 9 load classes', () =
 });
 
 /**
+ * Muscles no LIBRARY exercise trains directly in a tier. P3a emptied the bodyweight row: the band
+ * pull-apart and prone T raise (rear delt) and the band lateral raise (side delt) exist now.
+ */
+const NO_DIRECT_LIBRARY: Record<Equipment, string[]> = {
+  'full-gym': [],
+  'dumbbells-only': [],
+  bodyweight: [],
+};
+
+/**
  * Muscles with no DIRECT exercise after substitution, by equipment tier, for every day count.
  *
  * Both entries are LIBRARY limits rather than slot-table choices, and library.test.ts asserts the
@@ -479,7 +527,9 @@ describe('rest intervals follow the content review section 9 load classes', () =
 const NO_DIRECT_SLOT: Record<Equipment, string[]> = {
   'full-gym': [],
   'dumbbells-only': [],
-  bodyweight: ['rear-delt', 'side-delt'],
+  // P3a: empty. The band pull-apart and prone T raise (rear delt) and the band lateral raise
+  // (side delt) give the tier direct work; the slots list them, so both gaps closed.
+  bodyweight: [],
 };
 
 /**
@@ -508,7 +558,8 @@ describe('equipment resolution', () => {
   it('skips a candidate already used in the same session', () => {
     expect(slot).toBeDefined();
     if (!slot) return;
-    expect(resolveSlot(slot, 'bodyweight', new Set(['push-up']))).toBeNull();
+    expect(resolveSlot(slot, 'bodyweight', new Set(['push-up']))?.id).toBe('incline-push-up');
+    expect(resolveSlot(slot, 'bodyweight', new Set(['push-up', 'incline-push-up']))).toBeNull();
     expect(resolveSlot(slot, 'full-gym', new Set(['barbell-bench-press']))?.id).toBe(
       'incline-db-press',
     );
@@ -584,7 +635,7 @@ describe('equipment resolution', () => {
       const unreachable = MUSCLE_GROUPS.filter((m) => !reachableDirect.has(m)).sort();
       expect({ equipment, unreachable }).toEqual({
         equipment,
-        unreachable: NO_DIRECT_SLOT[equipment],
+        unreachable: NO_DIRECT_LIBRARY[equipment],
       });
     }
   });
@@ -713,5 +764,131 @@ describe('the two combination access levels resolve identically to their dominan
         bandMusclesFor(d, 'dumbbells-only').length,
       );
     }
+  });
+});
+
+describe('P3a: lunges and lower days', () => {
+  const LUNGE_FAMILY = new Set([
+    'bulgarian-split-squat',
+    'db-reverse-lunge',
+    'db-walking-lunge',
+    'db-step-up',
+    'bw-reverse-lunge',
+    'bw-forward-lunge',
+    'bw-split-squat',
+    'bw-step-up',
+  ]);
+  it('lists only lunge-family candidates in every lunge slot', () => {
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        for (const slot of session.slots) {
+          if (slot.role !== 'lunge') continue;
+          for (const id of slot.candidates) expect({ d, id, lunge: LUNGE_FAMILY.has(id) }).toEqual({ d, id, lunge: true });
+        }
+      }
+    }
+  });
+
+  it('gives every Lower B and Legs B session a lunge slot', () => {
+    for (const d of [4, 5, 6] as const) {
+      const session = SPLIT_TEMPLATES[d].sessions.find((s) => s.label === 'Lower B' || s.label === 'Legs B');
+      expect(session?.slots.some((slot) => slot.role === 'lunge')).toBe(true);
+    }
+  });
+
+  it('never lists a push-up in any slot of a lower day (audit D08)', () => {
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        if (!/^(Lower|Legs)/.test(session.label)) continue;
+        for (const slot of session.slots) {
+          expect({ d, label: session.label, role: slot.role, pushUp: slot.candidates.some((id) => id.includes('push-up')) }).toEqual({
+            d,
+            label: session.label,
+            role: slot.role,
+            pushUp: false,
+          });
+        }
+      }
+    }
+  });
+});
+
+describe('P3a: the session floor and resolveWeek', () => {
+  const ACCESS: EquipmentAccess[] = ['bodyweight', 'home-and-bodyweight', 'home', 'full-and-home', 'full-gym'];
+
+  it('maps every template label to a region', () => {
+    const regions: Record<string, string> = {};
+    for (const d of DAY_COUNTS) for (const s of SPLIT_TEMPLATES[d].sessions) regions[s.label] = sessionRegion(s.label);
+    expect(regions).toEqual({
+      'Full body A': 'full',
+      'Full body B': 'full',
+      'Full body C': 'full',
+      'Upper A': 'upper',
+      'Upper B': 'upper',
+      'Lower A': 'lower',
+      'Lower B': 'lower',
+      Accessory: 'full',
+      'Push A': 'push',
+      'Push B': 'push',
+      'Pull A': 'pull',
+      'Pull B': 'pull',
+      'Legs A': 'lower',
+      'Legs B': 'lower',
+    });
+  });
+
+  it('sets the floor at max(4, slots - 1) exercises', () => {
+    for (const d of DAY_COUNTS) {
+      for (const session of SPLIT_TEMPLATES[d].sessions) {
+        expect(sessionFloor(session)).toBe(Math.max(4, session.slots.length - 1));
+      }
+    }
+  });
+
+  it('fills the floor only from library exercises, and never with a press on a pull day', () => {
+    for (const [region, ids] of Object.entries(FLOOR_POOLS)) {
+      for (const id of ids) expect({ region, id, known: EXERCISE_BY_ID[id] !== undefined }).toEqual({ region, id, known: true });
+    }
+    for (const id of FLOOR_POOLS.pull) {
+      expect({ id, press: (EXERCISE_BY_ID[id]?.muscleGroups ?? []).some((m) => ['chest', 'front-delt', 'triceps'].includes(m)) }).toEqual({ id, press: false });
+    }
+    for (const id of FLOOR_POOLS.lower) {
+      expect({ id, upper: (EXERCISE_BY_ID[id]?.muscleGroups ?? []).some((m) => ['chest', 'front-delt', 'triceps', 'lats', 'mid-back', 'biceps'].includes(m)) }).toEqual({ id, upper: false });
+    }
+  });
+
+  it('returns exactly the slot resolution whenever the inventory is null (no fill fires)', () => {
+    // So the 45-cell band claims above describe the tier with every item, and the floor never
+    // touches a full-gym plan.
+    for (const d of DAY_COUNTS) {
+      for (const e of EXPERIENCES) {
+        for (const access of ACCESS) {
+          const ids = (week: { exercise: { id: string } }[][]) => week.map((s) => s.map((r) => r.exercise.id));
+          expect({ d, e, access, ids: ids(resolveWeek(d, e, access)) }).toEqual({
+            d,
+            e,
+            access,
+            ids: ids(SPLIT_TEMPLATES[d].sessions.map((s) => resolveSession(s, access))),
+          });
+        }
+      }
+    }
+  });
+
+  it('tops a no-equipment session up to its floor from its own region', () => {
+    // Body weight only, no bar, no bands: the 4-day Upper A slots resolve three exercises
+    // against a floor of five (six slots); the upper pool adds the pike push-up (a compound,
+    // inserted after the last compound) and the prone T raise (appended).
+    const none = new Set<never>();
+    const week = resolveWeek(4, 'novice', 'bodyweight', none);
+    expect(SPLIT_TEMPLATES[4].sessions.map((s) => resolveSession(s, 'bodyweight', none).length)).toEqual([3, 5, 5, 4]);
+    expect(week[0]?.map((r) => r.exercise.id)).toEqual([
+      'push-up',
+      'door-frame-row',
+      'incline-push-up',
+      'pike-push-up',
+      'prone-t-raise',
+    ]);
+    expect(week.map((s) => s.length)).toEqual([5, 5, 6, 4]);
   });
 });

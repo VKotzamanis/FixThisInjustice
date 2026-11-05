@@ -33,6 +33,11 @@ import {
   type FeasibilityGap,
   type NutritionInput,
 } from '../../domain/nutrition';
+import {
+  inventoryOf,
+  showsHomeEquipment,
+  showsPortableEquipment,
+} from '../../domain/plan/inventory';
 import { EXERCISES } from '../../domain/plan/library';
 import {
   PLAN_WEEKS_MAX,
@@ -431,11 +436,6 @@ const BODYWEIGHT_EQUIPMENT_OPTIONS: { value: BodyweightEquipmentItem; labelKey: 
   { value: 'pull-up-bar', labelKey: 'option.bodyweightPullUpBar' },
   { value: 'resistance-bands', labelKey: 'option.bodyweightResistanceBands' },
 ];
-
-/** Brief F Part 3: `Home gym`, or either combination that includes it. */
-function showsHomeEquipment(equipment: EquipmentAccess): boolean {
-  return equipment === 'home' || equipment === 'home-and-bodyweight' || equipment === 'full-and-home';
-}
 
 /** Brief F Part 3: `Full gym`, or `Full gym and home gym`. */
 function showsGymCommute(equipment: EquipmentAccess): boolean {
@@ -2041,6 +2041,15 @@ export function SetupWizard(): JSX.Element {
           experience: draft.experience,
           equipment: draft.equipment,
           includeCardio: draft.includeCardio,
+          // The same re-gated lists the confirm step stores, so the preview is the stored plan.
+          inventory: inventoryOf({
+            equipment: draft.equipment,
+            homeEquipment: showsHomeEquipment(draft.equipment) ? draft.homeEquipment : [],
+            bodyweightEquipment: showsPortableEquipment(draft.equipment)
+              ? draft.bodyweightEquipment
+              : [],
+            inventoryAnsweredFor: draft.equipment,
+          }),
         },
         EXERCISES,
       ),
@@ -2050,6 +2059,8 @@ export function SetupWizard(): JSX.Element {
       draft.experience,
       draft.equipment,
       draft.includeCardio,
+      draft.homeEquipment,
+      draft.bodyweightEquipment,
       weeks,
     ],
   );
@@ -2189,7 +2200,10 @@ export function SetupWizard(): JSX.Element {
       // the slider sat somewhere it applied must not survive into a profile whose final slider
       // position no longer shows that question.
       homeEquipment: showsHomeEquipment(draft.equipment) ? draft.homeEquipment : [],
-      bodyweightEquipment: draft.equipment === 'bodyweight' ? draft.bodyweightEquipment : [],
+      bodyweightEquipment: showsPortableEquipment(draft.equipment) ? draft.bodyweightEquipment : [],
+      // P3a (audit D07): where the lists above were asked, so inventoryOf can tell an empty
+      // answer ("have none") from a profile that was never asked.
+      inventoryAnsweredFor: draft.equipment,
       goal: {
         /*
          * The DERIVED goal, and the only place either axis is recorded (Brief I Part 1,
@@ -3256,12 +3270,31 @@ export function SetupWizard(): JSX.Element {
                     </label>
                   ))}
                 </div>
+                {/* P3a (audit D07): a home gym's bar and bands decide its pulling work, so the
+                    portable list is asked here too (showsPortableEquipment). No row label: the
+                    copy is out of scope for P3a, and the option names say what they are. */}
+                <div className="wiz-choice">
+                  {BODYWEIGHT_EQUIPMENT_OPTIONS.map((o) => (
+                    <label key={o.value} className="wiz-glyph">
+                      <input
+                        type="checkbox"
+                        checked={draft.bodyweightEquipment.includes(o.value)}
+                        onChange={() => {
+                          patch({
+                            bodyweightEquipment: toggleItem(draft.bodyweightEquipment, o.value),
+                          });
+                        }}
+                      />
+                      {t(o.labelKey)}
+                    </label>
+                  ))}
+                </div>
               </div>
             </div>
           )}
 
-          {/* Brief F Part 3: Body weight only, its own flat multi-select. Nothing reads either
-              list yet; that wiring is a later task. */}
+          {/* Brief F Part 3: Body weight only, its own flat multi-select. Read by inventoryOf
+              (P3a); the home access levels show the same list inside the block above. */}
           {draft.equipment === 'bodyweight' && (
             <div className="wiz-field">
               <p className="wiz-label" id="bodyweight-equipment-label">

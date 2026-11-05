@@ -2,12 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { EXERCISE_BY_ID, EXERCISES, INDIRECT_SET_FRACTION, MUSCLE_GROUPS } from './library';
 import {
   bandMusclesFor,
+  EVIDENCE_CEILING_SETS,
   resolveSlot,
+  resolveWeek,
   restSFor,
+  sessionFloor,
+  sessionRegion,
   SPLIT_TEMPLATES,
   WEEKLY_SET_BAND,
   type SessionsPerWeek,
 } from './templates';
+import { fitsInventory, LEGACY_ASSUMED_ITEMS, type Inventory, type RequiredItem } from './inventory';
 import {
   BLOCK_WEEKS,
   DELOAD_SET_MODIFIER,
@@ -18,6 +23,7 @@ import {
 } from './generator';
 import { PlanTemplateSchema } from '../schema';
 import type { Equipment, EquipmentAccess, Experience, GoalKind, PlanTemplate } from '../types';
+import { ACCESS_UNLOCKS } from '../types';
 
 const DAY_COUNTS: SessionsPerWeek[] = [2, 3, 4, 5, 6];
 const EXPERIENCES: Experience[] = ['novice', 'intermediate', 'advanced'];
@@ -641,26 +647,20 @@ describe('equipment substitution', () => {
     }
   });
 
-  it('emits exactly what the templates resolve, slot for slot, in every tier', () => {
+  it('emits exactly what the templates resolve, session for session, in every tier', () => {
     // SUBSTITUTE, NEVER DROP. The generator holds no substitution table and applies no equipment
-    // filter of its own: it calls the templates' resolveSlot with the user's equipment, so the
-    // sub-gym tiers get the candidate list's substitution (barbell bench press -> incline dumbbell
-    // press -> push-up) rather than a shorter session. Any generator-side omission shows up here
-    // as an id sequence shorter than the template's own resolution.
+    // filter of its own: it emits the templates' resolveWeek, so the sub-gym tiers get the
+    // candidate list's substitution (barbell bench press -> incline dumbbell press -> push-up) and
+    // the floor fill rather than a shorter session.
     for (const d of DAY_COUNTS) {
       for (const equipment of EQUIPMENT) {
         const plan = generatePlan(input({ sessionsPerWeek: d, equipment: ACCESS_FOR_TIER[equipment], weeks: 8 }), EXERCISES);
+        const expected = resolveWeek(d, 'intermediate', ACCESS_FOR_TIER[equipment]);
         SPLIT_TEMPLATES[d].sessions.forEach((sessionTemplate, i) => {
-          const used = new Set<string>();
-          const expected: string[] = [];
-          for (const slot of sessionTemplate.slots) {
-            const ex = resolveSlot(slot, ACCESS_FOR_TIER[equipment], used);
-            if (!ex) continue;
-            used.add(ex.id);
-            expected.push(ex.id);
-          }
           const got = plan.sessions[i]?.exercises.map((pe) => pe.exerciseId);
-          expect(got, `${d} days, ${equipment}, ${sessionTemplate.label}`).toEqual(expected);
+          expect(got, `${d} days, ${equipment}, ${sessionTemplate.label}`).toEqual(
+            expected[i]?.map((r) => r.exercise.id),
+          );
         });
       }
     }
@@ -694,23 +694,27 @@ describe('equipment substitution', () => {
         for (const s of plan.sessions) expect(s.exercises.length).toBeGreaterThan(0);
       }
     }
+    // P3a: the four-day push-up slot moved from Lower B to Upper B (full gym 6,6,6,6 ->
+    // 6,6,7,5); the lunge, band and bodyweight candidates fill the slots the sub-gym tiers used to
+    // drop. These are tier-wide figures (no inventory filter); the inventory matrix below covers
+    // the rest.
     expect(sizes).toEqual({
-      '2': { 'full-gym': [7, 7], 'dumbbells-only': [7, 7], bodyweight: [6, 5] },
-      '3': { 'full-gym': [6, 7, 6], 'dumbbells-only': [6, 7, 6], bodyweight: [4, 6, 3] },
+      '2': { 'full-gym': [7, 7], 'dumbbells-only': [7, 7], bodyweight: [7, 7] },
+      '3': { 'full-gym': [6, 7, 6], 'dumbbells-only': [6, 7, 6], bodyweight: [6, 6, 6] },
       '4': {
-        'full-gym': [6, 6, 6, 6],
-        'dumbbells-only': [6, 6, 6, 5],
-        bodyweight: [3, 4, 4, 4],
+        'full-gym': [6, 6, 7, 5],
+        'dumbbells-only': [6, 6, 7, 5],
+        bodyweight: [6, 5, 7, 5],
       },
       '5': {
         'full-gym': [6, 6, 6, 5, 6],
-        'dumbbells-only': [6, 6, 6, 4, 6],
-        bodyweight: [3, 4, 4, 3, 4],
+        'dumbbells-only': [6, 6, 6, 5, 6],
+        bodyweight: [6, 5, 6, 5, 6],
       },
       '6': {
         'full-gym': [5, 5, 5, 5, 5, 5],
-        'dumbbells-only': [5, 4, 5, 5, 5, 4],
-        bodyweight: [3, 2, 3, 4, 4, 3],
+        'dumbbells-only': [5, 5, 5, 5, 5, 5],
+        bodyweight: [5, 4, 4, 5, 5, 5],
       },
     });
   });
@@ -749,70 +753,179 @@ describe('equipment substitution', () => {
       }
     }
     expect(census).toEqual({
-      '2': {
-        bodyweight: [
-          'Full body A/lateral raise',
-          'Full body B/rear delt',
-          'Full body B/elbow flexion',
-        ],
-      },
-      '3': {
-        bodyweight: [
-          'Full body A/lateral raise',
-          'Full body A/elbow flexion',
-          'Full body B/knee flexion',
-          'Full body C/push-up',
-          'Full body C/rear delt',
-          'Full body C/elbow flexion',
-        ],
-      },
-      '4': {
-        'dumbbells-only': ['Lower B/split squat'],
-        bodyweight: [
-          'Upper A/incline press',
-          'Upper A/lateral raise',
-          'Upper A/elbow flexion',
-          'Lower A/leg press',
-          'Lower A/knee flexion',
-          'Upper B/rear delt',
-          'Upper B/elbow flexion',
-          'Lower B/split squat',
-          'Lower B/lateral raise',
-        ],
-      },
-      '5': {
-        'dumbbells-only': ['Lower B/split squat'],
-        bodyweight: [
-          'Upper A/incline press',
-          'Upper A/lateral raise',
-          'Upper A/elbow flexion',
-          'Lower A/leg press',
-          'Lower A/knee flexion',
-          'Upper B/rear delt',
-          'Upper B/elbow flexion',
-          'Lower B/split squat',
-          'Lower B/lateral raise',
-          'Accessory/rear delt',
-          'Accessory/lateral raise',
-        ],
-      },
-      '6': {
-        'dumbbells-only': ['Pull A/elbow flexion', 'Legs B/split squat'],
-        bodyweight: [
-          'Push A/incline press',
-          'Push A/lateral raise',
-          'Pull A/rear delt',
-          'Pull A/elbow flexion',
-          'Pull A/elbow flexion',
-          'Legs A/leg press',
-          'Legs A/knee flexion',
-          'Push B/lateral raise',
-          'Pull B/rear delt',
-          'Legs B/split squat',
-          'Legs B/lateral raise',
-        ],
-      },
+      '3': { bodyweight: ['Full body B/knee flexion'] },
+      '4': { bodyweight: ['Lower A/knee flexion'] },
+      '5': { bodyweight: ['Lower A/knee flexion'] },
+      '6': { bodyweight: ['Pull A/elbow flexion', 'Legs A/knee flexion'] },
     });
+  });
+});
+
+/**
+ * P3a inventory matrix (audit D07/D08). Every split x experience x access level x cardio x
+ * representative inventory. `absent` is a caller that passes no inventory; `legacy` is what
+ * inventoryOf gives a profile that never answered. The bodyweight-tier items (bar, bands) and
+ * the home items (dumbbells, bench) are crossed so every filter branch runs.
+ */
+const S = (...items: RequiredItem[]): ReadonlySet<RequiredItem> => new Set(items);
+const INVENTORIES: [string, Inventory | undefined][] = [
+  ['absent', undefined],
+  ['legacy', LEGACY_ASSUMED_ITEMS],
+  ['none', S()],
+  ['dumbbells', S('dumbbells')],
+  ['dumbbells+bench', S('dumbbells', 'bench')],
+  ['bar', S('pull-up-bar')],
+  ['bands', S('resistance-bands')],
+  ['bar+bands', S('pull-up-bar', 'resistance-bands')],
+  ['all', S('dumbbells', 'bench', 'pull-up-bar', 'resistance-bands')],
+];
+const LUNGE_FAMILY = new Set([
+  'bulgarian-split-squat',
+  'db-reverse-lunge',
+  'db-walking-lunge',
+  'db-step-up',
+  'bw-reverse-lunge',
+  'bw-forward-lunge',
+  'bw-split-squat',
+  'bw-step-up',
+]);
+const CARDIO_IDS = new Set(['rower-intervals', 'stair-climber', 'walk']);
+/**
+ * Sessions the floor fill leaves short, "<days>d <experience> <access> <inventory> <label>=<n>".
+ * Each is a cell where every remaining floor-pool entry would push a muscle above the band top or
+ * the 20-set ceiling (the evidence cap outranks the floor): all are a six-day Pull A or the
+ * five-day advanced Upper B, with no bands. Asserted as an equality so a candidate edit that
+ * shortens more sessions fails here.
+ */
+const FLOOR_SHORTFALL = [
+  '5d advanced bodyweight none Upper B=4',
+  '5d advanced bodyweight dumbbells Upper B=4',
+  '5d advanced bodyweight dumbbells+bench Upper B=4',
+  '5d advanced home-and-bodyweight none Upper B=4',
+  '5d advanced home none Upper B=4',
+  '6d novice bodyweight none Pull A=3',
+  '6d novice bodyweight dumbbells Pull A=3',
+  '6d novice bodyweight dumbbells+bench Pull A=3',
+  '6d novice home-and-bodyweight none Pull A=3',
+  '6d novice home none Pull A=3',
+  '6d intermediate bodyweight legacy Pull A=3',
+  '6d intermediate bodyweight none Pull A=2',
+  '6d intermediate bodyweight dumbbells Pull A=2',
+  '6d intermediate bodyweight dumbbells+bench Pull A=2',
+  '6d intermediate bodyweight bar Pull A=3',
+  '6d intermediate home-and-bodyweight none Pull A=2',
+  '6d intermediate home-and-bodyweight bar Pull A=3',
+  '6d intermediate home none Pull A=2',
+  '6d intermediate home bar Pull A=3',
+  '6d advanced bodyweight legacy Pull A=3',
+  '6d advanced bodyweight none Pull A=2',
+  '6d advanced bodyweight dumbbells Pull A=2',
+  '6d advanced bodyweight dumbbells+bench Pull A=2',
+  '6d advanced bodyweight bar Pull A=3',
+  '6d advanced home-and-bodyweight none Pull A=2',
+  '6d advanced home-and-bodyweight bar Pull A=3',
+  '6d advanced home none Pull A=2',
+  '6d advanced home bar Pull A=3',
+];
+
+describe('P3a inventory matrix: split x experience x access x cardio x inventory', () => {
+  it('holds every library, inventory, floor and volume rule in all 1350 cells', () => {
+    const violations: string[] = [];
+    const shortfall = new Set<string>();
+    let cells = 0;
+    for (const d of DAY_COUNTS) {
+      const [, bandTop] = WEEKLY_SET_BAND[d]; // [sets/muscle/week]
+      for (const experience of EXPERIENCES) {
+        for (const equipment of EQUIPMENT_ACCESS) {
+          for (const includeCardio of [false, true]) {
+            for (const [name, inventory] of INVENTORIES) {
+              cells += 1;
+              const cell = `${d}d ${experience} ${equipment} ${name} cardio=${includeCardio}`;
+              const plan = generatePlan(
+                input({ sessionsPerWeek: d, experience, equipment, includeCardio, inventory, weeks: 8 }),
+                EXERCISES,
+              );
+              const week = plan.sessions.slice(0, d);
+              week.forEach((s, i) => {
+                const template = SPLIT_TEMPLATES[d].sessions[i];
+                if (!template) return;
+                const ids = s.exercises.map((pe) => pe.exerciseId);
+                const lifts = ids.filter((id) => !CARDIO_IDS.has(id));
+                if (new Set(ids).size !== ids.length) violations.push(`${cell} ${s.label}: duplicate`);
+                for (const id of ids) {
+                  const ex = EXERCISE_BY_ID[id];
+                  if (!ex) {
+                    violations.push(`${cell}: unknown ${id}`);
+                    continue;
+                  }
+                  if (!ex.equipment.some((tier) => ACCESS_UNLOCKS[equipment].includes(tier))) {
+                    violations.push(`${cell}: ${id} outside the tier`);
+                  }
+                  if (!fitsInventory(ex, equipment, inventory ?? null)) {
+                    violations.push(`${cell}: ${id} needs an item the inventory lacks`);
+                  }
+                }
+                if (lifts.length < sessionFloor(template)) {
+                  shortfall.add(`${d}d ${experience} ${equipment} ${name} ${s.label}=${lifts.length}`);
+                }
+                if (template.slots.some((slot) => slot.role === 'lunge') && !ids.some((id) => LUNGE_FAMILY.has(id))) {
+                  violations.push(`${cell} ${s.label}: lunge slot without a lunge-family exercise`);
+                }
+                if (sessionRegion(s.label) === 'lower' && ids.some((id) => id.includes('push-up'))) {
+                  violations.push(`${cell} ${s.label}: push-up on a lower day`);
+                }
+              });
+              const mid = weeklySetsByMuscle(week, EXERCISES);
+              const tops: Record<string, number> = {};
+              for (const s of week) {
+                for (const pe of s.exercises) {
+                  const ex = EXERCISE_BY_ID[pe.exerciseId];
+                  if (!ex) continue;
+                  for (const m of ex.muscleGroups) tops[m] = (tops[m] ?? 0) + pe.setsHi;
+                  for (const m of ex.secondaryMuscles) tops[m] = (tops[m] ?? 0) + pe.setsHi * INDIRECT_SET_FRACTION;
+                }
+              }
+              for (const m of MUSCLE_GROUPS) {
+                if ((mid[m] ?? 0) > bandTop) violations.push(`${cell}: ${m} midpoint ${mid[m]} above ${bandTop}`);
+                if ((tops[m] ?? 0) > EVIDENCE_CEILING_SETS) violations.push(`${cell}: ${m} top ${tops[m]} above ceiling`);
+              }
+            }
+          }
+        }
+      }
+    }
+    expect(cells).toBe(DAY_COUNTS.length * EXPERIENCES.length * EQUIPMENT_ACCESS.length * 2 * INVENTORIES.length);
+    expect(cells).toBe(1350);
+    expect(violations).toEqual([]);
+    expect([...shortfall].sort()).toEqual([...FLOOR_SHORTFALL].sort());
+  });
+
+  it('keeps the floor-fill shortfalls to pull work with no bands, never below two exercises', () => {
+    for (const entry of FLOOR_SHORTFALL) {
+      expect(entry).toMatch(/ (Pull A|Upper B)=[234]$/);
+      expect(entry).not.toMatch(/ (bands|bar\+bands|all|absent) /);
+    }
+  });
+
+  it('gives an old profile (legacy inventory) exactly the pre-P3a exercise set it could do', () => {
+    // Rule 7: inventoryOf gives a never-asked profile LEGACY_ASSUMED_ITEMS, so no band exercise
+    // reaches it, and everything else in its tier still can.
+    for (const d of DAY_COUNTS) {
+      for (const equipment of ['home', 'bodyweight'] as const) {
+        const plan = generatePlan(input({ sessionsPerWeek: d, equipment, inventory: LEGACY_ASSUMED_ITEMS }), EXERCISES);
+        for (const s of plan.sessions) {
+          for (const pe of s.exercises) expect(pe.exerciseId.startsWith('band-')).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('treats an absent inventory as no filter, identical to null', () => {
+    for (const d of DAY_COUNTS) {
+      const a = generatePlan(input({ sessionsPerWeek: d, equipment: 'bodyweight' }), EXERCISES);
+      const b = generatePlan(input({ sessionsPerWeek: d, equipment: 'bodyweight', inventory: null }), EXERCISES);
+      expect(a.sessions.map((s) => s.exercises)).toEqual(b.sessions.map((s) => s.exercises));
+    }
   });
 });
 

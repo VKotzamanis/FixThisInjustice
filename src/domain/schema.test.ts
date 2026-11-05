@@ -605,6 +605,30 @@ describe('the equipment access migration (Brief F Part 2)', () => {
   });
 });
 
+describe('Profile.inventoryAnsweredFor (P3a, rule 7)', () => {
+  const withMarker = (value: unknown): Record<string, unknown> => {
+    const doc = documentWithEquipment('home');
+    const profiles = doc.profiles as Record<string, Record<string, unknown>>;
+    const p = profiles[P1];
+    if (p) p.inventoryAnsweredFor = value;
+    return doc;
+  };
+
+  it('leaves the key absent on a profile written before P3a', () => {
+    const result = parseState(documentWithEquipment('home'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Object.keys(result.state.profiles[P1] ?? {})).not.toContain('inventoryAnsweredFor');
+  });
+
+  it('keeps a stored access level and reads a corrupt one as never asked', () => {
+    const kept = parseState(withMarker('bodyweight'));
+    const corrupt = parseState(withMarker('garbage-tier'));
+    expect(kept.ok && kept.state.profiles[P1]?.inventoryAnsweredFor).toBe('bodyweight');
+    expect(corrupt.ok && corrupt.state.profiles[P1]?.inventoryAnsweredFor).toBeNull();
+  });
+});
+
 /** A document with one well-formed profile, ready for a targeted violation. */
 function oneProfileDocument(): Record<string, unknown> {
   const doc = legacyDocument();

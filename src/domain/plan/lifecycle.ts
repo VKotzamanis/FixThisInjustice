@@ -6,6 +6,7 @@
 import { GOAL_AXES_BY_KIND } from '../types';
 import type { AppState, GoalKind, Kg, PlannedSession, PlanTemplate, Profile } from '../types';
 import { CARDIO_EXERCISE_IDS, PLAN_WEEKS_MAX, PLAN_WEEKS_MIN, type PlanInput } from './generator';
+import { inventoryOf } from './inventory';
 import { SPLIT_TEMPLATES, type SessionsPerWeek } from './templates';
 
 /**
@@ -46,8 +47,10 @@ function clamp(n: number, lo: number, hi: number): number {
  * The generator input for a programme regenerated from `plan` (the running one) and `profile`
  * (as it is now), with `choice` applied.
  *
- * Goal, experience and equipment are the profile's: Settings writes them, so the profile is the
- * current answer. Split, length and conditioning are not profile fields; they are the running
+ * Goal, experience, equipment and inventory are the profile's: Settings writes them, so the
+ * profile is the current answer (inventoryOf: no filter with a full gym, the pre-P3a assumption
+ * for a profile that never answered, audit D07).
+ * Split, length and conditioning are not profile fields; they are the running
  * plan's unless chosen. A stored length or split outside what the generator accepts (an imported
  * or hand-made plan) is clamped to the nearest accepted value, never otherwise changed.
  */
@@ -66,6 +69,7 @@ export function programmeInput(
     experience: profile.experience,
     equipment: profile.equipment,
     includeCardio: choice.includeCardio ?? planIncludesCardio(plan),
+    inventory: inventoryOf(profile),
   };
 }
 
