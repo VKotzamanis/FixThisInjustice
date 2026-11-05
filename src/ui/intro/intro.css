@@ -155,18 +155,28 @@
   }
 }
 
+/*
+ * Audit A02: the acknowledgement must be completable on a 320 x 568 screen and in iPhone
+ * landscape (342 px tall). The backdrop is the scroll container; the modal is top-aligned and
+ * centred by auto margins only when it fits. `place-items: center` used to centre an overflowing
+ * modal, which pushed its Next button below the fold with nothing to scroll.
+ */
 .intro-modal-bg {
   position: fixed;
   inset: 0;
   z-index: 57;
   display: grid;
-  place-items: center;
-  padding: 1.5rem;
+  align-items: start;
+  justify-items: center;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
   background: var(--bg);
 }
 
 .intro-modal {
   width: min(34rem, 100%);
+  margin-block: auto;
   padding: 1.5rem;
   color: var(--text);
   background: var(--bg-2);
