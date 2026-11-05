@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { BURN_S, createBurn, cssColourToLinear, envelope, sdf, stretchKeyword, webglAvailable } from './burnText';
+import {
+  BURN_LOOK,
+  BURN_S,
+  FS,
+  createBurn,
+  cssColourToLinear,
+  envelope,
+  lookUniforms,
+  sdf,
+  stretchKeyword,
+  webglAvailable,
+} from './burnText';
 
 describe('burnText (AM-4a-9)', () => {
   it('rises once and falls once inside the burn, and is zero outside it', () => {
@@ -59,5 +70,22 @@ describe('burnText (AM-4a-9)', () => {
     });
     expect(handle).toBeNull();
     expect(host.querySelector('canvas')).toBeNull();
+  });
+
+  it('ships the faithful look by default (owner ruling 2026-11-05)', () => {
+    expect(BURN_LOOK).toBe('faithful');
+  });
+
+  it('faithful: smooth ramp, x1.6 clipped gain, glow on', () => {
+    expect(lookUniforms('faithful')).toEqual({ hard: 0, halo: 1, gain: 1.6 });
+  });
+
+  it('cel: three flat bands, no gain, no glow', () => {
+    expect(lookUniforms('cel')).toEqual({ hard: 1, halo: 0, gain: 1 });
+  });
+
+  it('the shader reads both switches, so one uniform pair selects the look', () => {
+    expect(FS).toContain('uniform float uHard');
+    expect(FS).toContain('uHalo');
   });
 });
