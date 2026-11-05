@@ -6,6 +6,7 @@ import {
   createSfxPlayer,
   playSfx,
   sfxMap,
+  sfxRelativePath,
   sfxUrl,
   useFirstGestureUnlock,
 } from './sfx';
@@ -146,6 +147,11 @@ function harness(
 }
 
 describe('sfxUrl', () => {
+  it('builds the URL from the one relative path the shipped list also uses', () => {
+    expect(sfxUrl('limelight', 'pr_stamp').endsWith(`sfx/${sfxRelativePath('limelight', 'pr_stamp')}`)).toBe(true);
+    expect(sfxRelativePath('limelight', 'pr_stamp')).toBe('limelight/pr_stamp.m4a');
+  });
+
   it('points at one file per skin per moment', () => {
     expect(sfxUrl('limelight', 'pr_stamp').endsWith('sfx/limelight/pr_stamp.m4a')).toBe(true);
     expect(sfxUrl('limelight', 'rest_over').endsWith('sfx/limelight/rest_over.m4a')).toBe(true);
@@ -171,6 +177,20 @@ describe('sfxMap', () => {
 });
 
 describe('createSfxPlayer', () => {
+  it('fetches only the files the build says ship (audit E15)', async () => {
+    const h = harness();
+    const player = createSfxPlayer({ ...h.deps, shipped: (skin, name) => name === 'rest_over' && skin === 'limelight' });
+    await player.unlock();
+    expect(h.fetched).toEqual([sfxUrl('limelight', 'rest_over')]);
+  });
+
+  it('fetches nothing when no file ships', async () => {
+    const h = harness();
+    const player = createSfxPlayer({ ...h.deps, shipped: () => false });
+    await player.unlock();
+    expect(h.fetched).toEqual([]);
+  });
+
   it('plays nothing before the first unlock', () => {
     const h = harness();
     const player = createSfxPlayer(h.deps);

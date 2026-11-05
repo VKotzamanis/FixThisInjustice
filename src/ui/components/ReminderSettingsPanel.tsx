@@ -166,6 +166,10 @@ export function ReminderSettingsPanel(): JSX.Element | null {
   // enabled, checked, and the user turns it off and on to mint a device for this browser.
   const offersToggle = status !== 'unsupported' && status !== 'needs-install';
 
+  // Audit E14: on a build with no Worker the schedule controls change nothing, so they are not
+  // offered as working controls even when an imported document has reminders enabled.
+  const scheduleInert = busy || status === 'not-configured';
+
   const handleToggle = useCallback(
     (enabled: boolean): void => {
       if (profileId === null || busy) return;
@@ -291,7 +295,7 @@ export function ReminderSettingsPanel(): JSX.Element | null {
               type="time"
               aria-label={t('label.reminderDayOfTime')}
               value={settings.dayOfTime}
-              disabled={busy}
+              disabled={scheduleInert}
               onChange={(event) => {
                 handleDayOfTime(event.target.value);
               }}
@@ -306,7 +310,7 @@ export function ReminderSettingsPanel(): JSX.Element | null {
                   type="checkbox"
                   aria-label={FORMAT.reminderLead(minutes, overrides)}
                   checked={settings.leadMinutes.includes(minutes)}
-                  disabled={busy}
+                  disabled={scheduleInert}
                   onChange={(event) => {
                     handleLeadToggle(minutes, event.target.checked);
                   }}

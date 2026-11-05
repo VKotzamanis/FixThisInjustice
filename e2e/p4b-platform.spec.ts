@@ -24,3 +24,17 @@ test('E06: the build stamp is its own file and the service worker does not preca
   const sw = await page.request.get('sw.js');
   expect(await sw.text()).not.toContain('build-info.json');
 });
+
+test('E15: with sounds on, a launch asks the network for no sound file that does not ship', async ({ context }) => {
+  const doc = e2eDocument();
+  doc.ui.sounds = true;
+  await seedDocument(context, doc);
+  const sfxRequests: string[] = [];
+  context.on('request', (request) => {
+    if (request.url().includes('/sfx/')) sfxRequests.push(request.url());
+  });
+  const page = await openApp(context);
+  await page.locator('main').click({ position: { x: 5, y: 5 } }); // the first gesture unlocks audio
+  await page.waitForTimeout(1_000); // [ms]
+  expect(sfxRequests).toEqual([]);
+});

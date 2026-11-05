@@ -1,5 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
+import { shippedSfx } from './build/sfxManifest.ts';
 
 export default defineConfig({
   plugins: [react()],
@@ -14,6 +15,8 @@ export default defineConfig({
    */
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
+    // Audit E15: the sound files that ship; the player fetches nothing else.
+    __SFX_FILES__: JSON.stringify(shippedSfx(`${process.cwd()}/public`)),
   },
   test: {
     testTimeout: 20_000, // [ms] UI suites run 25 s in total under a loaded runner; the default 5 s flaked (P2 final review)

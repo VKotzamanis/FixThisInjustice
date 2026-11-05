@@ -17,3 +17,6 @@
 
 /** The `version` field of package.json at build time, or '0.0.0' outside a package install. */
 declare const __APP_VERSION__: string;
+
+/** Audit E15: the sound files under public/sfx at build time, as '<skin>/<name>.m4a'. */
+declare const __SFX_FILES__: readonly string[];
