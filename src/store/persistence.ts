@@ -1,5 +1,6 @@
 import type { AppState } from '../domain/types';
 import { parseState } from '../domain/schema';
+import { isQuotaExceeded, messageOf } from './db/errors';
 
 /**
  * The one storage key, owned by the one module allowed to touch Web Storage
@@ -45,43 +46,6 @@ export type SaveFailure =
 export type SaveResult = { ok: true } | { ok: false; reason: SaveFailure; error: string };
 
 export type ImportResult = { ok: true; state: AppState } | { ok: false; error: string };
-
-/**
- * A quota failure must never be swallowed (finding H3 / A42: the legacy store
- * discarded it and kept rendering healthy-looking in-memory data). Browsers
- * disagree on how they report it, so check the standard name, the Firefox
- * legacy name, and both legacy DOMException codes.
- *
- * The check is structural rather than `e instanceof DOMException`: the thrown
- * value can come from another realm (an iframe, a worker) where instanceof
- * fails against this realm's constructor, and the legacy Safari form is not a
- * DOMException at all. Name and code are what the platform actually guarantees.
- */
-function isQuotaExceeded(e: unknown): boolean {
-  if (typeof e !== 'object' || e === null) return false;
-  const name: unknown = Reflect.get(e, 'name');
-  const code: unknown = Reflect.get(e, 'code');
-  return (
-    name === 'QuotaExceededError' ||
-    name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-    code === 22 || // DOMException.QUOTA_EXCEEDED_ERR
-    code === 1014 // Firefox NS_ERROR_DOM_QUOTA_REACHED
-  );
-}
-
-/**
- * The thrown value's message, read structurally for the same reason
- * isQuotaExceeded is: jsdom's DOMException is not an instanceof this realm's
- * Error, and a cross-realm throw is not either, so `e instanceof Error` would
- * silently degrade a real message to "Name: message" from String(e).
- */
-function messageOf(e: unknown): string {
-  if (typeof e === 'object' && e !== null) {
-    const message: unknown = Reflect.get(e, 'message');
-    if (typeof message === 'string' && message.length > 0) return message;
-  }
-  return String(e);
-}
 
 /** Reads and validates the persisted document. Never throws. */
 export function load(): LoadResult {
