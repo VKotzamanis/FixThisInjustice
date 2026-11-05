@@ -1,9 +1,9 @@
-// src/swMedia.test.ts
+// src/app/swMedia.test.ts
 //
 // Audit E15: the /media/ route (the motivation clip, ROADMAP F4) must answer a Range request
 // from the cache with a 206 slice (Safari fetches video with Range headers and expects 206), and must never
 // cache a 206 (a partial body stored as the whole clip). A service worker cannot be instantiated
-// in a unit test, so the route's predicate and plugins live in src/swMedia.ts and are run here
+// in a unit test, so the route's predicate and plugins live in src/app/swMedia.ts and are run here
 // directly against Fetch API objects (Node's globals; jsdom supplies the `self` workbox reads).
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CacheableResponsePlugin } from 'workbox-cacheable-response';

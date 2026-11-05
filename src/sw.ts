@@ -2,7 +2,7 @@
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkOnly } from 'workbox-strategies';
-import { MEDIA_CACHE, isMediaRequest, mediaPlugins } from './swMedia';
+import { MEDIA_CACHE, isMediaRequest, mediaPlugins } from './app/swMedia';
 import { cacheShownTags, handleNotificationClick, handlePush } from './domain/reminders/swHandlers';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -21,7 +21,7 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL(`${import.meta.env.BAS
 registerRoute(({ url }) => url.origin !== self.location.origin, new NetworkOnly());
 
 // The one motivation video (P6): CacheFirst with Range support and one entry
-// (src/swMedia.ts, audit E15).
+// (src/app/swMedia.ts, audit E15).
 registerRoute(
   ({ url }) => isMediaRequest(url, self.location.origin),
   new CacheFirst({ cacheName: MEDIA_CACHE, plugins: mediaPlugins() }),

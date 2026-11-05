@@ -1,7 +1,7 @@
-// src/swMedia.ts
+// src/app/swMedia.ts
 //
 // The service worker's /media/ route (the one motivation clip, ROADMAP F4), outside src/sw.ts so
-// a unit test can run it (src/swMedia.test.ts): a service worker cannot be instantiated in jsdom.
+// a unit test can run it (src/app/swMedia.test.ts): a service worker cannot be instantiated in jsdom.
 //
 // Audit E15: CacheFirst alone answers a video's Range request with the whole cached body and
 // status 200; a media element that asked for bytes N-M (Safari does) then fails to play the
