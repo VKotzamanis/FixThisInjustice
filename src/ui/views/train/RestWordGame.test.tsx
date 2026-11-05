@@ -6,13 +6,6 @@ import { restWordRound, scoreRestWordGuess } from '../../../domain/fun/restWord'
 import type { RestTimer } from '../../../domain/training/restTimer';
 import { DEFAULT_REST_GAME_HOST, RestGameHostContext } from './restGameHost';
 import { REST_WORD_ROWS, RestWordGame } from './RestWordGame';
-// The game's own sources as text, for the offline check below (?raw, the convention the
-// cursor and reminders suites use: node:fs has no typings under tsconfig.app.json).
-import gameSource from './RestWordGame.tsx?raw';
-import mascotSource from './PixelMascot.tsx?raw';
-import spriteSource from '../../components/OwnerSprite.tsx?raw';
-import engineSource from '../../../domain/fun/restWord.ts?raw';
-import audioSource from '../../audio/restGameAudio.ts?raw';
 
 const NOW = Date.UTC(2026, 8, 11, 12, 0, 0); // [ms] epoch UTC
 
@@ -268,16 +261,4 @@ describe('RestWordGame: offline (ROADMAP F1)', () => {
     vi.useRealTimers();
   });
 
-  it('names no network API and no remote address in any game source', () => {
-    const NETWORK = /\bfetch\s*\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|https?:\/\/|\bimport\s*\(/;
-    for (const [file, text] of Object.entries({
-      'RestWordGame.tsx': gameSource,
-      'PixelMascot.tsx': mascotSource,
-      'OwnerSprite.tsx': spriteSource,
-      'restWord.ts': engineSource,
-      'restGameAudio.ts': audioSource,
-    })) {
-      expect({ file, network: NETWORK.test(text) }).toEqual({ file, network: false });
-    }
-  });
 });

@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import gamesCss from '../../styles/restGames.css?raw';
 import trainCss from '../../styles/train.css?raw';
+import viewsCss from '../views.css?raw';
 
 interface Rule {
   selector: string;
@@ -157,5 +158,33 @@ describe('the game sheet (P6, R10, audit C14)', () => {
     const min = gameRules.find((rule) => rule.selector === 'body.rest-sheet-min .view.train');
     expect(open?.body).toMatch(/padding-bottom:\s*calc\(min\(100svh - 12rem, 30rem\) \+ 1rem\);/);
     expect(min?.body).toMatch(/padding-bottom:/);
+  });
+});
+
+describe('rest-game styles: every family (P6)', () => {
+  it('uses no transition: a change of state is the stimulus, and reduced motion has nothing to stop', () => {
+    const eased = gameRules.filter((rule) => /(^|;|\s)transition(-[a-z]+)?:/.test(rule.body)).map((r) => r.selector);
+    expect(eased).toEqual([]);
+  });
+
+  it('never lowers a control under the 44 px `.view button` sets, and never fixes its height', () => {
+    const base = rulesOf(viewsCss).find((rule) => rule.selector === '.view button');
+    expect((remOf(base?.body ?? '', 'min-height') ?? 0) * PX_PER_REM).toBe(TARGET_PX);
+    const controls = gameRules.filter((rule) => rule.selector.includes('.view .'));
+    const lowered = controls
+      .filter((rule) => {
+        const rem = remOf(rule.body, 'min-height');
+        return rem !== null && rem * PX_PER_REM < TARGET_PX;
+      })
+      .map((rule) => rule.selector);
+    expect(lowered).toEqual([]);
+    const fixed = controls.filter((rule) => /(^|;|\s)(height|max-height):/.test(rule.body)).map((r) => r.selector);
+    expect(fixed).toEqual([]);
+  });
+
+  it('keeps one marked section per part, so each game owns its rules', () => {
+    for (const name of ['launch', 'frame', 'rest-word', 'plate-math', 'reaction', 'sequence-recall', 'gym-anagram', 'picker', 'sheet']) {
+      expect({ name, present: gamesCss.includes(`/* ===== ${name} ===== */`) }).toEqual({ name, present: true });
+    }
   });
 });
