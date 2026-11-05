@@ -18,4 +18,11 @@ export const REST_GAME_FORMAT = {
     copy('status.restGameProgress', overrides)
       .replace('{done}', () => String(done))
       .replace('{total}', () => String(total)),
+  /** "250 ms": one clean Reaction tap [ms]. */
+  reactionTime: (ms: number, overrides?: Overrides): string =>
+    copy('status.restGameReactionTime', overrides).replace('{ms}', () => String(ms)),
+
+  /** "Best 250 ms": the fastest clean tap of a Reaction round [ms]. */
+  reactionBest: (ms: number, overrides?: Overrides): string =>
+    copy('status.restGameReactionBest', overrides).replace('{ms}', () => String(ms)),
 } as const;

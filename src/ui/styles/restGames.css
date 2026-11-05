@@ -422,3 +422,46 @@
 .view .rest-plate-remove:disabled {
   opacity: 0.45;
 }
+
+/* ===== reaction ===== */
+/*
+ * One 10rem (160 px) pad. Waiting: black with a dashed white edge. Go: lime with ink type and a
+ * solid 4 px ink edge (10.91:1). The word on the pad carries the state too. No transition: the
+ * change of state is the stimulus, and an eased fade would blur the instant it happens.
+ */
+.view .rest-react-pad {
+  min-height: 10rem;
+  margin: 0.5rem 0;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 4px solid var(--panel-text);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.view .rest-react-pad.is-waiting {
+  border-style: dashed;
+}
+
+.view .rest-react-pad.is-go {
+  background: var(--lime);
+  color: var(--ink);
+  border: 4px solid var(--ink);
+}
+
+.view .rest-react-pad.is-feedback {
+  border-color: var(--accent);
+}
+
+.rest-react-trials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}

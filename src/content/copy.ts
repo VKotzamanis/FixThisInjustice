@@ -391,6 +391,17 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Reaction (P6) ---
+  | 'hero.restGameReaction'
+  | 'advice.restGameReactionRule'
+  | 'button.restGameReactionStart'
+  | 'label.restGameReactionWait'
+  | 'label.restGameReactionGo'
+  | 'label.restGameReactionFoul'
+  | 'label.restGameReactionMissed'
+  | 'label.restGameReactionTrials'
+  | 'status.restGameReactionTime'
+  | 'status.restGameReactionBest'
   // --- Plate Math (P6) ---
   | 'hero.restGamePlateMath'
   | 'advice.restGamePlateMathRule'
@@ -1275,6 +1286,17 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6 Reaction (src/ui/views/train/ReactionGame.tsx). The pad says its state in these words.
+  'hero.restGameReaction': 'Reaction',
+  'advice.restGameReactionRule': 'Tap the pad when it turns lime, never before.',
+  'button.restGameReactionStart': 'Start',
+  'label.restGameReactionWait': 'Wait',
+  'label.restGameReactionGo': 'Tap Now',
+  'label.restGameReactionFoul': 'Too Soon',
+  'label.restGameReactionMissed': 'Missed',
+  'label.restGameReactionTrials': 'Trials',
+  'status.restGameReactionTime': '{ms} ms',
+  'status.restGameReactionBest': 'Best {ms} ms',
   // P6 Plate Math (src/ui/views/train/PlateMathGame.tsx).
   'hero.restGamePlateMath': 'Plate Math',
   'advice.restGamePlateMathRule': 'Load one side so the whole bar matches the target.',
