@@ -86,6 +86,8 @@ function replacePanel(): HTMLElement {
 /** Press the panel's own export control. The gate is a fact about this panel, not the session. */
 function backUpInPanel(): void {
   fireEvent.click(within(replacePanel()).getByRole('button', { name: copyFor('limelight', 'button.downloadBackup') }));
+  // Audit B07: a download is confirmed by the user before the gate opens.
+  fireEvent.click(within(replacePanel()).getByLabelText(copyFor('limelight', 'label.backupSaved')));
 }
 
 /** Type into the panel's confirmation field, whose label is the frame that names the word. */

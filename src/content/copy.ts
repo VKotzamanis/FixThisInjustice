@@ -451,6 +451,7 @@ export type CopyKey =
   // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
   | 'advice.exportBeforeConfirm'
   | 'status.exportTaken'
+  | 'label.backupSaved'
   // --- reminders and Home Screen install (P5 Task 8; appended by that task) ---
   | 'hero.reminders'
   | 'label.remindersEnable'
@@ -1394,6 +1395,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // owns that sentence, so the label and the compared word cannot say different things.
   'advice.exportBeforeConfirm': 'Download the backup before confirming.',
   'status.exportTaken': 'Backup downloaded.',
+  // Audit B07: the user's own word that the downloaded backup exists (ConfirmDestructive).
+  'label.backupSaved': 'I Have the Backup File',
   // --- reminders and Home Screen install (P5 Task 8) ---
   'hero.reminders': 'Reminders',
   'label.remindersEnable': 'Enable Reminders',

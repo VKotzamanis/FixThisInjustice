@@ -11,6 +11,7 @@ import { isTerminal } from '../../domain/schedule/cursor';
 import { parseState } from '../../domain/schema';
 import { useAppStore, selectState } from '../../store';
 import { downloadText } from '../../app/download';
+import { saveFile } from '../../app/saveFile';
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
 import './views.css';
 
@@ -95,7 +96,8 @@ export function ExportView(): JSX.Element {
   const stateFilename = `fti-state-${stamp}.json`;
 
   const downloadState = (): void => {
-    downloadText(stateFilename, useAppStore.getState().exportJson());
+    // Audit B07: the share sheet where this browser can share the file (iPhone: Save to Files).
+    saveFile(stateFilename, useAppStore.getState().exportJson());
   };
 
   const downloadSummary = (): void => {

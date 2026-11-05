@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { downloadText } from './download';
+import { DOWNLOAD_URL_LIFETIME_MS, downloadText } from './download';
 
 /**
  * jsdom implements neither URL.createObjectURL nor HTMLAnchorElement.click's
@@ -14,6 +14,7 @@ const revokeObjectURL = vi.fn<(u: string) => void>();
 let clicked: { href: string; download: string; inDocument: boolean } | null = null;
 
 beforeEach(() => {
+  vi.useFakeTimers();
   clicked = null;
   URL.createObjectURL = createObjectURL;
   URL.revokeObjectURL = revokeObjectURL;
@@ -29,6 +30,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   Reflect.deleteProperty(URL, 'createObjectURL');
   Reflect.deleteProperty(URL, 'revokeObjectURL');
 });
@@ -50,6 +52,10 @@ describe('downloadText', () => {
       inDocument: true,
     });
 
+    // Audit B07: revoked after a delay, not synchronously, so a download that starts
+    // asynchronously (reported for Safari [U]) can still read the blob.
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(DOWNLOAD_URL_LIFETIME_MS);
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:fti/1');
     // No anchor is left behind in the document.
     expect(document.body.querySelector('a')).toBeNull();

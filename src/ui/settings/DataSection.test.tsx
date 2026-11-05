@@ -95,6 +95,11 @@ function panel(): HTMLElement {
   return found;
 }
 
+/** Audit B07: the user confirms the downloaded backup before the gate opens. */
+function confirmSaved(): void {
+  fireEvent.click(within(panel()).getByLabelText(copyFor('limelight', 'label.backupSaved')));
+}
+
 function typeWord(value: string): void {
   fireEvent.change(within(panel()).getByLabelText(FORMAT.typeToConfirm('DELETE')), {
     target: { value },
@@ -141,6 +146,7 @@ describe('SettingsView data section', () => {
     // ... and the export alone is not the gate either.
     typeWord('');
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     expect(downloads.map((d) => d.name)).toEqual([`fti-state-${STAMP}.json`]);
     expect(confirmButton('button.wipeConfirm')).toBeDisabled();
 
@@ -152,6 +158,7 @@ describe('SettingsView data section', () => {
     render(<SettingsView />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -191,6 +198,7 @@ describe('SettingsView data section', () => {
 
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -214,6 +222,7 @@ describe('SettingsView data section', () => {
     render(<DataSection />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -229,6 +238,7 @@ describe('SettingsView data section', () => {
     render(<DataSection />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -242,6 +252,7 @@ describe('SettingsView data section', () => {
     render(<SettingsView />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     expect(confirmButton('button.wipeConfirm')).not.toBeDisabled();
 

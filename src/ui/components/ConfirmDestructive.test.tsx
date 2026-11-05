@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { FORMAT, copyFor } from '../../content/copy';
 import { downloadText } from '../../app/download';
@@ -40,6 +40,12 @@ function renderPanel(
 
 function button(name: string): HTMLElement {
   return screen.getByRole('button', { name });
+}
+
+/** Download the backup and confirm it was kept: the full gate on a browser with no file share. */
+function takeBackup(): void {
+  fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+  fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.backupSaved')));
 }
 
 /** Type into the confirmation field, whose label is the frame that names the word. */
@@ -86,25 +92,36 @@ describe('ConfirmDestructive: the export gate', () => {
 
   it('releases the action once the backup is taken and the word matches exactly', () => {
     renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+    takeBackup();
     type(WORD);
     expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeEnabled();
   });
 
-  it('hands the export the filename and the text it was given, and says so', () => {
+  it('hands the export the filename and the text it was given, and says so once confirmed', () => {
     renderPanel();
     fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
     expect(downloadText).toHaveBeenCalledTimes(1);
-    expect(downloadText).toHaveBeenCalledWith('fti-state-2026-09-01.json', BACKUP);
+    expect(downloadText).toHaveBeenCalledWith('fti-state-2026-09-01.json', BACKUP, 'application/json');
+    fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.backupSaved')));
     expect(screen.getByText(copyFor('limelight', 'status.exportTaken'))).toBeTruthy();
     expect(screen.queryByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeNull();
+  });
+
+  it('does not treat a returned download as a backup (audit B07)', () => {
+    renderPanel();
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+    type(WORD);
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeDisabled();
+    expect(screen.getByText(copyFor('limelight', 'advice.exportBeforeConfirm'))).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(copyFor('limelight', 'label.backupSaved')));
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeEnabled();
   });
 });
 
 describe('ConfirmDestructive: the decision', () => {
   it('calls onConfirm exactly once and never cancels', () => {
     const { onConfirm, onCancel } = renderPanel();
-    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+    takeBackup();
     type(WORD);
     fireEvent.click(button(copyFor('limelight', 'button.wipeConfirm')));
     expect(onConfirm).toHaveBeenCalledTimes(1);
@@ -136,7 +153,7 @@ describe('ConfirmDestructive: the word and its label', () => {
 
   it('compares the typed word case-sensitively against the word it was given', () => {
     renderPanel({ word: 'IMPORT' });
-    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+    takeBackup();
     type('Import', 'IMPORT');
     expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeDisabled();
     type('IMPORT', 'IMPORT');
@@ -220,5 +237,40 @@ describe('ConfirmDestructive under a skin', () => {
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('ConfirmDestructive: the share sheet (audit B07)', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'share');
+    Reflect.deleteProperty(navigator, 'canShare');
+  });
+
+  function stubShare(share: () => Promise<void>): void {
+    Object.defineProperty(navigator, 'canShare', { value: () => true, configurable: true });
+    Object.defineProperty(navigator, 'share', { value: vi.fn(share), configurable: true });
+  }
+
+  it('opens the gate when the share sheet takes the file, with no download and no tick', async () => {
+    stubShare(() => Promise.resolve());
+    renderPanel();
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+    expect(await screen.findByText(copyFor('limelight', 'status.exportTaken'))).toBeTruthy();
+    expect(downloadText).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(copyFor('limelight', 'label.backupSaved'))).toBeNull();
+    type(WORD);
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeEnabled();
+  });
+
+  it('keeps the gate shut when the share sheet is closed', async () => {
+    stubShare(() => Promise.reject(new DOMException('closed', 'AbortError')));
+    renderPanel();
+    fireEvent.click(button(copyFor('limelight', 'button.downloadBackup')));
+    await waitFor(() => {
+      expect(button(copyFor('limelight', 'button.downloadBackup'))).toBeEnabled();
+    });
+    type(WORD);
+    expect(button(copyFor('limelight', 'button.wipeConfirm'))).toBeDisabled();
+    expect(downloadText).not.toHaveBeenCalled();
   });
 });
