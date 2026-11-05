@@ -59,10 +59,17 @@
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
-  /* Room for the lit word's glow (review item 8) inside the clip; the negative margins give it
-   * back, so the slot's layout does not move. [px] */
-  padding: 4px 3px;
-  margin: -4px -3px;
+}
+
+/* Room for the lit word's glow (review item 8) inside the clip; the negative margins give it
+ * back, so the slot's layout does not move. Lime labels only: the current one is plain ink on
+ * its sticker and keeps its box inside the sticker. [px] */
+.tabbar .tab:not([aria-current='page']) .tab-label {
+  /* 4 px each side holds the frame's 0.35-cap side margin (3.5 px at 12 px, dpr 2). */
+  padding: var(--space-1);
+  margin: calc(-1 * var(--space-1));
+  /* The padding is outside the word's 100 % cap (border-box), or it would clip the widest label. */
+  max-width: calc(100% + 2 * var(--space-1));
 }
 
 /* Current: a pink sticker block inset 4 px behind icon and label, ink label (7.75:1). */

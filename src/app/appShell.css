@@ -87,6 +87,9 @@
    * the 44 px row and the title's place do not move. [px] */
   padding-block: var(--space-2);
   margin-block: calc(-1 * var(--space-2));
+  /* and on the right (the left has its 8 px padding): the frame's 0.35-cap side margin. */
+  padding-right: var(--space-1);
+  margin-right: calc(-1 * var(--space-1));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

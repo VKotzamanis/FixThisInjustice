@@ -58,7 +58,7 @@ export function LitWord(props: LitWordProps): ReactElement {
         fontFamily: style.fontFamily,
         fontStretch: style.fontStretch,
         letterSpacingPx: parseFloat(style.letterSpacing) || 0, // [CSS px]; 'normal' -> 0
-      });
+      }, word.getBoundingClientRect().width); // [CSS px] a frame of another width is refused
       if (canvas === null) {
         setLit(false);
         return;

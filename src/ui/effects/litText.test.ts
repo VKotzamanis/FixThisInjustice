@@ -2,7 +2,7 @@
 // look in lime accents, one still frame, no flames, no frame loop, one shared WebGL context.
 import { describe, expect, it } from 'vitest';
 import { BURN_TOKENS, FS, STILL_FRAME_S } from './burnText';
-import { LIT_FRAME, LIT_TOKENS, litCacheKey, litSwitchOn, renderLit } from './litText';
+import { LIT_FRAME, LIT_TOKENS, litCacheKey, litSwitchOn, renderLit, widthMatches } from './litText';
 
 const FONT = {
   fontStyle: 'normal',
@@ -42,6 +42,13 @@ describe('lit word (review item 8)', () => {
     expect(litCacheKey('today', { ...FONT, fontSizePx: 13 }, 2, colours)).not.toBe(base);
     expect(litCacheKey('today', FONT, 3, colours)).not.toBe(base);
     expect(litCacheKey('today', FONT, 2, ['#000000', ...colours.slice(1)])).not.toBe(base);
+  });
+
+  it('refuses a frame narrower or wider than the DOM word (WebKit canvas has no fontStretch)', () => {
+    expect(widthMatches(57.6, 57.6)).toBe(true); // [CSS px]
+    expect(widthMatches(58.4, 57.6)).toBe(true); // within 4 %
+    expect(widthMatches(76.8, 57.6)).toBe(false); // 75 % label drawn at 100 %
+    expect(widthMatches(20, 0)).toBe(true); // not laid out: no measurement
   });
 
   it('returns null without WebGL (jsdom), so the caller keeps the CSS text', () => {

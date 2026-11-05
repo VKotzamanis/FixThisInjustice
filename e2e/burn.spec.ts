@@ -71,7 +71,7 @@ test('a rest end burns REST OVER once, then the canvas is gone', async ({ contex
 // Owner answer to review item 8 (2026-11-05): the lime words on the black panels are the burn
 // shader's still frame in lime accents. One shared WebGL context draws them; every word on the
 // page is a plain 2D canvas copy, so the page holds no WebGL context per word.
-test('panel words are lit still frames, each a 2D canvas, the words still named', async ({ context }) => {
+test('panel words are lit still frames, each a 2D canvas, the words still named', async ({ context, browserName }) => {
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '18:00'));
   const page = await openApp(context);
@@ -85,7 +85,11 @@ test('panel words are lit still frames, each a 2D canvas, the words still named'
   // Header title and every lime tab label (the current tab is ink on its pink sticker: plain).
   await expect(page.locator('.topbar-title .lit-word.is-lit canvas.lit-canvas')).toHaveCount(1);
   const tabs = await nav.getByRole('button').count();
-  await expect(page.locator('.tabbar .tab:not([aria-current]) .lit-word.is-lit canvas.lit-canvas')).toHaveCount(tabs - 1);
+  // The labels are set at 75 % width. WebKit's canvas has no fontStretch, so its frame would be
+  // wider than the word: litText.widthMatches refuses it and the CSS text stays (no misdrawn word).
+  const litTabs = browserName === 'webkit' ? 0 : tabs - 1;
+  await expect(page.locator('.tabbar .tab:not([aria-current]) .lit-word.is-lit canvas.lit-canvas')).toHaveCount(litTabs);
+  await expect(page.locator('.tabbar .tab-label')).toHaveCount(tabs);
   await expect(page.locator('.tabbar .tab[aria-current] canvas')).toHaveCount(0);
   // getContext('2d') is null on a canvas that holds a WebGL context.
   const kinds = await lit.evaluateAll((els) => els.map((c) => ((c as HTMLCanvasElement).getContext('2d') === null ? 'webgl' : '2d')));

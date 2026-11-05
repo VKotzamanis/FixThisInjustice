@@ -292,6 +292,7 @@ export interface WordRaster {
   padT: number; // [device px] room above the cap line
   spread: number; // [device px] distance range packed into R
   dpr: number; // [device px / CSS px]
+  textW: number; // [device px] the word's advance width as the canvas measured it
 }
 
 /** Rasterises `text` in `font` at the capped device pixel ratio; null without a 2D context. */
@@ -330,7 +331,7 @@ export function rasterWord(text: string, font: WordFont): WordRaster | null {
     tex[4 * i] = Math.max(0, Math.min(255, Math.round((0.5 + (dist[i] ?? 0) / (2 * spread)) * 255)));
     tex[4 * i + 3] = alpha[i] ?? 0;
   }
-  return { W, H, tex, cap, base, padT, spread, dpr };
+  return { W, H, tex, cap, base, padT, spread, dpr, textW: metrics.width };
 }
 
 /** Sizes a canvas to a raster and centres the cap on its host (burn-canvas / lit-canvas CSS). */

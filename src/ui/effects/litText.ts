@@ -52,6 +52,19 @@ export function litSwitchOn(value: string): boolean {
   return v !== '' && v !== 'none';
 }
 
+/** [fraction] Largest canvas-vs-DOM width difference a frame may have, else it would misalign. */
+export const WIDTH_TOLERANCE = 0.04;
+
+/**
+ * Does the canvas word match the DOM word's width? [CSS px both] WebKit's canvas has no
+ * fontStretch, so a condensed label (75 %) rasterises at full width: that frame is refused and
+ * the CSS text stays. A DOM width of 0 (not laid out, jsdom) is not a measurement: accepted.
+ */
+export function widthMatches(canvasPx: number, domPx: number): boolean {
+  if (!(domPx > 0)) return true;
+  return Math.abs(canvasPx - domPx) <= Math.max(1, WIDTH_TOLERANCE * domPx);
+}
+
 /** Everything that changes a lit word's pixels. */
 export function litCacheKey(text: string, font: WordFont, dpr: number, colours: readonly string[]): string {
   return [
@@ -116,13 +129,14 @@ function copyOf(source: HTMLCanvasElement): HTMLCanvasElement | null {
  * new aria-hidden 2D canvas (class lit-canvas) the caller appends. Null without WebGL, with a
  * token that does not resolve, or when the shader fails: the caller keeps the plain text.
  */
-export function renderLit(host: Element, text: string, font: WordFont): HTMLCanvasElement | null {
+export function renderLit(host: Element, text: string, font: WordFont, domWidthPx = 0): HTMLCanvasElement | null {
   if (!webglAvailable() || text.trim() === '') return null;
   const styles = getComputedStyle(host);
   const colours = LIT_TOKENS.map((t) => styles.getPropertyValue(t).trim());
   const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP); // [device px / CSS px], as rasterWord
   const key = litCacheKey(text, font, dpr, colours);
   const hit = cache.get(key);
+  if (hit !== undefined && !widthMatches(Number(hit.dataset.textW), domWidthPx)) return null;
   if (hit !== undefined) {
     cache.delete(key); // re-insert: most recently used last
     cache.set(key, hit);
@@ -133,7 +147,7 @@ export function renderLit(host: Element, text: string, font: WordFont): HTMLCanv
   const ctx = context();
   if (ctx === null) return null;
   const r = rasterWord(text, font);
-  if (r === null) return null;
+  if (r === null || !widthMatches(r.textW / r.dpr, domWidthPx)) return null;
   ctx.canvas.width = r.W;
   ctx.canvas.height = r.H;
   ctx.gl.useProgram(ctx.program.program);
@@ -141,6 +155,7 @@ export function renderLit(host: Element, text: string, font: WordFont): HTMLCanv
   drawFrame(ctx.gl, ctx.program, LIT_FRAME.t, LIT_FRAME.e);
   const frame = document.createElement('canvas');
   placeCanvas(frame, r);
+  frame.dataset.textW = String(r.textW / r.dpr); // [CSS px]
   const fctx = frame.getContext('2d');
   if (fctx === null) return null;
   fctx.drawImage(ctx.canvas, 0, 0);
