@@ -2042,3 +2042,23 @@ describe('a refused log tap (AM-12, review FIX-1)', () => {
     expect(screen.getByRole('button', { name: copyFor('limelight', 'button.addForgottenSet') })).toBeInTheDocument();
   });
 });
+
+describe('set entry (audit C13, C09)', () => {
+  it('states one held load in the reason, the suggestion and the prefill (C13)', () => {
+    const history = [1, 2, 3].map((n) =>
+      makeSet({ id: `h-${String(n)}`, assignmentDate: YESTERDAY, sessionId: 'session-1', exerciseId: UPPER.id, setNumber: n, loadKg: 61, reps: 6 }),
+    ); // [kg] off the grid, below the top of 6-8
+    seedStore(seed({ sets: history }));
+    renderTrain();
+    expect(screen.getByText(/Hold 60 kg/)).toBeInTheDocument();
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue('60');
+  });
+
+  it('opens the next row with the load and reps just logged (C09)', () => {
+    seedStore(seed());
+    renderTrain();
+    logRow(1, '65', '7');
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(2)} (kg)`)).toHaveValue('65');
+    expect(screen.getByLabelText(FORMAT.setRepsQuantity(2))).toHaveValue('7');
+  });
+});

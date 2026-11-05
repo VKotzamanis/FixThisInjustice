@@ -21,7 +21,7 @@ import type {
   PlannedExercise,
   Profile,
 } from '../../../domain/types';
-import { achievableLoad, formatLoad, stepFor } from '../../../domain/units';
+import { formatLoad } from '../../../domain/units';
 import { useAppStore, type LogSetResult } from '../../../store';
 import { useExerciseHistory } from '../../../store/selectors';
 import { useFormCuesModal } from '../../components/FormCuesModal';
@@ -131,15 +131,9 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     [priorHistory, planned, exercise, profile, block],
   );
 
-  const stepKg = stepFor(exercise, profile.equipmentSteps); // [kg]
-  // Only a SUGGESTED load is quantised, and it rounds down (master plan section 3): a
-  // suggestion the user cannot assemble is worse than one slightly under.
-  const suggestedKg: Kg | null =
-    advice.loadKg === null
-      ? null
-      : stepKg > 0
-        ? achievableLoad(advice.loadKg, stepKg)
-        : advice.loadKg; // [kg]
+  // Audit C13: the engine quantises its suggestion once, onto the equipment grid, and its reason
+  // line quotes the same number; quantising again here could only make the two disagree.
+  const suggestedKg: Kg | null = advice.loadKg; // [kg] on the grid, or null
 
   const lastDate = priorHistory.at(-1)?.assignmentDate ?? null;
   const lastSession = useMemo(
@@ -159,6 +153,20 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     null,
   );
   const referenceKg: Kg | null = latestToday?.loadKg ?? suggestedKg;
+  // Audit C09: the next row opens with the count of the latest set today, else the top of the rep
+  // range (or the target seconds); nothing for AMRAP or no prescription. [repetitions] or [s]
+  const latestSetToday = todaysSets.reduce<LoggedSet | null>(
+    (best, s) => (best === null || s.setNumber > best.setNumber ? s : best),
+    null,
+  );
+  const prefillCount: number | null =
+    latestSetToday !== null
+      ? (latestSetToday.durationS ?? latestSetToday.reps)
+      : planned.prescription.kind === 'reps'
+        ? planned.prescription.hi
+        : planned.prescription.kind === 'time' || planned.prescription.kind === 'duration'
+          ? planned.prescription.targetS
+          : null;
   const maxLoggedNumber = todaysSets.reduce((m, s) => Math.max(m, s.setNumber), 0);
   const rowCount = Math.max(targetSets, maxLoggedNumber) + bonusRows;
 
@@ -339,6 +347,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   logged={logged}
                   isBodyweightExercise={exercise.isBodyweight}
                   referenceKg={referenceKg}
+                  prefillKg={referenceKg} // [kg] C09: the latest load today, else the suggestion
+                  prefillCount={prefillCount}
                   onLog={(loadKg, entry) => handleLog(n, loadKg, entry)}
                   onEdit={(loadKg, entry, rpe) => {
                     if (logged === null) return false;

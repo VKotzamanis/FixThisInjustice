@@ -310,6 +310,7 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'advice.repsNeeded'
   | 'button.writeAnotherCapsule'
   | 'advice.outsideEquations'
   | 'label.checkInDay'
@@ -1175,6 +1176,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Audit C09: an empty repetition count is refused in words, like the timed field.
+  'advice.repsNeeded': 'Enter the repetitions.',
   // Audit G16: an opened capsule can be followed by a new one, which replaces it.
   'button.writeAnotherCapsule': 'Write Another',
   // Audit G09: Targets names the input the equations do not cover. Template; FORMAT.withSlots.
