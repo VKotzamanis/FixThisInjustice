@@ -18,8 +18,9 @@ import type { RestGameContext, RestTimer } from '../../../domain/training/restTi
 import type { SkinId } from '../../../domain/types';
 import { useAppStore } from '../../../store';
 import { EMPTY_SESSION } from '../../../store/sessionMirror';
-import { makeAppState, makeUiPrefs } from '../../../test/funFixtures';
+import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../../test/funFixtures';
 import { ICON_FOR_KEY } from '../../../skins/limelight/Icon';
+import { forgetRestGameChoice } from './restGameChoice';
 import { RestTimerPanel } from './RestTimerPanel';
 
 const playChime = vi.hoisted(() => vi.fn(() => true));
@@ -249,8 +250,10 @@ describe('RestTimerPanel: the lit sign (stylize survey item 3)', () => {
 });
 
 /*
- * ROADMAP F1, docs/design/rest-games.md. The game rides on the rest timer: offered when a rest
- * with a game identity starts, gone when the rest ends, and never a writer of the timer.
+ * ROADMAP F1 and P6 (R10), docs/design/rest-games.md. The game rides on the rest timer: offered
+ * when a rest with a game identity starts, played in a bottom sheet, gone when the rest ends, and
+ * never a writer of the timer. The sheet's own behaviour (picker order, Back, Escape, Hide) is
+ * pinned in RestGameSheet.test.tsx.
  */
 const GAME: RestGameContext = {
   exerciseId: 'barbell-back-squat',
@@ -265,35 +268,55 @@ function gameTimer(): RestTimer {
   return { startedAt: NOW, endsAt: NOW + REST_S * 1000, durationS: REST_S, game: GAME }; // [ms], [ms], [s]
 }
 
-function renderGamePanel(sounds = false): RestTimer {
+function renderGamePanel(sounds = false, units: 'metric' | 'imperial' = 'metric'): RestTimer {
   // A fresh session slice: wins from an earlier case would change the round's difficulty.
-  useAppStore.setState({ ...makeAppState({ ui: makeUiPrefs({ skin: 'limelight', sounds }) }), session: EMPTY_SESSION });
+  useAppStore.setState({
+    ...makeAppState({
+      ui: makeUiPrefs({ skin: 'limelight', sounds }),
+      profiles: { [FUN_PROFILE_ID]: makeProfile({ units }) },
+    }),
+    session: EMPTY_SESSION,
+  });
   const timer = gameTimer();
   useAppStore.getState().setRestTimer(timer);
   render(<RestTimerPanel />);
   return timer;
 }
 
+const launch = () => screen.queryByRole('button', { name: copy('button.restGameLaunch') });
+const pickerHeading = () => screen.queryByRole('heading', { name: copy('hero.restGamePicker') });
 const gameHeading = () => screen.queryByRole('heading', { name: copy('hero.restWord') });
+
+function openRestWord(): void {
+  fireEvent.click(launch() as HTMLElement);
+  fireEvent.click(screen.getByRole('button', { name: copy('hero.restWord') }));
+}
 
 /** Types the round's own answer on the on-screen keys and submits it. */
 function winRound(): void {
   const target = restWordRound(GAME, REST_S, 0).target.toUpperCase();
   for (const letter of target) fireEvent.click(screen.getByRole('button', { name: letter }));
-  fireEvent.click(screen.getByRole('button', { name: copy('button.restWordSubmit') }));
+  fireEvent.click(screen.getByRole('button', { name: copy('button.restWordEnter') }));
 }
 
-describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
+describe('RestTimerPanel: the rest game (ROADMAP F1, P6)', () => {
   beforeEach(() => {
     audio.oscillators = 0;
+    forgetRestGameChoice();
+    // The sheet steps back over its own history entry when it closes; jsdom would deliver that
+    // popstate to a later case's sheet, so the traversal is stubbed (restoreMocks restores it).
+    vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
   });
 
   it('offers one optional round with the rest and never writes the timer', () => {
     const timer = renderGamePanel();
-    // Offered, not forced: the rest starts with a launch control and no board.
+    // Offered, not forced: the rest starts with a launch control and no sheet.
+    expect(pickerHeading()).toBeNull();
     expect(gameHeading()).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    fireEvent.click(launch() as HTMLElement);
+    expect(pickerHeading()).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: copy('hero.restWord') }));
     expect(gameHeading()).toBeInTheDocument();
     expect(useAppStore.getState().session.restTimer).toEqual(timer);
 
@@ -306,12 +329,20 @@ describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
     expect(gameHeading()).toBeNull();
     expect(useAppStore.getState().session.restTimer).toEqual(timer);
     // One round per rest: the launch control does not come back for the same interval.
-    expect(screen.queryByRole('button', { name: copy('button.restWordLaunch') })).toBeNull();
+    expect(launch()).toBeNull();
+  });
+
+  it('keeps the offer standing when the picker is closed with Not Now', () => {
+    renderGamePanel();
+    fireEvent.click(launch() as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: copy('button.restGameNotNow') }));
+    expect(pickerHeading()).toBeNull();
+    expect(launch()).toBeInTheDocument();
   });
 
   it('keeps counting the rest down while the game is open', () => {
     renderGamePanel();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    openRestWord();
 
     vi.setSystemTime(NOW + 30_000); // [ms] 30 s into a 90 s rest
     fireEvent(document, new Event('visibilitychange'));
@@ -322,11 +353,12 @@ describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
 
   it('closes the game when the rest ends, and the rest-over cues still fire once', () => {
     renderGamePanel();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    openRestWord();
 
     expireRest();
 
     expect(gameHeading()).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
     expect(playChime).toHaveBeenCalledTimes(1);
     expect(playSfx).toHaveBeenCalledWith('rest_over');
     expect(useAppStore.getState().session.restTimer?.endsAt).toBe(NOW + REST_S * 1000); // [ms]
@@ -338,7 +370,7 @@ describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
 
   it('closes with the rest when the rest is skipped', () => {
     renderGamePanel();
-    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    openRestWord();
 
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.skipRest') }));
 
@@ -351,18 +383,18 @@ describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
     vi.setSystemTime(NOW + 50_000); // [ms] 40 s remain; a 90 s rest's round is 45 s
     fireEvent(document, new Event('visibilitychange'));
 
-    expect(screen.getByRole('button', { name: copy('button.restWordLaunch') })).toBeDisabled();
+    expect(launch()).toBeDisabled();
     expect(screen.getByText(copy('status.restWordTooLate'))).toBeInTheDocument();
   });
 
   it('offers no game on a timer with no game identity, as an older build restores', () => {
     renderPanel('limelight');
-    expect(screen.queryByRole('button', { name: copy('button.restWordLaunch') })).toBeNull();
+    expect(launch()).toBeNull();
   });
 
   it('makes no game sound with ui.sounds off', () => {
     renderGamePanel(false);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    openRestWord();
     winRound();
     expect(screen.getByText(copy('status.restWordWon'))).toBeInTheDocument();
     expect(audio.oscillators).toBe(0);
@@ -370,9 +402,16 @@ describe('RestTimerPanel: the rest game (ROADMAP F1)', () => {
 
   it('plays the game cue with ui.sounds on', () => {
     renderGamePanel(true);
-    fireEvent.click(screen.getByRole('button', { name: copy('button.restWordLaunch') }));
+    openRestWord();
     winRound();
     expect(screen.getByText(copy('status.restWordWon'))).toBeInTheDocument();
     expect(audio.oscillators).toBeGreaterThan(0);
+  });
+
+  it("hands the profile's units to the game: Plate Math in pounds for an imperial profile", () => {
+    renderGamePanel(false, 'imperial');
+    fireEvent.click(launch() as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: copy('hero.restGamePlateMath') }));
+    expect(screen.getByRole('button', { name: '45 lb' })).toBeInTheDocument();
   });
 });

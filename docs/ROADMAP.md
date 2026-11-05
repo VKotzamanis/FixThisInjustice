@@ -52,7 +52,7 @@ Owner rulings from the restart audit and review pages (2026-10-17/18; verbatim a
 - S6 Specimen toast could show the card icon (`CardIcon`, `src/ui/views/atlasArt.tsx`). Category glyphs `src/assets/art/glyph-*.svg` are unused (kept). `INTRO_FIGURE` in `src/content/introSlides.ts` is now unrendered: owner decides whether to delete it.
 
 ## 4. Fun (want, all)
-- F1 DONE 2026-10-18: Rest Word (Wordle-style) offered with each rest, opt-in, closes with the rest; design and constraints `docs/design/rest-games.md`. More small games: add per that note. Gaps: leaving Train mid-rest re-offers the same round; guess results not announced to screen readers; rest-over chime ignores `ui.sounds` (pre-existing).
+- F1 DONE 2026-10-18, extended P6 2026-11-04: five rest games (Rest Word on QWERTY, Plate Math, Reaction, Sequence Recall, Gym Anagram) in a bottom sheet over Train with a per-rest picker; the next set stays loggable (audit C14). Design and constraints `docs/design/rest-games.md`. Gaps: leaving Train mid-rest re-offers the round; rest-over chime ignores `ui.sounds` (pre-existing, P4 C11).
 - F2 Limelight voice: the vulgar register the owner asked for; never written (agent chose camp only). Owner's words, his call on lines.
 - F3 Sound effects: player exists (`src/skins/sfx.ts`), zero files in `public/sfx/`. Make them locally with the owner's MIDI/FluidSynth/equation-instrument pipeline (`orchestrate` skill). Formats AAC `.m4a`/MP3.
 - F4 Motivation clip after a missed week: modal built, no clip (`public/media/` empty). Owner picks or films one.

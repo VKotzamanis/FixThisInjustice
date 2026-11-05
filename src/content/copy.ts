@@ -392,10 +392,7 @@ export type CopyKey =
   // --- Train view (P4 Task 10; appended by that task) ---
   | 'button.extendRest'
   // --- Rest games (ROADMAP F1, docs/design/rest-games.md) ---
-  | 'button.restWordLaunch'
   | 'button.restWordExit'
-  | 'button.restWordDelete'
-  | 'button.restWordSubmit'
   | 'hero.restWord'
   | 'label.restWordBoard'
   | 'label.restWordKeyboard'
@@ -403,6 +400,63 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Rest-game sheet and picker (P6) ---
+  | 'button.restGameLaunch'
+  | 'hero.restGamePicker'
+  | 'advice.restGamePicker'
+  | 'label.restGameSuggested'
+  | 'label.restGameLastPlayed'
+  | 'button.restGameShow'
+  | 'button.restGameNotNow'
+  | 'label.restGameSheet'
+  // --- Gym Anagram (P6) ---
+  | 'hero.restGameAnagram'
+  | 'advice.restGameAnagramRule'
+  | 'label.restGameAnagramLetters'
+  | 'label.restGameAnagramAnswer'
+  | 'button.restGameAnagramUndo'
+  | 'button.restGameAnagramClear'
+  | 'status.restGameAnagramWrong'
+  // --- Sequence Recall (P6) ---
+  | 'hero.restGameSequence'
+  | 'advice.restGameSequenceRule'
+  | 'label.restGameSequenceWatch'
+  | 'label.restGameSequenceRepeat'
+  | 'label.restGameSequencePad'
+  | 'label.restGameSequencePads'
+  | 'status.restGameSequenceLength'
+  // --- Reaction (P6) ---
+  | 'hero.restGameReaction'
+  | 'advice.restGameReactionRule'
+  | 'button.restGameReactionStart'
+  | 'label.restGameReactionWait'
+  | 'label.restGameReactionGo'
+  | 'label.restGameReactionFoul'
+  | 'label.restGameReactionMissed'
+  | 'label.restGameReactionTrials'
+  | 'status.restGameReactionTime'
+  | 'status.restGameReactionBest'
+  // --- Plate Math (P6) ---
+  | 'hero.restGamePlateMath'
+  | 'advice.restGamePlateMathRule'
+  | 'label.restGamePlateTarget'
+  | 'label.restGamePlateOnBar'
+  | 'label.restGamePlateSide'
+  | 'label.restGamePlates'
+  | 'button.restGamePlateRemove'
+  | 'status.restGamePlateOver'
+  | 'label.restGamePlateTakeOff'
+  // --- Rest games, shared frame (P6, docs/design/rest-games.md) ---
+  | 'button.restGameHide'
+  | 'status.restGameTimeUp'
+  | 'status.restGameAnswer'
+  | 'status.restGameProgress'
+  // --- Rest Word, QWERTY redesign (P6) ---
+  | 'button.restWordEnter'
+  | 'button.restWordDel'
+  | 'label.restWordExact'
+  | 'label.restWordPresent'
+  | 'label.restWordAbsent'
   | 'button.backToToday'
   | 'label.bonusSet'
   | 'label.suggestedLoad'
@@ -1275,10 +1329,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.extendRest': '+30 s',
   // Rest games (ROADMAP F1). Optional, and none of them names the rest clock: a game never pauses,
   // skips or extends the prescribed rest, so no string here may promise that it does.
-  'button.restWordLaunch': 'Play Word Game',
   'button.restWordExit': 'Exit Game',
-  'button.restWordDelete': 'Delete Letter',
-  'button.restWordSubmit': 'Submit Guess',
   'hero.restWord': 'Rest Word',
   'label.restWordBoard': 'Word Puzzle Board',
   'label.restWordKeyboard': 'Word Puzzle Keyboard',
@@ -1286,6 +1337,65 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6 sheet and picker (src/ui/views/train/RestGameSheet.tsx, RestGamePicker.tsx).
+  'button.restGameLaunch': 'Play a Game',
+  'hero.restGamePicker': 'Pick a Game',
+  'advice.restGamePicker': 'One round per rest. The rest clock never stops.',
+  'label.restGameSuggested': 'Suggested',
+  'label.restGameLastPlayed': 'Last Played',
+  'button.restGameShow': 'Show Game',
+  'button.restGameNotNow': 'Not Now',
+  'label.restGameSheet': 'Rest Game',
+  // P6 Gym Anagram (src/ui/views/train/GymAnagramGame.tsx).
+  'hero.restGameAnagram': 'Gym Anagram',
+  'advice.restGameAnagramRule': 'Tap the letters in order to spell the gym word.',
+  'label.restGameAnagramLetters': 'Scrambled Letters',
+  'label.restGameAnagramAnswer': 'Your Answer',
+  'button.restGameAnagramUndo': 'Undo Letter',
+  'button.restGameAnagramClear': 'Clear Answer',
+  'status.restGameAnagramWrong': 'Not that word. Try again.',
+  // P6 Sequence Recall (src/ui/views/train/SequenceRecallGame.tsx).
+  'hero.restGameSequence': 'Sequence Recall',
+  'advice.restGameSequenceRule': 'Watch the pads light up, then tap them in order.',
+  'label.restGameSequenceWatch': 'Watch',
+  'label.restGameSequenceRepeat': 'Your Turn',
+  'label.restGameSequencePad': 'Pad {n}',
+  'label.restGameSequencePads': 'Sequence Pads',
+  'status.restGameSequenceLength': 'Length {length} of {goal}',
+  // P6 Reaction (src/ui/views/train/ReactionGame.tsx). The pad says its state in these words.
+  'hero.restGameReaction': 'Reaction',
+  'advice.restGameReactionRule': 'Tap the pad when it turns lime, never before.',
+  'button.restGameReactionStart': 'Start',
+  'label.restGameReactionWait': 'Wait',
+  'label.restGameReactionGo': 'Tap Now',
+  'label.restGameReactionFoul': 'Too Soon',
+  'label.restGameReactionMissed': 'Missed',
+  'label.restGameReactionTrials': 'Trials',
+  'status.restGameReactionTime': '{ms} ms',
+  'status.restGameReactionBest': 'Best {ms} ms',
+  // P6 Plate Math (src/ui/views/train/PlateMathGame.tsx).
+  'hero.restGamePlateMath': 'Plate Math',
+  'advice.restGamePlateMathRule': 'Load one side so the whole bar matches the target.',
+  'label.restGamePlateTarget': 'Target',
+  'label.restGamePlateOnBar': 'On the Bar',
+  'label.restGamePlateSide': 'One Side',
+  'label.restGamePlates': 'Plates',
+  'button.restGamePlateRemove': 'Remove Plate',
+  // Lead ruling R-G2: the overshoot amount, and the name of a loaded plate's take-off control.
+  'status.restGamePlateOver': 'Over by {amount}.',
+  'label.restGamePlateTakeOff': 'Take Off {plate}',
+  // P6: the frame every rest game is drawn in (src/ui/views/train/RestGameFrame.tsx).
+  'button.restGameHide': 'Hide Game',
+  'status.restGameTimeUp': 'Out of time.',
+  'status.restGameAnswer': 'The answer was {answer}.',
+  'status.restGameProgress': '{done} of {total} done.',
+  // P6 Rest Word: the two action keys are 3 half-columns wide (about 40 px at 320 px), so their
+  // names are short; the tile states are read aloud and printed in the legend.
+  'button.restWordEnter': 'Enter',
+  'button.restWordDel': 'Del',
+  'label.restWordExact': 'Right Spot',
+  'label.restWordPresent': 'Wrong Spot',
+  'label.restWordAbsent': 'Not in Word',
   // Leaves the finished session. Named for the destination, because after the post-session
   // weigh-in there is nothing left to do here.
   'button.backToToday': 'Back to Today',

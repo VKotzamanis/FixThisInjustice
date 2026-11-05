@@ -12,10 +12,11 @@
 // Rows added to the fixture after the snapshot, on purpose, each with the string it ships: the
 // session-editing keys (docs/design/session-editing.md, "Copy keys added"), the four one-tap
 // effort keys `button.effort{Easy,Solid,Hard,Max}` (ROADMAP L8), the programme lifecycle keys
-// (docs/design/programme-lifecycle.md, "Copy keys") and the eleven rest-game keys whose name
-// contains `restWord` (ROADMAP F1, docs/design/rest-games.md; base table only, no limelight
-// override), and `button.gotIt`, the one control of the one-time warm-up notice on Train (owner
-// 2026-10-18; base table only), and `status.staleSession{Completed,Released}` for the
+// (docs/design/programme-lifecycle.md, "Copy keys"), the rest-game keys whose name contains
+// `restWord` or `restGame` (ROADMAP F1 and P6, docs/design/rest-games.md; base table only, no
+// limelight override; P6 retired three of the first eleven, listed in REMOVED_KEYS), and
+// `button.gotIt`, the one control of the one-time warm-up notice on Train (owner 2026-10-18; base
+// table only), and `status.staleSession{Completed,Released}` for the
 // stale-session notice (spec R1, Task 6; base table only), and `error.setupRefused` for
 // atomic setup refusal (spec R5, Task 9; base table only), and `status.externalWriteReplaced` for
 // the other-window notice (audit B03, Task 10; base table only), and `button.addForgottenSet` for
@@ -93,6 +94,12 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
   'label.legacyUnitKg': N5,
   'label.legacyUnitLb': N5,
   'label.skipReason': 'Skip Today postpones; no reason field (spec R2)',
+  'button.restWordDelete':
+    'P6 QWERTY keyboard: its delete key is 3 half-columns wide and reads button.restWordDel',
+  'button.restWordSubmit':
+    'P6 QWERTY keyboard: its submit key is 3 half-columns wide and reads button.restWordEnter',
+  'button.restWordLaunch':
+    'P6: the launch control opens a picker of five games now and reads button.restGameLaunch',
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];

@@ -1,32 +1,38 @@
-# Rest games (ROADMAP F1)
+# Rest games (ROADMAP F1, P6)
 
-Agent doc. Small games for the rest between sets. First family: Rest Word (Wordle-style), ported from `wip/rest-word-game` (3868dfd).
+Agent doc. Small games for the rest between sets: Rest Word, Plate Math, Reaction, Sequence Recall, Gym Anagram. Genres, not copies: no name, art, sound or layout from a commercial title. Plan and arithmetic: `docs/plans/2026-11-04-p6-games.md` (decisions D1-D7).
 
 ## How a game plugs into the rest timer
-- Identity rides on the timer: `RestTimer.game?: RestGameContext` (`src/domain/training/restTimer.ts:80`, `:88`). `startRest(durationS, now, game?)` (`:101`) attaches it; `endsAt` depends on `durationS` only. Absent on old timers: no game offered.
-- Set by the one rest starter, `ExerciseCard.handleLog` (`src/ui/views/train/ExerciseCard.tsx:183`): exercise, session, date, set number, day ordinal (counted after `logSet`).
-- Host: `RestTimerPanel` (`src/ui/views/train/RestTimerPanel.tsx`). Phase per interval, keyed by `startedAt` (`:84`): `ready` -> `open` -> `closed`. A new rest (next set) has a new `startedAt`, so it reads `ready` again; an extension keeps `startedAt`.
-- Offer: `[Play Word Game]` in the rest controls while `ready` and the rest runs (`:170`); disabled with `status.restWordTooLate` once the round no longer fits (`:171`).
-- End: board hidden when `remainingS <= 0` (`:257`), made final by an effect (`:92`), so +30 s after the end revives nothing. Skip Rest (timer null) unmounts the panel. Next set: new interval.
-- Round: `restWordRound(context, durationS, wins)` (`src/domain/fun/restWord.ts:58`); round clock 45/60/90 s for rests <= 90 / <= 120 / longer (`:37`). Game deadline = min(round clock, current `timer.endsAt`) (`src/ui/views/train/RestWordGame.tsx:86`).
+- Identity rides on the timer: `RestTimer.game?: RestGameContext` (`src/domain/training/restTimer.ts`). `startRest(durationS, now, game?)` attaches it; `endsAt` depends on `durationS` only. Absent on old timers: no game offered.
+- Set by the one rest starter, `ExerciseCard.handleLog` (`src/ui/views/train/ExerciseCard.tsx`).
+- `RestTimerPanel` is the ONLY reader of the timer, the wins count and the profile units; it passes them to `RestGameSheet` as props (contract with P1, which moves where the timer lives). Phase per interval keyed by `startedAt`: `ready` -> `open` -> `closed`.
+- Offer: `[Play a Game]` in the rest controls while `ready` and the round clock fits the rest left; disabled with `status.restWordTooLate` otherwise.
+- Host: `RestGameSheet`, a non-modal bottom sheet fixed over Train (`role="dialog"`, `aria-modal="false"`). Height at most `100svh - 12rem` (472 px at 390 x 664); `body.rest-sheet-open` pads the page so every set row can scroll above it. `Hide Game` collapses it to a 60 px bar, `Show Game` restores the same round. Back (one history entry, `useSheetDismiss.ts`) and Escape close it. P4's overlay stack replaces `useSheetDismiss`.
+- Picker: `RestGamePicker`. First option = the last pick in this lifting session (`restGameChoice.ts`, module memory, never stored) else `seededFamily(context)`. One pick = one round; `Not Now` leaves the offer standing.
+- End: the sheet unmounts when the rest ends, is skipped or is replaced by the next set's rest.
+- Round clock: `restRoundClockS(restS)` (`src/domain/fun/restGames.ts`): 45/60/90 s for rests <= 90 / <= 120 / longer, shared by every family. Game deadline = min(round clock, current `timer.endsAt`) (`useRoundClock.ts`).
 
 ## Constraints and where each is held
-1. Never stretches or pauses the rest: no game code writes the timer; `startRest` same instants with or without `game`. Tests: `restTimer.test.ts` "carries a rest-game identity without moving either instant"; `RestTimerPanel.test.tsx` "offers one optional round ... never writes the timer", "keeps counting the rest down while the game is open", "closes the game when the rest ends ..."; `TrainView.test.tsx` "logs the next set with the game open ..." (`durationS` unchanged).
-2. Interruptible: `[Exit Game]` always enabled (`RestWordGame.tsx:250`). Hardware keys only when focus is on the body or inside the board (`:58`), so Enter on Log Set / a set field is never taken. Tests: "lets the user leave immediately ...", "leaves Enter on a control outside the game alone ...", TrainView "logs the next set with the game open ...", panel "closes with the rest when the rest is skipped".
-3. Offline: DOM/CSS board, synthesised cues (Web Audio oscillators), word bank in source (< 1 KiB). Tests: `RestWordGame.test.tsx` "makes no request and loads no media ...", "names no network API ... in any game source"; `restGameAudio.test.ts` "... fetches nothing".
-4. No stored score beyond the session: `restGameWins` lives in the session slice + sessionStorage mirror (`src/store/sessionMirror.ts:38`, `:114`, default 0 for an older mirror), `recordRestGameWin` (`src/store/index.ts:930`), reset by `clearSessionSlice`. `fti.v3` schema untouched. Tests: `trainingActions.test.ts` "keeps rest-game wins in the session mirror and out of the main document"; `sessionMirror.test.ts` pre-game mirror, round trip, bad game date refused.
-5. Sound only with `ui.sounds`: `playRestGameCue(cue, soundsOn)` returns before touching the context (`src/ui/audio/restGameAudio.ts:52`); Play tap unlocks audio only with sounds on (`RestTimerPanel.tsx:247`). Reduced motion: every rest-game animation `none` (`src/ui/styles/train.css:755`). Tests: audio "stays silent with sounds off ..."; panel "makes no game sound with ui.sounds off", "plays the game cue with ui.sounds on"; `restGameStyles.test.ts` "stops every rest-game animation ...".
-6. Copy: keys containing `restWord`, base table only, parity fixture extended. Tests: `src/content/restGameCopy.test.ts` (R14 Title Case, R1, R6, no limelight row), `limelightParity.test.ts`. Colours: tokens only (inverted panel; ratios in the `train.css` block comment). Test: `restGameStyles.test.ts` "colours only through tokens ...".
-7. Phone: keys 44 x 44 px (`train.css:632`), 6 fixed columns (`:627`), 5 under 360 px; alphabetical, not QWERTY (10 columns of 44 px need 458 px; a 412 px phone leaves 332). Measured in headless Chromium at 320/360/390/412 px: no horizontal overflow, min key 44.0 px. No `:hover` rule. Tests: `restGameStyles.test.ts` (44 px, 6 columns, no hover).
+1. Never stretches or pauses the rest: no game code writes the timer. Tests: `restTimer.test.ts` "carries a rest-game identity without moving either instant"; `RestTimerPanel.test.tsx` "offers one optional round ... never writes the timer", "keeps counting the rest down ...", "closes the game when the rest ends ..."; `TrainView.test.tsx` "logs the next set with the game sheet open ..."; `restGameGuarantees.test.tsx` (timer unchanged per family; no timer writer in any source).
+2. Interruptible: Exit always enabled (`RestGameFrame.tsx`); Back, Escape, Not Now; hardware keys only from the body or inside the sheet (`RestWordGame.tsx` `keyIsForGame`), none while hidden. Tests: `RestGameFrame.test.tsx`, `RestGameSheet.test.tsx`, `RestWordGame.test.tsx`.
+3. Offline: DOM/CSS boards, synthesised cues, word banks in source (Rest Word < 1 KiB, Gym Anagram < 2 KiB). Tests: `restGameGuarantees.test.tsx` (source scan of every game file; no request, no media per family), `restGameAudio.test.ts`.
+4. No stored score beyond the session: wins only through `recordRestGameWin` in `RestTimerPanel`; `fti.v3` untouched; the last pick is module memory. Tests: `trainingActions.test.ts`, `restGameGuarantees.test.tsx` (no store import, no web storage in any game source).
+5. Sound only with `ui.sounds`: `playRestGameCue(cue, soundsOn)`; reduced motion stops every rest-game animation; no transitions. Tests: `restGameGuarantees.test.tsx` (silent off, cue on, per family), `restGameStyles.test.ts`.
+6. Copy: keys with `restWord` or `restGame` in the name, base table only, Title Case names, parity fixture rows; retired keys in `REMOVED_KEYS`. Value frames in `src/content/restGameFormat.ts`. Tests: `restGameCopy.test.ts`, `limelightParity.test.ts`, `copy.test.ts`.
+7. Phone: every control >= 44 px tall; Rest Word keys QWERTY on 20 half-columns, >= 24 px wide at 320 px (WCAG 2.2 SC 2.5.8, AA); colour never alone (tile shapes, struck letters, worded pad states). Colours through tokens only; all rest-game CSS in `src/ui/styles/restGames.css`. Tests: `restGameStyles.test.ts`, `limeContrast.test.ts`. Measured in Chromium: see "Measured".
 
-## Adding a second game family
-- Engine: pure module in `src/domain/fun/<game>.ts` taking `RestGameContext` + rest `durationS`; its round must fit the shortest rest that offers it.
-- Choice: derive the family from the context (e.g. `restGameSeed` of the context, `src/domain/fun/restWord.ts`) in `RestTimerPanel` where `restWordRound` is called; keep one round per interval.
-- Component: same props as `RestWordGame` (`timer`, `priorWins`, `soundsEnabled`, `t`, `overrides`, `onExit`, `onWin`); never import the store's timer actions.
-- Copy: new keys in the base table, Title Case names, parity fixture rows, `restGameCopy.test.ts` stem filter widened.
-- CSS: rules under `.rest-game`; extend `restGameStyles.test.ts` selector filter.
+## Adding a game family
+- Engine: `src/domain/fun/<game>.ts`, seeded by `restGameRng('<family>', context, difficulty)`, difficulty from `restGameDifficulty`, round clock `restRoundClockS`; its worst case fits that clock (test it).
+- Register: add the family to `REST_GAME_FAMILIES` (`restGames.ts`) and `REST_GAME_CATALOG` (`restGameCatalog.ts`); add its sources to `SOURCES` in `restGameGuarantees.test.tsx`.
+- Component: `RestGameProps` only (`restGameProps.ts`), drawn in `RestGameFrame`, units from `useRestGameHost()`; never import the store.
+- Copy: keys with `restGame` in the name, base table, fixture rows; frames with values in `restGameFormat.ts`.
+- CSS: a `/* ===== <name> ===== */` section in `restGames.css`; add the name to the section list in `restGameStyles.test.ts`.
+
+## Measured
+- `e2e/p6-rest-sheet.spec.ts` (Playwright, Chromium, 320/360/390/412 x 664): key width >= 24 px, key height >= 44 px, no sideways scroll; at 390 x 664 the sheet <= 472 px with no inner scroll and the next set's row and Log button above it. Numbers in `docs/STATUS.md`.
 
 ## Not done
-- Board state is per mount: leaving Train mid-rest and coming back offers the same round again.
-- Tile results are not announced to screen readers (letters only; result line is live).
-- Mascot ASCII rows are uneven width (`PixelMascot.tsx`, kept from the WIP); owner's art call.
+- Round state is per mount: leaving Train mid-rest and coming back offers the rest's round again (the offer phase lives in the panel).
+- Sequence Recall shows its sequence visually; the status line names each lit pad, but rapid announcements may be dropped by a screen reader.
+- Gym Anagram accepts only the listed word; an alternative anagram the user finds is refused (words with a known second anagram were left out of the bank).
+- Real iOS Safari and Android hardware not tested by an agent.

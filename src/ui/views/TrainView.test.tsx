@@ -51,6 +51,7 @@ import { playChime, releaseAudio, vibrate } from '../audio/chime';
 import { ToastProvider, ToastQueue } from '../components/ToastQueue';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
 import { TrainView } from './TrainView';
+import { forgetRestGameChoice } from './train/restGameChoice';
 
 // vi.mock is hoisted above the imports by vitest, so the module below is already the double
 // when TrainView imports it.
@@ -1868,9 +1869,15 @@ describe('TrainView session editing (ROADMAP L1-L4, docs/design/session-editing.
   });
 });
 
-describe('TrainView rest game (ROADMAP F1)', () => {
-  const launch = () => screen.queryByRole('button', { name: copy('button.restWordLaunch') });
+describe('TrainView rest game (ROADMAP F1, P6)', () => {
+  const launch = () => screen.queryByRole('button', { name: copy('button.restGameLaunch') });
   const board = () => screen.queryByRole('heading', { name: copy('hero.restWord') });
+
+  beforeEach(() => {
+    forgetRestGameChoice();
+    // The sheet steps back over its own history entry when it closes (useSheetDismiss).
+    vi.spyOn(window.history, 'back').mockImplementation(() => undefined);
+  });
 
   it('offers the game with the rest a logged set starts, keyed to that set', () => {
     seedStore(seed());
@@ -1889,13 +1896,15 @@ describe('TrainView rest game (ROADMAP F1)', () => {
     expect(launch()).toBeInTheDocument();
   });
 
-  it('logs the next set with the game open, and that rest and its game end together', () => {
+  it('logs the next set with the game sheet open, and that rest and its game end together', () => {
     seedStore(seed());
     renderTrain();
     logRow(1, '60', '8');
     const first = useAppStore.getState().session.restTimer;
     fireEvent.click(launch() as HTMLElement);
+    fireEvent.click(screen.getByRole('button', { name: copy('hero.restWord') }));
     expect(board()).toBeInTheDocument();
+    expect(document.body.classList.contains('rest-sheet-open')).toBe(true);
 
     vi.setSystemTime(NOW + 20_000); // [ms] 20 s into the rest, mid-game
     logRow(2, '60', '8');
@@ -1906,8 +1915,9 @@ describe('TrainView rest game (ROADMAP F1)', () => {
     expect(second?.startedAt).toBe(NOW + 20_000); // [ms] a new rest from the new set
     expect(second?.durationS).toBe(first?.durationS); // [s] the prescription, untouched by the game
     expect(second?.game?.sessionSetOrdinal).toBe(2); // [sets]
-    // The old board is gone with its rest; the new rest offers a fresh round.
+    // The old sheet is gone with its rest; the new rest offers a fresh round.
     expect(board()).toBeNull();
+    expect(document.body.classList.contains('rest-sheet-open')).toBe(false);
     expect(launch()).toBeInTheDocument();
   });
 });

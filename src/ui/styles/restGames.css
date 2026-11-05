@@ -1,0 +1,745 @@
+/*
+ * Rest games (ROADMAP F1, P6; docs/design/rest-games.md). Every rest-game rule lives in this sheet:
+ * no canvas, image, font request or library. Sections are marked `===== name =====`; a new game
+ * appends its own section.
+ *
+ * Colour. Every board is the inverted panel (--panel / --panel-text), the surface this skin already
+ * uses for state, because a lime ground cannot carry white or pink type (tokens.css, measured
+ * ratios). Inside it: white on black 21:1; a pink fill with ink 7.75:1; a lime fill with ink
+ * 10.91:1; white on the --fine grey about 9.6:1 (computed with the WCAG 2.1 formula, not quoted).
+ * Colour never stands alone (WCAG 1.4.1): every state also has a shape or a word.
+ *
+ * Size. Every control is at least 44 px tall (`.view button`, views.css: 2.75rem at the 16 px root).
+ */
+
+/* ===== launch ===== */
+.view .rest-game-launch:disabled {
+  opacity: 0.5;
+}
+
+.rest-game-unavailable {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.75rem;
+  max-width: 24rem;
+}
+
+/* ===== frame ===== */
+/*
+ * RestGameFrame: name, round clock, Hide and Exit on one row; the rule line; the board or the end
+ * state; the live result line. Inside the sheet (RestGameSheet) the sheet draws the edge, so the
+ * frame draws none. The pink Exit/Hide edge on black is 7.75:1.
+ */
+.rest-game {
+  background: var(--panel);
+  color: var(--panel-text);
+  font-family: var(--mono);
+}
+
+.rest-game-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+}
+
+.rest-game-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  min-width: 0;
+}
+
+.rest-game h3,
+.rest-game p {
+  margin: 0;
+}
+
+.rest-game h3 {
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.rest-game-rule,
+.rest-game-result {
+  color: var(--panel-text);
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+  margin-top: 0.375rem;
+}
+
+/* The end state says the result large, in words (the sprite and the colour are extras). */
+.rest-game.result-won .rest-game-result,
+.rest-game.result-lost .rest-game-result,
+.rest-game.result-timeUp .rest-game-result {
+  font-size: 1.25rem;
+  line-height: 1.5rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.rest-game-clock {
+  border: 1px solid var(--panel-text);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  padding: 0.125rem 0.375rem;
+}
+
+.rest-game-actions {
+  display: flex;
+  flex: none;
+  gap: 0.375rem;
+}
+
+/* `.view button` (views.css, 0,1,1) is full width; two classes outrank it. 2.75rem = 44 px. */
+.view .rest-game-exit,
+.view .rest-game-hide {
+  width: auto;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.625rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--accent);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+}
+
+.rest-game-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0.25rem;
+}
+
+.rest-game-answer,
+.rest-game-note {
+  flex-basis: 100%;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+/*
+ * The owner's sprite in the end state (ownerSprite.css draws it; stylize survey item 7). The board
+ * is black and his drawing is black hair, so the sprite sits on a lime tile, the skin's own ground.
+ * The win is the sprite's own one play; a loss still shakes the tile.
+ */
+.rest-game-mascot {
+  flex: none;
+}
+
+.rest-game-mascot .ll-sprite {
+  background-color: var(--lime);
+}
+
+.rest-game-mascot-lose {
+  animation: rest-game-shake 160ms steps(2, end) 3;
+}
+
+/* Original ASCII loss loop: two CSS-swapped text frames, never a downloaded GIF. The face is the
+   `ll-ascii` stack (tokens.css) on each frame, so the two overlay column for column. */
+.rest-loss-chomp {
+  position: relative;
+  width: 5.7rem;
+  height: 1rem;
+  overflow: hidden;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.7rem;
+  line-height: 1rem;
+}
+
+.rest-loss-chomp pre {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  white-space: pre;
+}
+
+.rest-loss-chomp-open {
+  animation: rest-game-chomp-open 420ms steps(1, end) infinite;
+}
+
+.rest-loss-chomp-closed {
+  animation: rest-game-chomp-closed 420ms steps(1, end) infinite;
+}
+
+@keyframes rest-game-shake {
+  25% {
+    transform: translateX(-2px);
+  }
+  75% {
+    transform: translateX(2px);
+  }
+}
+
+@keyframes rest-game-chomp-open {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes rest-game-chomp-closed {
+  0%,
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rest-game-mascot-lose,
+  .rest-loss-chomp-open,
+  .rest-loss-chomp-closed {
+    animation: none;
+  }
+
+  /* One still frame: the open mouth. */
+  .rest-loss-chomp-closed {
+    opacity: 0;
+  }
+}
+
+/* ===== rest-word ===== */
+/*
+ * Height (plan D1). The sheet is at most 100svh - 12rem: 472 px at 390 x 664. Around the six tile
+ * rows Rest Word spends 16.5rem (264 px): 10 sheet edge + 44 header + 6 + 18 rule + 6 + 18 legend
+ * + 6 + 8 + 140 keyboard (3 x 44 + 2 x 4) + 8 bottom padding. Six rows and five 4 px gaps share
+ * the rest: (472 - 264 - 20) / 6 = 31.3 px a tile, clamped to 24..34 px, i.e.
+ * (100svh - 12rem - 16.5rem - 1.25rem) / 6 = (100svh - 29.75rem) / 6. A vh line comes first for
+ * browsers without svh (plan D3).
+ */
+.rest-word-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin-top: 0.375rem;
+  font-size: 0.6875rem;
+  line-height: 1.125rem;
+}
+
+.rest-word-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.rest-word-grid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.375rem 0 0.5rem;
+}
+
+.rest-word-row {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.rest-word-tile {
+  width: clamp(1.5rem, calc((100vh - 29.75rem) / 6), 2.125rem);
+  width: clamp(1.5rem, calc((100svh - 29.75rem) / 6), 2.125rem);
+  height: clamp(1.5rem, calc((100vh - 29.75rem) / 6), 2.125rem);
+  height: clamp(1.5rem, calc((100svh - 29.75rem) / 6), 2.125rem);
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--panel-text);
+  background: var(--panel);
+  color: var(--panel-text);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.rest-word-tile.rest-word-tile-mini {
+  width: 1rem;
+  height: 1rem;
+  border-width: 1px;
+  font-size: 0.625rem;
+}
+
+/*
+ * The states, never by colour alone (WCAG 1.4.1): right spot = solid pink with a 4 px ink bar,
+ * wrong spot = lime with a dashed ink edge, not in the word = grey and struck through.
+ */
+.rest-word-tile.exact,
+.view .rest-word-key.exact {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--ink);
+  box-shadow: inset 0 -4px 0 var(--ink);
+}
+
+.rest-word-tile.present,
+.view .rest-word-key.present {
+  background: var(--lime);
+  border: 2px dashed var(--ink);
+  color: var(--ink);
+}
+
+.rest-word-tile.absent,
+.view .rest-word-key.absent {
+  background: var(--fine);
+  border-color: var(--fine);
+  color: var(--panel-text);
+  text-decoration: line-through;
+}
+
+/*
+ * QWERTY (plan D2): 20 half-columns 0.25rem (4 px) apart. A letter spans 2 (one key = 2c + 4 px),
+ * row 2 starts one half-column in, Enter and Del span 3. Keyboard width W = viewport - 2 x 12 px
+ * sheet padding; c = (W - 19 x 4) / 20. Key width at 320 px: W = 296, c = 11, key 26 px; 360: 30;
+ * 390: 33; 412: 35.2. Every key is >= 24 px wide (WCAG 2.2 SC 2.5.8, Level AA) and 44 px tall.
+ */
+.rest-word-keyboard {
+  display: grid;
+  grid-template-columns: repeat(20, minmax(0, 1fr));
+  column-gap: 0.25rem;
+  row-gap: 0.25rem;
+}
+
+/* `.view button` (views.css) is 0,1,1 and full width; two classes outrank it inside the grid. */
+.view .rest-word-key {
+  grid-column: span 2;
+  min-width: 0;
+  min-height: 2.75rem;
+  width: 100%;
+  padding: 0;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--panel-text);
+  font: 700 1rem/1 var(--mono);
+  letter-spacing: 0;
+}
+
+.view .rest-word-key.rest-word-offset {
+  grid-column: 2 / span 2;
+}
+
+.view .rest-word-key.rest-word-wide {
+  grid-column: span 3;
+  font-size: 0.75rem;
+  border-color: var(--accent);
+}
+
+.view .rest-word-key:disabled {
+  opacity: 0.45;
+}
+
+/* A short phone (320 x 568) drops the two text lines before it scrolls the sheet. */
+@media (max-height: 620px) {
+  .rest-game-rule,
+  .rest-word-legend {
+    display: none;
+  }
+}
+
+/* ===== plate-math ===== */
+/*
+ * Two readouts (target, on the bar), the side as a row of plate chips over a 4 px bar line, the
+ * plate rack in four columns: at 320 px each button is (296 - 3 x 6) / 4 = 69.5 px wide, enough
+ * for "1.25 kg". All on the black panel: lime chips with ink 10.91:1.
+ */
+.rest-plate-readout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.rest-plate-readout div {
+  border: 1px solid var(--panel-text);
+  padding: 0.25rem 0.5rem;
+}
+
+.rest-plate-readout dt {
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.rest-plate-readout dd {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.rest-plate-readout dd.rest-plate-over {
+  text-decoration: underline wavy;
+}
+
+.rest-plate-side {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0.25rem 0;
+  border-bottom: 4px solid var(--panel-text);
+}
+
+/* A loaded plate is a button that takes it off (lead ruling R-G2): 44 px tall via `.view button`. */
+.view .rest-plate-chip {
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  background: var(--lime);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+/* Over the target by how much (R-G2): words and the unit, not a colour. */
+.rest-plate-over-note {
+  margin: 0 0 0.25rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.rest-plate-rack {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.375rem;
+  margin: 0.5rem 0;
+}
+
+.view .rest-plate-add {
+  min-height: 2.75rem;
+  padding: 0;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--panel-text);
+  font-size: 0.875rem;
+  letter-spacing: 0;
+}
+
+.view .rest-plate-remove {
+  min-height: 2.75rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--accent);
+}
+
+.view .rest-plate-add:disabled,
+.view .rest-plate-remove:disabled {
+  opacity: 0.45;
+}
+
+/* ===== reaction ===== */
+/*
+ * One 10rem (160 px) pad. Waiting: black with a dashed white edge. Go: lime with ink type and a
+ * solid 4 px ink edge (10.91:1). The word on the pad carries the state too. No transition: the
+ * change of state is the stimulus, and an eased fade would blur the instant it happens.
+ */
+.view .rest-react-pad {
+  min-height: 10rem;
+  margin: 0.5rem 0;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 4px solid var(--panel-text);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.view .rest-react-pad.is-waiting {
+  border-style: dashed;
+}
+
+.view .rest-react-pad.is-go {
+  background: var(--lime);
+  color: var(--ink);
+  border: 4px solid var(--ink);
+}
+
+.view .rest-react-pad.is-feedback {
+  border-color: var(--accent);
+}
+
+.rest-react-trials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== sequence-recall ===== */
+/*
+ * Four pads in two columns, five or six in three; each at least 4rem (64 px) tall. Lit: lime with
+ * ink type and a 6 px double ink edge (10.91:1), a shape as well as a colour. A locked pad keeps
+ * full strength, so a lit step is never dimmed by the lock that is on while it shows.
+ */
+.rest-seq-length {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.rest-seq-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.rest-seq-grid.pads-5,
+.rest-seq-grid.pads-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.view .rest-seq-pad {
+  min-height: 4rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--panel-text);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.view .rest-seq-pad:disabled {
+  opacity: 1;
+}
+
+.view .rest-seq-pad.is-lit {
+  background: var(--lime);
+  color: var(--ink);
+  border: 6px double var(--ink);
+}
+
+/* ===== gym-anagram ===== */
+/*
+ * Answer slots 2rem wide (8 x 32 + 7 x 4 = 284 px fits the 296 px keyboard width at 320 px), letter
+ * tiles 44 x 44 px that wrap. A tile is lime with ink (10.91:1); a used tile is grey, white and
+ * struck through, so it reads as spent without its colour.
+ */
+.rest-anagram-answer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+}
+
+.rest-anagram-slot {
+  width: 2rem;
+  height: 2.75rem;
+  display: grid;
+  place-items: center;
+  border-bottom: 3px solid var(--panel-text);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.rest-anagram-letters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.view .rest-anagram-letter {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0;
+  background: var(--lime);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-size: 1.125rem;
+  font-weight: 800;
+}
+
+.view .rest-anagram-letter.is-used {
+  background: var(--fine);
+  color: var(--panel-text);
+  border-color: var(--fine);
+  text-decoration: line-through;
+}
+
+.rest-anagram-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.view .rest-anagram-undo,
+.view .rest-anagram-clear {
+  min-height: 2.75rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--accent);
+  font-size: 0.875rem;
+}
+
+.view .rest-anagram-undo:disabled,
+.view .rest-anagram-clear:disabled {
+  opacity: 0.45;
+}
+
+/* ===== picker ===== */
+/*
+ * Five options, each a 44 px+ row: the game's name, a pink tag on the first (ink on pink 7.75:1),
+ * its rule underneath. Five rows of about 52 px plus the header fit the 472 px sheet (plan D1).
+ */
+.rest-picker-list {
+  list-style: none;
+  margin: 0.375rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.375rem;
+}
+
+.view .rest-picker-option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.125rem 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.625rem;
+  text-align: left;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--panel-text);
+  letter-spacing: 0;
+}
+
+.view .rest-picker-option.is-first {
+  border-color: var(--accent);
+}
+
+.rest-picker-name {
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rest-picker-tag {
+  padding: 0 0.25rem;
+  background: var(--accent);
+  color: var(--ink);
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.rest-picker-rule {
+  grid-column: 1 / -1;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+/* ===== sheet ===== */
+/*
+ * The game host (plan D1): a non-modal bottom sheet fixed over Train, out of the page flow, so the
+ * next set's row never moves (audit C14: the board in the header pushed it 550-700 px down).
+ *
+ * Height: at most 100svh - 12rem. The 12rem (192 px) band above it stays the page: the sticky top
+ * bar (about 37 px, appShell.css) and one unlogged set row (about 133 px, train.css .set-row):
+ * 37 + 133 = 170 <= 192, both read from CSS, measured in Task 11. At 390 x 664 the sheet is at most
+ * 664 - 192 = 472 px; taller content scrolls inside it. border-box, so the cap includes the 2 px
+ * edge and the padding. svh is stable while the toolbar moves (MDN); the vh line is the fallback
+ * for Safari < 15.4 and Chrome < 108 (caniuse viewport-unit-variants).
+ *
+ * Sides: 0.75rem (12 px) plus the safe-area insets; the QWERTY arithmetic in the rest-word section
+ * uses the 12 px. Bottom: the home-indicator inset (viewport-fit=cover is set in index.html).
+ * z-index 35: above the page and its sticky top bar (30), below the modals (40) and the CRT layers.
+ */
+.rest-sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 35;
+  box-sizing: border-box;
+  max-height: calc(100vh - 12rem);
+  max-height: calc(100svh - 12rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: 0.5rem;
+  padding-left: calc(0.75rem + env(safe-area-inset-left));
+  padding-right: calc(0.75rem + env(safe-area-inset-right));
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+  background: var(--panel);
+  color: var(--panel-text);
+  border-top: 2px solid var(--accent);
+  animation: rest-sheet-in 160ms ease-out;
+}
+
+.rest-sheet:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+.rest-sheet-body {
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.rest-sheet-body[hidden] {
+  display: none;
+}
+
+/* Minimised: one 44 px row, the game's name and Show Game (lime with ink, 10.91:1). */
+.rest-sheet-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  max-width: 34rem;
+  margin: 0 auto;
+}
+
+.rest-sheet-bar-name {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.view .rest-sheet-show {
+  width: auto;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  background: var(--lime);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+
+/* The page under the sheet scrolls far enough that every set row can sit above it. */
+body.rest-sheet-open .view.train {
+  padding-bottom: calc(min(100vh - 12rem, 30rem) + 1rem);
+  padding-bottom: calc(min(100svh - 12rem, 30rem) + 1rem);
+}
+
+body.rest-sheet-min .view.train {
+  padding-bottom: calc(4.75rem + env(safe-area-inset-bottom));
+}
+
+@keyframes rest-sheet-in {
+  from {
+    transform: translateY(1rem);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rest-sheet {
+    animation: none;
+  }
+}
