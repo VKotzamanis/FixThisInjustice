@@ -92,38 +92,103 @@
   font-size: 0.9rem;
 }
 
-.view input[type='number'],
-.view input[type='text'],
-.view select {
-  display: block;
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.4rem 0.5rem;
-  color: inherit;
-  background: var(--bg-2);
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
-  font-family: inherit;
+/*
+ * F10: EVERY text-entry control in the app is 16 px, or iOS Safari zooms on focus. App-wide (the
+ * wizard, the palette and the time capsule live outside .view) and zero-specificity, so a
+ * component class may restyle a field but a size below 16 px fails cssHygiene/e2e sweeps.
+ */
+:where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='button'], [type='submit'])),
+:where(select, textarea) {
   font-size: 16px;
+  font-family: inherit;
+  caret-color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
 
-.view input[type='checkbox'] {
-  width: 1.25rem;
-  height: 1.25rem;
+/*
+ * F06: the base rules weigh (0,0,0). `.view button` was (0,1,1) and beat every one-class
+ * component rule that forgot to restate a colour (the Today marquee, the palette row). Any
+ * component class now wins whatever order the bundle loads the sheets in.
+ */
+:where(.view) :where(input[type='number'], input[type='text'], input[type='search'], input[type='time'], input[type='date'], select, textarea) {
+  display: block;
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-2);
+  color: inherit;
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
+}
+
+/* Native marks take the ink accent (A10: they were platform blue) and are drawn 24 px inside a
+ * 44 px label row (the label is the tap area). */
+:where(input[type='checkbox'], input[type='radio'], input[type='range']) {
+  accent-color: var(--ink);
+}
+
+:where(.view) :where(input[type='checkbox'], input[type='radio']) {
+  width: 1.5rem;
+  height: 1.5rem;
   flex: none;
 }
 
-/* The 1 px edge is ink, where it was pink: pink on the lime ground is 1.41:1, under SC 1.4.11's
- * 3:1 for a control's boundary; ink is 10.91:1. Same width, so no button changes size. Buttons on
- * the black panels (rest sign, rest game, Atlas) set their own edges. */
-.view button {
+/* The 1 px edge is ink (10.91:1 on lime, SC 1.4.11). Buttons on the black panels set their own. */
+:where(.view) :where(button) {
   width: 100%;
-  min-height: 2.75rem;
+  min-height: var(--tap);
   color: inherit;
   background: var(--bg-2);
   border: 1px solid var(--line-2);
   font-family: inherit;
   font-size: 16px;
   letter-spacing: 0.06em;
+  /* F15: no double-tap zoom on +30 s or effort taps, no grey flash on iOS. */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* Brief 3.3 states. Pressed: an inset ink ring, never a colour flash. */
+:where(.view) :where(button):active:not(:disabled) {
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+/* Disabled by shape as well as by opacity (WCAG 1.4.1). */
+:where(.view) :where(button):disabled {
+  opacity: 0.45;
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+:where(:focus-visible) {
+  outline: var(--focus);
+  outline-offset: 2px;
+}
+
+:where(.ll-panel :focus-visible) {
+  outline: var(--focus-on-panel);
+}
+
+::selection {
+  background: var(--ink);
+  color: var(--lime);
+}
+
+/*
+ * The ONE primary action per screen (brief 3.3, 4.1, 4.2): the pink sticker. Ink on pink is
+ * 7.75:1. Pressed: it moves 2 px down and right, the way a sticker is pressed flat.
+ */
+.view .is-primary {
+  min-height: var(--tap-primary);
+  background: var(--accent);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  font-weight: 700;
+}
+
+.view .is-primary:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: none;
 }
 
 .view .view-note {
@@ -257,7 +322,7 @@
 }
 
 .view.today .today-banner .banner-tag {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   color: var(--danger);
 }

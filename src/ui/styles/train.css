@@ -53,7 +53,7 @@
 
 .vmod-eyebrow,
 .fcm-eyebrow {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -125,7 +125,7 @@
 }
 
 .vmod-search-eyebrow {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -188,7 +188,7 @@
 }
 
 .fcm-h {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -355,7 +355,7 @@
 }
 
 .unit-input label {
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.06em;
   color: var(--text-3);
 }
@@ -528,7 +528,7 @@
 /* --- Train view, the classes P4 Task 10's markup adds beyond the block above --- */
 
 .train-eyebrow {
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   color: var(--text-3);
 }
@@ -632,7 +632,7 @@
 }
 
 .set-marker {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   color: var(--text-3);
 }
@@ -665,7 +665,7 @@
 }
 
 .rest-label {
-  font-size: 0.65rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.12em;
   color: var(--panel-text);
 }

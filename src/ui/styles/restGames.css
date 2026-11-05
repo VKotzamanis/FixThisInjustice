@@ -153,7 +153,7 @@
   overflow: hidden;
   color: var(--accent);
   font-weight: 700;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   line-height: 1rem;
 }
 
@@ -221,7 +221,7 @@
   flex-wrap: wrap;
   gap: 0.25rem 0.75rem;
   margin-top: 0.375rem;
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
   line-height: 1.125rem;
 }
 
@@ -262,7 +262,7 @@
   width: 1rem;
   height: 1rem;
   border-width: 1px;
-  font-size: 0.625rem;
+  font-size: var(--text-xs);
 }
 
 /*
@@ -360,7 +360,7 @@
 }
 
 .rest-plate-readout dt {
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -633,7 +633,7 @@
   padding: 0 0.25rem;
   background: var(--accent);
   color: var(--ink);
-  font-size: 0.6875rem;
+  font-size: var(--text-xs);
   font-weight: 700;
 }
 

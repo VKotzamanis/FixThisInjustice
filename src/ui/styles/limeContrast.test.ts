@@ -175,7 +175,7 @@ const BOUNDARY_RULES: readonly {
   property: string;
   value: string;
 }[] = [
-  { sheet: 'views.css', css: viewsCss, selector: '.view button', property: 'border', value: '1px solid var(--line-2)' },
+  { sheet: 'views.css', css: viewsCss, selector: ':where(.view) :where(button)', property: 'border', value: '1px solid var(--line-2)' },
   {
     sheet: 'views.css',
     css: viewsCss,
@@ -410,11 +410,12 @@ describe('native controls are tinted with a colour that reads on lime', () => {
       .filter((r): r is { path: string; selector: string; value: string } => r.value !== null),
   );
 
-  it('finds the three tinted controls the brief names', () => {
+  it('finds the tinted controls: the three the brief names and the app-wide base rule (A10)', () => {
     expect(tinted.map((r) => r.selector).sort()).toEqual([
       '.intro-acknowledgement input',
       '.view.plan .plan-scrub input[type=\'range\']',
       '.wiz-slider input[type=\'range\']',
+      ":where(input[type='checkbox'], input[type='radio'], input[type='range'])",
     ]);
   });
 

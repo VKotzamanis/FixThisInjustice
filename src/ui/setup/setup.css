@@ -1479,7 +1479,7 @@
 }
 
 .guidance-gap-badge {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1574,7 +1574,7 @@
 
 .wiz .wiz-calendar-weekday {
   padding: 2px 0;
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   text-align: center;
   opacity: 0.7;
 }

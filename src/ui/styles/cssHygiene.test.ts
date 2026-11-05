@@ -56,4 +56,16 @@ describe('stylesheet hygiene (P4 design brief section 1, AGENTS rule 5)', () => 
     });
     expect([...new Set(missing)]).toEqual([]);
   });
+  it('sets no font size under 12 px (brief 3.1; .konami-art is aria-hidden ASCII art)', () => {
+    const PX_PER_REM = 16; // [px/rem] the root size
+    const small = Object.entries(ALL_SHEETS).flatMap(([path, css]) =>
+      [...stripComments(css).matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap((rule) =>
+        [...(rule[2] ?? '').matchAll(/font-size:\s*([0-9.]+)(px|rem)\b/g)]
+          .filter((d) => Number(d[1]) * (d[2] === 'rem' ? PX_PER_REM : 1) < 12)
+          .filter(() => !(rule[1] ?? '').includes('.konami-art'))
+          .map((d) => `${path}: ${(rule[1] ?? '').trim()} ${d[0]}`),
+      ),
+    );
+    expect(small).toEqual([]);
+  });
 });
