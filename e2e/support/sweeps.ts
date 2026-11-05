@@ -44,9 +44,37 @@ export async function contrastFailures(page: Page): Promise<ContrastFailure[]> {
       const y = lum(b);
       return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
     };
+    /*
+     * A sticker painted by an ancestor's `::before` (the current tab: an absolutely placed block
+     * at z-index -1 inside `isolation: isolate`) sits between that ancestor's own background and
+     * its text. It counts as a layer only when it is behind the content (negative z-index) and
+     * its box, from the ancestor's rect and the pseudo's insets, covers the text's box.
+     */
+    const stickerBehind = (n: Element, text: DOMRect): Rgba | null => {
+      const ps = getComputedStyle(n, '::before');
+      if (ps.content === 'none' || ps.position !== 'absolute' || !(Number.parseFloat(ps.zIndex) < 0)) return null;
+      const bg = parse(ps.backgroundColor);
+      if (bg[3] === 0) return null;
+      const r = n.getBoundingClientRect();
+      const inset = (v: string): number => (Number.isFinite(Number.parseFloat(v)) ? Number.parseFloat(v) : 0); // [px]
+      const box = {
+        left: r.left + inset(ps.left),
+        top: r.top + inset(ps.top),
+        right: r.right - inset(ps.right),
+        bottom: r.bottom - inset(ps.bottom),
+      };
+      const covers = text.left >= box.left - 0.5 && text.right <= box.right + 0.5 && text.top >= box.top - 0.5 && text.bottom <= box.bottom + 0.5;
+      return covers ? bg : null;
+    };
     const backgroundOf = (el: Element): Rgba => {
       const layers: Rgba[] = [];
+      const textBox = el.getBoundingClientRect();
       for (let n: Element | null = el; n !== null; n = n.parentElement) {
+        const sticker = stickerBehind(n, textBox);
+        if (sticker !== null) {
+          layers.push(sticker);
+          if (sticker[3] >= 0.99) break;
+        }
         const bg = parse(getComputedStyle(n).backgroundColor);
         if (bg[3] > 0) layers.push(bg);
         if (bg[3] >= 0.99) break;
