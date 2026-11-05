@@ -121,7 +121,11 @@ export interface SetRowProps {
   suggestedKg: Kg | null;
   logged: LoggedSet | null;
   isBodyweightExercise: boolean;
-  onLog: (loadKg: Kg, entry: SetEntry) => void;
+  /**
+   * Logs a new set. Returns false when the store refused it (AM-12: the slot was filled or the
+   * session finished elsewhere), so the row keeps what was typed and shows the refusal.
+   */
+  onLog: (loadKg: Kg, entry: SetEntry) => boolean;
   /**
    * Saves an edit of the logged set (ROADMAP L1). Returns false when the store refused it, so
    * the row stays open with what the user typed instead of claiming a save.
@@ -260,7 +264,11 @@ export function SetRow(props: SetRowProps): ReactElement {
     } else {
       // Never null here: only an edit keeps a load its record left unrecorded.
       if (loadKg === null) return;
-      onLog(loadKg, entry);
+      if (!onLog(loadKg, entry)) {
+        setEditError(t('status.sessionEditRefused'));
+        return;
+      }
+      setEditError(null);
     }
     setCountText('');
     setCountError(null);

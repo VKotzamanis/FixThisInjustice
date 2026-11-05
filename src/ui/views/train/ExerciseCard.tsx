@@ -22,7 +22,7 @@ import type {
   Profile,
 } from '../../../domain/types';
 import { achievableLoad, formatLoad, stepFor } from '../../../domain/units';
-import { useAppStore } from '../../../store';
+import { useAppStore, type LogSetResult } from '../../../store';
 import { useExerciseHistory } from '../../../store/selectors';
 import { useFormCuesModal } from '../../components/FormCuesModal';
 import { useVideoModal } from '../../components/VideoModal';
@@ -74,6 +74,10 @@ export interface ExerciseCardProps {
    */
   onCoach: (line: CoachLine, specimen: string | null) => void;
   onDeleted: () => void;
+  /** Audit C10: the session is finished; only logged rows show and nothing new can be logged. */
+  readOnly?: boolean;
+  /** Audit C10: a finished session opened for a forgotten set: logs are allowed and start no rest. */
+  amending?: boolean;
   /**
    * One line under the name saying what the session did to this card (ROADMAP L2): the planned
    * exercise a swap replaced, or that this card was swapped out. Null when nothing was.
@@ -99,6 +103,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     onToggle,
     onCoach,
     onDeleted,
+    readOnly = false,
+    amending = false,
     tag = null,
     children,
   } = props;
@@ -151,7 +157,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   // restS 0 in the plan means "use the cited default for this exercise and rep range".
   const restS = planned.restS > 0 ? planned.restS : defaultRestS(planned, library); // [s]
 
-  const handleLog = (n: number, loadKg: Kg, entry: SetEntry): void => {
+  /** Returns false when the store refused the set (AM-12); the row then shows the refusal. */
+  const handleLog = (n: number, loadKg: Kg, entry: SetEntry): boolean => {
     const set: Omit<LoggedSet, 'id' | 'loggedAt'> = {
       profileId: profile.id,
       assignmentDate,
@@ -174,24 +181,39 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     const now = Date.now(); // [ms] epoch UTC
     // Through getState(): the store's actions are created once and never replace themselves,
     // so subscribing to one buys nothing and hands the component an unbound method.
-    const { id, specimen } = useAppStore.getState().logSet(set, now);
+    let result: LogSetResult;
+    try {
+      result = useAppStore.getState().logSet(set, now, { allowFinished: amending });
+    } catch {
+      /*
+       * C03/C10, AM-12: the store refused (that slot is already logged, or the session was
+       * closed in another window) and wrote nothing. A click handler: a throw would escape every
+       * boundary, so the refusal goes to the row's own error line instead.
+       */
+      return false;
+    }
+    const { id, specimen } = result;
     // The coach line is computed against the history BEFORE this set, which is what makes a
     // personal best a comparison rather than a tautology.
     onCoach(coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units), specimen);
-    // [sets] This set's place in the lifting day, read after logSet so it counts itself. It seeds
-    // the rest game (ROADMAP F1), which rides on the timer and never changes `restS`.
-    const sessionSetOrdinal = Object.values(useAppStore.getState().sets).filter(
-      (s) => s.profileId === profile.id && s.assignmentDate === assignmentDate,
-    ).length;
-    useAppStore.getState().setRestTimer(
-      startRest(restS, now, {
-        exerciseId: exercise.id,
-        sessionId,
-        assignmentDate,
-        setNumber: n, // [sets]
-        sessionSetOrdinal,
-      }),
-    );
+    // C10: a forgotten set added after Finish starts no rest.
+    if (!amending) {
+      // [sets] This set's place in the lifting day, read after logSet so it counts itself. It
+      // seeds the rest game (ROADMAP F1), which rides on the timer and never changes `restS`.
+      const sessionSetOrdinal = Object.values(useAppStore.getState().sets).filter(
+        (s) => s.profileId === profile.id && s.assignmentDate === assignmentDate,
+      ).length;
+      useAppStore.getState().setRestTimer(
+        startRest(restS, now, {
+          exerciseId: exercise.id,
+          sessionId,
+          assignmentDate,
+          setNumber: n, // [sets]
+          sessionSetOrdinal,
+        }),
+      );
+    }
+    return true;
   };
 
   const domIdPrefix = `ex-${exercise.id}`;
@@ -293,6 +315,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
           <div className="set-list">
             {Array.from({ length: rowCount }, (_, i) => i + 1).map((n) => {
               const logged = todaysSets.find((s) => s.setNumber === n) ?? null;
+              if (readOnly && logged === null) return null; // C10: a finished day shows what was done
               return (
                 <SetRow
                   key={n}
@@ -307,9 +330,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   suggestedKg={suggestedKg}
                   logged={logged}
                   isBodyweightExercise={exercise.isBodyweight}
-                  onLog={(loadKg, entry) => {
-                    handleLog(n, loadKg, entry);
-                  }}
+                  onLog={(loadKg, entry) => handleLog(n, loadKg, entry)}
                   onEdit={(loadKg, entry, rpe) => {
                     if (logged === null) return false;
                     /*
@@ -361,14 +382,16 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setBonusRows((b) => b + 1);
-            }}
-          >
-            {t('button.addSet')}
-          </button>
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => {
+                setBonusRows((b) => b + 1);
+              }}
+            >
+              {t('button.addSet')}
+            </button>
+          )}
           {children}
         </div>
       )}

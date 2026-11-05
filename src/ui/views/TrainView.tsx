@@ -18,7 +18,7 @@
 // unlocked on the first pointer event that reaches this view, because a user who navigated
 // straight to Train never passed through Today's Start tap (code review A29); and the session
 // slice is cleared when the session ends, so a reload cannot revive a finished session.
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react';
 import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
 import { WARMUP_NOTICE } from '../../content/formCues';
@@ -40,7 +40,7 @@ import {
 import type { Exercise } from '../../domain/types';
 import { playSfx } from '../../skins/sfx';
 import { useAppStore } from '../../store';
-import { useActiveProfile, useTodaysSets } from '../../store/selectors';
+import { useActiveProfile, useOpenAssignment, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
 import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
@@ -65,7 +65,9 @@ export function TrainView(): ReactElement {
   const warmupDismissed = useAppStore((s) => s.ui.warmupNoticeDismissedByProfile);
   const todaysSets = useTodaysSets();
   const profileId = profile?.id ?? null;
-  const { push } = useToasts();
+  const { push, dismiss } = useToasts();
+  // Spec R1: the open session, whatever its date.
+  const open = useOpenAssignment();
   /*
    * The skin's words, read ONCE for the whole screen and threaded down.
    *
@@ -81,6 +83,10 @@ export function TrainView(): ReactElement {
   const overrides = useCopyOverrides();
 
   const [openId, setOpenId] = useState<string | null>(null);
+  // Audit C10: a finished session is read-only until the user opens it for a forgotten set.
+  const [amending, setAmending] = useState(false);
+  // Audit C03: the undo offer on screen, withdrawn once its slot is logged again.
+  const undoToastId = useRef<string | null>(null);
 
 
   // Held for as long as this view is mounted; released on unmount by the hook. Absence and
@@ -100,6 +106,11 @@ export function TrainView(): ReactElement {
 
   const onSetLogged = useCallback(
     (line: CoachLine, specimen: string | null) => {
+      // C03: re-filling the deleted set's slot spent the store's undo buffer; withdraw the offer.
+      if (undoToastId.current !== null && useAppStore.getState().session.undo === null) {
+        dismiss(undoToastId.current);
+        undoToastId.current = null;
+      }
       /*
        * P4 review item 2: the coach line arrives as a copy KEY and its values, and is resolved
        * here, at the boundary. The domain names which sentence to say; this file says it in the
@@ -157,7 +168,7 @@ export function TrainView(): ReactElement {
        */
       if (specimen !== null) push({ kind: 'specimen', cardId: specimen });
     },
-    [push, profileId, overrides],
+    [push, dismiss, profileId, overrides],
   );
 
   const onDeleted = useCallback(() => {
@@ -167,7 +178,7 @@ export function TrainView(): ReactElement {
     // that buffered nothing (an unknown id) makes no offer.
     const pending = useAppStore.getState().session.undo;
     if (pending === null) return;
-    push({
+    undoToastId.current = push({
       kind: 'undo',
       message: c('coach.setDeleted'),
       // [ms] epoch UTC. The buffer's own deadline, which is deletedAt + UNDO_WINDOW_MS.
@@ -199,7 +210,8 @@ export function TrainView(): ReactElement {
   }
 
   const today = todayLocal(profile.timezone);
-  const assignment = (assignments[profileId] ?? []).find((a) => a.date === today) ?? null;
+  // Spec R1 (C01/D01): the open session wins over the clock, whatever its date; else today's row.
+  const assignment = open ?? (assignments[profileId] ?? []).find((a) => a.date === today) ?? null;
   const cursor = cursors[profileId] ?? null;
   const plan = cursor === null ? null : (plans[cursor.planId] ?? null);
   const session =
@@ -263,7 +275,8 @@ export function TrainView(): ReactElement {
   // logged-only exercise) follow their slot or sit at the end and are not positions.
   const slotKeys = editable.map((e) => e.key);
   const libraryList = Object.values(library);
-  const editsOpen = assignment.status !== 'completed' && assignment.status !== 'skipped';
+  const finished = assignment.status === 'completed' || assignment.status === 'skipped';
+  const editsOpen = !finished;
   const editSession = (op: SessionEditOp): boolean => {
     /*
      * A click handler: React does not catch a throw from one, so the store's refusal (a
@@ -301,7 +314,7 @@ export function TrainView(): ReactElement {
     // actually ended the session (P4 polish item 3). Clearing it here instead threw the
     // running timer and the training day away even when the completion was REFUSED, and left
     // the same reset missing from every other way a session ends - Today's Skip above all.
-    useAppStore.getState().completeSession(profileId, today, now);
+    useAppStore.getState().completeSession(profileId, assignment.date, now);
     /*
      * The session-done sound (P8 Task 15), fired from the DOCUMENT rather than from the tap.
      *
@@ -322,7 +335,7 @@ export function TrainView(): ReactElement {
      * sounds toggled mid-run tells releaseAudio() the setting that is actually in effect.
      */
     const ended = (useAppStore.getState().assignments[profileId] ?? []).find(
-      (a) => a.date === today,
+      (a) => a.date === assignment.date,
     );
     if (ended?.status === 'completed') playSfx('session_done');
     releaseAudio({ sounds: useAppStore.getState().ui.sounds });
@@ -394,7 +407,9 @@ export function TrainView(): ReactElement {
               planned={entry.planned}
               block={block}
               library={library}
-              assignmentDate={today}
+              assignmentDate={assignment.date}
+              readOnly={finished && !amending}
+              amending={finished && amending}
               sessionId={session.id}
               isBonusExercise={bonus}
               isOpen={isCardOpen(entry.key)}
@@ -425,6 +440,17 @@ export function TrainView(): ReactElement {
           );
         })}
       </div>
+
+      {finished && !amending && (
+        <button
+          type="button"
+          onClick={() => {
+            setAmending(true);
+          }}
+        >
+          {c('button.addForgottenSet')}
+        </button>
+      )}
 
       {/*
         * ROADMAP L4: the library picker first, the free-text form as the fallback. Both put the

@@ -1911,3 +1911,124 @@ describe('TrainView rest game (ROADMAP F1)', () => {
     expect(launch()).toBeInTheDocument();
   });
 });
+
+describe('the open session (spec R1; audit C01, C10, C03)', () => {
+  /** The seed's in-progress row, moved to `date`. */
+  function seedOpenOn(date: string): AppState {
+    const s = seed();
+    return {
+      ...s,
+      assignments: { 'profile-1': (s.assignments['profile-1'] ?? []).map((a) => ({ ...a, date })) },
+    };
+  }
+
+  it('shows a session opened on an earlier day and logs against that day', () => {
+    seedStore(seedOpenOn(YESTERDAY));
+    renderTrain();
+    expect(screen.getByRole('heading', { name: 'Upper A' })).toBeInTheDocument();
+    logRow(1, '60', '8');
+    expect(Object.values(useAppStore.getState().sets).map((s) => s.assignmentDate)).toEqual([YESTERDAY]);
+  });
+
+  it('finishes the open session on its own date', () => {
+    seedStore(seedOpenOn(YESTERDAY));
+    renderTrain();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    expect(useAppStore.getState().assignments['profile-1']?.[0]).toMatchObject({
+      date: YESTERDAY,
+      status: 'completed',
+    });
+  });
+
+  it('keeps a finished session read-only until Add Forgotten Set, which starts no rest (C10)', () => {
+    const s = seed({
+      sets: [makeSet({ id: 'done-1', assignmentDate: TODAY, sessionId: 'session-1', exerciseId: UPPER.id, setNumber: 1 })],
+    });
+    seedStore({
+      ...s,
+      assignments: {
+        'profile-1': (s.assignments['profile-1'] ?? []).map((a) => ({ ...a, status: 'completed' as const, completedAt: NOW })),
+      },
+    });
+    renderTrain();
+    expect(screen.queryByRole('button', { name: FORMAT.logSetLabel(2) })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.addForgottenSet') }));
+    logRow(2, '60', '8');
+    expect(
+      Object.values(useAppStore.getState().sets)
+        .map((x) => x.setNumber)
+        .sort(),
+    ).toEqual([1, 2]);
+    expect(useAppStore.getState().session.restTimer).toBeNull();
+  });
+
+  it('withdraws the undo offer once the deleted set is logged again (C03)', () => {
+    seedStore(seed());
+    renderTrain();
+    logRow(1, '60', '8');
+    fireEvent.click(screen.getByRole('button', { name: FORMAT.deleteSetLabel(1) }));
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') })).toBeInTheDocument();
+    logRow(1, '60', '9');
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.undo') })).toBeNull();
+    expect(Object.values(useAppStore.getState().sets).map((x) => x.reps)).toEqual([9]);
+  });
+});
+
+/*
+ * AM-12 (review FIX-1): a logSet refusal never throws out of handleLog. Both refusals are races:
+ * another window writes between the render that offered Log and the tap, so the spy performs
+ * that other window's write and then calls the real action, which refuses on the real rule.
+ */
+describe('a refused log tap (AM-12, review FIX-1)', () => {
+  let windowErrors: string[];
+  const onWindowError = (e: ErrorEvent): void => {
+    windowErrors.push(e.message);
+  };
+  // The real action, put back after each test. Replaced through setState rather than vi.spyOn:
+  // zustand copies the state object on every write, so a spy on one copy outlives its restore.
+  const realLogSet = useAppStore.getState().logSet;
+  beforeEach(() => {
+    windowErrors = [];
+    window.addEventListener('error', onWindowError);
+  });
+  afterEach(() => {
+    window.removeEventListener('error', onWindowError);
+    useAppStore.setState({ logSet: realLogSet });
+  });
+
+  /** Runs `otherWindow` just before the real logSet, inside the same tap. */
+  function raceLogSet(otherWindow: () => void): void {
+    useAppStore.setState({
+      logSet: (set, now, opts) => {
+        otherWindow();
+        return realLogSet(set, now, opts);
+      },
+    });
+  }
+
+  it('a slot another window filled: the row shows the refusal and nothing throws', () => {
+    seedStore(seed());
+    renderTrain();
+    raceLogSet(() => {
+      const other = makeSet({ id: 'other-1', exerciseId: UPPER.id, setNumber: 1, reps: 5 }); // reps [repetitions]
+      useAppStore.setState({ sets: { ...useAppStore.getState().sets, [other.id]: other } });
+    });
+    logRow(1, '60', '8');
+    expect(windowErrors).toEqual([]);
+    expect(screen.getByText(copyFor('limelight', 'status.sessionEditRefused'))).toBeInTheDocument();
+    expect(Object.values(useAppStore.getState().sets).map((x) => x.id)).toEqual(['other-1']);
+  });
+
+  it('a day another window finished: nothing throws, nothing is stored, the day turns read-only', () => {
+    seedStore(seed());
+    renderTrain();
+    raceLogSet(() => {
+      useAppStore.getState().completeSession('profile-1', TODAY, NOW); // [ms] epoch, UTC
+    });
+    logRow(1, '60', '8');
+    expect(windowErrors).toEqual([]);
+    expect(Object.values(useAppStore.getState().sets)).toEqual([]);
+    expect(screen.queryByRole('button', { name: FORMAT.logSetLabel(1) })).toBeNull();
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.addForgottenSet') })).toBeInTheDocument();
+  });
+});

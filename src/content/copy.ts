@@ -308,6 +308,7 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'button.addForgottenSet'
   | 'status.staleSessionCompleted'
   | 'status.staleSessionReleased'
   | 'status.externalWriteReplaced'
@@ -1135,6 +1136,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Audit C10: the one way to add a set to a finished session; it starts no rest.
+  'button.addForgottenSet': 'Add Forgotten Set',
   // Spec R1: the one notice after a session left open on an earlier day was closed.
   'status.staleSessionCompleted': 'Your unfinished session was closed with its logged sets.',
   'status.staleSessionReleased': 'Your unstarted session was released. It is next again.',

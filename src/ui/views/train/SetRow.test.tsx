@@ -45,7 +45,7 @@ function renderRow(patch: Partial<SetRowProps> = {}): void {
     suggestedKg: 60, // [kg]
     logged: null,
     isBodyweightExercise: false,
-    onLog: vi.fn(),
+    onLog: vi.fn(() => true),
     onEdit: vi.fn(() => true),
     onEffort: vi.fn(() => true),
     onDelete: vi.fn(),
