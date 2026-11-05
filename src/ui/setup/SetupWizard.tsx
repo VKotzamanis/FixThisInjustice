@@ -98,10 +98,9 @@ import { BODY_FAT_CHART_INTRO, BODY_FAT_CHART_PERCENTAGES } from '../../content/
 import {
   BODY_FAT_CHART_CROP,
   BODY_FAT_CHART_VIEWS,
-  SetupArt,
+  BodyFatFigure,
   SetupIcon,
-  bodyFatArtId,
-  bodyFatChartArt,
+  bodyFatChartLoader,
   type SetupIconId,
 } from './setupArt';
 import {
@@ -1112,13 +1111,14 @@ function BodyFatChartModal(props: { onSelect: (pct: number) => void; onClose: ()
               >
                 <span className="wiz-chart-pair">
                   {BODY_FAT_CHART_VIEWS.map((view) => {
-                    const markup = bodyFatChartArt(sex, pct, view);
                     const { w, h } = BODY_FAT_CHART_CROP[view];
-                    return markup === undefined ? null : (
-                      <SetupArt
+                    // No file for this sex, percentage and view: no figure, as before.
+                    return bodyFatChartLoader(sex, pct, view) === undefined ? null : (
+                      <BodyFatFigure
                         key={view}
-                        id={bodyFatArtId(sex, pct, view)}
-                        markup={markup}
+                        sex={sex}
+                        pct={pct}
+                        view={view}
                         className="wiz-chart-fig"
                         style={{ flexGrow: w, aspectRatio: `${String(w)} / ${String(h)}` }}
                       />

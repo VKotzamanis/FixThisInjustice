@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { STEPS, SetupWizard } from './SetupWizard';
 // The stylesheet as text. jsdom renders no geometry, so a layout RULE is what can be asserted
 // here; the device pass itself is a row in docs/phone-visual-check.md (r2.10).
@@ -1275,7 +1275,7 @@ describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
    * per percentage, in BODY_FAT_CHART_PERCENTAGES order, each holding the pair for its own sex and
    * percentage; the file ids are derived from those numbers, never listed a second time.
    */
-  it('draws a front and side pair per percentage, per sex, in the order of the percentages', () => {
+  it('draws a front and side pair per percentage, per sex, in the order of the percentages', async () => {
     reachBody();
     fireEvent.click(screen.getByText('Click here to estimate'));
     const chart = screen.getByTestId('bodyfat-chart-backdrop');
@@ -1300,10 +1300,16 @@ describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
         ]);
         for (const el of art) {
           expect(el.getAttribute('aria-hidden')).toBe('true');
-          expect(el.querySelector('svg')).not.toBeNull();
         }
       });
     }
+    // Audit E09: each drawing is its own chunk, filled into a box that is already in place.
+    await waitFor(() => {
+      for (const el of chart.querySelectorAll('[data-art^="bf-"]')) {
+        expect(el.getAttribute('data-art-state')).toBe('ready');
+        expect(el.querySelector('svg')).not.toBeNull();
+      }
+    });
     // No dashed draft frame is left in the chart.
     expect(chart.querySelector('.wiz-placeholder-frame')).toBeNull();
   });

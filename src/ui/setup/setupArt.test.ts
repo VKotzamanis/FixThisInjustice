@@ -5,8 +5,9 @@ import {
   BODY_FAT_CHART_VIEWS,
   SETUP_ICON_ART,
   bodyFatArtId,
-  bodyFatChartArt,
+  bodyFatChartLoader,
 } from './setupArt';
+import setupArtSource from './setupArt.tsx?raw';
 
 /*
  * The setup wizard's art, read through the module the wizard renders from. The files themselves
@@ -28,25 +29,26 @@ describe('setup icon art', () => {
 });
 
 describe('body-fat chart art', () => {
-  it('has a front and a side drawing for every percentage, ids derived from the percentages', () => {
+  it('has a front and a side drawing for every percentage, ids derived from the percentages', async () => {
     for (const sex of ['male', 'female'] as const) {
       for (const pct of BODY_FAT_CHART_PERCENTAGES[sex]) {
         for (const view of BODY_FAT_CHART_VIEWS) {
           expect(bodyFatArtId(sex, pct, view)).toBe(`bf-${sex}-${String(pct)}-${view}`);
-          const markup = bodyFatChartArt(sex, pct, view);
-          expect(markup, bodyFatArtId(sex, pct, view)).toBeDefined();
+          const load = bodyFatChartLoader(sex, pct, view);
+          expect(load, bodyFatArtId(sex, pct, view)).toBeDefined();
+          const markup = await load?.();
           expect(markup).toContain('currentColor');
         }
       }
     }
   });
 
-  it('crops every drawing to its view box, one box per view so the scale is shared', () => {
+  it('crops every drawing to its view box, one box per view so the scale is shared', async () => {
     for (const sex of ['male', 'female'] as const) {
       for (const pct of BODY_FAT_CHART_PERCENTAGES[sex]) {
         for (const view of BODY_FAT_CHART_VIEWS) {
           const { x, y, w, h } = BODY_FAT_CHART_CROP[view];
-          const markup = bodyFatChartArt(sex, pct, view) ?? '';
+          const markup = (await bodyFatChartLoader(sex, pct, view)?.()) ?? '';
           expect(markup).toContain(`viewBox="${String(x)} ${String(y)} ${String(w)} ${String(h)}"`);
           // The source frame the crop was measured in is gone, not left as a second viewBox.
           expect(markup).not.toContain('viewBox="0 0 400 560"');
@@ -58,7 +60,14 @@ describe('body-fat chart art', () => {
     expect(BODY_FAT_CHART_CROP.front.h).toBe(BODY_FAT_CHART_CROP.side.h);
   });
 
-  it('returns nothing for a percentage with no drawing', () => {
-    expect(bodyFatChartArt('female', 15, 'front')).toBeUndefined();
+  it('has no loader for a percentage with no drawing', () => {
+    expect(bodyFatChartLoader('female', 15, 'front')).toBeUndefined();
+  });
+});
+
+describe('body-fat chart art is split out (audit E09)', () => {
+  it('reads the drawings through a lazy glob, never an eager one', () => {
+    expect(setupArtSource).toMatch(/bf-\*\.svg'/);
+    expect(setupArtSource).not.toMatch(/bf-\*\.svg', \{[^}]*eager: true/s);
   });
 });

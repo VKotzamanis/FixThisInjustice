@@ -23,9 +23,9 @@
 // The specimen toast (src/ui/components/ToastQueue.tsx) prints the category as text and carries
 // no art; styling survey item 8 planned the category glyph there. Not wired by this file's task.
 
-import { useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { InlineArt } from '../components/InlineArt';
+import { useLazyMarkup } from '../components/useLazyMarkup';
 
 /** Every card icon file, by path, as a loader of its SVG text (viewBox 0 0 480 480, currentColor). */
 const ICON_FILE_LOADERS = import.meta.glob<string>('../../assets/art/card-*.svg', {
@@ -59,37 +59,16 @@ const loadedIcons = new Map<string, string>();
  * The SAME span is the placeholder and the icon: `data-icon-state` reads `loading`, then `ready`,
  * and the file's markup is set into it in place. The box's size belongs to the caller's class
  * (atlas.css fixes `.atlas-card-art` and `.atlas-modal-art`), so arriving art never moves a line.
- * A file that fails to load leaves the box empty: the title still names the card.
+ * A file that fails to load leaves the box empty and `failed`, retried in place (useLazyMarkup): the title still names the card.
  */
 export function CardIcon(props: { id: string; className: string }): ReactElement {
   const { id } = props;
-  const [arrived, setArrived] = useState<{ id: string; markup: string } | undefined>(undefined);
-  const markup = arrived?.id === id ? arrived.markup : loadedIcons.get(id);
-
-  useEffect(() => {
-    if (loadedIcons.has(id)) return undefined;
-    const load = CARD_ICON_LOADERS[id];
-    if (load === undefined) return undefined;
-    let mounted = true;
-    load().then(
-      (text) => {
-        loadedIcons.set(id, text);
-        if (mounted) setArrived({ id, markup: text });
-      },
-      () => {
-        // Nothing to show and nothing to report: the empty box stays, the card keeps its title,
-        // and the next mount tries again.
-      },
-    );
-    return () => {
-      mounted = false;
-    };
-  }, [id]);
-
+  // Audit E12: a failed load retries in place (online / visible), and says 'failed' when it stops.
+  const { markup, state } = useLazyMarkup(id, CARD_ICON_LOADERS[id], loadedIcons);
   return (
     <InlineArt
       markup={markup ?? ''}
-      data={{ 'data-card-icon': id, 'data-icon-state': markup === undefined ? 'loading' : 'ready' }}
+      data={{ 'data-card-icon': id, 'data-icon-state': state }}
       className={props.className}
     />
   );

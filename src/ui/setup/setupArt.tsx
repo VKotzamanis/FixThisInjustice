@@ -13,6 +13,7 @@ import tapeAbdomenMale from '../../assets/art/tape-abdomen-male.svg?raw';
 import tapeAbdomenFemale from '../../assets/art/tape-abdomen-female.svg?raw';
 import tapeHip from '../../assets/art/tape-hip.svg?raw';
 import { InlineArt } from '../components/InlineArt';
+import { useLazyMarkup } from '../components/useLazyMarkup';
 
 /*
  * The setup wizard's art: the owner's drawings in src/assets/art/ (approved 2026-10-18, survey
@@ -49,14 +50,16 @@ export type BodyFatChartView = 'front' | 'side';
 export const BODY_FAT_CHART_VIEWS: readonly BodyFatChartView[] = ['front', 'side'];
 
 /*
- * Every body-fat drawing in the folder, by file name. The glob is the only list of files: which
- * ones the chart asks for is derived from BODY_FAT_CHART_PERCENTAGES (AGENTS rule 2), so a
- * percentage with no drawing reads as a missing entry, which setupArt.test.ts fails on.
+ * Every body-fat drawing in the folder, by file name, as a LOADER (audit E09): the 24 drawings
+ * (87,685 B raw) are each their own chunk, fetched when the chart opens, not carried by the setup
+ * chunk's first load. The service worker precaches every chunk, so the chart still draws offline.
+ * The glob is the only list of files: which ones the chart asks for is derived from
+ * BODY_FAT_CHART_PERCENTAGES (AGENTS rule 2), so a percentage with no drawing reads as a missing
+ * entry, which setupArt.test.ts fails on.
  */
 const BODY_FAT_FILES = import.meta.glob<string>('../../assets/art/bf-*.svg', {
   query: '?raw',
   import: 'default',
-  eager: true,
 });
 
 /** The file id for one drawing, e.g. `bf-female-45-side`. */
@@ -85,22 +88,62 @@ export const BODY_FAT_CHART_CROP: Readonly<
 /** The source frame the crop above was measured in. */
 const BODY_FAT_SOURCE_VIEWBOX = 'viewBox="0 0 400 560"';
 
-/**
- * One body-fat drawing with its view's crop applied, or undefined when the folder has no file for
- * that sex, percentage and view. A file drawn in another frame is returned uncropped rather than
- * cropped by numbers measured for a different frame.
- */
-export function bodyFatChartArt(
-  sex: BodyFatChartSex,
-  pct: number,
-  view: BodyFatChartView,
-): string | undefined {
-  const markup = BODY_FAT_FILES[`../../assets/art/${bodyFatArtId(sex, pct, view)}.svg`];
-  if (markup === undefined) return undefined;
+/** Applies the view's crop to one drawing's text. A file in another frame is returned uncropped. */
+function cropBodyFat(markup: string, view: BodyFatChartView): string {
   const { x, y, w, h } = BODY_FAT_CHART_CROP[view];
   return markup.replace(
     BODY_FAT_SOURCE_VIEWBOX,
     `viewBox="${String(x)} ${String(y)} ${String(w)} ${String(h)}"`,
+  );
+}
+
+/** One loader per drawing id, created once, so a re-render never restarts a load in flight. */
+const bodyFatLoaders = new Map<string, () => Promise<string>>();
+
+/**
+ * The loader for one drawing, with its view's crop applied, or undefined when the folder has no
+ * file for that sex, percentage and view.
+ */
+export function bodyFatChartLoader(
+  sex: BodyFatChartSex,
+  pct: number,
+  view: BodyFatChartView,
+): (() => Promise<string>) | undefined {
+  const id = bodyFatArtId(sex, pct, view);
+  const memo = bodyFatLoaders.get(id);
+  if (memo !== undefined) return memo;
+  const load = BODY_FAT_FILES[`../../assets/art/${id}.svg`];
+  if (load === undefined) return undefined;
+  const cropped = (): Promise<string> => load().then((markup) => cropBodyFat(markup, view));
+  bodyFatLoaders.set(id, cropped);
+  return cropped;
+}
+
+/** Drawings already loaded this page life, by id: a reopened chart draws on its first frame. */
+const bodyFatLoaded = new Map<string, string>();
+
+/**
+ * One body-fat drawing, loaded on demand into a box that is already in place (audit E09/E12).
+ * `data-art-state` reads loading, ready or failed; a failed load retries in place when the
+ * browser is back online or the page is visible again (useLazyMarkup).
+ */
+export function BodyFatFigure(props: {
+  sex: BodyFatChartSex;
+  pct: number;
+  view: BodyFatChartView;
+  className: string;
+  style?: CSSProperties | undefined;
+}): JSX.Element {
+  const id = bodyFatArtId(props.sex, props.pct, props.view);
+  const { markup, state } = useLazyMarkup(id, bodyFatChartLoader(props.sex, props.pct, props.view), bodyFatLoaded);
+  return (
+    <InlineArt
+      // Trimmed: the files end in whitespace after </svg>, which would add a text node.
+      markup={(markup ?? '').trim()}
+      data={{ 'data-art': id, 'data-art-state': state }}
+      className={`wiz-art ${props.className}`}
+      style={props.style}
+    />
   );
 }
 
