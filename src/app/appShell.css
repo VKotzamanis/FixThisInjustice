@@ -1,8 +1,8 @@
-/* Minimal shell chrome: the bars and banners, plus the view navigation P2 Task 8 added. */
+/* Minimal shell chrome: the header and the banners (the tab bar is src/ui/nav/tabBar.css). */
 /*
  * The one-line header (docs/design/p4-design-brief.md 2.1; plan AM-4a-1): 44 px plus the
  * status-bar inset on an installed iPhone (viewport-fit=cover, black-translucent: F04), brand,
- * page title, then the owner's moving ticker in the rest of the row. No backdrop-filter: the bar
+ * page title, then the owner's moving ticker in the rest of the row. No backdrop blur: the bar
  * is opaque, so a blur only cost compositor time on every scroll (F15). No bottom border: a 1 px
  * --line on the black bar was invisible and took a pixel from the 44 px row the ticker fills.
  */

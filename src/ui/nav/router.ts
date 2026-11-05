@@ -18,25 +18,16 @@ import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useAppStore } from '../../store';
 import { abandonOverlaysForNavigation } from '../overlay/overlayStack';
 import { currentEntry, pushEntry, replaceEntry, setViewShower } from './history';
+import { routerState } from './routerState';
 import { isViewId, type ViewId } from './views';
-
-/** How the next view change was asked for: from a tab or Back (restore), or by the app (top). */
-let restoreNext = false;
 
 /** A tab, the More sheet or a hotkey digit: the user is moving between views, not being moved. */
 export function goToView(view: ViewId): void {
-  restoreNext = true;
+  routerState.restoreNext = true;
   useAppStore.getState().setUi({ lastView: view });
 }
 
-/** [px] the offset each view was left at. Module scope: one shell, one window scroller. */
-const savedScroll = new Map<string, number>();
-
-/** Test seam (src/test/setup.ts): forget offsets and the pending restore flag. */
-export function resetRouterForTests(): void {
-  savedScroll.clear();
-  restoreNext = false;
-}
+export { resetRouterForTests } from './routerState';
 
 export function useHistoryRouter(view: ViewId): void {
   // Captured synchronously when lastView changes, before the old view is hidden and the page
@@ -46,9 +37,9 @@ export function useHistoryRouter(view: ViewId): void {
     () =>
       useAppStore.subscribe((state, prev) => {
         if (state.ui.lastView === prev.ui.lastView) return;
-        savedScroll.set(prev.ui.lastView, window.scrollY); // [px]
-        restoreRef.current = restoreNext;
-        restoreNext = false;
+        routerState.savedScroll.set(prev.ui.lastView, window.scrollY); // [px]
+        restoreRef.current = routerState.restoreNext;
+        routerState.restoreNext = false;
       }),
     [],
   );
@@ -57,7 +48,7 @@ export function useHistoryRouter(view: ViewId): void {
   useEffect(() => {
     setViewShower((next) => {
       if (!isViewId(next)) return;
-      restoreNext = true;
+      routerState.restoreNext = true;
       useAppStore.getState().setUi({ lastView: next });
     });
     if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
@@ -82,6 +73,6 @@ export function useHistoryRouter(view: ViewId): void {
     const restore = restoreRef.current;
     restoreRef.current = false;
     // 'instant': a view switch is not a scroll the user should watch (brief section 6).
-    window.scrollTo({ top: restore ? (savedScroll.get(view) ?? 0) : 0, behavior: 'instant' }); // [px]
+    window.scrollTo({ top: restore ? (routerState.savedScroll.get(view) ?? 0) : 0, behavior: 'instant' }); // [px]
   }, [view]);
 }

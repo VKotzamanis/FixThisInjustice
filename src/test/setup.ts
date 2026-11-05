@@ -3,7 +3,7 @@ import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { resetHistoryForTests } from '../ui/nav/history';
 import { resetOverlaysForTests } from '../ui/overlay/overlayStack';
-import { resetRouterForTests } from '../ui/nav/router';
+import { resetRouterForTests } from '../ui/nav/routerState';
 
 // vitest runs with globals: false, so Testing Library's automatic cleanup does
 // not register itself. Without this, rendered trees accumulate across tests in
@@ -31,5 +31,5 @@ if (typeof HTMLCanvasElement !== 'undefined') {
 // on every call. The router (src/ui/nav/router.ts) scrolls on every view switch, so every suite
 // that mounts the shell would print it. A no-op stub; src/ui/nav/router.test.tsx spies on it.
 if (typeof window !== 'undefined') {
-  window.scrollTo = (() => undefined) as typeof window.scrollTo;
+  window.scrollTo = () => undefined;
 }

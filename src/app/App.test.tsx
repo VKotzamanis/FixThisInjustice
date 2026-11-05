@@ -77,6 +77,9 @@ vi.mock('../config/reminders', async (importOriginal) => {
 vi.mock('../domain/reminders/client', () => ({
   subscribe: vi.fn(),
   syncSchedule: vi.fn(),
+  // Settings (where the footer now lives, P4a Task 8) renders the reminder panel.
+  pushAvailability: vi.fn(() => 'unsupported'),
+  unsubscribe: vi.fn(),
 }));
 
 /**
@@ -346,7 +349,10 @@ describe('site footer', () => {
     act(() => {
       useAppStore.getState().setUi({ lastView: 'settings' });
     });
-    expect(screen.getByText(copy('advice.dataOnDevice'))).toBeTruthy();
+    // Settings' own Data section says it too, so the footer's line is read inside the footer.
+    const footer = document.querySelector<HTMLElement>('.site-footer');
+    expect(footer).not.toBeNull();
+    expect(within(footer!).getByText(copy('advice.dataOnDevice'))).toBeTruthy();
   });
 });
 

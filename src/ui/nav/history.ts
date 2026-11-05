@@ -83,7 +83,8 @@ function onPopState(event: PopStateEvent): void {
 }
 
 function ensureListening(): void {
-  if (listening) return;
+  // No window in the node test environment (build/*.test.ts), which still loads src/test/setup.ts.
+  if (listening || typeof window === 'undefined') return;
   window.addEventListener('popstate', onPopState);
   listening = true;
 }
