@@ -19,7 +19,7 @@
 // is applied only where a number becomes text, through src/domain/units.ts, so the geometry is
 // unit-free and the labels cannot state a unit the profile does not use.
 
-import type { ReactElement } from 'react';
+import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { addDays, compareLocalDate, daysBetween } from '../../domain/dates';
 import type { ProjectionAnchor } from '../../domain/measurements';
@@ -56,14 +56,37 @@ export interface BodyMassChartProps {
   projectionFrom?: ProjectionAnchor | undefined;
 }
 
-const VIEW_W = 640; // viewBox units
-const VIEW_H = 260; // viewBox units
-const PAD_L = 56; // viewBox units; room for a "210.1 lb" tick label
-const PAD_R = 12;
-const PAD_T = 14;
-const PAD_B = 30; // room for the date labels under the axis
+/**
+ * Brief 4.3 (D9, G10): the viewBox is the container's own size, so one unit is one CSS pixel and
+ * a 12-unit label is 12 px on every phone. 340 px is the width used where ResizeObserver is
+ * absent (jsdom); a 320-412 px phone column is 288-380 px.
+ */
+export const CHART_FALLBACK_WIDTH_PX = 340; // [px]
+const PAD_L = 56; // [px] room for a "210.1 lb" tick label at 12 px
+const PAD_R = 12; // [px]
+const PAD_T = 8; // [px]
+const PAD_B = 24; // [px] the date labels under the axis; plot = (200 - 32) / 200 = 84 %
 const Y_TICKS = 5;
-const DEFAULT_HEIGHT = 260; // [px]
+const DEFAULT_HEIGHT = 200; // [px]
+const LABEL_PX = 12; // [px] the type floor (brief 3.1)
+
+/** [px] The width of `ref`'s element, followed as it changes; the fallback where unmeasurable. */
+function useContainerWidth(ref: { readonly current: HTMLDivElement | null }): number {
+  const [width, setWidth] = useState(CHART_FALLBACK_WIDTH_PX);
+  useEffect(() => {
+    const el = ref.current;
+    if (el === null || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver((entries) => {
+      const measured = entries[0]?.contentRect.width ?? 0; // [px]
+      if (measured > 0) setWidth(Math.round(measured));
+    });
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+  return width;
+}
 
 /**
  * [kg] Narrowest mass domain the chart will draw. A domain narrower than this is widened about
@@ -85,6 +108,9 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
   const { entries, units, baselineKg, baselineDate, expectedRateKgPerWeek, horizonDays, today } =
     props;
   const height = props.height ?? DEFAULT_HEIGHT;
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const VIEW_W = useContainerWidth(wrapRef); // [px] = viewBox units
+  const VIEW_H = height; // [px] = viewBox units
 
   // Programme order, not entry order: a weigh-in typed in late still belongs to the civil day
   // it was taken on. Ties on the day are broken by the instant it was entered, which is the
@@ -185,11 +211,12 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
         );
 
   return (
+    <div ref={wrapRef} className="bm-chart">
     <svg
-      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-      width="100%"
+      viewBox={`0 0 ${String(VIEW_W)} ${String(VIEW_H)}`}
+      width={VIEW_W}
       height={height}
-      preserveAspectRatio="xMidYMid meet"
+      preserveAspectRatio="none"
       role="img"
       aria-label={ariaLabel}
       // Tabular figures so the tick column does not shift width as the digits change.
@@ -207,9 +234,9 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
           <text
             data-testid="y-label"
             x={PAD_L - 6}
-            y={coord(yAt(kg) + 3)}
+            y={coord(yAt(kg) + 4)}
             textAnchor="end"
-            fontSize="10"
+            fontSize={LABEL_PX}
             fill="var(--chart-text)"
           >
             {tickLabels[i]}
@@ -228,9 +255,9 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
       <text
         data-testid="x-label"
         x={PAD_L}
-        y={VIEW_H - PAD_B + 14}
+        y={VIEW_H - PAD_B + 16}
         textAnchor="start"
-        fontSize="10"
+        fontSize={LABEL_PX}
         fill="var(--chart-text)"
       >
         {firstDate}
@@ -238,9 +265,9 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
       <text
         data-testid="x-label"
         x={VIEW_W - PAD_R}
-        y={VIEW_H - PAD_B + 14}
+        y={VIEW_H - PAD_B + 16}
         textAnchor="end"
-        fontSize="10"
+        fontSize={LABEL_PX}
         fill="var(--chart-text)"
       >
         {lastDate}
@@ -252,8 +279,8 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
           d={`M ${coord(xAt(projStartDay))} ${coord(yAt(projStartKg))} L ${coord(xAt(projEndDay))} ${coord(yAt(projEndKg))}`}
           fill="none"
           stroke="var(--chart-line)"
-          strokeWidth="1.25"
-          strokeDasharray="3 3"
+          strokeWidth="1.5"
+          strokeDasharray="4 4"
         />
       )}
 
@@ -263,7 +290,7 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
           d={measuredPath}
           fill="none"
           stroke="var(--chart-actual)"
-          strokeWidth="1.75"
+          strokeWidth="2"
           strokeLinejoin="round"
         />
       )}
@@ -274,12 +301,13 @@ export function BodyMassChart(props: BodyMassChartProps): ReactElement {
           data-testid="measured-point"
           cx={coord(xAt(daysBetween(baselineDate, e.date)))}
           cy={coord(yAt(e.massKg))}
-          r="3"
+          r="4"
           fill="var(--chart-marker)"
         >
           <title>{FORMAT.bodyMassPoint(e.date, formatMass(e.massKg, units))}</title>
         </circle>
       ))}
     </svg>
+    </div>
   );
 }

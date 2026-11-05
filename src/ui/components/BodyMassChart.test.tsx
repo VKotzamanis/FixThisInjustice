@@ -9,12 +9,12 @@
 //  - Assertions quote src/content/copy.ts and src/domain/units.ts rather than literals, per the
 //    copy contract ("test assertions quote the default table").
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { FORMAT } from '../../content/copy';
 import { formatMass } from '../../domain/units';
 import type { BodyMassEntry } from '../../domain/types';
-import { BodyMassChart } from './BodyMassChart';
+import { BodyMassChart, CHART_FALLBACK_WIDTH_PX } from './BodyMassChart';
 
 function entry(date: string, massKg: number, id: string): BodyMassEntry {
   return {
@@ -244,5 +244,50 @@ describe('the anchored projection (audit G11)', () => {
       <BodyMassChart entries={[]} units="metric" {...BASE} projectionFrom={{ date: '2026-07-01', massKg: 90 }} />,
     );
     expect(container.querySelector("[data-testid='projection']")).toBeNull();
+  });
+});
+
+describe('drawn at its real width (brief 4.3; D9, G10)', () => {
+  it('uses one viewBox unit per CSS pixel, 200 px tall, at the fallback width without ResizeObserver', () => {
+    const { container } = render(<BodyMassChart entries={[entry('2026-01-12', 94, 'a')]} units="metric" {...BASE} />);
+    const svg = container.querySelector('svg');
+    expect(svg?.getAttribute('viewBox')).toBe(`0 0 ${String(CHART_FALLBACK_WIDTH_PX)} 200`);
+    expect(svg?.getAttribute('width')).toBe(String(CHART_FALLBACK_WIDTH_PX));
+    expect(svg?.getAttribute('height')).toBe('200');
+  });
+
+  it('takes the container width a ResizeObserver reports', () => {
+    class FakeObserver {
+      readonly cb: ResizeObserverCallback;
+      constructor(cb: ResizeObserverCallback) {
+        this.cb = cb;
+      }
+      observe(): void {
+        // [px] the 390 px phone's column: 390 - 2 x 16 gutter
+        this.cb([{ contentRect: { width: 358 } } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver);
+      }
+      disconnect(): void {
+        return;
+      }
+    }
+    vi.stubGlobal('ResizeObserver', FakeObserver);
+    const { container } = render(<BodyMassChart entries={[]} units="metric" {...BASE} />);
+    expect(container.querySelector('svg')?.getAttribute('viewBox')).toBe('0 0 358 200'); // [px]
+    vi.unstubAllGlobals();
+  });
+
+  it('sets tick labels at 12 px, points at r 4, the line at 2 and the projection at 1.5 dashed', () => {
+    const { container } = render(<BodyMassChart entries={[entry('2026-01-12', 94, 'a')]} units="metric" {...BASE} />);
+    for (const text of container.querySelectorAll('text')) expect(text.getAttribute('font-size')).toBe('12');
+    expect(container.querySelector("[data-testid='measured-point']")?.getAttribute('r')).toBe('4');
+    expect(container.querySelector("[data-testid='measured']")?.getAttribute('stroke-width')).toBe('2');
+    expect(container.querySelector("[data-testid='projection']")?.getAttribute('stroke-width')).toBe('1.5');
+  });
+
+  it('gives the plot at least 70 % of the height', () => {
+    const { container } = render(<BodyMassChart entries={[entry('2026-01-12', 94, 'a')]} units="metric" {...BASE} />);
+    const grid = [...container.querySelectorAll('g line')].map((l) => Number(l.getAttribute('y1')));
+    const span = Math.max(...grid) - Math.min(...grid); // [px] top tick to bottom tick
+    expect(span / 200).toBeGreaterThanOrEqual(0.7);
   });
 });
