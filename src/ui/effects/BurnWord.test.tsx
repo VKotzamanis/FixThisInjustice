@@ -4,6 +4,8 @@ import { BurnWord } from './BurnWord';
 import { createBurn, type BurnHandle } from './burnText';
 
 vi.mock('./burnText', () => ({ createBurn: vi.fn() }));
+// The lit resting frame has its own suite (LitWord.test.tsx); here it never draws.
+vi.mock('./litText', () => ({ renderLit: vi.fn(() => null), litSwitchOn: vi.fn(() => false) }));
 
 const create = vi.mocked(createBurn);
 
@@ -133,6 +135,15 @@ describe('BurnWord moments (AM-4a-9)', () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('rest="lit" shows the lit word between burns and keeps one accessible word', () => {
+    const f = fakeHandle();
+    create.mockReturnValue(f.handle);
+    const { container } = render(<BurnWord text="rest over" rest="lit" burn={false} />);
+    expect(container.querySelector('.burn-word .burn-word-text .lit-word')).not.toBeNull();
+    expect(screen.getAllByText('rest over')).toHaveLength(1);
     expect(create).not.toHaveBeenCalled();
   });
 });

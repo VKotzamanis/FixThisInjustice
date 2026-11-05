@@ -11,9 +11,13 @@
 //
 // Never during set entry: a burn does not start while a text field has focus, and stops the
 // moment one gains it. Reduced motion: burnText draws one still frame and runs no frame loop.
+//
+// rest="lit" (owner answer to review item 8): between burns the word shows the static lit frame
+// (LitWord, lime accents) instead of the plain text; it is hidden while the burn runs.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { prefersReducedMotion } from '../hooks/reducedMotion';
 import { createBurn, type BurnHandle } from './burnText';
+import { LitWord } from './LitWord';
 import './burnWord.css';
 
 export interface BurnWordProps {
@@ -23,6 +27,8 @@ export interface BurnWordProps {
   /** false: the word shows on its plate and never burns (a moment that is already stale). */
   burn?: boolean;
   className?: string;
+  /** What the word shows when not burning: the plain text (default) or the lit still frame. */
+  rest?: 'plain' | 'lit';
 }
 
 /** True while the user is typing into a field: a set being entered, or any other. */
@@ -31,7 +37,7 @@ export function enteringText(target: EventTarget | null = document.activeElement
 }
 
 export function BurnWord(props: BurnWordProps): ReactElement {
-  const { text, delayMs = 0, burn = true, className } = props;
+  const { text, delayMs = 0, burn = true, className, rest = 'plain' } = props;
   const hostRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const [live, setLive] = useState(false);
@@ -83,7 +89,7 @@ export function BurnWord(props: BurnWordProps): ReactElement {
   return (
     <span ref={hostRef} className={`burn-word${live ? ' is-burning' : ''}${className === undefined ? '' : ` ${className}`}`}>
       <span ref={textRef} className="burn-word-text">
-        {text}
+        {rest === 'lit' ? <LitWord text={text} /> : text}
       </span>
     </span>
   );

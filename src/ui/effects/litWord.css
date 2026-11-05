@@ -1,0 +1,26 @@
+/*
+ * The lit word (owner answer to review item 8; src/ui/effects/LitWord.tsx). Tokens only.
+ *
+ * Inline, so a title keeps its ellipsis; the canvas is centred on the word and may overflow it
+ * (the glow, owner-approved with the burn: DESIGN.md "Burn"). Without the frame the word keeps
+ * the owner's switch, --panel-glow, as a static text glow. With the frame up the glyph fill is
+ * transparent and the glow shadow off; `color` is untouched, so the contrast sweep reads the
+ * lime the frame rests on (--lit-cool).
+ */
+.lit-word {
+  position: relative;
+  text-shadow: var(--panel-glow);
+}
+
+.lit-word.is-lit .lit-word-text {
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+}
+
+.lit-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

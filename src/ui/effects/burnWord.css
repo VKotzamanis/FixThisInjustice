@@ -21,6 +21,11 @@
   color: transparent;
 }
 
+/* rest="lit": the still lit frame steps aside while the burn runs (one picture at a time). */
+.burn-word.is-burning .lit-canvas {
+  visibility: hidden;
+}
+
 .burn-canvas {
   position: absolute;
   left: 50%;
