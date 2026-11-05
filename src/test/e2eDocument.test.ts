@@ -47,4 +47,9 @@ describe('the e2e document builder', () => {
     expect(logLabel(1)).toBe(FORMAT.logSetLabel(1));
     expect(deleteLabel(1)).toBe(FORMAT.deleteSetLabel(1));
   });
+
+  it('reads the recovery words the app renders (plan Task 17)', () => {
+    expect(LABEL.recoveryHeading).toBe(copyFor('limelight', 'hero.storedDataRefused'));
+    expect(copyFor('limelight', 'status.writesPaused').startsWith(LABEL.writesPaused)).toBe(true);
+  });
 });

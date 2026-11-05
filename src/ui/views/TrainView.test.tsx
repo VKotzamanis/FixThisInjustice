@@ -1986,7 +1986,8 @@ describe('a refused log tap (AM-12, review FIX-1)', () => {
   };
   // The real action, put back after each test. Replaced through setState rather than vi.spyOn:
   // zustand copies the state object on every write, so a spy on one copy outlives its restore.
-  const realLogSet = useAppStore.getState().logSet;
+  // `.bind` for @typescript-eslint/unbound-method; store actions never read `this`.
+  const realLogSet = useAppStore.getState().logSet.bind(undefined);
   beforeEach(() => {
     windowErrors = [];
     window.addEventListener('error', onWindowError);
