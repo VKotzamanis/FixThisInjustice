@@ -310,6 +310,10 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'hero.storedDataRefused'
+  | 'hero.storageUnreadable'
+  | 'status.writesPaused'
+  | 'label.importBackup'
   | 'button.logAnyway'
   | 'advice.loadLooksOff'
   | 'button.addForgottenSet'
@@ -1143,6 +1147,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Audit B01/B17/B18: the recovery screen that replaces intro and setup on a refused document.
+  'hero.storedDataRefused': 'Stored Data Could Not Be Read',
+  'hero.storageUnreadable': 'Storage Is Not Available',
+  'status.writesPaused': 'Nothing is saved until you import a backup or clear the stored data.',
+  'label.importBackup': 'Import a Backup',
   // Spec R4: the one-tap load plausibility question on a set row.
   'button.logAnyway': 'Log Anyway',
   'advice.loadLooksOff': 'That load is far from your last one. Check it.',

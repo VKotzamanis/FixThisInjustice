@@ -42,6 +42,7 @@ import { TargetsView } from '../ui/views/TargetsView';
 import { TodayView } from '../ui/views/TodayView';
 import { TrainView } from '../ui/views/TrainView';
 import { downloadText } from './download';
+import { LoadRecovery } from './LoadRecovery';
 import { useWeeklyClose } from './useWeeklyClose';
 import { ReminderSync } from './ReminderSync';
 import { UpdatePrompt } from './UpdatePrompt';
@@ -570,6 +571,8 @@ export function App(): ReactElement {
    */
   useWeeklyClose();
   const profile = useActiveProfile();
+  // Audit B01: a refused or unreadable document replaces intro, boot, setup and the views.
+  const loadError = useLoadError();
 
   /*
    * The two CRT presentation layers are opt-in, and the preference is what
@@ -647,8 +650,6 @@ export function App(): ReactElement {
                * because it is the piece that has to notice the moment the sequence records itself
                * as seen and disappear.
                */}
-              <IntroGate />
-
               {/*
                * The boot sequence (P8 Task 6). A FIXED overlay covering the whole screen while it
                * runs, so its position in the tree carries no layout and the app behind it does not
@@ -664,14 +665,21 @@ export function App(): ReactElement {
                * for the intro and what P8 already means for the boot: the user meets exactly one
                * full-screen sequence at a time.
                */}
-              {introSeen && <BootGate />}
-
-              {profile === null ? (
-                // No profile means setup has not run. The wizard is the whole screen until it has:
-                // every other view needs a profile to read units, time zone and targets from.
-                <SetupWizard />
+              {/*
+               * Audit B01/B17/B18 (plan Task 17): a refused or unreadable document shows the
+               * recovery screen INSTEAD of the intro, boot, setup and the views; the load-error
+               * banner above stays. No profile otherwise means setup has not run: the wizard is
+               * the whole screen until it has, because every other view needs a profile to read
+               * units, time zone and targets from.
+               */}
+              {loadError !== null ? (
+                <LoadRecovery />
               ) : (
-                <ViewShell />
+                <>
+                  <IntroGate />
+                  {introSeen && <BootGate />}
+                  {profile === null ? <SetupWizard /> : <ViewShell />}
+                </>
               )}
             </main>
 

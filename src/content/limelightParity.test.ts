@@ -22,7 +22,9 @@
 // the finished-session amend (audit C10, Task 12; base table only), and `button.logAnyway` and
 // `advice.loadLooksOff` for the load plausibility question (spec R4, Task 14; base table only),
 // and `error.nameTooLong` and `error.startTimeRequired` for the wizard (spec R5, Task 15; base
-// table only). No snapshot row was changed to add them.
+// table only), and the four recovery-screen keys `hero.storedDataRefused`,
+// `hero.storageUnreadable`, `status.writesPaused`, `label.importBackup` (B01, Task 17; base table
+// only). No snapshot row was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
