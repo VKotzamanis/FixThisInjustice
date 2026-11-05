@@ -12,9 +12,11 @@ export interface RestGameHost {
   hidden: boolean;
   /** Minimises the sheet; null where nothing can hide the game (a test, an older host). */
   onHide: (() => void) | null;
+  /** Ruling R2: the remaining REST, as the rest bar formats it ("1:30"), for the title row; null: none. */
+  restClock: string | null;
 }
 
-export const DEFAULT_REST_GAME_HOST: RestGameHost = { units: 'metric', hidden: false, onHide: null };
+export const DEFAULT_REST_GAME_HOST: RestGameHost = { units: 'metric', hidden: false, onHide: null, restClock: null };
 
 export const RestGameHostContext = createContext<RestGameHost>(DEFAULT_REST_GAME_HOST);
 

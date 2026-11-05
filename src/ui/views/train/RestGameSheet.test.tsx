@@ -178,7 +178,7 @@ describe('RestGameSheet (P6)', () => {
     renderSheet();
     expect(document.activeElement).toBe(screen.getByRole('dialog', { name: copy('label.restGameSheet') }));
   });
-  it('shows the remaining rest in its minimised bar, which stands in for the rest bar (brief 5.1)', () => {
+  it('shows the remaining rest in its title row when open and in its minimised bar (ruling R2, brief 5.1)', () => {
     render(
       <RestGameSheet
         timer={TIMER}
@@ -192,10 +192,11 @@ describe('RestGameSheet (P6)', () => {
         onWin={() => undefined}
       />,
     );
-    // Open: the round clock above the board is the only clock (the 30 px row cost the 390 x 664
-    // sheet its no-inner-scroll fit, e2e/p6-rest-sheet.spec.ts).
-    expect(screen.queryByText('1:30')).toBeNull();
+    // Ruling R2 (2026-11-05): open, the rest's clock sits in the EXISTING title row, right-aligned,
+    // adding no row (the 390 x 664 sheet must not scroll inside, e2e/p6-rest-sheet.spec.ts).
+    expect(document.querySelector('.rest-picker .rest-game-topline .rest-sheet-rest-clock')?.textContent).toBe('1:30');
     fireEvent.click(screen.getByRole('button', { name: titleOf('restWord') }));
+    expect(document.querySelector('.rest-word .rest-game-topline .rest-sheet-rest-clock')?.textContent).toBe('1:30');
     fireEvent.click(screen.getByRole('button', { name: copy('button.restGameHide') }));
     expect(document.querySelector('.rest-sheet-bar .rest-sheet-clock')?.textContent).toBe('1:30');
   });

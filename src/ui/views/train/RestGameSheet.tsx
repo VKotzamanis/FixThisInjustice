@@ -35,9 +35,9 @@ export interface RestGameSheetProps {
   onWin: () => void;
   /**
    * The remaining rest as the panel formats it ("1:30"), shown in the minimised bar, which sits
-   * exactly over the rest bar (brief 5.1). Not repeated in the open sheet: the 30 px [px] row
-   * made the 390 x 664 sheet scroll inside its 472 px cap (e2e/p6-rest-sheet.spec.ts), and the
-   * round clock above the board never outlasts the rest (restRoundClockS).
+   * exactly over the rest bar (brief 5.1), and, open, inside the EXISTING title row, right-aligned
+   * (ruling R2, 2026-11-05). Never a row of its own: the 30 px [px] row made the 390 x 664 sheet
+   * scroll inside its 472 px cap (e2e/p6-rest-sheet.spec.ts).
    */
   clock?: string;
 }
@@ -94,8 +94,9 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
       onHide: () => {
         setMinimised(true);
       },
+      restClock: clock ?? null,
     }),
-    [units, minimised],
+    [units, minimised, clock],
   );
   const entry = family === null ? null : REST_GAME_CATALOG[family];
 
@@ -136,6 +137,7 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
               setFamily(picked);
             }}
             onClose={close}
+            restClock={clock}
           />
         ) : (
           <RestGameHostContext value={host}>

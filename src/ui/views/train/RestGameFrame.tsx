@@ -66,6 +66,8 @@ export function RestGameFrame(props: RestGameFrameProps): ReactElement {
           </span>
         </div>
         <div className="rest-game-actions">
+          {/* Ruling R2: the rest's remaining time, right-aligned in this row (no row of its own). */}
+          {host.restClock !== null && <span className="rest-sheet-rest-clock">{host.restClock}</span>}
           {host.onHide !== null && (
             <button type="button" className="rest-game-hide" onClick={host.onHide}>
               {t('button.restGameHide')}

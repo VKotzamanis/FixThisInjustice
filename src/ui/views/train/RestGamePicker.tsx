@@ -18,6 +18,8 @@ export interface RestGamePickerProps {
   t: (key: CopyKey) => string;
   onPick: (family: RestGameFamily) => void;
   onClose: () => void;
+  /** Ruling R2: the remaining rest ("1:30") for the title row; absent: none. */
+  restClock?: string | undefined;
 }
 
 const TAG_KEY: Readonly<Record<RestGamePickerTag, CopyKey>> = {
@@ -26,7 +28,7 @@ const TAG_KEY: Readonly<Record<RestGamePickerTag, CopyKey>> = {
 };
 
 export function RestGamePicker(props: RestGamePickerProps): ReactElement {
-  const { families, tag, t, onPick, onClose } = props;
+  const { families, tag, t, onPick, onClose, restClock } = props;
   const id = useId();
   const titleId = `${id}-title`;
 
@@ -37,6 +39,7 @@ export function RestGamePicker(props: RestGamePickerProps): ReactElement {
           <Echo text={t('hero.restGamePicker')} />
         </h3>
         <div className="rest-game-actions">
+          {restClock !== undefined && <span className="rest-sheet-rest-clock">{restClock}</span>}
           <button type="button" className="rest-game-exit" onClick={onClose}>
             {t('button.restGameNotNow')}
           </button>
