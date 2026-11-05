@@ -203,6 +203,14 @@ export async function corruptRecord(page: Page, store: string, key: string, patc
 }
 
 /**
+ * Opens Settings ("backstage"): since P4a Task 7 it is a row of the More sheet, not a bar tab.
+ */
+export async function openSettings(page: Page): Promise<void> {
+  await page.getByRole('navigation').getByRole('button', { name: LABEL.moreTab, exact: true }).click({ timeout: 10_000 });
+  await page.getByRole('dialog').getByRole('button', { name: LABEL.settingsTab, exact: true }).click({ timeout: 10_000 });
+}
+
+/**
  * Opens Today, taps Start and waits for the Train view's Finish control. A relaunch reopens the
  * last view (`ui.lastView`), which after a session is Train, so Today is selected first.
  */

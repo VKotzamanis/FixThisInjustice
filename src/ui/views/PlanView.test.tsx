@@ -338,6 +338,8 @@ describe('App wiring', () => {
     useAppStore.getState().wipeAll();
     useAppStore.setState(seed());
     render(<App />);
+    // P4a Task 7: Plan, Atlas and Settings are rows of the More sheet.
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.more') }));
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.plan') }));
 
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));

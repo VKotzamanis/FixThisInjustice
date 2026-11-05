@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import gamesCss from '../../styles/restGames.css?raw';
 import trainCss from '../../styles/train.css?raw';
 import viewsCss from '../views.css?raw';
+import tokensCss from '../../styles/tokens.css?raw';
 
 interface Rule {
   selector: string;
@@ -168,8 +169,11 @@ describe('rest-game styles: every family (P6)', () => {
   });
 
   it('never lowers a control under the 44 px `.view button` sets, and never fixes its height', () => {
-    const base = rulesOf(viewsCss).find((rule) => rule.selector === '.view button');
-    expect((remOf(base?.body ?? '', 'min-height') ?? 0) * PX_PER_REM).toBe(TARGET_PX);
+    // P4a Task 2: the base rule weighs nothing (`:where()`) and reads the --tap token.
+    const base = rulesOf(viewsCss).find((rule) => rule.selector === ':where(.view) :where(button)');
+    expect(base?.body ?? '').toMatch(/min-height:\s*var\(--tap\);/);
+    const tap = /--tap:\s*([0-9.]+)px;/.exec(tokensCss)?.[1]; // [px]
+    expect(Number(tap)).toBe(TARGET_PX);
     const controls = gameRules.filter((rule) => rule.selector.includes('.view .'));
     const lowered = controls
       .filter((rule) => {

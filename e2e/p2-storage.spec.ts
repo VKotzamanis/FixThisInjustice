@@ -13,6 +13,7 @@ import {
   seedDocument,
   setClock,
   startFromToday,
+  openSettings,
 } from './support/app';
 import { MONDAY, e2eDocument, loggedSet } from './support/document';
 
@@ -59,7 +60,7 @@ test('B08: a renderer crash 100 ms after a tap keeps it; a crash mid-write leave
   const sets = Object.values((await readDocument(third)).sets);
   // One transaction per action: set 2 is wholly there or wholly absent, set 1 always there.
   expect(sets.length === 1 || sets.length === 2).toBe(true);
-  await third.getByRole('navigation').getByRole('button', { name: LABEL.settingsTab, exact: true }).click({ timeout: 10_000 });
+  await openSettings(third);
   await expect(third.getByRole('heading', { name: LABEL.unreadableHeading })).toHaveCount(0);
 });
 
@@ -72,7 +73,7 @@ test('a record corrupted on disk is quarantined, listed, and left as it is by la
   await first.close();
 
   const page = await openApp(context);
-  await page.getByRole('navigation').getByRole('button', { name: LABEL.settingsTab, exact: true }).click({ timeout: 10_000 });
+  await openSettings(page);
   await expect(page.getByRole('heading', { name: LABEL.unreadableHeading })).toBeVisible();
   await page.getByRole('navigation').getByRole('button', { name: LABEL.logTab, exact: true }).click({ timeout: 10_000 });
   await flushWrites(page);

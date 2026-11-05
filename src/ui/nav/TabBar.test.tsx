@@ -1,12 +1,15 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { copy } from '../../content/copy';
+import { copyFor, type CopyKey } from '../../content/copy';
 import { useAppStore } from '../../store';
 import { MoreSheet } from './MoreSheet';
 import { TabBar } from './TabBar';
 import { MORE_VIEWS, TAB_ORDER, VIEWS, type TabSlot } from './views';
 
-/** The base-table label of a slot, read through the registry as TabBar reads it. */
+/** A word as the app renders it: the store's skin (limelight ships as the default). */
+const copy = (key: CopyKey): string => copyFor(useAppStore.getState().ui.skin, key);
+
+/** The rendered label of a slot, read through the registry as TabBar reads it. */
 const labelOf = (slot: TabSlot): string =>
   copy(slot === 'more' ? 'nav.more' : (VIEWS.find((v) => v.id === slot)?.copyKey ?? 'nav.more'));
 

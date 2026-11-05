@@ -420,6 +420,8 @@ describe('App wiring', () => {
 
   it('reaches the settings view and switches the display unit without changing storage', () => {
     render(<App />);
+    // P4a Task 7: Plan, Atlas and Settings are rows of the More sheet.
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.more') }));
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.settings') }));
     fireEvent.change(screen.getByLabelText('Display Unit'), { target: { value: 'imperial' } });
 
@@ -444,6 +446,8 @@ describe('App wiring', () => {
 
   it('offers no profile switcher while only one profile exists', () => {
     render(<App />);
+    // P4a Task 7: Plan, Atlas and Settings are rows of the More sheet.
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.more') }));
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.settings') }));
     expect(screen.queryByLabelText('Active profile')).toBeNull();
   });

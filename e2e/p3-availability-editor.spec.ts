@@ -2,7 +2,7 @@
 // and only the calendar changes: the plan and the cursor stay as they were.
 import { expect, test } from '@playwright/test';
 import { LABEL, PROFILE_ID } from './support/constants';
-import { chicago, flushWrites, openApp, readDocument, seedDocument, setClock } from './support/app';
+import { chicago, flushWrites, openApp, readDocument, seedDocument, setClock, openSettings } from './support/app';
 import { MONDAY, PLAN_ID, e2eDocument } from './support/document';
 
 test('P3: Training Days moves Friday to Tuesday 07:30 at 2 a week, plan untouched', async ({ context }) => {
@@ -10,10 +10,7 @@ test('P3: Training Days moves Friday to Tuesday 07:30 at 2 a week, plan untouche
   await seedDocument(context, seeded);
   await setClock(context, chicago(MONDAY, '10:00'));
   const page = await openApp(context);
-  await page
-    .getByRole('navigation')
-    .getByRole('button', { name: LABEL.settingsTab, exact: true })
-    .click({ timeout: 10_000 });
+  await openSettings(page);
 
   await page.locator('#avail-day-5').uncheck({ timeout: 10_000 }); // Friday off
   await page.locator('#avail-day-2').check(); // Tuesday on

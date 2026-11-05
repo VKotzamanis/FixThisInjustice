@@ -265,19 +265,24 @@ describe('Spotlight', () => {
     expect(listbox.id).not.toBe('');
   });
 
-  it('puts the caret in the query box on open', () => {
+  it('puts the caret in the query box on open (fine pointer; F11)', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: fine)', media: query }));
     renderPalette();
     expect(document.activeElement).toBe(queryBox());
+    vi.unstubAllGlobals();
   });
 
   it('takes the caret when it OPENS, not only when it first mounts', () => {
     // The palette is a CONTROLLED component that stays mounted with `open` toggling (P8 Task 9
     // renders it beside the views), so a mount-only focus effect runs once, while `open` is
     // false and the input does not exist. The caret would then stay on ModalShell's panel.
+    // F11: the caret is taken only where the pointer is fine (a keyboard is at hand).
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: fine)', media: query }));
     const { rerender } = render(<Spotlight open={false} onClose={() => {}} />);
     rerender(<Spotlight open onClose={() => {}} />);
 
     expect(document.activeElement).toBe(queryBox());
+    vi.unstubAllGlobals();
   });
 
   it('clears the query and the active row when it closes', () => {

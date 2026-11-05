@@ -32,6 +32,8 @@ export const LABEL = {
   todayTab: 'today',
   logTab: 'the archive',
   settingsTab: 'backstage',
+  // P4a Task 7: the fifth bottom-bar slot; Plan, Atlas and Settings are rows of its sheet.
+  moreTab: 'More',
   start: "LET'S GO BABES",
   finish: "that's a wrap",
   skipToday: 'not today satan',

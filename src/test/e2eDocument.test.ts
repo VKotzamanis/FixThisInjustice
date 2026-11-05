@@ -47,6 +47,7 @@ describe('the e2e document builder', () => {
     expect(LABEL.todayTab).toBe(copyFor('limelight', 'nav.today'));
     expect(LABEL.logTab).toBe(copyFor('limelight', 'nav.log'));
     expect(LABEL.settingsTab).toBe(copyFor('limelight', 'nav.settings'));
+    expect(LABEL.moreTab).toBe(copyFor('limelight', 'nav.more'));
     expect(LABEL.start).toBe(copyFor('limelight', 'button.startSession'));
     expect(LABEL.finish).toBe(copyFor('limelight', 'button.finishSession'));
     expect(LABEL.skipToday).toBe(copyFor('limelight', 'button.skipToday'));

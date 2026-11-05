@@ -3,7 +3,7 @@
 // unreadable profile still refuses the load.
 import { expect, test } from '@playwright/test';
 import { LABEL, PROFILE_ID } from './support/constants';
-import { chicago, flushWrites, openApp, readRaw, readRecords, seedDocument, setClock } from './support/app';
+import { chicago, flushWrites, openApp, readRaw, readRecords, seedDocument, setClock, openSettings } from './support/app';
 import { MONDAY, e2eDocument, loggedSet } from './support/document';
 
 test('B01: one invalid record is quarantined and listed, and the app opens normally', async ({ context }) => {
@@ -14,7 +14,7 @@ test('B01: one invalid record is quarantined and listed, and the app opens norma
   await expect(page.locator('section.intro')).toHaveCount(0);
   await expect(page.locator('.wiz')).toHaveCount(0);
   await expect(page.getByRole('heading', { name: LABEL.recoveryHeading })).toHaveCount(0);
-  await page.getByRole('navigation').getByRole('button', { name: LABEL.settingsTab, exact: true }).click({ timeout: 10_000 });
+  await openSettings(page);
   await expect(page.getByRole('heading', { name: LABEL.unreadableHeading })).toBeVisible();
   await flushWrites(page);
   // Kept exactly as stored.
