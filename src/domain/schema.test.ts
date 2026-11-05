@@ -666,6 +666,30 @@ describe('Profile.inventoryAnsweredFor (P3a, rule 7)', () => {
   });
 });
 
+describe('Profile.rotateAccessories (accessory rotation switch, rule 7)', () => {
+  const withSwitch = (value: unknown): Record<string, unknown> => {
+    const doc = documentWithEquipment('home');
+    const profiles = doc.profiles as Record<string, Record<string, unknown>>;
+    const p = profiles[P1];
+    if (p) p.rotateAccessories = value;
+    return doc;
+  };
+
+  it('leaves the key absent on a profile written before the switch (absent = on)', () => {
+    const result = parseState(documentWithEquipment('home'));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(Object.keys(result.state.profiles[P1] ?? {})).not.toContain('rotateAccessories');
+  });
+
+  it('keeps a stored choice and reads a corrupt one as on', () => {
+    const off = parseState(withSwitch(false));
+    const corrupt = parseState(withSwitch('maybe'));
+    expect(off.ok && off.state.profiles[P1]?.rotateAccessories).toBe(false);
+    expect(corrupt.ok && corrupt.state.profiles[P1]?.rotateAccessories).toBe(true);
+  });
+});
+
 /** A document with one well-formed profile, ready for a targeted violation. */
 function oneProfileDocument(): Record<string, unknown> {
   const doc = legacyDocument();

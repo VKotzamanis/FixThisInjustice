@@ -201,6 +201,12 @@ export interface Profile {
    * written out for the same z.infer identity reason as `activityPal` above.
    */
   inventoryAnsweredFor?: EquipmentAccess | null | undefined;
+  /**
+   * Settings "Rotate accessory exercises each block" (programme-engine.md, decision
+   * engine-accessory-rotation). Absent = on: a profile written before the switch existed keeps
+   * the key absent and rotates (rule 7). Read only through engine.ts rotationOn.
+   */
+  rotateAccessories?: boolean | undefined;
   goal: { kind: GoalKind; targetMassKg: Kg | null; targetBodyFatPct: number | null; targetDate: LocalDate | null; };
   supplements: { creatine: boolean; };                     // no medication fields exist by design
   hydration: { dailyTargetML: ML; cupSizeML: ML; weighInOptIn: boolean; }; // cupSizeML is display granularity only; weighInOptIn enables the pre/post-session mass check

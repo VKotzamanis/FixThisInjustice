@@ -298,6 +298,9 @@ export const ProfileSchema = z.object({
   // Additive (P3a, rule 7): absent on every profile written before P3a and kept absent; a corrupt
   // value falls back to null, which inventoryOf reads as "never asked", the conservative reading.
   inventoryAnsweredFor: EquipmentAccessSchema.nullable().catch(null).optional(),
+  // Additive (accessory rotation, rule 7): absent on every older profile and kept absent, which
+  // reads as on; a corrupt value reads as on too (the default), never failing the profile.
+  rotateAccessories: z.boolean().catch(true).optional(),
   goal: z.object({
     kind: GoalKindSchema,
     targetMassKg: KgMass.nullable(), // [kg]

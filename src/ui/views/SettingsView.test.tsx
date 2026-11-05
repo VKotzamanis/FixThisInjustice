@@ -522,6 +522,23 @@ describe('the Programme group in Settings (L5)', () => {
     expect(planId()).toBe(before);
   });
 
+  it('the accessory rotation switch: on when absent, written to the profile at once, runway re-derived', async () => {
+    expect(useAppStore.getState().profiles['p1']?.rotateAccessories).toBeUndefined();
+    const ensureRunway = vi.spyOn(useAppStore.getState(), 'ensureRunway');
+    render(<SettingsView />);
+    const toggle = screen.getByLabelText(copy('label.rotateAccessories'));
+    expect(toggle).toBeChecked(); // absent = on
+    expect(screen.getByText(copy('advice.rotateAccessories'))).toBeTruthy();
+    await userEvent.click(toggle);
+    expect(useAppStore.getState().profiles['p1']?.rotateAccessories).toBe(false);
+    expect(ensureRunway).toHaveBeenCalledWith('p1', expect.any(Number));
+    expect(screen.getByLabelText(copy('label.rotateAccessories'))).not.toBeChecked();
+    await userEvent.click(screen.getByLabelText(copy('label.rotateAccessories')));
+    expect(useAppStore.getState().profiles['p1']?.rotateAccessories).toBe(true);
+    expect(updateButton()).toBeNull(); // a profile switch, not a programme change
+    ensureRunway.mockRestore();
+  });
+
   it('withholds the update while a session is in progress', async () => {
     useAppStore.getState().startSession('p1', START, Date.now()); // [ms] epoch UTC
     expect(useAppStore.getState().assignments['p1']?.[0]?.status).toBe('in-progress');

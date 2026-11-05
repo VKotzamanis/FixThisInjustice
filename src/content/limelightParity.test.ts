@@ -30,10 +30,12 @@
 // R13, P2 Task 8; base table only), and `banner.storageNearlyFull.{tag,body}` for the
 // near-quota banner (audit B05, P2 Task 11; base table only), and `button.otherMirror` and
 // `advice.videoOffline` for the form-video modal (ROADMAP L9; base table only), and
-// `advice.programmeContinues` on the wizard review (ROADMAP L6; base table only), and the five
+// `advice.programmeContinues` on the wizard review (ROADMAP L6; base table only), the five
 // Replace keys `button.replaceExercise`, `label.replaceTitle`, `label.recommended`,
-// `label.backToPlan`, `status.replacedWith` (owner request, card-header Replace; base table only).
-// No snapshot row was changed to add them.
+// `label.backToPlan`, `status.replacedWith` (owner request, card-header Replace; base table only),
+// and `label.rotateAccessories` and `advice.rotateAccessories` for the Settings accessory rotation
+// switch (docs/design/programme-engine.md; base table only). No snapshot row was changed to add
+// them.
 //
 // Rows CHANGED on purpose (ROADMAP L6, docs/design/programme-horizon.md Q4: an open-ended
 // programme has no N, so every "of N" goes): `status.bootWeek`, `status.sessionCursor` and `label.weekOfCount`.
