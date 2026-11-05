@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen } from '@testing-library/react';
 import { BurnWord } from './BurnWord';
-import { createBurn, type BurnHandle, type BurnOptions } from './burnText';
+import { createBurn, type BurnHandle } from './burnText';
 
 vi.mock('./burnText', () => ({ createBurn: vi.fn() }));
 
@@ -86,7 +86,7 @@ describe('BurnWord moments (AM-4a-9)', () => {
     act(() => {
       vi.advanceTimersByTime(0);
     });
-    const opts = create.mock.calls[0]?.[2] as BurnOptions | undefined;
+    const opts = create.mock.calls[0]?.[2];
     expect(opts?.reduced).toBe(true);
   });
 
