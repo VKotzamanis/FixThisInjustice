@@ -153,6 +153,11 @@ export function applyReplacePlan(
     },
     pauses: { ...s.pauses, [profileId]: [] },
     /*
+     * D13: the new plan's cut-scenes start from block 0. Keyed by plan id, so the replaced
+     * plan's "last block seen" (often its final block) can no longer hold them back.
+     */
+    ui: { ...s.ui, lastBlockSeenByPlan: { ...(s.ui.lastBlockSeenByPlan ?? {}), [stored.id]: 0 } },
+    /*
      * Reviews of weeks before the new programme are history and stay. A review of a week the
      * new programme grades itself (ROADMAP B1d) goes: closeWeeks skips any week already
      * reviewed, so a leftover would stand in for the new programme's own grade. Under a forward

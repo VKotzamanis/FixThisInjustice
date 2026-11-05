@@ -20,7 +20,7 @@
 // Units: session indices are [sessions] offsets into PlanTemplate.sessions, counted from 0.
 // Set counts are [sets]. Tonnage is [kg].
 
-import type { AppState, PlanBlock, PlanCursor, PlanTemplate } from '../types';
+import type { AppState, PlanBlock, PlanCursor, PlanTemplate, UiPrefs } from '../types';
 
 /** Set counts that earn a milestone toast. Carried over from the legacy list unchanged. */
 export const SET_MILESTONES: readonly number[] = [50, 100, 250, 500, 1000]; // [sets]
@@ -67,6 +67,21 @@ export function blockOf(cursor: PlanCursor, plan: PlanTemplate): PlanBlock | nul
  */
 export function currentBlockIndex(plan: PlanTemplate, cursor: PlanCursor): number {
   return blockOf(cursor, plan)?.index ?? 0;
+}
+
+/**
+ * The block index last shown for this programme (audit D13). Keyed by plan id, so Start Next
+ * Programme starts its cut-scenes from block 0 instead of waiting for the old plan's last block
+ * to be passed. A document written before the plan key exists has only the per-profile value,
+ * which is read as the fallback; applyReplacePlan seeds every new plan at 0, so the fallback
+ * only ever speaks for the plan that was running when the document was written.
+ */
+export function lastBlockSeen(
+  ui: Pick<UiPrefs, 'lastBlockSeenByProfile' | 'lastBlockSeenByPlan'>,
+  profileId: string,
+  planId: string,
+): number {
+  return ui.lastBlockSeenByPlan?.[planId] ?? ui.lastBlockSeenByProfile[profileId] ?? 0;
 }
 
 /**

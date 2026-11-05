@@ -743,6 +743,9 @@ export const UiPrefsSchema = z.object({
    * CURRENT_SCHEMA_VERSION stays 3.
    */
   warmupNoticeDismissedByProfile: z.record(z.string(), z.literal(true)).optional(),
+  // Additive, optional (P3 D13): the block index last shown per PLAN id, so a new programme's
+  // cut-scenes fire from its own first block. Absent on documents written before it (rule 7).
+  lastBlockSeenByPlan: z.record(z.string(), z.int().min(0).max(MAX_BLOCKS)).optional(),
 });
 
 // ---------------------------------------------------------------------------

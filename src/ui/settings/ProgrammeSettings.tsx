@@ -101,6 +101,8 @@ function PlanChoices(props: {
           value={String(sessionsPerWeek)}
           onChange={(e) => {
             const next = splitOptions.find((n) => String(n) === e.target.value);
+            // D12: a confirmation belongs to the choice it was opened for.
+            setConfirming(false);
             if (next !== undefined) setSessionsPerWeek(next);
           }}
         >
@@ -116,6 +118,7 @@ function PlanChoices(props: {
           type="checkbox"
           checked={includeCardio}
           onChange={(e) => {
+            setConfirming(false); // D12
             setIncludeCardio(e.target.checked);
           }}
         />

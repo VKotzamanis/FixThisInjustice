@@ -447,6 +447,18 @@ describe('the Programme group in Settings (L5)', () => {
     expect(screen.getByLabelText(copy('label.includeCardio'))).not.toBeChecked();
   });
 
+  it('drops an open confirmation whenever the choice changes (D12)', async () => {
+    render(<SettingsView />);
+    const split = screen.getByLabelText(copy('label.sessionsPerWeek'));
+    await userEvent.selectOptions(split, '2');
+    await userEvent.click(updateButton() as HTMLElement);
+    expect(screen.getByRole('group', { name: copy('button.updateProgramme') })).toBeTruthy();
+    await userEvent.selectOptions(split, '3'); // back to the running plan: nothing differs
+    await userEvent.selectOptions(split, '2'); // differs again
+    expect(screen.queryByRole('group', { name: copy('button.updateProgramme') })).toBeNull();
+    expect(updateButton()).toBeTruthy();
+  });
+
   it('offers Update Programme once Experience changes, and restarts only on confirm', async () => {
     const before = planId();
     render(<SettingsView />);
