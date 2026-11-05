@@ -30,7 +30,6 @@ import { KonamiOverlay, useKonamiCode } from '../ui/components/KonamiOverlay';
 import { Marquee } from '../ui/components/Marquee';
 import type { MarqueeItem } from '../ui/components/Marquee';
 import { PhaseTransitionGate } from '../ui/components/PhaseTransition';
-import { SiteFooter } from '../ui/components/SiteFooter';
 import { Spotlight } from '../ui/components/Spotlight';
 import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
@@ -643,7 +642,7 @@ export function App(): ReactElement {
               {/*
                * The moving instruction for the current view, and the session position it now
                * carries (P10 Brief D, part 1: the app name stays fixed on the left, the
-               * instruction moves). Renders nothing until a profile exists, so the header keeps
+               * instruction moves). Kept by the owner in the one-row header (P4a AM-4a-1). Renders nothing until a profile exists, so the header keeps
                * its two-element layout through setup, exactly as SessionIndicator's absence did.
                */}
               <TopbarTicker />
@@ -701,13 +700,6 @@ export function App(): ReactElement {
                 </>
               )}
             </main>
-
-            {/*
-             * The footer (P10 Brief D), rendered once at the foot of the app shell: outside
-             * <main> and after it, so it is the last thing on the page across every view and
-             * across setup, and never sits inside the scrollable view area it is quiet beneath.
-             */}
-            <SiteFooter />
 
             {/*
              * The weekly-miss popup (P6). Outside <main>, as the last child of the CRT root,

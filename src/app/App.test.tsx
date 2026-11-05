@@ -327,32 +327,24 @@ describe('top bar', () => {
   });
 });
 
-/**
- * The site footer (P10 Brief D): mounted once at the foot of the app shell, outside <main> and
- * outside the view switch, so its presence does not depend on which screen -- Setup or a view
- * -- happens to be showing above it.
- */
+/** P4 design brief 2.4: the footer sits at the end of Settings only (it was on every screen). */
 describe('site footer', () => {
   beforeEach(() => {
     installFakeStorage();
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS); // [ms] epoch, UTC
   });
 
-  it('renders before a profile exists, during setup', () => {
+  it('is not part of setup or of Today', () => {
     render(<App />);
-
-    expect(screen.getByText(copy('footer.licence'))).toBeTruthy();
+    expect(screen.queryByText(copy('footer.licence'))).toBeNull();
   });
 
-  it('renders on every view, carrying the on-device promise', () => {
+  it('renders at the end of Settings, carrying the on-device promise', () => {
     useAppStore.setState(seedState({ labels: ['Push'], weekdays: [1], startedOn: MONDAY }));
-
     render(<App />);
-
-    expect(screen.getByText(copy('advice.dataOnDevice'))).toBeTruthy();
-
+    expect(screen.queryByText(copy('advice.dataOnDevice'))).toBeNull();
     act(() => {
-      useAppStore.getState().setUi({ lastView: 'plan' });
+      useAppStore.getState().setUi({ lastView: 'settings' });
     });
     expect(screen.getByText(copy('advice.dataOnDevice'))).toBeTruthy();
   });

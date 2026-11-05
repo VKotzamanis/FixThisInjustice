@@ -2,8 +2,9 @@
 //
 // P6 (plan D1, D2; audit C14). With Rest Word open in the bottom sheet after set 1: every QWERTY
 // key is >= 24 px wide and >= 44 px tall with no horizontal page scroll (320-412 px), and at
-// 390 x 664 (iPhone 13 Safari) the sheet keeps to its 472 px cap without scrolling inside, while
-// the next set's row and its Log button sit wholly above it once scrolled under the top bar.
+// 390 x 664 (iPhone 13 Safari) the sheet keeps to its 472 px cap without scrolling inside; at
+// every width the next set's row and its Log button sit wholly above it once scrolled under the
+// 44 px top bar (P4a AM-4a-5).
 //
 // Units: every length is CSS px.
 import { expect, test, type Page } from '@playwright/test';
@@ -62,11 +63,8 @@ for (const width of [320, 360, 390, 412]) {
     test.use({ viewport: { width, height: 664 } });
 
     test('keys fit, nothing scrolls sideways, and the next set stays above the sheet', async ({ context }) => {
-      // Measured 2026-11-04 after the P6 merge: the header is 85 px (ticker + pause control), not the
-      // 37 px the P6 plan read from CSS, so header + one set row = 225 px > the 198 px above the
-      // sheet at 390 x 664. Expected to fail until P4a Task 8 ships the 44 px one-line header
-      // (44 + 140 = 184 px); P4a removes this line. Not loosened.
-      test.fail(width === 390, 'header 85 px until P4a Task 8 (one-line header)');
+      // P4a Task 8 (AM-4a-5): the header is one 44 px row with the ticker inside it (it was 85 px),
+      // so header + one set row fits above the sheet at every width, not only 390.
       await seedDocument(context, e2eDocument());
       await setClock(context, chicago(MONDAY, '17:00'));
       const page = await openApp(context);
@@ -82,10 +80,11 @@ for (const width of [320, 360, 390, 412]) {
       if (width === 390) {
         expect(layout.sheetH).toBeLessThanOrEqual(472.5); // [px] 664 - 192
         expect(layout.sheetInnerScroll).toBeLessThanOrEqual(1); // [px]
-        expect(layout.topbarH + layout.rowH).toBeLessThanOrEqual(layout.sheetTop + 0.5); // [px]
-        expect(layout.logBottom).not.toBeNull();
-        expect(layout.logBottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(layout.sheetTop + 0.5); // [px]
       }
+      expect(layout.topbarH).toBeLessThanOrEqual(44.5); // [px] --header-h, no inset in Chromium
+      expect(layout.topbarH + layout.rowH).toBeLessThanOrEqual(layout.sheetTop + 0.5); // [px]
+      expect(layout.logBottom).not.toBeNull();
+      expect(layout.logBottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(layout.sheetTop + 0.5); // [px]
     });
   });
 }

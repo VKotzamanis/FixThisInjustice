@@ -19,6 +19,7 @@ import { displayLoad, displayVolume, formatBeverageTarget, toStoredLoad, toStore
 import { useAppStore } from '../../store';
 import { useActiveProfile } from '../../store/selectors';
 import { ReminderSettingsPanel } from '../components/ReminderSettingsPanel';
+import { SiteFooter } from '../components/SiteFooter';
 import { GOAL_OPTIONS } from '../components/RestartProgramme';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
@@ -567,6 +568,8 @@ export function SettingsView(): JSX.Element {
       {SETTINGS_ROWS.map((row) => (
         <Fragment key={row.id}>{row.render(profile)}</Fragment>
       ))}
+      {/* Brief 2.4: the footer belongs to Settings, the one screen it is quiet beneath. */}
+      <SiteFooter />
     </section>
   );
 }

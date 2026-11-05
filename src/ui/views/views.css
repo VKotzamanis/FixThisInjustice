@@ -15,10 +15,14 @@
  * Every custom property carries a literal fallback, so a view renders whether or not the P1
  * token sheet is loaded.
  */
+/*
+ * One gutter (brief 2.3): main has none at phone width, the view pads max(16 px, the side
+ * inset), so content is viewport - 32 px (288 / 358 / 380 px at 320 / 390 / 412).
+ */
 .view {
   max-width: 34rem;
   margin: 0 auto;
-  padding: 1rem 1rem 4rem;
+  padding: 0 max(var(--gutter), env(safe-area-inset-right)) var(--space-6) max(var(--gutter), env(safe-area-inset-left));
 }
 
 /*

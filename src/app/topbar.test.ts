@@ -175,3 +175,57 @@ describe('the top bar clears WCAG AA in every shipped skin', () => {
     expect(Number(brand.toFixed(2))).toBe(1.19);
   });
 });
+
+/*
+ * P4 brief 2.1 as amended by AM-4a-1 (the owner keeps the moving ticker): ONE 44 px row plus the
+ * top inset holding brand, title and ticker. The title keeps its own width up to a cap and the
+ * ticker takes the rest, so the title is never squeezed to a letter (F07); the ticker paints its
+ * own ground and type from the bar's tokens (it rendered ink on black, F06 / D4).
+ */
+describe('one-line header with safe area (P4 brief 2.1, AM-4a-1; F04, F06, F07, F15)', () => {
+  const rule = (selector: string): string => {
+    const clean = shellCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const m = [...clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((r) => (r[1] ?? '').trim() === selector);
+    if (m === undefined) throw new Error(`appShell.css: no rule ${selector}`);
+    return m[2] ?? '';
+  };
+
+  it('is 44 px plus the top inset, border included, with inset-aware side padding', () => {
+    const b = rule('.topbar');
+    expect(b).toMatch(/box-sizing:\s*border-box;/);
+    expect(b).toMatch(/height:\s*calc\(var\(--header-h\) \+ env\(safe-area-inset-top\)\);/);
+    expect(b).toMatch(/padding-top:\s*env\(safe-area-inset-top\);/);
+    expect(b).toMatch(/padding-left:\s*max\(var\(--gutter\), env\(safe-area-inset-left\)\);/);
+    expect(b).toMatch(/padding-right:\s*max\(var\(--gutter\), env\(safe-area-inset-right\)\);/);
+    expect(b).toMatch(/z-index:\s*var\(--z-header\);/);
+  });
+
+  it('carries no backdrop blur (F15)', () => {
+    expect(shellCss).not.toMatch(/backdrop-filter/);
+  });
+
+  it('keeps the title at its own width up to a cap, ellipsised, never squeezed (F07)', () => {
+    const b = rule('.topbar-title');
+    expect(b).toMatch(/flex:\s*0 0 auto;/);
+    expect(b).toMatch(/max-width:\s*7rem;/);
+    expect(b).toMatch(/text-overflow:\s*ellipsis;/);
+    expect(b).toMatch(/font-size:\s*13px;/);
+  });
+
+  it('gives the ticker the rest of the row, in the bar colours (AM-4a-1, F06)', () => {
+    const marquee = rule('.topbar .ll-marquee');
+    expect(marquee).toMatch(/flex:\s*1 1 0;/);
+    expect(marquee).toMatch(/min-width:\s*0;/);
+    const strip = rule('.topbar .ll-marquee-strip');
+    expect(strip).toMatch(/background:\s*var\(--topbar-bg\);/);
+    expect(strip).toMatch(/color:\s*var\(--topbar-text\);/);
+    // White on black: the pair the bar's own AA test above already measures.
+    const bg = channels(resolve('--topbar-bg', 'limelight'), GROUND.limelight);
+    expect(contrast(channels(resolve('--topbar-text', 'limelight'), bg), bg)).toBeGreaterThanOrEqual(AA_NORMAL);
+  });
+
+  it('main has no side gutter of its own (brief 2.3: one gutter, on .view)', () => {
+    const phone = shellCss.slice(shellCss.indexOf('@media (max-width: 820px)'));
+    expect(phone).toMatch(/main \{\s*padding:\s*var\(--space-4\) 0 calc\(var\(--tabbar-h\) \+ env\(safe-area-inset-bottom\) \+ var\(--space-4\)\);/);
+  });
+});

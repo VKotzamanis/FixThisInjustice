@@ -1,17 +1,24 @@
 /* Minimal shell chrome: the bars and banners, plus the view navigation P2 Task 8 added. */
+/*
+ * The one-line header (docs/design/p4-design-brief.md 2.1; plan AM-4a-1): 44 px plus the
+ * status-bar inset on an installed iPhone (viewport-fit=cover, black-translucent: F04), brand,
+ * page title, then the owner's moving ticker in the rest of the row. No backdrop-filter: the bar
+ * is opaque, so a blur only cost compositor time on every scroll (F15). No bottom border: a 1 px
+ * --line on the black bar was invisible and took a pixel from the 44 px row the ticker fills.
+ */
 .topbar {
   position: sticky;
   top: 0;
   z-index: var(--z-header);
-  /* see the intro-pointer rule below, which lifts this for one slide */
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px 18px;
+  box-sizing: border-box;
+  height: calc(var(--header-h) + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(var(--gutter), env(safe-area-inset-left));
+  padding-right: max(var(--gutter), env(safe-area-inset-right));
   background: var(--topbar-bg);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
-  font-size: var(--text-xs);
+  font-size: 13px;
   color: var(--topbar-text);
   letter-spacing: 0.04em;
 }
@@ -22,7 +29,7 @@
   font-size: 13px;
   letter-spacing: 0.06em;
   color: var(--topbar-brand);
-  /* Fixed, per the brief: the brand never shrinks to make room for the moving instruction. */
+  /* The brand never shrinks; the ticker beside the title does. */
   flex-shrink: 0;
 }
 
@@ -32,32 +39,54 @@
 }
 
 /*
- * The dynamic half of the banner (round 2, r2-onboarding.general): the brand stays fixed and
- * this is what follows it. It sits BESIDE the brand and is read with it, so it takes the brand's
- * colour token rather than the bar's dimmer text token, and a separator is drawn with a border
- * rather than written into a copy string.
- *
- * `flex-shrink: 0` on the brand alone: this one MAY shrink, because the user's own name has no
- * length bound and the marquee beside it must not be pushed off a narrow screen.
+ * The page title (round 2, r2-onboarding.general), read with the brand behind a 1 px rule.
+ * AM-4a-1: it keeps its own width up to a cap and the ticker takes what is left, so the ticker
+ * can never squeeze it to one letter (F07). The cap, 7rem = 112 px [px] at the 16 px root, holds
+ * the widest view title ("the collection", Archivo 600 13 px; measured in e2e/p6-rest-sheet's
+ * header check) with room; only the user's own name, which has no length bound, ellipsises.
  */
 .topbar-title {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 7rem;
   font-family: var(--sans);
   font-weight: 600;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--topbar-brand);
-  padding-left: 10px;
-  margin-left: 10px;
-  border-left: 1px solid var(--line-2);
-  min-width: 0;
+  padding-left: var(--space-2);
+  margin-left: var(--space-2);
+  /* White on the black bar (21:1); --line-2 is ink and vanished there. */
+  border-left: 1px solid var(--topbar-text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The marquee fills the space the fixed brand leaves. */
+/*
+ * The ticker (AM-4a-1: the owner keeps the moving banner). It takes the rest of the one row and
+ * fills its height, and paints its ground and type from the bar's own tokens: white on black,
+ * 21:1. It rendered ink on black (1:1, audit F06 / critique D4) because the strip took --text
+ * and --bg-3 from limelight.css. Reduced motion keeps Marquee's one static item.
+ */
 .topbar .ll-marquee {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
+  align-self: stretch;
+  margin: 0 0 0 var(--space-2);
+}
+
+.topbar .ll-marquee-strip {
+  height: 100%;
+  min-height: var(--header-h);
+  padding: 0 var(--space-1);
+  border: 0;
+  background: var(--topbar-bg);
+  color: var(--topbar-text);
+}
+
+.topbar .ll-marquee-track {
+  height: 100%;
+  padding: 0;
 }
 
 
@@ -72,7 +101,7 @@ main {
 
 @media (max-width: 820px) {
   main {
-    padding: 18px 14px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--space-4));
+    padding: var(--space-4) 0 calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--space-4));
   }
 }
 
@@ -88,6 +117,13 @@ main {
   font-family: var(--sans);
   font-size: 13.5px;
   color: var(--text-2);
+}
+
+/* Banners sit in main, which has no side gutter at phone width (brief 2.3). */
+@media (max-width: 820px) {
+  main > .banner {
+    margin-inline: var(--gutter);
+  }
 }
 
 .banner-tag {
