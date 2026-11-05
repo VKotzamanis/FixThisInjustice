@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { FORMAT, copyFor } from '../../content/copy';
 import { clearAssetStorage } from '../../domain/motivation/assets';
@@ -7,7 +7,7 @@ import { makeBlankState } from '../../test/migrationFactories';
 import { useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
-import { DataSection } from './DataSection';
+import { CLIP_CLEAR_TIMEOUT_MS, DataSection } from './DataSection';
 import { SettingsView } from '../views/SettingsView';
 import type { SkinId } from '../../domain/types';
 
@@ -173,12 +173,11 @@ describe('SettingsView data section', () => {
   });
 
   /*
-   * Security recommendation 10 / M5. The wipe called wipeAll() and nothing else, so the
-   * user-chosen motivation clip -- a video the user picked, in IndexedDB -- survived a wipe
-   * that told them everything on the device had been removed. Constraint 10 requires the wipe
-   * to cover everything the app owns.
+   * Audit B14 (supersedes the clip-first order of security recommendation 10 / M5, whose
+   * constraint, that the wipe covers the clip too, still holds): the records go first, in one
+   * transaction, and only then the clip, so a clip store that hangs can never keep the records.
    */
-  it('clears the clip store before it empties the document', async () => {
+  it('empties the records before it clears the clip store', async () => {
     const order: string[] = [];
     vi.mocked(clearAssetStorage).mockImplementation(() => {
       order.push('clip');
@@ -195,12 +194,26 @@ describe('SettingsView data section', () => {
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
     await waitFor(() => {
-      expect(wipeAll).toHaveBeenCalledTimes(1);
+      expect(clearAssetStorage).toHaveBeenCalledTimes(1);
     });
-    expect(clearAssetStorage).toHaveBeenCalledTimes(1);
-    // The order is the point: a clip cleared after the document is emptied would be cleared
-    // out of a store the wipe has already stopped writing to.
-    expect(order).toEqual(['clip', 'document']);
+    expect(wipeAll).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['document', 'clip']);
+  });
+
+  it('a clip store that never answers does not hold the wipe, and the line says the clip may remain', async () => {
+    vi.useFakeTimers();
+    vi.mocked(clearAssetStorage).mockImplementation(() => new Promise<void>(() => undefined));
+    render(<DataSection />);
+    click(copyFor('limelight', 'button.wipeAll'));
+    click(copyFor('limelight', 'button.downloadBackup'));
+    typeWord('DELETE');
+    fireEvent.click(confirmButton('button.wipeConfirm'));
+    expect(storage.has(STORAGE_KEY)).toBe(false); // the records went first, synchronously here
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(CLIP_CLEAR_TIMEOUT_MS); // [ms]
+    });
+    expect(screen.getByRole('alert').textContent).toBe(copyFor('limelight', 'advice.clipClearFailed'));
+    vi.useRealTimers();
   });
 
   it('empties the document even when the clip store refuses, and says which part is left', async () => {
