@@ -136,6 +136,7 @@ import {
 import { vibrate } from '../audio/chime';
 import { ModalShell } from '../components/ModalShell';
 import { GuidanceScreen } from './GuidanceScreen';
+import { convertBodyAnswers } from './unitSwitch';
 import { usePublishSetupBanner } from './setupBanner';
 import {
   ACTIVITY_LEVEL_EXAMPLES,
@@ -1213,8 +1214,8 @@ export function SetupWizard(): JSX.Element {
    * The UNCOMMITTED half of the two tiers, r2.11 / plan decision A2: "the data of a field cell
    * should not be replaced at the entry point (store it as temp), but it should be replaced only
    * when NEXT is pressed." Every control on every step writes here; Next merges this into
-   * `committed` and clears it, and Back clears it without merging, which is what makes Back
-   * non-destructive.
+   * `committed` and clears it. Back keeps it (audit A05), so a look back loses nothing typed, and
+   * still commits nothing.
    *
    * It is RESTORED from storage, not started empty, and that is the whole point of persisting two
    * tiers rather than one. Round 1's most valued behaviour (C1.G.1) is that setup survives a
@@ -1470,15 +1471,6 @@ export function SetupWizard(): JSX.Element {
   }
 
   /**
-   * Back: the step's answers are DISCARDED rather than committed (A2, "Back does not commit").
-   * The committed answers are what the previous step renders, so a user who typed something on a
-   * step and then went back finds the screen as they last confirmed it, not half-edited.
-   */
-  function discardStep(): void {
-    setBuffer(null);
-  }
-
-  /**
    * `error.valueRequired` hidden until Next has been pressed on this step, everywhere else shown
    * as computed. Only the "enter a number" message is gated: an out-of-range or malformed value
    * the user has just typed is informative the moment it appears, and every existing domain-guard
@@ -1492,9 +1484,16 @@ export function SetupWizard(): JSX.Element {
     return bodyNextAttempted ? error : null;
   }
 
-  /** Switching unit re-seeds every equipment step in the new unit. */
+  /**
+   * Audit A04 (plan ruling PR-8): switching unit CONVERTS what was typed (body mass, target mass,
+   * girths, stature) into the new unit, where it used to reinterpret "80" kg as "80" lb. The
+   * equipment steps are re-seeded in the new unit, as before: a converted 2.5 kg step is 5.51 lb,
+   * a plate nobody owns.
+   */
   function setUnits(units: UnitSystem): void {
+    if (units === draft.units) return;
     patch({
+      ...convertBodyAnswers(draft, units),
       units,
       barbellStep: String(DEFAULT_BARBELL_STEP[units]),
       dumbbellStep: String(DEFAULT_DUMBBELL_STEP[units]),
@@ -4085,8 +4084,8 @@ export function SetupWizard(): JSX.Element {
           <button
             type="button"
             onClick={() => {
-              // A2: Back discards the step in progress instead of committing it.
-              discardStep();
+              // A05 (plan ruling PR-9): Back keeps the step in progress. It still does not
+              // commit: only Next replaces the stored answers (A2).
               setStepIndex((n) => n - 1);
             }}
           >
