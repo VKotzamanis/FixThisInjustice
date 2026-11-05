@@ -54,7 +54,7 @@ describe('BodyMassForm (spec R9, audit G08)', () => {
     submit();
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent(FORMAT.atMost(Q, 1102.3, 'lb'));
-    type('');
+    type('', 'lb'); // the field is labelled in the profile's unit
     submit();
     expect(screen.getByRole('alert')).toHaveTextContent(copy('error.valueRequired'));
   });
