@@ -27,6 +27,7 @@ Owner rulings from the restart audit and review pages (2026-10-17/18; verbatim a
 - L8 DONE 2026-10-18: one tap per set (Easy 7 / Solid 8 / Hard 9 / Max 10, `src/domain/training/effort.ts`); a top-of-range set marked Max holds the load (ACSM 2009 + Zourdos 2016, `src/domain/training/progression.ts` `showsRepetitionInReserve`). Not yet shown in LogView, export summary or last-session line.
 - L9 PARTIAL: videos play (8b6a500, 81f7d65; `videoId` on every library exercise). Open: library entries with `formCueId: null` need sourced cue text (owner/content).
 - L10 DONE (1964815): dated body-fat re-measure in the Settings profile editor.
+- L11 DONE 2026-11-05 (owner item 11; merge 9456106): one-tap Replace in the card header (`docs/design/session-editing.md`); swap adopted only after 2 consecutive sessions (`CONSISTENT_SWAP_MIN`); accessory A/B rotation per 4-week cycle, primaries fixed, Settings switch (`docs/design/programme-engine.md`, evidence `docs/private/evidence/exercise-variation-2026-11-05.md`). Open: muscle ids shown raw in the sheet ("front-delt"); adopted alternate re-alternates next cycle.
 
 ## 3. Loose ends (want)
 - N3 DONE 2026-10-18: app icon = frame 0 of the owner's sprite (`public/icons/`), apple-touch-icon-180 added.

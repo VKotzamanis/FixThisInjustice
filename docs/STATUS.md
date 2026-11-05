@@ -3,11 +3,11 @@
 Single source of current state. Update in place. Last update: 2026-11-05.
 
 ## Live
-- https://vkotzamanis.github.io/FixThisInjustice/ serves main 6164a9c (2026-11-05; CI verify + worker + e2e chromium/webkit green, deploy green). The AAA rebuild (P0-P8) is live: see `docs/HANDOFF.md`.
+- https://vkotzamanis.github.io/FixThisInjustice/ serves main 04ce22b (2026-11-05, `build-info.json`). 0d07655's Pages deployment was cancelled by GitHub three times (`docs/runbooks/deploy.md`); it ships with the Job 3 push (merge 9456106 + docs). Live check of that push: `docs/HANDOFF.md` State.
 - Data lives in each user's browser: IndexedDB `fti` (per-record, quarantine), `fti.v3` kept as first-boot import source and AM-P2-1 rollback mirror. Users install to Home Screen and export JSON backups (share sheet) from Settings → Data.
 
 ## Next job
-- Read `docs/HANDOFF.md` first: owner answers to implement (panel text in the burn shader look, counter as a bare number with the burn), open owner items (tuning confirm, reminders deploy, device checks, form-cue text), where everything lives.
+- Read `docs/HANDOFF.md` first: act on the owner's phone reports (insets, burn on iPhone, Android Back, video playback), open owner items (form-cue text, banner content), low-priority follow-ups.
 
 ## What exists (2026-10-18 build)
 - Cleanup: docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE + runbooks + design; review-catalogue machinery, both design tools, clinical/board skins, old-console import removed.
@@ -19,7 +19,8 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 - Measurements (P5, plan `docs/plans/2026-11-04-p5-measurements.md`): weigh-ins by role (`BodyMassEntry.role`) from Today, edit/delete with Undo on Log, fluid quick add, Settings profile editor + PAL slider, Targets rewrite, Train prefill and Finish confirmation (C12); e2e `e2e/p5-measurements.spec.ts`. Merged into wave-b.
 - Platform (P4b, plan `docs/plans/2026-11-04-p4b-platform.md`, Tasks 1-12 complete): Zod only through `src/domain/zod.ts` (jitless), `build-info.json` stamp, deploy hardening, lazy art, Web Share backup gate, storage.persist + Settings > Data answer, inert reminders/sfx, update controller (`src/app/updateController.ts`: check on visible + every 30 min, auto-apply with no session open, banner only mid-session, docked under the header at `--z-modal + 1`), route chunks with local retry (`src/app/lazyRoute.tsx`, `routes.tsx`; rest-game sheet `restGameRoute.ts`), install card + `beforeinstallprompt` (`src/app/InstallCard.tsx`, `ui.installNudgeDismissed`). e2e `e2e/p4b-platform.spec.ts`, `e2e/r7-update.spec.ts`. Merged into wave-b.
 - Burn (AM-4a-9, owner-approved 2026-11-05, faithful look, glow on): `src/ui/effects/burnText.ts` (raw WebGL 1, Hoskins MIT hash) + `BurnWord`; burns once on REST OVER (rest bar, after the pulse), the week stamp word, the coach praise word (PR or prescribed reps at the prescribed load). Reduced motion = still frame; no WebGL = plain word. DESIGN.md records the no-gradient/no-blur exception. e2e `e2e/burn.spec.ts`. Rulings R1 (compact brand < 420 px) and R2 (rest time in the open game sheet's title row) done.
-- Lit words + counter (owner review items 8, 10; 2026-11-05, commits 0bb58c6..289b586, not yet pushed; condensed labels stay CSS text on WebKit): lime panel words (header brand/title, lime tab labels, rest-over word at rest, rest-sheet eyebrow) are the burn shader's still frame in `--lit-*` tokens (`src/ui/effects/litText.ts`, one shared WebGL context, cached 2D frames, CSS text fallback, switch `--panel-glow`, now on); the session counter is the bare number (`SessionNumber`), named "Session n", burning once per completed session.
+- Replace + rotation (owner item 11, 2026-11-05, ROADMAP L11): card-header Replace sheet (`replaceChoices` over `swapAlternatives`, recommended = other modality; Undo toast; `e2e/replace.spec.ts`); swap adoption needs `CONSISTENT_SWAP_MIN` (= `CONSISTENT_SKIP_MIN`, 2) consecutive sessions; non-primary slots alternate home/alternate once per cycle, primaries fixed, switch `Profile.rotateAccessories` (absent = on). Evidence V1-V16: `docs/private/evidence/exercise-variation-2026-11-05.md`.
+- Lit words + counter (owner review items 8, 10; 2026-11-05, commits 0bb58c6..289b586, pushed with 04ce22b; condensed labels stay CSS text on WebKit): lime panel words (header brand/title, lime tab labels, rest-over word at rest, rest-sheet eyebrow) are the burn shader's still frame in `--lit-*` tokens (`src/ui/effects/litText.ts`, one shared WebGL context, cached 2D frames, CSS text fallback, switch `--panel-glow`, now on); the session counter is the bare number (`SessionNumber`), named "Session n", burning once per completed session.
 - Programme engine (L6, branch `p7-engine`, `docs/design/programme-engine.md`): open-ended plan, runway >= 28 sessions, next cycle derived from logged data, wizard programme step removed, no "of N"; e2e `e2e/l6-next-block.spec.ts` (written, not run).
 - Fun: rest games (F1, P6): Rest Word (QWERTY), Plate Math, Reaction, Sequence Recall, Gym Anagram, in a bottom sheet over Train with a picker. `docs/design/rest-games.md`.
 - Art (owner-reviewed on artifact pages): body-fat front+side torsos (men 10-35 %, women 20-45 %), slider icons, tape diagrams, 37 per-card Atlas icons (lazy), app icon + badge from the owner's own sprite, "her" sprite sheets (lifting/resting/crown) replacing the pink blob. Spec `docs/design/asset-spec-2026-10-18.md`; register `docs/design/2026-09-04-icon-register.csv`.
@@ -35,7 +36,7 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 - Precache ~1.19 MB (37 card icons are lazy chunks, precached).
 
 ## Branches, tags, backups
-- `main` only. Pushes: owner runs them (agents are blocked from push/force-push/secrets by the permission classifier).
+- `main` only; sibling worktrees `../FixThisInjustice-*` and their merged branches removed 2026-11-05. Their only unique files were kept, gitignored: `docs/private/CustomEmojis/` (13 owner webp) and `agy-artifacts/gen-2026-11-04/` (3 images). The lead pushes on the owner's word ("just merge and push"); force-push and secrets stay blocked.
 - History scrubbed of private identifiers 2026-10-18 (0 hits in 420 commits). Tags: `pre-cleanup-2026-10-17` (old tree), `archive/design-editor`.
 - Pre-scrub backup outside the repo: `~/Desktop/Claude/backups/FixThisInjustice-2026-10-18/`. Raw image originals (17 MB) local only: `agy-artifacts/gen-2026-10-18/` (gitignored).
 
@@ -49,6 +50,8 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 - `docs/runbooks/motivation-clip.md` and `sfx.md` still cite `REFERENCES.md`, which lives only in gitignored `docs/private/evidence/` (`reminders.md` now cites URLs).
 
 ## Decisions log
+- 2026-11-05 L11 (lead rulings on owner item 11): no source shows repeated exercises CAUSE a plateau (evidence Q1; ACSM 2026 "insufficient data"), so rotation is variety, not a plateau fix; A/B per 4-week cycle after Fonseca 2014 (DOI 10.1519/jsc.0000000000000539), primaries never rotate; one-off Replace must not rewrite the next cycle (2-session adoption). Rejected: rotating main lifts, plateau-triggered rotation, random per-session rotation, round-robin over all alternatives.
+- 2026-11-05 open: the evidence agent reports ACSM 2009's full text adds "on two consecutive training sessions" to the 2-10 % load rule; `progression.ts` raises after one session and quotes the abstract. Unverified (full text not readable here); `progression.ts` unchanged until someone reads the journal text.
 - 2026-11-05 B16: a stored-shape change fails `src/domain/migrations/captures.test.ts` until a new capture is taken (`node scripts/capture-schema-fixture.mjs <date>`); earlier captures are never edited and must keep loading.
 - 2026-11-05 R4 (lead ruling): swap-day sets at another slot's range are left out of the substitute's own progression; history and records keep them.
 - 2026-11-04 P2 storage (AM-P2-1): `fti.v3` rollback mirror written on hide/pagehide (`src/store/index.ts` `writeRollbackMirror`). Remove it two releases after P2 ships.

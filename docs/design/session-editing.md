@@ -44,6 +44,7 @@ Agent doc. Change today's session while training: edit a logged set (L1), swap (
 ## UI (one hand, phone)
 - Logged set row: [Edit] beside [Delete]. Edit reopens the row's own fields in place, prefilled (load, reps or seconds, bodyweight toggle), with [Save] [Cancel]. No rest-timer restart, no coach line.
 - Open card, session not finished, at the bottom of the card: 2-column grid of [Swap] [Skip Exercise | Remove Exercise] [Move Up] [Move Down], wrapped in a group named by the exercise. Swap opens an inline native `<select>` (OS picker, large rows) with optgroups Same Muscle / Other Exercises, then [Confirm Swap] [Cancel].
+- Replace (owner item 11, 2026-11-05, 0387ca7..7438873): [Replace] in the card HEADER while the slot is planned, not skipped and has no set logged today. Opens `ReplaceSheet` (`src/ui/views/train/ReplaceSheet.tsx`, existing sheet + history stack; Back/scrim close): Recommended, Back to the Plan (when swapped), same-muscle rows, collapsed Other Exercises. One tap = the same `swap` op, then an Undo toast (withdrawn once a set is logged). Ranking: `replaceChoices` (`src/domain/training/sessionEdits.ts`) calls `swapAlternatives`; recommended = first suggestion whose `modality` differs from the current exercise (a taken station), else the first. After the first set only the bottom-bar Swap remains.
 - Skipped: the same card, tagged Skipped, not auto-opened; its bar offers only [Restore]. The card being moved, swapped or restored stays open; after Skip or Remove the first card still to do opens; an added card opens itself.
 - End of list: [Add Exercise] -> native `<select>` (Fits Your Equipment / Other Exercises) + [Add to Session] [Cancel]; [Custom Exercise] -> existing free-text form.
 - Every control is a `.view button` / `.view select`: 44 px min height, 16 px text (`src/ui/views/views.css`). No hover-only control, no drag, no swipe. Finished session: edit bar and both add controls hidden; skipped cards stay tagged.
@@ -52,6 +53,7 @@ Agent doc. Change today's session while training: edit a logged set (L1), swap (
 - `button.editSet`, `button.saveSet`, `button.swapExercise`, `button.confirmSwap`, `button.skipExercise`, `button.removeExercise`, `button.restoreExercise`, `button.moveUp`, `button.moveDown`, `button.addCustomExercise`, `button.addToSession`
 - `label.exerciseChoice`, `label.sameMuscle`, `label.otherExercises`, `label.fitsEquipment`, `label.skipped`, `label.swappedOut`
 - `status.swappedFrom`, `status.sessionEditRefused`
+- Replace: `button.replaceExercise`, `label.replaceTitle`, `label.recommended`, `label.backToPlan`, `status.replacedWith`
 - Frames: `FORMAT.editSetLabel`, `FORMAT.saveSetLabel`, `FORMAT.swappedFrom`.
 
 ## Not in scope

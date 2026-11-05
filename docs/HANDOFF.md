@@ -1,95 +1,42 @@
 # HANDOFF (next agent)
 
-Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it in place when your job is done; facts that last belong in `docs/STATUS.md`.
+Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place when your job is done; facts that last belong in `docs/STATUS.md`.
 
 ## State
-- Live: main `6164a9c`. CI (verify, worker, e2e on chromium iphone13/pixel7 and webkit-iphone13) and Deploy (build + deploy) are green. Pages serves it.
-- Phases P0-P8 of the rebuild are shipped:
-  - P0: Playwright harness.
-  - P1: owner bugs + critical audit findings.
-  - P2: IndexedDB per-record storage.
-  - P3: schedule.
-  - P3a: 28 new exercises + inventory filter.
-  - P4a: shell and design.
-  - P4b: platform.
-  - P5: measurements.
-  - P6: rest games.
-  - P7: open-ended programme engine (L6), form videos for 68/68, worker E10, burn cel switch, WebKit e2e.
-  - P8: wizard split + coverage sweep.
-- Coverage audit: `docs/private/audit-2026-11-04/coverage.md`. Every agent-fixable finding of the 120 is closed, plus the ROADMAP items (B1c, R4, N4, S4).
+- main: merge 9456106 (Job 3) + docs commit, pushed 2026-11-05. Before it, live was 04ce22b; 0d07655's Pages deployment was cancelled 3x by GitHub (re-run of a cancelled SHA cannot succeed: `docs/runbooks/deploy.md`).
+- First action: `gh run list --limit 4`; confirm CI and Deploy (jobs `build` AND `deploy`) for HEAD, then `curl -s "https://vkotzamanis.github.io/FixThisInjustice/build-info.json?x=$RANDOM"` names HEAD's short SHA and the live `assets/index-*.js` contains "Replace". If not, fix and push (owner standing order).
+- Last full Verify (merged tree, 2026-11-05): vitest 1632 + 1486 + 698 (264/264 files), e2e 194 passed + 3 skipped (`p4a-shots`, opt-in), worker 157, tsc/eslint/emoji/private/CSP pass.
+- Worktrees and side branches: none (removed 2026-11-05). New parallel tracks: `git worktree add ../FixThisInjustice-<name> -b <branch>`, `cp -al node_modules`, delete `.tmp`, `.vite`, `.vitest`. Check the path does not already exist first.
 
 ## Read first (in order)
-1. `AGENTS.md`: rules 1-10, Verify block, Deploy, Owner.
+1. `AGENTS.md`.
 2. `docs/STATUS.md`.
 3. This file.
-4. `docs/plans/2026-11-04-aaa-rebuild-spec.md`: rulings R1-R13.
-5. Owner's verbatim answers: `docs/private/owner-feedback/phone-week-2026-11-04.md` (gitignored; all review answers incl. items 8-11).
-6. Owner review page: https://claude.ai/artifact/3yj8bqQGczJkfoDbjjLSTd. Read it with the ArtifactData tool:
-   - collection `answers`, docs `tabs`, `icons`, `ticker`, `shadow`, `vignette`, `postponed`, `typeface`, `glow`, `burn`, `burnLook`, `burnGlow`, `burnCopy`, `cursorWording`;
-   - collection `tuning`, doc `adaptation`.
-7. Design system:
-   - `DESIGN.md`
-   - `PRODUCT.md`
-   - `docs/design/p4-design-brief.md`
-   - `docs/design/critique-2026-11-04.md`
-   - craft floor `/home/vx/Desktop/Claude/web-assets/.claude/skills/impeccable/reference/craft-floor.md`
-8. Burn effect (owner-approved, faithful look, glow on):
-   - code: `src/ui/effects/burnText.ts` (switch `BURN_LOOK`), `src/ui/effects/burnMoments.ts`, `src/ui/effects/BurnWord.tsx`, `burnWord.css`;
-   - tokens `--burn-*` in `src/ui/styles/tokens.css`;
-   - research: `docs/private/design-2026-11-04/holo-alarm-burn.md`;
-   - owner's original shader: `/home/vx/Desktop/Claude/phone-glow-build/alarm/assets/web/lyrics-core.js:242-291` (read-only).
-9. Nord Glow reference (fonts, effects, licences): `docs/private/design-2026-11-04/phone-glow-reference.md`.
-10. Programme engine: `docs/design/programme-engine.md`, `src/domain/plan/engine.ts`. Form videos: `docs/design/form-videos.md`.
+4. Owner's verbatim answers: `docs/private/owner-feedback/phone-week-2026-11-04.md`.
+5. Owner review page https://claude.ai/artifact/3yj8bqQGczJkfoDbjjLSTd (ArtifactData, collection `answers`; no new answers since 2026-11-05 17:45 UTC).
+6. Design: `DESIGN.md`, `PRODUCT.md`, `docs/design/p4-design-brief.md`. Burn/lit: `src/ui/effects/burnText.ts`, `litText.ts`, `BurnWord.tsx`, tokens `--burn-*`/`--lit-*`.
+7. Programme engine: `docs/design/programme-engine.md` (incl. decision `engine-accessory-rotation`), `src/domain/plan/engine.ts`. Session editing + Replace: `docs/design/session-editing.md`.
 
-## Job 1: DONE 2026-11-05 (items 8 and 10; item 11 moved to Job 3)
-- Commits: 0bb58c6 (static lit renderer `src/ui/effects/litText.ts`: ONE shared offscreen WebGL context, frames cached as 2D canvases, max 64; `--lit-*` tokens; `--panel-glow` on), 3a9aa71 (`LitWord`, BurnWord `rest="lit"`), 41928bf (header brand + title, lime tab labels, rest-over word at rest, rest-sheet eyebrow), fe78282 (counter: bare number, `SessionNumber`, burns once per completed session via `burnMoments.claimSessionAdvance`, named "Session n"; limelight `status.sessionCursor` row removed, fixture updated), 265e796 (glow fade inside the lit canvas; e2e in `e2e/burn.spec.ts`), 6e65668 (glow room in the title/tab clips; `litText.widthMatches` refuses a frame whose width differs from the DOM word), 289b586 (counter at normal width).
-- Decisions: the current tab label stays plain ink on its pink sticker (lime on pink 1.41:1); `status.sessionEyebrow` on Train is now "1, Lower A", the number a `SessionNumber` (owner item 10 note; `FORMAT.sessionEyebrowParts`); `SessionIndicator` is not mounted anywhere, it only got the bare number through `FORMAT.planPosition`; with `--panel-glow` on, `Echo` words also get the static CSS glow.
-- Follow-up DONE: burn haze rectangle. One glow fade for burn and lit (`burnText.ts` `GLOW_FADE`, `edgeFade`, `glowFade`; `uFade` switch removed); glow and flame tongues reach alpha 0 at the outermost canvas pixel; glyph pixels unchanged (headless Chromium readback, border alpha 134 -> 0). Test `burnText.test.ts` "fades glow and flames to zero alpha".
-- WebKit canvas has no fontStretch: the 75 % tab labels and the 75 % eyebrow stay plain CSS text (glow shadow) on iOS; the header title, brand, rest-over word and counter (100 %) are lit. Owner still to see both on a phone.
-
-### Original brief (kept for reference)
-- Item 8 (`glow`, "change"): "Can you instead use the font and shader font that we use on (9) but with lime green accents? no burn affect needed."
-  - Build a STATIC variant of the burn renderer: same font (Archivo 900 wide, as `BurnWord`) and the faithful shader look (cel bands / halftone / ink outline per `holo-alarm-burn.md`), recoloured to lime accents, with no heat animation and no flames.
-  - Use it for the lime words on the black lit-sign panels: header brand and page title, current tab label, rest bar word, panel eyebrows. Never numerals in set entry.
-  - Fallbacks: static (no rAF), CSS text when WebGL is absent, reduced motion unaffected.
-  - Keep `--panel-glow` as the switch and set it on.
-- Item 10 (`cursorWording`, "keep"): "Just change the "EP.12" to just the number and use the font shade and burn effect from 9."
-  - The session counter (limelight `status.sessionCursor`, `FORMAT.planPosition`; SessionIndicator, Today eyebrow, header) shows the bare number, e.g. `12`.
-  - Render it in the burn font and shader, and burn it once when the number advances (a completed session), using burnMoments' once-per-moment rule.
-  - Keep an accessible name ("Session 12").
-  - This edits owner copy on his own instruction (AGENTS rule 4 satisfied: he asked).
-- Item 11 (`tuning/adaptation`): owner clarified 2026-11-05; see Job 3.
-- Verify:
-  - unit tests for the static shader variant and the counter;
-  - e2e (`e2e/burn.spec.ts` pattern) on chromium and webkit;
-  - the contrast sweep (`e2e/p4a-sweeps.spec.ts`) stays green;
-  - then the AGENTS Verify block.
-  - Machine is 16 GB shared: `--maxWorkers=1`, one heavy process at a time.
-
-## Job 2: owner-gated items (do only when he answers)
-- Reminders: owner decided "Skip reminders" (2026-11-05): ROADMAP N2 not shipped for now. Do not deploy the Worker unless he reopens it.
-- Real-device checks he must report:
+## Job: act on the owner's phone reports
+- He will report from his phone on:
   - iPhone notch and home-bar insets;
-  - burn on iOS (canvas has no fontStretch in WebKit; GPU precision);
+  - burn and lit words on iOS (WebKit canvas has no fontStretch: 75 % tab labels and eyebrow are CSS text there; GPU precision);
   - praise-word burn while the reps field keeps focus;
-  - Android Back in the installed app;
-  - the YouTube player inside the sandboxed frame.
-- Form-cue text for 38 exercises: his wording; do not write it.
-- Moving-banner content: his job "for another time".
+  - Android Back in the installed app (sheets incl. the new Replace sheet, More sheet, rest-game sheet);
+  - form-video playback (YouTube player inside the sandboxed frame);
+  - the new Replace button and sheet, and the Settings rotation switch, at real size.
+- `systematic-debugging` before any fix. Reproduce in Playwright (chromium iphone13/pixel7, webkit-iphone13) where possible; quote his words verbatim into the owner-feedback file.
+- Owner-gated, do not do: form-cue text for 38 exercises (his wording), moving-banner content ("for another time"), reminders (decided skipped; do not deploy the Worker).
 
-## Job 3 (owner item 11, 2026-11-05)
-- Owner, verbatim (`docs/private/owner-feedback/phone-week-2026-11-04.md`, "Item 11 clarification"): "For 11 I said that It should a a general option to replace exarcises. For example if at one day you have to do triceps at the cable machine and the machine is taken or you just dont feel like it you can place replace when you start the exercise and another tricep exercise would be reccomended. And I also said that from my knowledge if you keep doing the same exercises over oand over again there is a plateu and you would need to change your regiment. These can be things the next agent will search and address."
-- (a) Replace, one tap, at the START of each exercise (machine taken / does not feel like it):
-  - prominent "Replace" in the exercise card header (`src/ui/views/train/ExerciseCard.tsx`);
-  - recommends same-muscle alternatives that fit the equipment inventory;
-  - build on the existing swap: `swapAlternatives` (`src/domain/training/sessionEdits.ts:474`), `src/ui/views/train/SessionEditBar.tsx`; no second alternatives rule;
-  - keep the progression rules (ROADMAP R4, `progressionHistory` in `src/domain/training/progression.ts`).
-- (b) Plateau / exercise variation over time:
-  - research FIRST (AGENTS rule 1): peer-reviewed sources on exercise variation vs repeated exercises for strength/hypertrophy and plateaus; record each with its DOI in `docs/private/evidence/` or `src/content/guidanceReferences.ts`;
-  - then extend the next-block rule (`src/domain/plan/engine.ts`) with a sourced rotation policy; no unsourced coefficient. No source: ship nothing.
-- Item 11's two numbers (50 %, 2: `LOW_ADHERENCE_FRACTION`, `CONSISTENT_SKIP_MIN`, `src/domain/plan/engine.ts`) stay unless the research says otherwise.
+## Job 3 (DONE 2026-11-05, owner item 11)
+- Replace: 0387ca7 (`replaceChoices`), 59e572b (header button, `ReplaceSheet`, Undo toast), 7438873 (`e2e/replace.spec.ts`, webkit project too).
+- Engine: 0df36d3 (R-A, 2-session adoption), e32bf91 (R-B rotation + `Profile.rotateAccessories`), d5194b2 (Settings switch), c4d8a48 (docs). Merge 9456106.
+- Evidence: `docs/private/evidence/exercise-variation-2026-11-05.md` (V1-V16, all DOIs Crossref-checked; lead re-checked V1, V2, V3, V16).
 
 ## Known follow-ups (agent-fixable, low priority)
+- Replace sheet quiet line shows raw muscle ids ("front-delt"); no display-name map exists.
+- Rotation edges (programme-engine.md): an adopted swap equal to the slot's alternate re-alternates next cycle (no stored pin); a skip replacement onto home rotates back one cycle later; an alternate the user can no longer use (equipment change) stays; switch off freezes the current A/B state, it does not revert to home.
+- ACSM 2009 "two consecutive training sessions" clause (STATUS decisions log): unverified; `progression.ts` unchanged.
 - `ModalShell` `onClose` is a fresh arrow every render (audit A16 note).
 - Per-record hydrate is 430 ms for 3 years of history in node (budget test 1290 ms); profile on a phone.
 - A rolled-back pre-N4 build quarantines the new `ui` record (no `accent`): ui prefs only.
@@ -97,7 +44,6 @@ Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it 
 - `scripts/alpha-fixture.mjs` is not deterministic across runs.
 
 ## Process (what worked)
-- Codex hit its usage limit mid-session. The owner then asked for Claude Opus 5.5 medium builders (`opus55-medium-builder`) in BATCH mode: per task `tsc -b` + commit; full gates once per batch.
-- Parallel tracks ran in sibling worktrees `../FixThisInjustice-*` with hardlinked `node_modules` (`cp -al`, then delete `.tmp`, `.vite`, `.vitest`). Port 4174 is for one e2e runner at a time.
-- Owner instruction at the end: "Stop with all those checks. Just merge and push". The lead pushes; CI is the gate. Watch `gh run list` once per push.
-- Old worktrees can be removed (`git worktree remove --force ...`). First copy `../FixThisInjustice-design/docs/private/design-2026-11-04/` (critique screenshots, only there) into the main tree's `docs/private/`.
+- Builders: `opus55-medium-builder`, several tasks per builder, per task `tsc -b` + commit with pathspecs, one full Verify per batch; the lead re-runs the gates after merging. Research: `sonnet55-high`, DOIs resolved on Crossref.
+- Owner: "When I say so, just merge and push. GitHub's CI is the gate." After a push watch `gh run list` once, then check the live stamp.
+- Paywalled full text: an unofficial PDF copy is refused by the permission classifier; record the claim as unverified instead.
