@@ -23,6 +23,7 @@ import { GOAL_OPTIONS } from '../components/RestartProgramme';
 import { MotivationSettings } from '../motivation/MotivationSettings';
 import { DataSection } from '../settings/DataSection';
 import { InteractionSettings } from '../settings/InteractionSettings';
+import { ProfileEditor } from '../settings/ProfileEditor';
 import { ProgrammeSettings } from '../settings/ProgrammeSettings';
 import './views.css';
 
@@ -405,6 +406,8 @@ export function SettingsView(): JSX.Element {
       <p className="view-note">{t('advice.storedUnitsUnchanged')}</p>
 
       <TimeZoneSetting key={profile.id} profile={profile} />
+      {/* Spec R9 / audit G06, G05: the setup facts, editable with the wizard's rules. */}
+      <ProfileEditor key={`editor-${profile.id}-${profile.units}`} profile={profile} />
 
       <div className="view-field">
         <label htmlFor="settings-activity">{t('label.activity')}</label>

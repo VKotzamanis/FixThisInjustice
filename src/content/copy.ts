@@ -310,6 +310,12 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'hero.editBody'
+  | 'quantity.birthYear'
+  | 'button.saveProfile'
+  | 'status.profileSaved'
+  | 'hero.bodyFatRemeasure'
+  | 'button.logBodyFat'
   | 'quantity.drinkVolume'
   | 'button.logDrink'
   | 'status.drinkLogged'
@@ -1165,6 +1171,13 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R9 / audit G06, G05: the setup facts made editable, and the dated body-fat re-measure.
+  'hero.editBody': 'Body And Goal',
+  'quantity.birthYear': 'Birth year',
+  'button.saveProfile': 'Save Profile',
+  'status.profileSaved': 'Profile saved.',
+  'hero.bodyFatRemeasure': 'Re-Measure Body Fat',
+  'button.logBodyFat': 'Log Body Fat',
   // Spec R9 / audit G07, G14: the always-available fluid quick add and the editable cup.
   'quantity.drinkVolume': 'Drink volume',
   'button.logDrink': 'Log Drink',
