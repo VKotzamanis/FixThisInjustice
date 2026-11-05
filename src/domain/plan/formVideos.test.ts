@@ -46,7 +46,7 @@ describe('form video ids', () => {
     for (const r of rows.filter((x) => x.videoId !== null)) {
       expect({ exercise: r.exercise, verified: r.verified }).toEqual({
         exercise: r.exercise,
-        verified: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) as unknown as string,
+        verified: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       });
     }
     const nullSection = doc.split('## Null ids')[1]?.split('\n## ')[0] ?? '';
