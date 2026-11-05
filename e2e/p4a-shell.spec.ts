@@ -228,10 +228,8 @@ test('ticker keeps >= 120 px beside the compact brand on every view (ruling R-HD
       return shortForm !== null && getComputedStyle(shortForm).display !== 'none';
     });
     console.log(`R-HDR ticker ${JSON.stringify({ width, compactBrand: brand, minTickerPx: Math.min(...widths) })}`);
-    expect(brand).toBe(width < 400);
-    // The ruling's floor holds where it applies (the compact brand, < 400 px). At 412 px the full
-    // name is the ruling's own choice; that width is measured and reported, not held to 120 px.
-    if (width < 400) expect(Math.min(...widths)).toBeGreaterThanOrEqual(120); // [px]
-    else expect(Math.min(...widths)).toBeGreaterThan(0); // [px] never squeezed shut
+    expect(brand).toBe(width < 420); // ruling R1: 412 px is compact too
+    // Ruling R1 (2026-11-05): the 120 px floor holds at every phone width, 412 px included.
+    expect(Math.min(...widths)).toBeGreaterThanOrEqual(120); // [px]
   }
 });

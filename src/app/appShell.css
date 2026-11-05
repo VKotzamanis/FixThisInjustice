@@ -39,7 +39,7 @@
 }
 
 /*
- * Ruling R-HDR: below 400 px the header shows "FTI" (index.html's apple-mobile-web-app-title)
+ * Ruling R-HDR (breakpoint 420 px by ruling R1, 2026-11-05, so 412 px keeps the ticker too): below 420 px the header shows "FTI" (index.html's apple-mobile-web-app-title)
  * instead of the full name, so the ticker keeps >= 120 px [px] at 320 px: 288 px row - 25 px
  * brand - at most 129 px title (7rem cap + 8 + 8 + 1) - 8 px gap = 126 px. The full name is
  * clipped, not removed, so a screen reader still hears it; the short form is aria-hidden.
@@ -48,7 +48,7 @@
   display: none;
 }
 
-@media (max-width: 399.98px) {
+@media (max-width: 419.98px) {
   .topbar .brand-short {
     display: inline;
   }

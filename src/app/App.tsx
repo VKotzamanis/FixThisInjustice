@@ -635,7 +635,7 @@ export function App(): ReactElement {
             <ReminderSync />
             <header className="topbar">
               {/*
-               * Ruling R-HDR: below 400 px the brand is the compact BRAND_SHORT (index.html's
+               * Ruling R-HDR: below 420 px (R1) the brand is the compact BRAND_SHORT (index.html's
                * apple-mobile-web-app-title), so the kept ticker gets >= 120 px at 320 px
                * (appShell.css; measured in e2e/p4a-shell.spec.ts). The full name stays in the
                * accessibility tree at every width; the short form is the visual stand-in.
