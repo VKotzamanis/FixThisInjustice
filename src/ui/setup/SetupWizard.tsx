@@ -69,6 +69,7 @@ import {
   type MuscleAxis,
   type Profile,
   type SetupAnswers,
+  type SetupDraft,
   type Sex,
   type StatedSex,
   type UnitSystem,
@@ -85,7 +86,7 @@ import {
   storedLoadKg,
   storedMassKg,
 } from '../components/UnitInput';
-import { useAppStore } from '../../store';
+import { flushSave, useAppStore } from '../../store';
 import {
   BODY_EQUATIONS,
   BODY_EQUATIONS_LEAD,
@@ -180,6 +181,19 @@ export const STEPS = [
 ] as const;
 
 export type StepId = (typeof STEPS)[number];
+
+/**
+ * Audit A06: the step a stored draft resumes on. By `stepId` when it names a step that still
+ * exists, else the stored index clamped into STEPS, so a stale or out-of-range index (a draft
+ * saved under a longer step list, or a hand-edited one) can never open "Step 9 of 8" with no way
+ * forward.
+ */
+export function restoreStepIndex(draft: Pick<SetupDraft, 'stepIndex' | 'stepId'> | null): number {
+  if (draft === null) return 0;
+  const byId = draft.stepId === undefined ? -1 : (STEPS as readonly string[]).indexOf(draft.stepId);
+  if (byId >= 0) return byId;
+  return Math.min(Math.max(0, Math.trunc(draft.stepIndex)), STEPS.length - 1);
+}
 
 /*
  * The step titles as KEYS, not as resolved strings. A module constant is evaluated once at
@@ -1225,8 +1239,8 @@ export function SetupWizard(): JSX.Element {
   const [buffer, setBuffer] = useState<Draft | null>(
     () => useAppStore.getState().setupDraft?.buffer ?? null,
   );
-  const [stepIndex, setStepIndex] = useState<number>(
-    () => useAppStore.getState().setupDraft?.stepIndex ?? 0,
+  const [stepIndex, setStepIndex] = useState<number>(() =>
+    restoreStepIndex(useAppStore.getState().setupDraft),
   );
   /*
    * What the screen renders and what every validator below reads: the committed answers with the
@@ -1289,17 +1303,26 @@ export function SetupWizard(): JSX.Element {
    */
   const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const draftSaveMounted = useRef(false);
+  /** Audit A07: the draft the timer will hand the store, so backgrounding can hand it now. */
+  const pendingDraft = useRef<SetupDraft | null>(null);
   useEffect(() => {
     if (!draftSaveMounted.current) {
       draftSaveMounted.current = true;
       return;
     }
-    if (submitted) return;
+    if (submitted) {
+      pendingDraft.current = null; // setup is done: nothing may resurrect the draft
+      return;
+    }
+    // BOTH tiers, separately (A2). The committed answers spread flat, exactly as before; the
+    // step in progress rides beside them under `buffer` and never overwrites them. The step id
+    // rides beside the index (A06).
+    const next: SetupDraft = { ...committed, stepIndex, stepId: STEPS[stepIndex] ?? STEPS[0], buffer };
+    pendingDraft.current = next;
     draftSaveTimer.current = setTimeout(() => {
-      // BOTH tiers, separately (A2). The committed answers spread flat, exactly as before; the
-      // step in progress rides beside them under `buffer` and never overwrites them.
+      pendingDraft.current = null;
       try {
-        useAppStore.getState().saveSetupDraft({ ...committed, stepIndex, buffer });
+        useAppStore.getState().saveSetupDraft(next);
       } catch {
         // Spec R5 (review N4): the store refused a draft the loader could not reload (a field
         // over its bound) and wrote nothing, so the last valid draft stays stored. A timer
@@ -1310,6 +1333,40 @@ export function SetupWizard(): JSX.Element {
       if (draftSaveTimer.current !== null) clearTimeout(draftSaveTimer.current);
     };
   }, [committed, buffer, stepIndex, submitted]);
+
+  /*
+   * Audit A07: the last keystrokes reach storage when the app is backgrounded. iOS may kill a
+   * suspended PWA without another event, and the store's own pagehide/visibilitychange flush
+   * (src/store/index.ts startPersistence) cannot see a draft still waiting in the timer above,
+   * so the wizard hands it over and flushes the store itself.
+   */
+  useEffect(() => {
+    const flush = (): void => {
+      const next = pendingDraft.current;
+      if (next === null) return;
+      if (draftSaveTimer.current !== null) {
+        clearTimeout(draftSaveTimer.current);
+        draftSaveTimer.current = null;
+      }
+      pendingDraft.current = null;
+      try {
+        useAppStore.getState().saveSetupDraft(next);
+      } catch {
+        // Spec R5 (review N4), as in the timer above: a refused draft writes nothing; an event
+        // listener must not throw. Whatever else is pending is still flushed.
+      }
+      flushSave();
+    };
+    const onVisibility = (): void => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, []);
 
   const step: StepId = STEPS[stepIndex] ?? 'units';
 

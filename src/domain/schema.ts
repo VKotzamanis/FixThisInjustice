@@ -784,7 +784,11 @@ const SetupDaySlotSchema = z.object({
   durationMin: z.string().max(MAX_DRAFT_TEXT_CHARS), // [min] as typed, unvalidated
 });
 
-/** [step index] Sanity ceiling: STEPS in src/ui/setup/SetupWizard.tsx has 9 entries (0-8). */
+/**
+ * [step index] Sanity ceiling. STEPS in src/ui/setup/SetupWizard.tsx has 8 entries (0-7); the
+ * bound stays 8 because a stored draft at 8 must keep parsing (rule 7: `.catch(null)` would drop
+ * the whole draft). The wizard clamps on restore and prefers `stepId` (audit A06).
+ */
 const MAX_SETUP_DRAFT_STEP_INDEX = 8;
 
 /**
@@ -878,6 +882,9 @@ const SetupAnswersShapeSchema = z.object({
 // refuses instead of letting SetupDraftSchema's outer `.catch(null)` turn a bad write into "no draft".
 export const SetupDraftShapeSchema = SetupAnswersShapeSchema.extend({
   stepIndex: z.int().min(0).max(MAX_SETUP_DRAFT_STEP_INDEX),
+  // Additive, optional (audit A06): the step's id, so a draft resumes on the same SCREEN even
+  // if the step list changes (ROADMAP L6). A corrupt value becomes '' and the index is used.
+  stepId: z.string().max(MAX_DRAFT_TEXT_CHARS).catch('').optional(),
   buffer: SetupAnswersShapeSchema.nullable().catch(null),
 });
 

@@ -458,6 +458,11 @@ export interface SetupAnswers {
 export interface SetupDraft extends SetupAnswers {
   /** Index into STEPS (src/ui/setup/SetupWizard.tsx), so a reload reopens on the same screen. */
   stepIndex: number;
+  /**
+   * The STEPS id of the same screen (audit A06). Optional and additive: absent on drafts written
+   * before it; the wizard restores by id when it knows it, else clamps stepIndex.
+   */
+  stepId?: string | undefined;
   /** The step in progress, or null when nothing has been typed since the last Next or Back. */
   buffer: SetupAnswers | null;
 }
