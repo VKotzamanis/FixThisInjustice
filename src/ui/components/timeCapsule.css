@@ -7,9 +7,9 @@
  *
  * The two numbers here are the master plan section 3 requirements: font-size 16px on every
  * text control, because mobile Safari zooms the viewport for anything smaller and does not zoom
- * back, and min-height 2.75rem = 44 px at a 16 px root on every tap target. Every custom
- * property carries a literal fallback, so the card renders whether or not the token sheet is
- * loaded.
+ * back, and min-height 2.75rem = 44 px at a 16 px root on every tap target.
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
  */
 .capsule {
   display: flex;

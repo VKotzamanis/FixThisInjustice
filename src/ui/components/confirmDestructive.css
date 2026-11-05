@@ -8,8 +8,9 @@
  * The two numbers are the ones the master plan (section 3) treats as requirements: font-size
  * 16px on the text field, because mobile Safari zooms the viewport for anything smaller and
  * does not zoom back, and min-height 2.75rem = 44 px at a 16 px root on every tap target.
- * Every custom property carries a literal fallback, so the panel renders whether or not the P1
- * token sheet is loaded.
+ *
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
  */
 .confirm-destructive {
   display: flex;

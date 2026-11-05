@@ -1,9 +1,9 @@
 /*
  * The spotlight palette (P8 Task 8).
  *
- * Every colour and font reads a token from src/ui/styles/tokens.css and carries a literal
- * fallback, so the palette renders whether or not the token sheet has loaded and a skin
- * restyles it by swapping tokens rather than by editing this file (master plan section 3).
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
+ * A skin restyles it by swapping tokens, not by editing this file (master plan section 3).
  *
  * Geometry is the shared bottom sheet (src/ui/overlay/sheet.css, brief 5.1); the query field sits
  * under the results so the phone keyboard pushes the field, not the list (F11).

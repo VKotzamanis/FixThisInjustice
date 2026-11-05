@@ -11,8 +11,8 @@
  *   control the user taps carries it: inputs, selects, buttons, and the label wrapping a
  *   checkbox or radio (the label is the tap area, not the 13 px box inside it).
  *
- * Every custom property carries a literal fallback so the wizard renders whether or not the
- * P1 token sheet is loaded.
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
  */
 .wiz {
   max-width: 34rem;

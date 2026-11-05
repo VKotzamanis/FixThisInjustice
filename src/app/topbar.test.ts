@@ -246,3 +246,13 @@ describe('compact brand below 400 px (ruling R-HDR)', () => {
     expect(block).toMatch(/\.topbar \.brand-full \{[^}]*clip-path:\s*inset\(50%\);/);
   });
 });
+
+describe('the shell banner (craft floor: no coloured side rule over 1 px)', () => {
+  it('marks its state with a top rule, never a thick left or right border', () => {
+    const clean = shellCss.replace(/\/\*[\s\S]*?\*\//g, '');
+    const banner = [...clean.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((r) => (r[1] ?? '').trim() === '.banner');
+    const body = banner?.[2] ?? '';
+    expect(body).toMatch(/border-top:\s*3px solid var\(--danger\);/);
+    expect(clean).not.toMatch(/border-(left|right):\s*([2-9]|\d{2,})px/);
+  });
+});

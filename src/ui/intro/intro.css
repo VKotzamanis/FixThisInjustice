@@ -12,9 +12,8 @@
  * leaving two full-screen layers at the same number. Above the CRT layers (--z-crt) and the
  * toast stack (--z-toast).
  *
- * Every custom property carries a literal fallback, as boot.css and phaseTransition.css do, so
- * the sequence renders whether or not the P1 token sheet has loaded -- which matters more here
- * than almost anywhere else, because this can be the very first screen a document ever shows.
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
  */
 .intro {
   position: fixed;

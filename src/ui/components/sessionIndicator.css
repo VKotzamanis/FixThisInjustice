@@ -7,8 +7,8 @@
  * style choice, and it is set inline in SessionIndicator.tsx where a test can hold it (vitest
  * stubs every stylesheet but crt.css, so a rule asserted here would assert nothing).
  *
- * Every custom property carries a literal fallback so the indicator renders whether or not
- * the P1 token sheet is loaded.
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
  */
 .session-indicator {
   font-family: var(--mono, ui-monospace, monospace);

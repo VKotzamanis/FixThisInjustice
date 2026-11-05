@@ -1,9 +1,9 @@
 /*
  * The global toast region (P8 Task 3).
  *
- * Every colour, font and rule reads a token from src/ui/styles/tokens.css and carries a
- * literal fallback, so the region renders whether or not the token sheet is loaded and a skin
- * restyles it by swapping tokens rather than by editing this file (master plan section 3).
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
+ * A skin restyles it by swapping tokens, not by editing this file (master plan section 3).
  *
  * The stack is always mounted, empty or not, because a live region has to exist before its
  * content does. It therefore takes no pointer events, nor does the toast's body: only its own

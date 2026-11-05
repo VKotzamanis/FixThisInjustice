@@ -18,8 +18,8 @@
  * modals and src/ui/views/atlas.css gives its card dialog, so a full-screen surface in this app
  * dims the page by one amount rather than three.
  *
- * Every custom property carries a literal fallback, as boot.css and phaseTransition.css do, so
- * the overlay renders whether or not the P1 token sheet has loaded.
+ * Tokens from src/ui/styles/tokens.css, which src/main.tsx loads before any view; a
+ * `var(--x, literal)` fallback still in this sheet never fires (the token is always defined).
  */
 .konami-bg {
   position: fixed;
