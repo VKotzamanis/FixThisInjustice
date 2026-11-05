@@ -43,6 +43,13 @@ import { createFunActions, type FunActions } from './funActions';
 import { applyReplacePlan, applyRestartProgramme } from './programme';
 import { applyCompleteSetup, applyCreateProfile, applySetAvailability, type SetupResult } from './setup';
 import { parseOrThrow } from './validate';
+import {
+  applyDeleteBodyMass,
+  applyRemoveDrink,
+  applyRestoreBodyMass,
+  applyUpdateBodyMass,
+  type BodyMassEdit,
+} from './measurements';
 import type { ProgrammeChoice } from '../domain/plan/lifecycle';
 import {
   UNDO_WINDOW_MS,
@@ -273,8 +280,28 @@ export interface AppActions {
    * @param now [ms] epoch UTC; the caller owns the clock, as everywhere else in this contract.
    */
   undoAvailable(now: EpochMs): boolean;
-  /** @param now [ms] epoch UTC, the instant the weigh-in was entered. */
-  logBodyMass(e: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void;
+  /**
+   * Stores one weigh-in and returns its id, so the view can offer an edit or an undo at once.
+   * Throws on a value the loader would refuse (spec R5).
+   *
+   * @param now [ms] epoch UTC, the instant the weigh-in was entered.
+   */
+  logBodyMass(e: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): string;
+  /**
+   * Spec R9 / audit G03: corrects one weigh-in in place (mass, unit, body fat, role); id, date and
+   * loggedAt are kept. Throws, writing nothing, on an unknown id or a refused value.
+   */
+  updateBodyMass(profileId: string, id: string, edit: BodyMassEdit): void;
+  /** Removes one weigh-in and returns it for the undo offer; null (no write) for an unknown id. */
+  deleteBodyMass(profileId: string, id: string): BodyMassEntry | null;
+  /** Puts back a weigh-in `deleteBodyMass` returned, exactly; a no-op when it is already there. */
+  restoreBodyMass(entry: BodyMassEntry): void;
+  /**
+   * Audit G07: takes back one drink by the instant addHydration recorded for it. Idempotent.
+   *
+   * @param volumeML [mL] @param at [ms] epoch UTC
+   */
+  removeDrink(profileId: string, date: LocalDate, volumeML: ML, at: EpochMs): void;
   /**
    * Adds one drink to the profile's total for `date` (upsert by civil day) and records the
    * instant.
@@ -947,8 +974,30 @@ export const useAppStore = create<AppStore>()((set, get) => {
     return pending !== null && now <= pending.expiresAt && !slotTaken(get(), pending.set);
   },
 
-  logBodyMass(entry: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): void {
-    set((s) => applyLogBodyMass(s, entry, newId(), now)); // now: [ms] epoch, UTC
+  logBodyMass(entry: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): string {
+    // Minted before the write so it can be returned (same pattern as logSet).
+    const id = newId();
+    set((s) => applyLogBodyMass(s, entry, id, now)); // now: [ms] epoch, UTC
+    return id;
+  },
+
+  updateBodyMass(profileId: string, id: string, edit: BodyMassEdit): void {
+    set((s) => applyUpdateBodyMass(s, profileId, id, edit));
+  },
+
+  deleteBodyMass(profileId: string, id: string): BodyMassEntry | null {
+    const { next, removed } = applyDeleteBodyMass(get(), profileId, id);
+    // Identity kept for an unknown id: no persisted field changed, so no write.
+    if (removed !== null) set({ bodyMass: next.bodyMass });
+    return removed;
+  },
+
+  restoreBodyMass(entry: BodyMassEntry): void {
+    set((s) => applyRestoreBodyMass(s, entry));
+  },
+
+  removeDrink(profileId: string, date: LocalDate, volumeML: ML, at: EpochMs): void {
+    set((s) => applyRemoveDrink(s, profileId, date, volumeML, at)); // [mL], [ms] epoch UTC
   },
 
   addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void {
@@ -1228,4 +1277,5 @@ export function startPersistence(): () => void {
 }
 
 export { defaultState };
+export type { BodyMassEdit } from './measurements';
 export type { SetupResult } from './setup';
