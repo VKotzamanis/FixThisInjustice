@@ -168,6 +168,19 @@
   --eyebrow-stretch: 75%;
   --panel-glow: none;
   /*
+   * The burn (AM-4a-9, owner approval 2026-11-05: look FAITHFUL, glow ON). A word that burns once
+   * (src/ui/effects/burnText.ts) sits on its own ink plate with lime letters; the fire ramp runs
+   * deep (wine) -> mid (hot pink) -> hot (white core), the owner's Holo Alarm values, and a soft
+   * glow in --burn-glow. The shader reads these with getComputedStyle; no colour literal in TS.
+   * An owner-approved exception to the no-gradient / no-blur rules (DESIGN.md, Burn).
+   */
+  --burn-plate: var(--ink);
+  --burn-cool: var(--lime);
+  --burn-deep: #81324f;
+  --burn-mid: #ff4fd8;
+  --burn-hot: var(--panel-text);
+  --burn-glow: #ee7392;
+  /*
    * ONE z ladder (critique D11). --z-crt is the one rung the brief's table does not list: the
    * opt-in scanline and vignette layers, pointer-events none, over the page and under toasts.
    */
@@ -392,6 +405,19 @@ body {
   --eyebrow-tracking: 0.24em;
   --eyebrow-stretch: 75%;
   --panel-glow: none;
+  /*
+   * The burn (AM-4a-9, owner approval 2026-11-05: look FAITHFUL, glow ON). A word that burns once
+   * (src/ui/effects/burnText.ts) sits on its own ink plate with lime letters; the fire ramp runs
+   * deep (wine) -> mid (hot pink) -> hot (white core), the owner's Holo Alarm values, and a soft
+   * glow in --burn-glow. The shader reads these with getComputedStyle; no colour literal in TS.
+   * An owner-approved exception to the no-gradient / no-blur rules (DESIGN.md, Burn).
+   */
+  --burn-plate: var(--ink);
+  --burn-cool: var(--lime);
+  --burn-deep: #81324f;
+  --burn-mid: #ff4fd8;
+  --burn-hot: var(--panel-text);
+  --burn-glow: #ee7392;
   /*
    * ONE z ladder (critique D11). --z-crt is the one rung the brief's table does not list: the
    * opt-in scanline and vignette layers, pointer-events none, over the page and under toasts.

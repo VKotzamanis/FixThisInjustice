@@ -1,0 +1,30 @@
+/*
+ * The burning word (AM-4a-9, src/ui/effects/BurnWord.tsx). The word sits on its own ink plate in
+ * lime letters (10.91:1), wherever it is placed: on the pink rest-over bar, inside the pink stamp
+ * sticker, in the coach line on lime. Tokens only (src/ui/styles/tokens.css, --burn-*).
+ *
+ * The canvas is centred on the word and overflows the plate on purpose: the flame tongues rise
+ * above the cap line and the glow spreads round the letters (owner-approved exception to the
+ * no-gradient / no-blur rules, DESIGN.md "Burn"). While it is live the DOM text is painted
+ * transparent, not hidden, so the word keeps its place and its accessible name.
+ */
+.burn-word {
+  position: relative;
+  display: inline-block;
+  padding: 0 0.3em;
+  background: var(--burn-plate);
+  color: var(--burn-cool);
+  text-shadow: none;
+}
+
+.burn-word.is-burning .burn-word-text {
+  color: transparent;
+}
+
+.burn-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}

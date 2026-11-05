@@ -417,6 +417,18 @@
   color: var(--lime);
 }
 
+/* AM-4a-9: the rest-over word in the digits' place, on its own ink plate (burnWord.css), so it
+ * reads lime on ink (10.91:1) on the pink bar and burns once after the pulse. */
+.rest-over-word {
+  margin-right: auto;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  line-height: 1.4;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 .rest-controls {
   display: flex;
   align-items: center;

@@ -220,7 +220,10 @@ A 44 px black strip with a 3 px ink rule top and bottom, items = pixel icon + te
 ### The Rest Sign (signature)
 Black panel, 64 px ring (lime track, pink arc), lime tabular digits, lime controls; flips to pink with ink at zero and pulses 3 times at 2 Hz (`train.css:375-480`). Sits in the Train header, scrolled off screen while the user logs (audit C05).
 
-### Toasts
+### The Burn (owner-approved exception, 2026-11-05)
+One word burns once, about 1.2 s: a heat field scrolls up through lime letters on an ink plate, white-hot at the baseline, hot pink (`--burn-mid`) above it, wine (`--burn-deep`) at the edges, flame tongues above the cap line and a soft glow (`--burn-glow`), after the owner's Holo Alarm lyric burn (AM-4a-9; `src/ui/effects/burnText.ts`, raw WebGL 1). Moments: the rest-over word on the rest bar after the pulse, the week stamp's word after it lands, and the coach line's praise word after a personal record or a set at the prescribed reps and load. Never numerals, never during set entry; reduced motion = one still frame; no WebGL = the plain word on its plate.
+**This is an owner-approved exception (2026-11-05) to "no gradients", "no blur" and the Hard-Offset Rule**: the ramp and the glow are gradients and blur by nature, and the owner chose the faithful look with glow on. It applies to the burn only; every other surface keeps the rules.
+
 Black lit-sign cards, pink 2 px left rule, uppercase pink tag, 44 px Undo/Dismiss, fixed `bottom: 1rem`, full width, z 60 (`toastQueue.css`). They cover the next set's Log button (139 px band at 509-648 px of a 664 px iPhone 13 viewport [MEASURED]).
 
 ### Her and the icon bank

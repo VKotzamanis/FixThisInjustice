@@ -7,7 +7,7 @@
 // Units: every load is canonical kg here and is formatted for display only at the boundary,
 // by src/domain/units.ts. Rest is seconds. Instants are epoch ms UTC.
 import { Fragment, useMemo, useState, type ReactElement, type ReactNode } from 'react';
-import { FORMAT, type CopyKey } from '../../../content/copy';
+import { copy, FORMAT, type CopyKey } from '../../../content/copy';
 import { FORM_CUES } from '../../../content/formCues';
 import { coachLine, type CoachLine } from '../../../domain/training/coach';
 import { suggestedProgression, type ProgressionAdvice } from '../../../domain/training/progression';
@@ -28,6 +28,8 @@ import { unlockAudio } from '../../audio/chime';
 import { useFormCuesModal } from '../../components/FormCuesModal';
 import { useVideoModal } from '../../components/VideoModal';
 import { formatPrescription } from '../../format/plan';
+import { BurnWord } from '../../effects/BurnWord';
+import { coachBurns, praiseWordOf, splitAround } from '../../effects/burnMoments';
 import { SetRow, type SetEntry } from './SetRow';
 import '../../styles/train.css';
 
@@ -126,7 +128,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   /** Brief 4.2: the set the user tapped to make active; null = the first unlogged set. */
   const [chosenN, setChosenN] = useState<number | null>(null);
   /** C08: the coach line for the set just logged on this card, shown under that set. */
-  const [coach, setCoach] = useState<{ n: number; line: CoachLine } | null>(null);
+  // `burns` (AM-4a-9): a PR or a set finished well; `at` keys the burn to this log, once.
+  const [coach, setCoach] = useState<{ n: number; line: CoachLine; burns: boolean; at: number } | null>(null);
 
   // Today's own sets never feed the suggestion: the rule advances only after a COMPLETED
   // session (code review A22), so a set logged an hour ago must not move the suggestion the
@@ -239,7 +242,8 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     // personal best a comparison rather than a tautology.
     const line = coachLine({ ...set, id, loggedAt: now }, history, advice, profile.units);
     // C08: inline under this set; the view still hears it for milestones and specimens.
-    setCoach({ n, line });
+    // AM-4a-9: a personal record, or the prescribed reps at the prescribed load, burns its word.
+    setCoach({ n, line, burns: coachBurns(line, { loadKg: set.loadKg, prescribedKg: advice.loadKg }), at: now });
     onCoach(line, specimen);
     // C10: a forgotten set added after Finish starts no rest.
     if (!amending) {
@@ -397,7 +401,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                 />
                   {coach !== null && coach.n === n && logged !== null && (
                     <p className="set-coach" role="status">
-                      {FORMAT.withSlots(coach.line.key, coach.line.params, overrides)}
+                      <CoachSentence key={coach.at} line={coach.line} burns={coach.burns} overrides={overrides} />
                     </p>
                   )}
                 </Fragment>
@@ -456,5 +460,29 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * The coach line, with its praise word burning once when the set earned it (AM-4a-9). The word
+ * is cut out of the line's own template (burnMoments.praiseWordOf), so no wording is added and
+ * a numeral never burns; a template without one renders the plain sentence.
+ */
+function CoachSentence(props: {
+  line: CoachLine;
+  burns: boolean;
+  overrides: Readonly<Partial<Record<CopyKey, string>>>;
+}): ReactElement {
+  const { line, burns, overrides } = props;
+  const text = FORMAT.withSlots(line.key, line.params, overrides);
+  const word = burns ? praiseWordOf(copy(line.key, overrides)) : null;
+  const parts = word === null ? null : splitAround(text, word);
+  if (parts === null) return <>{text}</>;
+  return (
+    <>
+      {parts[0]}
+      <BurnWord text={parts[1]} />
+      {parts[2]}
+    </>
   );
 }

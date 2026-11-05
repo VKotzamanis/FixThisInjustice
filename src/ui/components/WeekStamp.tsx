@@ -7,6 +7,9 @@ import { Icon } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
 import { usePendingMotivation } from '../../store/selectors';
 import { weekDeltaKey } from '../format/weekDelta';
+import { BurnWord } from '../effects/BurnWord';
+import { STAMP_DELAY_MS, stampWordOf } from '../effects/burnMoments';
+import { prefersReducedMotion } from '../hooks/reducedMotion';
 import { DitherWipe } from './DitherWipe';
 import { HER_PLAY_CYCLES, HER_SHEETS } from './herSheets';
 import { SpriteSheet, type SpriteScale } from './SpriteSheet';
@@ -100,6 +103,7 @@ export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactEle
   // stored value's sign and is shared with the ticker and the intervention, so the three places
   // that name a week's outcome cannot drift apart (src/ui/format/weekDelta.ts).
   const outcome = weekDeltaKey(review);
+  const stampWord = stampWordOf(c('status.weekMetStamp'));
 
   return (
     <section className="ll-stamp" data-testid="week-stamp">
@@ -108,7 +112,13 @@ export function WeekStamp({ review }: { review: WeeklyReview | null }): ReactEle
       <SpriteSheet sheet={HER_SHEETS['her-crown']} scale={STAMP_SCALE} iterations={HER_PLAY_CYCLES} />
       <p className="ll-stamp-word ll-display">
         <Icon name="crown" />
-        {c('status.weekMetStamp')}
+        {/* AM-4a-9: the stamp's word burns once after the landing (700 ms; at once under reduced
+            motion, which has no landing). A long or numeral word stays plain. */}
+        {stampWord === null ? (
+          c('status.weekMetStamp')
+        ) : (
+          <BurnWord text={stampWord} delayMs={prefersReducedMotion() ? 0 : STAMP_DELAY_MS} />
+        )}
       </p>
       <p className="ll-stamp-line">
         {FORMAT.withSlots(

@@ -26,6 +26,9 @@ import { useRestGameWins, useRestTimer } from '../../../store/selectors';
 import { unlockAudio } from '../../audio/chime';
 import { prefersReducedMotion } from '../../hooks/reducedMotion';
 import { RestGameSheet } from './RestGameSheet';
+import { REST_OVER_GRACE_MS } from '../../../app/RestController';
+import { BurnWord } from '../../effects/BurnWord';
+import { restOverWordOf, START_DELAY_REST_MS } from '../../effects/burnMoments';
 import '../../styles/train.css';
 import '../../styles/restGames.css';
 
@@ -122,6 +125,7 @@ export function RestTimerPanel(): ReactElement | null {
   const gameFits = roundS !== null && remaining >= roundS; // [s] vs [s]
   const startedAt = timer.startedAt; // [ms] epoch UTC, the interval a phase is keyed to
   const clock = FORMAT.restRemaining(minutes, seconds, overrides); // one formatted clock: bar and sheet
+  const restOverWord = restOverWordOf(c('notification.restOver'));
   /*
    * THE LIT SIGN (stylize survey item 3). The ring, the clock and the controls sit on the black
    * `.ll-panel`, which is where the lime `stopwatchPanel` icon was drawn to sit. At zero the sign
@@ -144,7 +148,23 @@ export function RestTimerPanel(): ReactElement | null {
         */}
       <div className={signClass} role="group" aria-label={c('status.rest')}>
         <span className="rest-progress" aria-hidden="true" style={{ width: `${String(elapsedFraction * 100)}%` }} />
-        <span className="rest-time">{clock}</span>
+        {/*
+          * AM-4a-9: at zero the digits give way to the rest-over WORD on its own plate (the
+          * first sentence of notification.restOver), which burns once after the pulse. Numerals
+          * never burn. A rest that ended long ago (the app was closed through it) shows the word
+          * without the burn, as it gets no cue (REST_OVER_GRACE_MS).
+          */}
+        {restOver && restOverWord !== null ? (
+          <BurnWord
+            key={timer.endsAt}
+            className="rest-over-word"
+            text={restOverWord}
+            delayMs={reduced ? 0 : START_DELAY_REST_MS}
+            burn={now - timer.endsAt <= REST_OVER_GRACE_MS}
+          />
+        ) : (
+          <span className="rest-time">{clock}</span>
+        )}
         <div className="rest-label visually-hidden" aria-live="polite">
           {restOver ? <span className="ll-label">{c('notification.restOver')}</span> : <SkinLabel copyKey="status.rest" />}
         </div>
