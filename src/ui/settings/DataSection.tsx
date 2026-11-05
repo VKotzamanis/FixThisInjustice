@@ -38,7 +38,7 @@ import { ExportView } from '../views/ExportView';
  */
 
 /** The word master plan section 3 fixes for every destructive confirmation. */
-const CONFIRM_WORD = 'DELETE';
+export const CONFIRM_WORD = 'DELETE';
 
 type OpenPanel = 'none' | 'wipe';
 

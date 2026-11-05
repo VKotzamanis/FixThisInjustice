@@ -36,7 +36,6 @@ async function reachAndPassAcknowledgement(context: BrowserContext): Promise<voi
 test.describe('320 x 568 portrait', () => {
   test.use({ viewport: { width: 320, height: 568 } });
   test('A02: the acknowledgement can be completed', async ({ context }) => {
-    test.fail(); // removed by plan Task 16
     await reachAndPassAcknowledgement(context);
   });
 });
@@ -44,7 +43,6 @@ test.describe('320 x 568 portrait', () => {
 test.describe('iPhone landscape 750 x 342', () => {
   test.use({ viewport: { width: 750, height: 342 } });
   test('A02: the acknowledgement can be completed', async ({ context }) => {
-    test.fail(); // removed by plan Task 16
     await reachAndPassAcknowledgement(context);
   });
 });

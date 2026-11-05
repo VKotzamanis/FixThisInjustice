@@ -1,6 +1,6 @@
 # STATUS
 
-Single source of current state. Update in place. Last update: 2026-10-21.
+Single source of current state. Update in place. Last update: 2026-11-04.
 
 ## Live
 - https://vkotzamanis.github.io/FixThisInjustice/ serves everything built 2026-10-18 (verified by bundle content, not workflow status). Owner started using it on his phone 2026-10-21.
@@ -22,6 +22,7 @@ Single source of current state. Update in place. Last update: 2026-10-21.
 
 ## Gates
 - All commands in `AGENTS.md` → Verify. Expected: zero failing tests (2,904 app + 148 worker on 2026-10-18).
+- E2E: `npm run e2e` (Playwright 1.63.0, Chromium 1243, projects iphone13 + pixel7, 1 worker; CI job `e2e`). Specs reproduce O1, O2, C02, A01/B02, A02, C03, B01 (plan `docs/plans/2026-11-04-p0-p1-unblock.md`); all green.
 - Privacy: `scripts/check-private.sh` uses `docs/private/privacy-pattern.txt` locally and repo secret `PRIVACY_PATTERN` in CI (set 2026-10-18; CI prints PASS). On a fresh clone without the file it prints SKIPPED.
 - Precache ~1.19 MB (37 card icons are lazy chunks, precached).
 
