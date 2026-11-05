@@ -44,6 +44,7 @@ export default defineConfig({
         'burn.spec.ts',
         'p6-rest-sheet.spec.ts',
         'replace.spec.ts',
+        'hero-number.spec.ts',
       ],
     },
   ],

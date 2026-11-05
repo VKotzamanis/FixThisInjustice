@@ -74,8 +74,12 @@ export function FluidQuickAdd(props: { profile: Profile; today: LocalDate }): Re
   return (
     <section className="measurements" aria-labelledby={headingId}>
       <h3 id={headingId}>{c('label.fluid')}</h3>
+      {/* The bar and the totals are two lines: together they wrapped "fl oz" onto a second line
+       * at every phone width (owner report on 4a27393, measured 320-412 px). */}
       <p className="view-progress">
-        <AsciiBar value={loggedML} target={targetML} label={c('label.fluidProgress')} testId="fluid-bar" />{' '}
+        <AsciiBar value={loggedML} target={targetML} label={c('label.fluidProgress')} testId="fluid-bar" />
+      </p>
+      <p className="view-progress-totals">
         <span data-testid="fluid-progress">
           {FORMAT.valueOfTarget(formatVolume(loggedML, profile.units), formatVolume(targetML, profile.units))}
         </span>
