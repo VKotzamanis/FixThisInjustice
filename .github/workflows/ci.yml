@@ -143,6 +143,23 @@ jobs:
           PRIVACY_PATTERN: ${{ secrets.PRIVACY_PATTERN }}
         run: bash scripts/check-private.sh
 
+      # Audit E06/E15: deploy.yml publishes exactly these bytes, after every gate above passed on
+      # them. Push events only: a pull request's build is never published. The fingerprint lets
+      # Deploy skip a publish that changes nothing a user downloads (a docs-only commit).
+      - name: Fingerprint the published bytes
+        if: github.event_name == 'push'
+        run: bash scripts/dist-fingerprint.sh dist > dist/content-sha256.txt
+
+      - name: Upload dist for Deploy
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v7
+        with:
+          name: dist
+          path: dist
+          # [d] Matches the 30-day re-run window the rollback runbook relies on.
+          retention-days: 30
+          if-no-files-found: error
+
   # The Worker is a separate npm package with its own lockfile, so it gets its own job
   # rather than extra steps in `verify`. It is not linted here: worker/ sits outside the
   # root ESLint configuration, and tsc plus Vitest are its gates.
