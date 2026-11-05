@@ -25,4 +25,13 @@ export const REST_GAME_FORMAT = {
   /** "Best 250 ms": the fastest clean tap of a Reaction round [ms]. */
   reactionBest: (ms: number, overrides?: Overrides): string =>
     copy('status.restGameReactionBest', overrides).replace('{ms}', () => String(ms)),
+  /** "Pad 3": the accessible name of a Sequence Recall pad, 1-based. */
+  sequencePad: (n: number, overrides?: Overrides): string =>
+    copy('label.restGameSequencePad', overrides).replace('{n}', () => String(n)),
+
+  /** "Length 3 of 5": the sequence length now asked for, out of the goal [steps]. */
+  sequenceLength: (length: number, goal: number, overrides?: Overrides): string =>
+    copy('status.restGameSequenceLength', overrides)
+      .replace('{length}', () => String(length))
+      .replace('{goal}', () => String(goal)),
 } as const;

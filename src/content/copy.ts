@@ -391,6 +391,14 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Sequence Recall (P6) ---
+  | 'hero.restGameSequence'
+  | 'advice.restGameSequenceRule'
+  | 'label.restGameSequenceWatch'
+  | 'label.restGameSequenceRepeat'
+  | 'label.restGameSequencePad'
+  | 'label.restGameSequencePads'
+  | 'status.restGameSequenceLength'
   // --- Reaction (P6) ---
   | 'hero.restGameReaction'
   | 'advice.restGameReactionRule'
@@ -1286,6 +1294,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6 Sequence Recall (src/ui/views/train/SequenceRecallGame.tsx).
+  'hero.restGameSequence': 'Sequence Recall',
+  'advice.restGameSequenceRule': 'Watch the pads light up, then tap them in order.',
+  'label.restGameSequenceWatch': 'Watch',
+  'label.restGameSequenceRepeat': 'Your Turn',
+  'label.restGameSequencePad': 'Pad {n}',
+  'label.restGameSequencePads': 'Sequence Pads',
+  'status.restGameSequenceLength': 'Length {length} of {goal}',
   // P6 Reaction (src/ui/views/train/ReactionGame.tsx). The pad says its state in these words.
   'hero.restGameReaction': 'Reaction',
   'advice.restGameReactionRule': 'Tap the pad when it turns lime, never before.',

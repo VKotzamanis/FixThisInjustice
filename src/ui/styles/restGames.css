@@ -465,3 +465,45 @@
   font-size: 0.75rem;
   font-variant-numeric: tabular-nums;
 }
+
+/* ===== sequence-recall ===== */
+/*
+ * Four pads in two columns, five or six in three; each at least 4rem (64 px) tall. Lit: lime with
+ * ink type and a 6 px double ink edge (10.91:1), a shape as well as a colour. A locked pad keeps
+ * full strength, so a lit step is never dimmed by the lock that is on while it shows.
+ */
+.rest-seq-length {
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.rest-seq-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+.rest-seq-grid.pads-5,
+.rest-seq-grid.pads-6 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.view .rest-seq-pad {
+  min-height: 4rem;
+  background: var(--panel);
+  color: var(--panel-text);
+  border: 2px solid var(--panel-text);
+  font-size: 1.25rem;
+  font-weight: 800;
+}
+
+.view .rest-seq-pad:disabled {
+  opacity: 1;
+}
+
+.view .rest-seq-pad.is-lit {
+  background: var(--lime);
+  color: var(--ink);
+  border: 6px double var(--ink);
+}
