@@ -88,6 +88,8 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
     'P6 QWERTY keyboard: its delete key is 3 half-columns wide and reads button.restWordDel',
   'button.restWordSubmit':
     'P6 QWERTY keyboard: its submit key is 3 half-columns wide and reads button.restWordEnter',
+  'button.restWordLaunch':
+    'P6: the launch control opens a picker of five games now and reads button.restGameLaunch',
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];

@@ -128,3 +128,34 @@ describe('rest game styles (ROADMAP F1)', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('the game sheet (P6, R10, audit C14)', () => {
+  const sheet = gameRules.find((rule) => rule.selector === '.rest-sheet')?.body ?? '';
+
+  it('is fixed to the bottom edge, out of the page flow', () => {
+    expect(sheet).toMatch(/position:\s*fixed;/);
+    expect(sheet).toMatch(/(^|;|\s)bottom:\s*0;/);
+    expect(sheet).toMatch(/(^|;|\s)left:\s*0;/);
+    expect(sheet).toMatch(/(^|;|\s)right:\s*0;/);
+  });
+
+  it('caps its height at 100svh - 12rem, border-box, with a vh fallback first', () => {
+    expect(sheet).toMatch(/max-height:\s*calc\(100vh - 12rem\);[\s\S]*max-height:\s*calc\(100svh - 12rem\);/);
+    expect(sheet).toMatch(/box-sizing:\s*border-box;/);
+    expect(sheet).toMatch(/overflow-y:\s*auto;/);
+  });
+
+  it('keeps the 12 px side padding the QWERTY arithmetic uses, plus every safe-area inset', () => {
+    expect(sheet).toMatch(/padding-left:\s*calc\(0\.75rem \+ env\(safe-area-inset-left\)\);/);
+    expect(sheet).toMatch(/padding-right:\s*calc\(0\.75rem \+ env\(safe-area-inset-right\)\);/);
+    expect(sheet).toMatch(/padding-bottom:\s*calc\(0\.5rem \+ env\(safe-area-inset-bottom\)\);/);
+    expect(0.75 * PX_PER_REM).toBe(12); // [px] SHEET_SIDE_PADDING_PX in the keyboard case
+  });
+
+  it('pads the Train page under an open or a minimised sheet', () => {
+    const open = gameRules.find((rule) => rule.selector === 'body.rest-sheet-open .view.train');
+    const min = gameRules.find((rule) => rule.selector === 'body.rest-sheet-min .view.train');
+    expect(open?.body).toMatch(/padding-bottom:\s*calc\(min\(100svh - 12rem, 30rem\) \+ 1rem\);/);
+    expect(min?.body).toMatch(/padding-bottom:/);
+  });
+});

@@ -382,7 +382,6 @@ export type CopyKey =
   // --- Train view (P4 Task 10; appended by that task) ---
   | 'button.extendRest'
   // --- Rest games (ROADMAP F1, docs/design/rest-games.md) ---
-  | 'button.restWordLaunch'
   | 'button.restWordExit'
   | 'hero.restWord'
   | 'label.restWordBoard'
@@ -391,6 +390,15 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Rest-game sheet and picker (P6) ---
+  | 'button.restGameLaunch'
+  | 'hero.restGamePicker'
+  | 'advice.restGamePicker'
+  | 'label.restGameSuggested'
+  | 'label.restGameLastPlayed'
+  | 'button.restGameShow'
+  | 'button.restGameNotNow'
+  | 'label.restGameSheet'
   // --- Gym Anagram (P6) ---
   | 'hero.restGameAnagram'
   | 'advice.restGameAnagramRule'
@@ -1295,7 +1303,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'button.extendRest': '+30 s',
   // Rest games (ROADMAP F1). Optional, and none of them names the rest clock: a game never pauses,
   // skips or extends the prescribed rest, so no string here may promise that it does.
-  'button.restWordLaunch': 'Play Word Game',
   'button.restWordExit': 'Exit Game',
   'hero.restWord': 'Rest Word',
   'label.restWordBoard': 'Word Puzzle Board',
@@ -1304,6 +1311,15 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6 sheet and picker (src/ui/views/train/RestGameSheet.tsx, RestGamePicker.tsx).
+  'button.restGameLaunch': 'Play a Game',
+  'hero.restGamePicker': 'Pick a Game',
+  'advice.restGamePicker': 'One round per rest. The rest clock never stops.',
+  'label.restGameSuggested': 'Suggested',
+  'label.restGameLastPlayed': 'Last Played',
+  'button.restGameShow': 'Show Game',
+  'button.restGameNotNow': 'Not Now',
+  'label.restGameSheet': 'Rest Game',
   // P6 Gym Anagram (src/ui/views/train/GymAnagramGame.tsx).
   'hero.restGameAnagram': 'Gym Anagram',
   'advice.restGameAnagramRule': 'Tap the letters in order to spell the gym word.',

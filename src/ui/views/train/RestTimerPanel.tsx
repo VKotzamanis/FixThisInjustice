@@ -7,13 +7,15 @@
 // Units: instants are epoch ms UTC [ms]; every rest quantity is seconds [s]; the ring's
 // geometry is in SVG user units, which the viewBox maps to px at the rendered size.
 //
-// The rest game (ROADMAP F1, docs/design/rest-games.md) lives inside this panel because it lives
-// inside the rest: offered when a rest that carries a game identity starts, closed when that rest
-// ends, is skipped or is replaced by the next set's rest. It reads the timer and never writes it.
+// The rest game (ROADMAP F1, P6, docs/design/rest-games.md) belongs to this panel because it lives
+// inside the rest: offered when a rest that carries a game identity starts, played in a bottom
+// sheet (RestGameSheet) fixed over Train, closed when that rest ends, is skipped or is replaced by
+// the next set's rest. This panel is the ONLY reader of the timer and of the wins count; it hands
+// both to the sheet as props (the P1 interface contract) and no game writes either.
 import { useEffect, useRef, useState, type ReactElement } from 'react';
 import { copy, FORMAT, type CopyKey } from '../../../content/copy';
 import { useCopy, useCopyOverrides } from '../../../content/useCopy';
-import { restWordRound } from '../../../domain/fun/restWord';
+import { restRoundClockS } from '../../../domain/fun/restGames';
 import { extend, remainingS, totalS } from '../../../domain/training/restTimer';
 import type { EpochMs } from '../../../domain/types';
 import { SkinLabel } from '../../../skins/limelight/Icon';
@@ -22,7 +24,7 @@ import { useAppStore } from '../../../store';
 import { useRestGameWins, useRestTimer } from '../../../store/selectors';
 import { playChime, unlockAudio, vibrate } from '../../audio/chime';
 import { prefersReducedMotion } from '../../hooks/reducedMotion';
-import { RestWordGame } from './RestWordGame';
+import { RestGameSheet } from './RestGameSheet';
 import '../../styles/train.css';
 import '../../styles/restGames.css';
 
@@ -82,6 +84,10 @@ export function RestTimerPanel(): ReactElement | null {
   const firedRef = useRef(false);
   const restGameWins = useRestGameWins(); // [rounds]
   const sounds = useAppStore((s) => s.ui.sounds);
+  // The active profile's units, for Plate Math; read here so no game reads the store.
+  const units = useAppStore((s) =>
+    s.activeProfileId === null ? 'metric' : (s.profiles[s.activeProfileId]?.units ?? 'metric'),
+  );
   const [game, setGame] = useState<RestGamePhase | null>(null);
   // Read once at mount, as Boot and PhaseTransition read it: it picks the rest-over sign's pulse.
   const [reduced] = useState<boolean>(prefersReducedMotion);
@@ -169,10 +175,11 @@ export function RestTimerPanel(): ReactElement | null {
   const minutes = Math.floor(remaining / S_PER_MIN); // [min]
   const seconds = remaining % S_PER_MIN; // [s]
   // A timer restored from an older build carries no game identity, and then no game is offered.
-  const round = timer.game === undefined ? null : restWordRound(timer.game, timer.durationS, restGameWins);
+  // Every family runs on one round clock (restRoundClockS), so one check covers the whole picker.
+  const roundS = timer.game === undefined ? null : restRoundClockS(timer.durationS); // [s]
   // Offered only while the whole round fits in the rest still to run: a round never outlasts it.
-  const offerGame = round !== null && phase === 'ready' && !restOver;
-  const gameFits = round !== null && remaining >= round.durationS; // [s] vs [s]
+  const offerGame = roundS !== null && phase === 'ready' && !restOver;
+  const gameFits = roundS !== null && remaining >= roundS; // [s] vs [s]
   const startedAt = timer.startedAt; // [ms] epoch UTC, the interval a phase is keyed to
   /*
    * THE LIT SIGN (stylize survey item 3). The ring, the clock and the controls sit on the black
@@ -268,22 +275,24 @@ export function RestTimerPanel(): ReactElement | null {
                 setGame({ startedAt, phase: 'open' });
               }}
             >
-              {c('button.restWordLaunch')}
+              {c('button.restGameLaunch')}
             </button>
           )}
         </div>
       </div>
       {offerGame && !gameFits && <p className="rest-game-unavailable">{c('status.restWordTooLate')}</p>}
       {phase === 'open' && !restOver && (
-        <RestWordGame
+        <RestGameSheet
           key={startedAt}
           timer={timer}
           priorWins={restGameWins}
           soundsEnabled={sounds}
+          units={units}
           t={c}
           overrides={overrides}
-          onExit={() => {
-            setGame({ startedAt, phase: 'closed' });
+          onClose={(played) => {
+            // A round played spends this rest's one offer; a picker closed unplayed leaves it.
+            setGame(played ? { startedAt, phase: 'closed' } : null);
           }}
           onWin={() => {
             useAppStore.getState().recordRestGameWin();
