@@ -326,6 +326,10 @@ export type CopyKey =
   | 'advice.fileUnreadable'
   | 'hero.dataOnDevice'
   | 'advice.dataOnDevice'
+  | 'status.storagePersistent'
+  | 'status.storageBestEffort'
+  | 'status.storageUnknown'
+  | 'button.requestStorage'
   | 'button.wipeAll'
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   | 'hero.atlas'
@@ -1158,6 +1162,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.fileUnreadable': 'The file could not be read.',
   'hero.dataOnDevice': 'Data on This Device',
   'advice.dataOnDevice': 'Everything stays on this device. No account.',
+  // Spec R8 / audit B09: the browser's answer to navigator.storage.persist(), in Settings > Data.
+  // Meanings from MDN "Storage quotas and eviction criteria" (read 2026-11-04).
+  'status.storagePersistent': 'This browser keeps the app data until you delete it.',
+  'status.storageBestEffort': 'This browser may clear the app data when space runs low. Keep a backup.',
+  'status.storageUnknown': 'This browser does not say whether it keeps the app data.',
+  'button.requestStorage': 'Request Persistence',
   'button.wipeAll': 'Wipe All Data',
 
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---

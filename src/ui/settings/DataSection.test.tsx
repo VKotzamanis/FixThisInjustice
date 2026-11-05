@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { FORMAT, copyFor } from '../../content/copy';
 import { clearAssetStorage } from '../../domain/motivation/assets';
@@ -8,6 +8,7 @@ import { useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
 import { DataSection } from './DataSection';
+import { readDurability, resetDurabilityForTest } from '../../app/storageDurability';
 import { SettingsView } from '../views/SettingsView';
 import type { SkinId } from '../../domain/types';
 
@@ -294,5 +295,45 @@ describe('SettingsView data section: a device that still holds the old console k
     expect(buttons()).toEqual(without);
     for (const key of OLD_CONSOLE_KEYS) expect(storage.get(key)).toBe('{}');
     expect(storage.get(STORAGE_KEY)).toBe(STORED_DOCUMENT);
+  });
+});
+
+describe('Settings > Data states the storage durability (spec R8, audit B09)', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'storage');
+    resetDurabilityForTest();
+  });
+
+  function stubStorage(persisted: boolean, grant: boolean): { persist: ReturnType<typeof vi.fn> } {
+    const persist = vi.fn(() => Promise.resolve(grant));
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(persisted), persist },
+      configurable: true,
+    });
+    return { persist };
+  }
+
+  it('says best-effort, offers the request, and reports the answer', async () => {
+    const { persist } = stubStorage(false, true);
+    await act(async () => {
+      await readDurability();
+    });
+    render(<DataSection />);
+    expect(screen.getByText(copyFor('limelight', 'status.storageBestEffort'))).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.requestStorage') }));
+      await Promise.resolve();
+    });
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(copyFor('limelight', 'status.storagePersistent'))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.requestStorage') })).toBeNull();
+  });
+
+  it('says so when the browser reports nothing', async () => {
+    await act(async () => {
+      await readDurability(undefined);
+    });
+    render(<DataSection />);
+    expect(screen.getByText(copyFor('limelight', 'status.storageUnknown'))).toBeInTheDocument();
   });
 });
