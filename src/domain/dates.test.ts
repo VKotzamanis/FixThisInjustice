@@ -1,10 +1,12 @@
 import { tzOffset } from '@date-fns/tz';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   addDays,
   compareLocalDate,
   daysBetween,
   deviceTimeZone,
+  groupTimeZones,
+  groupTimeZonesOnce,
   instantOf,
   isValidLocalDate,
   isValidLocalTime,
@@ -344,5 +346,42 @@ describe('invalid input throws RangeError rather than producing NaN text', () =>
     expect(() => isoWeekday('2026-02-30')).toThrow(RangeError);
     expect(() => isoWeekday('not-a-date')).toThrow(RangeError);
     expect(() => isoWeekday('2026-9-1')).toThrow(RangeError);
+  });
+});
+
+describe('time-zone work is done once per session (audit F08)', () => {
+  const NOW = Date.UTC(2026, 10, 4, 12, 0, 0); // [ms] epoch UTC
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('isValidTimeZone builds no formatter for a zone it has already answered', () => {
+    expect(isValidTimeZone('Europe/Athens')).toBe(true);
+    const spy = vi.spyOn(Intl, 'DateTimeFormat');
+    expect(isValidTimeZone('Europe/Athens')).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('caches a refusal too', () => {
+    expect(isValidTimeZone('Not/AZone')).toBe(false);
+    const spy = vi.spyOn(Intl, 'DateTimeFormat');
+    expect(isValidTimeZone('Not/AZone')).toBe(false);
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('groupTimeZonesOnce equals groupTimeZones and returns the same array for the same list and year', () => {
+    const zones = ['America/Chicago', 'America/New_York', 'Europe/Athens', 'Asia/Tokyo'];
+    const first = groupTimeZonesOnce(zones, NOW);
+    expect(first).toEqual(groupTimeZones(zones, NOW));
+    expect(groupTimeZonesOnce([...zones], NOW + 3_600_000)).toBe(first); // [ms] one hour later
+  });
+
+  it('recomputes for another year or another list', () => {
+    const zones = ['America/Chicago', 'Europe/Athens'];
+    const first = groupTimeZonesOnce(zones, NOW);
+    const nextYear = Date.UTC(2027, 0, 2, 0, 0, 0); // [ms] epoch UTC
+    expect(groupTimeZonesOnce(zones, nextYear)).not.toBe(first);
+    expect(groupTimeZonesOnce(['Asia/Tokyo'], NOW)).not.toBe(first);
   });
 });

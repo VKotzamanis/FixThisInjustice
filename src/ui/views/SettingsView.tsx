@@ -5,7 +5,7 @@ import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import {
-  groupTimeZones,
+  groupTimeZonesOnce,
   isValidTimeZone,
   matchedZoneCities,
   matchedZoneMembers,
@@ -113,7 +113,7 @@ function TimeZoneSetting(props: { profile: Profile }): JSX.Element {
     if (timeZoneOptions.length === 0) return [];
     const known = isValidTimeZone(profile.timezone) && !timeZoneOptions.includes(profile.timezone);
     const zones = known ? [...timeZoneOptions, profile.timezone] : timeZoneOptions;
-    return groupTimeZones(zones, Date.now());
+    return groupTimeZonesOnce(zones, Date.now()); // F08: once per list and year
   }, [timeZoneOptions, profile.timezone]);
   const [zoneQuery, setZoneQuery] = useState('');
   const shownTimeZoneRows = useMemo(() => {

@@ -12,7 +12,8 @@
 // FORMAT frame with two volumes in it, and since P8 close-out B that frame reads
 // `advice.beverageShortfall` and takes an overlay, so close-out D hands it this banner's own
 // `useCopyOverrides()` and the skin reaches it like any other string.
-import { render, screen } from '@testing-library/react';
+import { Profiler } from 'react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FORMAT, SKIN_COPY, copy, copyFor } from '../../../content/copy';
 import { SESSION_CHECK_INTERVAL_MS } from '../../../domain/training/hydration';
@@ -125,5 +126,28 @@ describe('HydrationBanner: the limelight voice', () => {
       screen.getByText(FORMAT.beverageShortfall('0 mL', '3000 mL', SKIN_COPY.limelight)),
     ).toBeInTheDocument();
     expect(screen.queryByText(FORMAT.beverageShortfall('0 mL', '3000 mL'))).toBeNull();
+  });
+});
+
+describe('subscribes to its cue, not to the whole document (audit C17)', () => {
+  it('does not re-render on a write that does not change the cue', () => {
+    useAppStore.setState(seed('limelight'));
+    let commits = 0;
+    render(
+      <Profiler
+        id="banner"
+        onRender={() => {
+          commits += 1;
+        }}
+      >
+        <HydrationBanner profile={PROFILE} date={TODAY} sessionActive />
+      </Profiler>,
+    );
+    const before = commits;
+    act(() => {
+      // A UI preference: no profile, assignment, hydration or body-mass change.
+      useAppStore.getState().setUi({ hotkeys: !useAppStore.getState().ui.hotkeys });
+    });
+    expect(commits).toBe(before);
   });
 });

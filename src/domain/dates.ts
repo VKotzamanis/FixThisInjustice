@@ -82,15 +82,27 @@ export function isValidLocalTime(s: string): s is LocalTime {
   return LOCAL_TIME_SHAPE.test(s);
 }
 
+/**
+ * Audit F08: whether a zone id is valid cannot change within a session, and building an
+ * Intl.DateTimeFormat per question cost about 350 ms of a 1101 ms long task on every Settings
+ * visit (4x throttled Pixel 7). Answered once per id, refusals included.
+ */
+const zoneValidity = new Map<string, boolean>();
+
 /** True when Intl accepts s as an IANA time zone identifier. */
 export function isValidTimeZone(s: string): s is TimeZone {
   if (s === '') return false;
+  const known = zoneValidity.get(s);
+  if (known !== undefined) return known;
+  let valid: boolean;
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: s });
-    return true;
+    valid = true;
   } catch {
-    return false;
+    valid = false;
   }
+  zoneValidity.set(s, valid);
+  return valid;
 }
 
 /** The zone the device is configured for; the setup wizard's default. */
@@ -479,6 +491,21 @@ export function groupTimeZones(zones: readonly string[], atEpochMs: EpochMs): Ti
       a.offsetMinutes - b.offsetMinutes ||
       (a.representative < b.representative ? -1 : a.representative > b.representative ? 1 : 0),
   );
+  return groups;
+}
+
+/**
+ * Audit F08: `groupTimeZones` for the picker, computed once per (zone list, UTC year). The
+ * grouping reads only the twelve month starts of `atEpochMs`'s UTC year (zoneYearSignature), so
+ * any instant in the same year gives the same groups. One entry: the picker asks for one list.
+ */
+let groupedOnce: { key: string; groups: TimeZoneGroup[] } | null = null;
+
+export function groupTimeZonesOnce(zones: readonly string[], atEpochMs: EpochMs): TimeZoneGroup[] {
+  const key = `${String(new Date(atEpochMs).getUTCFullYear())}|${zones.join(',')}`;
+  if (groupedOnce !== null && groupedOnce.key === key) return groupedOnce.groups;
+  const groups = groupTimeZones(zones, atEpochMs);
+  groupedOnce = { key, groups };
   return groups;
 }
 
