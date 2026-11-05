@@ -21,6 +21,7 @@ import { EMPTY_SESSION } from '../../../store/sessionMirror';
 import { FUN_PROFILE_ID, makeAppState, makeProfile, makeUiPrefs } from '../../../test/funFixtures';
 import { ICON_FOR_KEY } from '../../../skins/limelight/Icon';
 import { forgetRestGameChoice } from './restGameChoice';
+import { restOverWordOf } from '../../effects/burnMoments';
 import { RestTimerPanel } from './RestTimerPanel';
 import { preloadRestGames } from './restGameRoute';
 
@@ -195,8 +196,12 @@ describe('RestTimerPanel: the lit sign (stylize survey item 3)', () => {
     expect(panel?.classList.contains('rest-over')).toBe(true);
     expect(panel?.classList.contains('rest-over-pulse')).toBe(true);
     expect(label?.textContent).toBe(copyFor('limelight', 'notification.restOver'));
-    // Timing is untouched: the clock still reads zero.
-    expect(screen.getByText(FORMAT.restRemaining(0, 0))).toBeInTheDocument();
+    // AM-4a-9: the digits give way to the rest-over word on its own plate (never a numeral).
+    const word = restOverWordOf(copyFor('limelight', 'notification.restOver'));
+    expect(word).not.toBeNull();
+    expect(container.querySelector('.rest-over-word')?.textContent).toBe(word);
+    expect(container.querySelector('.rest-time')).toBeNull();
+    expect(screen.queryByText(FORMAT.restRemaining(0, 0))).toBeNull();
   });
 
   it('under prefers-reduced-motion changes state once, steady, with no pulse', () => {

@@ -161,10 +161,14 @@ export function sdf(alpha: Uint8Array, w: number, h: number): Float32Array {
   return out;
 }
 
-/** '#rrggbb' or 'rgb(r, g, b)' (a computed token) -> linear RGB 0..1; null when unreadable. */
+/**
+ * '#rgb', '#rrggbb' or 'rgb(r, g, b)' (a computed token) -> linear RGB 0..1; null when unreadable.
+ * A custom property computes to its authored text, so '#fff' arrives as written (--panel-text).
+ */
 export function cssColourToLinear(value: string): [number, number, number] | null {
-  const s = value.trim();
+  let s = value.trim();
   let rgb: number[];
+  if (/^#[0-9a-f]{3}$/i.test(s)) s = `#${[...s.slice(1)].map((h) => h + h).join('')}`;
   if (/^#[0-9a-f]{6}$/i.test(s)) {
     const n = parseInt(s.slice(1), 16);
     rgb = [(n >> 16) & 255, (n >> 8) & 255, n & 255];

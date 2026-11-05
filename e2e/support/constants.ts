@@ -55,6 +55,8 @@ export const LABEL = {
   atlasRow: 'the collection',
   settingsRow: 'backstage',
   findRow: 'find it',
+  // R8: the install card's dismiss button (button.dismiss; limelight overrides the base 'Dismiss').
+  dismiss: 'noted.',
 } as const;
 
 /** "Set 1 load (kg)": FORMAT.quantityWithUnit(FORMAT.setLoadQuantity(n), 'kg'). */

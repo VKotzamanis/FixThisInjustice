@@ -50,6 +50,7 @@ import { makeBlock, makePlannedExercise, makeProfile, makeSet } from '../../test
 import { playSfx } from '../../skins/sfx';
 import { playChime, releaseAudio, vibrate } from '../audio/chime';
 import { ToastProvider, ToastQueue } from '../components/ToastQueue';
+import { restOverWordOf } from '../effects/burnMoments';
 import { TrainingModalsProvider } from '../components/TrainingModalsProvider';
 import { TrainView } from './TrainView';
 import { forgetRestGameChoice } from './train/restGameChoice';
@@ -969,7 +970,11 @@ describe('TrainView rest timer', () => {
     vi.setSystemTime(NOW + 10 * MINUTE_MS);
     fireEvent(document, new Event('visibilitychange'));
 
-    expect(screen.getByText(FORMAT.restRemaining(0, 0))).toBeInTheDocument();
+    // AM-4a-9: at zero the rest bar shows the rest-over word in place of the 0:00 digits.
+    const word = restOverWordOf(copyFor('limelight', 'notification.restOver'));
+    expect(word).not.toBeNull();
+    expect(screen.getByText(word ?? '').closest('.rest-over-word')).not.toBeNull();
+    expect(screen.queryByText(FORMAT.restRemaining(0, 0))).toBeNull();
     // C06: the cues (chime once per interval, vibration, the hidden-page notification) belong to
     // src/app/RestController.tsx, mounted by the shell; RestController.test.tsx pins them.
     expect(playChime).not.toHaveBeenCalled();

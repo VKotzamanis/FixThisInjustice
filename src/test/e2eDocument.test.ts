@@ -70,6 +70,7 @@ describe('the e2e document builder', () => {
     expect(LABEL.atlasRow).toBe(copyFor('limelight', 'nav.atlas'));
     expect(LABEL.settingsRow).toBe(copyFor('limelight', 'nav.settings'));
     expect(LABEL.findRow).toBe(copyFor('limelight', 'button.openSpotlight'));
+    expect(LABEL.dismiss).toBe(copyFor('limelight', 'button.dismiss'));
     expect(massLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.bodyMass'), 'kg'));
     expect(preMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.preSessionBodyMass'), 'kg'));
     expect(postMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.postSessionBodyMass'), 'kg'));

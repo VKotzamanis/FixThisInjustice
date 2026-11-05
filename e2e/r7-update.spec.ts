@@ -19,6 +19,15 @@ test('R7: a new worker applies itself on resume when no session is open', async 
   });
   // E09: claimed on activate, so this first page is controlled without a reload.
   await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+  // An installed app that resumes was LOADED under a worker. workbox-window fixes `isUpdate` from
+  // navigator.serviceWorker.controller when it registers (null on this install page), and
+  // vite-plugin-pwa calls onNeedReload only for `controlling` events with isUpdate true. So load
+  // the page once more under the worker, as the resumed app was, before the deploy.
+  await page.reload();
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  expect(await page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
   await page.evaluate(() => {
     Reflect.set(window, '__beforeUpdate', true);
   });

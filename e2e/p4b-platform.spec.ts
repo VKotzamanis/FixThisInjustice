@@ -1,6 +1,7 @@
 // P4b platform checks that only a real browser can make (spec R7/R8, audit E06, E11, E15).
 import { expect, test } from '@playwright/test';
 import { chicago, flushWrites, openApp, readDocument, seedDocument, setClock } from './support/app';
+import { LABEL } from './support/constants';
 import { MONDAY, e2eDocument } from './support/document';
 
 test('E11: a cold load raises no CSP violation', async ({ context }) => {
@@ -44,10 +45,12 @@ test('E15: with sounds on, a launch asks the network for no sound file that does
 
 test('R8: the install card shows in a browser tab after setup and stays dismissed', async ({ context }) => {
   await seedDocument(context, e2eDocument({ installCard: true }));
+  // The programme's first day, as E15: on the real clock the missed-week dialog covers the card.
+  await setClock(context, chicago(MONDAY, '10:00'));
   const page = await openApp(context);
   const card = page.locator('section.install-card');
   await expect(card).toBeVisible();
-  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await card.getByRole('button', { name: LABEL.dismiss }).click();
   await expect(card).toHaveCount(0);
   await flushWrites(page);
   expect((await readDocument(page)).ui.installNudgeDismissed).toBe(true);

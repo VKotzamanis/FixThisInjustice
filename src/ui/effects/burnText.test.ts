@@ -32,6 +32,9 @@ describe('burnText (AM-4a-9)', () => {
 
   it('reads computed token colours into linear RGB', () => {
     expect(cssColourToLinear('#ffffff')).toEqual([1, 1, 1]);
+    // A custom property computes to its authored text: --panel-text is '#fff' (3-digit hex).
+    expect(cssColourToLinear('#fff')).toEqual([1, 1, 1]);
+    expect(cssColourToLinear('#000')).toEqual([0, 0, 0]);
     expect(cssColourToLinear(' rgb(0, 0, 0) ')).toEqual([0, 0, 0]);
     expect(cssColourToLinear('var(--lime)')).toBeNull();
   });

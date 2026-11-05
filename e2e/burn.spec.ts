@@ -15,8 +15,13 @@ test('a rest end burns REST OVER once, then the canvas is gone', async ({ contex
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '18:00'));
   const page = await openApp(context);
-  const webgl = await page.evaluate(() => document.createElement('canvas').getContext('webgl') !== null);
-  test.skip(!webgl, 'this Chromium build offers no WebGL; the plain-text fallback is unit-tested');
+  // The same request burnText.createBurn makes: without it the word must stay plain, no canvas.
+  const webgl = await page.evaluate(
+    () =>
+      document
+        .createElement('canvas')
+        .getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false }) !== null,
+  );
   await startFromToday(page);
   await logSet(page, 1, '60', '5');
   // Set entry is over: the burn never starts while a field has focus.
@@ -30,7 +35,13 @@ test('a rest end burns REST OVER once, then the canvas is gone', async ({ contex
   await expect(over).toHaveCount(1);
   await expect(page.locator('.view-slot:not([hidden]) .rest-over-word')).toBeVisible();
   await page.clock.runFor(1_600); // [ms] past the 1.5 s pulse delay
-  await expect(canvas(page)).toHaveCount(1);
+  if (webgl) {
+    await expect(canvas(page)).toHaveCount(1);
+    await expect(page.locator('.view-slot:not([hidden]) .rest-over-word.is-burning')).toHaveCount(1);
+  } else {
+    // No WebGL (a GPU-less runner may lack it): the plain word stays and no canvas mounts.
+    await expect(canvas(page)).toHaveCount(0);
+  }
   await page.clock.runFor(1_400); // [ms] past the 1.2 s burn
   await expect(canvas(page)).toHaveCount(0);
   await expect(page.locator('.view-slot:not([hidden]) .rest-over-word')).toBeVisible();
