@@ -1,5 +1,5 @@
 import { addDays, compareLocalDate, instantOf } from '../dates';
-import { isAfterProgramme, isBeforeProgramme } from '../schedule/weekly';
+import { isInProgramme, reviewVerdict } from '../schedule/weekly';
 import { FORMAT } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
 import type { AppState, EpochMs, LocalDate, TimeZone, WeeklyReview } from '../types';
@@ -82,13 +82,12 @@ export function pendingMotivation(
 
   let candidate: WeeklyReview | null = null;
   for (const review of reviews) {
-    if (review.delta >= 0) continue;
-    if (review.paused) continue;
+    // D10: a partly paused week that still fell short is a miss; reviewVerdict says so.
+    if (reviewVerdict(review) !== 'missed') continue;
     if (review.missHandled) continue;
     if (lastShownForWeek !== null && review.weekStart === lastShownForWeek) continue;
     if (weekCloseInstant(review.weekEnd, profile.timezone) <= cutoff) continue;
-    if (isAfterProgramme(review.weekStart, cursor)) continue;
-    if (isBeforeProgramme(review.weekStart, cursor)) continue;
+    if (!isInProgramme(review.weekStart, cursor)) continue;
     if (candidate === null || compareLocalDate(review.weekStart, candidate.weekStart) === 1) {
       candidate = review;
     }

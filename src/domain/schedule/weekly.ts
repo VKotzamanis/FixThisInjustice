@@ -91,6 +91,34 @@ export function isBeforeProgramme(
   return compareLocalDate(monday, weekStart(cursor.startedOn)) < 0;
 }
 
+/**
+ * Does the ISO week starting on `monday` belong to the running programme: not before the week
+ * it started in, not after the week it completed in? The one predicate every reader of stored
+ * reviews filters by (audit D11): Today's ticker, stamp and intervention, and the miss popup.
+ */
+export function isInProgramme(
+  monday: LocalDate,
+  cursor: Pick<PlanCursor, 'startedOn' | 'completedOn'> | null | undefined,
+): boolean {
+  return !isBeforeProgramme(monday, cursor) && !isAfterProgramme(monday, cursor);
+}
+
+export type ReviewVerdict = 'missed' | 'met' | 'none';
+
+/**
+ * The one reading of a stored review (plan ruling PR-2, audit D10). `delta = completed - target`
+ * [sessions/week] is stored by closeWeeks and never recomputed here.
+ *   missed  delta < 0: the week asked for more than was done, paused days already excluded.
+ *   met     the week asked for something (target > 0) and got all of it.
+ *   none    nothing to say: a week that asked for nothing (paused throughout), or a review
+ *           written before D10 for a paused week (delta 0 by the old rule, completed < target).
+ */
+export function reviewVerdict(review: Pick<WeeklyReview, 'target' | 'completed' | 'delta'>): ReviewVerdict {
+  if (review.delta < 0) return 'missed';
+  if (review.target > 0 && review.completed >= review.target) return 'met';
+  return 'none';
+}
+
 /** The later of two dates. */
 function maxDate(a: LocalDate, b: LocalDate): LocalDate {
   return compareLocalDate(a, b) >= 0 ? a : b;

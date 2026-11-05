@@ -817,8 +817,16 @@ const MET_WEEK: WeeklyReview = {
 const MISSED_WEEK: WeeklyReview = { ...MET_WEEK, completed: 1, skipped: 1, delta: -3 };
 
 function withReview(review: WeeklyReview | null): void {
+  const state = useAppStore.getState();
+  const cursor = state.cursors[PROFILE_ID];
   setState({
-    ...useAppStore.getState(),
+    ...state,
+    // D11: Today reads only the running programme's reviews, so the programme starts in the
+    // reviewed week (the fixture's own start is MONDAY, the week after it).
+    cursors:
+      review === null || cursor === undefined
+        ? state.cursors
+        : { [PROFILE_ID]: { ...cursor, startedOn: review.weekStart } },
     weeklyReviews: review === null ? {} : { [PROFILE_ID]: [review] },
   });
 }
@@ -894,6 +902,19 @@ describe('TodayView: the ticker', () => {
     const name = copyFor('limelight', 'button.pauseTicker');
     expect(name).toBe(name.toLowerCase());
     expect(screen.getByRole('button', { name })).toBeTruthy();
+  });
+
+  it('ignores a review of a week before the running programme started (D11)', () => {
+    withReview({ ...MISSED_WEEK, missHandled: true });
+    const state = useAppStore.getState();
+    const cursor = state.cursors[PROFILE_ID];
+    if (cursor === undefined) throw new Error('fixture: no cursor');
+    // Start Next Programme on MONDAY: the reviewed week belongs to the plan it replaced.
+    setState({ ...state, cursors: { [PROFILE_ID]: { ...cursor, startedOn: MONDAY } } });
+    render(<TodayView />);
+    expect(screen.queryByTestId('intervention')).toBeNull();
+    const lines = [...document.querySelectorAll('.ll-marquee-static .ll-marquee-line')];
+    expect(lines).toHaveLength(1); // the cursor position only
   });
 });
 

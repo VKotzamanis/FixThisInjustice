@@ -31,7 +31,7 @@
 // whatever guards that module grows.
 
 import { describe, expect, it } from 'vitest';
-import { closeWeeks, isBeforeProgramme, MAX_WEEKS_EVALUATED } from './weekly';
+import { closeWeeks, isBeforeProgramme, isInProgramme, MAX_WEEKS_EVALUATED, reviewVerdict } from './weekly';
 import { closeStaleSessions, STALE_SESSION_GRACE_MS } from './staleSessions';
 import { makeSet } from '../../test/fixtures';
 import { completeSession, pausePlan, resumePlan, skipSession, startSession } from './cursor';
@@ -615,4 +615,30 @@ describe('closeWeeks — unresolved assignments (AM-6)', () => {
       ]);
     },
   );
+});
+
+describe('reviewVerdict (PR-2, D10): one reading of a stored review', () => {
+  const base = { target: 3, completed: 3, delta: 0 };
+  it('is missed whenever delta is negative, paused or not', () => {
+    expect(reviewVerdict({ target: 1, completed: 0, delta: -1 })).toBe('missed');
+  });
+  it('is met when the week asked for something and got all of it', () => {
+    expect(reviewVerdict(base)).toBe('met');
+    expect(reviewVerdict({ target: 2, completed: 3, delta: 1 })).toBe('met');
+  });
+  it('is none for a week that asked for nothing, and for a legacy paused review', () => {
+    expect(reviewVerdict({ target: 0, completed: 0, delta: 0 })).toBe('none');
+    // Written before D10: paused weeks stored delta 0 against the full target.
+    expect(reviewVerdict({ target: 3, completed: 0, delta: 0 })).toBe('none');
+  });
+});
+
+describe('isInProgramme (D11)', () => {
+  const cursor = { startedOn: '2026-09-09', completedOn: '2026-09-23' };
+  it('is false before the start week and after the completion week, true between', () => {
+    expect(isInProgramme(PREV_MONDAY, cursor)).toBe(false);
+    expect(isInProgramme(MONDAY, cursor)).toBe(true); // the start week, begun midweek
+    expect(isInProgramme('2026-09-21', cursor)).toBe(true); // the completion week
+    expect(isInProgramme('2026-09-28', cursor)).toBe(false);
+  });
 });

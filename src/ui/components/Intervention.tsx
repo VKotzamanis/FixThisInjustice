@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
+import { reviewVerdict } from '../../domain/schedule/weekly';
 import type { WeeklyReview } from '../../domain/types';
 import { SkinLabel } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
@@ -19,7 +20,7 @@ import './limelight.css';
  * week is on screen in either form: one definition of "missed", read by both.
  */
 export function missedWeek(review: WeeklyReview | null): review is WeeklyReview {
-  return review !== null && !review.paused && review.delta < 0;
+  return review !== null && reviewVerdict(review) === 'missed';
 }
 
 /**

@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
+import { reviewVerdict } from '../../domain/schedule/weekly';
 import type { WeeklyReview } from '../../domain/types';
 import { Icon } from '../../skins/limelight/Icon';
 import { playSfx } from '../../skins/sfx';
@@ -30,12 +31,11 @@ const STAMP_HEAD: CSSProperties = { position: 'absolute', gridRow: '1 / 3', grid
  * Did this closed week meet its target?
  *
  * `delta = completed - target` [sessions/week] is STORED by src/domain/schedule/weekly.ts and is
- * read here, never recomputed. The `paused` guard is the load-bearing half: a week overlapped by
- * a PlanPause carries delta = 0 by construction, so a test on the sign alone would stamp "target
- * met" on a week the user deliberately paused and completed nothing in.
+ * read here, never recomputed. reviewVerdict (weekly.ts) is the one reading: a legacy paused
+ * review carries delta 0 with completed below target and reads "none", never "met".
  */
 export function metWeek(review: WeeklyReview | null): review is WeeklyReview {
-  return review !== null && !review.paused && review.delta >= 0;
+  return review !== null && reviewVerdict(review) === 'met';
 }
 
 /**
