@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type {
-  AppState,
-  BodyMassEntry,
   EpochMs,
   IntakeEntry,
   LocalDate,
@@ -11,9 +9,10 @@ import type {
   SessionAssignment,
   WeeklyReview,
 } from '../domain/types';
-import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
+import type { NutritionTargets } from '../domain/nutrition';
 import { computeTargets, isInDomain } from '../domain/nutrition';
-import { compareLocalDate, todayLocal } from '../domain/dates';
+import { todayLocal } from '../domain/dates';
+import { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../domain/measurements';
 import { sortSetHistory } from '../domain/training/progression';
 import { pendingMotivation } from '../domain/motivation/trigger';
 import type { RestTimer } from '../domain/training/restTimer';
@@ -81,76 +80,13 @@ export function useLastLoadRaw(): string | null {
   return snapshot ?? readRaw();
 }
 
-/**
- * Newest body-mass entry by civil date, ties broken by the instant it was logged.
- *
- * A plain state function rather than a hook: the targets selector needs it
- * inside a store subscription, and P2's Today view needs it outside one. It
- * returns the stored object itself, so a subscribing selector that calls it
- * stays referentially stable between unrelated store updates.
+/*
+ * Spec R9 / audit B11: "the" body mass (the newest trend point, never a post-session mass), "the"
+ * body fat (the newest entry carrying one) and the nutrition input built from them live in
+ * src/domain/measurements.ts, so the export summary reads the same derivation. Re-exported here
+ * for the callers that already import them from the store.
  */
-export function latestBodyMassEntry(state: AppState, profileId: string): BodyMassEntry | null {
-  const list = state.bodyMass[profileId] ?? [];
-  let best: BodyMassEntry | null = null;
-  for (const e of list) {
-    if (best === null) {
-      best = e;
-      continue;
-    }
-    // Civil date first, then the logging instant: two weigh-ins on one day are
-    // ordered by when they were entered, not by the order of the array.
-    //
-    // compareLocalDate rather than a raw `>`: the two agree today only because
-    // every LocalDate is a zero-padded ISO string, which is an invariant of
-    // dates.ts and not of this comparison. Routing the ordering through the one
-    // function that owns it means a change to the date representation has one
-    // place to be fixed instead of one place plus every inlined string compare.
-    const byDate = compareLocalDate(e.date, best.date);
-    if (byDate > 0 || (byDate === 0 && e.loggedAt > best.loggedAt)) best = e;
-  }
-  return best;
-}
-
-/**
- * Assemble the nutrition input from stored state. The latest logged body mass
- * and body fat win over the profile baseline, which is the content review
- * section 1 instruction: recompute the target at each body-mass re-measure, do
- * not hard-code it.
- */
-export function nutritionInputFor(
-  profile: Profile,
-  latest: BodyMassEntry | null,
-  sessionsPerWeek: number, // [sessions/week]
-  todayIso: LocalDate,
-): NutritionInput {
-  const massKg = latest?.massKg ?? profile.body.baselineMassKg; // [kg]
-  const bodyFatPct = latest?.bodyFatPct ?? profile.body.baselineBodyFatPct; // [%] or null
-  // Age in whole years as (current year - birth year), read in the profile's own
-  // zone. This is the age the person REACHES during this calendar year, not their
-  // age today: the day of the birthday is not knowable from `birthYear`, because
-  // the year is the only part the profile collects. Before their birthday the
-  // figure therefore runs up to one year high, and Mifflin-St Jeor's age term is
-  // -5 kcal/day per year, so the worst case understates RMR by 5 kcal/day (about
-  // 0.2 % of a 2700 kcal/day target). Collecting a full birth date would remove
-  // the error; it would also collect a date of birth this app has no other use
-  // for, so the bias is accepted and recorded rather than engineered away.
-  const ageYears = Number(todayIso.slice(0, 4)) - profile.body.birthYear; // [year]
-  return {
-    sex: profile.body.sex,
-    ageYears,
-    heightCm: profile.body.heightCm, // [cm]
-    massKg,
-    bodyFatPct,
-    activity: profile.activity,
-    // Brief G: computeTargets prefers this PAL over `activity`'s band floor when it is a
-    // number; `?? null` normalises the field's absence on a profile written before it existed
-    // to the same null computeTargets already treats as "use the floor".
-    activityPal: profile.activityPal ?? null,
-    goal: profile.goal.kind,
-    sessionsPerWeek,
-    creatine: profile.supplements.creatine,
-  };
-}
+export { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../domain/measurements';
 
 /**
  * Memoised nutrition targets for the active profile.
@@ -186,6 +122,10 @@ export function useNutritionTargets(now: EpochMs = Date.now()): NutritionTargets
   const latest = useAppStore((s) =>
     s.activeProfileId === null ? null : latestBodyMassEntry(s, s.activeProfileId),
   );
+  // Audit G05: the newest body-fat entry, which a later mass without one no longer hides.
+  const latestBodyFat = useAppStore((s) =>
+    s.activeProfileId === null ? null : latestBodyFatEntry(s, s.activeProfileId),
+  );
   // [sessions/week] 0 until the wizard stores availability. It is inside
   // NUTRITION_DOMAIN.sessionsPerWeek and changes no number (nutrition.ts
   // NOTE-FREQ); it reaches the engine only to be quoted in basis.deficitRule.
@@ -204,10 +144,10 @@ export function useNutritionTargets(now: EpochMs = Date.now()): NutritionTargets
   const todayIso = profile === null ? null : todayLocal(profile.timezone, now);
   return useMemo(() => {
     if (profile === null || todayIso === null) return null;
-    const input = nutritionInputFor(profile, latest, sessionsPerWeek, todayIso);
+    const input = nutritionInputFor(profile, latest, sessionsPerWeek, todayIso, latestBodyFat);
     if (!isInDomain(input)) return null;
     return computeTargets(input);
-  }, [profile, latest, sessionsPerWeek, todayIso]);
+  }, [profile, latest, latestBodyFat, sessionsPerWeek, todayIso]);
 }
 
 /**

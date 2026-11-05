@@ -19,8 +19,11 @@ export const CURRENT_SCHEMA_VERSION = 3;
 
 /** [kg] Security constraint 3 caps loads at 500. 0 is a valid bodyweight set (master plan section 8, A60). */
 const MAX_LOAD_KG = 500;
-/** [kg] Security constraint 3: 0 < mass <= 500. Body mass, unlike a load, cannot be zero. */
-const MAX_MASS_KG = 500;
+/**
+ * [kg] Security constraint 3: 0 < mass <= 500. Body mass, unlike a load, cannot be zero. Exported so
+ * the measurement field states the bound the loader refuses by (audit G08, rule 2).
+ */
+export const MAX_MASS_KG = 500;
 /** [reps] Security constraint 3: 1 <= reps <= 100, integer. */
 const MIN_REPS = 1;
 const MAX_REPS = 100;
@@ -69,8 +72,11 @@ const MAX_TOTAL_SETS = 1_000_000;
 const MAX_MODIFIER = 2;
 /** [min] Reminder lead time, capped at one day. */
 const MAX_LEAD_MINUTES = 1_440;
-/** [characters] Free-text ceilings, so a corrupted blob cannot be stored back. */
-const MAX_NOTE_CHARS = 5_000;
+/**
+ * [characters] Free-text ceilings, so a corrupted blob cannot be stored back. Exported so the time
+ * capsule caps its field by the number the loader refuses by (audit G22, rule 2).
+ */
+export const MAX_NOTE_CHARS = 5_000;
 /** [characters] Maximum length of a DNS name, RFC 1035; bounds the video host. */
 const MAX_HOSTNAME_CHARS = 253;
 /** [characters] Specimen card id, e.g. "c001". A sanity ceiling, not the shipped length. */
@@ -546,6 +552,9 @@ export const LoggedSetSchema = z.object({
   loggedAt: EpochMsSchema, // [ms]
 });
 
+/** Spec R9: when a body mass was taken. types.ts BodyMassRole. */
+export const BodyMassRoleSchema = z.enum(['morning', 'pre', 'post']);
+
 export const BodyMassEntrySchema = z.object({
   id: z.string().min(1),
   profileId: z.string().min(1),
@@ -554,6 +563,8 @@ export const BodyMassEntrySchema = z.object({
   enteredUnit: UnitSystemSchema,
   bodyFatPct: PercentSchema.nullable(), // [%]
   loggedAt: EpochMsSchema, // [ms]
+  // Additive (spec R9, audit G01/G12; rule 7): absent on every entry written before roles existed.
+  role: BodyMassRoleSchema.optional(),
 });
 
 export const HydrationEntrySchema = z.object({

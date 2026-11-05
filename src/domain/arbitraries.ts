@@ -338,15 +338,21 @@ export const anyLoggedSet: fc.Arbitrary<LoggedSet> = fc.record({
   loggedAt: anyEpochMs,
 });
 
-export const anyBodyMassEntry: fc.Arbitrary<BodyMassEntry> = fc.record({
-  id: anyId,
-  profileId: anyId,
-  date: anyLocalDate,
-  massKg: finite(1, 500), // [kg]
-  enteredUnit: anyUnitSystem,
-  bodyFatPct: fc.option(finite(0, 100), { nil: null }),
-  loggedAt: anyEpochMs,
-});
+export const anyBodyMassEntry: fc.Arbitrary<BodyMassEntry> = fc
+  .tuple(
+    fc.record({
+      id: anyId,
+      profileId: anyId,
+      date: anyLocalDate,
+      massKg: finite(1, 500), // [kg]
+      enteredUnit: anyUnitSystem,
+      bodyFatPct: fc.option(finite(0, 100), { nil: null }), // [%]
+      loggedAt: anyEpochMs, // [ms] epoch UTC
+    }),
+    // Spec R9: the role is optional, so the round trip sees both an absent key and every value.
+    fc.option(fc.constantFrom('morning' as const, 'pre' as const, 'post' as const), { nil: undefined }),
+  )
+  .map(([entry, role]) => (role === undefined ? entry : { ...entry, role }));
 
 export const anyHydrationEntry: fc.Arbitrary<HydrationEntry> = fc.record({
   profileId: anyId,
