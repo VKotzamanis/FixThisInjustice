@@ -1,12 +1,18 @@
 import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
+import { resetHistoryForTests } from '../ui/nav/history';
+import { resetOverlaysForTests } from '../ui/overlay/overlayStack';
 
 // vitest runs with globals: false, so Testing Library's automatic cleanup does
 // not register itself. Without this, rendered trees accumulate across tests in
 // a file and every query finds duplicates.
 afterEach(() => {
   cleanup();
+  // Spec R6: the overlay stack and the history owner are module singletons; one test's open
+  // dialog must not be the next test's top overlay.
+  resetOverlaysForTests();
+  resetHistoryForTests();
 });
 
 // jsdom has no 2D canvas: its getContext returns null AND logs "Not implemented" on every call.
