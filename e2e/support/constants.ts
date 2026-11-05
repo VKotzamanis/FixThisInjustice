@@ -38,6 +38,10 @@ export const LABEL = {
   looksGood: 'Looks Good',
   recoveryHeading: 'Stored Data Could Not Be Read',
   writesPaused: 'Nothing is saved until you import a backup',
+  settingsTab: 'backstage',
+  logTab: 'the archive',
+  unreadableHeading: 'Unreadable Records',
+  trainTab: 'showtime',
 } as const;
 
 /** "Set 1 load (kg)": FORMAT.quantityWithUnit(FORMAT.setLoadQuantity(n), 'kg'). */
@@ -59,3 +63,28 @@ export function logLabel(n: number): string {
 export function deleteLabel(n: number): string {
   return `Delete set ${String(n)}`;
 }
+
+/** Spec R13 record database. Pinned to src/store/db/records.ts by e2eDocument.test.ts. */
+export const RECORD_DB_NAME = 'fti';
+export const RECORD_APP_STORE = 'app';
+export const RECORD_META_KEY = 'meta';
+export const RECORD_MAP_STORES = [
+  'profiles',
+  'availability',
+  'plans',
+  'cursors',
+  'pauses',
+  'assignments',
+  'sets',
+  'bodyMass',
+  'hydration',
+  'intake',
+  'weeklyReviews',
+  'reminderSettings',
+  'motivation',
+  'specimens',
+  'capsules',
+  'customExercises',
+  'notes',
+] as const;
+export const RECORD_SINGLETONS = ['activeProfileId', 'pushDevice', 'setupDraft', 'ui'] as const;

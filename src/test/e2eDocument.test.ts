@@ -4,8 +4,14 @@ import { describe, expect, it } from 'vitest';
 import { FORMAT, copyFor } from '../content/copy';
 import { parseState } from '../domain/schema';
 import { STORAGE_KEY } from '../store/persistence';
+import { APP_STORE, MAP_STORES, META_KEY, RECORD_DB_NAME, SINGLETON_KEYS } from '../store/db/records';
 import {
   LABEL,
+  RECORD_APP_STORE,
+  RECORD_DB_NAME as E2E_RECORD_DB_NAME,
+  RECORD_MAP_STORES,
+  RECORD_META_KEY,
+  RECORD_SINGLETONS,
   STORAGE_KEY as E2E_STORAGE_KEY,
   deleteLabel,
   loadLabel,
@@ -51,5 +57,17 @@ describe('the e2e document builder', () => {
   it('reads the recovery words the app renders (plan Task 17)', () => {
     expect(LABEL.recoveryHeading).toBe(copyFor('limelight', 'hero.storedDataRefused'));
     expect(copyFor('limelight', 'status.writesPaused').startsWith(LABEL.writesPaused)).toBe(true);
+  });
+
+  it('reads the record database the app writes (P2 Task 12)', () => {
+    expect(E2E_RECORD_DB_NAME).toBe(RECORD_DB_NAME);
+    expect(RECORD_APP_STORE).toBe(APP_STORE);
+    expect(RECORD_META_KEY).toBe(META_KEY);
+    expect([...RECORD_MAP_STORES]).toEqual([...MAP_STORES]);
+    expect([...RECORD_SINGLETONS]).toEqual([...SINGLETON_KEYS]);
+    expect(LABEL.settingsTab).toBe(copyFor('limelight', 'nav.settings'));
+    expect(LABEL.logTab).toBe(copyFor('limelight', 'nav.log'));
+    expect(LABEL.trainTab).toBe(copyFor('limelight', 'nav.train'));
+    expect(LABEL.unreadableHeading).toBe(copyFor('limelight', 'hero.unreadableRecords'));
   });
 });
