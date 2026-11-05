@@ -1,10 +1,10 @@
 # Programme lifecycle (ROADMAP L5, B1b, B1d, L7)
 
-Agent doc. Regenerate the programme from today: when Settings no longer match it (L5), and after Programme Complete (B1b). After a reached body-mass target the next programme defaults to maintenance (L7). Fixed length kept; L6 (open-ended) is separate.
+Agent doc. Regenerate the programme from today: when Settings no longer match it (L5), and after Programme Complete (B1b). After a reached body-mass target the next programme defaults to maintenance (L7). Since L6 (`docs/design/programme-engine.md`) there is no length: a restart materialises `INITIAL_WEEKS` and the engine keeps it going; `sameProgramme` compares name, split and the first week.
 
 ## One mechanism
 - Store action `restartProgramme(profileId, choice, today)`; `choice = { goal?, sessionsPerWeek?, includeCardio? }`. Both entry points call it; nothing regenerates without a tap.
-- Input (`programmeInput`, `src/domain/plan/lifecycle.ts`, pure): goal = `choice.goal ?? profile.goal.kind`; experience, equipment = profile; sessionsPerWeek = `choice` or the current plan's; weeks = current plan's; includeCardio = `choice` or `planIncludesCardio(plan)`. Plan values outside the generator's range (imported or fixture plans) are clamped to it (weeks 8-24, sessions 2-6), never otherwise adjusted.
+- Input (`programmeInput`, `src/domain/plan/lifecycle.ts`, pure): goal = `choice.goal ?? profile.goal.kind`; experience, equipment = profile; sessionsPerWeek = `choice` or the current plan's; weeks = `INITIAL_WEEKS` (L6); includeCardio = `choice` or `planIncludesCardio(plan)`. Plan values outside the generator's range (imported or fixture plans) are clamped to it (weeks 8-24, sessions 2-6), never otherwise adjusted.
 - `planIncludesCardio`: any planned exercise in `CARDIO_EXERCISE_IDS` (the generator's conditioning list, now exported). No template slot names those ids (test).
 - Generator unchanged: `generatePlan(input, EXERCISES)`, same call as the wizard (`src/ui/setup/SetupWizard.tsx` `generatePlan`).
 - One `set()`: goal kind patched only when `choice.goal` differs; `availability.weeklySessionTarget = sessionsPerWeek` only when sessionsPerWeek changed (the wizard's own rule: picking a split sets the target to it); plan replaced exactly as `setPlan` (shared pure `applyReplacePlan`, `src/store/programme.ts`).

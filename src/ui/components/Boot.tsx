@@ -62,24 +62,26 @@ export function buildBootLines(
    * they are restated rather than assumed: sessionsPerWeek is a divisor below, and a document
    * that reached this function with 0 would print "week Infinity of 0" instead of failing.
    */
-  if (cursor !== undefined && plan !== undefined && plan.sessionsPerWeek >= 1 && plan.weeks >= 1) {
+  if (cursor !== undefined && plan !== undefined && plan.sessionsPerWeek >= 1) {
     /*
      * nextSessionIndex is a 0-based count of sessions the cursor has advanced past, so the week
      * it stands in is that count divided by the weekly session count, 1-based for display. It
      * is the CURSOR's week, never the calendar's: the two diverge the moment a session is
      * missed, which is the same argument SessionIndicator records for "S n/N".
      *
-     * Clamped to the plan's length because the terminal cursor value is sessions.length, which
-     * is one session past the last week and would print week 13 of a 12-week plan.
+     * Clamped to the weeks the session list fills because the terminal cursor value is
+     * sessions.length, one session past the last week. No "of N" (ROADMAP L6): the programme is
+     * open-ended and the list's span is a runway, not a length.
      */
     const week = Math.min(
       Math.floor(cursor.nextSessionIndex / plan.sessionsPerWeek) + 1, // [weeks], 1-based
-      plan.weeks, // [weeks]
+      // [weeks] the stored span (the engine keeps it = ceil(length / spw)) or the list's own
+      Math.max(1, plan.weeks, Math.ceil(plan.sessions.length / plan.sessionsPerWeek)),
     );
     lines.push(
       FORMAT.bootStep(copy('status.bootPlan', overrides), ok),
       FORMAT.withSlots('status.bootPlanName', { name: plan.name }, overrides),
-      FORMAT.withSlots('status.bootWeek', { week, weeks: plan.weeks }, overrides),
+      FORMAT.withSlots('status.bootWeek', { week }, overrides),
       FORMAT.withSlots(
         'status.bootSchedule',
         { count: plan.sessionsPerWeek }, // [sessions/week]

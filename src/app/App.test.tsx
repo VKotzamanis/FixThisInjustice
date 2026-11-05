@@ -313,7 +313,7 @@ describe('top bar', () => {
     expect(staticCopy).not.toBeNull();
     expect(staticCopy?.textContent).toContain(copy('advice.todayInstruction'));
     expect(staticCopy?.textContent).toContain(
-      FORMAT.planPositionLabel(1, LABELS.length, '', LIMELIGHT_COPY),
+      FORMAT.planPositionLabel(1, '', LIMELIGHT_COPY),
     );
   });
 
@@ -329,10 +329,10 @@ describe('top bar', () => {
       (node) => node.textContent,
     );
     expect(lines).toContain(copy('advice.todayInstruction'));
-    // "ep. 1 of 6": limelight's own row for status.sessionCursor (copy.limelight.ts), read
+    // "ep. 1": limelight's own row for status.sessionCursor (copy.limelight.ts), read
     // through the overrides FORMAT.planPositionLabel takes, never a calendar day (code review
     // A11).
-    expect(lines).toContain(FORMAT.planPositionLabel(1, LABELS.length, '', LIMELIGHT_COPY));
+    expect(lines).toContain(FORMAT.planPositionLabel(1, '', LIMELIGHT_COPY));
   });
 });
 
@@ -999,9 +999,11 @@ describe('keyboard', () => {
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
 
-    // j and k move by BLOCK. This plan has one block, so the shown week does not move, which
-    // is the clamped end of the strip rather than a wrap to the other end.
+    // j and k move by BLOCK. The fixture's one block covers weeks 1-2; since ROADMAP L6 the
+    // mount catch-up appends the engine's cycles after it, so j lands on week 3 and k comes back.
     fireEvent.keyDown(window, { key: 'j' });
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(WEEKS + 1, WEEKS));
+    fireEvent.keyDown(window, { key: 'k' });
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
 
     // The same key on another view reaches nothing: the binding is in the 'plan' scope, and
@@ -1167,9 +1169,8 @@ describe('the top bar banner', () => {
     for (const day of ['Monday', 'Tuesday', 'Thursday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
-    next(); // 6 programme length, 12 weeks by default
-    next(); // 7 guidance
-    next(); // 8 review
+    next(); // 6 guidance (ROADMAP L6 removed the programme-length step)
+    next(); // 7 review
   }
 
   it('greets on the intro, which is the first thing a fresh document shows', () => {

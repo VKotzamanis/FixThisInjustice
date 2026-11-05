@@ -67,6 +67,8 @@ import {
   startSession as startSessionPure,
 } from '../domain/schedule/cursor';
 import { closeWeeks as closeWeeksPure } from '../domain/schedule/weekly';
+import { ensureRunway as ensureRunwayPure } from '../domain/plan/engine';
+import { todayLocal } from '../domain/dates';
 import type {
   AppState,
   EpochMs,
@@ -98,6 +100,11 @@ export interface ScheduleActions {
   resumePlan(profileId: string, to: LocalDate): void;
   assignToday(profileId: string, date: LocalDate, label: string): void;
   closeWeeks(profileId: string, now: EpochMs): void;
+  /**
+   * ROADMAP L6: keep the programme's runway and the next cycle's content (engine.ts). A
+   * background catch-up beside closeWeeks; revives a programme finished under an older build.
+   */
+  ensureRunway(profileId: string, now: EpochMs): void;
   setUi(patch: Partial<UiPrefs>): void;
   /**
    * Clears `status.lastActionError`.
@@ -316,7 +323,9 @@ export function createScheduleActions(deps: ScheduleActionDeps): ScheduleActions
       attempt(
         deps,
         (s) => void requirePlan(s, 'completeSession', profileId),
-        (s) => completeSessionPure(s, profileId, date, now), // now: [ms] epoch, UTC
+        // ROADMAP L6: the same transition keeps the runway, so the cursor never reaches the end
+        // of the materialised sessions and a cycle that just ended shapes the next one.
+        (s) => ensureRunwayPure(completeSessionPure(s, profileId, date, now), profileId), // now: [ms] epoch, UTC
         (s) => refusesTransition(s, profileId, date),
       ),
 
@@ -324,7 +333,7 @@ export function createScheduleActions(deps: ScheduleActionDeps): ScheduleActions
       attempt(
         deps,
         (s) => void requirePlan(s, 'skipSession', profileId),
-        (s) => skipSessionPure(s, profileId, date, reason),
+        (s) => ensureRunwayPure(skipSessionPure(s, profileId, date, reason), profileId),
         (s) => refusesTransition(s, profileId, date),
       ),
 
@@ -382,6 +391,21 @@ export function createScheduleActions(deps: ScheduleActionDeps): ScheduleActions
         const cursor = s.cursors[profileId];
         if (cursor !== undefined) requirePlanOf(s, 'closeWeeks', profileId, cursor);
         return closeWeeksPure(s, profileId, now); // now: [ms] epoch, UTC
+      }),
+
+    /*
+     * Not routed through attempt() either, for closeWeeks' reason: a background catch-up the user
+     * did not ask for. A profile with no programme yet is a legal state with nothing to extend.
+     * The clock gives the profile's civil date, only so a programme revived here records the
+     * days it stood finished as a closed pause (engine.ts withFinishedGap).
+     */
+    ensureRunway: (profileId, now) =>
+      deps.set((s) => {
+        const profile = requireProfile(s, 'ensureRunway', profileId);
+        const cursor = s.cursors[profileId];
+        if (cursor === undefined) return s;
+        requirePlanOf(s, 'ensureRunway', profileId, cursor);
+        return ensureRunwayPure(s, profileId, todayLocal(profile.timezone, now)); // now: [ms] epoch, UTC
       }),
 
     // Identical to the P1 implementation in index.ts, which this replaces when the slice is

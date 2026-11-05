@@ -32,7 +32,7 @@ import {
 } from '../../domain/nutrition';
 import { ACTIVITY_LEVELS_CITATION } from '../../content/activityLevels';
 import { BODY_FAT_CHART_PERCENTAGES } from '../../content/bodyFatChart';
-import { PLAN_WEEKS_MIN } from '../../domain/plan/generator';
+import { INITIAL_WEEKS, RUNWAY_SESSIONS } from '../../domain/plan/engine';
 import { nutritionInputFor } from '../../store/selectors';
 import { FORMAT, copyFor } from '../../content/copy';
 import {
@@ -213,10 +213,7 @@ function fillImperialWizardToAvailability(): void {
 function fillImperialWizard(): void {
   fillImperialWizardToGoal();
   next();
-  // 6 - programme length (was 7, before availability folded into training)
-  setValue(/programme length/i, '12');
-  next();
-  // 8 - guidance
+  // 6 - guidance (ROADMAP L6 removed the programme-length step that stood here)
   next();
 }
 
@@ -253,7 +250,6 @@ describe('step order', () => {
       'body',
       'training',
       'goal',
-      'programme',
       'guidance',
       'review',
     ]);
@@ -389,7 +385,7 @@ describe('review screen', () => {
     const plan = generatePlan(
       {
         sessionsPerWeek: 4,
-        weeks: 12,
+        weeks: INITIAL_WEEKS,
         goal: 'fat-loss',
         experience: 'intermediate',
         equipment: 'full-gym',
@@ -399,8 +395,10 @@ describe('review screen', () => {
     );
     const report = volumeReport(plan, EXERCISES);
     expect(summary).toContain(SPLIT_TEMPLATES[4].name);
-    expect(summary).toContain('12 weeks');
-    expect(summary).toContain('48 sessions');
+    // ROADMAP L6: no length and no session total; the split, its rate and the open-ended note.
+    expect(summary).toContain('4 sessions per week');
+    expect(summary).not.toMatch(/\d+ weeks/);
+    expect(summary).toContain(copyFor('limelight', 'advice.programmeContinues'));
     expect(summary).toContain('Maintenance Only');
     for (const muscle of report.maintenance) expect(summary).toContain(muscle);
   });
@@ -433,9 +431,8 @@ describe('review screen', () => {
     // Brief I Part 1: 'muscle-gain' is derived from hold-fat plus gain-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Hold body fat'));
     fireEvent.click(screen.getByLabelText('Gain muscle'));
-    next();
-    next();
-    next();
+    next(); // guidance (ROADMAP L6 removed the programme step)
+    next(); // review
     expect(screen.getByTestId('target-rate')).toHaveTextContent(
       'Not established by the evidence base',
     );
@@ -499,7 +496,8 @@ describe('submission', () => {
     expect(cursor?.nextSessionIndex).toBe(0);
     expect(cursor?.startedOn).toBe('2026-09-01'); // todayLocal in America/New_York
     const plan = cursor ? state.plans[cursor.planId] : undefined;
-    expect(plan?.sessions.length).toBe(48); // 12 weeks x 4 sessions
+    // ROADMAP L6: INITIAL_WEEKS x 4 sessions, or the engine's runway if that is longer.
+    expect(plan?.sessions.length).toBe(Math.max(INITIAL_WEEKS * 4, RUNWAY_SESSIONS));
   });
 
   it('writes a document that passes parseState', () => {
@@ -532,9 +530,8 @@ describe('submission', () => {
     for (const day of ['Monday', 'Wednesday', 'Friday']) {
       fireEvent.click(screen.getByLabelText(day));
     }
-    next();
-    next();
-    next();
+    next(); // guidance (ROADMAP L6 removed the programme step)
+    next(); // review
     tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
@@ -678,7 +675,6 @@ describe('no free-text medical field exists', () => {
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // programme
     next(); // guidance
     next(); // review, where the supplement toggle lives now (round 3 Task 9)
     const names = screen.getAllByRole('checkbox').map((c) => c.closest('label')?.textContent ?? '');
@@ -834,18 +830,6 @@ describe('whole-number counts', () => {
     setValue(/^age \(years\)$/i, '30');
     expect(screen.queryByText('Enter a whole number.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
-  });
-
-  it('refuses a fractional programme length', () => {
-    fillImperialWizard();
-    // Review, then back through Readiness to Programme.
-    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Previous' }));
-    setValue(/programme length/i, '12.4');
-    expect(screen.getByText('Enter a whole number.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled();
-    setValue(/programme length/i, String(PLAN_WEEKS_MIN));
-    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled();
   });
 
   it('refuses a fractional weekly session target', () => {
@@ -1081,9 +1065,7 @@ describe('entry aids and idempotency', () => {
 describe('guidance step in wizard', () => {
   it('renders the guidance screen and advances without user input', () => {
     fillImperialWizardToAvailability(); // stops on the goal step, availability answered
-    next(); // programme
-    setValue(/programme length/i, '12');
-    next();
+    next(); // guidance
 
     // On guidance step
     expect(screen.getByTestId('guidance-screen')).toBeInTheDocument();
@@ -1607,8 +1589,6 @@ describe('Brief F: the equipment sliders', () => {
     // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
-    next(); // programme
-    setValue(/programme length/i, '12');
     next(); // guidance
     next(); // review
     tickLooksGood();
@@ -2178,7 +2158,6 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
-    next(); // programme
     next(); // guidance
     next(); // review
 
@@ -2206,9 +2185,8 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     // Brief I Part 1: 'fat-loss' is derived from lose-fat plus hold-muscle, not selected.
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
-    next(); // programme
-    next();
-    next();
+    next(); // guidance
+    next(); // review
     expect(screen.getByTestId('review-sex')).toHaveTextContent('Not Disclosed');
 
     tickLooksGood();
@@ -3090,8 +3068,7 @@ describe('Brief I Part 2: the body-fat target', () => {
     reachGoalWithBodyFat('25');
     setValue(/target body fat \(%\)/i, '15');
     next(); // 5 goal
-    next(); // 6 programme length
-    next(); // 8 guidance
+    next(); // 6 guidance
     tickLooksGood();
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.confirmStart') }));
 
@@ -3198,8 +3175,8 @@ describe('round 3: the load-step gate and the three controls that moved', () => 
         control.compareDocumentPosition(date) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     }
-    // The step count did not change with the move.
-    expect(STEPS).toHaveLength(8);
+    // The step count did not change with the move; ROADMAP L6 later removed the programme step.
+    expect(STEPS).toHaveLength(7);
     expect(screen.getByText(FORMAT.stepOf(5, STEPS.length, 'Fitness Goal'))).toBeInTheDocument();
 
     // And the guard moved with the fields: no weekday checked blocks THIS step.
@@ -3214,9 +3191,8 @@ describe('round 3: the load-step gate and the three controls that moved', () => 
   it('puts creatine on the review step, and nowhere before it', () => {
     fillImperialWizardToGoal();
     expect(screen.queryByLabelText(/creatine/i)).toBeNull();
-    next(); // programme
-    expect(screen.queryByLabelText(/creatine/i)).toBeNull();
     next(); // guidance
+    expect(screen.queryByLabelText(/creatine/i)).toBeNull();
     next(); // review
 
     const creatine = screen.getByLabelText('Creatine Monohydrate');
@@ -3270,7 +3246,6 @@ describe('round 3: the load-step gate and the three controls that moved', () => 
     fireEvent.click(screen.getByLabelText('Monday'));
     fireEvent.click(screen.getByLabelText('Tuesday'));
     setValue(/weekly session target/i, '2');
-    next(); // programme
     next(); // guidance
     next(); // review
     tickLooksGood();

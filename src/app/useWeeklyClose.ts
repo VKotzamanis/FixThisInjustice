@@ -1,6 +1,7 @@
 // src/app/useWeeklyClose.ts
 //
-// Closes every finished ISO week on mount and whenever the tab becomes visible again.
+// Closes every finished ISO week on mount and whenever the tab becomes visible again, and keeps
+// the programme's runway (ROADMAP L6, src/domain/plan/engine.ts).
 //
 // The legacy app recomputed nothing on a clock tick (code review A13), so an app left open
 // across midnight kept showing yesterday. Weekly closure is the one piece of state that must
@@ -64,6 +65,9 @@ export function useWeeklyClose(): void {
       // the week it belongs to counts it.
       useAppStore.getState().closeStaleSessions(profileId, now); // [ms] epoch, UTC
       useAppStore.getState().closeWeeks(profileId, now); // [ms] epoch, UTC
+      // ROADMAP L6: after the grading, so a programme finished under an older build has its
+      // finished weeks graded as finished before the engine revives it (engine.ts ensureRunway).
+      useAppStore.getState().ensureRunway(profileId, now); // [ms] epoch, UTC
     };
 
     close(Date.now());

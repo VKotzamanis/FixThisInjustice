@@ -73,7 +73,8 @@ describe('buildBootLines', () => {
     const lines = buildBootLines(unseenState(), SKIN_COPY.limelight);
     const text = lines.join('\n');
     expect(text).toContain('Upper / Lower x2'); // makePlan().name
-    expect(text).toContain('week 1 of 12'); // nextSessionIndex 0, weeks 12
+    expect(text).toContain('week 1'); // nextSessionIndex 0
+    expect(text).not.toMatch(/week \d+ of/); // ROADMAP L6: no length
     expect(text).toContain(
       FORMAT.withSlots('status.bootSchedule', { count: 4 }, SKIN_COPY.limelight),
     ); // makePlan().sessionsPerWeek
@@ -91,7 +92,7 @@ describe('buildBootLines', () => {
       },
       SKIN_COPY.limelight,
     );
-    expect(lines.join('\n')).toContain('week 2 of 12');
+    expect(lines.join('\n')).toContain('week 2');
   });
 
   it('degrades to a two-line boot with no plan', () => {

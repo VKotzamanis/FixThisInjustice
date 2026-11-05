@@ -171,7 +171,7 @@ describe('plan shape', () => {
     // Copy contract R5: no em-dash or en-dash as a connector. The session name is also short
     // (R2, at most 8 words excluding numerals) because P3 renders it as the Today heading.
     const plan = generatePlan(input({ sessionsPerWeek: 4, weeks: 12, goal: 'fat-loss' }), EXERCISES);
-    expect(plan.name).toBe('Upper / Lower x2, 12 weeks, fat loss');
+    expect(plan.name).toBe('Upper / Lower x2, fat loss'); // no length: the programme is open-ended (L6)
     expect(plan.sessions[0]?.name).toBe('Week 1 Upper A');
     expect(plan.sessions[plan.sessions.length - 1]?.name).toBe('Week 12 Lower B');
     for (const s of plan.sessions) {

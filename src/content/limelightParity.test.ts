@@ -29,8 +29,12 @@
 // `advice.unreadableRecordsKept`, `button.exportUnreadable`, `status.recordsUnreadable` (spec
 // R13, P2 Task 8; base table only), and `banner.storageNearlyFull.{tag,body}` for the
 // near-quota banner (audit B05, P2 Task 11; base table only), and `button.otherMirror` and
-// `advice.videoOffline` for the form-video modal (ROADMAP L9; base table only). No snapshot row
+// `advice.videoOffline` for the form-video modal (ROADMAP L9; base table only), and
+// `advice.programmeContinues` on the wizard review (ROADMAP L6; base table only). No snapshot row
 // was changed to add them.
+//
+// Rows CHANGED on purpose (ROADMAP L6, docs/design/programme-horizon.md Q4: an open-ended
+// programme has no N, so every "of N" goes): `status.bootWeek`, `status.sessionCursor` and `label.weekOfCount`.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
@@ -109,6 +113,8 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
   'button.openClip': 'L9: the outbound clip link left the app (audit E05); the clip plays in the modal',
   'button.searchInstance': 'L9: the outbound mirror search left the app (audit E05); curated ids replace it',
   'label.videoSearch': 'L9: the heading of that search panel, removed with it',
+  'step.programme': 'ROADMAP L6: the programme-length step was removed; the programme is open-ended',
+  'quantity.programmeWeeks': 'ROADMAP L6: the length field went with the programme-length step',
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];

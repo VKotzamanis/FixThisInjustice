@@ -5,6 +5,7 @@
 // what a new programme keeps and clears is stated once (docs/design/programme-lifecycle.md).
 
 import { compareLocalDate, weekStart } from '../domain/dates';
+import { ensureRunway } from '../domain/plan/engine';
 import { generatePlan } from '../domain/plan/generator';
 import {
   programmeInput,
@@ -75,7 +76,8 @@ export function applyRestartProgramme(
 
 /**
  * Stores `plan` under `planId` and starts the profile's cursor on it at session 0 on
- * `startedOn`. Throws while a session is in progress, writing nothing.
+ * `startedOn`, extended to the engine's runway (src/domain/plan/engine.ts ensureRunway). Throws
+ * while a session is in progress, writing nothing.
  *
  * Persisted fields only: the caller resets the non-persisted session slice and its mirror.
  */
@@ -173,7 +175,8 @@ export function applyReplacePlan(
     },
   };
   // Audit D14: a replaced plan nothing points into any more is dropped in the same transition.
-  return { ...replaced, plans: referencedPlans(replaced) };
+  // ROADMAP L6: the new programme holds the runway from its first render (engine.ts).
+  return ensureRunway({ ...replaced, plans: referencedPlans(replaced) }, profileId);
 }
 
 /**

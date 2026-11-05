@@ -35,6 +35,7 @@ import {
 } from '../../domain/dates';
 import type { EpochMs, LocalDate } from '../../domain/types';
 import { MAX_NOTE_CHARS } from '../../domain/schema';
+import { INITIAL_WEEKS } from '../../domain/plan/engine';
 import { useAppStore } from '../../store';
 import './timeCapsule.css';
 
@@ -69,9 +70,8 @@ export const CAPSULE_MIN_DAYS_AHEAD = 7;
  * The bound is a promise, not a preference. Everything this app stores lives in one browser's
  * storage on one device, with no account and no server copy (master plan section 3), so a
  * capsule dated beyond the life of that storage would be a commitment the app cannot keep.
- * The generator's maximum of 24 weeks (src/domain/plan/generator.ts PLAN_WEEKS_MAX) is always
- * inside the bound; the schema permits longer plans (src/domain/schema.ts MAX_PLAN_WEEKS = 104
- * weeks), for which the clamp below applies.
+ * The suggested date (the goal's target date, or the end of the first INITIAL_WEEKS) is clamped
+ * into this bound below.
  */
 export const CAPSULE_MAX_DAYS_AHEAD = 730;
 
@@ -138,12 +138,16 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
   const earliest = addDays(today, CAPSULE_MIN_DAYS_AHEAD);
   const latest = addDays(today, CAPSULE_MAX_DAYS_AHEAD);
 
-  // The plan's last day, clamped into the window the seal control accepts. Without the clamp a
-  // capsule written in the plan's final week would open its form on a date it then refuses.
+  // The suggested opening day, clamped into the window the seal control accepts. ROADMAP L6: the
+  // programme has no last day any more, so it is the goal's target date when one is set, else the
+  // end of the programme's first INITIAL_WEEKS (src/domain/plan/engine.ts), never plan.weeks,
+  // which now grows with the runway.
   const planEnd =
-    cursor === undefined || plan === undefined
-      ? earliest
-      : defaultOpensOn(cursor.startedOn, plan.weeks);
+    profile.goal.targetDate !== null
+      ? profile.goal.targetDate
+      : cursor === undefined || plan === undefined
+        ? earliest
+        : defaultOpensOn(cursor.startedOn, INITIAL_WEEKS);
   const suggested =
     compareLocalDate(planEnd, earliest) < 0
       ? earliest

@@ -39,7 +39,7 @@ describe('the e2e document builder', () => {
       JSON.parse(JSON.stringify(e2eDocument({ profile: false, setupDraft: reviewDraft() }))) as unknown,
     );
     if (!parsed.ok) throw new Error(parsed.error);
-    expect(parsed.state.setupDraft?.stepIndex).toBe(7);
+    expect(parsed.state.setupDraft?.stepIndex).toBe(6); // review: STEPS has 7 entries since ROADMAP L6
   });
 
   it('seeds under the key the app reads', () => {

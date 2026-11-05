@@ -1,5 +1,7 @@
 # Programme horizon: design for removing the programme length as an input
 
+> SUPERSEDED 2026-11-05 by `docs/design/programme-engine.md` (ROADMAP L6): Option A's runway is kept, but each appended cycle is derived from logged data instead of copying cycle 1. Q4 display rulings implemented there.
+
 > Design document, 2026-09-10. Written against tree `fcefb58`. Nothing here is implemented.
 > The task breakdown in section 7 is the contract for the agent that implements it.
 >

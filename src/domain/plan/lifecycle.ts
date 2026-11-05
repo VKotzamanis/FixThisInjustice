@@ -5,7 +5,8 @@
 
 import { GOAL_AXES_BY_KIND } from '../types';
 import type { AppState, GoalKind, Kg, PlannedSession, PlanTemplate, Profile } from '../types';
-import { CARDIO_EXERCISE_IDS, PLAN_WEEKS_MAX, PLAN_WEEKS_MIN, type PlanInput } from './generator';
+import { INITIAL_WEEKS, withoutLength } from './engine';
+import { CARDIO_EXERCISE_IDS, type PlanInput } from './generator';
 import { inventoryOf } from './inventory';
 import { SPLIT_TEMPLATES, type SessionsPerWeek } from './templates';
 
@@ -50,9 +51,10 @@ function clamp(n: number, lo: number, hi: number): number {
  * Goal, experience, equipment and inventory are the profile's: Settings writes them, so the
  * profile is the current answer (inventoryOf: no filter with a full gym, the pre-P3a assumption
  * for a profile that never answered, audit D07).
- * Split, length and conditioning are not profile fields; they are the running
- * plan's unless chosen. A stored length or split outside what the generator accepts (an imported
- * or hand-made plan) is clamped to the nearest accepted value, never otherwise changed.
+ * Split and conditioning are not profile fields; they are the running plan's unless chosen. A
+ * stored split outside what the generator accepts (an imported or hand-made plan) is clamped to
+ * the nearest accepted value, never otherwise changed. There is no length (ROADMAP L6): the new
+ * programme is materialised INITIAL_WEEKS deep and the engine keeps it going.
  */
 export function programmeInput(
   profile: Profile,
@@ -64,7 +66,8 @@ export function programmeInput(
   const storedSplit = clamp(Math.round(plan.sessionsPerWeek), lo, hi) as SessionsPerWeek;
   return {
     sessionsPerWeek: choice.sessionsPerWeek ?? storedSplit, // [sessions/week]
-    weeks: clamp(Math.round(plan.weeks), PLAN_WEEKS_MIN, PLAN_WEEKS_MAX), // [weeks]
+    // [weeks] materialisation depth only; the engine's runway extends it (ROADMAP L6).
+    weeks: INITIAL_WEEKS,
     goal: choice.goal ?? profile.goal.kind,
     experience: profile.experience,
     equipment: profile.equipment,
@@ -167,17 +170,22 @@ function sessionKey(s: PlannedSession): string {
 /**
  * Would `built` give the user the same programme as `stored`?
  *
- * Compares what the user trains and reads: the name (it carries the goal), split, length, block
- * layout, and the sessions as a multiset. Ids are ignored (every build mints fresh ones) and so
- * is session order, because Today's "train something else" swaps two sessions of the stored plan
- * (src/domain/schedule/calendar.ts assignToday) without changing the programme.
+ * Compares what the Settings inputs decide: the name (it carries the goal and the split), the
+ * split, and the FIRST WEEK's sessions as a multiset. Ids are ignored (every build mints fresh
+ * ones) and so is session order, because Today's "train something else" swaps two sessions of
+ * the stored plan (src/domain/schedule/calendar.ts assignToday) without changing the programme.
+ *
+ * Not compared (ROADMAP L6): the length and the later cycles. The engine grows the stored plan
+ * and rewrites cycles nobody has started from logged data (adopted swaps, replaced skips), so a
+ * stored plan is longer and later weeks differ from a fresh build by design; neither is a
+ * Settings change. A stored name from before L6 carries its length ("12 weeks"); it is compared
+ * without it.
  */
 export function sameProgramme(stored: PlanTemplate, built: PlanTemplate): boolean {
-  if (stored.name !== built.name) return false;
-  if (stored.sessionsPerWeek !== built.sessionsPerWeek || stored.weeks !== built.weeks) return false;
-  if (canonical(stored.blocks) !== canonical(built.blocks)) return false;
-  if (stored.sessions.length !== built.sessions.length) return false;
-  const a = stored.sessions.map(sessionKey).sort();
-  const b = built.sessions.map(sessionKey).sort();
-  return a.every((key, i) => key === b[i]);
+  if (withoutLength(stored.name) !== withoutLength(built.name)) return false;
+  if (stored.sessionsPerWeek !== built.sessionsPerWeek) return false;
+  const spw = stored.sessionsPerWeek; // [sessions/week]
+  const a = stored.sessions.slice(0, spw).map(sessionKey).sort();
+  const b = built.sessions.slice(0, spw).map(sessionKey).sort();
+  return a.length === b.length && a.every((key, i) => key === b[i]);
 }

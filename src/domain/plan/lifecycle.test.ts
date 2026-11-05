@@ -4,7 +4,8 @@
 // regenerated programme is built from, and whether it would differ from the stored one.
 import { describe, expect, it } from 'vitest';
 import { EXERCISES } from './library';
-import { CARDIO_EXERCISE_IDS, generatePlan, PLAN_WEEKS_MAX, PLAN_WEEKS_MIN } from './generator';
+import { CARDIO_EXERCISE_IDS, generatePlan, PLAN_WEEKS_MIN } from './generator';
+import { INITIAL_WEEKS } from './engine';
 import { SPLIT_TEMPLATES, type SessionsPerWeek } from './templates';
 import {
   massDirection,
@@ -80,10 +81,10 @@ describe('planIncludesCardio', () => {
 });
 
 describe('programmeInput', () => {
-  it("takes goal, experience and equipment from the profile, and split, length and conditioning from the plan", () => {
+  it("takes goal, experience and equipment from the profile, split and conditioning from the plan, and no length (L6)", () => {
     expect(programmeInput(profile, storedPlan(4, true, 10))).toEqual({
       sessionsPerWeek: 4, // [sessions/week]
-      weeks: 10, // [weeks]
+      weeks: INITIAL_WEEKS, // [weeks] materialisation depth, never the stored plan's length
       goal: profile.goal.kind,
       experience: 'intermediate',
       equipment: 'full-gym',
@@ -116,12 +117,13 @@ describe('programmeInput', () => {
     expect(input).toMatchObject({ goal: 'maintenance', sessionsPerWeek: 3, includeCardio: false });
   });
 
-  it("clamps a stored plan's length and split into the generator's range", () => {
+  it("clamps a stored plan's split into the generator's range and ignores its length", () => {
     // An imported or hand-made plan can hold values the generator refuses.
     const odd: PlanTemplate = { ...storedPlan(3, false), weeks: 2, sessionsPerWeek: 7 };
-    expect(programmeInput(profile, odd)).toMatchObject({ weeks: PLAN_WEEKS_MIN, sessionsPerWeek: 6 });
+    expect(programmeInput(profile, odd)).toMatchObject({ weeks: INITIAL_WEEKS, sessionsPerWeek: 6 });
     const long: PlanTemplate = { ...storedPlan(3, false), weeks: 40, sessionsPerWeek: 1 };
-    expect(programmeInput(profile, long)).toMatchObject({ weeks: PLAN_WEEKS_MAX, sessionsPerWeek: 2 });
+    expect(programmeInput(profile, long)).toMatchObject({ weeks: INITIAL_WEEKS, sessionsPerWeek: 2 });
+    expect(INITIAL_WEEKS).toBeGreaterThanOrEqual(PLAN_WEEKS_MIN);
   });
 });
 
@@ -154,6 +156,22 @@ describe('sameProgramme', () => {
         : value,
     ) as PlanTemplate;
     expect(sameProgramme(reversed, storedPlan(3, true))).toBe(true);
+  });
+
+  it('is true for a stored plan the engine grew and evolved past its first week (L6)', () => {
+    const a = storedPlan(3, false);
+    const [later] = a.sessions.slice(3, 4);
+    if (later === undefined) throw new Error('fixture: a second week');
+    const evolved = a.sessions.map((s, i) =>
+      i === 3 ? { ...later, exercises: later.exercises.slice(1) } : s,
+    );
+    const grown = { ...a, weeks: a.weeks + 4, sessions: [...evolved, ...a.sessions.slice(0, 12).map((s) => ({ ...s, id: `x-${s.id}` }))] };
+    expect(sameProgramme(grown, storedPlan(3, false))).toBe(true);
+  });
+
+  it('compares a pre-L6 name without its length', () => {
+    const a = storedPlan(3, false);
+    expect(sameProgramme({ ...a, name: a.name.replace(', ', ', 12 weeks, ') }, storedPlan(3, false))).toBe(true);
   });
 
   it('is false when experience, equipment, goal, split or conditioning would change', () => {

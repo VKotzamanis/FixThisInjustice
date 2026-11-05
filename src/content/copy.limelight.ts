@@ -82,7 +82,7 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // a lower-cased "no load suggested" would not have qualified; this is a different word.
   'label.noSuggestedLoad': 'unscripted',
   'hero.weeklyTargetMissed': 'the intervention',
-  'status.sessionCursor': 'ep. {shown} of {total}',
+  'status.sessionCursor': 'ep. {shown}', // ROADMAP L6: no "of N"; owner wording call pending
   // `+30 s`, not `+30s`: the SPACE and the LOWER CASE are the unit, not typography. SI 5.4.3
   // puts a space between the value and the symbol, and `s` is the second while `S` is the
   // siemens, so the shortened form states no quantity at all. This table lower-cases its words;

@@ -438,7 +438,6 @@ export interface SetupAnswers {
   // them (mirrors SetupWizard.tsx's own pre-existing DaySlot shape).
   days: Record<IsoWeekday, { enabled: boolean; startTime: string; durationMin: string }>;
   weeklySessionTarget: string; // [sessions/week], as typed
-  weeks: string; // [weeks], as typed
   includeCardio: boolean;
 }
 

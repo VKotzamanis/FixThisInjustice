@@ -70,7 +70,12 @@ const PLAN_VERSION = 1;
 
 export interface PlanInput {
   sessionsPerWeek: SessionsPerWeek; // [sessions/week]
-  weeks: number; // [weeks], whole, PLAN_WEEKS_MIN..PLAN_WEEKS_MAX
+  /**
+   * [weeks], whole, PLAN_WEEKS_MIN..PLAN_WEEKS_MAX. Materialisation depth only: the programme
+   * engine (engine.ts ensureRunway) appends cycles from logged data before the cursor reaches the
+   * end, so no caller asks the user for it (ROADMAP L6).
+   */
+  weeks: number;
   /**
    * Affects the plan NAME only. The content review supplies no goal-stratified rep range or set
    * count, so goal drives energy and protein (src/domain/nutrition.ts) and nothing here.
@@ -184,7 +189,7 @@ function cardioExercise(
  * than BLOCK_WEEKS weeks is emitted as one normal block and carries no deload, so a programme
  * never ends on a week of reduced volume it has no following week to benefit.
  */
-function buildBlocks(sessionsPerWeek: number, weeks: number): PlanBlock[] {
+export function buildBlocks(sessionsPerWeek: number, weeks: number): PlanBlock[] {
   const blocks: PlanBlock[] = [];
   let week = 0; // [weeks] laid out so far
   let firstSessionIndex = 0; // [sessions] offset into PlanTemplate.sessions
@@ -312,8 +317,10 @@ export function generatePlan(input: PlanInput, library: readonly Exercise[]): Pl
   return {
     id: newId(),
     version: PLAN_VERSION,
-    // Copy contract R5: comma connectors, e.g. "Upper / Lower x2, 12 weeks, fat loss".
-    name: `${template.name}, ${input.weeks} weeks, ${GOAL_LABEL[input.goal]}`,
+    // Copy contract R5: comma connectors, e.g. "Upper / Lower x2, fat loss". No length: the
+    // programme is open-ended (ROADMAP L6, docs/design/programme-engine.md), so `weeks` is only
+    // how deep this first materialisation goes.
+    name: `${template.name}, ${GOAL_LABEL[input.goal]}`,
     sessionsPerWeek: input.sessionsPerWeek, // [sessions/week]
     weeks: input.weeks, // [weeks]
     sessions,

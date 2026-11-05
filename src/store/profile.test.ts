@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { selectState, useAppStore } from './index';
 import { importJson as parseDocument } from './persistence';
+import { RUNWAY_SESSIONS } from '../domain/plan/engine';
 import {
   latestBodyMassEntry,
   nutritionInputFor,
@@ -418,7 +419,10 @@ describe('setPlan', () => {
     // A PlanTemplate belongs to exactly one profile (types.ts section 5), so the
     // id the caller handed in is not the id it is stored under.
     expect(cursor?.planId).not.toBe(plan.id);
-    expect(s.plans[cursor?.planId ?? '']?.sessions.length).toBe(2);
+    // ROADMAP L6: stored with the engine's runway ahead of the cursor; the two given sessions first.
+    const stored = s.plans[cursor?.planId ?? ''];
+    expect(stored?.sessions.length).toBeGreaterThanOrEqual(RUNWAY_SESSIONS);
+    expect(stored?.sessions.slice(0, 2)).toEqual(plan.sessions);
     expect(s.plans[plan.id]).toBeUndefined();
     expectDocumentConsistent();
   });

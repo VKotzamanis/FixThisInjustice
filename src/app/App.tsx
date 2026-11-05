@@ -536,7 +536,7 @@ function TopbarTicker(): ReactElement | null {
     { icon: view === null ? 'fan' : VIEW_ICONS[view], text: instructionText },
   ];
   if (plan !== null && cursor !== null) {
-    const total = plan.sessions.length; // [sessions] the whole programme
+    const total = plan.sessions.length; // [sessions] materialised so far: a clamp, never shown
     // 1-based for display, clamped exactly as SessionIndicator.tsx clamps it: nextSessionIndex's
     // terminal value is sessions.length (master plan section 6.7), which would print N+1 unclamped.
     const shown = total === 0 ? 0 : Math.min(cursor.nextSessionIndex + 1, total); // [sessions]
@@ -545,7 +545,6 @@ function TopbarTicker(): ReactElement | null {
       icon: 'stopwatchPanel',
       text: FORMAT.planPositionLabel(
         shown,
-        total,
         complete ? t('hero.programmeComplete') : '',
         overrides,
       ),

@@ -81,6 +81,7 @@ export type CopyKey =
   | 'advice.loadSteps'
   | 'advice.creatineOnly'
   | 'advice.deloadEveryFourth'
+  | 'advice.programmeContinues'
   | 'hero.yourAnswers'
   | 'hero.dailyTargets'
   | 'hero.yourData'
@@ -98,7 +99,6 @@ export type CopyKey =
   | 'step.body'
   | 'step.training'
   | 'step.goal'
-  | 'step.programme'
   | 'step.review'
   | 'label.unitsMetric'
   | 'label.unitsImperial'
@@ -154,7 +154,6 @@ export type CopyKey =
   | 'label.loadStep'
   | 'quantity.walkMinutes'
   | 'quantity.weeklySessionTarget'
-  | 'quantity.programmeWeeks'
   | 'quantity.age'
   | 'option.activitySedentary'
   | 'option.activityModerate'
@@ -884,6 +883,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.loadSteps': 'The smallest increment a suggested load uses. Dumbbells step per pair.',
   'advice.creatineOnly': 'Dose scales with body mass.',
   'advice.deloadEveryFourth': 'Every fourth week halves set counts, load unchanged.',
+  // ROADMAP L6, docs/design/programme-engine.md. Base table only; owner wording pending.
+  'advice.programmeContinues': 'No end date: each new block is built from what you logged.',
   'hero.yourAnswers': 'What You Told Me',
   'hero.dailyTargets': 'Daily Targets',
   /*
@@ -915,7 +916,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Round 1 claim C1.10.2, first sentence: "Rename to Fitness Goal." R14: Title Case, and a
   // noun phrase.
   'step.goal': 'Fitness Goal',
-  'step.programme': 'Programme Length',
   'step.review': 'Review',
   'label.unitsMetric': 'Kilograms (kg)',
   'label.unitsImperial': 'Pounds (lb)',
@@ -1028,7 +1028,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // option to go, and only that.
   'quantity.walkMinutes': 'Minutes each way',
   'quantity.weeklySessionTarget': 'Weekly session target',
-  'quantity.programmeWeeks': 'Programme length',
   'quantity.age': 'Age',
   // Brief F Part 1a: short slider-position labels. The longer descriptive text that used to live
   // here moved to the "Examples" disclosure (src/content/setupSliderExamples.ts
@@ -1409,7 +1408,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // the quantity beside it.
   'status.deloadTag': 'DELOAD',
   'label.week': 'Week',
-  'label.weekOfCount': 'Week {Shown} of {Total}', // template; FORMAT.weekOfCount
+  'label.weekOfCount': 'Week {Shown}', // template; FORMAT.weekOfCount. No "of N": open-ended (L6)
   // The cursor marker on the session the plan will serve next. Lower case: it is a mark on a
   // row, not a heading.
   'status.nextSession': 'next',
@@ -1796,7 +1795,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // (FORMAT.withSlots). The week is the CURSOR's week, never the calendar's, for the reason
   // SessionIndicator records: the two diverge the moment a session is missed.
   'status.bootPlanName': 'plan {name}', // template; FORMAT.withSlots
-  'status.bootWeek': 'week {week} of {weeks}', // template; FORMAT.withSlots
+  'status.bootWeek': 'week {week}', // template; FORMAT.withSlots. No "of N": open-ended (L6)
   'status.bootSchedule': '{count} sessions per week', // template; FORMAT.withSlots
   // The word the dotted leader ends on, and the last line of the sequence. Both are console
   // register rather than prose, which is exactly why they are keys: a skin that is not a
@@ -1911,7 +1910,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // template; FORMAT.planPositionLabel reads this key, so the session indicator's accessible name
   // is a string a skin can reach. The visible short form (FORMAT.planPosition, "S 12/48") is an
   // abbreviation of the same two counts and carries no words to skin.
-  'status.sessionCursor': 'Session {shown} of {total}',
+  'status.sessionCursor': 'Session {shown}',
   'hero.weekReview': 'Week Review',
   // R9 and round three section 3.3: the body of the missed-week screen states the fact and the
   // next action and carries no verdict on the person. The count of missed sessions is absent
@@ -2374,8 +2373,9 @@ export const FORMAT = {
   dumbbellBandOpen: (lo: number, unit: string): string => `${lo} ${unit} and above`,
 
   /** "Upper / Lower x2, 12 weeks, 48 sessions." */
-  splitSummary: (name: string, weeks: number, sessions: number): string =>
-    `${name}, ${weeks} weeks, ${sessions} sessions.`,
+  /** "Upper / Lower x2, 4 sessions per week." No length: the programme is open-ended (L6). */
+  splitSummary: (name: string, sessionsPerWeek: number): string =>
+    `${name}, ${sessionsPerWeek} sessions per week.`,
 
   /** "Maintenance only: rear-delt, calf." Never hidden: content review section 2.1. */
   muscleList: (label: string, muscles: readonly string[], noneWord: string): string =>
@@ -2503,38 +2503,36 @@ export const FORMAT = {
 
   /** "6 of 6 sessions closed on 2026-09-07." The date is PlanCursor.completedOn. */
   programmeClosed: (total: number, date: string): string =>
-    `${total} of ${total} sessions closed on ${date}.`,
+    `${total} sessions closed on ${date}.`,
 
   // --- session indicator in the top bar (P3 Task 7) ---
 
   /**
-   * "S 12/48", and "S 6/6 complete" once the cursor is terminal. `S` is the SESSION the
-   * plan cursor stands at, never the calendar day: the two diverge the moment a session is
-   * missed. `shown` and `total` are counts of sessions, 1-based and already clamped by the
-   * caller. `suffix` is a copy key's string (`status.planComplete`) or '', so this frame
-   * states no outcome of its own.
+   * "S 12", and "S 208 complete" once the cursor is terminal (only at the plan ceiling). `S` is
+   * the SESSION the plan cursor stands at, never the calendar day: the two diverge the moment a
+   * session is missed. No denominator (ROADMAP L6, programme-horizon.md Q4): the programme is
+   * open-ended, so a total would be the runway and jump at every appended cycle. `shown` is
+   * 1-based and already clamped by the caller. `suffix` is a copy key's string
+   * (`status.planComplete`) or '', so this frame states no outcome of its own.
    */
-  planPosition: (shown: number, total: number, suffix: string): string =>
-    suffix === '' ? `S ${shown}/${total}` : `S ${shown}/${total} ${suffix}`,
+  planPosition: (shown: number, suffix: string): string =>
+    suffix === '' ? `S ${shown}` : `S ${shown} ${suffix}`,
 
   /**
-   * The same position spelled out for a screen reader: "Session 12 of 48", and
-   * "Session 6 of 6. Programme complete." The abbreviated visible form is unreadable
-   * aloud, so the indicator's accessible name comes from here instead. `status` is a copy
-   * key's string (`hero.programmeComplete`) or '', as in `screenedOn` above.
+   * The same position spelled out for a screen reader: "Session 12", and "Session 208.
+   * Programme complete." The abbreviated visible form is unreadable aloud, so the indicator's
+   * accessible name comes from here instead. `status` is a copy key's string
+   * (`hero.programmeComplete`) or '', as in `screenedOn` above. No total (ROADMAP L6).
    */
   planPositionLabel: (
     shown: number,
-    total: number,
     status: string,
     overrides?: Partial<Record<CopyKey, string>>,
   ): string => {
     // The words are `status.sessionCursor`, read rather than restated, so a skin reaches the one
-    // string this indicator says aloud; the default row renders exactly what this frame held
-    // before. Both counts are this frame's own arguments, so no table can move them.
-    const cursor = copy('status.sessionCursor', overrides)
-      .replace('{shown}', () => String(shown))
-      .replace('{total}', () => String(total));
+    // string this indicator says aloud. The count is this frame's own argument, so no table can
+    // move it.
+    const cursor = copy('status.sessionCursor', overrides).replace('{shown}', () => String(shown));
     return status === '' ? cursor : `${cursor}. ${status}`;
   },
 
@@ -2568,7 +2566,10 @@ export const FORMAT = {
   deloadNote: (cutPct: number, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.deloadNote', overrides).replace('{cutPct}', () => String(cutPct)),
 
-  /** "Week 1 of 2". Both are 1-based counts of weeks over the whole plan. */
+  /**
+   * "Week 1". ROADMAP L6: the row no longer prints the total; `total` (the weeks materialised
+   * so far) is still substituted for a skin row that names `{total}`, and none does.
+   */
   weekOfCount: (
     shown: number,
     total: number,

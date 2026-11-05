@@ -125,15 +125,15 @@ jobs:
             exit 1
           fi
 
-          # Gate 4b: that list is still the six hosts master plan section 3 approved, so the frame allowlist cannot widen without a plan amendment.
-          approved='https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.tiekoetter.com https://yt.chocolatemoo53.com https://inv.thepixora.com https://invidious.f5.si'
+          # Gate 4b: that list is still the approved hosts (master plan section 3's six mirrors, plus YouTube's privacy-enhanced player added by ROADMAP L9 on 2026-11-05), so the frame allowlist cannot widen without an amendment here.
+          approved='https://www.youtube-nocookie.com https://invidious.nerdvpn.de https://inv.nadeko.net https://invidious.tiekoetter.com https://yt.chocolatemoo53.com https://inv.thepixora.com https://invidious.f5.si'
           if [ "$from_build" != "$approved" ]; then
             echo "FAIL: frame-src host list differs from master plan section 3; amend the plan before widening it"
             echo "  built:    $from_build"
             echo "  approved: $approved"
             exit 1
           fi
-          echo "PASS: frame-src equals the six hosts in src/config/videoInstances.ts"
+          echo "PASS: frame-src equals the approved hosts in src/config/videoInstances.ts"
 
       - name: CSP content and referrer meta
         run: bash scripts/check-dist-csp.sh dist/index.html

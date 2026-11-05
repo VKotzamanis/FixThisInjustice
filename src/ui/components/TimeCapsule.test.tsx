@@ -41,6 +41,7 @@ import {
   TimeCapsule,
   defaultOpensOn,
 } from './TimeCapsule';
+import { INITIAL_WEEKS } from '../../domain/plan/engine';
 import type { SkinId } from '../../domain/types';
 
 /** The fixture profile's zone. The process zone is deliberately never this. */
@@ -51,6 +52,11 @@ const STARTED_ON: LocalDate = '2026-09-07';
 const PLAN_WEEKS = 12;
 /** The fixture plan's last day: 2026-09-07 + 12 x 7 - 1 = + 83 d. Checked with GNU date. */
 const PLAN_END: LocalDate = '2026-11-29';
+/**
+ * ROADMAP L6: the default open date with no target date, the end of the first INITIAL_WEEKS
+ * (8): 2026-09-07 + 8 x 7 - 1 = + 55 d = 2026-11-01. The plan's own length no longer counts.
+ */
+const DEFAULT_END: LocalDate = '2026-11-01';
 
 const NOTE = 'I am starting because I want to finish what I said I would finish.';
 
@@ -135,24 +141,41 @@ describe('TimeCapsule, writing', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("offers the plan's last day as the default open date", () => {
+  it('offers the end of the first INITIAL_WEEKS as the default open date, not plan.weeks (L6)', () => {
+    expect(defaultOpensOn(STARTED_ON, INITIAL_WEEKS)).toBe(DEFAULT_END);
     render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
     openWriteDialog();
-    expect(dateField()).toHaveValue(PLAN_END);
+    expect(dateField()).toHaveValue(DEFAULT_END);
+  });
+
+  it("offers the goal's target date when one is set", () => {
+    useAppStore.setState((s) => {
+      const profile = s.profiles[FUN_PROFILE_ID];
+      if (profile === undefined) throw new Error('fixture: profile');
+      return {
+        profiles: {
+          ...s.profiles,
+          [FUN_PROFILE_ID]: { ...profile, goal: { ...profile.goal, targetDate: '2027-01-15' } },
+        },
+      };
+    });
+    render(<TimeCapsule now={at(STARTED_ON, '09:00')} />);
+    openWriteDialog();
+    expect(dateField()).toHaveValue('2027-01-15');
   });
 
   it('moves the default forward when the plan ends sooner than the minimum', () => {
-    // Two days before the plan's last day: the default would otherwise be inside the bound.
-    render(<TimeCapsule now={at('2026-11-27', '09:00')} />);
+    // Two days before the default day: the default would otherwise be inside the bound.
+    render(<TimeCapsule now={at(addDays(DEFAULT_END, -2), '09:00')} />);
     openWriteDialog();
-    expect(dateField()).toHaveValue(addDays('2026-11-27', CAPSULE_MIN_DAYS_AHEAD));
+    expect(dateField()).toHaveValue(addDays(addDays(DEFAULT_END, -2), CAPSULE_MIN_DAYS_AHEAD));
   });
 
   it('says the suggested date was moved when the plan ends inside the minimum window', () => {
     // Three days before the plan's last day (2026-11-29): CAPSULE_MIN_DAYS_AHEAD pushes the
     // suggested default out to 2026-12-03, past the plan's own end, so the default shown is
     // not the plan's last day and the advisory line must say so.
-    render(<TimeCapsule now={at('2026-11-26', '09:00')} />);
+    render(<TimeCapsule now={at(addDays(DEFAULT_END, -3), '09:00')} />);
     openWriteDialog();
     expect(screen.getByText(copyFor('limelight', 'advice.capsuleDefaultMoved'))).toBeInTheDocument();
   });
