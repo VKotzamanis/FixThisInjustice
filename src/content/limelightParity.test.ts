@@ -20,7 +20,9 @@
 // atomic setup refusal (spec R5, Task 9; base table only), and `status.externalWriteReplaced` for
 // the other-window notice (audit B03, Task 10; base table only), and `button.addForgottenSet` for
 // the finished-session amend (audit C10, Task 12; base table only), and `button.logAnyway` and
-// `advice.loadLooksOff` for the load plausibility question (spec R4, Task 14; base table only). No snapshot row was changed to add them.
+// `advice.loadLooksOff` for the load plausibility question (spec R4, Task 14; base table only),
+// and `error.nameTooLong` and `error.startTimeRequired` for the wizard (spec R5, Task 15; base
+// table only). No snapshot row was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
