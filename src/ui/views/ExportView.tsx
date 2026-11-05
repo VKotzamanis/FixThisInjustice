@@ -1,3 +1,4 @@
+import { CALENDAR_DAYS } from '../../config/export'; // [d]
 import { useId, useState, type JSX } from 'react';
 import { displayClass } from '../format/display';
 import { FORMAT } from '../../content/copy';
@@ -59,8 +60,6 @@ import './views.css';
  * for inside the panel instead.
  */
 
-/** [d] the horizon the .ics covers. The plan's constant: "The calendar holds the next 28 days". */
-const CALENDAR_DAYS = 28;
 
 /** [h] and [min] before each session at which the courtesy alarm fires. */
 const ALARM_LEAD_HOURS = 2;

@@ -3,6 +3,8 @@ import type { AppState } from './types';
 import { isValidLocalDate, isValidLocalTime, isValidTimeZone } from './dates';
 import { ACTIVITY_BAND, ACTIVITY_FACTOR } from './nutrition';
 import { migrate } from './migrations';
+// [sessions/week], [weeks], [sessions], [blocks]: plan ceilings, shared with the programme engine.
+import { MAX_BLOCKS, MAX_PLAN_SESSIONS, MAX_PLAN_WEEKS, MAX_SESSIONS_PER_WEEK } from './limits';
 
 /** The schema version this build writes and is the ceiling for what it will read. */
 export const CURRENT_SCHEMA_VERSION = 3;
@@ -50,20 +52,8 @@ const MAX_PROTEIN_G = 1_000;
 const MAX_STEP_KG = 100;
 /** [min] Sanity ceiling for a one-way walk to the gym: one day, mirrors MAX_SECONDS / 60. */
 const MAX_WALK_MINUTES = 1_440;
-/** [sets] and [sessions/week]: sanity ceilings. */
+/** [sets]: sanity ceiling. */
 const MAX_SETS = 20;
-const MAX_SESSIONS_PER_WEEK = 7;
-/** [weeks] Sanity ceiling for a plan's length; two years. */
-const MAX_PLAN_WEEKS = 104;
-/**
- * [sessions] Sanity ceiling for any index into a plan's session list, and for a
- * count of them. MAX_PLAN_WEEKS * MAX_SESSIONS_PER_WEEK is the largest plan the
- * bounds above admit; a cursor may sit one past the last session, so the ceiling
- * is inclusive of the count itself.
- */
-const MAX_PLAN_SESSIONS = MAX_PLAN_WEEKS * MAX_SESSIONS_PER_WEEK;
-/** [blocks] Sanity ceiling: at most one block per week of the longest plan. */
-const MAX_BLOCKS = MAX_PLAN_WEEKS;
 /** Plan template revision counter, dimensionless. Sanity ceiling. */
 const MAX_PLAN_VERSION = 1_000;
 /** [sets] Lifetime set counter behind the specimen draw. Sanity ceiling. */
