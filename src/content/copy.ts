@@ -308,6 +308,8 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'button.logAnyway'
+  | 'advice.loadLooksOff'
   | 'button.addForgottenSet'
   | 'status.staleSessionCompleted'
   | 'status.staleSessionReleased'
@@ -1136,6 +1138,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R4: the one-tap load plausibility question on a set row.
+  'button.logAnyway': 'Log Anyway',
+  'advice.loadLooksOff': 'That load is far from your last one. Check it.',
   // Audit C10: the one way to add a set to a finished session; it starts no rest.
   'button.addForgottenSet': 'Add Forgotten Set',
   // Spec R1: the one notice after a session left open on an earlier day was closed.

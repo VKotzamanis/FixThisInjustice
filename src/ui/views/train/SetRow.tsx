@@ -24,6 +24,7 @@ import {
 } from '../../../domain/training/effort';
 import type { Kg, LoggedSet, Prescription, Seconds, UnitSystem } from '../../../domain/types';
 import { displayLoad, formatLoad } from '../../../domain/units';
+import { implausibleLoad } from '../../../domain/training/plausibility';
 import { UnitInput, loadUnit, storedLoadKg } from '../../components/UnitInput';
 import { NO_VALUE, SECONDS_UNIT } from '../../format/plan';
 import '../../styles/train.css';
@@ -144,6 +145,11 @@ export interface SetRowProps {
    */
   onEffort: (rpe: number) => boolean;
   onDelete: () => void;
+  /**
+   * [kg] The load a new set is compared against (spec R4): this exercise's latest loaded set
+   * today, else the suggestion; null for none. Optional so existing callers compile.
+   */
+  referenceKg?: Kg | null;
 }
 
 /** The suggested load as the user would type it, or '' when there is nothing to suggest. */
@@ -178,6 +184,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     onEdit,
     onEffort,
     onDelete,
+    referenceKg = null,
   } = props;
 
   /*
@@ -204,6 +211,8 @@ export function SetRow(props: SetRowProps): ReactElement {
   const [countError, setCountError] = useState<string | null>(null);
   const [bodyweight, setBodyweight] = useState(isBodyweightExercise);
   const countRef = useRef<HTMLInputElement | null>(null);
+  /** [kg] A load the row has asked about once (spec R4); null when no question stands. */
+  const [questionedKg, setQuestionedKg] = useState<Kg | null>(null);
 
   // The suggestion is a function of history, so it changes when a previous session is edited.
   // The prefill follows it only while the user has not typed: overwriting an entry in progress
@@ -235,7 +244,7 @@ export function SetRow(props: SetRowProps): ReactElement {
       ? logged.loadKg
       : undefined;
 
-  const submit = (): void => {
+  const submit = (confirmed = false): void => {
     // Whole units in both modes: repetitions are counted and the model stores seconds as a
     // whole number, so "45.7" is read as 45 exactly as "8.5" reps has always been read as 8.
     const count = Number.parseInt(countText, 10); // [repetitions] or [s]
@@ -251,6 +260,12 @@ export function SetRow(props: SetRowProps): ReactElement {
     const kept = keptLoadKg(); // [kg], null = not recorded, undefined = not kept
     const loadKg = kept !== undefined ? kept : bodyweight ? 0 : storedLoadKg(loadText, units); // [kg]
     if (kept === undefined && (loadKg === null || loadKg < 0)) return;
+    // Spec R4: a new set far from its reference is asked about once; the second tap logs it.
+    if (!editing && !confirmed && loadKg !== null && implausibleLoad(loadKg, referenceKg)) {
+      setQuestionedKg(loadKg);
+      return;
+    }
+    setQuestionedKg(null);
     const entry: SetEntry = timed ? { reps: null, durationS: count } : { reps: count, durationS: null };
     if (editing) {
       // An edit is not a new set: no rest timer, no coach line (ExerciseCard owns both and
@@ -375,6 +390,7 @@ export function SetRow(props: SetRowProps): ReactElement {
           onChange={(next) => {
             touched.current = true;
             setLoadText(next);
+            setQuestionedKg(null);
           }}
           error={null}
           disabled={bodyweight}
@@ -449,7 +465,13 @@ export function SetRow(props: SetRowProps): ReactElement {
         </div>
         {editing ? (
           <>
-            <button type="button" onClick={submit} aria-label={FORMAT.saveSetLabel(n)}>
+            <button
+              type="button"
+              onClick={() => {
+                submit();
+              }}
+              aria-label={FORMAT.saveSetLabel(n)}
+            >
               {t('button.saveSet')}
             </button>
             <button type="button" onClick={cancelEdit}>
@@ -457,11 +479,30 @@ export function SetRow(props: SetRowProps): ReactElement {
             </button>
           </>
         ) : (
-          <button type="button" onClick={submit} aria-label={FORMAT.logSetLabel(n)}>
+          <button
+            type="button"
+            onClick={() => {
+              submit();
+            }}
+            aria-label={FORMAT.logSetLabel(n)}
+          >
             {t('button.logSet')}
           </button>
         )}
       </div>
+      {questionedKg !== null && (
+        <div className="set-plausibility">
+          <p role="alert">{t('advice.loadLooksOff')}</p>
+          <button
+            type="button"
+            onClick={() => {
+              submit(true);
+            }}
+          >
+            {t('button.logAnyway')}
+          </button>
+        </div>
+      )}
       {/* role="alert": it answers the Save the user just pressed (same rule as add-custom). */}
       {editError !== null && (
         <p className="set-edit-error" role="alert">

@@ -151,6 +151,14 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   // master plan section 6.5 specifies: the engine reports "deload" and holds the load, and the
   // set count is what the block modifies. Floored at 1, so a block can never prescribe no work.
   const targetSets = Math.max(1, Math.round(planned.setsLo * block.setModifier)); // [sets]
+  // Spec R4: what a new set's load is compared against. The latest loaded set of this exercise
+  // today, else the suggestion; null when there is neither. [kg]
+  const latestToday = todaysSets.reduce<LoggedSet | null>(
+    (best, s) =>
+      s.loadKg !== null && s.loadKg > 0 && (best === null || s.setNumber > best.setNumber) ? s : best,
+    null,
+  );
+  const referenceKg: Kg | null = latestToday?.loadKg ?? suggestedKg;
   const maxLoggedNumber = todaysSets.reduce((m, s) => Math.max(m, s.setNumber), 0);
   const rowCount = Math.max(targetSets, maxLoggedNumber) + bonusRows;
 
@@ -330,6 +338,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
                   suggestedKg={suggestedKg}
                   logged={logged}
                   isBodyweightExercise={exercise.isBodyweight}
+                  referenceKg={referenceKg}
                   onLog={(loadKg, entry) => handleLog(n, loadKg, entry)}
                   onEdit={(loadKg, entry, rpe) => {
                     if (logged === null) return false;
