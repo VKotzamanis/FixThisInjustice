@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assignToday, projectedCalendar, remainingLabelsThisWeek } from './calendar';
-import { completeSession, postponeSession, startSession } from './cursor';
+import { completeSession, postponeSession, skipSession, startSession } from './cursor';
 import { parseState } from '../schema';
 import { makeSet } from '../../test/fixtures';
 import {
@@ -47,6 +47,28 @@ describe('the quota forecast (R3, audit D04)', () => {
     });
     const done = completeSession(s, PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
     expect(served(done, TUESDAY, 6)).toEqual([TUESDAY, WEDNESDAY]);
+  });
+
+  it('never lets a skipped row consume quota: only completed sessions and the open one count (N1)', () => {
+    const s = seedState({
+      labels: LABELS,
+      weekdays: [1, 2, 3, 4, 5],
+      sessionsPerWeek: 3,
+      weeklySessionTarget: 3,
+    });
+    const skipped = skipSession(s, PROFILE_ID, MONDAY, null);
+    expect(served(skipped, TUESDAY, 6)).toEqual([TUESDAY, WEDNESDAY, THURSDAY]);
+  });
+
+  it('counts the open (in-progress) session against its week', () => {
+    const s = seedState({
+      labels: LABELS,
+      weekdays: [1, 2, 3, 4, 5],
+      sessionsPerWeek: 3,
+      weeklySessionTarget: 3,
+    });
+    const open = startSession(s, PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
+    expect(served(open, TUESDAY, 6)).toEqual([TUESDAY, WEDNESDAY]);
   });
 
   it('serves the full quota again in the next ISO week', () => {

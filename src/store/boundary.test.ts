@@ -3,7 +3,9 @@ import { defaultState, useAppStore } from './index';
 import { installFakeStorage } from './testStorage';
 import { makeProfile } from '../test/fixtures';
 import { planOf, seedState } from '../test/scheduleFixtures';
-import type { Availability } from '../domain/types';
+import fc from 'fast-check';
+import { anySetupDraft } from '../domain/arbitraries';
+import type { Availability, SetupDraft } from '../domain/types';
 
 const AVAILABILITY: Availability = {
   slots: [
@@ -57,6 +59,27 @@ describe('every write of user input parses with the loader schema (R5)', () => {
     expect(() =>
       useAppStore.getState().setReminderSettings('profile-1', { enabled: true, dayOfTime: '', leadMinutes: [120] }),
     ).toThrow(/setReminderSettings: dayOfTime/);
+  });
+});
+
+describe('setCapsule and saveSetupDraft parse with the loader schema (R5, review N4)', () => {
+  it('setCapsule refuses a note over the loader cap and writes nothing', () => {
+    useAppStore.getState().createProfile(makeProfile());
+    const capsule = { note: 'A'.repeat(5_001), writtenAt: 1_788_000_000_000, opensOn: '2026-10-19', opened: false }; // writtenAt [ms] epoch, UTC
+    expect(() => {
+      useAppStore.getState().setCapsule('profile-1', capsule);
+    }).toThrow(/setCapsule: note/);
+    expect(useAppStore.getState().capsules['profile-1']).toBeUndefined();
+  });
+
+  it('saveSetupDraft refuses a field over the loader cap and keeps the last valid draft', () => {
+    const valid = fc.sample(anySetupDraft, { numRuns: 1, seed: 7 })[0] as SetupDraft;
+    useAppStore.getState().saveSetupDraft(valid);
+    expect(useAppStore.getState().setupDraft).toEqual(valid);
+    expect(() => {
+      useAppStore.getState().saveSetupDraft({ ...valid, displayName: 'A'.repeat(201) });
+    }).toThrow(/saveSetupDraft: displayName/);
+    expect(useAppStore.getState().setupDraft).toEqual(valid);
   });
 });
 

@@ -871,7 +871,9 @@ const SetupAnswersShapeSchema = z.object({
  * a corrupt buffer costs the user the step they were typing, where the outer catch would cost
  * them every answer they had already committed. The narrower catch loses the smaller thing.
  */
-const SetupDraftShapeSchema = SetupAnswersShapeSchema.extend({
+// Exported for the store boundary (spec R5, review N4): saveSetupDraft refuses what this shape
+// refuses instead of letting SetupDraftSchema's outer `.catch(null)` turn a bad write into "no draft".
+export const SetupDraftShapeSchema = SetupAnswersShapeSchema.extend({
   stepIndex: z.int().min(0).max(MAX_SETUP_DRAFT_STEP_INDEX),
   buffer: SetupAnswersShapeSchema.nullable().catch(null),
 });

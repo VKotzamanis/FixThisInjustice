@@ -1295,7 +1295,13 @@ export function SetupWizard(): JSX.Element {
     draftSaveTimer.current = setTimeout(() => {
       // BOTH tiers, separately (A2). The committed answers spread flat, exactly as before; the
       // step in progress rides beside them under `buffer` and never overwrites them.
-      useAppStore.getState().saveSetupDraft({ ...committed, stepIndex, buffer });
+      try {
+        useAppStore.getState().saveSetupDraft({ ...committed, stepIndex, buffer });
+      } catch {
+        // Spec R5 (review N4): the store refused a draft the loader could not reload (a field
+        // over its bound) and wrote nothing, so the last valid draft stays stored. A timer
+        // callback: a throw here would escape every boundary. The answers on screen are kept.
+      }
     }, SETUP_DRAFT_SAVE_DEBOUNCE_MS);
     return () => {
       if (draftSaveTimer.current !== null) clearTimeout(draftSaveTimer.current);

@@ -1406,6 +1406,25 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
     expect(screen.getByLabelText('Pounds (lb)')).toBeChecked();
   });
 
+  it('keeps the last valid draft and throws nothing when the store refuses a draft write (R5, N4)', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
+    vi.setSystemTime(FIXED_NOW);
+    render(<SetupWizard />);
+    fireEvent.click(screen.getByLabelText('Pounds (lb)'));
+    vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS);
+    const before = useAppStore.getState().setupDraft;
+    expect(before?.buffer?.units ?? before?.units).toBe('imperial');
+    const refuse = vi.spyOn(useAppStore.getState(), 'saveSetupDraft').mockImplementation(() => {
+      throw new Error('saveSetupDraft: displayName: Too big');
+    });
+    fireEvent.click(screen.getByLabelText('Kilograms (kg)'));
+    expect(() => vi.advanceTimersByTime(DRAFT_SAVE_DEBOUNCE_ADVANCE_MS)).not.toThrow();
+    expect(refuse).toHaveBeenCalled();
+    expect(useAppStore.getState().setupDraft).toBe(before);
+    expect(screen.getByLabelText('Kilograms (kg)')).toBeChecked();
+    refuse.mockRestore();
+  });
+
   it('clears the draft on Confirm, so a later reload opens a fresh wizard', () => {
     vi.useFakeTimers({ toFake: ['Date', 'setTimeout', 'clearTimeout'] });
     vi.setSystemTime(FIXED_NOW);

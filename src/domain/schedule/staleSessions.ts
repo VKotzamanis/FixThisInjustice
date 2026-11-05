@@ -45,6 +45,11 @@ function lastLoggedAt(state: AppState, profileId: string, date: LocalDate): Epoc
   return last;
 }
 
+/** [ms] `instant` when it is not later than `now`; otherwise (or when null) -Infinity. */
+function pastOrNull(instant: EpochMs | null, now: EpochMs): number {
+  return instant !== null && instant <= now ? instant : Number.NEGATIVE_INFINITY;
+}
+
 /**
  * Closes every non-terminal assignment of `profileId` dated before `today` whose last activity is
  * older than STALE_SESSION_GRACE_MS. With sets: completed, completedAt = the last set's instant,
@@ -68,10 +73,18 @@ export function closeStaleSessions(
   const closed: StaleClosure[] = [];
   for (const a of stale) {
     const last = lastLoggedAt(state, profileId, a.date); // [ms] or null
-    const activity = Math.max(last ?? Number.NEGATIVE_INFINITY, a.startedAt ?? Number.NEGATIVE_INFINITY); // [ms]
+    /*
+     * [ms] Review FIX-2: an instant later than `now` (a phone clock that was wrong once, or an
+     * import from such a device) is no evidence of recent activity and is ignored. Kept, it made
+     * `now - activity` negative forever: the row never closed and blocked every later Start and
+     * weekly review. Clamping it to `now` is not enough: the row would then look active on every
+     * run (now - now = 0 < grace) and still never close.
+     */
+    const activity = Math.max(pastOrNull(last, now), pastOrNull(a.startedAt, now));
     if (Number.isFinite(activity) && now - activity < STALE_SESSION_GRACE_MS) continue;
     if (last !== null) {
-      const completed = completeSession(next, profileId, a.date, last); // completedAt [ms] = last set
+      // completedAt [ms] = the last set, clamped to `now` for the same reason (never in the future).
+      const completed = completeSession(next, profileId, a.date, Math.min(last, now));
       if (completed === next) continue; // no cursor or plan: nothing the domain can close
       next = completed;
       closed.push({ date: a.date, sessionId: a.sessionId, outcome: 'completed' });

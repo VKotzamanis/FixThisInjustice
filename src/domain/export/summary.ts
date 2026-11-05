@@ -29,6 +29,7 @@ import { localDateOf } from '../dates';
 import { computeTargets, isInDomain } from '../nutrition';
 import type { NutritionInput } from '../nutrition';
 import { EXERCISE_BY_ID } from '../plan/library';
+import { weeklyQuota } from '../schedule/quota';
 import { computeRecords } from '../training/records';
 import type { AppState, EpochMs, Exercise, Kg, UnitSystem } from '../types';
 import { UNIT_LABEL, formatBeverageTarget, formatLoad, formatMass } from '../units';
@@ -84,7 +85,6 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   const today = localDateOf(now, profile.timezone);
   const massLog = state.bodyMass[profileId] ?? [];
   const latestMassKg: Kg = massLog.at(-1)?.massKg ?? profile.body.baselineMassKg; // [kg]
-  const availability = state.availability[profileId] ?? null;
   const sets = Object.values(state.sets).filter((s) => s.profileId === profileId);
   const reviews = [...(state.weeklyReviews[profileId] ?? [])].sort((a, b) =>
     compareCodePoint(a.weekStart, b.weekStart),
@@ -132,7 +132,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
     bodyFatPct: profile.body.baselineBodyFatPct, // [%] of body mass
     activity: profile.activity,
     goal: profile.goal.kind,
-    sessionsPerWeek: availability?.weeklySessionTarget ?? 0, // [sessions/week]
+    sessionsPerWeek: weeklyQuota(state, profileId), // [sessions/week] AM-5: the one weekly target
     creatine: profile.supplements.creatine,
   };
 

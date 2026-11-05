@@ -7,6 +7,7 @@
 // template from the module named in the comment beside it.
 import { describe, expect, it } from 'vitest';
 import { FORMAT, copy } from '../../content/copy';
+import { DOMAIN_FUNCTIONS } from '../../store/scheduleActions';
 import { refusalLine } from './refusal';
 
 const DATE = '2026-03-02'; // LocalDate, the day the refusal names
@@ -14,15 +15,8 @@ const OTHER = '2026-02-27'; // LocalDate, the day already open
 
 describe('refusalLine maps a domain refusal onto copy', () => {
   it('names no domain function, whatever the prefix', () => {
-    for (const fn of [
-      'startSession',
-      'completeSession',
-      'skipSession',
-      'pausePlan',
-      'resumePlan',
-      'assignToday',
-      'closeWeeks',
-    ]) {
+    // Rule 2 (review N3): the store's own list, so a new domain function is covered here at once.
+    for (const fn of DOMAIN_FUNCTIONS) {
       const line = refusalLine(`${fn}: the plan is paused on ${DATE}`);
       expect(line).not.toContain(fn);
       expect(line).not.toContain(':');

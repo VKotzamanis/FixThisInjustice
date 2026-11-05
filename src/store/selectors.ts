@@ -21,6 +21,7 @@ import type { SaveError } from './index';
 import { useAppStore } from './index';
 import { readRaw } from './persistence';
 import { openAssignment } from '../domain/schedule/staleSessions';
+import { weeklyQuota } from '../domain/schedule/quota';
 
 /**
  * The profile the app is currently operating on, or null before setup.
@@ -189,7 +190,7 @@ export function useNutritionTargets(now: EpochMs = Date.now()): NutritionTargets
   // NUTRITION_DOMAIN.sessionsPerWeek and changes no number (nutrition.ts
   // NOTE-FREQ); it reaches the engine only to be quoted in basis.deficitRule.
   const sessionsPerWeek = useAppStore((s) =>
-    s.activeProfileId === null ? 0 : (s.availability[s.activeProfileId]?.weeklySessionTarget ?? 0),
+    s.activeProfileId === null ? 0 : weeklyQuota(s, s.activeProfileId), // AM-5: the one weekly target
   );
   // Outside the memo so it is a dependency rather than a hidden read. It is a
   // "YYYY-MM-DD" string, so an unchanged day compares equal and re-renders cost

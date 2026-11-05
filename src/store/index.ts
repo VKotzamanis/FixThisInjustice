@@ -15,7 +15,13 @@ import type {
   SetupDraft,
   UiPrefs,
 } from '../domain/types';
-import { IntakeEntrySchema, ProfileSchema, SessionAssignmentSchema, defaultState } from '../domain/schema';
+import {
+  IntakeEntrySchema,
+  ProfileSchema,
+  SessionAssignmentSchema,
+  SetupDraftShapeSchema,
+  defaultState,
+} from '../domain/schema';
 import { compareLocalDate, todayLocal } from '../domain/dates';
 import {
   closeStaleSessions as closeStaleSessionsPure,
@@ -686,7 +692,9 @@ export const useAppStore = create<AppStore>()((set, get) => {
    */
 
   saveSetupDraft(draft: SetupDraft): void {
-    set({ setupDraft: draft });
+    // Spec R5 (review N4): parse with the loader's draft shape, never its `.catch(null)` wrapper,
+    // so a refused write throws and the last valid draft stays stored.
+    set({ setupDraft: parseOrThrow(SetupDraftShapeSchema, draft, 'saveSetupDraft') });
   },
 
   clearSetupDraft(): void {

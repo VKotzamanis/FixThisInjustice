@@ -114,15 +114,19 @@ export function projectedCalendar(
   // Spec R3 / AM-5: [sessions/week] the shared forecast and grading quota. Preferred days are where
   // the forecast PLACES sessions, never a licence to serve more than the split per week.
   const quota = weeklyQuota(state, profileId);
-  // [sessions] per ISO week, keyed by its Monday: days already holding a session. Seeded with
-  // every recorded day before `from`, so a session done earlier this week counts against it.
+  // [sessions] per ISO week, keyed by its Monday: sessions that use up the week's quota. Spec R3
+  // ("minus sessions already done that week", lead ruling on review N1): before `from` only a
+  // completed session and the profile's one open (in-progress) session count. A skipped row
+  // never does, and a postponed date has no row at all, so neither takes a slot from the week.
   const usedByWeek = new Map<LocalDate, number>();
   const recordUsage = (date: LocalDate): void => {
     const monday = weekStart(date);
     usedByWeek.set(monday, (usedByWeek.get(monday) ?? 0) + 1);
   };
   for (const a of state.assignments[profileId] ?? []) {
-    if (compareLocalDate(a.date, from) < 0) recordUsage(a.date);
+    if (compareLocalDate(a.date, from) < 0 && (a.status === 'completed' || a.status === 'in-progress')) {
+      recordUsage(a.date);
+    }
   }
 
   // [sessions] offset into plan.sessions; advanced by the days this walk projects, never by
@@ -141,7 +145,8 @@ export function projectedCalendar(
       projectedSession = byId.get(assignment.sessionId) ?? null;
       // A terminal day already advanced the real cursor, so the walk must not count it again.
       if (projectedSession && !isTerminal(assignment)) walk += 1;
-      recordUsage(date);
+      // N1: a skipped day served nothing; a planned pick, an open or a completed day did.
+      if (assignment.status !== 'skipped') recordUsage(date);
     } else if (
       !paused &&
       slot &&

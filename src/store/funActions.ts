@@ -19,9 +19,11 @@
 // return the card that ordinal already produced. funActions.test.ts spies on Math.random and
 // asserts zero calls.
 //
-// No error channel, for the reason motivationActions.ts gives: neither recording a drawn card
-// nor writing a capsule can be REFUSED. The one thing that can go wrong is a caller naming a
-// profile nobody owns, which is a defect rather than a refusal, so it throws and reaches
+// No error channel, for the reason motivationActions.ts gives: recording a drawn card cannot be
+// REFUSED. A capsule whose note the loader would refuse throws (spec R5); TimeCapsule.tsx
+// disables Seal on the same bound first, so no tap reaches that throw. The other thing that can
+// go wrong is a caller naming a profile nobody owns, which is a defect rather than a refusal,
+// so it throws and reaches
 // RootErrorBoundary with its stack. Both `specimens` and `capsules` are profile-keyed maps the
 // schema's root refinement checks, so a write under an unowned key would produce a document
 // that cannot be saved and would lose data silently at the next load.
@@ -36,7 +38,9 @@ import {
   drawSpecimenForLoggedSet,
   recordSpecimenDraw,
 } from '../domain/fun/specimens';
+import { TimeCapsuleSchema } from '../domain/schema';
 import { requireProfile } from './scheduleActions';
+import { parseOrThrow } from './validate';
 import type { AppState, EpochMs, SpecimenInventory, TimeCapsule } from '../domain/types';
 
 export interface FunActionDeps {
@@ -154,10 +158,12 @@ export function createFunActions(deps: FunActionDeps): FunActions {
   const setCapsule: FunActions['setCapsule'] = (profileId, capsule) => {
     deps.set((s) => {
       requireProfile(s, 'setCapsule', profileId);
+      // Spec R5 (review N4): the note is user free text; refuse what the loader would refuse.
+      const parsed = capsule === null ? null : parseOrThrow(TimeCapsuleSchema, capsule, 'setCapsule');
       // `?? null` so an absent key and a stored null compare equal: they are the same state to
       // every reader, and writing one over the other is a save that records nothing.
       if ((s.capsules[profileId] ?? null) === capsule) return s;
-      return { ...s, capsules: { ...s.capsules, [profileId]: capsule } };
+      return { ...s, capsules: { ...s.capsules, [profileId]: parsed } };
     });
   };
 

@@ -77,6 +77,19 @@ describe('closeStaleSessions (spec R1)', () => {
     expect(result.state).toBe(input);
   });
 
+  it('closes a row whose set is stamped in the future: an instant later than now is no evidence of activity (FIX-2)', () => {
+    const YEAR_MS = 365 * 24 * 60 * 60 * 1000; // [ms] 365 d
+    const DAY_MS = 24 * 60 * 60 * 1000; // [ms] 1 d
+    const future = MON_1900 + YEAR_MS; // [ms] a phone clock one year ahead when the set was logged
+    const now = MON_1800 + 21 * DAY_MS; // [ms] three weeks after Monday
+    const input = withSets(startSession(seed(), PROFILE_ID, MONDAY, MON_1800), [mondaySet('a', future)]);
+    const { state, closed } = closeStaleSessions(input, PROFILE_ID, '2026-09-28', now);
+    expect(closed).toEqual([{ date: MONDAY, sessionId: 's-1', outcome: 'completed' }]);
+    // completedAt [ms] is clamped to `now`: a completion is never recorded in the future.
+    expect(assignmentOn(state, MONDAY)).toMatchObject({ status: 'completed', completedAt: now });
+    expectValid(state);
+  });
+
   it("never touches today's open session", () => {
     const started = startSession(seed(), PROFILE_ID, TUESDAY, TUE_1000);
     const result = closeStaleSessions(started, PROFILE_ID, TUESDAY, TUE_1000 + 3_600_000);
