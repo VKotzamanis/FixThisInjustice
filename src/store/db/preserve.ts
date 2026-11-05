@@ -8,7 +8,7 @@
 //   unless the user has since changed that field.
 //   Quarantined list items stay in their list on disk, after the readable items.
 // Pure: no IndexedDB.
-import type { z } from 'zod';
+import type { z } from '../../domain/zod';
 import { ActivityPalStrictSchema, ProfileEquipmentStrictSchema, SexEnumSchema } from '../../domain/schema';
 import { LIST_ITEM_ID, isListStore, type RecordOps, type StoreName } from './records';
 

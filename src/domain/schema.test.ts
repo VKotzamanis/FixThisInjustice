@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import fc from 'fast-check';
-import type { z } from 'zod';
+import type { z } from './zod';
 import {
   AppStateSchema,
   CURRENT_SCHEMA_VERSION,
