@@ -1,0 +1,23 @@
+/* Spec R9: measurement controls. Layout only; every colour comes from tokens.css (rule 5). */
+.mass-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.mass-form .wiz-field,
+.mass-form .view-field {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.mass-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mass-form-question {
+  flex-basis: 100%;
+}

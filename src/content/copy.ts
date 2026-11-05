@@ -310,6 +310,12 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'label.massRole'
+  | 'option.massRoleMorning'
+  | 'option.massRolePre'
+  | 'option.massRolePost'
+  | 'option.massRoleNone'
+  | 'advice.massLooksOff'
   | 'hero.storedDataRefused'
   | 'hero.storageUnreadable'
   | 'status.writesPaused'
@@ -1147,6 +1153,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Spec R9 / audit G12: when a body mass was taken. The role decides the trend and the 2 % pair.
+  'label.massRole': 'Weighed',
+  'option.massRoleMorning': 'Morning',
+  'option.massRolePre': 'Before Training',
+  'option.massRolePost': 'After Training',
+  'option.massRoleNone': 'Not Set',
+  // Spec R4: the one-tap body-mass plausibility question (more than 10 % from the last weigh-in).
+  'advice.massLooksOff': 'That is far from your last weigh-in. Check it.',
   // Audit B01/B17/B18: the recovery screen that replaces intro and setup on a refused document.
   'hero.storedDataRefused': 'Stored Data Could Not Be Read',
   'hero.storageUnreadable': 'Storage Is Not Available',
