@@ -1,18 +1,15 @@
 // src/store/measurements.ts
 //
-// Pure AppState transformers for correcting measurements (spec R9, audit G03, G07). No React, no
+// Pure AppState transformers for correcting measurements (spec R9, audit G03). No React, no
 // I/O. Every write is parsed with the loader's schema (spec R5), so a refusal throws before the
-// store's set() and writes nothing. Units: mass [kg], volume [mL], instants [ms] epoch UTC.
+// store's set() and writes nothing. Units: mass [kg], instants [ms] epoch UTC.
 import { compareLocalDate } from '../domain/dates';
-import { BodyMassEntrySchema, HydrationEntrySchema } from '../domain/schema';
+import { BodyMassEntrySchema } from '../domain/schema';
 import type {
   AppState,
   BodyMassEntry,
   BodyMassRole,
-  EpochMs,
   Kg,
-  LocalDate,
-  ML,
   UnitSystem,
 } from '../domain/types';
 import { requireProfile } from './scheduleActions';
@@ -86,33 +83,3 @@ export function applyRestoreBodyMass(state: AppState, entry: BodyMassEntry): App
   return { ...state, bodyMass: { ...state.bodyMass, [entry.profileId]: byDate([...list, stored]) } };
 }
 
-/**
- * Takes back one drink: subtracts its volume (floored at 0) and removes the mark logged at `at`.
- * Idempotent: a mark that is no longer there changes nothing, so a second undo tap is harmless.
- *
- * @param volumeML [mL] the volume that drink added
- * @param at [ms] epoch UTC, the instant addHydration recorded for it
- */
-export function applyRemoveDrink(
-  state: AppState,
-  profileId: string,
-  date: LocalDate,
-  volumeML: ML,
-  at: EpochMs,
-): AppState {
-  const list = state.hydration[profileId] ?? [];
-  const current = list.find((e) => e.date === date);
-  if (current === undefined) return state;
-  const index = current.marks.indexOf(at);
-  if (index < 0) return state;
-  const candidate = {
-    ...current,
-    volumeML: Math.max(0, current.volumeML - volumeML), // [mL] cumulative for the day
-    marks: current.marks.filter((_, k) => k !== index), // [ms] epoch UTC
-  };
-  const stored = parseOrThrow(HydrationEntrySchema, candidate, 'removeDrink');
-  return {
-    ...state,
-    hydration: { ...state.hydration, [profileId]: list.map((e) => (e === current ? stored : e)) },
-  };
-}

@@ -44,13 +44,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'status.weekDeltaZero': '{completed} of {target}. she delivered.',
   'status.weekDeltaPositive': '{completed} of {target}. no crumbs.',
   'advice.drinkToThirst': 'hydrate or diedrate',
-  // The two hydration rows P8 close-out B converted from template literals in copy.ts, in the
-  // voice the row above already set. The VOLUMES stay slots the domain filled, and "beverage
-  // intake" is the quantity name the contract fixes (R11) rather than a word this skin may
-  // reword: only the verb and the tag are the skin's. `button.logVolume` is one word plus a
-  // number, so R1 is met.
-  'button.logVolume': 'hydrate {volume}',
-  'advice.beverageShortfall': 'beverage intake {logged} of {target} today. top it up.',
   // The three Train frames P8 close-out D made reachable, each traced to a position the
   // mockup draws (docs/design/round3/2026-09-01-design-I-limelight.html). Close-out B converted
   // the frames; until close-out D threaded the overlay through ExerciseCard, SetRow and

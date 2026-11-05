@@ -13,7 +13,6 @@
 import {
   BodyMassEntrySchema,
   ExerciseSchema,
-  HydrationEntrySchema,
   LoggedSetSchema,
   SessionAssignmentSchema,
 } from '../domain/schema';
@@ -34,7 +33,6 @@ import type {
   Exercise,
   LocalDate,
   LoggedSet,
-  ML,
   SessionAssignment,
   SessionEdits,
 } from '../domain/types';
@@ -320,41 +318,6 @@ export function applyLogBodyMass(
   // latestBodyMassEntry breaks that tie by `loggedAt` rather than by position.
   const merged = [...existing, entry].sort((a, b) => compareLocalDate(a.date, b.date));
   return { ...state, bodyMass: { ...state.bodyMass, [entry.profileId]: merged } };
-}
-
-/**
- * Records one drink: upsert by civil date, adding the volume and appending the instant.
- *
- * One entry per local day (HydrationEntry is keyed by profile and date, master plan section 5),
- * so a second drink on the same day accumulates rather than creating a second row. The marks
- * are kept because the in-session cue needs to know when the user last drank; the daily total
- * alone cannot say that.
- *
- * @param volumeML [mL] the volume just drunk, a non-negative integer (schema-checked).
- * @param now [ms] epoch UTC, the instant of the drink.
- */
-export function applyAddHydration(
-  state: AppState,
-  profileId: string,
-  date: LocalDate,
-  volumeML: ML,
-  now: EpochMs,
-): AppState {
-  requireProfile(state, 'addHydration', profileId);
-  const existing = state.hydration[profileId] ?? [];
-  const current = existing.find((e) => e.date === date) ?? null;
-  const candidate = {
-    profileId,
-    date,
-    volumeML: (current?.volumeML ?? 0) + volumeML, // [mL] cumulative for the local day
-    marks: [...(current?.marks ?? []), now], // [ms] epoch UTC, one per drink
-  };
-  // Validated as the WHOLE entry rather than as the increment, so a negative or fractional
-  // increment is caught by the same bound that guards the stored total.
-  const entry = parseOrThrow(HydrationEntrySchema, candidate, 'addHydration');
-  const merged =
-    current === null ? [...existing, entry] : existing.map((e) => (e.date === date ? entry : e));
-  return { ...state, hydration: { ...state.hydration, [profileId]: merged } };
 }
 
 /**

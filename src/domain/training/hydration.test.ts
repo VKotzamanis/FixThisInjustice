@@ -8,7 +8,7 @@
  *
  * Clock anchor: 2026-03-02 is a Monday, and Europe/Athens is UTC+2 (EET) on
  * that date - EU summer time starts on the last Sunday of March, 2026-03-29 -
- * so 16:00 UTC is exactly 18:00 local, the daily-shortfall boundary.
+ * so 16:00 UTC is exactly 18:00 local.
  * All instants below are epoch milliseconds, UTC.
  */
 import { describe, expect, it } from 'vitest';
@@ -27,8 +27,6 @@ import type {
 } from '../types';
 import hydrationSource from './hydration.ts?raw';
 import {
-  DAILY_SHORTFALL_AFTER,
-  DAILY_SHORTFALL_FRACTION,
   DEHYDRATION_FRACTION_TOL,
   DEHYDRATION_LOSS_FRACTION,
   HYDRATION_COPY_KEY,
@@ -51,11 +49,9 @@ const DAY: LocalDate = '2026-03-02';
 const MIN_MS = 60_000; // [ms] one minute
 const HOUR_MS = 3_600_000; // [ms] one hour
 
-/** 2026-03-02T16:00Z = 18:00 Europe/Athens, the shortfall boundary itself. */
+/** 2026-03-02T16:00Z = 18:00 Europe/Athens, an evening with no session. */
 const AT_1800_LOCAL: EpochMs = Date.UTC(2026, 2, 2, 16, 0);
-/** 2026-03-02T15:59Z = 17:59 Europe/Athens, one minute before the boundary. */
-const AT_1759_LOCAL: EpochMs = Date.UTC(2026, 2, 2, 15, 59);
-/** 2026-03-02T10:00Z = 12:00 Europe/Athens, well before the boundary. */
+/** 2026-03-02T10:00Z = 12:00 Europe/Athens. */
 const AT_1200_LOCAL: EpochMs = Date.UTC(2026, 2, 2, 10, 0);
 
 const TARGET_ML = 3000; // [mL/day] the profile's editable daily beverage target
@@ -146,8 +142,6 @@ function massEntry(id: string, massKg: number, loggedAt: EpochMs): BodyMassEntry
 describe('published constants', () => {
   it('pins the cited thresholds', () => {
     expect(SESSION_CHECK_INTERVAL_MS).toBe(20 * 60 * 1000); // [ms] 20 min
-    expect(DAILY_SHORTFALL_AFTER).toBe('18:00'); // [HH:mm] profile-local
-    expect(DAILY_SHORTFALL_FRACTION).toBe(0.5); // dimensionless
     expect(DEHYDRATION_LOSS_FRACTION).toBe(0.02); // dimensionless, ACSM 2007
     expect(DEHYDRATION_FRACTION_TOL).toBe(1e-9); // dimensionless, float noise only
     expect(SESSION_LOOKBACK_MS).toBe(12 * 3_600_000); // [ms] 12 h
@@ -190,7 +184,18 @@ describe('hydrationCue: session-check', () => {
     const cue = hydrationCue(activeState(), PROFILE_ID, startedAt + 20 * MIN_MS, true);
     expect(cue?.kind).toBe('session-check');
     expect(cue?.message).toBe(HYDRATION_COPY_KEY['session-check']);
-    expect(cue?.shortfallML).toBeNull();
+  });
+
+  it('restarts the window from an acknowledgement, which is not a drink record', () => {
+    // Owner, 2026-11-05: the prompt is a reminder; a tap hides it until the next cadence mark.
+    const ackAt = startedAt + 20 * MIN_MS; // [ms] epoch UTC, the tap
+    const state = activeState();
+    expect(hydrationCue(state, PROFILE_ID, ackAt + 19 * MIN_MS, true, ackAt)).toBeNull();
+    expect(hydrationCue(state, PROFILE_ID, ackAt + 20 * MIN_MS, true, ackAt)?.kind).toBe('session-check');
+    // An acknowledgement from before this session started does not move its first prompt.
+    expect(hydrationCue(state, PROFILE_ID, startedAt + 20 * MIN_MS, true, startedAt - HOUR_MS)?.kind).toBe(
+      'session-check',
+    );
   });
 
   it('restarts the 20-minute window from the most recent drink mark', () => {
@@ -256,37 +261,6 @@ describe('hydrationCue: session-check', () => {
   });
 });
 
-describe('hydrationCue: daily-shortfall', () => {
-  it('fires at 18:00 local when intake is below half the target', () => {
-    const state = makeState({ hydration: { [PROFILE_ID]: [drank(1000)] } });
-    const cue = hydrationCue(state, PROFILE_ID, AT_1800_LOCAL, false);
-    expect(cue?.kind).toBe('daily-shortfall');
-    expect(cue?.message).toBe(HYDRATION_COPY_KEY['daily-shortfall']);
-    expect(cue?.shortfallML).toBe(2000); // [mL] 3000 target - 1000 logged
-  });
-
-  it('does not fire at 17:59 local', () => {
-    const state = makeState({ hydration: { [PROFILE_ID]: [drank(1000)] } });
-    expect(hydrationCue(state, PROFILE_ID, AT_1759_LOCAL, false)).toBeNull();
-  });
-
-  it('does not fire at exactly half the target', () => {
-    const state = makeState({ hydration: { [PROFILE_ID]: [drank(1500)] } }); // [mL] = 0.5 x 3000
-    expect(hydrationCue(state, PROFILE_ID, AT_1800_LOCAL, false)).toBeNull();
-  });
-
-  it('fires one millilitre below half the target', () => {
-    const state = makeState({ hydration: { [PROFILE_ID]: [drank(1499)] } });
-    expect(hydrationCue(state, PROFILE_ID, AT_1800_LOCAL, false)?.shortfallML).toBe(1501); // [mL]
-  });
-
-  it('treats a day with no logged entry as zero intake', () => {
-    const cue = hydrationCue(makeState(), PROFILE_ID, AT_1800_LOCAL, false);
-    expect(cue?.kind).toBe('daily-shortfall');
-    expect(cue?.shortfallML).toBe(TARGET_ML); // [mL]
-  });
-});
-
 describe('preSessionMass', () => {
   /*
    * P4 polish item 2. The Train view needs the same reference the cue's own guard uses, so the
@@ -338,7 +312,6 @@ describe('hydrationCue: post-session-weigh', () => {
     const cue = hydrationCue(weighState(true, [preMass]), PROFILE_ID, completedAt + MIN_MS, false);
     expect(cue?.kind).toBe('post-session-weigh');
     expect(cue?.message).toBe(HYDRATION_COPY_KEY['post-session-weigh']);
-    expect(cue?.shortfallML).toBeNull();
   });
 
   it('stays silent when the profile did not opt in', () => {
@@ -413,6 +386,11 @@ describe('hydrationCue: silence', () => {
   it('returns null when no rule applies', () => {
     const state = makeState({ hydration: { [PROFILE_ID]: [drank(TARGET_ML)] } });
     expect(hydrationCue(state, PROFILE_ID, AT_1800_LOCAL, false)).toBeNull();
+  });
+
+  it('never reports a daily shortfall: an evening with nothing logged is silent', () => {
+    // Owner, 2026-11-05: drinks are not a log the day must fill.
+    expect(hydrationCue(makeState(), PROFILE_ID, AT_1800_LOCAL, false)).toBeNull();
   });
 
   it('returns null for an unknown profile', () => {

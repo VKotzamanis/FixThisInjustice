@@ -68,15 +68,3 @@ describe('body-mass corrections (spec R9, audit G03)', () => {
   });
 });
 
-describe('taking back a drink (audit G07)', () => {
-  it('subtracts the volume and removes that one mark, once', () => {
-    const s = useAppStore.getState();
-    s.addHydration(P, '2026-09-07', 250, NOW); // [mL]
-    s.addHydration(P, '2026-09-07', 250, NOW + 1); // [mL]
-    useAppStore.getState().removeDrink(P, '2026-09-07', 250, NOW + 1);
-    useAppStore.getState().removeDrink(P, '2026-09-07', 250, NOW + 1); // already gone
-    expect(useAppStore.getState().hydration[P]).toEqual([
-      { profileId: P, date: '2026-09-07', volumeML: 250, marks: [NOW] },
-    ]);
-  });
-});

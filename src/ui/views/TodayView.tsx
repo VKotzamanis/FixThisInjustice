@@ -43,7 +43,6 @@ import { weekDeltaKey } from '../format/weekDelta';
 import { HERO_SCALE, heroPose, heroStateOf, type DayStatus } from './todayHero';
 import './views.css';
 import { MeasurementsPanel } from '../measurements/MeasurementsPanel';
-import { FluidQuickAdd } from '../measurements/FluidQuickAdd';
 
 /**
  * The Today view.
@@ -675,8 +674,6 @@ export function TodayView(): JSX.Element {
        */}
       {/* Spec R9 / audit G02: a weigh-in any day, not only inside a session. */}
       <MeasurementsPanel profile={profile} today={today} />
-      {/* Spec R9 / audit G07: a drink can be logged at any time, not only when a cue is up. */}
-      <FluidQuickAdd profile={profile} today={today} />
       {!finished && <WeekStamp review={lastReview} />}
       {!finished && <Intervention review={lastReview} />}
 

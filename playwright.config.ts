@@ -45,6 +45,7 @@ export default defineConfig({
         'p6-rest-sheet.spec.ts',
         'replace.spec.ts',
         'hero-number.spec.ts',
+        'drink-reminder.spec.ts',
       ],
     },
   ],

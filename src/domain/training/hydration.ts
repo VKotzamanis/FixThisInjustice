@@ -21,23 +21,25 @@
  * Copy contract (master plan section 3, docs/design/2026-09-01-copy-contract.md):
  * HydrationCue.message carries a CopyKey, never user-facing prose. The Train
  * view (P4 Task 10) resolves it through copy() so a skin can override the
- * wording, and formats shortfallML through units.formatVolume in the user's
- * display unit. Nothing here builds a sentence or formats a number.
+ * wording. Nothing here builds a sentence or formats a number.
+ *
+ * No daily-shortfall cue (owner, 2026-11-05: drinks are "a reminder to drink to
+ * replenish the sweat", not a log the day must fill): the in-session cue is
+ * acknowledged with a tap that writes no fluid record (see hydrationCue's
+ * `acknowledgedAt`), so a day's logged volume no longer measures anything.
  *
  * Units: volume mL, body mass kg, instants epoch ms UTC, wall-clock times
  * "HH:mm" in the profile's IANA zone. Fractions are dimensionless.
  * Sign convention (master plan section 3, current - reference): a body-mass
  * loss fraction is POSITIVE when mass was lost.
  */
-import { localTimeOf, todayLocal } from '../dates';
+import { todayLocal } from '../dates';
 import type {
   AppState,
   BodyMassEntry,
   EpochMs,
   HydrationEntry,
   Kg,
-  LocalTime,
-  ML,
   SessionAssignment,
 } from '../types';
 
@@ -57,18 +59,6 @@ export { dailyBeverageTargetML } from '../nutrition';
  * every user; the app therefore prompts and lets thirst set the amount.
  */
 export const SESSION_CHECK_INTERVAL_MS = 20 * 60 * 1000; // [ms] = 20 min
-
-/** Local wall-clock time from which a daily shortfall is worth reporting. */
-export const DAILY_SHORTFALL_AFTER: LocalTime = '18:00'; // [HH:mm] in Profile.timezone
-
-/**
- * Fraction of the day's own target below which the shortfall cue fires.
- * HEURISTIC, not a sourced constant: half the target with roughly a quarter of
- * the waking day left is the point at which the remainder stops being
- * comfortably drinkable. No source in the content review sets an intra-day
- * checkpoint, so this is a design decision, recorded here as one.
- */
-export const DAILY_SHORTFALL_FRACTION = 0.5; // dimensionless
 
 /**
  * How long after it started a session still owns the in-session cues.
@@ -135,26 +125,17 @@ export const DEHYDRATION_LOSS_FRACTION = 0.02; // dimensionless
 export const DEHYDRATION_FRACTION_TOL = 1e-9; // dimensionless
 
 export interface HydrationCue {
-  kind: 'session-check' | 'daily-shortfall' | 'post-session-weigh';
+  kind: 'session-check' | 'post-session-weigh';
   message: string; // a CopyKey; the view resolves it, see the file header
-  shortfallML: ML | null; // [mL] daily-shortfall only; null for the other kinds
 }
 
 /**
  * The copy key each cue kind maps to. Exported so the view and its tests bind
  * to a constant rather than to a repeated string literal. The default wording
- * lives in src/content/copy.ts (P4 Task 10).
- *
- * ONE OF THE THREE IS A TEMPLATE AND MUST NOT BE RESOLVED BARE. Since P8 close-out B,
- * `advice.beverageShortfall` carries `{logged}` and `{target}`, because the frame that printed
- * that sentence baked its English into a template literal and was clinical under every skin.
- * A caller that resolves it through `copy()` alone renders the braces; the two volumes are
- * filled by `FORMAT.beverageShortfall`, which is what src/ui/views/train/HydrationBanner.tsx
- * branches to for this kind. The other two rows are complete sentences and resolve directly.
+ * lives in src/content/copy.ts (P4 Task 10). Both rows are complete sentences.
  */
 export const HYDRATION_COPY_KEY = {
   'session-check': 'advice.drinkToThirst',
-  'daily-shortfall': 'advice.beverageShortfall',
   'post-session-weigh': 'advice.logPostSessionMass',
 } as const satisfies Record<HydrationCue['kind'], string>;
 
@@ -304,8 +285,9 @@ function latestMark(marks: readonly EpochMs[]): EpochMs {
  *     the view raises the > 2 % flag; that flag is not a cue kind, because the
  *     cue exists to obtain the measurement, not to report it.
  *  2. session-check - a session is active and the cadence has elapsed. The rule
- *     is exactly: due when now - max(startedAt, latest mark of today) is at
- *     least SESSION_CHECK_INTERVAL_MS. Logging a drink therefore restarts the
+ *     is exactly: due when now - max(startedAt, latest mark of today,
+ *     acknowledgedAt) is at least SESSION_CHECK_INTERVAL_MS. Acknowledging the
+ *     prompt (or a drink mark an older build logged) therefore restarts the
  *     window, so the prompt cannot stack up behind a user who is already
  *     drinking, and the anchor is never earlier than the session start, so a
  *     mark from earlier in the day cannot make the first prompt due at once.
@@ -315,15 +297,17 @@ function latestMark(marks: readonly EpochMs[]): EpochMs {
  *     at 00:10. Residual limitation, left as it is: a session spanning more than
  *     those two civil days would lose the earliest of them, which no plausible
  *     resistance-training session does (SESSION_LOOKBACK_MS bounds it at 12 h).
- *  3. daily-shortfall - at or after DAILY_SHORTFALL_AFTER in the profile's
- *     zone, today's logged beverage volume is below DAILY_SHORTFALL_FRACTION
- *     of the profile's own editable target.
+ *
+ * @param acknowledgedAt [ms] epoch UTC, the last tap on the in-session prompt, 0 = none. Held
+ *   in memory by the view (src/ui/views/train/drinkAcknowledgement.ts), never stored: the tap
+ *   writes no fluid record (owner, 2026-11-05).
  */
 export function hydrationCue(
   state: Pick<AppState, 'profiles' | 'assignments' | 'hydration' | 'bodyMass'>,
   profileId: string,
   now: EpochMs, // [ms] epoch UTC
   sessionActive: boolean,
+  acknowledgedAt: EpochMs = 0, // [ms] epoch UTC, 0 = never acknowledged
 ): HydrationCue | null {
   const profile = state.profiles[profileId];
   if (profile === undefined) return null;
@@ -332,7 +316,6 @@ export function hydrationCue(
   const today = todayLocal(tz, now);
   const entry: HydrationEntry | null =
     (state.hydration[profileId] ?? []).find((e) => e.date === today) ?? null;
-  const volumeML = entry?.volumeML ?? 0; // [mL] logged today
   // Found by `startedAt`, not by `date === today`: a session that crosses local
   // midnight keeps its cues. See activeAssignment and SESSION_LOOKBACK_MS.
   const assignment = activeAssignment(state.assignments[profileId] ?? [], now);
@@ -363,7 +346,6 @@ export function hydrationCue(
       return {
         kind: 'post-session-weigh',
         message: HYDRATION_COPY_KEY['post-session-weigh'],
-        shortfallML: null,
       };
     }
   }
@@ -372,7 +354,7 @@ export function hydrationCue(
   if (sessionActive && assignment !== null && assignment.startedAt !== null) {
     /*
      * The marks of TODAY and of the day the session started on (P4 polish item 9). A hydration
-     * entry is a per-local-day total and stays day-scoped for the shortfall rule, so a session
+     * entry is a per-local-day total, so a session
      * that crosses local midnight had its own drinks filed under the previous day and became
      * invisible the moment the day rolled over: the anchor fell back to the session start,
      * hours earlier, and the first prompt after midnight was due at once. Reading the second
@@ -387,27 +369,14 @@ export function hydrationCue(
       assignment.startedAt,
       latestMark(entry?.marks ?? []),
       latestMark(sessionDayEntry?.marks ?? []),
+      acknowledgedAt,
     ); // [ms] epoch UTC
     if (now - anchor >= SESSION_CHECK_INTERVAL_MS) {
       return {
         kind: 'session-check',
         message: HYDRATION_COPY_KEY['session-check'],
-        shortfallML: null,
       };
     }
-  }
-
-  // 3. Daily shortfall against the profile's own target.
-  const targetML = profile.hydration.dailyTargetML; // [mL/day]
-  if (
-    localTimeOf(now, tz) >= DAILY_SHORTFALL_AFTER &&
-    volumeML < DAILY_SHORTFALL_FRACTION * targetML
-  ) {
-    return {
-      kind: 'daily-shortfall',
-      message: HYDRATION_COPY_KEY['daily-shortfall'],
-      shortfallML: Math.max(0, Math.round(targetML - volumeML)), // [mL] still to drink
-    };
   }
 
   return null;

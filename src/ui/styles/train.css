@@ -428,6 +428,30 @@
   padding-bottom: calc(var(--restbar-h) + var(--space-6));
 }
 
+/*
+ * The drink reminder (DrinkReminder.tsx; owner, 2026-11-05): one full-width 44 px button under
+ * the docked rest bar, lime with ink type and an ink rule (10.91:1), the panel controls' pair.
+ * The bar sits on it, so the page scrolls one more tap height while it shows.
+ */
+.view .drink-reminder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--tap);
+  margin: 0;
+  padding: 0 var(--gutter);
+  background: var(--lime);
+  color: var(--ink);
+  border: 0;
+  border-top: 2px solid var(--ink);
+  font-size: var(--text-md);
+}
+
+.view.train:has(.drink-reminder) {
+  padding-bottom: calc(var(--restbar-h) + var(--tap) + var(--space-6));
+}
+
 /* Text for assistive technology only. */
 .visually-hidden {
   position: absolute;

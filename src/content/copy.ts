@@ -281,7 +281,6 @@ export type CopyKey =
   | 'advice.videoOffline'
   | 'advice.noClipRecorded'
   | 'advice.drinkToThirst'
-  | 'advice.beverageShortfall'
   | 'advice.logPostSessionMass'
   | 'why.postSessionMass'
   | 'advice.fluidLoss'
@@ -331,11 +330,7 @@ export type CopyKey =
   | 'status.profileSaved'
   | 'hero.bodyFatRemeasure'
   | 'button.logBodyFat'
-  | 'quantity.drinkVolume'
-  | 'button.logDrink'
-  | 'status.drinkLogged'
   | 'quantity.cupSize'
-  | 'label.fluidProgress'
   | 'hero.measurements'
   | 'status.massLogged'
   | 'status.massDeleted'
@@ -681,7 +676,6 @@ export type CopyKey =
   | 'status.setCounter'
   | 'status.lastSessionSets'
   | 'status.restRemaining'
-  | 'button.logVolume'
   // --- the custom-exercise form's last two literals (P8 close-out D) ---
   | 'label.modality.barbell'
   | 'label.modality.dumbbell'
@@ -1203,11 +1197,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.videoOffline': 'Offline. The clip plays once you are back online.',
   'advice.noClipRecorded': 'No clip for this exercise.',
   'advice.drinkToThirst': 'Drink to thirst.',
-  // template; FORMAT.beverageShortfall. Both volumes arrive formatted by src/domain/units.ts, so
-  // the sentence cannot state a unit the profile does not use. It was the formatted EXAMPLE
-  // 'Beverage intake 900 mL of 2600 mL today.' that nothing resolved while the frame assembled
-  // the same sentence in English (P8 close-out B); the slots are the same two volumes.
-  'advice.beverageShortfall': 'Beverage intake {logged} of {target} today.',
   'advice.logPostSessionMass': 'Log post-session body mass.',
   'why.postSessionMass':
     'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
@@ -1299,12 +1288,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.profileSaved': 'Profile saved.',
   'hero.bodyFatRemeasure': 'Re-Measure Body Fat',
   'button.logBodyFat': 'Log Body Fat',
-  // Spec R9 / audit G07, G14: the always-available fluid quick add and the editable cup.
-  'quantity.drinkVolume': 'Drink volume',
-  'button.logDrink': 'Log Drink',
-  'status.drinkLogged': 'Drink logged.',
+  // Spec R9 / audit G14: the editable cup size (Settings; a stored profile field).
   'quantity.cupSize': 'Cup size',
-  'label.fluidProgress': 'Fluid Against Target',
   // Spec R9 / audit G02, G03: the weigh-in log on Today and on Log, each with a 6 s Undo.
   'hero.measurements': 'Weigh-Ins',
   'status.massLogged': 'Weigh-in logged.',
@@ -1983,9 +1968,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // the seconds to two digits, because how many digits a seconds field has is a property of the
   // readout and not a word a skin may change.
   'status.restRemaining': '{minutes}:{seconds}',
-  // template; FORMAT.logVolume. The drink control, whose volume is the profile's own editable
-  // cup size, formatted by src/domain/units.ts. R1 counts one word: the slot is a number.
-  'button.logVolume': 'Log {volume}',
 
   // --- the custom-exercise form's last two literals (P8 close-out D) ---
   // One row per `Modality` member (src/domain/types.ts). The <option> labels were the union
@@ -2797,28 +2779,6 @@ export const FORMAT = {
     copy('status.restRemaining', overrides)
       .replace('{minutes}', () => String(minutes))
       .replace('{seconds}', () => String(seconds).padStart(2, '0')),
-
-  /**
-   * "Log 250 mL": the drink control, whose volume is the profile's own editable cup size. Reads
-   * `button.logVolume` (P8 close-out B); it is the control a user meets most often on the Train
-   * screen, and it was the clinical word under every skin.
-   */
-  logVolume: (volume: string, overrides?: Partial<Record<CopyKey, string>>): string =>
-    copy('button.logVolume', overrides).replace('{volume}', () => volume),
-
-  /**
-   * "Beverage intake 900 mL of 2600 mL today." Both volumes arrive formatted by
-   * src/domain/units.ts, so the sentence cannot state a unit the profile does not use. Reads
-   * `advice.beverageShortfall` (P8 close-out B), which was a formatted example nothing resolved.
-   */
-  beverageShortfall: (
-    logged: string,
-    target: string,
-    overrides?: Partial<Record<CopyKey, string>>,
-  ): string =>
-    copy('advice.beverageShortfall', overrides)
-      .replace('{logged}', () => logged)
-      .replace('{target}', () => target),
 
   /**
    * R9's disclosure body behind `advice.fluidLoss`: the measured loss against the threshold it

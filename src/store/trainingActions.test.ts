@@ -580,7 +580,6 @@ describe('the persistence gate', () => {
     useAppStore.setState({ status: { ...useAppStore.getState().status, hydrated: false } });
 
     useAppStore.getState().logSet(setInput, NOW);
-    useAppStore.getState().addHydration('profile-1', '2026-03-02', 250, NOW); // [mL], [ms]
     useAppStore.getState().logBodyMass(
       {
         profileId: 'profile-1',

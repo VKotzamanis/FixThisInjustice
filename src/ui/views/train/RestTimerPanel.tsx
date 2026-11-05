@@ -29,6 +29,7 @@ import { prefersReducedMotion } from '../../hooks/reducedMotion';
 import { RestGameSheet } from './restGameRoute';
 import { REST_OVER_GRACE_MS } from '../../../app/RestController';
 import { BurnWord } from '../../effects/BurnWord';
+import { DrinkReminder } from './DrinkReminder';
 import { restOverWordOf, START_DELAY_REST_MS } from '../../effects/burnMoments';
 import '../../styles/train.css';
 import '../../styles/restGames.css';
@@ -208,6 +209,11 @@ export function RestTimerPanel(): ReactElement | null {
           )}
         </div>
       </div>
+      {/*
+        * The drink reminder (owner, 2026-11-05): under the docked bar while no game sheet is
+        * open; the sheet docks over this bar, so the two are never shown together.
+        */}
+      {!(phase === 'open' && !restOver) && <DrinkReminder now={now} />}
       {offerGame && !gameFits && (
         <p id={tooLateId} className="rest-game-unavailable visually-hidden">
           {c('status.restWordTooLate')}

@@ -15,7 +15,6 @@ import { makeBlock, makeExercise, makePlannedExercise, makeProfile } from '../te
 import { defaultState, parseState } from '../domain/schema';
 import {
   applyAddCustomExercise,
-  applyAddHydration,
   applyDeleteSet,
   applyEditSession,
   applyLogBodyMass,
@@ -407,48 +406,6 @@ describe('applyLogBodyMass', () => {
         NOW,
       ),
     ).toThrow(/massKg/i);
-  });
-});
-
-describe('applyAddHydration', () => {
-  it('creates the day entry and records the drink instant', () => {
-    const next = applyAddHydration(makeState(), 'profile-1', '2026-03-02', 250, NOW);
-    expect(next.hydration['profile-1']?.[0]).toEqual({
-      profileId: 'profile-1',
-      date: '2026-03-02',
-      volumeML: 250, // [mL]
-      marks: [NOW], // [ms]
-    });
-    assertStorable(next);
-  });
-
-  it('accumulates volume and appends a mark on the same day', () => {
-    const once = applyAddHydration(makeState(), 'profile-1', '2026-03-02', 250, NOW);
-    const twice = applyAddHydration(once, 'profile-1', '2026-03-02', 250, NOW + 60_000);
-    expect(twice.hydration['profile-1']?.[0]?.volumeML).toBe(500); // [mL]
-    expect(twice.hydration['profile-1']?.[0]?.marks).toEqual([NOW, NOW + 60_000]);
-    expect(twice.hydration['profile-1']).toHaveLength(1);
-    assertStorable(twice);
-  });
-
-  it('keeps the days apart', () => {
-    const day1 = applyAddHydration(makeState(), 'profile-1', '2026-03-02', 250, NOW);
-    const day2 = applyAddHydration(day1, 'profile-1', '2026-03-03', 500, NOW + 86_400_000);
-    expect(day2.hydration['profile-1']?.map((e) => [e.date, e.volumeML])).toEqual([
-      ['2026-03-02', 250],
-      ['2026-03-03', 500],
-    ]);
-    assertStorable(day2);
-  });
-
-  it('rejects a negative volume', () => {
-    expect(() => applyAddHydration(makeState(), 'profile-1', '2026-03-02', -100, NOW)).toThrow();
-  });
-
-  it('refuses a profile that does not exist', () => {
-    expect(() => applyAddHydration(makeState(), 'ghost', '2026-03-02', 250, NOW)).toThrow(
-      /not a known profile/,
-    );
   });
 });
 

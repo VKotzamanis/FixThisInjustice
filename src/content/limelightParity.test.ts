@@ -124,6 +124,14 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
   'label.videoSearch': 'L9: the heading of that search panel, removed with it',
   'step.programme': 'ROADMAP L6: the programme-length step was removed; the programme is open-ended',
   'quantity.programmeWeeks': 'ROADMAP L6: the length field went with the programme-length step',
+  // Owner 2026-11-05: drinks are a reminder, not a log; the Fluid card, the shortfall cue and the
+  // log-a-cup control went (docs: the DrinkReminder acknowledges and writes nothing).
+  'advice.beverageShortfall': 'the daily-shortfall cue assumed logging; removed with it',
+  'button.logVolume': 'the log-a-cup control on the Train cue; the reminder logs nothing now',
+  'button.logDrink': "the Fluid card's custom-volume control; the card left Today",
+  'label.fluidProgress': "the Fluid card's progress bar name; the card left Today",
+  'quantity.drinkVolume': "the Fluid card's custom-volume field; the card left Today",
+  'status.drinkLogged': "the Fluid card's undo toast; nothing is logged any more",
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];

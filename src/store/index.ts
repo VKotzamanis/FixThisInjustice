@@ -8,7 +8,6 @@ import type {
   IntakeEntry,
   LocalDate,
   LoggedSet,
-  ML,
   PlanTemplate,
   Profile,
   SessionAssignment,
@@ -48,7 +47,6 @@ import { parseOrThrow } from './validate';
 import { applyUndoFinish, type FinishSnapshot } from './finishUndo';
 import {
   applyDeleteBodyMass,
-  applyRemoveDrink,
   applyRestoreBodyMass,
   applyUpdateBodyMass,
   type BodyMassEdit,
@@ -57,7 +55,6 @@ import type { ProgrammeChoice } from '../domain/plan/lifecycle';
 import {
   UNDO_WINDOW_MS,
   applyAddCustomExercise,
-  applyAddHydration,
   applyDeleteSet,
   applyEditSession,
   applyLogBodyMass,
@@ -329,20 +326,6 @@ export interface AppActions {
   deleteBodyMass(profileId: string, id: string): BodyMassEntry | null;
   /** Puts back a weigh-in `deleteBodyMass` returned, exactly; a no-op when it is already there. */
   restoreBodyMass(entry: BodyMassEntry): void;
-  /**
-   * Audit G07: takes back one drink by the instant addHydration recorded for it. Idempotent.
-   *
-   * @param volumeML [mL] @param at [ms] epoch UTC
-   */
-  removeDrink(profileId: string, date: LocalDate, volumeML: ML, at: EpochMs): void;
-  /**
-   * Adds one drink to the profile's total for `date` (upsert by civil day) and records the
-   * instant.
-   *
-   * @param volumeML [mL] non-negative integer.
-   * @param now [ms] epoch UTC, the instant of the drink.
-   */
-  addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void;
   /**
    * Starts, replaces or clears the rest interval. Lives in the session slice and, since spec R1,
    * also on the open assignment in fti.v3, so an iOS relaunch keeps a running rest.
@@ -1064,14 +1047,6 @@ export const useAppStore = create<AppStore>()((set, get) => {
 
   restoreBodyMass(entry: BodyMassEntry): void {
     set((s) => applyRestoreBodyMass(s, entry));
-  },
-
-  removeDrink(profileId: string, date: LocalDate, volumeML: ML, at: EpochMs): void {
-    set((s) => applyRemoveDrink(s, profileId, date, volumeML, at)); // [mL], [ms] epoch UTC
-  },
-
-  addHydration(profileId: string, date: LocalDate, volumeML: ML, now: EpochMs): void {
-    set((s) => applyAddHydration(s, profileId, date, volumeML, now)); // volumeML: [mL], now: [ms]
   },
 
   setRestTimer(t: RestTimer | null): void {

@@ -1,18 +1,16 @@
 // src/ui/views/train/HydrationBanner.tsx
 //
-// One hydration cue at a time, chosen by the domain (src/domain/training/hydration.ts) and
+// The post-session weigh-in cue, chosen by the domain (src/domain/training/hydration.ts) and
 // rendered here. The domain returns a COPY KEY, never a sentence, so a skin can rewrite the
 // wording without the cue logic knowing that copy exists.
 //
-// Content review sections 3 and 8: no fixed between-set volume is prescribed. The in-session
-// cue names no amount at all ("Drink to thirst"), and the button's volume is the profile's own
-// editable cup size, which is display granularity rather than a dose.
+// Only that cue: the in-session drink reminder is DrinkReminder (under the rest bar, owner
+// 2026-11-05), and the daily-shortfall cue and the log-a-cup button are gone, because drinks are
+// a reminder, not a log the day must fill.
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
-import { FORMAT } from '../../../content/copy';
-import { useCopy, useCopyOverrides } from '../../../content/useCopy';
+import { useCopy } from '../../../content/useCopy';
 import { HYDRATION_COPY_KEY, hydrationCue } from '../../../domain/training/hydration';
-import type { LocalDate, Profile } from '../../../domain/types';
-import { formatVolume } from '../../../domain/units';
+import type { Profile } from '../../../domain/types';
 import { SkinLabel } from '../../../skins/limelight/Icon';
 import { useAppStore } from '../../../store';
 import '../../styles/train.css';
@@ -20,25 +18,14 @@ import '../../styles/train.css';
 /** [ms] The cue only changes on the minute scale, so it is re-evaluated on that scale. */
 const REEVALUATE_MS = 60_000;
 
-export function HydrationBanner(props: {
-  profile: Profile;
-  date: LocalDate;
-  sessionActive: boolean;
-}): ReactElement | null {
-  const { profile, date, sessionActive } = props;
+export function HydrationBanner(props: { profile: Profile }): ReactElement | null {
+  const { profile } = props;
   /*
    * Read unconditionally, above the `cue === null` return below: a hook behind an early return
    * is a hook that stops being called when the cue clears, which is the rules-of-hooks defect.
    * One subscription per banner, and the banner is a singleton on this screen.
    */
   const c = useCopy();
-  /*
-   * The same skin's table, read beside the lookup and above the early return for the same
-   * reason. The two frames this banner renders read a copy key since P8 close-out B
-   * (`advice.beverageShortfall` and `button.logVolume`), so without the overlay the shortfall
-   * sentence and the drink control were the only clinical strings on a skinned Train screen.
-   */
-  const overrides = useCopyOverrides();
   /*
    * Audit G21: the four records hydrationCue reads, each a stable reference, instead of the whole
    * store (which re-rendered this banner on every set logged). Combined in a memo so the
@@ -63,54 +50,19 @@ export function HydrationBanner(props: {
     };
   }, []);
 
-  const cue = hydrationCue(records, profile.id, now, sessionActive);
-  if (cue === null) return null;
-
-  const targetML = profile.hydration.dailyTargetML; // [mL/day]
-  /*
-   * The shortfall cue is a FRAME with two volumes in it and the other two are a single copy
-   * key, which is why the branch is on the element and not on a string: a key goes through
-   * SkinLabel, so `advice.drinkToThirst` reaches the `drop` icon round three section 4.4 maps
-   * to it (P8 close-out D; the icon existed and nothing rendered it). A frame has no key for
-   * SkinLabel to look up, and inventing one for the shortfall sentence would put a glyph on a
-   * line whose whole content is two measured volumes.
-   */
-  const message =
-    cue.kind === 'daily-shortfall' ? (
-      FORMAT.beverageShortfall(
-        // Logged = target minus the shortfall the domain measured, so the sentence cannot
-        // state a pair the cue did not compute. Floored at 0: a shortfall can never exceed
-        // the target, and reporting a negative volume would be a defect wearing a number.
-        formatVolume(Math.max(0, targetML - (cue.shortfallML ?? 0)), profile.units),
-        formatVolume(targetML, profile.units),
-        overrides,
-      )
-    ) : (
-      <SkinLabel copyKey={HYDRATION_COPY_KEY[cue.kind]} />
-    );
+  // sessionActive false: the in-session cadence is DrinkReminder's, so only the weigh-in remains.
+  const cue = hydrationCue(records, profile.id, now, false);
+  if (cue?.kind !== 'post-session-weigh') return null;
 
   return (
     <div className="hydration-banner" role="status">
-      <span>{message}</span>
-      {cue.kind === 'post-session-weigh' ? (
-        <details className="hydration-why">
-          <summary>{c('disclosure.why')}</summary>
-          <p>{c('why.postSessionMass')}</p>
-        </details>
-      ) : (
-        <button
-          type="button"
-          onClick={() => {
-            const at = Date.now(); // [ms] epoch UTC
-            useAppStore.getState().addHydration(profile.id, date, profile.hydration.cupSizeML, at); // [mL]
-            // The mark restarts the cadence, so the cue is re-evaluated at once rather than
-            // at the next minute boundary.
-            setNow(at);
-          }}
-        >
-          {FORMAT.logVolume(formatVolume(profile.hydration.cupSizeML, profile.units), overrides)}
-        </button>
-      )}
+      <span>
+        <SkinLabel copyKey={HYDRATION_COPY_KEY[cue.kind]} />
+      </span>
+      <details className="hydration-why">
+        <summary>{c('disclosure.why')}</summary>
+        <p>{c('why.postSessionMass')}</p>
+      </details>
     </div>
   );
 }

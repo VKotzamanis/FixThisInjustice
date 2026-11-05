@@ -271,7 +271,7 @@ export function TrainView(): ReactElement {
       <div className="view train">
         <h2 className={displayClass(c('hero.train'))}>{c('hero.train')}</h2>
         <p>{c('advice.noSessionToday')}</p>
-        <HydrationBanner profile={profile} date={today} sessionActive={false} />
+        <HydrationBanner profile={profile} />
       </div>
     );
   }
@@ -573,7 +573,8 @@ export function TrainView(): ReactElement {
         })}
       </div>
 
-      <HydrationBanner profile={profile} date={today} sessionActive={sessionActive} />
+      {/* The post-session weigh-in cue only; the drink reminder sits under the rest bar. */}
+      <HydrationBanner profile={profile} />
 
       {finished && !amending && (
         <button

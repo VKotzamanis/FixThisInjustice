@@ -984,19 +984,14 @@ describe('TrainView rest timer', () => {
 });
 
 describe('TrainView hydration and body mass', () => {
-  it('shows the drink-to-thirst cue once the in-session cadence has elapsed', () => {
+  it('never shows the drink reminder in the exercise list, even once the cadence is due', () => {
+    // Owner, 2026-11-05: the reminder is a button under the rest bar (DrinkReminder), not a line
+    // among the cards, and it logs nothing.
     seedStore(seed({ startedAt: NOW - 25 * MINUTE_MS }));
     renderTrain();
 
-    expect(screen.getByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeInTheDocument();
-    fireEvent.click(
-      screen.getByRole('button', {
-        name: FORMAT.logVolume('250 mL', SKIN_COPY.limelight),
-      }),
-    );
-
-    const entry = useAppStore.getState().hydration['profile-1']?.[0];
-    expect(entry?.volumeML).toBe(250); // [mL]
+    expect(screen.queryByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeNull();
+    expect(document.querySelector('.hydration-banner')).toBeNull();
   });
 
   it('offers no mid-session weigh-in: Today carries it (spec R9, audit G12)', () => {
@@ -1572,12 +1567,11 @@ describe('TrainView: the limelight voice', () => {
   });
 
   it('carries the skin down to the controls the children own', () => {
-    // The hydration cue is HydrationBanner's, the finish control is this view's, and the log
-    // control is a SetRow two levels down reading the `t` prop. All three on one screen.
+    // The finish control is this view's, and the log control is a SetRow two levels down
+    // reading the `t` prop. Both on one screen.
     seedStore(withSkin(seed({ startedAt: NOW - 25 * MINUTE_MS }), 'limelight'));
     renderTrain();
 
-    expect(screen.getByText(copyFor('limelight', 'advice.drinkToThirst'))).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }),
     ).toBeInTheDocument();
