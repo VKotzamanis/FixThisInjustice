@@ -11,7 +11,7 @@
 .spotlight-bg {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-modal);
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -29,8 +29,8 @@
   padding: 0.75rem;
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
   border-radius: 0.5rem;
-  background: var(--bg-2, #13161a);
-  color: var(--text, #dde3ea);
+  background: var(--bg-2);
+  color: var(--text);
   font-family: var(--sans, system-ui, sans-serif);
 }
 
@@ -40,7 +40,7 @@
   font-weight: 500;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-3, #5a6270);
+  color: var(--text-3);
 }
 
 .spotlight-query {
@@ -49,8 +49,8 @@
   padding: 0.5rem 0.625rem;
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
   border-radius: 0.25rem;
-  background: var(--bg, #0a0b0c);
-  color: var(--text, #dde3ea);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 1rem; /* 16px: anything smaller makes iOS Safari zoom the page on focus. */
 }
@@ -78,8 +78,8 @@
  * accent against this background does not reach a 3:1 contrast ratio on its own.
  */
 .spotlight-item.is-active {
-  background: var(--bg-3, #1c2026);
-  box-shadow: inset 2px 0 0 0 var(--accent, #a3e635);
+  background: var(--bg-3);
+  box-shadow: inset 2px 0 0 0 var(--accent);
 }
 
 .spotlight-kind {
@@ -88,7 +88,7 @@
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-3, #5a6270);
+  color: var(--text-3);
 }
 
 .spotlight-label {
@@ -100,13 +100,13 @@
 .spotlight-hint {
   flex: 0 1 auto;
   font-size: 0.8125rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .spotlight-empty {
   margin: 0;
   padding: 0.5rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 /*
@@ -124,8 +124,8 @@
   min-height: 2.75rem;
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
   border-radius: 0.25rem;
-  background: var(--bg-2, #13161a);
-  color: var(--text, #dde3ea);
+  background: var(--bg-2);
+  color: var(--text);
   font-family: var(--sans, system-ui, sans-serif);
   cursor: pointer;
 }

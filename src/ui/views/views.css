@@ -63,7 +63,7 @@
 
 .view .view-dl dt {
   font-size: 0.9rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .view .view-dl dd {
@@ -100,7 +100,7 @@
   min-height: 2.75rem;
   padding: 0.4rem 0.5rem;
   color: inherit;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
   font-family: inherit;
   font-size: 16px;
@@ -119,7 +119,7 @@
   width: 100%;
   min-height: 2.75rem;
   color: inherit;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line-2);
   font-family: inherit;
   font-size: 16px;
@@ -128,7 +128,7 @@
 
 .view .view-note {
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   margin: 0.25rem 0 0.75rem;
 }
 
@@ -172,7 +172,7 @@
   display: flex;
   align-items: center;
   font-size: 0.85rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   cursor: pointer;
 }
 
@@ -188,7 +188,7 @@
   font-size: 0.75rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .view.today .hero-name {
@@ -209,7 +209,7 @@
 .view.today .today-sub {
   margin: 0 0 0.5rem;
   font-size: 0.9rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .view.today .session-list {
@@ -235,7 +235,7 @@
 .view.today .sess-rest {
   grid-column: 1 / -1;
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .view.today .today-controls,
@@ -286,12 +286,12 @@
 .view.today .sd-date,
 .view.today .sd-time {
   font-variant-numeric: tabular-nums;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 /* A rest day is legible but recessive: the eye should land on the training days. */
 .view.today .strip-day[data-status='rest'] .sd-label {
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 /*
@@ -374,7 +374,7 @@
 
 .view.plan .plan-chip .pc-range,
 .view.plan .plan-chip .pc-note {
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 /* On the pink sticker the notes take the chip's ink: --fine on pink is about 3.5:1 (computed,
@@ -385,7 +385,7 @@
 }
 
 .view.plan .plan-chip .pc-flag {
-  color: var(--warn, #fbbf24);
+  color: var(--warn);
   letter-spacing: 0.1em;
 }
 
@@ -411,7 +411,7 @@
 .view.plan .plan-week-label {
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .view.plan .plan-sessions {
@@ -440,7 +440,7 @@
 
 .view.plan .ps-ordinal {
   font-variant-numeric: tabular-nums;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .view.plan .ps-name {
@@ -451,7 +451,7 @@
 .view.plan .ps-label,
 .view.plan .ps-cursor {
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 /* "Next" beside the session the cursor stands on: the same pink sticker as the current block,
@@ -482,5 +482,5 @@
   grid-column: 2;
   text-align: right;
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }

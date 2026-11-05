@@ -1,12 +1,12 @@
 /*
- * The motivation popup. Tokens come from src/ui/styles/tokens.css; the z-index sits above the
- * training modals (40 in train.css) because the gate mounts this last and it must not open
- * behind a dialog that is already up.
+ * The motivation popup. Tokens come from src/ui/styles/tokens.css; z-index var(--z-modal), the
+ * same rung as the training modals: the gate mounts this last, so it paints over a dialog that is
+ * already up.
  */
 .mmod-bg {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -64,7 +64,7 @@
   display: block;
   width: 100%;
   max-height: 60vh;
-  background: #000;
+  background: var(--panel);
   border: 1px solid var(--line);
   cursor: pointer;
 }

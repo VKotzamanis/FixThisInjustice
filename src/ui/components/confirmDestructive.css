@@ -17,8 +17,8 @@
   gap: 0.5rem;
   margin: 1rem 0 0;
   padding: 0.75rem;
-  border: 1px solid var(--warn, #fbbf24);
-  background: var(--bg-2, #13161a);
+  border: 1px solid var(--warn);
+  background: var(--bg-2);
 }
 
 .confirm-destructive button {
@@ -39,14 +39,14 @@
 }
 
 .confirm-destructive button.destructive {
-  border-color: var(--danger, #f87171);
-  color: var(--danger, #f87171);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
 /* The gate, stated before it is met, and the acknowledgement once it is. */
 .confirm-destructive .confirm-destructive-note {
   margin: 0;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   font-size: 0.85rem;
   line-height: 1.5;
 }
@@ -60,14 +60,14 @@
 .confirm-destructive .confirm-destructive-field > label {
   font-size: 0.85rem;
   letter-spacing: 0.06em;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .confirm-destructive .confirm-destructive-field > input {
   min-height: 2.75rem; /* 44 px */
   padding: 0 0.5rem;
-  color: var(--text, #dde3ea);
-  background: var(--bg, #0a0b0c);
+  color: var(--text);
+  background: var(--bg);
   border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 16px; /* absolute, for the same reason as the buttons above */

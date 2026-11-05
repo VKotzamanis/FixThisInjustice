@@ -5,8 +5,7 @@
  * it runs, so mounting <BootGate /> anywhere in the shell covers the shell. It also means the
  * app behind it does not reflow when the sequence unmounts, because it was never displaced.
  *
- * z-index 55: above the two CRT presentation layers (50 and 51 in src/ui/styles/crt.css), below
- * the toast stack (60), which must stay visible if a save fails during the boot.
+ * z-index var(--z-system): above the CRT layers (--z-crt), toasts (--z-toast) and modals.
  *
  * Every custom property carries a literal fallback, as in readinessNotice.css, so the sequence
  * renders whether or not the P1 token sheet has loaded. That matters more here than elsewhere:
@@ -15,15 +14,15 @@
 .boot {
   position: fixed;
   inset: 0;
-  z-index: 55;
+  z-index: var(--z-system);
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 1.5rem;
   padding: 1.5rem;
   overflow: auto;
-  color: var(--text, #dde3ea);
-  background: var(--bg, #0a0b0c);
+  color: var(--text);
+  background: var(--bg);
   font-family: var(--mono, ui-monospace, monospace);
 }
 
@@ -44,8 +43,8 @@
   min-height: 2.75rem;
   padding: 0 1rem;
   color: inherit;
-  background: var(--bg-2, #13161a);
-  border: 1px solid var(--line, #2a3038);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
   font: inherit;
   font-size: 0.8rem;
   cursor: pointer;

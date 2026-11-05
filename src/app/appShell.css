@@ -2,7 +2,7 @@
 .topbar {
   position: sticky;
   top: 0;
-  z-index: 30;
+  z-index: var(--z-header);
   /* see the intro-pointer rule below, which lifts this for one slide */
   display: flex;
   align-items: center;
@@ -227,7 +227,7 @@ main {
   flex: 0 0 auto;
   min-height: 2.75rem;
   padding: 0 calc(0.75rem - 1px);
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   background: transparent;
   border: 2px solid transparent;
   font-family: inherit;

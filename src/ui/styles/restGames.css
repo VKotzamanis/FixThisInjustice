@@ -657,14 +657,14 @@
  *
  * Sides: 0.75rem (12 px) plus the safe-area insets; the QWERTY arithmetic in the rest-word section
  * uses the 12 px. Bottom: the home-indicator inset (viewport-fit=cover is set in index.html).
- * z-index 35: above the page and its sticky top bar (30), below the modals (40) and the CRT layers.
+ * z-index var(--z-sheet): above the page, the header and the dock; below the CRT layers and modals.
  */
 .rest-sheet {
   position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 35;
+  z-index: var(--z-sheet);
   box-sizing: border-box;
   max-height: calc(100vh - 12rem);
   max-height: calc(100svh - 12rem);

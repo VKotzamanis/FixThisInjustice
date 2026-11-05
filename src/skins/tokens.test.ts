@@ -90,3 +90,61 @@ describe('the limelight token contract', () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe('P4a shell tokens (P4 design brief section 1)', () => {
+  /** Value per token, copied from the brief's table; [px], [ms] and z integers. */
+  const REQUIRED: Readonly<Record<string, string>> = {
+    '--space-1': '4px',
+    '--space-2': '8px',
+    '--space-3': '12px',
+    '--space-4': '16px',
+    '--space-5': '24px',
+    '--space-6': '32px',
+    '--gutter': '16px',
+    '--text-xs': '12px',
+    '--text-sm': '14px',
+    '--text-md': '16px',
+    '--text-lg': '20px',
+    '--text-xl': '24px',
+    '--text-2xl': '32px',
+    '--header-h': '44px',
+    '--tabbar-h': '56px',
+    '--restbar-h': '56px',
+    '--dock-bottom': 'calc(var(--tabbar-h) + env(safe-area-inset-bottom))',
+    '--tap': '44px',
+    '--tap-primary': '56px',
+    '--scrim': 'rgba(0, 0, 0, 0.6)',
+    '--dur-fast': '120ms',
+    '--dur-base': '160ms',
+    '--dur-slow': '240ms',
+    '--ease-out': 'cubic-bezier(0.2, 0.9, 0.2, 1)',
+    '--focus': '2px solid var(--ink)',
+    '--focus-on-panel': '2px solid var(--lime)',
+    '--shadow-offset-display': 'max(2px, 0.1em)',
+    '--z-header': '30',
+    '--z-dock': '32',
+    '--z-sheet': '35',
+    '--z-crt': '44',
+    '--z-toast': '45',
+    '--z-modal': '50',
+    '--z-system': '60',
+  };
+  const valuesIn = (block: string): Record<string, string> =>
+    Object.fromEntries(
+      [...block.matchAll(/^\s*(--[a-z0-9-]+)\s*:\s*([^;]+);/gm)].map((m) => [m[1] ?? '', (m[2] ?? '').trim()]),
+    );
+
+  it('declares every shell token with the brief value in both blocks', () => {
+    const base = valuesIn(BASE_BLOCK);
+    const limelight = valuesIn(LIMELIGHT_BLOCK);
+    for (const [token, value] of Object.entries(REQUIRED)) {
+      expect({ token, base: base[token], limelight: limelight[token] }).toEqual({ token, base: value, limelight: value });
+    }
+  });
+
+  it('orders the z ladder header < dock < sheet < crt < toast < modal < system', () => {
+    const z = (t: string): number => Number(REQUIRED[t]);
+    const ladder = ['--z-header', '--z-dock', '--z-sheet', '--z-crt', '--z-toast', '--z-modal', '--z-system'];
+    expect(ladder.map(z)).toEqual([...ladder.map(z)].sort((a, b) => a - b));
+  });
+});

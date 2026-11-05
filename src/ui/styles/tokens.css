@@ -112,6 +112,58 @@
   --field-invalid-bg: #ffffff;
   --field-invalid-text: var(--ink);
   --highlight-bg: #ffffff;
+
+  /*
+   * P4 shell tokens (docs/design/p4-design-brief.md section 1). The only spacing steps, type
+   * sizes, chrome heights, motion values and z rungs shell and view CSS may use. [px], [ms].
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  /* The one side gutter at phone width (was main 14 px + .view 16 px = 30 px a side). */
+  --gutter: 16px;
+  /* Type scale, ratio about 1.2; 12 px is the floor on a phone. */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  /* Chrome heights, excluding the safe-area insets added where each is drawn. */
+  --header-h: 44px;
+  --tabbar-h: 56px;
+  --restbar-h: 56px;
+  /* Where any bottom-docked layer starts: on top of the tab bar and the home indicator. */
+  --dock-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  /* Minimum target; the one primary action per screen is taller. */
+  --tap: 44px;
+  --tap-primary: 56px;
+  /* The one overlay backdrop (replaces per-file scrims). */
+  --scrim: rgba(0, 0, 0, 0.6);
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+  --dur-slow: 240ms;
+  /* The curve the stamp already lands on (limelight.css). */
+  --ease-out: cubic-bezier(0.2, 0.9, 0.2, 1);
+  /* Themed focus rings: ink on lime (10.91:1), lime on a black panel (10.91:1). */
+  --focus: 2px solid var(--ink);
+  --focus-on-panel: 2px solid var(--lime);
+  /* The display shadow scales with its type: 2.4 px at 24 px, 3.2 px at 32 px (brief 3.1). */
+  --shadow-offset-display: max(2px, 0.1em);
+  /*
+   * ONE z ladder (critique D11). --z-crt is the one rung the brief's table does not list: the
+   * opt-in scanline and vignette layers, pointer-events none, over the page and under toasts.
+   */
+  --z-header: 30;
+  --z-dock: 32;
+  --z-sheet: 35;
+  --z-crt: 44;
+  --z-toast: 45;
+  --z-modal: 50;
+  --z-system: 60;
 }
 
 * {
@@ -271,6 +323,58 @@ body {
    * a 320 px render, 2026-10-18: "the intervention" set as "theintervention"). */
   --display-word-spacing: 0.15em;
   --shadow-offset: 4px;
+
+  /*
+   * P4 shell tokens (docs/design/p4-design-brief.md section 1). The only spacing steps, type
+   * sizes, chrome heights, motion values and z rungs shell and view CSS may use. [px], [ms].
+   */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  /* The one side gutter at phone width (was main 14 px + .view 16 px = 30 px a side). */
+  --gutter: 16px;
+  /* Type scale, ratio about 1.2; 12 px is the floor on a phone. */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-md: 16px;
+  --text-lg: 20px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  /* Chrome heights, excluding the safe-area insets added where each is drawn. */
+  --header-h: 44px;
+  --tabbar-h: 56px;
+  --restbar-h: 56px;
+  /* Where any bottom-docked layer starts: on top of the tab bar and the home indicator. */
+  --dock-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  /* Minimum target; the one primary action per screen is taller. */
+  --tap: 44px;
+  --tap-primary: 56px;
+  /* The one overlay backdrop (replaces per-file scrims). */
+  --scrim: rgba(0, 0, 0, 0.6);
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+  --dur-slow: 240ms;
+  /* The curve the stamp already lands on (limelight.css). */
+  --ease-out: cubic-bezier(0.2, 0.9, 0.2, 1);
+  /* Themed focus rings: ink on lime (10.91:1), lime on a black panel (10.91:1). */
+  --focus: 2px solid var(--ink);
+  --focus-on-panel: 2px solid var(--lime);
+  /* The display shadow scales with its type: 2.4 px at 24 px, 3.2 px at 32 px (brief 3.1). */
+  --shadow-offset-display: max(2px, 0.1em);
+  /*
+   * ONE z ladder (critique D11). --z-crt is the one rung the brief's table does not list: the
+   * opt-in scanline and vignette layers, pointer-events none, over the page and under toasts.
+   */
+  --z-header: 30;
+  --z-dock: 32;
+  --z-sheet: 35;
+  --z-crt: 44;
+  --z-toast: 45;
+  --z-modal: 50;
+  --z-system: 60;
 }
 
 :root[data-skin='limelight'] body {

@@ -1,26 +1,19 @@
 /*
  * The block transition cutscene (P8 Task 10).
  *
- * z-index 49: below the missed-week popup (50, src/ui/motivation/motivation.css), below the
- * boot sequence (55, boot.css) and below the toast stack (60, toastQueue.css). The gate never
+ * z-index var(--z-modal) - 1: below the missed-week popup (--z-modal, motivation.css) and the
+ * boot sequence (--z-system, boot.css). The gate never
  * mounts this while the boot is running, nor while a missed week is pending, so the ordering
- * is belt and braces rather than the mechanism; a save-failure toast must stay readable over
- * it either way.
+ * is belt and braces rather than the mechanism. Toasts (--z-toast) sit under it since P4a.
  *
- * It was 54, ABOVE the popup, which is the wrong way round for a layer that is not answering
+ * It was ABOVE the popup once, which is the wrong way round for a layer that is not answering
  * anything: if the two ever coexist again the popup is the dialog holding the user's question,
- * so it must paint on top. 49 also puts the cutscene under the two CRT presentation layers
- * (50 and 51 in src/ui/styles/crt.css), which is what those layers are for - they are a
- * full-screen scanline and vignette wash with `pointer-events: none`, so they tint the
- * cutscene exactly as they tint every other screen rather than being covered by it.
- *
- * Every custom property carries a literal fallback, as boot.css and readinessNotice.css do, so
- * the cutscene renders whether or not the P1 token sheet has loaded.
+ * so it must paint on top. The CRT layers (--z-crt) now sit under every modal rung.
  */
 .phase-bg {
   position: fixed;
   inset: 0;
-  z-index: 49;
+  z-index: calc(var(--z-modal) - 1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -33,9 +26,9 @@
   max-height: 100%;
   overflow: auto;
   padding: 1.25rem;
-  color: var(--text, #dde3ea);
-  background: var(--bg-2, #101315);
-  border: 1px solid var(--line-2, #2a3138);
+  color: var(--text);
+  background: var(--bg-2);
+  border: 1px solid var(--line-2);
   font-family: var(--mono, ui-monospace, monospace);
 }
 
@@ -81,7 +74,7 @@
 }
 
 .pt-row dt {
-  color: var(--text-3, #8d99a5);
+  color: var(--text-3);
   font-size: 0.8rem;
 }
 

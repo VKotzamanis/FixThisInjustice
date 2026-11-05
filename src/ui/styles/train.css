@@ -15,7 +15,7 @@
 .fcm-bg {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-modal);
   background: rgb(0 0 0 / 0.72);
   display: flex;
   align-items: center;

@@ -18,8 +18,8 @@
   max-width: 34rem;
   margin: 0 auto;
   padding: 1rem 1rem 4rem;
-  color: var(--text, #dde3ea);
-  background: var(--bg, #0a0b0c);
+  color: var(--text);
+  background: var(--bg);
   font-family: var(--mono, ui-monospace, monospace);
   line-height: 1.5;
 }
@@ -33,7 +33,7 @@
 
 .wiz .wiz-step {
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   margin: 0 0 1.25rem;
 }
 
@@ -108,7 +108,7 @@
   min-height: 2.75rem;
   padding: 0.4rem 0.5rem;
   color: inherit;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
   font-family: inherit;
   font-size: 16px;
@@ -176,7 +176,7 @@
   flex: 1 1 0;
   min-height: 2.75rem;
   color: inherit;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line-2);
   font-family: inherit;
   font-size: 16px;
@@ -190,14 +190,14 @@
 
 .wiz .wiz-note {
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   margin: 0.25rem 0 0.75rem;
 }
 
 /* A validation message is never a colour cue alone: it is text, and it is always rendered. */
 .wiz .wiz-error {
   font-size: 0.8rem;
-  color: var(--danger, #f87171);
+  color: var(--danger);
   margin: 0.25rem 0 0.75rem;
 }
 
@@ -210,7 +210,7 @@
   display: flex;
   align-items: center;
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   cursor: pointer;
 }
 
@@ -222,7 +222,7 @@
 }
 
 .wiz dt {
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .wiz dd {
@@ -253,7 +253,7 @@
 .rq {
   max-width: 34rem;
   margin: 0 auto;
-  color: var(--text, #dde3ea);
+  color: var(--text);
   font-family: var(--mono, ui-monospace, monospace);
   line-height: 1.5;
 }
@@ -283,7 +283,7 @@
 .rq .rq-note {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .rq .rq-answers {
@@ -301,7 +301,7 @@
   min-width: 2.75rem; /* 44 px */
   margin: 0;
   padding: 0 0.5rem;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
   font-size: 16px; /* absolute: mobile Safari zooms below 16 px and does not zoom back */
   cursor: pointer;
@@ -327,14 +327,14 @@
   display: flex;
   align-items: center;
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
   cursor: pointer;
 }
 
 .rq .rq-source {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
-  color: var(--text-2, #8e97a3);
+  color: var(--text-2);
 }
 
 .rq .rq-nav {
@@ -347,7 +347,7 @@
   flex: 1 1 0;
   min-height: 2.75rem; /* 44 px */
   color: inherit;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line-2); /* ink, as `.wiz button`: pink was 1.41:1 on lime */
   font: inherit;
   font-size: 16px;
@@ -845,7 +845,7 @@
 .wiz-modal-bg {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: var(--z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -859,9 +859,9 @@
   max-height: 90vh;
   overflow-y: auto;
   padding: 3.25rem 1.25rem 1.25rem;
-  background: var(--bg-2, #13161a);
+  background: var(--bg-2);
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
-  color: var(--text, #dde3ea);
+  color: var(--text);
   font-family: var(--mono, ui-monospace, monospace);
   line-height: 1.5;
 }
@@ -924,7 +924,7 @@
 .wiz-modal-divider {
   margin: 1rem 0;
   border: none;
-  border-top: 2px solid var(--accent, #a3e635);
+  border-top: 2px solid var(--accent);
 }
 
 /* Inline MathML (C1.07.13): no LaTeX runtime, and the expression stays selectable text. */
@@ -1533,8 +1533,8 @@
   padding: 10px;
   border: 1px solid var(--line, rgba(220, 230, 240, 0.08));
   border-radius: 6px;
-  background: var(--band-surface, #0a0b0c);
-  color: var(--band-surface-text, #dde3ea);
+  background: var(--band-surface);
+  color: var(--band-surface-text);
 }
 
 .wiz .wiz-calendar-head {
@@ -1601,18 +1601,18 @@
 
 /* The three measured fills. Ink on any of them clears 10.49:1 at worst (tokens.css). */
 .wiz .wiz-band-realistic {
-  background: var(--band-realistic, #a4eab0);
-  color: var(--band-ink, #000000);
+  background: var(--band-realistic);
+  color: var(--band-ink);
 }
 
 .wiz .wiz-band-improbable {
-  background: var(--band-improbable, #eac9a4);
-  color: var(--band-ink, #000000);
+  background: var(--band-improbable);
+  color: var(--band-ink);
 }
 
 .wiz .wiz-band-highly-improbable {
-  background: var(--band-highly-improbable, #eaa6a4);
-  color: var(--band-ink, #000000);
+  background: var(--band-highly-improbable);
+  color: var(--band-ink);
 }
 
 /*

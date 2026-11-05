@@ -6,12 +6,11 @@
  * sequence: it stands in for the whole screen while it runs, so mounting <IntroGate /> anywhere
  * in the shell covers the shell, and the app behind it does not reflow when it unmounts.
  *
- * z-index 56: one above the boot sequence (55, boot.css). The two never actually overlap --
+ * z-index var(--z-system) + 1: one above the boot sequence (--z-system, boot.css). The two never actually overlap --
  * App.tsx mounts <BootGate /> only once `ui.introSeen` is true, so this sequence is always gone
  * before that one can appear -- but the ordinal states the order unambiguously rather than
- * leaving two full-screen layers at the same number. Above the two CRT presentation layers (50
- * and 51, src/ui/styles/crt.css), below the toast stack (60, toastQueue.css), which must stay
- * visible over any full-screen layer if a save fails while this one is on screen.
+ * leaving two full-screen layers at the same number. Above the CRT layers (--z-crt) and the
+ * toast stack (--z-toast).
  *
  * Every custom property carries a literal fallback, as boot.css and phaseTransition.css do, so
  * the sequence renders whether or not the P1 token sheet has loaded -- which matters more here
@@ -20,15 +19,15 @@
 .intro {
   position: fixed;
   inset: 0;
-  z-index: 56;
+  z-index: calc(var(--z-system) + 1);
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 1.25rem;
   padding: 1.5rem;
   overflow: auto;
-  color: var(--text, #dde3ea);
-  background: var(--bg, #0a0b0c);
+  color: var(--text);
+  background: var(--bg);
   font-family: var(--mono, ui-monospace, monospace);
   cursor: pointer;
 }
@@ -130,7 +129,7 @@
  */
 .intro-continue {
   margin: 0;
-  color: var(--text-3, #5a6270);
+  color: var(--text-3);
   font-size: 0.8rem;
   animation: intro-hover 2000ms ease-in-out infinite alternate;
 }
@@ -164,7 +163,7 @@
 .intro-modal-bg {
   position: fixed;
   inset: 0;
-  z-index: 57;
+  z-index: calc(var(--z-system) + 2);
   display: grid;
   align-items: start;
   justify-items: center;
