@@ -171,6 +171,33 @@ export function clearStorage(): void {
   }
 }
 
+/** What another instance did to the document, as this instance's `storage` event reports it. */
+export interface ExternalWrite {
+  /**
+   * True when the other instance removed the key or cleared storage. Read from
+   * `event.newValue === null` (amendment AM-10), never from a re-read: a re-read races any
+   * later write and would let this instance mistake a removal for a rewrite.
+   */
+  removed: boolean;
+}
+
+/**
+ * Audit B03 stopgap (spec P1): another instance of the app (a second tab, the installed app
+ * beside a browser tab) wrote or removed the document. Browsers fire `storage` in every OTHER
+ * same-origin document, never in the writer. `key === null` is a `clear()`. Returns the
+ * unsubscribe. P2's IndexedDB engine replaces this with BroadcastChannel and a revision.
+ */
+export function onExternalWrite(listener: (w: ExternalWrite) => void): () => void {
+  const handler = (e: StorageEvent): void => {
+    if (e.key !== null && e.key !== STORAGE_KEY) return;
+    listener({ removed: e.newValue === null });
+  };
+  window.addEventListener('storage', handler);
+  return () => {
+    window.removeEventListener('storage', handler);
+  };
+}
+
 /**
  * Pretty-printed export. Covers the whole persisted surface (constraint 10) with one
  * deliberate hole: `pushDevice`.

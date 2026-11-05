@@ -1,6 +1,8 @@
 // src/app/StaleSessionNotice.tsx
 //
 // Spec R1: the user is told, once, that a session left open on an earlier day was closed.
+// Audit B03 / AM-10: the same path tells them, once, that another window's save replaced a
+// change this window still had queued.
 // Mounted inside ToastProvider by App.tsx; renders nothing itself.
 import { useEffect, type ReactElement } from 'react';
 import { useCopy } from '../content/useCopy';
@@ -9,6 +11,7 @@ import { useToasts } from '../ui/components/ToastQueue';
 
 export function StaleSessionNotice(): ReactElement | null {
   const closures = useAppStore((s) => s.status.staleClosures);
+  const externalWriteReplaced = useAppStore((s) => s.status.externalWriteReplaced === true);
   const t = useCopy();
   const { push } = useToasts();
   useEffect(() => {
@@ -23,5 +26,10 @@ export function StaleSessionNotice(): ReactElement | null {
     }
     useAppStore.getState().acknowledgeStaleClosures();
   }, [closures, push, t]);
+  useEffect(() => {
+    if (!externalWriteReplaced) return;
+    push({ kind: 'telemetry', message: t('status.externalWriteReplaced') });
+    useAppStore.getState().acknowledgeExternalWrite();
+  }, [externalWriteReplaced, push, t]);
   return null;
 }

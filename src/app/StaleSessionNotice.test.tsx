@@ -30,4 +30,16 @@ describe('StaleSessionNotice', () => {
     expect(screen.getByText(copyFor('limelight', 'status.staleSessionCompleted'))).toBeInTheDocument();
     expect(useAppStore.getState().status.staleClosures).toEqual([]);
   });
+
+  it('shows one notice when another window replaced a queued change (B03, AM-10)', () => {
+    useAppStore.setState({ status: { ...useAppStore.getState().status, staleClosures: [], externalWriteReplaced: true } });
+    render(
+      <ToastProvider>
+        <StaleSessionNotice />
+        <ToastQueue />
+      </ToastProvider>,
+    );
+    expect(screen.getAllByText(copyFor('limelight', 'status.externalWriteReplaced'))).toHaveLength(1);
+    expect(useAppStore.getState().status.externalWriteReplaced).toBe(false);
+  });
 });

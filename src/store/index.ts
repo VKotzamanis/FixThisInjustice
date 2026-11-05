@@ -65,6 +65,7 @@ import {
   exportJson as serialise,
   importJson as deserialise,
   load,
+  onExternalWrite,
   save,
 } from './persistence';
 
@@ -122,6 +123,12 @@ export interface StoreStatus {
    * literals existing suites build stay valid; undefined and [] both mean nothing to say.
    */
   staleClosures?: readonly StaleClosure[] | undefined;
+  /**
+   * Audit B03 / amendment AM-10: another instance wrote the document while this one still had a
+   * change queued, so that change was dropped for the other instance's data. True until the
+   * shell has shown its one notice. Not persisted; optional for the same reason as above.
+   */
+  externalWriteReplaced?: boolean | undefined;
 }
 
 /**
@@ -285,6 +292,15 @@ export interface AppActions {
   closeStaleSessions(profileId: string, now: EpochMs): readonly StaleClosure[];
   /** Empties status.staleClosures once the shell has shown its notice. */
   acknowledgeStaleClosures(): void;
+  /**
+   * Audit B03 stopgap / AM-10: installs what another instance left in storage. `removed` (the
+   * event's newValue was null) resets memory to an empty document WITHOUT touching storage;
+   * otherwise the document is re-read. `droppedLocalChange` sets status.externalWriteReplaced.
+   * Writes nothing to fti.v3 in either case.
+   */
+  followExternalWrite(removed: boolean, droppedLocalChange: boolean): void;
+  /** Clears status.externalWriteReplaced once the shell has shown its notice. */
+  acknowledgeExternalWrite(): void;
   /**
    * Counts one won rest-game round in this lifting day (ROADMAP F1). Session slice only: mirrored
    * to sessionStorage, reset by clearSessionSlice, never written to fti.v3. Touches no timer field.
@@ -619,7 +635,13 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // replaceState specifically, so installing a document has one code path and
     // one set of rules — including the load-error reset — rather than two that
     // drift apart.
-    get().replaceState(result.state);
+    //
+    // Audit B12: the user stays on the view they imported from, so they see the result there.
+    const here = get().ui.lastView;
+    get().replaceState({ ...result.state, ui: { ...result.state.ui, lastView: here } });
+    // Audit B12: the session slice described the replaced document; it restarts from the new one.
+    set({ session: restoredSession(EMPTY_SESSION, result.state, Date.now()) }); // [ms] epoch, UTC
+    clearSessionMirror();
     return { ok: true };
   },
 
@@ -1019,6 +1041,41 @@ export const useAppStore = create<AppStore>()((set, get) => {
     set({ status: { ...get().status, staleClosures: [] } });
   },
 
+  followExternalWrite(removed: boolean, droppedLocalChange: boolean): void {
+    if (removed) {
+      // AM-10: never a destructive write in reaction to an observation. The other instance
+      // already removed the document; this one only forgets its in-memory copy, so no
+      // wipeAll(), no clearStorage(), no removeItem, and nothing for the subscription to save.
+      withoutPersisting(() => {
+        set({
+          ...defaultState(),
+          session: EMPTY_SESSION,
+          status: {
+            ...get().status,
+            lastSaveError: null,
+            lastLoadError: null,
+            lastActionError: null,
+            staleClosures: [],
+            hydrated: true,
+          },
+        });
+      });
+      // This tab's own sessionStorage mirror (not the shared document) is overwritten with the
+      // empty slice, so a reload here cannot revive a session of the removed document.
+      saveSessionMirror(EMPTY_SESSION);
+    } else {
+      // hydrate() is a read: it runs without persisting and never writes fti.v3.
+      get().hydrate();
+    }
+    // Status only, so this is not a persisted change either.
+    if (droppedLocalChange) set({ status: { ...get().status, externalWriteReplaced: true } });
+  },
+
+  acknowledgeExternalWrite(): void {
+    if (get().status.externalWriteReplaced !== true) return;
+    set({ status: { ...get().status, externalWriteReplaced: false } });
+  },
+
   /*
    * P3's schedule slice, spread LAST so its members win over any earlier placeholder of the
    * same name. Only setUi collides today, and the two implementations are the same shallow
@@ -1142,7 +1199,19 @@ export function startPersistence(): () => void {
   };
   document.addEventListener('visibilitychange', onVisibilityChange);
 
+  /*
+   * Audit B03 stopgap: another instance wrote the document. This one's queued write was
+   * assembled from an older copy, so it is dropped (and the user told, AM-10) and the document
+   * re-read; a removal is followed in memory only, never re-created and never re-deleted.
+   */
+  const stopExternal = onExternalWrite(({ removed }) => {
+    const droppedLocalChange = pending !== null;
+    cancelPendingSave();
+    useAppStore.getState().followExternalWrite(removed, droppedLocalChange);
+  });
+
   return () => {
+    stopExternal();
     unsubscribe();
     window.removeEventListener('pagehide', onPageHide);
     document.removeEventListener('visibilitychange', onVisibilityChange);

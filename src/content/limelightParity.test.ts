@@ -17,7 +17,8 @@
 // override), and `button.gotIt`, the one control of the one-time warm-up notice on Train (owner
 // 2026-10-18; base table only), and `status.staleSession{Completed,Released}` for the
 // stale-session notice (spec R1, Task 6; base table only), and `error.setupRefused` for
-// atomic setup refusal (spec R5, Task 9; base table only). No snapshot row was changed to add them.
+// atomic setup refusal (spec R5, Task 9; base table only), and `status.externalWriteReplaced` for
+// the other-window notice (audit B03, Task 10; base table only). No snapshot row was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';

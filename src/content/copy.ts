@@ -310,6 +310,7 @@ export type CopyKey =
   | 'button.dismiss'
   | 'status.staleSessionCompleted'
   | 'status.staleSessionReleased'
+  | 'status.externalWriteReplaced'
   // --- log, export, migration, settings (P7) ---
   | 'advice.noWeeksYet'
   | 'advice.noSetsLogged'
@@ -1138,6 +1139,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Spec R1: the one notice after a session left open on an earlier day was closed.
   'status.staleSessionCompleted': 'Your unfinished session was closed with its logged sets.',
   'status.staleSessionReleased': 'Your unstarted session was released. It is next again.',
+  // Audit B03 / AM-10: another window saved while this one had a change queued.
+  'status.externalWriteReplaced': "This window's last change was replaced by data saved in another window.",
 
   // --- log, export, migration, settings (P7) ---
   'advice.noWeeksYet': 'No weeks to show.',
