@@ -298,7 +298,9 @@ describe('a device that still holds the old console keys', () => {
 
       const loaded = await loadDocument(createBrowserBackend());
       expect(loaded.ok && loaded.state).toEqual(expected);
-      expect(importJson(text)).toEqual({ ok: true, state: expected });
+      const imported = importJson(text);
+      expect(imported.ok && imported.state).toEqual(expected);
+      expect(imported.ok && [...imported.quarantine, ...imported.repairs]).toEqual([]);
 
       for (const [key, value] of Object.entries(OLD_CONSOLE)) expect(data.get(key)).toBe(value);
       expect(data.get(STORAGE_KEY)).toBe(text);

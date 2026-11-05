@@ -10,8 +10,8 @@ import { todayLocal } from '../../domain/dates';
 import { projectedCalendar } from '../../domain/schedule/calendar';
 import { isTerminal } from '../../domain/schedule/cursor';
 import { sessionTitle } from '../../domain/schedule/rotation';
-import { parseState } from '../../domain/schema';
 import { useAppStore, selectState } from '../../store';
+import { importJson as readImport } from '../../store/persistence';
 import { downloadText } from '../../app/download';
 import { saveFile } from '../../app/saveFile';
 import { ConfirmDestructive } from '../components/ConfirmDestructive';
@@ -30,9 +30,11 @@ import './views.css';
  *
  * THE IMPORT PATH. Two phases, and the store is the only writer.
  *
- *   Check   JSON.parse, then `parseState` (Zod). Writes nothing, whatever the document says.
- *   Replace `useAppStore.getState().importJson(text)`, which re-validates through the same
- *           `parseState` and commits through `replaceState`.
+ *   Check   `importJson` in src/store/persistence.ts: JSON, schema version, then record by
+ *           record through assembleState, the load path (audit B04). Writes nothing. Records it
+ *           cannot read are listed, every reason, and Replace leaves them out.
+ *   Replace `useAppStore.getState().importJson(text)`, which re-reads through the same
+ *           function and commits through `replaceState`.
  *
  * Master plan section 8 makes `importJson` the only path into the store for imported data,
  * which is what closes the import race the old app had (code review A43) and the unvalidated
@@ -83,6 +85,8 @@ export function ExportView(): JSX.Element {
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  // Audit B04: the records the checked file holds that this build cannot read, each reason.
+  const [leftOut, setLeftOut] = useState<readonly string[]>([]);
   const [done, setDone] = useState(false);
 
   const textId = useId();
@@ -160,19 +164,20 @@ export function ExportView(): JSX.Element {
     // Closed before it is reopened, so the panel remounts and both of its gates are re-armed
     // against the document that was just checked rather than the one before it.
     setChecked(false);
-    let raw: unknown;
+    setLeftOut([]);
     try {
-      raw = JSON.parse(text);
+      JSON.parse(text);
     } catch {
       setError(t('advice.importParseFailed'));
       return;
     }
-    const parsed = parseState(raw);
-    if (!parsed.ok) {
-      setError(FORMAT.importRejected(parsed.error));
+    const read = readImport(text);
+    if (!read.ok) {
+      setError(FORMAT.importRejected(read.error));
       return;
     }
     setError(null);
+    setLeftOut(read.quarantine.map((q) => q.reason));
     setChecked(true);
   };
 
@@ -187,6 +192,7 @@ export function ExportView(): JSX.Element {
     }
     setError(null);
     setChecked(false);
+    setLeftOut([]);
     setText('');
     setDone(true);
   };
@@ -266,6 +272,17 @@ export function ExportView(): JSX.Element {
         <p className="view-error" role="alert">
           {error}
         </p>
+      )}
+
+      {checked && leftOut.length > 0 && (
+        <div className="view-field" role="status">
+          <p className="view-note">{FORMAT.importLeavesOut(leftOut.length)}</p>
+          <ul>
+            {leftOut.map((reason, i) => (
+              <li key={`${String(i)}:${reason}`}>{reason}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {checked && (

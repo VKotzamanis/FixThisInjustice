@@ -37,6 +37,7 @@
 // programme has no N, so every "of N" goes): `status.bootWeek`, `status.sessionCursor` and `label.weekOfCount`.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
+import ts from 'typescript';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
 import { DEFAULT_COPY, copy, copyFor, type CopyKey } from './copy';
 import { useCopy, useCopyOverrides } from './useCopy';
@@ -160,5 +161,49 @@ describe('limelight copy parity with main (9a87561)', () => {
       });
       expect(reason.length).toBeGreaterThan(0);
     }
+  });
+});
+
+/*
+ * ROADMAP N7 guard: every `copy(...)` call in app source passes the overlay as its second
+ * argument. `copy(key)` alone is the BASE table, which is not what the app shows for a key the
+ * limelight table overrides (copy.ts says so above `copy`); the summary export printed base
+ * strings that way until N7. Read from the TypeScript AST, so comments and strings that mention
+ * `copy()` do not count, and `copyFor` / `useCopy` (which resolve the skin themselves) are other
+ * names. What a static check cannot see: an overlay argument that is `undefined` at run time
+ * (an optional parameter passed through); the FORMAT frames' callers pass `useCopyOverrides()`.
+ */
+const SOURCES = import.meta.glob<string>(['../**/*.{ts,tsx}', '!../**/*.test.{ts,tsx}', '!../test/**'], {
+  query: '?raw',
+  import: 'default',
+  eager: true,
+});
+
+function bareCopyCalls(path: string, text: string): string[] {
+  const file = ts.createSourceFile(path, text, ts.ScriptTarget.Latest, true, path.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+  const found: string[] = [];
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'copy' && node.arguments.length < 2) {
+      const { line } = file.getLineAndCharacterOfPosition(node.getStart(file));
+      found.push(`${path}:${String(line + 1)}: ${node.getText(file)}`);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(file);
+  return found;
+}
+
+describe('every copy() call site resolves through the skin overlay (ROADMAP N7)', () => {
+  it('scans the app source', () => {
+    expect(Object.keys(SOURCES).length).toBeGreaterThan(100);
+  });
+
+  it('finds no copy(key) call without an overlay argument', () => {
+    const bare = Object.entries(SOURCES).flatMap(([path, text]) => bareCopyCalls(path, text));
+    expect(bare).toEqual([]);
+  });
+
+  it('detects a bare call (the guard is not vacuous)', () => {
+    expect(bareCopyCalls('x.ts', "copy('advice.noSetsLogged');\ncopy('a', o);")).toHaveLength(1);
   });
 });

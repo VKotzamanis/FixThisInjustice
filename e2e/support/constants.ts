@@ -111,7 +111,6 @@ export const RECORD_MAP_STORES = [
   'specimens',
   'capsules',
   'customExercises',
-  'notes',
 ] as const;
 export const RECORD_SINGLETONS = ['activeProfileId', 'pushDevice', 'setupDraft', 'ui'] as const;
 /** "Body mass (kg)": FORMAT.quantityWithUnit(copy('quantity.bodyMass'), 'kg'). */

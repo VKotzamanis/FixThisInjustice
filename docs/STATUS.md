@@ -9,7 +9,7 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 ## Next job
 1. Owner phone feedback (he is collecting it now; new agent session). Triage each item against `docs/ROADMAP.md`; log his words verbatim in `docs/private/owner-feedback/` (gitignored).
 2. Owner wording calls pending: new copy keys are base-table only, no limelight voice yet (session editing, effort taps, programme lifecycle, rest games (P6), warm-up notice "Got It"); ROADMAP N7, S1, S7.
-3. Then ROADMAP open items: R4, B1a, B1c, L9, L10, F2-F5.
+3. Then ROADMAP open items: L9 (form cue text), F2-F5; audit 2026-11-04 leftovers A01 (target-mass field bound, R12 property), A06 residual, A15/A16 (wizard split).
 
 ## What exists (2026-10-18 build)
 - Cleanup: docs cut to AGENTS/STATUS/ROADMAP/ARCHITECTURE + runbooks + design; review-catalogue machinery, both design tools, clinical/board skins, old-console import removed.
@@ -26,6 +26,7 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 - Art (owner-reviewed on artifact pages): body-fat front+side torsos (men 10-35 %, women 20-45 %), slider icons, tape diagrams, 37 per-card Atlas icons (lazy), app icon + badge from the owner's own sprite, "her" sprite sheets (lifting/resting/crown) replacing the pink blob. Spec `docs/design/asset-spec-2026-10-18.md`; register `docs/design/2026-09-04-icon-register.csv`.
 - Style: brat headings, pink stickers, status marks, lit-sign panels, rest-over flash, dither wipe, contrast sweep test (`src/ui/styles/limeContrast.test.ts`). Survey `docs/design/stylize-survey-2026-10-18.md`.
 - Train/Log decluttered; warm-up + medical-clearance notice shows once per profile ("Got It"), not in Form Cues.
+- Audit 2026-11-04 sweep (branch `p8-sweep`, 2026-11-05): B04 import quarantines unreadable records and lists every issue (2c9e627); B15 launch-cost budget test (dae4a61); B16 per-release captured document + both-way tests (e64546c, `scripts/capture-schema-fixture.mjs`); N4/N7 `notes` and `ui.accent` retired (71e42e1); N7 copy-overlay guard (38ee5f7); R4 (3d50357); B1c (7f401ea); E15 `/media/` range requests, runbook paths (2e471e0); F15 marquee hover (9be8177); S4 fixture slot days (85ef90e).
 
 ## Gates
 - All commands in `AGENTS.md` → Verify. Expected: zero failing tests (2,904 app + 148 worker on 2026-10-18).
@@ -46,8 +47,11 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 
 ## Doc drift (known)
 - Older docs cite drifted paths/lines: `docs/design/programme-horizon.md` (planned files never built), `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-06-asset-prompts.md` (superseded by asset-spec-2026-10-18), `docs/design/2026-09-01-copy-contract.md`, runbooks. Re-derive before trusting a line number.
+- `docs/runbooks/motivation-clip.md` and `sfx.md` still cite `REFERENCES.md`, which lives only in gitignored `docs/private/evidence/` (`reminders.md` now cites URLs).
 
 ## Decisions log
+- 2026-11-05 B16: a stored-shape change fails `src/domain/migrations/captures.test.ts` until a new capture is taken (`node scripts/capture-schema-fixture.mjs <date>`); earlier captures are never edited and must keep loading.
+- 2026-11-05 R4 (lead ruling): swap-day sets at another slot's range are left out of the substitute's own progression; history and records keep them.
 - 2026-11-04 P2 storage (AM-P2-1): `fti.v3` rollback mirror written on hide/pagehide (`src/store/index.ts` `writeRollbackMirror`). Remove it two releases after P2 ships.
 - 2026-10-18 restart: platform stays a web page (TypeScript); limelight only; owner-private material in gitignored `docs/private/`; history scrubbed. Owner answers: `docs/private/owner-feedback/restart-2026-10-18.md`.
 - 2026-10-18 art: owner rejected the generic stick-figure icon and blob-based icons; app icon = frame 0 of his own GIF sprite; "her" replaces every pink blob; per-card Atlas icons; body-fat chart as torsos with landmark lines (silhouettes "not descriptive").

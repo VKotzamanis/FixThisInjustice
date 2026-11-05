@@ -34,7 +34,7 @@ describe('import (B12)', () => {
     useAppStore.getState().setUi({ lastView: 'settings' });
     const incoming = doc('Imported');
     const text = exportJson({ ...incoming, ui: { ...incoming.ui, lastView: 'today' } });
-    expect(useAppStore.getState().importJson(text)).toEqual({ ok: true });
+    expect(useAppStore.getState().importJson(text)).toEqual({ ok: true, quarantine: [] });
     const s = useAppStore.getState();
     expect(s.profiles[PROFILE_ID]?.displayName).toBe('Imported');
     expect(s.ui.lastView).toBe('settings');

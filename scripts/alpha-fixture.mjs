@@ -117,10 +117,19 @@ async function main() {
     },
     EXERCISES,
   );
-  store().setPlan(PROFILE_ID, plan, daysBefore(63));
+  /*
+   * ROADMAP S4: the plan starts on a Monday and every session below falls on a slot day (Mon,
+   * Wed, Fri, set above). TODAY (2026-09-04) is a Friday, so Monday of nine weeks back is 60
+   * days before it. The fixture once dated sessions Fri/Sun/Tue, off every slot, and the Log
+   * grid (which reads the schedule model) looked empty.
+   */
+  const START_OFFSET = 60; // [days] before TODAY: Monday 2026-07-06
+  store().setPlan(PROFILE_ID, plan, daysBefore(START_OFFSET));
 
   /*
-   * Nine weeks of history, walked forward one assigned day at a time.
+   * Nine weeks of history, walked forward one assigned day at a time: Monday, Wednesday and
+   * Friday of each week (day offsets 0, 2, 4 from the week's Monday). The last Friday is TODAY,
+   * left unlogged so the Today screen opens on a planned session.
    *
    * Week 6 counted from the start is deliberately left with ONE completed session against a
    * target of three, so closeWeeks writes a WeeklyReview with delta -2. That is the missed week
@@ -131,7 +140,10 @@ async function main() {
   let logged = 0; // [sets]
   for (let week = 0; week < 9; week += 1) {
     for (let day = 0; day < 3; day += 1) {
-      const date = daysBefore(63 - (week * 7 + day * 2));
+      const offset = START_OFFSET - (week * 7 + day * 2); // [days] before TODAY
+      if (offset <= 0) continue;
+      const date = daysBefore(offset);
+      const at = NOW_MS - offset * DAY_MS; // [ms] 10:00 local on that civil date
       const skipThis = week === MISSED_WEEK_INDEX && day > 0;
       if (skipThis) {
         store().skipSession(PROFILE_ID, date, 'travel');
@@ -157,23 +169,23 @@ async function main() {
               durationS: null,
               rpe: 8,
             },
-            NOW_MS - (63 - week * 7) * DAY_MS,
+            at,
           );
           logged += 1;
         }
       }
-      store().completeSession(PROFILE_ID, date, NOW_MS - (63 - week * 7) * DAY_MS);
+      store().completeSession(PROFILE_ID, date, at);
     }
     // A body mass entry per week, so the Log view's projection chart has a real series.
     store().logBodyMass(
       {
         profileId: PROFILE_ID,
-        date: daysBefore(63 - week * 7),
+        date: daysBefore(START_OFFSET - week * 7),
         massKg: 84 - week * 0.55, // [kg], about 0.65 %BW/week, inside the Garthe band
         enteredUnit: 'imperial',
         bodyFatPct: null,
       },
-      NOW_MS - (63 - week * 7) * DAY_MS,
+      NOW_MS - (START_OFFSET - week * 7) * DAY_MS,
     );
   }
 

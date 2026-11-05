@@ -35,7 +35,7 @@ export interface QuarantinedRecord {
   key: string;
   /** Position in the stored per-profile list, or null for a whole record. */
   index: number | null;
-  /** The first validation issue, path then reason, as parseState words it. */
+  /** Every validation issue of this record, path then reason, joined by "; " (audit B04). */
   reason: string;
   /** The record exactly as stored. */
   raw: unknown;
@@ -55,11 +55,10 @@ const FIELD = AppStateSchema.shape;
 
 type Parsed = { ok: true; value: unknown } | { ok: false; reason: string };
 
+/** Every issue, not the first: a user repairing a file sees all of it at once (audit B04). */
 function reasonOf(issues: readonly { path: readonly PropertyKey[]; message: string }[], prefix: string): string {
-  const first = issues[0];
-  if (first === undefined) return `${prefix}: unknown validation failure`;
-  const where = [prefix, ...first.path.map(String)].join('.');
-  return `${where}: ${first.message}`;
+  if (issues.length === 0) return `${prefix}: unknown validation failure`;
+  return issues.map((issue) => `${[prefix, ...issue.path.map(String)].join('.')}: ${issue.message}`).join('; ');
 }
 
 /** One record of a map store, through that field's own schema on a one-entry map. */
@@ -83,17 +82,26 @@ export function assembleState(stored: StoredRecords): AssembleResult {
   const records = (store: StoreName): ReadonlyMap<string, unknown> => stored.get(store) ?? new Map<string, unknown>();
   const out: Record<string, Record<string, unknown>> = {};
 
-  // Profiles first: every other map is checked against their ids.
+  // Profiles first: every other map is checked against their ids. Every bad profile is named
+  // before refusing, so one refusal lists all of them (audit B04).
   const profiles: Record<string, unknown> = {};
+  const refusals: string[] = [];
   for (const [key, raw] of records('profiles')) {
     const parsed = parseEntry('profiles', key, raw);
-    if (!parsed.ok) return { ok: false, error: `profiles.${key}: ${parsed.reason}` };
+    if (!parsed.ok) {
+      refusals.push(`profiles.${key}: ${parsed.reason}`);
+      continue;
+    }
     const id: unknown = Reflect.get(parsed.value as object, 'id');
-    if (id !== key) return { ok: false, error: `profiles.${key}: profile record key "${key}" does not match its id "${String(id)}"` };
+    if (id !== key) {
+      refusals.push(`profiles.${key}: profile record key "${key}" does not match its id "${String(id)}"`);
+      continue;
+    }
     profiles[key] = parsed.value;
     captureExtras(extras, recordId('profiles', key), raw, parsed.value);
     captureRepairs(repairs, key, raw, parsed.value);
   }
+  if (refusals.length > 0) return { ok: false, error: refusals.join('; ') };
   out.profiles = profiles;
   const profileIds = new Set(Object.keys(profiles));
 

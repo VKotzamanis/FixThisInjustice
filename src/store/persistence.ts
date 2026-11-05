@@ -1,5 +1,5 @@
 import type { AppState } from '../domain/types';
-import { CURRENT_SCHEMA_VERSION, parseState } from '../domain/schema';
+import { AppStateSchema, CURRENT_SCHEMA_VERSION } from '../domain/schema';
 import { messageOf } from './db/errors';
 import { migrate } from '../domain/migrations';
 import { assembleState, type QuarantinedRecord, type StoredRecords } from './db/assemble';
@@ -7,7 +7,7 @@ import type { MetaRecord, RecordBackend } from './db/backend';
 import { broadcastRevisionChannel } from './db/channel';
 import { idbRecordStore } from './db/idb';
 import type { Preserved, Repair } from './db/preserve';
-import { APP_STORE, MAP_STORES, SINGLETON_KEYS, groupRecords, splitDocument } from './db/records';
+import { APP_STORE, MAP_STORES, SINGLETON_KEYS, groupRecords, splitDocument, type RecordPut } from './db/records';
 
 /**
  * The one storage key, owned by the one module allowed to touch Web Storage
@@ -52,7 +52,20 @@ export type SaveFailure =
 
 export type SaveResult = { ok: true } | { ok: false; reason: SaveFailure; error: string };
 
-export type ImportResult = { ok: true; state: AppState } | { ok: false; error: string };
+/**
+ * Audit B04: an import reads record by record, like a load. `quarantine` lists every record the
+ * file holds that this build cannot read (left out of `state`); `preserved` carries the unknown
+ * keys, the repaired answers and the quarantined list items, so the store writes them back.
+ */
+export type ImportResult =
+  | {
+      ok: true;
+      state: AppState;
+      quarantine: readonly QuarantinedRecord[];
+      repairs: readonly Repair[];
+      preserved: Preserved;
+    }
+  | { ok: false; error: string };
 
 /**
  * The raw stored text, unvalidated. The crash-recovery UI needs this: when the
@@ -116,22 +129,63 @@ export function exportJson(state: AppState): string {
   return `${JSON.stringify({ ...state, pushDevice: null }, null, 2)}\n`;
 }
 
+type ReadDocument =
+  | { ok: true; puts: RecordPut[]; assembled: Extract<ReturnType<typeof assembleState>, { ok: true }> }
+  | { ok: false; error: string };
+
 /**
- * Import goes through the same validator as every other entry point, and writes
- * nothing: a rejected document must leave both memory and storage untouched
- * (security C1). The caller installs the returned state through the store's
- * replaceState, which is the only writer and the only path.
+ * A parsed JSON document to validated records: schemaVersion, the migration chain, the record
+ * split, then assembleState, which validates record by record. The ONE read path for a JSON
+ * document, shared by the first-boot fti.v3 import and the user's file import (audit B04), so
+ * a record either path accepts the other accepts too. Writes nothing.
+ */
+function readDocument(doc: unknown): ReadDocument {
+  if (typeof doc !== 'object' || doc === null || Array.isArray(doc)) return { ok: false, error: 'not a JSON object' };
+  const version: unknown = Reflect.get(doc, 'schemaVersion');
+  if (typeof version !== 'number' || !Number.isInteger(version)) {
+    return { ok: false, error: 'missing or non-integer schemaVersion' };
+  }
+  const migrated = migrate(doc, version, CURRENT_SCHEMA_VERSION);
+  if (!migrated.ok) return { ok: false, error: migrated.error };
+  if (typeof migrated.value !== 'object' || migrated.value === null) return { ok: false, error: 'not a JSON object' };
+  const split = splitDocument(migrated.value as Record<string, unknown>);
+  if (!split.ok) return { ok: false, error: split.error };
+  const assembled = assembleState(groupRecords(split.puts));
+  if (!assembled.ok) return { ok: false, error: assembled.error };
+  return { ok: true, puts: split.puts, assembled };
+}
+
+/**
+ * The top-level fields a whole document must carry (those AppStateSchema gives no default).
+ * A load fills an absent store with nothing; an import must not: an empty or truncated file
+ * would otherwise replace every record with none.
+ */
+const REQUIRED_FIELDS: readonly string[] = Object.entries(AppStateSchema.shape)
+  .filter(([, schema]) => !schema.safeParse(undefined).success)
+  .map(([field]) => field);
+
+/**
+ * Import reads through the same per-record path as a load (audit B04): an invalid record is
+ * quarantined and listed, every other record imports, and a refusal (unreadable JSON, a newer
+ * schema, an unreadable profile, missing fields) names every issue it found. Writes nothing:
+ * a rejected document leaves memory and storage untouched (security C1). The caller installs
+ * the result through the store's importJson, the only writer.
  */
 export function importJson(text: string): ImportResult {
-  let raw: unknown;
+  let doc: unknown;
   try {
-    raw = JSON.parse(text);
+    doc = JSON.parse(text);
   } catch (e) {
     return { ok: false, error: `not valid JSON: ${messageOf(e)}` };
   }
-  const parsed = parseState(raw);
-  if (!parsed.ok) return { ok: false, error: parsed.error };
-  return { ok: true, state: parsed.state };
+  if (typeof doc === 'object' && doc !== null && !Array.isArray(doc) && Number.isInteger(Reflect.get(doc, 'schemaVersion'))) {
+    const missing = REQUIRED_FIELDS.filter((field) => field !== 'schemaVersion' && Reflect.get(doc, field) === undefined);
+    if (missing.length > 0) return { ok: false, error: missing.map((field) => `${field}: missing`).join('; ') };
+  }
+  const read = readDocument(doc);
+  if (!read.ok) return read;
+  const { state, quarantine, repairs, preserved } = read.assembled;
+  return { ok: true, state, quarantine, repairs, preserved };
 }
 
 /*
@@ -247,32 +301,19 @@ type ImportOutcome =
 
 /** fti.v3 -> raw records, written verbatim (unknown keys and invalid records included). */
 async function importLegacy(backend: RecordBackend, text: string): Promise<ImportOutcome> {
+  // Audit B01 (e2e/b01-recovery.spec.ts): a document the loader refuses is not imported. The
+  // records are assembled BEFORE the commit, so a refused fti.v3 leaves the database empty
+  // (nothing written) and fti.v3 untouched; a quarantined record still imports as stored.
   let doc: unknown;
   try {
     doc = JSON.parse(text);
   } catch (e) {
     return { ok: false, reason: 'invalid', error: `stored document is not JSON: ${messageOf(e)}` };
   }
-  if (typeof doc !== 'object' || doc === null || Array.isArray(doc)) {
-    return { ok: false, reason: 'invalid', error: 'not a JSON object' };
-  }
-  const version: unknown = Reflect.get(doc, 'schemaVersion');
-  if (typeof version !== 'number' || !Number.isInteger(version)) {
-    return { ok: false, reason: 'invalid', error: 'missing or non-integer schemaVersion' };
-  }
-  const migrated = migrate(doc, version, CURRENT_SCHEMA_VERSION);
-  if (!migrated.ok) return { ok: false, reason: 'invalid', error: migrated.error };
-  if (typeof migrated.value !== 'object' || migrated.value === null) {
-    return { ok: false, reason: 'invalid', error: 'not a JSON object' };
-  }
-  const split = splitDocument(migrated.value as Record<string, unknown>);
-  if (!split.ok) return { ok: false, reason: 'invalid', error: split.error };
-  // Audit B01 (e2e/b01-recovery.spec.ts): a document the loader refuses is not imported. The
-  // records are assembled BEFORE the commit, so a refused fti.v3 leaves the database empty
-  // (nothing written) and fti.v3 untouched; a quarantined record still imports as stored.
-  const assembled = assembleState(groupRecords(split.puts));
-  if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error };
-  const committed = await backend.commit({ clear: false, puts: split.puts, deletes: [] }, 0, CURRENT_SCHEMA_VERSION);
+  const read = readDocument(doc);
+  if (!read.ok) return { ok: false, reason: 'invalid', error: read.error };
+  const { puts, assembled } = read;
+  const committed = await backend.commit({ clear: false, puts, deletes: [] }, 0, CURRENT_SCHEMA_VERSION);
   if (committed.ok) return { ok: true, revision: committed.revision, assembled };
   if (committed.reason === 'stale') return 'stale';
   return { ok: false, reason: 'unavailable', error: committed.error };

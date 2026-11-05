@@ -637,8 +637,8 @@ export const MotivationStateSchema = z.object({
 
 /**
  * A logged set's ordinal as a JSON object key: a decimal integer, unsigned and unpadded.
- * Keys are validated rather than accepted as any string, for the same reason `notes` validates
- * its inner keys as local dates: the store is the only writer and it writes String(ordinal), so
+ * Keys are validated rather than accepted as any string: the store is the only writer and it
+ * writes String(ordinal), so
  * anything else in this position is a corrupted document rather than data to be kept.
  */
 const SetOrdinalKeySchema = z.string().regex(/^(?:0|[1-9][0-9]*)$/, 'expected a set ordinal');
@@ -691,7 +691,8 @@ export const UiPrefsSchema = z.object({
    */
   introSeen: z.boolean().default(false),
   lastView: z.string().min(1).max(40),
-  accent: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'expected a #rrggbb colour'),
+  // ROADMAP N4/N7: `accent` (#rrggbb, read by no code) was retired. z.object strips it from an
+  // older document on read; the stored record keeps it (src/store/db/preserve.ts extras).
   scanlines: z.boolean(),
   flicker: z.boolean(),
   density: z.enum(['compact', 'normal']),
@@ -940,7 +941,6 @@ const PROFILE_KEYED_MAPS = [
   'specimens',
   'capsules',
   'customExercises',
-  'notes',
 ] as const;
 
 export const AppStateSchema = z
@@ -980,11 +980,8 @@ export const AppStateSchema = z
     capsules: z.record(z.string(), TimeCapsuleSchema.nullable()),
     // Additive: user-added exercises by profile id, with generated ids (A26).
     customExercises: z.record(z.string(), z.array(ExerciseSchema)).default({}),
-    // Additive: daily notes by profile id then local day. The inner key is
-    // validated as a LocalDate, so a corrupted key is rejected rather than stored.
-    notes: z
-      .record(z.string(), z.record(LocalDateSchema, z.string().max(MAX_NOTE_CHARS)))
-      .default({}),
+    // ROADMAP N4: `notes` (daily notes by profile then local day) was retired: no UI ever wrote
+    // or showed it. z.object strips it from an older document or export on read.
     // Additive (C1.G.1). See SetupDraftSchema's own comment for why this is `.catch(null)`
     // rather than a bare `.default(null)`.
     setupDraft: SetupDraftSchema,
@@ -1069,14 +1066,11 @@ export function defaultState(): AppState {
     specimens: {},
     capsules: {},
     customExercises: {},
-    notes: {},
     setupDraft: null,
     ui: {
       bootSeen: false,
       introSeen: false,
       lastView: 'today',
-      // Reconciled accent, code review A67; matches tokens.css and the manifest.
-      accent: '#a3e635',
       scanlines: true,
       flicker: false,
       density: 'normal',

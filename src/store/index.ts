@@ -80,7 +80,7 @@ import { clearStorage, exportJson as serialise, importJson as deserialise, loadD
 import type { QuarantinedRecord } from './db/assemble';
 import type { RecordBackend } from './db/backend';
 import { EMPTY_PRESERVED, encodeOps, type Preserved, type Repair } from './db/preserve';
-import { diffStates, isEmptyOps, mergeOps, splitState, type RecordOps } from './db/records';
+import { APP_STORE, diffStates, isEmptyOps, mergeOps, splitState, type RecordOps } from './db/records';
 import { nearQuota, readStorageEstimate, type StorageReading } from './db/quota';
 
 export type SaveErrorReason = SaveFailure;
@@ -188,7 +188,11 @@ export interface AppActions {
   hydrate(backend: RecordBackend): Promise<void>;
   replaceState(next: AppState): void;
   exportJson(): string;
-  importJson(text: string): { ok: true } | { ok: false; error: string };
+  /**
+   * Audit B04: installs a file's readable records; `quarantine` lists the ones left out (kept
+   * on disk as stored and listed in Settings), [] when every record was readable.
+   */
+  importJson(text: string): { ok: true; quarantine: readonly QuarantinedRecord[] } | { ok: false; error: string };
   wipeAll(): void;
   /** Shallow patch of the UI preferences; every other field is left alone. */
   setUi(patch: Partial<UiPrefs>): void;
@@ -440,7 +444,6 @@ export function selectState(s: AppStore): AppState {
     specimens: s.specimens,
     capsules: s.capsules,
     customExercises: s.customExercises,
-    notes: s.notes,
     setupDraft: s.setupDraft,
     ui: s.ui,
   };
@@ -701,7 +704,7 @@ export const useAppStore = create<AppStore>()((set, get) => {
     return serialise(selectState(get()));
   },
 
-  importJson(text: string): { ok: true } | { ok: false; error: string } {
+  importJson(text: string): { ok: true; quarantine: readonly QuarantinedRecord[] } | { ok: false; error: string } {
     const result = deserialise(text);
     if (!result.ok) return { ok: false, error: result.error };
     // Import goes through the store, never straight to storage: writing behind
@@ -714,10 +717,16 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // Audit B12: the user stays on the view they imported from, so they see the result there.
     const here = get().ui.lastView;
     get().replaceState({ ...result.state, ui: { ...result.state.ui, lastView: here } });
+    // Audit B04: what the file held but this build cannot read goes to disk as stored, beside
+    // the replaced records, exactly as a load keeps it; Settings lists it until the next load.
+    adoptImported(result.preserved, result.quarantine);
     // Audit B12: the session slice described the replaced document; it restarts from the new one.
-    set({ session: restoredSession(EMPTY_SESSION, result.state, Date.now()) }); // [ms] epoch, UTC
+    set({
+      session: restoredSession(EMPTY_SESSION, result.state, Date.now()), // [ms] epoch, UTC
+      status: { ...get().status, quarantine: result.quarantine, repairs: result.repairs },
+    });
     clearSessionMirror();
-    return { ok: true };
+    return { ok: true, quarantine: result.quarantine };
   },
 
   wipeAll(): void {
@@ -1255,6 +1264,23 @@ async function reloadFrom(e: Engine, dropped: boolean): Promise<void> {
   if (dropped) {
     useAppStore.setState((s) => ({ status: { ...s.status, externalWriteReplaced: true } }));
   }
+}
+
+/**
+ * Audit B04: called right after replaceState installed an imported document, in the same task,
+ * so the replace (queued, not yet committed) is encoded with the import's preserved extras,
+ * repairs and quarantined list items, and the quarantined whole records are written as stored
+ * in the same transaction. A quarantined `app` singleton is not written: the state holds its
+ * replacement, as on a load.
+ */
+function adoptImported(preserved: Preserved, quarantine: readonly QuarantinedRecord[]): void {
+  const e = engine;
+  if (e === null || !canPersist(useAppStore.getState().status)) return;
+  e.preserved = preserved;
+  const puts = quarantine
+    .filter((q) => q.index === null && q.store !== APP_STORE)
+    .map((q) => ({ store: q.store, key: q.key, value: q.raw }));
+  if (puts.length > 0) queueOps({ clear: false, puts, deletes: [] });
 }
 
 function queueOps(ops: RecordOps): void {

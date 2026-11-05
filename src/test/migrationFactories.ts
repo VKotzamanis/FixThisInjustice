@@ -176,7 +176,6 @@ export function makeBlankState(profile = makeProfile(), plan = makePlan()): AppS
     pauses: {},
     assignments: {},
     sets: {},
-    notes: {},
     customExercises: {},
     // Additive (C1.G.1): a migrated document has no in-progress P1 wizard to resume.
     setupDraft: null,
@@ -195,7 +194,6 @@ export function makeBlankState(profile = makeProfile(), plan = makePlan()): AppS
       // shown to them.
       introSeen: true,
       lastView: 'today',
-      accent: '#a3e635',
       scanlines: true,
       flicker: false,
       density: 'normal',

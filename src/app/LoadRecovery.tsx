@@ -25,7 +25,9 @@ export function LoadRecovery(): ReactElement {
     const reader = new FileReader();
     reader.onload = () => {
       const text = typeof reader.result === 'string' ? reader.result : '';
-      // importJson validates with the loader's schema and, on success, reopens writing.
+      // importJson reads record by record, like the loader (audit B04): unreadable records are
+      // left out, kept as stored and listed in Settings (a toast says so); the rest installs and
+      // writing reopens. A refusal names every issue it found.
       const result = useAppStore.getState().importJson(text);
       setImportError(result.ok ? null : FORMAT.importRejected(result.error));
     };

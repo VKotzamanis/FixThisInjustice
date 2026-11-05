@@ -18,6 +18,7 @@ import type {
   PushDevice,
   ReminderSettings,
   SessionAssignment,
+  SessionEdits,
   SetupAnswers,
   SetupDraft,
   SpecimenInventory,
@@ -302,20 +303,37 @@ export const anyPlanPause: fc.Arbitrary<PlanPause> = fc.record({
   reason: fc.option(anyText, { nil: null }),
 });
 
-export const anySessionAssignment: fc.Arbitrary<SessionAssignment> = fc.record({
-  date: anyLocalDate,
-  sessionId: anyId,
-  sourceIndex: fc.integer({ min: 0, max: 200 }),
-  status: fc.constantFrom(
-    'planned' as const,
-    'in-progress' as const,
-    'completed' as const,
-    'skipped' as const,
-  ),
-  startedAt: fc.option(anyEpochMs, { nil: null }),
-  completedAt: fc.option(anyEpochMs, { nil: null }),
-  skipReason: fc.option(anyText, { nil: null }),
+/**
+ * ROADMAP L1-L4 follow-up (coverage report 2026-11-05): the day's session edits. Ids are short
+ * exercise-like slugs so a swap's key and value can coincide with `skipped`/`order` entries.
+ */
+const anyExerciseKey = fc.constantFrom('barbell-bench-press', 'romanian-deadlift', 'trap-bar-deadlift', 'plank', 'custom-1');
+export const anySessionEdits: fc.Arbitrary<SessionEdits> = fc.record({
+  swaps: fc.dictionary(anyExerciseKey, anyExerciseKey, { maxKeys: 3 }),
+  skipped: fc.array(anyExerciseKey, { maxLength: 3 }),
+  added: fc.array(anyExerciseKey, { maxLength: 3 }),
+  order: fc.array(anyExerciseKey, { maxLength: 5 }),
 });
+
+/** `edits` is optional and has no default (schema.ts): absent and present are both generated. */
+export const anySessionAssignment: fc.Arbitrary<SessionAssignment> = fc.record(
+  {
+    date: anyLocalDate,
+    sessionId: anyId,
+    sourceIndex: fc.integer({ min: 0, max: 200 }),
+    status: fc.constantFrom(
+      'planned' as const,
+      'in-progress' as const,
+      'completed' as const,
+      'skipped' as const,
+    ),
+    startedAt: fc.option(anyEpochMs, { nil: null }),
+    completedAt: fc.option(anyEpochMs, { nil: null }),
+    skipReason: fc.option(anyText, { nil: null }),
+    edits: anySessionEdits,
+  },
+  { requiredKeys: ['date', 'sessionId', 'sourceIndex', 'status', 'startedAt', 'completedAt', 'skipReason'] },
+);
 
 export const anyLoggedSet: fc.Arbitrary<LoggedSet> = fc.record({
   id: anyId,
@@ -448,15 +466,6 @@ export const anyTimeCapsule: fc.Arbitrary<TimeCapsule> = fc.record({
   opened: fc.boolean(),
 });
 
-/** One profile's daily notes, keyed by local day. */
-const anyNotesForProfile: fc.Arbitrary<Record<LocalDate, string>> = fc
-  .array(fc.tuple(anyLocalDate, fc.string({ maxLength: 120 })), { maxLength: 3 })
-  .map((pairs) => {
-    const out: Record<LocalDate, string> = {};
-    for (const [date, text] of pairs) out[date] = text;
-    return out;
-  });
-
 /**
  * base64url is the encoding the Web Push API uses for the subscription keys
  * (RFC 8291 / RFC 4648 section 5): the URL-safe alphabet, no padding.
@@ -498,7 +507,6 @@ export const anyPushDevice: fc.Arbitrary<PushDevice> = fc.record({
 export const anyUiPrefs: fc.Arbitrary<UiPrefs> = fc.record({
   bootSeen: fc.boolean(),
   lastView: anyText,
-  accent: fc.constantFrom('#a3e635', '#67e8f9', '#fbbf24'),
   scanlines: fc.boolean(),
   flicker: fc.boolean(),
   density: fc.constantFrom('compact' as const, 'normal' as const),
@@ -667,7 +675,6 @@ export const anyAppState: fc.Arbitrary<AppState> = fc
       specimens: byProfile(anySpecimenInventory),
       capsules: byProfile(fc.option(anyTimeCapsule, { nil: null })),
       customExercises: byProfile(fc.array(anyExercise, { maxLength: 2 })),
-      notes: byProfile(anyNotesForProfile),
       setupDraft: fc.option(anySetupDraft, { nil: null }),
       ui: anyUiPrefs,
     });

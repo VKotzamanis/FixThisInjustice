@@ -117,7 +117,6 @@ export function e2eDocument(opts: DocumentOptions = {}): AppState {
     bootSeen: true,
     introSeen: opts.introSeen ?? true,
     lastView: 'today',
-    accent: '#a3e635',
     scanlines: false,
     flicker: false,
     density: 'normal',
@@ -151,7 +150,6 @@ export function e2eDocument(opts: DocumentOptions = {}): AppState {
     specimens: {},
     capsules: {},
     customExercises: {},
-    notes: {},
     setupDraft: opts.setupDraft ?? null,
     ui,
   };

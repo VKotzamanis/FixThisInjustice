@@ -24,12 +24,13 @@
  * invites the reader to resolve it in their own zone.
  */
 
-import { FORMAT, copy } from '../../content/copy';
+import { FORMAT, SKIN_COPY, copy } from '../../content/copy';
 import { localDateOf } from '../dates';
 import { computeTargets, isInDomain } from '../nutrition';
 import { nutritionInputForState, trendEntries } from '../measurements';
 import { EXERCISE_BY_ID } from '../plan/library';
 import { computeRecords } from '../training/records';
+import { isInProgramme } from '../schedule/weekly';
 import type { AppState, EpochMs, Exercise, Kg, UnitSystem } from '../types';
 import { UNIT_LABEL, formatBeverageTarget, formatLoad, formatMass } from '../units';
 
@@ -79,6 +80,8 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
     return `FIXTHISINJUSTICE TRAINING SUMMARY\n\n${FORMAT.summaryNoProfile(profileId)}\n`;
   }
 
+  // ROADMAP N7: the sentences resolve through the document's skin overlay, as on screen.
+  const overlay = SKIN_COPY[state.ui.skin];
   const units: UnitSystem = profile.units;
   const label = UNIT_LABEL[units];
   const today = localDateOf(now, profile.timezone);
@@ -87,9 +90,13 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   const trend = trendEntries(massLog);
   const latestMassKg: Kg = trend.at(-1)?.massKg ?? profile.body.baselineMassKg; // [kg]
   const sets = Object.values(state.sets).filter((s) => s.profileId === profileId);
-  const reviews = [...(state.weeklyReviews[profileId] ?? [])].sort((a, b) =>
-    compareCodePoint(a.weekStart, b.weekStart),
-  );
+  // ROADMAP B1c: only the running programme's weeks, by the one predicate every reader of
+  // stored reviews uses (audit D11). A document written before the bound existed still holds
+  // 0-of-target reviews of weeks after completion; a replaced plan's reviews predate this one.
+  const cursor = state.cursors[profileId];
+  const reviews = (state.weeklyReviews[profileId] ?? [])
+    .filter((r) => isInProgramme(r.weekStart, cursor))
+    .sort((a, b) => compareCodePoint(a.weekStart, b.weekStart));
 
   const lines: string[] = [];
   lines.push('FIXTHISINJUSTICE TRAINING SUMMARY');
@@ -131,7 +138,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
 
   lines.push('TARGETS (per day)');
   if (input === null || !isInDomain(input)) {
-    lines.push(`  ${copy('advice.targetsNotEstimatedForProfile')}`);
+    lines.push(`  ${copy('advice.targetsNotEstimatedForProfile', overlay)}`);
   } else {
     const targets = computeTargets(input);
     lines.push(field('Resting metabolic rate', `${String(Math.round(targets.rmrKcal))} kcal`));
@@ -182,7 +189,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
 
   lines.push('SESSIONS PER WEEK (completed / target)');
   if (reviews.length === 0) {
-    lines.push(`  ${copy('advice.noWeeksYet')}`);
+    lines.push(`  ${copy('advice.noWeeksYet', overlay)}`);
   } else {
     for (const r of reviews) {
       const delta = r.delta > 0 ? `+${String(r.delta)}` : String(r.delta); // [sessions]
@@ -195,7 +202,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
 
   lines.push('BODY MASS');
   if (massLog.length === 0) {
-    lines.push(`  ${copy('advice.noBodyMassLogged')}`);
+    lines.push(`  ${copy('advice.noBodyMassLogged', overlay)}`);
   } else {
     for (const entry of massLog) {
       // The role, when one was recorded (spec R9), so a pre/post pair reads as one.
@@ -228,7 +235,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
 
   lines.push('PERSONAL RECORDS');
   if (records.length === 0) {
-    lines.push(`  ${copy('advice.noSetsLogged')}`);
+    lines.push(`  ${copy('advice.noSetsLogged', overlay)}`);
   } else {
     for (const r of records) {
       const best = r.bestSet;
@@ -236,7 +243,7 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
       const heaviest = FORMAT.loggedSet(formatLoad(best.loadKg, units), String(best.reps));
       const estimate =
         r.bestE1RM === null
-          ? copy('status.noEstimated1RM')
+          ? copy('status.noEstimated1RM', overlay)
           : FORMAT.estimated1RM(formatLoad(r.bestE1RM.e1RMKg, units));
       lines.push(`  ${pad(r.name, 30)}${pad(heaviest, 18)}${pad(estimate, 26)}${best.date}`);
     }

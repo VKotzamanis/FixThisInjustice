@@ -13,8 +13,12 @@ import { ACCESS_UNLOCKS } from '../types';
 import type {
   EquipmentAccess,
   Exercise,
+  LocalDate,
   PlannedExercise,
   PlannedSession,
+  PlanTemplate,
+  Prescription,
+  SessionAssignment,
   SessionEdits,
 } from '../types';
 
@@ -120,6 +124,37 @@ export function substitutePlanned(slot: PlannedExercise, sub: Exercise): Planned
     prescription,
     restS: restSFor(sub, prescription), // [s]
   };
+}
+
+/**
+ * ROADMAP R4: the days `exerciseId` was swapped INTO a slot, each with the prescription it was
+ * logged under that day (substitutePlanned of that slot, the one the Train card showed). The
+ * slot is read from the assignment's own session, found in any stored plan, so a swap made under
+ * a programme since replaced still resolves. A day whose session, slot or exercise no longer
+ * resolves is left out (nothing is known about its prescription).
+ */
+export function swapDayPrescriptions(
+  exerciseId: string,
+  assignments: readonly SessionAssignment[],
+  plans: Readonly<Record<string, PlanTemplate>>,
+  library: Readonly<Record<string, Exercise>>,
+): Map<LocalDate, Prescription> {
+  const out = new Map<LocalDate, Prescription>();
+  const sub = library[exerciseId];
+  if (sub === undefined) return out;
+  for (const a of assignments) {
+    const swaps = a.edits?.swaps;
+    if (swaps === undefined) continue;
+    const slotKey = Object.keys(swaps).find((k) => swaps[k] === exerciseId);
+    if (slotKey === undefined) continue;
+    const session = Object.values(plans)
+      .flatMap((p) => p.sessions)
+      .find((s) => s.id === a.sessionId);
+    const slot = session?.exercises.find((p) => p.exerciseId === slotKey);
+    if (slot === undefined) continue;
+    out.set(a.date, substitutePlanned(slot, sub).prescription);
+  }
+  return out;
 }
 
 /** The prescription of an exercise the plan never prescribed: the moderate default, 3 sets. */

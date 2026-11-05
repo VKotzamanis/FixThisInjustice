@@ -130,9 +130,9 @@ export const TAB_ORDER: readonly TabSlot[] = ['today', 'train', 'targets', 'log'
 export const MORE_VIEWS: readonly ViewId[] = VIEW_IDS.filter((id) => !TAB_ORDER.includes(id));
 
 /**
- * THE icon map for the bar and the More sheet (brief section 8). Owner review of `dropPanel`,
- * `archivePanel`, `morePanel` and the More-row mapping is pending: swapping an icon is one edit
- * here and nothing else. Bar icons are `Panel` variants (lime outline for the black bar); More
+ * THE icon map for the bar and the More sheet (brief section 8). The owner approved these icons
+ * on 2026-11-05 (docs/design/2026-09-04-icon-register.csv); swapping one is one edit here and
+ * nothing else. Bar icons are `Panel` variants (lime outline for the black bar); More
  * rows are lime-ground icons. Partial on purpose: views.test.ts asserts every slot in TAB_ORDER
  * and every row in MORE_VIEWS has one, so a reordered bar names its missing icon.
  */

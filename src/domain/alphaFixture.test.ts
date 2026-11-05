@@ -60,6 +60,17 @@ describe('the fixture reaches the states a fresh install cannot', () => {
     expect(statuses.has('skipped')).toBe(true);
   });
 
+  it('dates every assignment and set on one of the profile\'s slot weekdays (ROADMAP S4)', () => {
+    // A LocalDate's weekday is calendar arithmetic, zone-free: parse it as a UTC midnight.
+    const weekdayOf = (date: string): number => new Date(`${date}T00:00:00Z`).getUTCDay(); // 0 = Sunday
+    const slotDays = new Set<number>((doc.availability[PROFILE_ID]?.slots ?? []).map((s) => s.weekday));
+    expect([...slotDays].sort()).toEqual([1, 3, 5]);
+    const assignmentDays = (doc.assignments[PROFILE_ID] ?? []).map((a) => a.date);
+    const setDays = Object.values(doc.sets).map((s) => s.assignmentDate);
+    expect(assignmentDays.length).toBeGreaterThan(0);
+    expect([...assignmentDays, ...setDays].filter((d) => !slotDays.has(weekdayOf(d)))).toEqual([]);
+  });
+
   it('carries one Atlas card of every rarity, and leaves the rest locked', () => {
     const acquired = Object.keys(doc.specimens[PROFILE_ID]?.acquired ?? {});
     const rarities = new Set(

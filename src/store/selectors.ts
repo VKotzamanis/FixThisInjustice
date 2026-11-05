@@ -218,6 +218,30 @@ export function useExerciseHistory(exerciseId: string): LoggedSet[] {
   }, [sets, profileId, exerciseId]);
 }
 
+/** Stable empty list for a profile with no assignments (a fresh array would loop the selector). */
+const NO_ASSIGNMENTS: readonly SessionAssignment[] = [];
+
+/**
+ * ROADMAP R4: what progressionHistory needs beside the sets: the active profile's assignments
+ * (their swap edits), every stored plan (a swap day's session may belong to a replaced plan) and
+ * the current plan (where the exercise's own slot is). Each is a stable store reference.
+ */
+export function useProgressionContext(): {
+  assignments: readonly SessionAssignment[];
+  plans: Readonly<Record<string, PlanTemplate>>;
+  currentPlan: PlanTemplate | null;
+} {
+  const assignments = useAppStore((s) =>
+    s.activeProfileId === null ? NO_ASSIGNMENTS : (s.assignments[s.activeProfileId] ?? NO_ASSIGNMENTS),
+  );
+  const plans = useAppStore((s) => s.plans);
+  const currentPlan = useAppStore((s) => {
+    const cursor = s.activeProfileId === null ? undefined : s.cursors[s.activeProfileId];
+    return cursor === undefined ? null : (s.plans[cursor.planId] ?? null);
+  });
+  return { assignments, plans, currentPlan };
+}
+
 /**
  * Every set logged against the training day for the active profile, in programme order.
  *

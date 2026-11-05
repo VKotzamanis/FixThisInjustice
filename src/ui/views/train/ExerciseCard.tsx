@@ -10,7 +10,7 @@ import { Fragment, useMemo, useState, type ReactElement, type ReactNode } from '
 import { copy, FORMAT, type CopyKey } from '../../../content/copy';
 import { FORM_CUES } from '../../../content/formCues';
 import { coachLine, type CoachLine } from '../../../domain/training/coach';
-import { suggestedProgression, type ProgressionAdvice } from '../../../domain/training/progression';
+import { progressionHistory, suggestedProgression, type ProgressionAdvice } from '../../../domain/training/progression';
 import { defaultRestS, startRest } from '../../../domain/training/restTimer';
 import type {
   Exercise,
@@ -23,7 +23,7 @@ import type {
 } from '../../../domain/types';
 import { formatLoad } from '../../../domain/units';
 import { useAppStore, type LogSetResult } from '../../../store';
-import { useExerciseHistory } from '../../../store/selectors';
+import { useExerciseHistory, useProgressionContext } from '../../../store/selectors';
 import { unlockAudio } from '../../audio/chime';
 import { useFormCuesModal } from '../../components/FormCuesModal';
 import { useVideoModal } from '../../components/VideoModal';
@@ -144,9 +144,16 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     [history, assignmentDate],
   );
 
+  // ROADMAP R4: a swap day logged at another slot's range stays in the history above (and in
+  // records and the Log) but does not decide this exercise's own-slot progression.
+  const { assignments, plans, currentPlan } = useProgressionContext();
+  const progressionSets = useMemo(
+    () => progressionHistory(priorHistory, planned, exercise.id, assignments, plans, currentPlan, library),
+    [priorHistory, planned, exercise.id, assignments, plans, currentPlan, library],
+  );
   const advice = useMemo(
-    () => suggestedProgression(priorHistory, planned, exercise, profile, block),
-    [priorHistory, planned, exercise, profile, block],
+    () => suggestedProgression(progressionSets, planned, exercise, profile, block),
+    [progressionSets, planned, exercise, profile, block],
   );
 
   // Audit C13: the engine quantises its suggestion once, onto the equipment grid, and its reason

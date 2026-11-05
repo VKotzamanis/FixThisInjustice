@@ -2948,6 +2948,13 @@ export const FORMAT = {
   importRejected: (reason: string): string =>
     `The import was rejected: ${reason}. Nothing has been changed.`,
 
+  /**
+   * Audit B04: the file imports, but these records in it cannot be read. Listed below the line,
+   * one validator reason each; after Replace they are kept as stored and Settings lists them.
+   */
+  importLeavesOut: (count: number): string =>
+    `${count === 1 ? 'One record' : `${String(count)} records`} in this file cannot be read. Replace imports everything else and keeps ${count === 1 ? 'it' : 'these'} aside, listed under Unreadable Records.`,
+
   /** The summary document's closing line, naming the unit every figure above it is in. */
   summaryUnitsFooter: (unit: string): string =>
     `All loads and masses in this document are in ${unit}.`,

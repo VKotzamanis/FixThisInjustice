@@ -26,6 +26,8 @@
     "idb": "^8.0.3",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "workbox-cacheable-response": "^7.4.1",
+    "workbox-range-requests": "^7.4.1",
     "zod": "^4.5.4",
     "zustand": "^5.0.15"
   },

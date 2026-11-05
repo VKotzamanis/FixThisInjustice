@@ -91,7 +91,7 @@ function replaceButton(): HTMLElement {
 /** A valid document that differs from the fixture, so an import of it is observable. */
 function otherDocument(): string {
   const seeded = makeBlankState();
-  seeded.ui.accent = '#ffffff';
+  seeded.ui.flicker = !seeded.ui.flicker;
   return JSON.stringify(seeded);
 }
 
@@ -275,6 +275,24 @@ describe('ExportView', () => {
     expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.replaceData') })).toBeNull();
   });
 
+  it('lists every record the file holds that cannot be read, and still offers Replace (audit B04)', () => {
+    render(<ExportView />);
+    const doc = JSON.parse(otherDocument()) as Record<string, unknown>;
+    doc.sets = {
+      bad1: { id: 'bad1', rpe: 7.3 },
+      bad2: { id: 'bad2', reps: -1 },
+    };
+    check(JSON.stringify(doc));
+    expect(screen.queryByRole('alert')).toBeNull();
+    const listed = screen.getByRole('status');
+    expect(within(listed).getByText(FORMAT.importLeavesOut(2))).toBeTruthy();
+    const items = within(listed).getAllByRole('listitem').map((li) => li.textContent);
+    expect(items).toHaveLength(2);
+    expect(items.some((t) => t?.startsWith('sets.bad1'))).toBe(true);
+    expect(items.some((t) => t?.startsWith('sets.bad2'))).toBe(true);
+    expect(screen.getByRole('button', { name: copyFor('limelight', 'button.replaceData') })).toBeTruthy();
+  });
+
   it('writes nothing to the store merely because a document validated', () => {
     render(<ExportView />);
     const before = useAppStore.getState().exportJson();
@@ -390,7 +408,7 @@ describe('ExportView', () => {
     render(<ExportView />);
     const exported = useAppStore.getState().exportJson();
     const seeded = makeBlankState();
-    seeded.ui.accent = '#ffffff';
+    seeded.ui.flicker = !seeded.ui.flicker;
     useAppStore.getState().replaceState(seeded);
     expect(useAppStore.getState().exportJson()).not.toBe(exported);
 

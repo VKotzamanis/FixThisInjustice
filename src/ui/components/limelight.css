@@ -59,10 +59,16 @@
 
 /* Three ways to stop it, and the pointer one is the design's own `:active`. */
 .ll-marquee-strip[data-paused='true'] .ll-marquee-track,
-.ll-marquee-strip:hover .ll-marquee-track,
 .ll-marquee-strip:focus-visible .ll-marquee-track,
 .ll-marquee-strip:active .ll-marquee-track {
   animation-play-state: paused;
+}
+
+/* Audit F15: hover only where a pointer can hover; on touch `:hover` sticks after a tap. */
+@media (hover: hover) {
+  .ll-marquee-strip:hover .ll-marquee-track {
+    animation-play-state: paused;
+  }
 }
 
 .ll-marquee-item {

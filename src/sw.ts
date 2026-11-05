@@ -2,8 +2,7 @@
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching';
 import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkOnly } from 'workbox-strategies';
-import { ExpirationPlugin } from 'workbox-expiration';
-import type { WorkboxPlugin } from 'workbox-core';
+import { MEDIA_CACHE, isMediaRequest, mediaPlugins } from './app/swMedia';
 import { cacheShownTags, handleNotificationClick, handlePush } from './domain/reminders/swHandlers';
 
 declare const self: ServiceWorkerGlobalScope;
@@ -21,19 +20,11 @@ registerRoute(new NavigationRoute(createHandlerBoundToURL(`${import.meta.env.BAS
 // only and is never written to a cache this app controls.
 registerRoute(({ url }) => url.origin !== self.location.origin, new NetworkOnly());
 
-// The one motivation video (P6). maxEntries 1 keeps a replaced video from
-// accumulating; purgeOnQuotaError lets the browser reclaim it under pressure.
-// The cast is a workbox-expiration 7.4.1 type defect, not a data cast: the class
-// declares cacheDidUpdate as an always-present `Callback | undefined`, which
-// exactOptionalPropertyTypes rejects against WorkboxPlugin's `cacheDidUpdate?`.
-const mediaExpiration = new ExpirationPlugin({
-  maxEntries: 1,
-  purgeOnQuotaError: true,
-}) as WorkboxPlugin;
-
+// The one motivation video (P6): CacheFirst with Range support and one entry
+// (src/app/swMedia.ts, audit E15).
 registerRoute(
-  ({ url }) => url.origin === self.location.origin && url.pathname.includes('/media/'),
-  new CacheFirst({ cacheName: 'fti-media-v1', plugins: [mediaExpiration] }),
+  ({ url }) => isMediaRequest(url, self.location.origin),
+  new CacheFirst({ cacheName: MEDIA_CACHE, plugins: mediaPlugins() }),
 );
 
 /*

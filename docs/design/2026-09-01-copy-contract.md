@@ -87,7 +87,7 @@ string and never concatenates it into the message.
 Exercise form cues, exercise notes and tips, Atlas card bodies and citations, the body-step
 equation list, the sex-field rationale, supplement guidance, the body-fat chart text, the review
 step's data explainer, and the reminders runbook
-(`docs/RUNBOOK-reminders.md`) are exempt from R1 to R4
+(`docs/runbooks/reminders.md`) are exempt from R1 to R4
 and R9. They are reference text a user chooses to open. They are not exempt from R5, R6 or R11.
 None of them lives in a copy table: they are `src/content/formCues.ts`,
 `src/content/specimenCards.ts`, `src/content/bodyEquations.ts`, `src/content/sexRationale.ts`,
