@@ -235,17 +235,11 @@
   margin: 0.25rem 0 0.75rem;
 }
 
-/* The bar is monospace by construction: a proportional font makes # and - different widths.
- * Its totals take the next line in the same face, so neither line wraps at 320 px. */
-.view .view-progress,
-.view .view-progress-totals {
+/* The bar is monospace by construction: a proportional font makes # and - different widths. */
+.view .view-progress {
   font-family: var(--font-mono);
   font-size: 0.85rem;
   margin: 0.5rem 0 0;
-}
-
-.view .view-progress-totals {
-  margin-top: 0;
 }
 
 .view details {

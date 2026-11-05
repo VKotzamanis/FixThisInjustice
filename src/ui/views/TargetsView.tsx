@@ -146,20 +146,15 @@ function IntakeCheckIn(props: { profile: Profile; date: LocalDate; targets: Nutr
       <button type="button" className="is-primary" onClick={record}>
         {t('button.recordIntake')}
       </button>
-      {/* Bar and totals on two lines: together they wrapped at 320 px (owner report on 4a27393). */}
       <p className="view-progress">
-        <AsciiBar value={loggedKcal} target={targets.targetKcal} label={t('label.energyProgress')} testId="kcal-bar" />
-      </p>
-      <p className="view-progress-totals">
+        <AsciiBar value={loggedKcal} target={targets.targetKcal} label={t('label.energyProgress')} testId="kcal-bar" />{' '}
         <span data-testid="kcal-progress">
           {FORMAT.valueOfTarget(String(loggedKcal), FORMAT.kcal(targets.targetKcal))}
         </span>
       </p>
       <p className="view-progress">
         {/* The denominator is the LOWER bound of the protein range: "is the requirement met". */}
-        <AsciiBar value={loggedProteinG} target={targets.proteinG.lo} label={t('label.proteinProgress')} testId="protein-bar" />
-      </p>
-      <p className="view-progress-totals">
+        <AsciiBar value={loggedProteinG} target={targets.proteinG.lo} label={t('label.proteinProgress')} testId="protein-bar" />{' '}
         <span data-testid="protein-progress">
           {FORMAT.valueOfTarget(String(loggedProteinG), FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi))}
         </span>
