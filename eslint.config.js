@@ -48,10 +48,28 @@ const noQualifiedSessionStorage = [
   },
 ];
 
+// Spec R13: IndexedDB has two owners. The record engine (src/store/db/) and the motivation clip
+// store (src/domain/motivation/assets.ts). The bare global, its qualified forms and the `idb`
+// wrapper are banned everywhere else; test files may open a database to seed or inspect one.
+const indexedDbMessage =
+  'IndexedDB is owned by src/store/db/ (records) and src/domain/motivation/assets.ts (the clip). Go through the store.';
+const noQualifiedIndexedDb = [
+  {
+    selector: "MemberExpression[object.name='window'][property.name='indexedDB']",
+    message: indexedDbMessage,
+  },
+  {
+    selector: "MemberExpression[object.name='globalThis'][property.name='indexedDB']",
+    message: indexedDbMessage,
+  },
+];
+const noIdbImport = ['error', { paths: [{ name: 'idb', message: indexedDbMessage }] }];
+
 /** The bare-identifier bans, restated wherever an override lifts one of them. */
 const restrictedGlobals = [
   { name: 'localStorage', message: storageMessage },
   { name: 'sessionStorage', message: sessionStorageMessage },
+  { name: 'indexedDB', message: indexedDbMessage },
 ];
 
 export default tseslint.config(
@@ -92,9 +110,11 @@ export default tseslint.config(
         noToISOString,
         ...noQualifiedLocalStorage,
         ...noQualifiedSessionStorage,
+        ...noQualifiedIndexedDb,
       ],
 
       'no-restricted-globals': ['error', ...restrictedGlobals],
+      'no-restricted-imports': noIdbImport,
 
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'error',
@@ -107,8 +127,12 @@ export default tseslint.config(
     // document's key, not the per-tab mirror.
     files: ['src/store/persistence.ts'],
     rules: {
-      'no-restricted-globals': ['error', { name: 'sessionStorage', message: sessionStorageMessage }],
-      'no-restricted-syntax': ['error', noToISOString, ...noQualifiedSessionStorage],
+      'no-restricted-globals': [
+        'error',
+        { name: 'sessionStorage', message: sessionStorageMessage },
+        { name: 'indexedDB', message: indexedDbMessage },
+      ],
+      'no-restricted-syntax': ['error', noToISOString, ...noQualifiedSessionStorage, ...noQualifiedIndexedDb],
     },
   },
   {
@@ -116,8 +140,12 @@ export default tseslint.config(
     // The localStorage ban and the date ban are restated for the same reason.
     files: ['src/store/sessionMirror.ts'],
     rules: {
-      'no-restricted-globals': ['error', { name: 'localStorage', message: storageMessage }],
-      'no-restricted-syntax': ['error', noToISOString, ...noQualifiedLocalStorage],
+      'no-restricted-globals': [
+        'error',
+        { name: 'localStorage', message: storageMessage },
+        { name: 'indexedDB', message: indexedDbMessage },
+      ],
+      'no-restricted-syntax': ['error', noToISOString, ...noQualifiedLocalStorage, ...noQualifiedIndexedDb],
     },
   },
   {
@@ -125,7 +153,37 @@ export default tseslint.config(
     // restated so lifting the date ban does not also lift the storage bans.
     files: ['src/domain/dates.ts'],
     rules: {
-      'no-restricted-syntax': ['error', ...noQualifiedLocalStorage, ...noQualifiedSessionStorage],
+      'no-restricted-syntax': [
+        'error',
+        ...noQualifiedLocalStorage,
+        ...noQualifiedSessionStorage,
+        ...noQualifiedIndexedDb,
+      ],
+    },
+  },
+  {
+    // Spec R13: the two IndexedDB owners, and test files (which swap in a fake-indexeddb
+    // factory and may open a database to seed or inspect it). Only the IndexedDB ban is lifted;
+    // the Web Storage and date bans are restated.
+    files: [
+      'src/store/db/**/*.ts',
+      'src/domain/motivation/assets.ts',
+      'src/**/*.test.ts',
+      'src/**/*.test.tsx',
+    ],
+    rules: {
+      'no-restricted-globals': [
+        'error',
+        { name: 'localStorage', message: storageMessage },
+        { name: 'sessionStorage', message: sessionStorageMessage },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        noToISOString,
+        ...noQualifiedLocalStorage,
+        ...noQualifiedSessionStorage,
+      ],
+      'no-restricted-imports': 'off',
     },
   },
   {
