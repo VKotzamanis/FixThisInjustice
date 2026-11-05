@@ -30,6 +30,8 @@ export const PROFILE_ID = 'e2e-profile';
  */
 export const LABEL = {
   todayTab: 'today',
+  logTab: 'the archive',
+  settingsTab: 'backstage',
   start: "LET'S GO BABES",
   finish: "that's a wrap",
   skipToday: 'not today satan',
