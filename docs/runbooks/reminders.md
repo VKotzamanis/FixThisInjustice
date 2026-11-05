@@ -164,8 +164,8 @@ ALLOWED_ORIGIN = "https://vkotzamanis.github.io"
 misbehaves. `worker/src/push.ts` line 77 sends it on every push.
 
 `ALLOWED_ORIGIN` is the exact scheme and host of the Pages site, with no trailing slash and
-no path. `worker/src/index.ts` line 257 rejects any request whose `Origin` header differs
-from it, and line 70 echoes it as `Access-Control-Allow-Origin`. A mismatch of one
+no path. `handleFetch` in `worker/src/index.ts` rejects any request whose `Origin` header differs
+from it, and `corsHeaders` echoes it as `Access-Control-Allow-Origin`. A mismatch of one
 character turns every browser call into a 403.
 
 Confirm nothing is left:
@@ -213,8 +213,8 @@ Now watch a cron tick:
 npm --prefix worker run tail
 ```
 
-Within a minute you should see `tick devices=0 sent=0 failed=0 removed=0 writes=0`.
-`worker/src/index.ts` lines 358 to 360 log it. Stop with Ctrl-C.
+Within a minute you should see `tick devices=0 sent=0 failed=0 removed=0 writes=0 deferred=0 duplicates=0`.
+The `scheduled` handler in `worker/src/index.ts` logs it. Stop with Ctrl-C.
 
 ## 9. Set the two GitHub repository variables
 
@@ -260,70 +260,97 @@ Expect `connect-src 'self' https://fti-reminders.<subdomain>.workers.dev`. If it
 
 ## 11. The free plan budget this Worker is designed for
 
-Let `N` be the number of subscribed devices. The cron fires 1440 times a day
+Let `N` be the number of indexed devices. The cron fires 1440 times a day
 (`worker/wrangler.toml` line 17).
 
-**KV reads.** Each tick reads `idx` once and each indexed device record once, so
-`1440 * (1 + N)`. The free tier allows 100,000 reads a day (`REFERENCES.md` line 35). That
-gives `N <= 68`.
+**Subrequests per tick: the binding constraint, now capped in code.** The free plan allows 50
+subrequests per invocation (Workers limits page, `50/request` free against `10,000` paid,
+`REFERENCES.md` line 645; platform fact 6 of `docs/plans/2026-09-01-05-reminders.md`).
+`runTick` in `worker/src/index.ts` counts every KV call and every push `fetch` against
+`SUBREQUEST_BUDGET = 50` and never spends past it (audit E10b):
 
-`N` counts indexed devices, not people, and until the reaper shipped it only ever grew. A
-record whose reminders have all fired is never pushed to. The push service therefore never
-answers 410, and nothing deleted it. Such a record went on costing 1,440 reads a day and
-holding one of the 100 slots for the life of the namespace. `worker/src/index.ts` line 345
-now deletes it on the hourly reconcile tick, once it has gone `INERT_DEVICE_TTL_MS` without a
-`PUT` (14 days, `worker/src/schedule.ts` line 84; the test is `isInert` at line 338). `N`
-therefore tracks the devices that are still syncing, and this budget holds over years rather
-than over the first fortnight.
+- Fixed per tick: 1 `idx` read, 1 reconcile list page (minute 0 only), 1 `idx` write. 3.
+- Per device, worst case: 1 read, at most `MAX_SENDS_PER_DEVICE_TICK = 2` pushes, 1 re-read
+  and 1 write (the re-read is the lost-update fix, E10a). 5.
+- Devices visited per tick: `DEVICES_PER_TICK = floor((50 - 3) / 5) = 9`. Worst case
+  `3 + 9 * 5 = 48` subrequests.
+- `tickWindow` picks the 9: a window starting at `(minute index * 9) mod N` that wraps.
+  Consecutive ticks tile the index, so each device is visited once every `ceil(N / 9)`
+  minutes: every minute up to `N = 9`, every 12 minutes at the 100 device cap. That is inside
+  the 15 minute due window (`DUE_WINDOW_MS`), so every reminder gets at least one visit; the
+  cost is delivery latency of up to `ceil(N / 9) - 1` minutes once `N > 9`. Nothing is stored
+  to rotate the window (a stored cursor would cost 1,440 KV writes a day, over the 1,000 cap).
+- A device's sends are marked by the write that follows them, before the next device is
+  touched, and one device's thrown KV error is logged and skipped, so a tick never stops
+  mid-loop with sends unmarked.
+- The tick log line reports `deferred` (indexed devices this tick did not visit) and
+  `duplicates` (keys this tick sent that the post-send re-read already showed as sent, E10c).
+
+**KV reads.** At most `1440 * (1 + min(N, 9))` a day for the visits, plus one re-read per
+device write (bounded by the writes below). At `N >= 9` that is 14,400 plus at most about
+100, against the free tier's 100,000 (`REFERENCES.md` line 35). Reads no longer bound `N`;
+before the window they did, at `N <= 68`.
+
+The reaper still matters for the device cap and for latency: a record whose reminders have
+all fired is never pushed to, never earns a 410, and would hold one of the 100 slots and
+stretch the visit cycle forever. `runTick` deletes it on the hourly reconcile tick once it has
+gone `INERT_DEVICE_TTL_MS` without a `PUT` (14 days, `worker/src/schedule.ts`; the test is
+`isInert`). A device is reaped only when the window visits it on a reconcile tick, so at
+`N > 9` a reap can wait up to `ceil(N / 9)` reconcile hours.
 
 **KV list requests.** The tick reconciles `idx` against the real key list only at minute 0
 of the hour, so 24 list requests a day. The free tier allows 1,000. `REFERENCES.md` line
 630 records that list requests are counted separately from reads. 24 is 2.4 percent of the
-quota. `worker/src/index.ts` lines 186 to 196 state that arithmetic, and line 197
-implements it. Reconciling every tick would need 1,440 list requests and exceed the quota
-by 44 percent.
+quota. `isReconcileTick` in `worker/src/index.ts` states that arithmetic. Reconciling every
+tick would need 1,440 list requests and exceed the quota by 44 percent.
 
 **KV writes.** Take 10 devices with 3 reminders each per day, so 30 instants.
 
-- Sending writes the record once per tick that sent anything (`worker/src/index.ts` lines
-  372 to 374). At most 30 writes. Reminders that fire in the same minute share one write.
-- Pruning an expired instant writes the record once more, on a later tick. At most 30
-  writes. See `worker/src/schedule.ts` lines 371 to 377, gated by `pruneDelta` at
-  `worker/src/index.ts` line 372.
+- Sending writes the record once per device visit that sent anything. At most 30 writes.
+  Reminders that fire in the same visit share one write.
+- Pruning an expired instant writes the record once more, on a later visit. At most 30
+  writes (`removeExpired`, gated by `pruneDelta`).
 - A client sync writes the record once. At most 10 writes a day at one sync per device.
-- `idx` is written only when a tick removed a device or the reconcile found an orphan
-  (`worker/src/index.ts` lines 382 to 384). Zero in steady state, at most 24 a day. A reap
-  removes a device, so it lands in this bullet, not in a new one.
+- `idx` is written only when a tick removed a device or the reconcile found an orphan. Zero
+  in steady state, at most 24 a day. A reap removes a device, so it lands in this bullet.
 
 That totals 70 writes a day in steady state, and at most 94 in the worst case. The cap is
-1,000 a day (`REFERENCES.md` line 35). Writes are not the binding constraint.
+1,000 a day (`REFERENCES.md` line 35). The E10a re-read adds a read per write, not a write.
 
 **KV deletes.** The free plan allows 1,000 a day (`REFERENCES.md` line 629). Three things
 delete a device record: a 404 or 410 from the push service, a value that cannot be parsed,
-and the reaper. Only the reaper has a bound worth stating. It runs on the 24 reconcile ticks,
-never on the other 1,416, and it deletes a given record once. That record can only return
-through a `PUT`, and a `PUT` stamps `lastSyncedAt`, which puts the device another 14 days
-away from being reapable. At the 100 device cap the worst single day is therefore 100
-deletes, 10 percent of the quota, and that day can happen only once. The sustained rate is
+and the reaper. The reaper deletes a given record once; it can only return through a `PUT`,
+which stamps `lastSyncedAt` and puts it another 14 days from reapable. At the 100 device cap
+the worst single day is 100 deletes, 10 percent of the quota. The sustained rate is
 `100 / 14`, about 7 deletes a day.
 
-**Subrequests are the binding constraint.** The free plan allows 50 subrequests per
-invocation. One tick issues `1 + N` KV reads, up to `N` KV writes, and one `fetch` per due
-push. That is roughly `N <= 20` devices before a tick can trip the limit. The Workers limits
-page gives `50/request` on the free plan against `10,000` on paid, quoted from its own
-Subrequests table and recorded at `REFERENCES.md` line 645. It is also platform fact 6 of
-`docs/plans/2026-09-01-05-reminders.md`. Watch this number, not the daily quotas.
+**Consistency (audit E10).** KV has no compare-and-swap and is eventually consistent across
+locations.
+
+- Lost update (E10a): every accepted `PUT` bumps the record's `rev`. After sending, the cron
+  re-reads the record and builds its write from that fresh copy, merging its sent marks in;
+  a `PUT` that landed during the push is kept, and a device deleted during the push is not
+  re-created. A `PUT` landing in the one KV round trip between re-read and write is still
+  lost; the client re-syncs within `SYNC_MAX_AGE_MS` (6 h).
+- Re-send after a stale read (E10c): a tick at another location can read a copy without the
+  latest sent mark and send again. Worker and client agree on one sent-key, the reminder
+  key, carried as the notification `tag`. The service worker logs shown keys in Cache
+  Storage (`cacheShownTags`, `src/domain/reminders/swHandlers.ts`) and shows a repeat
+  silently under the same tag; it still shows it, because iOS revokes a subscription whose
+  push shows nothing. Whether iOS honours `silent` is not verified on a device.
 
 **Not verified.** Whether Cron Trigger invocations consume the 100,000 requests a day quota.
 The limits page separates the daily request cap from the cron section and never joins them
 (`REFERENCES.md` line 645, re-read 2026-09-02). At 1,440 ticks a day the Worker stays inside
-the cap either way.
+the cap either way. Whether KV calls count toward the 50 subrequest ceiling is read
+conservatively: the code counts them.
 
 The Worker also caps itself:
 
-- 100 devices, `worker/src/index.ts` line 62. It answers 503 past that.
-- 200 reminders per device, `worker/src/schedule.ts` line 46.
-- A 64 KiB request body, `worker/src/index.ts` line 70.
+- 100 devices, `MAX_DEVICES` in `worker/src/index.ts`. It answers 503 past that.
+- 200 reminders per device, `MAX_REMINDERS` in `worker/src/schedule.ts`.
+- A 64 KiB request body, `MAX_BODY_BYTES` in `worker/src/index.ts`.
+- 9 devices and 50 subrequests per tick, `DEVICES_PER_TICK` and `SUBREQUEST_BUDGET`.
 
 ## 12. Enable reminders on the phone
 
@@ -430,8 +457,8 @@ Record the outcome in section 16, so a later regression has a baseline to compar
 | Status stays `Reminders are on. Schedule not sent yet.` | the `PUT` failed | the browser devtools network tab, and `npm --prefix worker run tail` | a CSP `connect-src` violation means step 9 was skipped; a 403 means `ALLOWED_ORIGIN` does not match the Pages origin exactly |
 | `PUT` returns 400 | an instant outside `[now - 1 h, now + 21 d]`, more than 200 instants, or a duplicate key | the JSON error body names the failing reminder index | usually a wrong device clock; check the phone's time and time zone |
 | `PUT` returns 403 | the device id exists under a different secret | none | turn reminders off and on again, which mints a new device |
-| `PUT` returns 413 | a request body over 64 KiB | `worker/src/index.ts` line 70 | reduce the number of reminders; 200 instants fit well inside the cap |
-| `PUT` returns 503 | the device index is at the 100 device cap | `worker/src/index.ts` line 62 | wait for the hourly reaper, clear a device by hand (below), or raise the cap and redeploy |
+| `PUT` returns 413 | a request body over 64 KiB | `MAX_BODY_BYTES`, `worker/src/index.ts` | reduce the number of reminders; 200 instants fit well inside the cap |
+| `PUT` returns 503 | the device index is at the 100 device cap | `MAX_DEVICES`, `worker/src/index.ts` | wait for the hourly reaper, clear a device by hand (below), or raise the cap and redeploy |
 | The tick logs `devices=1` but no notification arrives | the push was accepted and not displayed | `npm --prefix worker run tail` for a `push rejected: status=` line | 404 or 410 means the subscription died, so enable reminders again; 429 is rate limiting, and the next tick retries |
 | The notification arrives more than once | two device records for one browser | `npm --prefix worker run tail` for two `devices=` entries | turn reminders off, wait for a tick reporting `devices=0`, then turn them on |
 | `wrangler tail` shows `Exceeded CPU limit` | more due pushes in one tick than the free plan's 10 ms CPU allows | count devices | stagger the day of reminder time across devices, or move to the paid plan |
@@ -471,7 +498,7 @@ The usage line reads `wrangler kv key delete <key>`, and `--binding` reads "The 
 to the namespace to delete from", both quoted from `npx wrangler kv key delete --help`.
 
 Leave `idx` alone. The next tick reads the deleted key, finds nothing, and drops the id from
-`idx` in the write it was already making (`worker/src/index.ts` lines 382 to 384). Editing
+`idx` in the write it was already making (the closing `idx` write in `runTick`, `worker/src/index.ts`). Editing
 the index by hand buys nothing and risks dropping a device that a concurrent `PUT` had just
 added.
 

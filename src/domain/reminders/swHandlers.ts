@@ -65,6 +65,75 @@ export interface ClickedNotification {
 }
 
 /**
+ * Which reminder keys this device has already shown. The key is the Worker's ReminderInstant
+ * key, carried as the payload `tag`: the one sent-key the Worker and this client agree on.
+ */
+export interface ShownTags {
+  seen(tag: string): Promise<boolean>;
+  remember(tag: string): Promise<void>;
+}
+
+/** The part of one `Cache` the shown-log uses. */
+export interface TagCache {
+  match(url: string): Promise<Response | undefined>;
+  put(url: string, response: Response): Promise<void>;
+  keys(): Promise<readonly Request[]>;
+  delete(url: string): Promise<boolean>;
+}
+
+/** The part of `CacheStorage` the shown-log uses. */
+export interface TagCacheStorage {
+  open(name: string): Promise<TagCache>;
+}
+
+/** Cache name for the shown-log. Not a workbox precache, so cleanupOutdatedCaches leaves it. */
+export const SHOWN_TAGS_CACHE = 'fti-push-shown-v1';
+/**
+ * Keys kept in the shown-log. Count. The Worker keeps at most 2 x 200 sent keys per device
+ * (worker/src/schedule.ts MAX_SENT_ENTRIES), so 400 covers any key it could still re-send.
+ */
+export const MAX_SHOWN_TAGS = 400;
+
+/**
+ * A shown-log in Cache Storage, the one durable store a service worker has without
+ * IndexedDB (web storage is owned by the page, AGENTS.md rule 6). Each key is one tiny entry
+ * under a synthetic same-origin URL; Cache Storage keeps insertion order in `keys()`, so the
+ * oldest entries are the first ones dropped past `limit`.
+ */
+export function cacheShownTags(
+  caches: TagCacheStorage,
+  origin: string,
+  limit: number = MAX_SHOWN_TAGS,
+): ShownTags {
+  const urlFor = (tag: string) =>
+    new URL(`${APP_SCOPE_PATH}__push-shown/${encodeURIComponent(tag)}`, origin).href;
+  return {
+    async seen(tag) {
+      const cache = await caches.open(SHOWN_TAGS_CACHE);
+      return (await cache.match(urlFor(tag))) !== undefined;
+    },
+    async remember(tag) {
+      const cache = await caches.open(SHOWN_TAGS_CACHE);
+      await cache.put(urlFor(tag), new Response('1'));
+      const keys = await cache.keys();
+      for (const request of keys.slice(0, Math.max(0, keys.length - limit))) {
+        await cache.delete(request.url);
+      }
+    },
+  };
+}
+
+/** Never throws: a broken shown-log must not stop the notification (see handlePush). */
+async function seenBefore(shown: ShownTags | undefined, tag: string): Promise<boolean> {
+  if (shown === undefined) return false;
+  try {
+    return await shown.seen(tag);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * The decrypted payload, or null when there is none or it is not JSON.
  * The result lands in an `unknown` and every field is read through
  * `parsePushPayload` rather than by member access here.
@@ -93,9 +162,15 @@ export async function handlePush(
   data: PushJson | null,
   registration: NotificationShower,
   icons: PushIcons,
+  shown?: ShownTags,
 ): Promise<void> {
   const payload = parsePushPayload(readPushJson(data));
+  // Audit E10c: KV is eventually consistent, so the Worker can re-send a key after reading a
+  // stale record. The repeat is still SHOWN (the iOS rule above) but silently, so a reminder
+  // the user already dismissed does not buzz a second time.
+  const repeat = await seenBefore(shown, payload.tag);
   await registration.showNotification(payload.title, {
+    silent: repeat,
     body: payload.body,
     // The ReminderInstant key: a re-sent reminder replaces its predecessor
     // instead of stacking a second copy. `renotify` is left at its default
@@ -109,6 +184,11 @@ export async function handlePush(
     // badge (icons/notification-badge-96.png, since 2026-10-18).
     badge: icons.badge,
   });
+  try {
+    await shown?.remember(payload.tag);
+  } catch {
+    // Best effort: a missed entry costs at most one audible repeat.
+  }
 }
 
 /**

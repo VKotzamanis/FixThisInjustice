@@ -56,6 +56,7 @@ function record(overrides: Partial<DeviceRecord> = {}): DeviceRecord {
     sent: {},
     // Freshly synced by default; the tests that exercise the reaper clock override it.
     lastSyncedAt: NOW,
+    rev: 1,
     ...overrides,
   };
 }
@@ -181,6 +182,7 @@ describe("validatePut", () => {
     expect(Object.keys(result.record).sort()).toEqual([
       "lastSyncedAt",
       "reminders",
+      "rev",
       "secret",
       "sent",
       "subscription",
@@ -332,6 +334,16 @@ describe("parseDeviceRecord", () => {
     const legacy = { ...record({ reminders: [instant("a", NOW)] }) } as Partial<DeviceRecord>;
     delete legacy.lastSyncedAt;
     expect(parseDeviceRecord(JSON.parse(JSON.stringify(legacy)))?.lastSyncedAt).toBe(0);
+  });
+
+  it("reads a record written before rev existed as revision 0, and validatePut moves it to 1", () => {
+    const legacy = { ...record({ reminders: [instant("a", NOW)] }) } as Partial<DeviceRecord>;
+    delete legacy.rev;
+    const parsed = parseDeviceRecord(JSON.parse(JSON.stringify(legacy)));
+    expect(parsed?.rev).toBe(0);
+    if (parsed === null) return;
+    const result = validatePut(body(), NOW, parsed);
+    expect(result.ok && result.record.rev).toBe(1);
   });
 
   it("reads a non-finite lastSyncedAt as never synced rather than rejecting the record", () => {

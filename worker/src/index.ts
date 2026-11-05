@@ -54,6 +54,10 @@ export interface TickSummary {
   failed: number;
   removed: number;
   writes: number;
+  /** Indexed devices this tick did not visit (tickWindow) or could not afford. Count. */
+  deferred: number;
+  /** Keys sent this tick that the post-send re-read already showed as sent (E10c). Count. */
+  duplicates: number;
 }
 
 const INDEX_KEY = "idx";
@@ -300,16 +304,164 @@ export async function handleFetch(request: Request, env: Env, now: EpochMs): Pro
 }
 
 /**
- * One cron tick. `now` is an instant in epoch milliseconds, UTC. Sequential on
- * purpose: the free plan allows 50 subrequests and 10 ms CPU per invocation, so a
- * burst of parallel pushes is a liability, not a win.
+ * Subrequest ceiling per invocation on the Workers Free plan. Count, dimensionless. Every KV
+ * call and every push `fetch` is counted against it here, which is the conservative reading
+ * (docs/runbooks/reminders.md §11).
+ */
+export const SUBREQUEST_BUDGET = 50;
+/**
+ * Pushes one device may send in one tick. Count. The client emits at most one day-of and one
+ * lead instant per date (src/domain/reminders/instants.ts), so 2 covers a coincident pair; a
+ * third due key waits for the device's next visit, still inside its 15 min due window.
+ */
+export const MAX_SENDS_PER_DEVICE_TICK = 2;
+/**
+ * Worst-case subrequests for one device in one tick. Count: 1 read, the sends, 1 re-read and
+ * 1 write (E10a). A gone, corrupt or reaped device costs less (its delete replaces both).
+ */
+const DEVICE_COST = 1 + MAX_SENDS_PER_DEVICE_TICK + 2;
+/** Fixed per-tick cost. Count: the `idx` read, one reconcile list page, the `idx` write. */
+const TICK_FIXED_COST = 3;
+/**
+ * Devices visited per tick. Count: floor((50 - 3) / 5) = 9. Every one of them can be served
+ * in full, so a tick never runs out of budget mid-device. Windows advance by this many ids per
+ * minute, so with N indexed devices each is visited once every ceil(N / 9) ticks: 12 minutes at
+ * MAX_DEVICES = 100, inside the 15 minute DUE_WINDOW_MS (test "reaches every one of 100").
+ */
+export const DEVICES_PER_TICK = Math.floor((SUBREQUEST_BUDGET - TICK_FIXED_COST) / DEVICE_COST);
+/** One cron period. Duration, milliseconds (the trigger fires every minute, wrangler.toml). */
+const TICK_MS = 60_000;
+
+/** A running subrequest count for one tick; refuses a spend that would pass the ceiling. */
+class Budget {
+  private used = 0;
+  spend(n: number): boolean {
+    if (this.used + n > SUBREQUEST_BUDGET) return false;
+    this.used += n;
+    return true;
+  }
+  get remaining(): number {
+    return SUBREQUEST_BUDGET - this.used;
+  }
+}
+
+/**
+ * The slice of `ids` this tick visits: DEVICES_PER_TICK ids starting at
+ * (tick index x DEVICES_PER_TICK) mod N, wrapping. Stateless, so it costs no KV write: the
+ * free plan's 1,000 daily writes could not afford a stored cursor at 1,440 ticks a day.
+ * Consecutive ticks tile the ring, so no device is starved by its position in `idx`
+ * (audit E10b: the old loop always reached the front of `idx` first).
+ * `now` is epoch milliseconds, UTC.
+ */
+export function tickWindow(ids: readonly string[], now: EpochMs): string[] {
+  const n = ids.length;
+  if (n <= DEVICES_PER_TICK) return [...ids];
+  const tickIndex = Math.floor(now / TICK_MS);
+  const start = (tickIndex * DEVICES_PER_TICK) % n;
+  const window: string[] = [];
+  for (let i = 0; i < DEVICES_PER_TICK; i += 1) window.push(ids[(start + i) % n] ?? "");
+  return window;
+}
+
+type DeviceOutcome = "kept" | "removed";
+
+/**
+ * Serve one device: read, send what is due, then write back from a FRESH re-read.
+ *
+ * E10a (lost update): the write is built from the record as it stands after the sends, not
+ * as it stood before them. A client PUT that landed in between is kept; the sent marks are
+ * merged into it. A record that vanished in between (client DELETE) is not resurrected.
+ * The re-read and write are one KV read apart, not atomic: a PUT landing in that gap is still
+ * lost, but the gap is one KV round trip instead of the whole push.
+ *
+ * E10c (stale read): KV is eventually consistent across locations, so this tick may read a
+ * copy without a mark another location already wrote, and send again. The re-read usually
+ * sees the mark; such a key is counted in `duplicates`. The same reminder key goes out as the
+ * notification tag both times, and the client collapses on it (src/domain/reminders/
+ * swHandlers.ts handlePush: a repeated tag replaces silently).
+ */
+async function serveDevice(
+  env: Env,
+  id: string,
+  now: EpochMs,
+  reconcile: boolean,
+  budget: Budget,
+  summary: TickSummary,
+): Promise<DeviceOutcome> {
+  const kv = env.REMINDERS;
+  budget.spend(1);
+  const loaded = await loadDevice(kv, id);
+  if (loaded.state !== "ok") {
+    // A corrupt value can never become valid, so delete it rather than pay a KV read for it
+    // on every tick and leave a dead subscription on disk. An absent one costs no delete.
+    if (loaded.state === "corrupt" && budget.spend(1)) await kv.delete(deviceKey(id));
+    return "removed";
+  }
+  const record = loaded.record;
+
+  // Reap an inert device: nothing left to deliver and no client sync for INERT_DEVICE_TTL_MS.
+  // On the reconcile tick only: it costs one delete per record against the free plan's 1,000
+  // a day, and it keeps the other 1,416 ticks of the day write-free
+  // (docs/runbooks/reminders.md §11).
+  if (reconcile && isInert(record, now)) {
+    if (budget.spend(1)) await kv.delete(deviceKey(id));
+    return "removed";
+  }
+
+  // Two subrequests stay reserved for the re-read and the write, so every send this loop
+  // makes is marked before the device is left (E10b: a tick never strands a send unmarked).
+  const due = selectDue(record, now).slice(0, MAX_SENDS_PER_DEVICE_TICK);
+  const sentKeys: string[] = [];
+  for (const reminder of due) {
+    if (budget.remaining < 3 || !budget.spend(1)) break;
+    const outcome = await sendPush(env, record.subscription, reminder);
+    if (outcome === "sent") sentKeys.push(reminder.key);
+    else if (outcome === "gone") {
+      if (budget.spend(1)) await kv.delete(deviceKey(id));
+      return "removed";
+    } else summary.failed += 1;
+  }
+  summary.sent += sentKeys.length;
+
+  const trimmed = removeExpired(record, now);
+  if (sentKeys.length === 0 && pruneDelta(record, trimmed) === 0) return "kept";
+
+  if (!budget.spend(2)) return "kept"; // unreachable by DEVICE_COST; a guard, not a path
+  const fresh = await loadDevice(kv, id);
+  if (fresh.state !== "ok") {
+    // Deleted (or corrupted) while the push was in flight: writing would resurrect it.
+    console.warn(`device ${id} changed state mid-tick; cron write skipped`);
+    return "kept";
+  }
+  if (fresh.record.rev !== record.rev) {
+    console.log(`device ${id} rev ${record.rev} -> ${fresh.record.rev} mid-tick; marks merged`);
+  }
+  for (const key of sentKeys) {
+    if (Object.hasOwn(fresh.record.sent, key)) summary.duplicates += 1;
+  }
+  const base = removeExpired(fresh.record, now);
+  const next = sentKeys.length > 0 ? markSent(base, sentKeys, now) : base;
+  await kv.put(deviceKey(id), JSON.stringify(next));
+  summary.writes += 1;
+  return "kept";
+}
+
+/**
+ * One cron tick. `now` is an instant in epoch milliseconds, UTC. Sequential on purpose: the
+ * free plan allows 50 subrequests and 10 ms CPU per invocation, so a burst of parallel pushes
+ * is a liability, not a win. Visits at most DEVICES_PER_TICK devices (tickWindow), and spends
+ * at most SUBREQUEST_BUDGET subrequests; one device's thrown KV error is logged and the loop
+ * goes on.
  */
 export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
+  const budget = new Budget();
+  budget.spend(1);
   const stored = await readIndex(env.REMINDERS);
   let ids = stored;
   let reconciled = false;
   const reconcile = isReconcileTick(now);
   if (reconcile) {
+    budget.spend(1); // one page at MAX_DEVICES = 100; more pages are not budgeted (never > 1,000 keys)
     const known = new Set(stored);
     const orphans = (await listDeviceIds(env.REMINDERS)).filter((id) => !known.has(id));
     if (orphans.length > 0) {
@@ -318,60 +470,31 @@ export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
     }
   }
 
-  const summary: TickSummary = { devices: ids.length, sent: 0, failed: 0, removed: 0, writes: 0 };
+  const window = tickWindow(ids, now);
+  const summary: TickSummary = {
+    devices: ids.length,
+    sent: 0,
+    failed: 0,
+    removed: 0,
+    writes: 0,
+    deferred: ids.length - window.length,
+    duplicates: 0,
+  };
   const removed: string[] = [];
 
-  for (const id of ids) {
-    const loaded = await loadDevice(env.REMINDERS, id);
-    if (loaded.state !== "ok") {
-      // A corrupt value can never become valid, so delete it rather than pay a KV read for it
-      // on every tick and leave a dead subscription on disk. An absent one costs no delete.
-      if (loaded.state === "corrupt") await env.REMINDERS.delete(deviceKey(id));
-      removed.push(id);
+  for (const id of window) {
+    // Reserve the full device cost plus the closing idx write before starting a device.
+    if (budget.remaining < DEVICE_COST + 1) {
+      summary.deferred += 1;
       continue;
     }
-    const record = loaded.record;
-
-    // Reap an inert device: nothing left to deliver and no client sync for
-    // INERT_DEVICE_TTL_MS. Without this, such a record is never pushed to, so it never earns
-    // a 410, so nothing ever deletes it - one KV read on every one of the 1,440 daily ticks
-    // and one of the MAX_DEVICES slots, forever.
-    //
-    // On the reconcile tick only, for two reasons. It costs one delete per reaped record
-    // against the free plan's 1,000 a day, and checking hourly rather than every minute
-    // divides the worst case by 60 while delaying a reap by at most an hour on a 14 day
-    // clock. And it keeps this loop write-free on the other 1,416 ticks of the day, which is
-    // the property the idle-tick budget in docs/RUNBOOK-reminders.md §11 rests on.
-    if (reconcile && isInert(record, now)) {
-      await env.REMINDERS.delete(deviceKey(id));
-      removed.push(id);
-      continue;
-    }
-
-    const due = selectDue(record, now);
-    const sentKeys: string[] = [];
-    let gone = false;
-    for (const reminder of due) {
-      const outcome = await sendPush(env, record.subscription, reminder);
-      if (outcome === "sent") sentKeys.push(reminder.key);
-      else if (outcome === "gone") {
-        gone = true;
-        break;
-      } else summary.failed += 1;
-    }
-
-    if (gone) {
-      await env.REMINDERS.delete(deviceKey(id));
-      removed.push(id);
-      continue;
-    }
-
-    summary.sent += sentKeys.length;
-    const trimmed = removeExpired(record, now);
-    const next = sentKeys.length > 0 ? markSent(trimmed, sentKeys, now) : trimmed;
-    if (sentKeys.length > 0 || pruneDelta(record, trimmed) > 0) {
-      await env.REMINDERS.put(deviceKey(id), JSON.stringify(next));
-      summary.writes += 1;
+    try {
+      if ((await serveDevice(env, id, now, reconcile, budget, summary)) === "removed") {
+        removed.push(id);
+      }
+    } catch (error) {
+      const name = error instanceof Error ? error.name : "NonError";
+      console.warn(`device ${id} skipped this tick: ${name}`);
     }
   }
 
@@ -379,7 +502,7 @@ export async function runTick(env: Env, now: EpochMs): Promise<TickSummary> {
   // Unguarded read-modify-write on `idx`, for the reason spelled out in handleDelete: a
   // create that this write clobbers is re-asserted by that device's next PUT and by the next
   // reconcile, and this write only ever removes ids whose records are already gone.
-  if (removed.length > 0 || reconciled) {
+  if ((removed.length > 0 || reconciled) && budget.spend(1)) {
     await env.REMINDERS.put(INDEX_KEY, JSON.stringify(ids.filter((id) => !removed.includes(id))));
     summary.writes += 1;
   }
@@ -396,7 +519,8 @@ export default {
     const summary = await runTick(env, controller.scheduledTime);
     console.log(
       `tick devices=${summary.devices} sent=${summary.sent} failed=${summary.failed} ` +
-        `removed=${summary.removed} writes=${summary.writes}`,
+        `removed=${summary.removed} writes=${summary.writes} deferred=${summary.deferred} ` +
+        `duplicates=${summary.duplicates}`,
     );
   },
 };
