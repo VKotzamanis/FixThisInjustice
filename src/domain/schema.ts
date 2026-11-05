@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod';
 import type { AppState } from './types';
 import { isValidLocalDate, isValidLocalTime, isValidTimeZone } from './dates';
 import { ACTIVITY_BAND, ACTIVITY_FACTOR } from './nutrition';

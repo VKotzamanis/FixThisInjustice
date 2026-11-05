@@ -60,6 +60,14 @@ export default defineConfig({
         name: 'FixThisInjustice',
         short_name: 'FTI',
         description: 'Offline training companion. All data stays on this device.',
+        /*
+         * Audit E15: identity pinned to today's start_url. Without `id` the browser keys the
+         * installed app on start_url, so changing start_url would install a second app. MDN,
+         * manifest `id` (read 2026-11-04): "If id is not specified ... the start_url value is
+         * used"; a relative id is resolved against start_url's origin, so this is the same
+         * identity installed apps already have.
+         */
+        id: '/FixThisInjustice/',
         start_url: '/FixThisInjustice/',
         scope: '/FixThisInjustice/',
         display: 'standalone',
@@ -95,6 +103,12 @@ export default defineConfig({
            * text (a profile name, a capsule note) is not what a precache is sized
            * for - a subset absent from the precache still LOADS over the network
            * when a page asks for it, because the file is still in dist.
+           *
+           * Decision E15 (2026-11-04): kept out. Precaching latin-ext would add 86,240 B and
+           * vietnamese 34,464 B [B, measured woff2] to every install and every font update, for
+           * one case: user-typed text with Central European or Vietnamese letters, opened
+           * OFFLINE before the subset was ever fetched online. That text still renders, in the
+           * system face. Rejected: precache both (cost on every install for a rare glyph case).
            */
           '**/archivo-latin-ext-*',
           '**/archivo-vietnamese-*',

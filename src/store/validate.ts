@@ -3,7 +3,7 @@
 // The one copy of the store's boundary check (spec R5, AGENTS.md rule 2). Every action that
 // stores user input parses it with the schema the loader uses, so a value the document could
 // not be reloaded with is refused where it is entered, not at the next launch (audit B02).
-import type { z } from 'zod';
+import type { z } from '../domain/zod';
 
 /**
  * Validates against a schema or throws, naming the field that failed. The message is assembled

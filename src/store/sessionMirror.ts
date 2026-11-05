@@ -17,7 +17,7 @@
 // a record: every failure mode below (unavailable storage, corrupt JSON, a payload from an
 // older build) costs the user a restored timer and nothing else, so none of them may throw
 // into a store initialiser that runs before React mounts.
-import { z } from 'zod';
+import { z } from '../domain/zod';
 import { isValidLocalDate } from '../domain/dates';
 import { RestTimerSchema } from '../domain/schema';
 import type { EpochMs, LocalDate, LoggedSet } from '../domain/types';
