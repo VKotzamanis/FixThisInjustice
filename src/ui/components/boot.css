@@ -18,7 +18,10 @@
   flex-direction: column;
   justify-content: center;
   gap: 1.5rem;
-  padding: 1.5rem;
+  /* 1.5rem, or the inset where wider (viewport-fit=cover draws under the status bar, home
+     indicator and landscape notch); src/ui/styles/safeArea.test.ts holds it. */
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
   overflow: auto;
   color: var(--text);
   background: var(--bg);

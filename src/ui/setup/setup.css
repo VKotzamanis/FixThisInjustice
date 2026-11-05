@@ -843,14 +843,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
+  /* 1rem, or the inset where wider (viewport-fit=cover); the panel's max-height below is capped
+     at 100 % of this padded box so it never reaches under the status bar or home indicator.
+     src/ui/styles/safeArea.test.ts holds the padding. */
+  padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+    max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
   background: rgb(0 0 0 / 0.72);
 }
 
 .wiz-modal {
   position: relative;
   width: min(34rem, 100%);
-  max-height: 90vh;
+  /* 100 %: the scrim's content box, i.e. inside its safe-area padding (definite: the scrim is
+     fixed with inset 0). Without insets it stays 90vh on any viewport 320 px tall or more. */
+  max-height: min(90vh, 100%);
   overflow-y: auto;
   padding: 3.25rem 1.25rem 1.25rem;
   background: var(--bg-2);
