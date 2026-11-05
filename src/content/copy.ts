@@ -391,6 +391,14 @@ export type CopyKey =
   | 'status.restWordWon'
   | 'status.restWordLost'
   | 'status.restWordTooLate'
+  // --- Plate Math (P6) ---
+  | 'hero.restGamePlateMath'
+  | 'advice.restGamePlateMathRule'
+  | 'label.restGamePlateTarget'
+  | 'label.restGamePlateOnBar'
+  | 'label.restGamePlateSide'
+  | 'label.restGamePlates'
+  | 'button.restGamePlateRemove'
   // --- Rest games, shared frame (P6, docs/design/rest-games.md) ---
   | 'button.restGameHide'
   | 'status.restGameTimeUp'
@@ -1267,6 +1275,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.restWordWon': 'Round won.',
   'status.restWordLost': 'Round lost.',
   'status.restWordTooLate': 'Not enough rest time remains for a round.',
+  // P6 Plate Math (src/ui/views/train/PlateMathGame.tsx).
+  'hero.restGamePlateMath': 'Plate Math',
+  'advice.restGamePlateMathRule': 'Load one side so the whole bar matches the target.',
+  'label.restGamePlateTarget': 'Target',
+  'label.restGamePlateOnBar': 'On the Bar',
+  'label.restGamePlateSide': 'One Side',
+  'label.restGamePlates': 'Plates',
+  'button.restGamePlateRemove': 'Remove Plate',
   // P6: the frame every rest game is drawn in (src/ui/views/train/RestGameFrame.tsx).
   'button.restGameHide': 'Hide Game',
   'status.restGameTimeUp': 'Out of time.',
