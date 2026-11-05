@@ -66,6 +66,7 @@ export function FormCuesModal(props: {
 
   return (
     <ModalShell
+      sheet="reading"
       labelledBy={headingId}
       className="fcm"
       backdropClassName="fcm-bg"

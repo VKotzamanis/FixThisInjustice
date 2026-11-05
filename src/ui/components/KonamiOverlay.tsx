@@ -26,6 +26,7 @@
 // component in this directory keeps its rules.
 
 import { useEffect, useRef } from 'react';
+import { overlayDepth, useOverlay } from '../overlay/overlayStack';
 import type { ReactElement } from 'react';
 import { useCopy } from '../../content/useCopy';
 import './konami.css';
@@ -80,6 +81,16 @@ export function useKonamiCode(onActivate: () => void): void {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
+      // F12: a key typed into a field is text, and a key pressed over another overlay belongs to
+      // that overlay; neither feeds the sequence.
+      const target = e.target;
+      if (
+        target instanceof HTMLElement &&
+        (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
+      ) {
+        return;
+      }
+      if (overlayDepth() > 0) return;
       buffer.current.push(e.key.toLowerCase());
       if (buffer.current.length > CODE.length) buffer.current.shift();
       if (buffer.current.length !== CODE.length) return;
@@ -106,6 +117,8 @@ export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElemen
   const latest = useRef(onClose);
   latest.current = onClose;
   const dismissRef = useRef<HTMLButtonElement>(null);
+  // F12: one Escape and Back close it, through the one stack, like every other overlay.
+  useOverlay(onClose, { modal: true });
 
   /*
    * Focus moves into the overlay at mount and back where it came from at unmount.
@@ -134,7 +147,9 @@ export function KonamiOverlay({ onClose }: { onClose: () => void }): ReactElemen
   useEffect(() => {
     // ANY key, which is why this is not a hotkey binding: the registry maps one combo to one
     // handler, and "whatever the user presses next" is not a combo.
-    const onKey = (): void => {
+    const onKey = (e: KeyboardEvent): void => {
+      // Escape is the stack's (one close per press); every other key still dismisses.
+      if (e.key === 'Escape') return;
       latest.current();
     };
     window.addEventListener('keydown', onKey);

@@ -11,6 +11,7 @@
 
 import { useEffect, useRef } from 'react';
 import { isTopOverlay, useOverlay } from '../overlay/overlayStack';
+import '../overlay/sheet.css';
 import type { ReactElement, ReactNode } from 'react';
 
 /**
@@ -35,6 +36,12 @@ export interface ModalShellProps {
   backdropClassName: string;
   /** Names the backdrop for the tests that click it. */
   testId: string;
+  /**
+   * Brief 5.1: dock as a bottom sheet. 'reading' also paints lime with ink type; 'face' leaves
+   * the panel's own ground (the Atlas card). Omitted: the caller's CSS owns the geometry (the
+   * wizard's guidance modals and the intro, which the brief does not list).
+   */
+  sheet?: 'reading' | 'face';
   /**
    * Must be referentially stable (useCallback in the provider). An unstable handler re-runs
    * the effect below on every render, which is exactly the churn of code review A53.
@@ -98,14 +105,18 @@ export function ModalShell(props: ModalShellProps): ReactElement {
 
   return (
     <div
-      className={props.backdropClassName}
+      className={props.sheet === undefined ? props.backdropClassName : `overlay-scrim ${props.backdropClassName}`}
       data-testid={props.testId}
       onClick={onClose}
       role="presentation"
     >
       <div
         ref={panelRef}
-        className={props.className}
+        className={
+          props.sheet === undefined
+            ? props.className
+            : `sheet${props.sheet === 'reading' ? ' sheet-reading' : ''} ${props.className}`
+        }
         role="dialog"
         aria-modal="true"
         aria-labelledby={props.labelledBy}

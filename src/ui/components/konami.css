@@ -66,15 +66,16 @@
   /* 2.75rem = 44 px at the 16 px root: the tap target size master plan section 3 sets. */
   min-height: 2.75rem;
   padding: 0 1rem;
-  color: inherit;
-  background: var(--bg-3);
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
+  /* Brief 7: lime with ink type on the black card, 10.91:1 (it was ink on black, 1:1). */
+  color: var(--ink);
+  background: var(--lime);
+  border: 2px solid var(--ink);
   font: inherit;
   cursor: pointer;
 }
 
 .konami button:focus-visible {
-  outline: 1px solid var(--accent);
+  outline: var(--focus-on-panel);
   outline-offset: -2px;
 }
 

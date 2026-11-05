@@ -664,7 +664,7 @@ describe('spotlight palette', () => {
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
   });
 
-  it('opens from the nav button, with the query box focused, and closes on Escape', async () => {
+  it('opens from the nav button and closes on Escape (F11: no autofocus on touch)', async () => {
     render(<App />);
 
     const nav = screen.getByRole('navigation', { name: copy('nav.label') });
@@ -673,8 +673,9 @@ describe('spotlight palette', () => {
     );
 
     const queryBox = screen.getByRole('combobox', { name: copy('label.spotlightQuery') });
-    // Focus is the palette's whole point: it opens onto a query the user types immediately.
-    expect(document.activeElement).toBe(queryBox);
+    // F11: jsdom has no matchMedia, which the palette reads as "not a fine pointer": the
+    // keyboard is not raised over the results. Spotlight.test.tsx covers the fine-pointer case.
+    expect(document.activeElement).not.toBe(queryBox);
 
     fireEvent.keyDown(queryBox, { key: 'Escape' });
 

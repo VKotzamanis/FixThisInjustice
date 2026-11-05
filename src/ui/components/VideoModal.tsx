@@ -114,6 +114,7 @@ export function VideoModal(props: { request: VideoRequest; onClose: () => void }
 
   return (
     <ModalShell
+      sheet="reading"
       labelledBy={headingId}
       className="vmod"
       backdropClassName="vmod-bg"

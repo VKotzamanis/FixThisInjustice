@@ -1,0 +1,57 @@
+/*
+ * One sheet language (docs/design/p4-design-brief.md 5.1). Every reading dialog (form cues, the
+ * video chooser, the palette, More, the time capsule, the missed-week popup, the block cutscene)
+ * and the Atlas card dock to the bottom edge at full width over the one scrim. ModalShell adds
+ * these classes when its caller passes `sheet`; the dialogs' own sheets keep content layout only.
+ */
+.overlay-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: var(--scrim);
+}
+
+.sheet {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 34rem;
+  /* vh first: Safari < 15.4 and Chrome < 108 have no svh (P6 D3). */
+  max-height: calc(100vh - var(--header-h) - var(--space-4));
+  max-height: calc(100svh - var(--header-h) - env(safe-area-inset-top) - var(--space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0;
+  padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right))
+    calc(var(--space-4) + env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
+  border-radius: 0;
+  animation: sheet-in var(--dur-base) var(--ease-out);
+}
+
+.sheet-reading {
+  background: var(--lime);
+  color: var(--ink);
+  border: 0;
+  border-top: 2px solid var(--ink);
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sheet {
+    animation: none;
+  }
+}

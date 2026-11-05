@@ -108,6 +108,7 @@ function AtlasCardDialog(props: {
   const { card } = props;
   return (
     <ModalShell
+      sheet="face"
       labelledBy={titleId}
       className={`atlas-modal ${faceClasses(card.rarity, props.motionAllowed)}`}
       backdropClassName="atlas-modal-bg"

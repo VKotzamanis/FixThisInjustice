@@ -1,34 +1,13 @@
 /*
  * The block transition cutscene (P8 Task 10).
  *
- * z-index var(--z-modal) - 1: below the missed-week popup (--z-modal, motivation.css) and the
- * boot sequence (--z-system, boot.css). The gate never
- * mounts this while the boot is running, nor while a missed week is pending, so the ordering
- * is belt and braces rather than the mechanism. Toasts (--z-toast) sit under it since P4a.
- *
- * It was ABOVE the popup once, which is the wrong way round for a layer that is not answering
- * anything: if the two ever coexist again the popup is the dialog holding the user's question,
- * so it must paint on top. The CRT layers (--z-crt) now sit under every modal rung.
+ * Geometry, scrim and z-index are the shared bottom sheet (src/ui/overlay/sheet.css, brief 5.1,
+ * --z-modal). The gate never mounts this while the boot is running, nor while a missed week is
+ * pending; if the two ever coexisted, the popup holding the user's question mounts later and
+ * paints on top at the same rung.
  */
-.phase-bg {
-  position: fixed;
-  inset: 0;
-  z-index: calc(var(--z-modal) - 1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgb(0 0 0 / 78%);
-}
 
 .phase {
-  width: min(34rem, 100%);
-  max-height: 100%;
-  overflow: auto;
-  padding: 1.25rem;
-  color: var(--text);
-  background: var(--bg-2);
-  border: 1px solid var(--line-2);
   font-family: var(--mono, ui-monospace, monospace);
 }
 

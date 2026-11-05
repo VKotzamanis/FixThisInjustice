@@ -138,6 +138,15 @@ export function filterSpotlightItems(
   return matched.slice(0, MAX_SPOTLIGHT_RESULTS);
 }
 
+/**
+ * F11: whether the primary pointer is fine (a mouse or trackpad, so a keyboard is at hand).
+ * On a phone, focusing the field raises the soft keyboard over the results; there the user taps
+ * the field. jsdom has no matchMedia, which reads as "not fine".
+ */
+export function finePointer(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: fine)').matches;
+}
+
 export function Spotlight({
   open,
   onClose,
@@ -200,7 +209,7 @@ export function Spotlight({
    * would run exactly once, while `open` is false and the input does not exist yet: the caret
    * would stay on the panel ModalShell focuses, and the user would type into nothing.
    *
-   * On open, the query box takes the caret. This runs AFTER ModalShell's own effect, which
+   * On open, the query box takes the caret where the pointer is fine (F11); on touch the panel keeps focus. This runs AFTER ModalShell's own effect, which
    * focuses the panel, because React flushes a child's effects before its parent's, and
    * ModalShell remounts on every open. The optional call is the guard for the render in which
    * `open` is false and the ref therefore holds null.
@@ -211,7 +220,7 @@ export function Spotlight({
    */
   useEffect(() => {
     if (open) {
-      inputRef.current?.focus();
+      if (finePointer()) inputRef.current?.focus();
       return;
     }
     setQuery('');
@@ -243,6 +252,7 @@ export function Spotlight({
 
   return (
     <ModalShell
+      sheet="reading"
       labelledBy={titleId}
       className="spotlight"
       backdropClassName="spotlight-bg"
@@ -252,31 +262,6 @@ export function Spotlight({
       <h2 id={titleId} className="spotlight-title">
         {t('hero.spotlight')}
       </h2>
-
-      <input
-        ref={inputRef}
-        type="text"
-        role="combobox"
-        className="spotlight-query"
-        aria-label={t('label.spotlightQuery')}
-        placeholder={t('label.spotlightQuery')}
-        /* Whether the popup HAS anything in it, not whether the dialog is open: hard-coded
-           true, a screen reader announces an expanded listbox over a query that matched
-           nothing. */
-        aria-expanded={results.length > 0}
-        aria-controls={listId}
-        aria-describedby={emptyId}
-        aria-autocomplete="list"
-        aria-activedescendant={results.length === 0 ? undefined : optionId(active)}
-        autoComplete="off"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.currentTarget.value);
-          // The result set has changed under it, so the old index would run a different row.
-          setActive(0);
-        }}
-        onKeyDown={onKeyDown}
-      />
 
       <ul id={listId} className="spotlight-list" role="listbox" aria-label={t('label.spotlightResults')}>
         {results.map((item, i) => (
@@ -310,6 +295,32 @@ export function Spotlight({
       <p id={emptyId} role="status" className="spotlight-empty">
         {results.length === 0 ? t('advice.noSpotlightMatch') : ''}
       </p>
+
+      {/* F11: the field sits at the sheet's bottom edge, results above it, so the soft keyboard pushes the field and never covers the list. */}
+      <input
+        ref={inputRef}
+        type="text"
+        role="combobox"
+        className="spotlight-query"
+        aria-label={t('label.spotlightQuery')}
+        placeholder={t('label.spotlightQuery')}
+        /* Whether the popup HAS anything in it, not whether the dialog is open: hard-coded
+           true, a screen reader announces an expanded listbox over a query that matched
+           nothing. */
+        aria-expanded={results.length > 0}
+        aria-controls={listId}
+        aria-describedby={emptyId}
+        aria-autocomplete="list"
+        aria-activedescendant={results.length === 0 ? undefined : optionId(active)}
+        autoComplete="off"
+        value={query}
+        onChange={(e) => {
+          setQuery(e.currentTarget.value);
+          // The result set has changed under it, so the old index would run a different row.
+          setActive(0);
+        }}
+        onKeyDown={onKeyDown}
+      />
     </ModalShell>
   );
 }

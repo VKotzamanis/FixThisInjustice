@@ -5,32 +5,14 @@
  * fallback, so the palette renders whether or not the token sheet has loaded and a skin
  * restyles it by swapping tokens rather than by editing this file (master plan section 3).
  *
- * The panel is pinned near the top rather than centred: the list grows downwards as the query
- * narrows, and a centred panel would move under the user's eye on every keystroke.
+ * Geometry is the shared bottom sheet (src/ui/overlay/sheet.css, brief 5.1); the query field sits
+ * under the results so the phone keyboard pushes the field, not the list (F11).
  */
-.spotlight-bg {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 4rem 1rem 1rem;
-  background: rgba(10, 11, 12, 0.72);
-}
 
 .spotlight {
-  width: min(36rem, 100%);
-  max-height: calc(100vh - 6rem);
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
-  border-radius: 0.5rem;
-  background: var(--bg-2);
-  color: var(--text);
   font-family: var(--sans, system-ui, sans-serif);
 }
 
@@ -73,13 +55,12 @@
   box-sizing: border-box;
 }
 
-/*
- * The active row is marked by BOTH a background and a left rule, never by colour alone: the
- * accent against this background does not reach a 3:1 contrast ratio on its own.
- */
+/* The active row is the pink sticker (brief 5.1; F06 left it ink on black, 1:1): ink on pink
+ * 7.75:1, marked by fill AND by a 2 px ink edge, never by colour alone. */
 .spotlight-item.is-active {
-  background: var(--bg-3);
-  box-shadow: inset 2px 0 0 0 var(--accent);
+  background: var(--accent);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 .spotlight-kind {
@@ -88,7 +69,7 @@
   font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--text-3);
+  color: inherit;
 }
 
 .spotlight-label {
@@ -100,7 +81,7 @@
 .spotlight-hint {
   flex: 0 1 auto;
   font-size: 0.8125rem;
-  color: var(--text-2);
+  color: inherit;
 }
 
 .spotlight-empty {

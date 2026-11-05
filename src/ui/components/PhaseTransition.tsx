@@ -127,6 +127,7 @@ export function PhaseTransition({
     <>
       <DitherWipe />
       <ModalShell
+        sheet="reading"
         labelledBy={headingId}
         className="phase"
         backdropClassName="phase-bg"

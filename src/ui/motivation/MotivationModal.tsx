@@ -168,6 +168,7 @@ export function MotivationModal(props: MotivationModalProps): ReactElement {
 
   return (
     <ModalShell
+      sheet="reading"
       labelledBy={headingId}
       className="mmod"
       backdropClassName="mmod-bg"

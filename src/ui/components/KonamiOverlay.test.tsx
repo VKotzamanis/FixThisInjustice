@@ -12,6 +12,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { copyFor } from '../../content/copy';
 import { KONAMI_OVERLAY_MS, KonamiOverlay, useKonamiCode } from './KonamiOverlay';
+import { openOverlay } from '../overlay/overlayStack';
 import { useAppStore } from '../../store';
 import type { SkinId } from '../../domain/types';
 
@@ -194,5 +195,43 @@ describe('KonamiOverlay under a skin', () => {
     pinSkin('limelight');
     render(<KonamiOverlay onClose={() => {}} />);
     expect(screen.getByText(copyFor('limelight', 'status.konami'))).toBeInTheDocument();
+  });
+});
+
+describe('Konami and the overlay stack (F12)', () => {
+  const CODE = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+  function Detector({ onActivate }: { onActivate: () => void }): null {
+    useKonamiCode(onActivate);
+    return null;
+  }
+
+  it('ignores the sequence typed into a field', () => {
+    const onActivate = vi.fn();
+    render(
+      <>
+        <Detector onActivate={onActivate} />
+        <input aria-label="field" />
+      </>,
+    );
+    const field = screen.getByLabelText('field');
+    for (const key of CODE) fireEvent.keyDown(field, { key });
+    expect(onActivate).not.toHaveBeenCalled();
+  });
+
+  it('ignores the sequence while another overlay is open', () => {
+    const onActivate = vi.fn();
+    const { release } = openOverlay(() => undefined, { modal: true });
+    render(<Detector onActivate={onActivate} />);
+    for (const key of CODE) fireEvent.keyDown(window, { key });
+    expect(onActivate).not.toHaveBeenCalled();
+    release();
+  });
+
+  it('closes once on Escape, through the stack', () => {
+    const onClose = vi.fn();
+    render(<KonamiOverlay onClose={onClose} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

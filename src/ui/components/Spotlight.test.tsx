@@ -487,3 +487,22 @@ describe('Spotlight under a skin', () => {
     expect(optionLabels()).toContain(copyFor('limelight', 'nav.plan'));
   });
 });
+
+describe('the palette on a phone (F11)', () => {
+  it('does not raise the keyboard on a coarse pointer, and puts the field below the results', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: coarse)', media: query }));
+    render(<Spotlight open onClose={() => undefined} />);
+    const field = screen.getByRole('combobox');
+    expect(document.activeElement).not.toBe(field);
+    const list = screen.getByRole('listbox');
+    expect(list.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
+
+  it('focuses the field when the primary pointer is fine (a keyboard is at hand)', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(pointer: fine)', media: query }));
+    render(<Spotlight open onClose={() => undefined} />);
+    expect(document.activeElement).toBe(screen.getByRole('combobox'));
+    vi.unstubAllGlobals();
+  });
+});

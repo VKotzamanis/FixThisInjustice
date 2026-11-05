@@ -219,6 +219,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
   // The write dialog, shared by "no capsule yet" and, since audit G16, "opened: write another".
   const writeDialog = dialog === 'write' && (
       <ModalShell
+        sheet="reading"
         labelledBy={dialogHeadingId}
         className="capsule-panel"
         backdropClassName="capsule-panel-bg"
@@ -384,6 +385,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
 
       {dialog === 'read' && (
         <ModalShell
+          sheet="reading"
           labelledBy={dialogHeadingId}
           className="capsule-panel"
           backdropClassName="capsule-panel-bg"

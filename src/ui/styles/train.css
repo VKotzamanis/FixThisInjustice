@@ -11,28 +11,6 @@
  * presentation choice.
  */
 
-.vmod-bg,
-.fcm-bg {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-modal);
-  background: rgb(0 0 0 / 0.72);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.vmod,
-.fcm {
-  background: var(--bg-2);
-  border: 1px solid var(--line-2);
-  color: var(--text);
-  width: min(48rem, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
 /* Ink, 2 px, 4 px inside the 1 px ink edge so a lime gap keeps the two apart. It was a 1 px pink
  * ring on the lime modal, 1.41:1, under SC 1.4.11's 3:1 for the mark that shows focus. */
 .vmod:focus-visible,
