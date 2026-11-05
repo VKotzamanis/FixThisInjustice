@@ -4,7 +4,7 @@
  *
  *   npm run icons:build          (or: node scripts/inline-icons.mjs)
  *
- * Inputs are finished artwork, not source: agy-artifacts/icons/*.png (21 files, 32 x 32). Nothing
+ * Inputs are finished artwork, not source: agy-artifacts/icons/*.png (26 files, 32 x 32). Nothing
  * is drawn or re-encoded here; the bytes on disk are base64'd verbatim, so the decoded output is
  * the input file byte for byte.
  *
@@ -38,7 +38,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 export const ICON_DIR = join(ROOT, 'agy-artifacts', 'icons');
 export const ICON_OUT = join(ROOT, 'src', 'skins', 'limelight', 'icons.ts');
 
-const ICON_COUNT = 21; // 16 icons plus the 5 panel variants of round three section 4.3
+const ICON_COUNT = 26; // 18 icons plus 8 panel variants
 const ICON_SIDE = 32; // px, the drawn size; the component scales it with image-rendering: pixelated
 const ICON_MAX_BYTES = 1024; // per file; a larger file is a regenerated asset, not a typo
 
@@ -113,6 +113,7 @@ function readIcons() {
 /** Regenerate src/skins/limelight/icons.ts and return its text. Reads only; writes nothing. */
 export function buildIconsModule() {
   const entries = readIcons();
+  const panelCount = [...entries.keys()].filter((name) => name.endsWith('Panel')).length;
   const header =
     '/*\n' +
     ' * GENERATED FILE - do not edit by hand. Rebuild with: npm run icons:build\n' +
@@ -120,9 +121,9 @@ export function buildIconsModule() {
     ' *\n' +
     `${provenance()}\n` +
     ' *\n' +
-    ` * ${entries.size} files, ${ICON_SIDE} x ${ICON_SIDE} pixel art, ${totalBytes(entries)} B decoded in total. The five names ending\n` +
-    ' * in Panel are the variants with the black outline remapped to lime, so the silhouette survives\n' +
-    ' * an inverted panel (section 4.3). The other eleven only ever sit on lime.\n' +
+    ` * ${entries.size} files, ${ICON_SIDE} x ${ICON_SIDE} pixel art, ${totalBytes(entries)} B decoded in total. The ${panelCount} names ending\n` +
+    ' * in Panel use lime silhouette outlines for inverted panels (section 4.3). Drop keeps its\n' +
+    ' * interior black details gray; the other panel variants remap all black pixels to lime.\n' +
     ' */\n';
   return renderModule(entries, 'LimelightIconName', 'LIMELIGHT_ICONS', header);
 }
