@@ -30,6 +30,7 @@ import { computeTargets, isInDomain } from '../nutrition';
 import { nutritionInputForState, trendEntries } from '../measurements';
 import { EXERCISE_BY_ID } from '../plan/library';
 import { computeRecords } from '../training/records';
+import { isInProgramme } from '../schedule/weekly';
 import type { AppState, EpochMs, Exercise, Kg, UnitSystem } from '../types';
 import { UNIT_LABEL, formatBeverageTarget, formatLoad, formatMass } from '../units';
 
@@ -87,9 +88,13 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   const trend = trendEntries(massLog);
   const latestMassKg: Kg = trend.at(-1)?.massKg ?? profile.body.baselineMassKg; // [kg]
   const sets = Object.values(state.sets).filter((s) => s.profileId === profileId);
-  const reviews = [...(state.weeklyReviews[profileId] ?? [])].sort((a, b) =>
-    compareCodePoint(a.weekStart, b.weekStart),
-  );
+  // ROADMAP B1c: only the running programme's weeks, by the one predicate every reader of
+  // stored reviews uses (audit D11). A document written before the bound existed still holds
+  // 0-of-target reviews of weeks after completion; a replaced plan's reviews predate this one.
+  const cursor = state.cursors[profileId];
+  const reviews = (state.weeklyReviews[profileId] ?? [])
+    .filter((r) => isInProgramme(r.weekStart, cursor))
+    .sort((a, b) => compareCodePoint(a.weekStart, b.weekStart));
 
   const lines: string[] = [];
   lines.push('FIXTHISINJUSTICE TRAINING SUMMARY');

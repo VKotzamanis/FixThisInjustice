@@ -136,6 +136,34 @@ describe('buildSummary', () => {
     expect(out).toMatch(/2026-01-05.*paused/);
   });
 
+  it('leaves out reviews of weeks after the programme completed (ROADMAP B1c)', () => {
+    // Programme started 2026-01-05 (makeBlankState) and completed Wednesday 2026-01-14, so its
+    // last graded week is Monday 2026-01-12 (isAfterProgramme); 2026-01-19 is after it.
+    const base = makeBlankState();
+    const cursor = base.cursors.p1;
+    if (cursor === undefined) throw new Error('makeBlankState carries a cursor for p1');
+    const review = (weekStart: string, weekEnd: string): WeeklyReview => ({
+      profileId: 'p1', weekStart, weekEnd, target: 4, completed: 0, skipped: 0, paused: false,
+      delta: -4, evaluatedAt: NOW, missHandled: false,
+    });
+    const state: AppState = {
+      ...base,
+      cursors: { p1: { ...cursor, completedOn: '2026-01-14' } },
+      weeklyReviews: { p1: [review('2026-01-12', '2026-01-18'), review('2026-01-19', '2026-01-25')] },
+    };
+    const out = buildSummary(state, 'p1', NOW);
+    expect(out).toMatch(/2026-01-12\s+0 \/ 4/);
+    expect(out).not.toContain('2026-01-19');
+    expect(out).toMatch(/Weeks reviewed:\s+1/);
+  });
+
+  it('leaves out reviews of weeks before the current programme started (ROADMAP B1c, B1d)', () => {
+    const state = withReview(makeBlankState(), { weekStart: '2025-12-29', weekEnd: '2026-01-04' });
+    const out = buildSummary(state, 'p1', NOW);
+    expect(out).not.toContain('2025-12-29');
+    expect(out).toContain(copy('advice.noWeeksYet'));
+  });
+
   it('says no weeks have been reviewed when none have', () => {
     expect(buildSummary(makeBlankState(), 'p1', NOW)).toContain(copy('advice.noWeeksYet'));
   });
