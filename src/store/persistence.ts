@@ -1,6 +1,6 @@
 import type { AppState } from '../domain/types';
 import { CURRENT_SCHEMA_VERSION, parseState } from '../domain/schema';
-import { isQuotaExceeded, messageOf } from './db/errors';
+import { messageOf } from './db/errors';
 import { migrate } from '../domain/migrations';
 import { assembleState, type QuarantinedRecord, type StoredRecords } from './db/assemble';
 import type { MetaRecord, RecordBackend } from './db/backend';
@@ -54,66 +54,6 @@ export type SaveResult = { ok: true } | { ok: false; reason: SaveFailure; error:
 
 export type ImportResult = { ok: true; state: AppState } | { ok: false; error: string };
 
-/** Reads and validates the persisted document. Never throws. */
-export function load(): LoadResult {
-  let text: string | null;
-  try {
-    text = localStorage.getItem(STORAGE_KEY);
-  } catch (e) {
-    // Storage can be unavailable outright: Safari private browsing, a blocked
-    // third-party context, or a user setting that disables site data.
-    return { ok: false, reason: 'unavailable', error: messageOf(e), raw: null };
-  }
-
-  if (text === null) return { ok: false, reason: 'absent', error: 'no stored document', raw: null };
-
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch (e) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: `stored document is not JSON: ${messageOf(e)}`,
-      raw: text,
-    };
-  }
-
-  const parsed = parseState(raw);
-  if (!parsed.ok) return { ok: false, reason: 'invalid', error: parsed.error, raw: text };
-  return { ok: true, state: parsed.state };
-}
-
-/**
- * Writes the document. The caller surfaces a failed write; it is never silent.
- *
- * Serialisation and storage are separate steps because they fail for opposite
- * reasons and need opposite advice. A store that is full or unreachable leaves
- * the in-memory document intact, so "export it now" is the recovery; a document
- * JSON.stringify cannot handle would break that export too, and the fault is in
- * the state, not the browser. Folding both into 'unavailable' told the user to
- * do the one thing that could not work.
- */
-export function save(state: AppState): SaveResult {
-  let text: string;
-  try {
-    text = JSON.stringify(state);
-  } catch (e) {
-    return { ok: false, reason: 'serialize', error: messageOf(e) };
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY, text);
-    return { ok: true };
-  } catch (e) {
-    return {
-      ok: false,
-      reason: isQuotaExceeded(e) ? 'quota' : 'unavailable',
-      error: messageOf(e),
-    };
-  }
-}
-
 /**
  * The raw stored text, unvalidated. The crash-recovery UI needs this: when the
  * store itself threw, a validated read is exactly what is not available, and the
@@ -142,33 +82,6 @@ export function clearStorage(): void {
   }
 }
 
-/** What another instance did to the document, as this instance's `storage` event reports it. */
-export interface ExternalWrite {
-  /**
-   * True when the other instance removed the key or cleared storage. Read from
-   * `event.newValue === null` (amendment AM-10), never from a re-read: a re-read races any
-   * later write and would let this instance mistake a removal for a rewrite.
-   */
-  removed: boolean;
-}
-
-/**
- * Audit B03 stopgap (spec P1): another instance of the app (a second tab, the installed app
- * beside a browser tab) wrote or removed the document. Browsers fire `storage` in every OTHER
- * same-origin document, never in the writer. `key === null` is a `clear()`. Returns the
- * unsubscribe. P2's IndexedDB engine replaces this with BroadcastChannel and a revision.
- */
-export function onExternalWrite(listener: (w: ExternalWrite) => void): () => void {
-  const handler = (e: StorageEvent): void => {
-    if (e.key !== null && e.key !== STORAGE_KEY) return;
-    listener({ removed: e.newValue === null });
-  };
-  window.addEventListener('storage', handler);
-  return () => {
-    window.removeEventListener('storage', handler);
-  };
-}
-
 /**
  * Pretty-printed export. Covers the whole persisted surface (constraint 10) with one
  * deliberate hole: `pushDevice`.
@@ -181,8 +94,9 @@ export function onExternalWrite(listener: (w: ExternalWrite) => void): () => voi
  * overwrite its schedule. Nothing else in the document confers an ability on a reader.
  *
  * The field is set to null HERE, in the export projection, and never in state: the running
- * app keeps its device and its subscription, and `save()` (which does its own
- * JSON.stringify) still persists it to this browser's own storage, where it belongs.
+ * app keeps its device and its subscription, and the IndexedDB records (and the AM-P2-1
+ * rollback mirror, its own JSON.stringify) still keep it in this browser's storage, where it
+ * belongs.
  *
  * Present and null rather than absent, so the file shows the reader that the field exists and
  * was emptied on purpose, and so `parseState` takes its nullable branch.
@@ -231,6 +145,20 @@ export function importJson(text: string): ImportResult {
  * ---- Spec R13: the IndexedDB engine's entry points ----
  */
 
+/**
+ * Amendment AM-P2-1: the rollback mirror. Writes the document text to fti.v3 so a pre-P2 build,
+ * which reads only this key, loads data at most one app session old. Best effort by ruling: a
+ * full or unreachable store is logged and ignored, because the records in IndexedDB are the
+ * copy that counts and the banner must not accuse a write that did succeed there.
+ */
+export function writeLegacyMirror(text: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, text);
+  } catch (e) {
+    console.warn(`fti.v3 rollback mirror not written: ${messageOf(e)}`);
+  }
+}
+
 /** The legacy-key half of the browser backend: fti.v3 is read once and removed only by a wipe. */
 export function createBrowserBackend(): RecordBackend {
   const records = idbRecordStore();
@@ -244,6 +172,7 @@ export function createBrowserBackend(): RecordBackend {
     onAnnounce: (listener) => channel.subscribe(listener),
     readLegacy: readRaw,
     removeLegacy: clearStorage,
+    writeLegacy: writeLegacyMirror,
   };
 }
 

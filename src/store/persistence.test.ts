@@ -7,10 +7,8 @@ import {
   createBrowserBackend,
   exportJson,
   importJson,
-  load,
   loadDocument,
   readRaw,
-  save,
 } from './persistence';
 import { resetRecordDbForTests } from './db/idb';
 import { createMemoryBackend } from './db/memoryBackend';
@@ -20,9 +18,7 @@ import { defaultState, parseState } from '../domain/schema';
 import alphaFixtureJson from '../../docs/feedback/alpha-fixture.json?raw';
 import type { AppState, PushDevice } from '../domain/types';
 import {
-  domExceptionWithCode,
   installFakeStorage,
-  makeStorageFull,
   makeStorageUnavailable,
 } from './testStorage';
 
@@ -60,147 +56,6 @@ function populatedReference(): AppState {
 describe('the storage key', () => {
   it('is fti.v3', () => {
     expect(STORAGE_KEY).toBe('fti.v3');
-  });
-});
-
-describe('load', () => {
-  it('reports an absent document on first run', () => {
-    installFakeStorage();
-    const result = load();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('absent');
-      expect(result.raw).toBeNull();
-    }
-  });
-
-  it('round-trips a saved document', () => {
-    installFakeStorage();
-    const s = defaultState();
-    expect(save(s)).toEqual({ ok: true });
-    const result = load();
-    expect(result.ok).toBe(true);
-    if (result.ok) expect(result.state).toEqual(s);
-  });
-
-  it.each(['clinical', 'board'] as const)(
-    'loads a stored v3 document naming the retired %s skin as limelight, all else unchanged',
-    (skin) => {
-      const data = installFakeStorage();
-      const expected = populatedReference();
-      data.set(STORAGE_KEY, withSkin(skin));
-
-      const result = load();
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        expect(result.state.ui.skin).toBe('limelight');
-        expect(result.state).toEqual(expected);
-      }
-    },
-  );
-
-  it('reports non-JSON text as invalid rather than throwing', () => {
-    installFakeStorage({ [STORAGE_KEY]: 'not json {' });
-    const result = load();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('invalid');
-      expect(result.error).toContain('not JSON');
-      // The unparsed text travels with the failure so the recovery UI can offer
-      // it for export without a second read (master plan §3).
-      expect(result.raw).toBe('not json {');
-    }
-  });
-
-  it('reports a schema failure as invalid and leaves the stored text alone', () => {
-    const data = installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
-    const result = load();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('invalid');
-      expect(result.error).toBe('missing or non-integer schemaVersion');
-      expect(result.raw).toBe('{"week":999}');
-    }
-    // Constraint 2: reject, do not coerce, and leave the document intact so the
-    // user can still export it.
-    expect(data.get(STORAGE_KEY)).toBe('{"week":999}');
-  });
-
-  it('reports unavailable storage rather than throwing', () => {
-    makeStorageUnavailable();
-    const result = load();
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.reason).toBe('unavailable');
-      expect(result.raw).toBeNull();
-    }
-  });
-});
-
-describe('save', () => {
-  it('writes the document under the one key', () => {
-    const data = installFakeStorage();
-    expect(save(defaultState())).toEqual({ ok: true });
-    expect([...data.keys()]).toEqual([STORAGE_KEY]);
-  });
-
-  it('reports a quota failure by standard name', () => {
-    installFakeStorage();
-    makeStorageFull(new DOMException('full', 'QuotaExceededError'));
-    expect(save(defaultState())).toEqual({ ok: false, reason: 'quota', error: 'full' });
-  });
-
-  it('reports a quota failure by legacy code 22', () => {
-    installFakeStorage();
-    makeStorageFull(domExceptionWithCode('SomeOtherName', 22));
-    expect(save(defaultState())).toEqual({
-      ok: false,
-      reason: 'quota',
-      error: 'storage is full',
-    });
-  });
-
-  it('reports a quota failure by Firefox legacy code 1014', () => {
-    installFakeStorage();
-    makeStorageFull(domExceptionWithCode('NS_ERROR_DOM_QUOTA_REACHED', 1014));
-    expect(save(defaultState())).toEqual({
-      ok: false,
-      reason: 'quota',
-      error: 'storage is full',
-    });
-  });
-
-  it('distinguishes an unavailable store from a full one', () => {
-    makeStorageUnavailable();
-    const result = save(defaultState());
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.reason).toBe('unavailable');
-  });
-
-  it('distinguishes a document that will not serialise from an unreachable store', () => {
-    installFakeStorage();
-    const setItem = vi.spyOn(Storage.prototype, 'setItem');
-    // A cycle is the one way JSON.stringify throws on an otherwise ordinary
-    // object; the cast is the only way to hand save() a document the type
-    // system already forbids.
-    const circular: { self?: unknown } = {};
-    circular.self = circular;
-
-    const result = save(circular as unknown as AppState);
-
-    expect(result.ok).toBe(false);
-    // The fault is in the document, not in storage, and the two need different
-    // recovery advice: "export now" is useless when the export would throw too.
-    if (!result.ok) expect(result.reason).toBe('serialize');
-    expect(setItem).not.toHaveBeenCalled();
-  });
-
-  it('never throws, whatever storage does', () => {
-    installFakeStorage();
-    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new Error('something else entirely');
-    });
-    expect(() => save(defaultState())).not.toThrow();
   });
 });
 
@@ -272,8 +127,7 @@ describe('readRaw and clearStorage', () => {
   });
 
   it('removes the document', () => {
-    const data = installFakeStorage();
-    save(defaultState());
+    const data = installFakeStorage({ [STORAGE_KEY]: JSON.stringify(defaultState()) });
     clearStorage();
     expect(data.has(STORAGE_KEY)).toBe(false);
   });
@@ -418,7 +272,7 @@ describe('a device that still holds the old console keys', () => {
 
   it.each(['pending', 'done', 'dismissed'] as const)(
     'loads and imports a v3 document whose ui.legacyMigration is %s, and leaves the old keys',
-    (decision) => {
+    async (decision) => {
       const ui = FIXTURE.ui as Record<string, unknown>;
       const text = JSON.stringify({
         ...FIXTURE,
@@ -428,7 +282,8 @@ describe('a device that still holds the old console keys', () => {
       const reference = populatedReference();
       const expected: AppState = { ...reference, ui: { ...reference.ui, legacyMigration: decision } };
 
-      expect(load()).toEqual({ ok: true, state: expected });
+      const loaded = await loadDocument(createBrowserBackend());
+      expect(loaded.ok && loaded.state).toEqual(expected);
       expect(importJson(text)).toEqual({ ok: true, state: expected });
 
       for (const [key, value] of Object.entries(OLD_CONSOLE)) expect(data.get(key)).toBe(value);

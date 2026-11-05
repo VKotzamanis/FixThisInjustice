@@ -8,6 +8,7 @@ import { defaultState, useAppStore } from '../store';
 import { STORAGE_KEY } from '../store/persistence';
 import { makeBlankState } from '../test/migrationFactories';
 import { installFakeStorage } from '../store/testStorage';
+import { bootMemoryStore } from '../store/testBackend';
 import { downloadText } from './download';
 import { FORMAT, LIMELIGHT_COPY, copy as defaultCopy, copyFor } from '../content/copy';
 import type { CopyKey } from '../content/copy';
@@ -169,16 +170,17 @@ describe('SaveErrorBanner', () => {
   });
 
   it('re-runs the persistence save when Retry save is used', async () => {
-    const data = installFakeStorage();
+    await bootMemoryStore();
     seedSaveError();
 
     render(<App />);
     await userEvent.click(screen.getByRole('button', { name: copy('button.retrySave') }));
 
-    expect(data.get(STORAGE_KEY)).toContain('"schemaVersion":3');
-    // A write that now succeeds clears the banner, through the same
-    // reportSaveResult path the debounced subscription uses.
-    expect(useAppStore.getState().status.lastSaveError).toBeNull();
+    // Nothing failed is still waiting to be written, so the retry reports success through the
+    // same reportSaveResult path every commit uses, and the banner goes.
+    await waitFor(() => {
+      expect(useAppStore.getState().status.lastSaveError).toBeNull();
+    });
   });
 
   it('keeps the quota branch on the in-memory export', async () => {
@@ -208,6 +210,7 @@ describe('SaveErrorBanner', () => {
 describe('LoadErrorBanner', () => {
   it('offers the original corrupt text after storage has moved on underneath it', async () => {
     const data = installFakeStorage({ [STORAGE_KEY]: '{"week":999}' });
+    await bootMemoryStore({ legacy: '{"week":999}' });
 
     render(<App />);
     // The reason is the validator's own, read back from the store rather than restated here:

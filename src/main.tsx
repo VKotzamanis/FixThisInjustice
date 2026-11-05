@@ -17,14 +17,15 @@ import './ui/styles/crt.css';
 import { App } from './app/App';
 import { RootErrorBoundary } from './app/RootErrorBoundary';
 import { notifyUpdateReady } from './app/UpdatePrompt';
-import { startPersistence } from './store';
+import { startPersistence, useAppStore } from './store';
+import { createBrowserBackend } from './store/persistence';
 
 const container = document.getElementById('root');
 if (container === null) {
   throw new Error('index.html is missing <div id="root">');
 }
 
-// The store is the only writer; this subscription is the only caller of save().
+// The store is the only writer; this subscription commits its records (spec R13).
 startPersistence();
 
 /*
@@ -48,10 +49,21 @@ const updateServiceWorker = registerSW({
   },
 });
 
-createRoot(container).render(
-  <StrictMode>
-    <RootErrorBoundary>
-      <App />
-    </RootErrorBoundary>
-  </StrictMode>,
-);
+/*
+ * Spec R13: the stored records are read BEFORE the first render, so the intro and setup can never
+ * flash over a stored profile. Until then #root shows index.html's one loading line. hydrate()
+ * never rejects: a refused or unreachable store lands in status.lastLoadError.
+ */
+const root = createRoot(container);
+void useAppStore
+  .getState()
+  .hydrate(createBrowserBackend())
+  .then(() => {
+    root.render(
+      <StrictMode>
+        <RootErrorBoundary>
+          <App />
+        </RootErrorBoundary>
+      </StrictMode>,
+    );
+  });

@@ -20,6 +20,7 @@ import {
   ProfileSchema,
   SessionAssignmentSchema,
   SetupDraftShapeSchema,
+  CURRENT_SCHEMA_VERSION,
   defaultState,
 } from '../domain/schema';
 import { compareLocalDate, todayLocal } from '../domain/dates';
@@ -65,18 +66,12 @@ import {
   saveSessionMirror,
   type SessionState,
 } from './sessionMirror';
-import type { SaveFailure, SaveResult } from './persistence';
-import {
-  clearStorage,
-  exportJson as serialise,
-  importJson as deserialise,
-  load,
-  onExternalWrite,
-  save,
-} from './persistence';
-
-/** [ms] Coalescing window for writes. One write per burst, not one per keystroke (A41). */
-export const SAVE_DEBOUNCE_MS = 250;
+import type { LoadOutcome, SaveFailure, SaveResult } from './persistence';
+import { clearStorage, exportJson as serialise, importJson as deserialise, loadDocument } from './persistence';
+import type { QuarantinedRecord } from './db/assemble';
+import type { RecordBackend } from './db/backend';
+import { EMPTY_PRESERVED, encodeOps, type Preserved, type Repair } from './db/preserve';
+import { diffStates, isEmptyOps, mergeOps, splitState, type RecordOps } from './db/records';
 
 export type SaveErrorReason = SaveFailure;
 
@@ -130,6 +125,16 @@ export interface StoreStatus {
    */
   staleClosures?: readonly StaleClosure[] | undefined;
   /**
+   * Spec R13 / audit B01: stored records the last load could not read. Kept on disk exactly as
+   * stored, never written over, listed in Settings and exportable. Not persisted; optional so
+   * the status literals existing suites build stay valid.
+   */
+  quarantine?: readonly QuarantinedRecord[] | undefined;
+  /** Audit B10: stored answers a schema repair replaced on read; the stored value is kept. */
+  repairs?: readonly Repair[] | undefined;
+  /** Why the last load failed when lastLoadError is set: invalid records or no storage (B17). */
+  loadFailure?: 'invalid' | 'unavailable' | undefined;
+  /**
    * Audit B03 / amendment AM-10: another instance wrote the document while this one still had a
    * change queued, so that change was dropped for the other instance's data. True until the
    * shell has shown its one notice. Not persisted; optional for the same reason as above.
@@ -162,7 +167,12 @@ export interface LogSetResult {
 
 /** Master plan §6.7, P1 slice. Later plans extend this interface, never replace it. */
 export interface AppActions {
-  hydrate(): void;
+  /**
+   * Spec R13: reads the stored records through `backend` (importing fti.v3 on a first boot) and
+   * installs them; from then on every action's changed records are committed through it. Never
+   * throws: a refusal lands in status.lastLoadError and freezes writing.
+   */
+  hydrate(backend: RecordBackend): Promise<void>;
   replaceState(next: AppState): void;
   exportJson(): string;
   importJson(text: string): { ok: true } | { ok: false; error: string };
@@ -298,13 +308,6 @@ export interface AppActions {
   closeStaleSessions(profileId: string, now: EpochMs): readonly StaleClosure[];
   /** Empties status.staleClosures once the shell has shown its notice. */
   acknowledgeStaleClosures(): void;
-  /**
-   * Audit B03 stopgap / AM-10: installs what another instance left in storage. `removed` (the
-   * event's newValue was null) resets memory to an empty document WITHOUT touching storage;
-   * otherwise the document is re-read. `droppedLocalChange` sets status.externalWriteReplaced.
-   * Writes nothing to fti.v3 in either case.
-   */
-  followExternalWrite(removed: boolean, droppedLocalChange: boolean): void;
   /** Clears status.externalWriteReplaced once the shell has shown its notice. */
   acknowledgeExternalWrite(): void;
   /**
@@ -397,8 +400,34 @@ export function selectState(s: AppStore): AppState {
   };
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
-let pending: AppState | null = null;
+/**
+ * Spec R13: the write side of the storage engine. One per hydrate. Every action's changed
+ * records are collected for the rest of the current task (one microtask), then committed as ONE
+ * transaction against the revision this instance last read or wrote. No debounce (audit B08).
+ */
+interface Engine {
+  backend: RecordBackend;
+  /** [commits] The stored revision this instance's memory reflects. */
+  revision: number;
+  /** [commits] The revision the last rollback mirror (AM-P2-1) wrote to fti.v3. */
+  mirroredRevision: number;
+  preserved: Preserved;
+  /** Changes of the current task, not yet handed to the commit chain. */
+  queued: RecordOps | null;
+  flushScheduled: boolean;
+  /** A batch that failed (quota, unavailable): merged into the next commit, so nothing is lost. */
+  dirty: RecordOps | null;
+  /** Commits run one after another, each on the revision the previous one produced. */
+  chain: Promise<void>;
+  /** Set by wipeAll: fti.v3 is removed once the clear has committed. */
+  removeLegacyAfterClear: boolean;
+  stopListening: () => void;
+}
+
+let engine: Engine | null = null;
+
+/** Set while replaceState installs a document: the next change is a full replace, not a diff. */
+let replacing = false;
 
 /**
  * Set while an action makes a change that must not be written back. Zustand
@@ -416,11 +445,9 @@ let suppressWrite = false;
  * (master plan §3), so the cancel has to be available without the store.
  */
 export function cancelPendingSave(): void {
-  if (saveTimer !== null) {
-    clearTimeout(saveTimer);
-    saveTimer = null;
-  }
-  pending = null;
+  if (engine === null) return;
+  engine.queued = null;
+  engine.dirty = null;
 }
 
 /** Runs a state change that the persistence subscription must ignore. */
@@ -575,47 +602,36 @@ export const useAppStore = create<AppStore>()((set, get) => {
    */
   session: initialSession(),
 
-  hydrate(): void {
-    const result = load();
-    // Hydrating is a read, so none of its three outcomes may schedule a write.
-    // The valid case would re-serialise the bytes it just parsed — a write that
-    // can fail and cannot help; the invalid case must not go near the stored
-    // document at all.
-    withoutPersisting(() => {
-      if (result.ok) {
-        set({
-          ...result.state,
-          session: restoredSession(get().session, result.state, Date.now()), // [ms] epoch, UTC
-          status: { ...get().status, lastLoadError: null, lastLoadRaw: null, hydrated: true },
-        });
-        return;
-      }
-      if (result.reason === 'absent') {
-        // First run. defaultState() already in place; nothing to report.
-        set({
-          status: { ...get().status, lastLoadError: null, lastLoadRaw: null, hydrated: true },
-        });
-        return;
-      }
-      // Constraint 2: keep the last known-good state in memory, show the error,
-      // offer export. Never overwrite the stored document with a guess. The raw
-      // text is kept here because it is the user's only copy of data the schema
-      // could not read, and storage is about to stop being a reliable source of
-      // it — result.raw is null when the store was unreachable.
-      //
-      // A write queued before this load is dropped rather than allowed to land:
-      // freezing the document has to cover writes already in flight, not only
-      // the ones the gate below will refuse.
-      cancelPendingSave();
-      set({
-        status: {
-          ...get().status,
-          lastLoadError: result.error,
-          lastLoadRaw: result.raw,
-          hydrated: true,
-        },
-      });
+  async hydrate(backend: RecordBackend): Promise<void> {
+    let outcome: LoadOutcome;
+    try {
+      outcome = await loadDocument(backend);
+    } catch (e) {
+      // loadDocument is written not to throw; if it ever does, the store must still leave the
+      // loading state, and must not open setup over data it could not read.
+      outcome = { ok: false, reason: 'unavailable', error: String(e), raw: backend.readLegacy(), revision: 0 };
+    }
+    installOutcome(outcome);
+    engine?.stopListening();
+    const e: Engine = {
+      backend,
+      revision: outcome.revision,
+      // AM-P2-1: what fti.v3 holds now already equals this revision (an import leaves it as read).
+      mirroredRevision: outcome.revision,
+      preserved: outcome.ok ? outcome.preserved : EMPTY_PRESERVED,
+      queued: null,
+      flushScheduled: false,
+      dirty: null,
+      chain: Promise.resolve(),
+      removeLegacyAfterClear: false,
+      stopListening: () => undefined,
+    };
+    // Audit B03: another instance committed a newer revision; re-read before anything is written.
+    e.stopListening = backend.onAnnounce((revision) => {
+      if (engine !== e || revision <= e.revision) return;
+      e.chain = e.chain.then(() => reloadFrom(e));
     });
+    engine = e;
   },
 
   replaceState(next: AppState): void {
@@ -625,7 +641,12 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // the user chose to replace the unreadable document, so overwriting it is
     // now their decision rather than silent data loss. lastLoadRaw is kept, so
     // the recovery export stays available until the next hydrate().
-    set({ ...next, status: { ...get().status, lastLoadError: null } });
+    replacing = true;
+    try {
+      set({ ...next, status: { ...get().status, lastLoadError: null } });
+    } finally {
+      replacing = false;
+    }
   },
 
   exportJson(): string {
@@ -652,9 +673,6 @@ export const useAppStore = create<AppStore>()((set, get) => {
   },
 
   wipeAll(): void {
-    // Only this app's key. Any other owner of origin data (the P7 asset store)
-    // is cleared by the same caller, not from here.
-    clearStorage();
     // The session mirror is this app's other key. It is not the document, but it names the
     // day the user was training and holds a running timer, so a wipe that left it behind
     // would restore both on the next reload, over a store that no longer has the profile or
@@ -682,6 +700,15 @@ export const useAppStore = create<AppStore>()((set, get) => {
         },
       });
     });
+    // Spec R13: every store emptied in one transaction, then fti.v3 removed (audit B14: the
+    // records go first). The clip store is the caller's (src/ui/settings/DataSection.tsx).
+    if (engine !== null) {
+      engine.removeLegacyAfterClear = true;
+      queueOps({ clear: true, puts: [], deletes: [] });
+    } else {
+      // No engine (persistence never started, or a test): only the legacy key can be cleared.
+      clearStorage();
+    }
   },
 
   /*
@@ -718,12 +745,14 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // The same gate the subscription obeys. A retry is a user action, but not
     // a decision to replace a document the store never managed to read: that
     // decision is wipeAll() or replaceState(), and only those reopen writing.
-    if (!canPersist(get().status)) return;
-    // The user asked for this write, so it goes now rather than through the
-    // debounce, and any queued write is dropped: it can only carry an older
-    // document than the one about to be written.
-    cancelPendingSave();
-    get().reportSaveResult(save(selectState(get())));
+    if (!canPersist(get().status) || engine === null) return;
+    // Nothing failed is still held: there is nothing unsaved, so the banner can go.
+    if (engine.dirty === null) {
+      get().reportSaveResult({ ok: true });
+      return;
+    }
+    // The failed batch is still held (engine.dirty); an empty batch commits it now.
+    queueOps({ clear: false, puts: [], deletes: [] });
   },
 
   createProfile(p: Profile): void {
@@ -1049,36 +1078,6 @@ export const useAppStore = create<AppStore>()((set, get) => {
     set({ status: { ...get().status, staleClosures: [] } });
   },
 
-  followExternalWrite(removed: boolean, droppedLocalChange: boolean): void {
-    if (removed) {
-      // AM-10: never a destructive write in reaction to an observation. The other instance
-      // already removed the document; this one only forgets its in-memory copy, so no
-      // wipeAll(), no clearStorage(), no removeItem, and nothing for the subscription to save.
-      withoutPersisting(() => {
-        set({
-          ...defaultState(),
-          session: EMPTY_SESSION,
-          status: {
-            ...get().status,
-            lastSaveError: null,
-            lastLoadError: null,
-            lastActionError: null,
-            staleClosures: [],
-            hydrated: true,
-          },
-        });
-      });
-      // This tab's own sessionStorage mirror (not the shared document) is overwritten with the
-      // empty slice, so a reload here cannot revive a session of the removed document.
-      saveSessionMirror(EMPTY_SESSION);
-    } else {
-      // hydrate() is a read: it runs without persisting and never writes fti.v3.
-      get().hydrate();
-    }
-    // Status only, so this is not a persisted change either.
-    if (droppedLocalChange) set({ status: { ...get().status, externalWriteReplaced: true } });
-  },
-
   acknowledgeExternalWrite(): void {
     if (get().status.externalWriteReplaced !== true) return;
     set({ status: { ...get().status, externalWriteReplaced: false } });
@@ -1118,27 +1117,120 @@ export const useAppStore = create<AppStore>()((set, get) => {
   };
 });
 
-/** Writes any coalesced state immediately. Safe to call when nothing is pending. */
-export function flushSave(): void {
-  const toSave = pending;
-  cancelPendingSave();
-  if (toSave === null) return;
+function installOutcome(outcome: LoadOutcome): void {
+  const store = useAppStore;
+  // Installing what was read is not a change to store: no outcome may schedule a write.
+  withoutPersisting(() => {
+    const status = store.getState().status;
+    if (outcome.ok) {
+      store.setState({
+        ...outcome.state,
+        session: restoredSession(store.getState().session, outcome.state, Date.now()), // [ms] epoch, UTC
+        status: {
+          ...status,
+          lastLoadError: null,
+          lastLoadRaw: null,
+          loadFailure: undefined,
+          hydrated: true,
+          quarantine: outcome.quarantine,
+          repairs: outcome.repairs,
+        },
+      });
+      return;
+    }
+    if (outcome.reason === 'absent') {
+      // First run. defaultState() already in place; nothing to report.
+      store.setState({ status: { ...status, lastLoadError: null, lastLoadRaw: null, hydrated: true } });
+      return;
+    }
+    // Keep the last known-good state in memory, show the error, offer the stored text for
+    // export, and write nothing until the user imports or wipes (canPersist).
+    cancelPendingSave();
+    store.setState({
+      status: {
+        ...status,
+        lastLoadError: outcome.error,
+        lastLoadRaw: outcome.raw,
+        loadFailure: outcome.reason,
+        hydrated: true,
+      },
+    });
+  });
+}
 
-  useAppStore.getState().reportSaveResult(save(toSave));
+/** Audit B03: re-reads the records another instance changed; this instance's unsaved batch goes. */
+async function reloadFrom(e: Engine): Promise<void> {
+  if (engine !== e) return;
+  e.queued = null;
+  e.dirty = null;
+  const outcome = await loadDocument(e.backend);
+  if (engine !== e) return;
+  installOutcome(outcome);
+  e.revision = outcome.revision;
+  e.preserved = outcome.ok ? outcome.preserved : EMPTY_PRESERVED;
+}
+
+function queueOps(ops: RecordOps): void {
+  const e = engine;
+  if (e === null) return;
+  e.queued = e.queued === null ? ops : mergeOps(e.queued, ops);
+  if (e.flushScheduled) return;
+  e.flushScheduled = true;
+  // One transaction per action: everything the current task changed, then commit.
+  queueMicrotask(() => {
+    flushQueued(e);
+  });
+}
+
+function flushQueued(e: Engine): void {
+  e.flushScheduled = false;
+  if (engine !== e) return;
+  const batch = e.queued;
+  e.queued = null;
+  if (batch === null) return;
+  const encoded = encodeOps(batch, e.preserved);
+  e.chain = e.chain.then(() => commitBatch(e, encoded));
+}
+
+async function commitBatch(e: Engine, batch: RecordOps): Promise<void> {
+  if (engine !== e) return;
+  const ops = e.dirty === null ? batch : mergeOps(e.dirty, batch);
+  e.dirty = null;
+  if (isEmptyOps(ops)) return;
+  const result = await e.backend.commit(ops, e.revision, CURRENT_SCHEMA_VERSION);
+  if (engine !== e) return;
+  if (result.ok) {
+    e.revision = result.revision;
+    if (ops.clear && e.removeLegacyAfterClear) {
+      e.removeLegacyAfterClear = false;
+      e.backend.removeLegacy();
+    }
+    e.backend.announce(result.revision);
+    useAppStore.getState().reportSaveResult({ ok: true });
+    return;
+  }
+  if (result.reason === 'stale') {
+    await reloadFrom(e);
+    return;
+  }
+  // Kept, so the next commit (or Retry) writes it: per-record writes must not lose a change.
+  e.dirty = ops;
+  useAppStore.getState().reportSaveResult({ ok: false, reason: result.reason, error: result.error });
 }
 
 /**
- * True when any persisted field changed identity. Actions replace the objects
- * they touch rather than mutating them, so reference comparison is enough, and a
- * status-only update — which touches no persisted field — costs no write.
- *
- * The `as` is over the store's own keys, not over external data: Object.keys
- * types its result as string[], and both operands are AppState by construction.
+ * Resolves once every change made so far has been committed (or has failed and been reported).
+ * For the wipe's ordering (audit B14) and for tests.
  */
-function persistedChanged(next: AppStore, prev: AppStore): boolean {
-  const a = selectState(next);
-  const b = selectState(prev);
-  return (Object.keys(a) as (keyof AppState)[]).some((key) => a[key] !== b[key]);
+export async function whenPersisted(): Promise<void> {
+  for (;;) {
+    const e = engine;
+    if (e === null) return;
+    if (e.flushScheduled) flushQueued(e);
+    const chain = e.chain;
+    await chain;
+    if (engine !== e || (e.chain === chain && !e.flushScheduled)) return;
+  }
 }
 
 /**
@@ -1165,66 +1257,78 @@ function canPersist(status: StoreStatus): boolean {
 }
 
 /**
- * Persists the store on change. The store is the only writer, so there is no
- * race between a direct localStorage write and the subscription (A43).
+ * Persists the store on change (spec R13): each action's changed records are committed through
+ * the backend hydrate() installed, one transaction per action, no debounce. Returns a teardown
+ * that stops writing and stops listening to other instances.
  *
- * Writes are debounced because the legacy store serialised the whole document
- * on every keystroke (A41). They are flushed on pagehide because a phone can
- * discard the page without ever firing unload, which would lose the last burst.
- * Returns a teardown that flushes first.
+ * Amendment AM-P2-1 (rollback mirror): on visibilitychange to hidden and on pagehide the whole
+ * document is also written to fti.v3, so a pre-P2 build (which reads only fti.v3) loads data at
+ * most one app session old after a rollback. Best effort, never per action, never on the
+ * critical path. Remove two releases after P2 ships (docs/STATUS.md).
  */
 export function startPersistence(): () => void {
   const unsubscribe = useAppStore.subscribe((next, prev) => {
-    // A change the store made to itself — hydrating, resetting — is not a
-    // change to store.
+    // A change the store made to itself (hydrating, resetting) is not a change to store.
     if (suppressWrite) return;
-    // Only a persisted change is worth a write; status is not persisted.
-    if (!persistedChanged(next, prev)) return;
+    if (engine === null) return;
+    const ops = replacing
+      ? { clear: true, puts: splitState(selectState(next)), deletes: [] }
+      : diffStates(selectState(prev), selectState(next));
+    if (isEmptyOps(ops)) return;
     if (!canPersist(next.status)) {
-      // A blocked write must not sit in the queue waiting for the gate to open:
-      // by then it would carry a document assembled while the store was in a
-      // state it refused to persist.
+      // A blocked change must not wait in the queue for the gate to open.
       cancelPendingSave();
       return;
     }
-    pending = selectState(next);
-    if (saveTimer !== null) clearTimeout(saveTimer);
-    saveTimer = setTimeout(flushSave, SAVE_DEBOUNCE_MS);
+    // A replaced document carries none of the old one's unknown keys or quarantined rows.
+    if (replacing) engine.preserved = EMPTY_PRESERVED;
+    queueOps(ops);
   });
 
   const onPageHide = (): void => {
-    flushSave();
+    writeRollbackMirror();
   };
   window.addEventListener('pagehide', onPageHide);
-
-  /**
-   * Android discards a backgrounded tab without firing pagehide, so the last
-   * event a page is guaranteed to see is visibilitychange to "hidden". A flush
-   * on becoming visible would be pointless, hence the state check.
-   */
+  // Android discards a backgrounded tab without firing pagehide; "hidden" is the last event a
+  // page is guaranteed to see.
   const onVisibilityChange = (): void => {
-    if (document.visibilityState === 'hidden') flushSave();
+    if (document.visibilityState === 'hidden') writeRollbackMirror();
   };
   document.addEventListener('visibilitychange', onVisibilityChange);
 
-  /*
-   * Audit B03 stopgap: another instance wrote the document. This one's queued write was
-   * assembled from an older copy, so it is dropped (and the user told, AM-10) and the document
-   * re-read; a removal is followed in memory only, never re-created and never re-deleted.
-   */
-  const stopExternal = onExternalWrite(({ removed }) => {
-    const droppedLocalChange = pending !== null;
-    cancelPendingSave();
-    useAppStore.getState().followExternalWrite(removed, droppedLocalChange);
-  });
-
   return () => {
-    stopExternal();
     unsubscribe();
     window.removeEventListener('pagehide', onPageHide);
     document.removeEventListener('visibilitychange', onVisibilityChange);
-    flushSave();
+    engine?.stopListening();
+    engine = null;
   };
+}
+
+/**
+ * Amendment AM-P2-1: the in-memory document to fti.v3, in the shape the pre-P2 save() wrote
+ * (JSON.stringify of the whole AppState, so an old build's parseState loads it and this
+ * browser keeps its own push device). Never over a document the store refused to read
+ * (canPersist): fti.v3 may then be the user's only copy. Skipped when nothing changed since the
+ * last mirror. A failure (quota) is logged by persistence.ts and otherwise ignored.
+ */
+function writeRollbackMirror(): void {
+  const e = engine;
+  if (e === null) return;
+  const state = useAppStore.getState();
+  if (!canPersist(state.status)) return;
+  const unchanged = e.queued === null && e.dirty === null && !e.flushScheduled && e.mirroredRevision === e.revision;
+  if (unchanged) return;
+  let text: string;
+  try {
+    text = JSON.stringify(selectState(state));
+  } catch (err) {
+    // A document JSON cannot hold is already reported by the commit path ('serialize').
+    console.warn(`fti.v3 rollback mirror skipped: ${String(err)}`);
+    return;
+  }
+  e.backend.writeLegacy(text);
+  e.mirroredRevision = e.revision;
 }
 
 export { defaultState };

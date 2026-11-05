@@ -3,10 +3,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { ExportView } from './ExportView';
 import { FORMAT, copyFor } from '../../content/copy';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
-import { flushSave, startPersistence, useAppStore } from '../../store';
-import { STORAGE_KEY } from '../../store/persistence';
+import { useAppStore, whenPersisted } from '../../store';
+import { bootMemoryStore, storedDocument } from '../../store/testBackend';
 import { installFakeStorage } from '../../store/testStorage';
-import { parseState } from '../../domain/schema';
 import type { PushDevice, SessionAssignment } from '../../domain/types';
 import type { SkinId } from '../../domain/types';
 
@@ -22,17 +21,6 @@ const NOW = Date.UTC(2026, 8, 1, 12, 0, 0); // [ms]
  * bytes the user would have received. jsdom implements neither of the two APIs it needs.
  */
 let downloads: { name: string; type: string; blob: Blob | null }[] = [];
-
-/**
- * Teardowns for every startPersistence() subscription a test started. Unconditional in
- * afterEach, following store/index.test.ts's own pattern: a test that fails before reaching
- * its own stop() call must not leave the subscription writing on behalf of every later test.
- */
-const liveTeardowns = new Set<() => void>();
-
-function startPersistenceForTest(): void {
-  liveTeardowns.add(startPersistence());
-}
 
 beforeEach(() => {
   installFakeStorage();
@@ -57,8 +45,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const stop of [...liveTeardowns]) stop();
-  liveTeardowns.clear();
   Reflect.deleteProperty(URL, 'createObjectURL');
   Reflect.deleteProperty(URL, 'revokeObjectURL');
 });
@@ -377,17 +363,12 @@ describe('ExportView', () => {
     expect(screen.getByText(copyFor('limelight', 'status.importOk'))).toBeTruthy();
   });
 
-  it('persists the imported document to storage once Replace commits it', () => {
+  it('persists the imported document to storage once Replace commits it', async () => {
     // The in-memory store (exportJson(), asserted above) proves the STATE changed; it says
-    // nothing about the disk. startPersistence() is not on by default in this suite -- most
-    // tests here never touch storage -- so it is switched on for this one test only.
-    const storage = installFakeStorage();
-    // The persistence subscription refuses to write until the store is marked hydrated
-    // (store/index.ts canPersist); hydrate() against the now-empty fake storage takes the
-    // "absent" branch, which only flips that flag and leaves the profile/plan the outer
-    // beforeEach already installed untouched.
-    useAppStore.getState().hydrate();
-    startPersistenceForTest();
+    // nothing about the disk. Persistence is not on by default in this suite, so this one test
+    // boots the store on the in-memory backend (spec R13). Nothing is stored yet, so the boot
+    // only marks the store hydrated and leaves the profile the outer beforeEach installed.
+    const backend = await bootMemoryStore();
     render(<ExportView />);
 
     const imported = JSON.stringify(makeBlankState(makeProfile({ displayName: 'Imported Athlete' })));
@@ -395,20 +376,12 @@ describe('ExportView', () => {
     backUpInPanel();
     typeConfirmation('DELETE');
     fireEvent.click(replaceButton());
+    await whenPersisted();
 
-    // The write is debounced (SAVE_DEBOUNCE_MS); flushSave() commits it synchronously without
-    // switching this file over to fake timers.
-    flushSave();
-
-    const raw = storage.get(STORAGE_KEY);
-    expect(raw).toBeDefined();
-    const result = parseState(JSON.parse(raw ?? 'null'));
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.state.profiles[result.state.activeProfileId ?? '']?.displayName).toBe(
-        'Imported Athlete',
-      );
-    }
+    // An import replaces every record in one commit.
+    expect(backend.commits.at(-1)?.clear).toBe(true);
+    const stored = storedDocument(backend.disk);
+    expect(stored.profiles[stored.activeProfileId ?? '']?.displayName).toBe('Imported Athlete');
   });
 
   it('re-imports its own export to an equal state', () => {

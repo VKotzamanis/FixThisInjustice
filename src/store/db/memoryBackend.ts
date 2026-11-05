@@ -89,6 +89,9 @@ export function createMemoryBackend(opts: { disk?: MemoryDisk; legacy?: string |
     removeLegacy(): void {
       disk.legacy = null;
     },
+    writeLegacy(text: string): void {
+      disk.legacy = text;
+    },
   };
 }
 

@@ -6,8 +6,7 @@ import { STEPS, SetupWizard } from './SetupWizard';
 import setupCss from './setup.css?raw';
 import { BODY_EQUATIONS } from '../../content/bodyEquations';
 import { useAppStore } from '../../store';
-import { STORAGE_KEY } from '../../store/persistence';
-import { installFakeStorage } from '../../store/testStorage';
+import { createMemoryBackend } from '../../store/db/memoryBackend';
 import { defaultState, parseState } from '../../domain/schema';
 import { EXERCISES } from '../../domain/plan/library';
 import { generatePlan, volumeReport } from '../../domain/plan/generator';
@@ -1456,10 +1455,9 @@ describe('the setup draft survives a closed browser (C1.G.1)', () => {
    * of the document is not corrupted - are demonstrated together rather than only at the schema
    * layer (src/domain/schema.test.ts, "the setupDraft field").
    */
-  it('does not crash the wizard when the stored draft is corrupt, and leaves the rest of the document intact', () => {
+  it('does not crash the wizard when the stored draft is corrupt, and leaves the rest of the document intact', async () => {
     const corrupted = { ...defaultState(), setupDraft: { units: 'metric' } }; // missing required fields
-    installFakeStorage({ [STORAGE_KEY]: JSON.stringify(corrupted) });
-    useAppStore.getState().hydrate();
+    await useAppStore.getState().hydrate(createMemoryBackend({ legacy: JSON.stringify(corrupted) }));
 
     expect(useAppStore.getState().status.lastLoadError).toBeNull();
     expect(useAppStore.getState().setupDraft).toBeNull();

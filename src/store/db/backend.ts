@@ -45,4 +45,9 @@ export interface RecordBackend extends RecordStore {
   readLegacy(): string | null;
   /** Removes fti.v3. Called by the wipe only: the import leaves it as a fallback (rule 7). */
   removeLegacy(): void;
+  /**
+   * Amendment AM-P2-1: writes the whole document to fti.v3 so a rolled-back pre-P2 build finds
+   * recent data. Best effort: never throws, a failure (quota) is logged and otherwise ignored.
+   */
+  writeLegacy(text: string): void;
 }

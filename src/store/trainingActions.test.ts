@@ -9,16 +9,11 @@
 // sessionMirror.test.ts only). It is separated from training.test.ts rather than folded into
 // it because that file is deliberately store-free and React-free, and from index.test.ts
 // because that file is P1's; the deviation is recorded in the task report.
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import {
-  SAVE_DEBOUNCE_MS,
-  defaultState,
-  selectState,
-  startPersistence,
-  useAppStore,
-} from './index';
-import { STORAGE_KEY } from './persistence';
+import { defaultState, selectState, startPersistence, useAppStore, whenPersisted } from './index';
+import { createMemoryBackend } from './db/memoryBackend';
+import { bootMemoryStore, storedDocument as diskDocument } from './testBackend';
 import { EMPTY_SESSION, SESSION_KEY, loadSessionMirror } from './sessionMirror';
 import { UNDO_WINDOW_MS } from './training';
 import { installFakeStorage } from './testStorage';
@@ -54,13 +49,6 @@ function expectStorable(): void {
   expect(round.ok ? null : round.error).toBeNull();
 }
 
-const liveTeardowns = new Set<() => void>();
-
-function startPersistenceForTest(): void {
-  const stop = startPersistence();
-  liveTeardowns.add(stop);
-}
-
 /**
  * The raw Web Storage backing. The `sessionStorage` global is not named here; see the note in
  * sessionMirror.test.ts and the ESLint gate it describes (P4 polish item 5). Installing the
@@ -94,10 +82,6 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  for (const stop of [...liveTeardowns]) {
-    liveTeardowns.delete(stop);
-    stop();
-  }
   vi.useRealTimers();
 });
 
@@ -321,19 +305,17 @@ describe('deleteSet / undoDelete', () => {
 });
 
 describe('the session slice', () => {
-  it('mirrors the rest timer and persists nothing', () => {
-    vi.useFakeTimers();
-    const data = installFakeStorage();
-    startPersistenceForTest();
+  it('mirrors the rest timer and persists nothing', async () => {
+    const backend = await bootMemoryStore();
     const timer = startRest(90, NOW); // [s], [ms]
 
     useAppStore.getState().setRestTimer(timer);
     expect(useAppStore.getState().session.restTimer).toEqual(timer);
     expect(loadSessionMirror()?.restTimer).toEqual(timer);
 
-    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 2);
-    // The slice is not part of the document: a rest timer must not make the store write.
-    expect(data.get(STORAGE_KEY)).toBeUndefined();
+    await whenPersisted();
+    // The slice is not part of the document: with no open session a rest timer writes nothing.
+    expect(backend.commits).toEqual([]);
   });
 
   it('clears the mirrored timer with null', () => {
@@ -342,26 +324,22 @@ describe('the session slice', () => {
     expect(loadSessionMirror()?.restTimer).toBeNull();
   });
 
-  it('keeps rest-game wins in the session mirror and out of the main document (ROADMAP F1)', () => {
-    vi.useFakeTimers();
-    const data = installFakeStorage();
-    startPersistenceForTest();
+  it('keeps rest-game wins in the session mirror and out of the main document (ROADMAP F1)', async () => {
+    const backend = await bootMemoryStore();
 
     useAppStore.getState().recordRestGameWin();
 
     expect(useAppStore.getState().session.restGameWins).toBe(1); // [rounds]
     expect(loadSessionMirror()?.restGameWins).toBe(1); // [rounds]
-    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 2);
-    // A win alone makes the store write nothing to fti.v3.
-    expect(data.get(STORAGE_KEY)).toBeUndefined();
+    await whenPersisted();
+    // A win alone makes the store write nothing.
+    expect(backend.commits).toEqual([]);
 
     // A later document write (a logged set) carries no trace of the game either.
     useAppStore.getState().logSet(setInput, NOW);
-    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
-    const written = data.get(STORAGE_KEY) ?? '';
-    expect(written).not.toBe('');
-    expect(written).not.toMatch(/restGame|restWord/);
-
+    await whenPersisted();
+    expect(backend.commits).not.toEqual([]);
+    expect(JSON.stringify(backend.commits)).not.toMatch(/restGame|restWord/);
     // The count ends with the session: no score outlives the lifting day.
     useAppStore.getState().clearSessionSlice();
     expect(useAppStore.getState().session.restGameWins).toBe(0); // [rounds]
@@ -587,25 +565,19 @@ describe('resetting the session slice', () => {
 });
 
 describe('the persistence gate', () => {
-  it('writes a logged set once the store has hydrated', () => {
-    vi.useFakeTimers();
-    const data = installFakeStorage();
-    startPersistenceForTest();
+  it('writes a logged set once the store has hydrated', async () => {
+    const backend = await bootMemoryStore();
 
-    useAppStore.getState().logSet(setInput, NOW);
-    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+    const { id } = useAppStore.getState().logSet(setInput, NOW);
+    await whenPersisted();
 
-    const written = data.get(STORAGE_KEY);
-    expect(written).toBeDefined();
-    const round = parseState(JSON.parse(written ?? 'null') as unknown);
-    expect(round.ok ? null : round.error).toBeNull();
+    expect(diskDocument(backend.disk).sets[id]).toEqual(useAppStore.getState().sets[id]);
   });
 
-  it('refuses to write anything the P4 actions change before hydrate', () => {
-    vi.useFakeTimers();
-    const data = installFakeStorage();
+  it('refuses to write anything the P4 actions change before hydrate', async () => {
+    const backend = createMemoryBackend();
+    onTestFinished(startPersistence());
     useAppStore.setState({ status: { ...useAppStore.getState().status, hydrated: false } });
-    startPersistenceForTest();
 
     useAppStore.getState().logSet(setInput, NOW);
     useAppStore.getState().addHydration('profile-1', '2026-03-02', 250, NOW); // [mL], [ms]
@@ -620,23 +592,23 @@ describe('the persistence gate', () => {
       NOW,
     );
     useAppStore.getState().addCustomExercise('profile-1', makeExercise({ id: 'custom-1' }));
-    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+    await whenPersisted();
+    // Hydrating afterwards does not write what changed before it either.
+    await useAppStore.getState().hydrate(backend);
+    await whenPersisted();
 
-    expect(data.get(STORAGE_KEY)).toBeUndefined();
+    expect(backend.commits).toEqual([]);
   });
 
-  it('refuses to write after a failed load, which froze the stored document', () => {
-    vi.useFakeTimers();
-    const data = installFakeStorage({ [STORAGE_KEY]: '{"schemaVersion":3,"corrupt":true}' });
-    useAppStore.setState({
-      status: { ...useAppStore.getState().status, lastLoadError: 'sets: invalid' },
-    });
-    startPersistenceForTest();
+  it('refuses to write after a failed load, which froze the stored document', async () => {
+    const backend = await bootMemoryStore({ legacy: '{"week":999}' });
+    expect(useAppStore.getState().status.lastLoadError).not.toBeNull();
 
     useAppStore.getState().logSet(setInput, NOW);
-    vi.advanceTimersByTime(SAVE_DEBOUNCE_MS * 4);
+    await whenPersisted();
 
-    expect(data.get(STORAGE_KEY)).toBe('{"schemaVersion":3,"corrupt":true}');
+    expect(backend.commits).toEqual([]);
+    expect(backend.disk.legacy).toBe('{"week":999}');
   });
 });
 
