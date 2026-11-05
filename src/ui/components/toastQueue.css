@@ -6,8 +6,8 @@
  * restyles it by swapping tokens rather than by editing this file (master plan section 3).
  *
  * The stack is always mounted, empty or not, because a live region has to exist before its
- * content does. It therefore takes no pointer events; the toast inside it takes them back, so
- * an empty region cannot swallow a tap meant for the page underneath.
+ * content does. It therefore takes no pointer events, nor does the toast's body: only its own
+ * buttons take taps back (brief 5.2), so no toast can swallow a tap meant for the page beneath.
  *
  * It holds TWO regions - a polite `role="status"` and an assertive `role="alert"` - and at
  * most one of them is non-empty at a time. Neither is given a box of its own here: an empty
@@ -15,13 +15,17 @@
  * `display: contents` region would risk being dropped from the accessibility tree along with
  * its box.
  */
+/*
+ * Brief 5.2: one compact sign under the header, never at the bottom where the rest bar and the
+ * next Log button live (F03, C08). Above sheets and the dock, below modals (--z-toast).
+ */
 .toast-stack {
   position: fixed;
   left: 50%;
-  bottom: 1rem;
+  top: calc(var(--header-h) + env(safe-area-inset-top) + var(--space-2));
   transform: translateX(-50%);
-  width: min(32rem, calc(100vw - 2rem));
-  z-index: var(--z-toast); /* above sheets, the dock and the CRT layers; below modals (critique D11) */
+  width: min(32rem, calc(100vw - 2 * var(--gutter)));
+  z-index: var(--z-toast);
   pointer-events: none;
 }
 
@@ -29,27 +33,40 @@
  * THE LIT SIGN (stylize survey 2026-10-18, item 9). Every toast also carries `.ll-panel`
  * (ToastQueue.tsx), which paints it --panel black with --panel-text white (21:1) from
  * tokens.css. So this rule sets no ground and no text colour, and the rules below never set ink
- * or --fine type, which would read at 1:1 and about 2.2:1 on black. The pink left rule is the
- * sign's edge; on black it measures 7.75:1.
+ * or --fine type, which would read at 1:1 and about 2.2:1 on black. The pink top rule is the
+ * sign's edge (a side rule over 1 px is a craft-floor ban); on black it measures 7.75:1.
  */
 .toast {
-  pointer-events: auto;
+  /* The body takes no taps: a tap lands on the control under it. Only its buttons take taps. */
+  pointer-events: none;
+  max-height: 96px;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   padding: 0.75rem 0.9rem;
   border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
-  border-left: 2px solid var(--accent);
+  border-top: 2px solid var(--accent);
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 0.85rem;
   line-height: 1.5;
-  animation: toast-in 160ms ease-out;
+  animation: toast-in var(--dur-base) var(--ease-out);
+}
+
+.toast button {
+  pointer-events: auto;
+}
+
+/* Inside 96 px a specimen shows its tag and title; its body and source are in the Atlas. */
+.toast-specimen .toast-body,
+.toast-specimen .toast-source {
+  display: none;
 }
 
 @keyframes toast-in {
   from {
     opacity: 0;
-    transform: translateY(0.5rem);
+    transform: translateY(-8px);
   }
 
   to {
@@ -144,17 +161,17 @@
 }
 
 /*
- * Class and rarity are marked by the left rule, never by colour alone: every toast also
+ * Class and rarity are marked by the top rule, never by colour alone: every toast also
  * carries its own tag or message text, so a user who cannot separate the hues loses nothing.
  */
 .toast-undo {
-  border-left-color: var(--warn);
+  border-top-color: var(--warn);
 }
 
 .toast-specimen.rarity-uncommon {
-  border-left-color: var(--info);
+  border-top-color: var(--info);
 }
 
 .toast-specimen.rarity-rare {
-  border-left-color: var(--danger);
+  border-top-color: var(--danger);
 }

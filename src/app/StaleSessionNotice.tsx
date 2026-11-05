@@ -7,13 +7,13 @@
 import { useEffect, type ReactElement } from 'react';
 import { useCopy } from '../content/useCopy';
 import { useAppStore } from '../store';
-import { useToasts } from '../ui/components/ToastQueue';
+import { useToastActions } from '../ui/components/ToastQueue';
 
 export function StaleSessionNotice(): ReactElement | null {
   const closures = useAppStore((s) => s.status.staleClosures);
   const externalWriteReplaced = useAppStore((s) => s.status.externalWriteReplaced === true);
   const t = useCopy();
-  const { push } = useToasts();
+  const { push } = useToastActions();
   useEffect(() => {
     if (closures === undefined || closures.length === 0) return;
     for (const closure of closures) {

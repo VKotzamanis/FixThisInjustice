@@ -11,7 +11,7 @@ import type { BodyMassEntry, Profile } from '../../domain/types';
 import { formatMass } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { UNDO_WINDOW_MS } from '../../store/training';
-import { useToasts } from '../components/ToastQueue';
+import { useToastActions } from '../components/ToastQueue';
 import { BodyMassForm, MASS_ROLE_KEY } from './BodyMassForm';
 import './measurements.css';
 
@@ -23,7 +23,7 @@ const NO_ENTRIES: readonly BodyMassEntry[] = [];
 export function BodyMassLog(props: { profile: Profile }): ReactElement | null {
   const { profile } = props;
   const c = useCopy();
-  const { push } = useToasts();
+  const { push } = useToastActions();
   const headingId = useId();
   const stored = useAppStore((s) => s.bodyMass[profile.id] ?? NO_ENTRIES);
   const [editingId, setEditingId] = useState<string | null>(null);

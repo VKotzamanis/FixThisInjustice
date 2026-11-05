@@ -12,7 +12,7 @@ import { UNIT_LABEL, formatVolume, toStoredVolume } from '../../domain/units';
 import { useAppStore } from '../../store';
 import { UNDO_WINDOW_MS } from '../../store/training';
 import { AsciiBar } from '../components/AsciiBar';
-import { useToasts } from '../components/ToastQueue';
+import { useToastActions } from '../components/ToastQueue';
 import { UnitInput, parseDecimal } from '../components/UnitInput';
 import './measurements.css';
 
@@ -20,7 +20,7 @@ export function FluidQuickAdd(props: { profile: Profile; today: LocalDate }): Re
   const { profile, today } = props;
   const c = useCopy();
   const overrides = useCopyOverrides();
-  const { push } = useToasts();
+  const { push } = useToastActions();
   const headingId = useId();
   const errorId = useId();
   // The stored entry for the day (stable identity), or null.

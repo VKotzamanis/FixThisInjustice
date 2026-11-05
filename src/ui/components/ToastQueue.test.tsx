@@ -11,9 +11,10 @@ import {
   ToastProvider,
   ToastQueue,
   selectVisible,
+  useToastActions,
   useToasts,
 } from './ToastQueue';
-import type { Toast, ToastInput } from './ToastQueue';
+import type { Toast, ToastActions, ToastInput } from './ToastQueue';
 import { useAppStore } from '../../store';
 import type { SkinId } from '../../domain/types';
 
@@ -491,7 +492,7 @@ describe('useToasts', () => {
     expect(api!.queue).toHaveLength(0);
   });
 
-  it('dismisses on a tap anywhere on an ordinary toast', () => {
+  it('a tap on the toast body does nothing: the tap belongs to the control under it (F03)', () => {
     renderQueue();
     act(() => {
       api!.push({ kind: 'telemetry', message: 'set banked' });
@@ -499,8 +500,9 @@ describe('useToasts', () => {
     act(() => {
       fireEvent.click(screen.getByTestId('toast'));
     });
-    expect(api!.queue).toHaveLength(0);
+    expect(api!.queue).toHaveLength(1);
   });
+
 
   it('runs the undo callback and dismisses the toast', () => {
     renderQueue();
@@ -720,5 +722,29 @@ describe('ToastQueue under a skin', () => {
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('actions are split from state (F13)', () => {
+  it('a reader of the actions does not re-render when the queue changes', () => {
+    let renders = 0;
+    let actions: ToastActions | null = null;
+    function Reader(): null {
+      renders += 1;
+      actions = useToastActions();
+      return null;
+    }
+    render(
+      <ToastProvider>
+        <Reader />
+        <ToastQueue />
+      </ToastProvider>,
+    );
+    expect(renders).toBe(1);
+    act(() => {
+      actions!.push({ kind: 'coach', message: 'nice' });
+    });
+    expect(screen.getByTestId('toast')).toBeInTheDocument();
+    expect(renders).toBe(1);
   });
 });

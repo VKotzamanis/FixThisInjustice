@@ -51,7 +51,7 @@ import { UNDO_WINDOW_MS } from '../../store/training';
 import { BodyMassForm } from '../measurements/BodyMassForm';
 import { useActiveProfile, useOpenAssignment, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
-import { useToasts } from '../components/ToastQueue';
+import { useToastActions } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useViewActive } from '../nav/viewActive';
 import { AddCustomExercise } from './train/AddCustomExercise';
@@ -76,7 +76,7 @@ export function TrainView(): ReactElement {
   const warmupDismissed = useAppStore((s) => s.ui.warmupNoticeDismissedByProfile);
   const todaysSets = useTodaysSets();
   const profileId = profile?.id ?? null;
-  const { push, dismiss } = useToasts();
+  const { push, dismiss } = useToastActions();
   // Spec R1: the open session, whatever its date.
   const open = useOpenAssignment();
   /*

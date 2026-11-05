@@ -8,14 +8,14 @@ import { latestBodyMassEntry } from '../../domain/measurements';
 import type { BodyMassRole, Kg, LocalDate, Profile } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { UNDO_WINDOW_MS } from '../../store/training';
-import { useToasts } from '../components/ToastQueue';
+import { useToastActions } from '../components/ToastQueue';
 import { BodyMassForm } from './BodyMassForm';
 import './measurements.css';
 
 export function MeasurementsPanel(props: { profile: Profile; today: LocalDate }): ReactElement {
   const { profile, today } = props;
   const c = useCopy();
-  const { push } = useToasts();
+  const { push } = useToastActions();
   const headingId = useId();
   // The stored entry (stable identity), so the subscription cannot loop.
   const latest = useAppStore((s) => latestBodyMassEntry(s, profile.id));

@@ -5,12 +5,12 @@
 import { useEffect, useRef, type ReactElement } from 'react';
 import { useCopy } from '../content/useCopy';
 import { useAppStore } from '../store';
-import { useToasts } from '../ui/components/ToastQueue';
+import { useToastActions } from '../ui/components/ToastQueue';
 
 export function UnreadableNotice(): ReactElement | null {
   const count = useAppStore((s) => (s.status.quarantine?.length ?? 0) + (s.status.repairs?.length ?? 0));
   const t = useCopy();
-  const { push } = useToasts();
+  const { push } = useToastActions();
   const shown = useRef(false);
   useEffect(() => {
     if (count === 0 || shown.current) return;

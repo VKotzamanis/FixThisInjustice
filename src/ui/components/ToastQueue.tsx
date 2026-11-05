@@ -28,6 +28,7 @@ import { SPECIMEN_BY_ID } from '../../content/specimenCards';
 import { newId } from '../../domain/ids';
 import type { EpochMs } from '../../domain/types';
 import { displayClass } from '../format/display';
+import { overlayDepth } from '../overlay/overlayStack';
 
 export type ToastKind = 'undo' | 'milestone' | 'coach' | 'telemetry' | 'specimen';
 
@@ -164,28 +165,33 @@ function enqueue(queue: readonly Toast[], toast: Toast): Toast[] {
   return next.filter((_, i) => i !== evictionIndex(next));
 }
 
-interface ToastApi {
-  queue: Toast[];
-  /** The toast on screen. At most one, as a list so the shape survives a sixth class. */
-  visible: Toast[];
-  /*
-   * Declared as function-typed properties rather than method shorthand: the components
-   * destructure them off the context value, and a method signature loses its `this` binding
-   * when separated from its object (@typescript-eslint/unbound-method). The shape is
-   * otherwise the one the plan prints.
-   */
+/** What a caller does to the queue. Stable identities: reading this never re-renders on a toast. */
+export interface ToastActions {
   /**
    * Queues a toast and returns the id of the toast that now REPRESENTS this push: the new one,
    * or - when the push merged into a standing toast of the same payload - the standing one.
    * Either way `dismiss(id)` withdraws what the user can see, so a caller never has to know
-   * which of the two happened.
+   * which of the two happened. Function-typed properties, not methods: callers destructure them
+   * (@typescript-eslint/unbound-method).
    */
   push: (input: ToastInput) => string;
   dismiss: (id: string) => void;
   clear: () => void;
 }
 
-const ToastContext = createContext<ToastApi | null>(null);
+/** The queue as rendered. Changes on every push, dismiss and expiry. */
+interface ToastState {
+  queue: Toast[];
+  /** The toast on screen. At most one, as a list so the shape survives a sixth class. */
+  visible: Toast[];
+}
+
+/** Both halves, for the queue component and the tests. */
+interface ToastApi extends ToastActions, ToastState {}
+
+// F13: two contexts, so a view that only pushes (Train) is not re-rendered by the queue.
+const ToastActionsContext = createContext<ToastActions | null>(null);
+const ToastStateContext = createContext<ToastState | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }): ReactElement {
   const [queue, setQueue] = useState<Toast[]>([]);
@@ -248,20 +254,30 @@ export function ToastProvider({ children }: { children: ReactNode }): ReactEleme
 
   // One toast on screen at a time: the head of the visible order, and nothing behind it.
   const visible = useMemo(() => selectVisible(queue).slice(0, 1), [queue]);
-  const value = useMemo<ToastApi>(
-    () => ({ queue, visible, push, dismiss, clear }),
-    [queue, visible, push, dismiss, clear],
-  );
+  const actions = useMemo<ToastActions>(() => ({ push, dismiss, clear }), [push, dismiss, clear]);
+  const state = useMemo<ToastState>(() => ({ queue, visible }), [queue, visible]);
 
-  return <ToastContext.Provider value={value}>{children}</ToastContext.Provider>;
+  return (
+    <ToastActionsContext.Provider value={actions}>
+      <ToastStateContext.Provider value={state}>{children}</ToastStateContext.Provider>
+    </ToastActionsContext.Provider>
+  );
 }
 
-export function useToasts(): ToastApi {
-  const ctx = useContext(ToastContext);
+export function useToastActions(): ToastActions {
+  const ctx = useContext(ToastActionsContext);
   // A missing provider is a wiring bug, not a state: a silent no-op queue would swallow the
   // undo offer along with everything else.
-  if (ctx === null) throw new Error('useToasts must be used inside <ToastProvider>');
+  if (ctx === null) throw new Error('useToastActions must be used inside <ToastProvider>');
   return ctx;
+}
+
+/** Actions AND state: re-renders on every queue change. Views that only push use useToastActions. */
+export function useToasts(): ToastApi {
+  const actions = useToastActions();
+  const state = useContext(ToastStateContext);
+  if (state === null) throw new Error('useToasts must be used inside <ToastProvider>');
+  return { ...actions, ...state };
 }
 
 /**
@@ -387,14 +403,6 @@ function ToastShell(props: {
 
   const rarity = toast.kind === 'specimen' ? (SPECIMEN_BY_ID[toast.cardId]?.rarity ?? null) : null;
   /*
-   * Tap anywhere dismisses - except on the undo toast, where a mis-tap on the body would take
-   * away the offer it exists to make. Keyboard and screen reader users reach the same action
-   * through the Dismiss control below, which is a real button; the body handler is an extra
-   * for pointers, never the only route.
-   */
-  const tapDismisses = toast.kind !== 'undo';
-
-  /*
    * `ll-panel`: every toast is the lit sign, the black panel the marquee already uses (stylize
    * survey 2026-10-18, item 9). On the lime ground the tag was pink type at 1.41:1; on the panel
    * its `ll-panel-state` class makes it pink at 7.75:1, the one place tokens.css lets pink be type.
@@ -403,7 +411,6 @@ function ToastShell(props: {
     <div
       className={`toast ll-panel toast-${toast.kind}${rarity === null ? '' : ` rarity-${rarity}`}`}
       data-testid="toast"
-      onClick={tapDismisses ? dismiss : undefined}
     >
       {content}
       <span className="toast-controls">
@@ -454,16 +461,11 @@ export function ToastQueue(): ReactElement {
     if (frontId === null) return;
     const onKey = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return;
-      /*
-       * An open dialog owns Escape. ModalShell listens on this same window, so without this
-       * guard one keypress would close the dialog AND withdraw the toast behind it - including
-       * an undo offer the user never aimed at.
-       *
-       * `:not([hidden])` qualifies the match to a dialog that is actually OPEN. ModalShell
-       * unmounts rather than hides, so today the two are the same set; a dialog kept mounted
-       * and hidden would otherwise swallow Escape for the rest of the session, which is a
-       * failure the user cannot diagnose.
-       */
+      // An open overlay owns Escape (the one stack, src/ui/overlay/overlayStack.ts): one press
+      // closes it and never also withdraws a toast behind it, an undo offer included. The DOM
+      // check stays for a modal dialog that is not on the stack (`:not([hidden])`: a dialog kept
+      // mounted and hidden must not swallow Escape for the rest of the session).
+      if (overlayDepth() > 0) return;
       if (document.querySelector('[role="dialog"][aria-modal="true"]:not([hidden])') !== null)
         return;
       dismiss(frontId);
