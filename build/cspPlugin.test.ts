@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { buildCsp, resolveCsp, workerConnectSrc } from './cspPlugin.ts';
+import { VIDEO_INSTANCES, frameSrcList } from '../src/config/videoInstances.ts';
 
 /*
  * The Content-Security-Policy this repository shipped before connect-src was
@@ -18,6 +19,16 @@ const PRE_CHANGE_CSP =
   'https://invidious.tiekoetter.com https://yt.chocolatemoo53.com ' +
   'https://inv.thepixora.com https://invidious.f5.si; ' +
   "worker-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'";
+
+/*
+ * The one deliberate change since that snapshot (ROADMAP L9, audit E05): YouTube's
+ * privacy-enhanced player heads frame-src, ahead of the unchanged Invidious list. Derived from
+ * the snapshot by that single insertion, so every other byte is still fenced.
+ */
+const SHIPPED_CSP = PRE_CHANGE_CSP.replace(
+  'frame-src https://invidious.nerdvpn.de',
+  'frame-src https://www.youtube-nocookie.com https://invidious.nerdvpn.de',
+);
 
 /** Every directive of a policy except the named one, in source order. */
 function directivesExcept(csp: string, name: string): string[] {
@@ -120,20 +131,30 @@ describe('buildCsp', () => {
 describe('resolveCsp', () => {
   it('fails closed to a same-origin connect-src when the variable is unset', () => {
     expect(resolveCsp(undefined, 'production')).toBe(
-      PRE_CHANGE_CSP.replace("connect-src 'self' https://*.workers.dev", "connect-src 'self'"),
+      SHIPPED_CSP.replace("connect-src 'self' https://*.workers.dev", "connect-src 'self'"),
     );
   });
 
   it('leaves every directive other than connect-src byte for byte unchanged', () => {
     expect(directivesExcept(resolveCsp(undefined, 'production'), 'connect-src')).toEqual(
-      directivesExcept(PRE_CHANGE_CSP, 'connect-src'),
+      directivesExcept(SHIPPED_CSP, 'connect-src'),
     );
     expect(
       directivesExcept(
         resolveCsp('https://fti-reminders.example.workers.dev', 'production'),
         'connect-src',
       ),
-    ).toEqual(directivesExcept(PRE_CHANGE_CSP, 'connect-src'));
+    ).toEqual(directivesExcept(SHIPPED_CSP, 'connect-src'));
+  });
+
+  it('frames exactly the video hosts the modal can offer, privacy-enhanced YouTube first', () => {
+    const frameSrc = resolveCsp(undefined, 'production')
+      .split('; ')
+      .find((directive) => directive.startsWith('frame-src '));
+    expect(frameSrc).toBe(`frame-src ${frameSrcList()}`);
+    expect(VIDEO_INSTANCES[0]?.host).toBe('www.youtube-nocookie.com');
+    // The tracking-mode player host is never framable, only the privacy-enhanced one.
+    expect(frameSrc?.split(' ')).not.toContain('https://www.youtube.com');
   });
 
   it('never leaves the wildcard workers.dev host in the policy', () => {

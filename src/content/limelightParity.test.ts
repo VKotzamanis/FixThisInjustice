@@ -28,8 +28,9 @@
 // only), and the four unreadable-records keys `hero.unreadableRecords`,
 // `advice.unreadableRecordsKept`, `button.exportUnreadable`, `status.recordsUnreadable` (spec
 // R13, P2 Task 8; base table only), and `banner.storageNearlyFull.{tag,body}` for the
-// near-quota banner (audit B05, P2 Task 11; base table only). No snapshot row was changed to add
-// them.
+// near-quota banner (audit B05, P2 Task 11; base table only), and `button.otherMirror` and
+// `advice.videoOffline` for the form-video modal (ROADMAP L9; base table only). No snapshot row
+// was changed to add them.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';
@@ -104,6 +105,10 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
     'P6 QWERTY keyboard: its submit key is 3 half-columns wide and reads button.restWordEnter',
   'button.restWordLaunch':
     'P6: the launch control opens a picker of five games now and reads button.restGameLaunch',
+  'button.nextInstance': 'L9: the source switch reads button.otherMirror (YouTube first, then mirrors)',
+  'button.openClip': 'L9: the outbound clip link left the app (audit E05); the clip plays in the modal',
+  'button.searchInstance': 'L9: the outbound mirror search left the app (audit E05); curated ids replace it',
+  'label.videoSearch': 'L9: the heading of that search panel, removed with it',
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];

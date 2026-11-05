@@ -124,6 +124,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   const history = useExerciseHistory(exercise.id);
   const video = useVideoModal();
   const cues = useFormCuesModal();
+  const hasCues = exercise.formCueId !== null && FORM_CUES[exercise.formCueId] !== undefined;
   const [bonusRows, setBonusRows] = useState(0);
   /** Brief 4.2: the set the user tapped to make active; null = the first unlogged set. */
   const [chosenN, setChosenN] = useState<number | null>(null);
@@ -435,17 +436,21 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
           </details>
 
           <div className="ex-links">
-            {exercise.videoId !== null && (
+            {/*
+              * L9: shown when there is a clip, or cues the modal can show in its place with an
+              * honest "no clip" line. A custom exercise has neither and gets no dead control.
+              */}
+            {(exercise.videoId !== null || hasCues) && (
               <button
                 type="button"
                 onClick={() => {
-                  video.open({ query: exercise.videoId, title: exercise.name });
+                  video.open({ videoId: exercise.videoId, cueId: exercise.formCueId, title: exercise.name });
                 }}
               >
                 {t('button.formReference')}
               </button>
             )}
-            {exercise.formCueId !== null && FORM_CUES[exercise.formCueId] !== undefined && (
+            {hasCues && (
               <button
                 type="button"
                 onClick={() => {

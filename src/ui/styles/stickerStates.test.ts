@@ -60,8 +60,9 @@ describe('pink is never type on lime in the swept sheets', () => {
     expect(pinkTextRules(shellCss)).toEqual(['.topbar .brand .acc']);
   });
 
-  it('train.css: the three listed rules on the lime ground carry ink, not pink', () => {
-    for (const selector of ['.vmod-link', '.train-deload', '.set-row.bonus .set-marker']) {
+  it('train.css: the listed rules on the lime ground carry ink, not pink', () => {
+    // .vmod-link went with the modal's outbound links (ROADMAP L9); .vmod-state is its successor.
+    for (const selector of ['.vmod-state', '.train-deload', '.set-row.bonus .set-marker']) {
       expect({ selector, pink: PINK.test(valueOf(ruleFor(trainCss, selector).body, 'color') ?? '') }).toEqual({
         selector,
         pink: false,
