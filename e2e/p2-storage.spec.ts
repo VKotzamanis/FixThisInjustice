@@ -4,6 +4,7 @@ import { LABEL, deleteLabel } from './support/constants';
 import {
   chicago,
   corruptRecord,
+  crashRenderer,
   flushWrites,
   logSet,
   openApp,
@@ -14,6 +15,11 @@ import {
   startFromToday,
 } from './support/app';
 import { MONDAY, e2eDocument, loggedSet } from './support/document';
+
+// No trace in this file: its screencast keeps CDP calls in flight, and a reply that lands after a
+// killed renderer's session is gone trips an internal assert in Playwright 1.63's CRSession
+// (coreBundle.js _onMessage): B08 failed 4 of 16 runs that way, for a reason that is not the app's.
+test.use({ trace: 'off' });
 
 test('B03: a second page shows the first page\'s write without a relaunch, and neither overwrites the other', async ({ context }) => {
   await seedDocument(context, e2eDocument());
@@ -40,17 +46,14 @@ test('B08: a renderer crash 100 ms after a tap keeps it; a crash mid-write leave
   await startFromToday(page);
   await logSet(page, 1, '60', '5');
   await new Promise((resolve) => setTimeout(resolve, 100)); // [ms] < the old 250 ms debounce
-  const cdp = await context.newCDPSession(page);
-  await cdp.send('Page.crash').catch(() => undefined);
-  await page.close().catch(() => undefined);
+  await crashRenderer(context, page);
 
   const second = await openApp(context);
   expect(Object.values((await readDocument(second)).sets)).toHaveLength(1);
-  await startFromToday(second).catch(() => undefined); // the open session may already show Train
+  // The relaunch lands on Today with the open session offered for resume; Train shows it.
+  await second.getByRole('navigation').getByRole('button', { name: LABEL.trainTab, exact: true }).click({ timeout: 10_000 });
   await logSet(second, 2, '60', '5');
-  const cdp2 = await context.newCDPSession(second);
-  await cdp2.send('Page.crash').catch(() => undefined); // no wait: inside the commit
-  await second.close().catch(() => undefined);
+  await crashRenderer(context, second); // no wait: inside the commit
 
   const third = await openApp(context);
   const sets = Object.values((await readDocument(third)).sets);

@@ -141,6 +141,34 @@ export async function flushWrites(page: Page): Promise<void> {
   throw new Error('writes did not settle within 7.5 s');
 }
 
+/**
+ * A renderer crash: SIGKILL to every renderer process of the context's browser, then waits for
+ * the page's crash event. CDP Page.crash is not used: with Playwright 1.63 / Chromium 153 it
+ * drops the whole browser connection, so no relaunch could follow. Call it with ONE page open
+ * (every renderer is killed).
+ */
+export async function crashRenderer(context: BrowserContext, page: Page): Promise<void> {
+  const browser = context.browser();
+  if (browser === null) throw new Error('crashRenderer needs a launched browser, not a persistent context');
+  const crashed = page.waitForEvent('crash', { timeout: 10_000 }); // [ms]
+  const cdp = await browser.newBrowserCDPSession();
+  const info = (await cdp.send('SystemInfo.getProcessInfo')) as { processInfo: { type: string; id: number }[] };
+  const renderers = info.processInfo.filter((p) => p.type === 'renderer').map((p) => p.id);
+  if (renderers.length === 0) throw new Error('no renderer process to crash; check SystemInfo.getProcessInfo');
+  for (const pid of renderers) process.kill(pid, 'SIGKILL');
+  await crashed;
+  // The next page must not be handed a killed spare renderer: wait until the browser has reaped
+  // every killed process (at most 5 s, Node's timer, so the page clock does not affect it).
+  for (let i = 0; ; i += 1) {
+    const now = (await cdp.send('SystemInfo.getProcessInfo')) as { processInfo: { id: number }[] };
+    if (!now.processInfo.some((p) => renderers.includes(p.id))) break;
+    if (i >= 50) throw new Error('killed renderers still listed after 5 s');
+    await new Promise((resolve) => setTimeout(resolve, 100)); // [ms]
+  }
+  await cdp.detach().catch(() => undefined);
+  await page.close().catch(() => undefined);
+}
+
 /** Rewrites one stored record behind the app's back, as disk corruption or a newer build would. */
 export async function corruptRecord(page: Page, store: string, key: string, patch: Record<string, unknown>): Promise<void> {
   await page.evaluate(
