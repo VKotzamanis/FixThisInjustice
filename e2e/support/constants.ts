@@ -57,6 +57,17 @@ export const LABEL = {
   findRow: 'find it',
   // R8: the install card's dismiss button (button.dismiss; limelight overrides the base 'Dismiss').
   dismiss: 'noted.',
+  // L9: the exercise card's form-video control (button.formReference).
+  formReference: 'Form Reference',
+} as const;
+
+/**
+ * L9: the clip the seeded Monday session's first exercise frames, as the privacy-enhanced embed
+ * URL. Pinned by e2eDocument.test.ts to embedUrl(VIDEO_INSTANCES[0], library videoId).
+ */
+export const FORM_VIDEO = {
+  exerciseId: 'barbell-back-squat',
+  embedSrc: 'https://www.youtube-nocookie.com/embed/-bJIpOq-LWk?playsinline=1',
 } as const;
 
 /** "Set 1 load (kg)": FORMAT.quantityWithUnit(FORMAT.setLoadQuantity(n), 'kg'). */

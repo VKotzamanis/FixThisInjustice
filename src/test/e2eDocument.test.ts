@@ -6,6 +6,7 @@ import { parseState } from '../domain/schema';
 import { STORAGE_KEY } from '../store/persistence';
 import { APP_STORE, MAP_STORES, META_KEY, RECORD_DB_NAME, SINGLETON_KEYS } from '../store/db/records';
 import {
+  FORM_VIDEO,
   LABEL,
   RECORD_APP_STORE,
   RECORD_DB_NAME as E2E_RECORD_DB_NAME,
@@ -22,6 +23,8 @@ import {
   repsLabel,
 } from '../../e2e/support/constants';
 import { e2eDocument, reviewDraft } from '../../e2e/support/document';
+import { VIDEO_INSTANCES, embedUrl } from '../config/videoInstances';
+import { EXERCISE_BY_ID } from '../domain/plan/library';
 
 describe('the e2e document builder', () => {
   it('builds a returning-user document the loader accepts unchanged', () => {
@@ -71,6 +74,7 @@ describe('the e2e document builder', () => {
     expect(LABEL.settingsRow).toBe(copyFor('limelight', 'nav.settings'));
     expect(LABEL.findRow).toBe(copyFor('limelight', 'button.openSpotlight'));
     expect(LABEL.dismiss).toBe(copyFor('limelight', 'button.dismiss'));
+    expect(LABEL.formReference).toBe(copyFor('limelight', 'button.formReference'));
     expect(massLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.bodyMass'), 'kg'));
     expect(preMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.preSessionBodyMass'), 'kg'));
     expect(postMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.postSessionBodyMass'), 'kg'));
@@ -91,5 +95,18 @@ describe('the e2e document builder', () => {
     expect(LABEL.logTab).toBe(copyFor('limelight', 'nav.log'));
     expect(LABEL.trainTab).toBe(copyFor('limelight', 'nav.train'));
     expect(LABEL.unreadableHeading).toBe(copyFor('limelight', 'hero.unreadableRecords'));
+  });
+});
+
+describe('the e2e form-video constant (ROADMAP L9)', () => {
+  it('is the privacy-enhanced embed URL of the library clip for that exercise', () => {
+    const first = VIDEO_INSTANCES[0];
+    const videoId = EXERCISE_BY_ID[FORM_VIDEO.exerciseId]?.videoId ?? null;
+    expect(first === undefined || videoId === null ? null : embedUrl(first, videoId)).toBe(FORM_VIDEO.embedSrc);
+  });
+
+  it('names the first exercise of the seeded Monday session', () => {
+    const plan = Object.values(e2eDocument().plans)[0];
+    expect(plan?.sessions[0]?.exercises[0]?.exerciseId).toBe(FORM_VIDEO.exerciseId);
   });
 });
