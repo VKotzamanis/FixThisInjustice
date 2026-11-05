@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { APP_SCOPE_PATH, FALLBACK_TITLE } from './payload';
-import { handleNotificationClick, handlePush } from './swHandlers';
+import { cacheShownTags, handleNotificationClick, handlePush } from './swHandlers';
 import type { AppWindow, PushIcons, PushJson, WindowRegistry } from './swHandlers';
 
 /*
@@ -104,6 +104,63 @@ describe('handlePush', () => {
       ICONS,
     );
     expect(showNotification.mock.calls[0]?.[1]?.data).toEqual({ url: `${APP_SCOPE_PATH}today` });
+  });
+});
+
+/** An in-memory CacheStorage subset: one named cache of url -> body. */
+function fakeCaches() {
+  const stores = new Map<string, Map<string, string>>();
+  const caches = {
+    open(name: string) {
+      const store = stores.get(name) ?? new Map<string, string>();
+      stores.set(name, store);
+      return Promise.resolve({
+        match: (url: string) => Promise.resolve(store.has(url) ? new Response('1') : undefined),
+        put: (url: string) => {
+          store.set(url, '1');
+          return Promise.resolve();
+        },
+        keys: () => Promise.resolve([...store.keys()].map((url) => new Request(url))),
+        delete: (url: string) => Promise.resolve(store.delete(url)),
+      });
+    },
+  };
+  return { caches, stores };
+}
+
+describe('handlePush dedupe on the reminder key (audit E10c)', () => {
+  const payload = () => ({ title: 'Upper today', body: 'b', tag: '2026-10-26:lead:120' });
+
+  it('alerts the first time a key arrives and re-shows a repeat silently, under the same tag', async () => {
+    const { registration, showNotification } = fakeRegistration();
+    const shown = cacheShownTags(fakeCaches().caches, ORIGIN);
+    await handlePush(pushData(payload), registration, ICONS, shown);
+    await handlePush(pushData(payload), registration, ICONS, shown);
+    // Both pushes show a notification: iOS revokes a subscription whose push shows nothing.
+    expect(showNotification).toHaveBeenCalledTimes(2);
+    expect(showNotification.mock.calls[0]?.[1]?.silent).toBe(false);
+    expect(showNotification.mock.calls[1]?.[1]?.silent).toBe(true);
+    expect(showNotification.mock.calls[1]?.[1]?.tag).toBe('2026-10-26:lead:120');
+  });
+
+  it('still shows the notification when the shown-log throws', async () => {
+    const { registration, showNotification } = fakeRegistration();
+    const broken = {
+      seen: () => Promise.reject(new Error('quota')),
+      remember: () => Promise.reject(new Error('quota')),
+    };
+    await handlePush(pushData(payload), registration, ICONS, broken);
+    expect(showNotification).toHaveBeenCalledTimes(1);
+    expect(showNotification.mock.calls[0]?.[1]?.silent).toBe(false);
+  });
+
+  it('keeps at most MAX_SHOWN_TAGS keys, dropping the oldest', async () => {
+    const { caches, stores } = fakeCaches();
+    const shown = cacheShownTags(caches, ORIGIN, 3);
+    for (const tag of ['a:1', 'b:1', 'c:1', 'd:1']) await shown.remember(tag);
+    expect(await shown.seen('a:1')).toBe(false);
+    expect(await shown.seen('d:1')).toBe(true);
+    expect([...stores.values()][0]?.size).toBe(3);
   });
 });
 

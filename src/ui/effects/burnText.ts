@@ -32,6 +32,20 @@
 // shader that does not compile, or a lost context: createBurn returns null (or the handle
 // disposes itself) and the caller shows the plain styled text.
 
+/**
+ * THE LOOK SWITCH. 'faithful' (owner ruling 2026-11-05): the lyrics-core fire ramp, x1.6 clipped
+ * gain, glow on. 'cel' (holo-alarm-burn.md "Two looks"): three flat token bands (--burn-cool,
+ * --burn-mid, --burn-hot) with hard edges, no gain, no glow; inside DESIGN.md's no-gradient,
+ * no-blur rules except for the motion itself. One constant, one place: change it here.
+ */
+export type BurnLook = 'faithful' | 'cel';
+export const BURN_LOOK: BurnLook = 'faithful';
+
+/** The shader switches for a look: uHard 0/1 (flat bands), uHalo 0/1 (glow), uGain linear. */
+export function lookUniforms(look: BurnLook): { hard: 0 | 1; halo: 0 | 1; gain: number } {
+  return look === 'cel' ? { hard: 1, halo: 0, gain: 1 } : { hard: 0, halo: 1, gain: BURN_GAIN };
+}
+
 /** [s] One burn, rise to fall. */
 export const BURN_S = 1.2;
 /** [s] Envelope rise and fall (lyrics-core.js BURN_RISE / BURN_FALL). */
@@ -47,9 +61,10 @@ const DPR_CAP = 2;
 const VS =
   'attribute vec2 aP; varying vec2 vUv; void main(){ vUv = vec2(aP.x * 0.5 + 0.5, 0.5 - aP.y * 0.5); gl_Position = vec4(aP, 0.0, 1.0); }';
 
-// uSize [device px]; uT [s]; uE 0..1; uSpread, uCap, uBase [device px]; uGain linear; colours
-// are linear RGB: resting letter (cool), fire deep -> mid -> hot, glow.
-const FS = [
+// uSize [device px]; uT [s]; uE 0..1; uSpread, uCap, uBase [device px]; uGain linear; uHard and
+// uHalo 0/1 (lookUniforms); colours are linear RGB: resting letter (cool), fire deep -> mid ->
+// hot, glow. With uHard 0, uHalo 1 the arithmetic is the faithful look unchanged.
+export const FS = [
   '#ifdef GL_FRAGMENT_PRECISION_HIGH',
   'precision highp float;',
   '#else',
@@ -57,6 +72,7 @@ const FS = [
   '#endif',
   'uniform sampler2D uTex; uniform vec2 uSize;',
   'uniform float uT, uE, uSpread, uCap, uBase, uSeed, uGain;',
+  'uniform float uHard, uHalo;',
   'uniform vec3 uCool, uDeep, uMid, uHot, uGlow;',
   'varying vec2 vUv;',
   // Hash without Sine (c) 2014 David Hoskins, MIT; see the notice at the top of this file.
@@ -73,14 +89,19 @@ const FS = [
   '  float heat = clamp(1.15 - hy + 0.55 * (n - 0.5), 0.0, 1.0);',
   '  vec3 fc = mix(uDeep, uMid, smoothstep(0.25, 0.5, heat)); fc = mix(fc, uHot, smoothstep(0.62, 0.85, heat));',
   '  vec3 col = mix(uCool, min(fc * uGain, 1.0), uE * smoothstep(0.18, 0.32, heat));',
+  // Cel: three flat bands by heat (cool, mid, hot), snapped on at half envelope.
+  '  float on = step(0.5, uE);',
+  '  vec3 cel = mix(uCool, uMid, step(0.32, heat) * on); cel = mix(cel, uHot, step(0.68, heat) * on);',
+  '  col = mix(col, cel, uHard);',
   '  vec3 c = col * a; float al = a;',
   '  float up = clamp((hy - 0.55) / 0.4, 0.0, 1.0);',
   '  float reach = 0.03 + up * (0.05 + 0.42 * n * n);',
   '  float h2 = 1.0 - dOut / reach;',
-  '  float t2 = smoothstep(0.0, 0.08, h2) * (1.0 - a) * uE;',
+  '  float t2 = mix(smoothstep(0.0, 0.08, h2) * uE, step(0.04, h2) * on, uHard) * (1.0 - a);',
   '  vec3 f2 = mix(uDeep, uMid, smoothstep(0.05, 0.45, h2)); f2 = mix(f2, uHot, smoothstep(0.55, 0.9, h2));',
-  '  c += min(f2 * uGain, 1.0) * t2; al += t2 * (1.0 - al);',
-  '  float g = exp(-dOut / 0.32) * uE * (1.0 - al); c += uGlow * g; al += g;',
+  '  f2 = mix(min(f2 * uGain, 1.0), mix(uMid, uHot, step(0.6, h2)), uHard);',
+  '  c += f2 * t2; al += t2 * (1.0 - al);',
+  '  float g = exp(-dOut / 0.32) * uE * uHalo * (1.0 - al); c += uGlow * g; al += g;',
   '  if (al < 0.002) discard;',
   '  gl_FragColor = vec4(l2s(c / al) * al, al);',
   '}',
@@ -216,6 +237,8 @@ export interface BurnOptions {
   reduced: boolean;
   /** 0..1, varies the noise between words. */
   seed?: number;
+  /** Defaults to BURN_LOOK, the one switch. */
+  look?: BurnLook;
 }
 
 export interface BurnHandle {
@@ -325,7 +348,10 @@ export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): 
   gl.uniform1f(u('uCap'), cap);
   gl.uniform1f(u('uBase'), base);
   gl.uniform1f(u('uSeed'), opts.seed ?? 0.31);
-  gl.uniform1f(u('uGain'), BURN_GAIN);
+  const look = lookUniforms(opts.look ?? BURN_LOOK);
+  gl.uniform1f(u('uGain'), look.gain);
+  gl.uniform1f(u('uHard'), look.hard);
+  gl.uniform1f(u('uHalo'), look.halo);
   const styles = getComputedStyle(host);
   const uniforms = ['uCool', 'uDeep', 'uMid', 'uHot', 'uGlow'];
   for (let i = 0; i < TOKENS.length; i++) {

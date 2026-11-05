@@ -4,7 +4,7 @@ import { NavigationRoute, registerRoute } from 'workbox-routing';
 import { CacheFirst, NetworkOnly } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import type { WorkboxPlugin } from 'workbox-core';
-import { handleNotificationClick, handlePush } from './domain/reminders/swHandlers';
+import { cacheShownTags, handleNotificationClick, handlePush } from './domain/reminders/swHandlers';
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -86,7 +86,7 @@ self.addEventListener('push', (event: PushEvent) => {
       // 96 x 96 px, monochrome on transparent: Android paints a badge from its alpha channel
       // only, so the full-colour 192 px icon showed as a solid blob there.
       badge: `${import.meta.env.BASE_URL}icons/notification-badge-96.png`,
-    }),
+    }, cacheShownTags(self.caches, self.location.origin)),
   );
 });
 

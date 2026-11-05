@@ -36,6 +36,18 @@ export interface DeviceRecord {
    * field existed reads as 0; see parseDeviceRecord.
    */
   lastSyncedAt: EpochMs;
+  /**
+   * Revision: how many PUTs this Worker has accepted for the device. Count, dimensionless;
+   * 1 on create, +1 per accepted update. A record written before this field existed reads
+   * as 0 (parseDeviceRecord).
+   *
+   * KV has no compare-and-swap, so the cron cannot make its write conditional. What it does
+   * instead (index.ts, runTick): after sending it re-reads the record and builds its write
+   * from that FRESH copy, merging its sent marks in. A rev that moved between the two reads
+   * proves a client PUT landed in between; the fresh copy carries that PUT's schedule, so the
+   * cron write no longer erases it (audit E10a). The cron's own write-backs leave rev alone.
+   */
+  rev: number;
 }
 
 export type ValidateResult =
@@ -319,6 +331,7 @@ export function validatePut(body: unknown, now: EpochMs, existing: DeviceRecord 
       // Stamped on every accepted PUT, create and update alike: this is the one moment the
       // Worker learns the client is still running.
       lastSyncedAt: now,
+      rev: existing === null ? 1 : existing.rev + 1,
     },
   };
 }
@@ -425,5 +438,8 @@ export function parseDeviceRecord(raw: unknown): DeviceRecord | null {
   const rawLastSyncedAt = raw["lastSyncedAt"];
   const lastSyncedAt =
     typeof rawLastSyncedAt === "number" && Number.isFinite(rawLastSyncedAt) ? rawLastSyncedAt : 0;
-  return { secret, subscription, reminders, sent, lastSyncedAt };
+  // A record written before rev existed reads as revision 0; the next PUT makes it 1.
+  const rawRev = raw["rev"];
+  const rev = typeof rawRev === "number" && Number.isInteger(rawRev) && rawRev >= 0 ? rawRev : 0;
+  return { secret, subscription, reminders, sent, lastSyncedAt, rev };
 }

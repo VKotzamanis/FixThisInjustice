@@ -1,7 +1,7 @@
 // AM-4a-9 (owner approval 2026-11-05): a rest that ends mounts the burn canvas on the rest bar's
 // rest-over word once, and removes it (and its WebGL context) when the burn is over.
-// The page clock is Playwright's (setClock installs it), so timers and animation frames advance
-// only when this spec runs them.
+// The page clock is Playwright's (setClock installs it); the spec pauses it once the rest is over,
+// so the burn's timers and animation frames advance only when this spec runs them.
 import { expect, test, type Page } from '@playwright/test';
 import { chicago, logSet, openApp, seedDocument, setClock, startFromToday } from './support/app';
 import { MONDAY, e2eDocument } from './support/document';
@@ -34,11 +34,22 @@ test('a rest end burns REST OVER once, then the canvas is gone', async ({ contex
   }
   await expect(over).toHaveCount(1);
   await expect(page.locator('.view-slot:not([hidden]) .rest-over-word')).toBeVisible();
-  await page.clock.runFor(1_600); // [ms] past the 1.5 s pulse delay
+  // Freeze the page clock: installed, it keeps running in real time between calls, and on WebKit
+  // one locator round trip is slow enough (~0.6 s measured) that the 1.2 s burn could be over
+  // before a check ran. Paused, only runFor moves it, on every engine. The 200 ms lead keeps the
+  // target ahead of the still-running clock. Then step 100 ms at a time until the burn starts:
+  // its 1.5 s delay counts from the word's mount, which lands at an engine-dependent offset.
+  await page.clock.pauseAt((await page.evaluate(() => Date.now())) + 200); // [ms] epoch
   if (webgl) {
+    let stepped = 0; // [ms]
+    while (stepped < 3_000 && (await canvas(page).count()) === 0) {
+      await page.clock.runFor(100);
+      stepped += 100;
+    }
     await expect(canvas(page)).toHaveCount(1);
     await expect(page.locator('.view-slot:not([hidden]) .rest-over-word.is-burning')).toHaveCount(1);
   } else {
+    await page.clock.runFor(3_000); // [ms] past the 1.5 s pulse delay and the 1.2 s burn
     // No WebGL (a GPU-less runner may lack it): the plain word stays and no canvas mounts.
     await expect(canvas(page)).toHaveCount(0);
   }

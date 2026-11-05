@@ -1,8 +1,11 @@
 // playwright.config.ts
 //
-// Phone-browser end-to-end tests (spec R12). Chromium only: @playwright/test 1.63.0 bundles
-// Chromium revision 1243, the one cached on the dev machine and installed by CI. "iphone13" is
-// Chromium with the iPhone 13 viewport, touch and user agent; it is NOT WebKit.
+// Phone-browser end-to-end tests (spec R12). @playwright/test 1.63.0 bundles Chromium revision
+// 1243 and WebKit revision 2359. "iphone13" is Chromium with the iPhone 13 viewport, touch and
+// user agent; it is NOT WebKit. "webkit-iphone13" is WebKit (the iOS engine family, not iOS
+// Safari itself) on the same device profile, for the shell, Train, burn, sheet and sweep specs.
+// CI installs both engines (.github/workflows/ci.yml). On a host Playwright does not support
+// (Fedora), WebKit needs the Ubuntu 24.04 ICU 74 and libjpeg 8 libraries next to it.
 import { defineConfig, devices } from '@playwright/test';
 import { E2E_BASE_URL, E2E_PORT, E2E_TIMEZONE } from './e2e/support/constants';
 
@@ -29,6 +32,18 @@ export default defineConfig({
       use: { ...devices['iPhone 13'], browserName: 'chromium', timezoneId: E2E_TIMEZONE },
     },
     { name: 'pixel7', use: { ...devices['Pixel 7'], timezoneId: E2E_TIMEZONE } },
+    {
+      name: 'webkit-iphone13',
+      // devices['iPhone 13'] defaults to defaultBrowserType 'webkit'.
+      use: { ...devices['iPhone 13'], timezoneId: E2E_TIMEZONE },
+      testMatch: [
+        'p4a-shell.spec.ts',
+        'p4a-sweeps.spec.ts',
+        'p4a-shots.spec.ts',
+        'burn.spec.ts',
+        'p6-rest-sheet.spec.ts',
+      ],
+    },
   ],
   webServer: {
     command: `npm run build && npx vite preview --port ${String(E2E_PORT)} --strictPort`,

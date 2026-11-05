@@ -137,6 +137,7 @@ function seededRecord(
     reminders,
     sent,
     lastSyncedAt,
+    rev: 1,
   };
 }
 
@@ -425,7 +426,7 @@ describe("runTick", () => {
   it("writes the device record at most once per tick and not at all when nothing changed", async () => {
     seed(kv, seededRecord([instant("later", NOW + 6 * HOUR)]));
     const summary = await runTick(env, NOW);
-    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0 });
+    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0, deferred: 0, duplicates: 0 });
     expect(kv.writes).toBe(0);
 
     const sending = await runTick(env, NOW + 6 * HOUR);
@@ -488,7 +489,7 @@ describe("runTick", () => {
   it("prunes an expired reminder with a single write", async () => {
     seed(kv, seededRecord([instant("old", NOW - 20 * MINUTE)]));
     const summary = await runTick(env, NOW);
-    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 1 });
+    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 1, deferred: 0, duplicates: 0 });
     const stored: unknown = JSON.parse(kv.data.get(`dev:${DEVICE_ID}`) ?? "null");
     expect(stored).toMatchObject({ reminders: [] });
   });
@@ -502,7 +503,7 @@ describe("runTick", () => {
 
   it("does nothing when there are no devices", async () => {
     const summary = await runTick(env, NOW);
-    expect(summary).toEqual({ devices: 0, sent: 0, failed: 0, removed: 0, writes: 0 });
+    expect(summary).toEqual({ devices: 0, sent: 0, failed: 0, removed: 0, writes: 0, deferred: 0, duplicates: 0 });
     expect(kv.writes).toBe(0);
   });
 });
@@ -741,7 +742,7 @@ describe("hourly idx reconcile", () => {
     kv.lists = 0;
     const summary = await runTick(env, NOW);
     expect(kv.lists).toBe(1);
-    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0 });
+    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0, deferred: 0, duplicates: 0 });
     expect(kv.writes).toBe(0);
   });
 
@@ -822,7 +823,7 @@ describe("inert device reaper", () => {
     seed(kv, drained(30 * DAY));
     kv.writes = 0;
     const summary = await runTick(env, NOW + 30 * MINUTE);
-    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0 });
+    expect(summary).toEqual({ devices: 1, sent: 0, failed: 0, removed: 0, writes: 0, deferred: 0, duplicates: 0 });
     expect(kv.writes).toBe(0);
     expect(kv.deletes).toBe(0);
     expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(true);
@@ -1034,5 +1035,152 @@ describe("method and route refusals", () => {
     expect(response.status).toBe(403);
     expect(response.headers.get("Vary")).toBe("Origin");
     expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+  });
+});
+
+/** Subrequests this test file can observe: every KV call plus every push fetch. Count. */
+function subrequests(store: MemoryKv): number {
+  return store.reads + store.writes + store.deletes + store.lists + sendMock.mock.calls.length;
+}
+
+/** Device ids in the RFC 9562 textual shape the route accepts. `n` < 10^12. */
+function deviceId(n: number): string {
+  return `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+}
+
+function seedMany(store: MemoryKv, count: number, reminders: (n: number) => ReminderInstant[]): string[] {
+  const ids: string[] = [];
+  for (let n = 0; n < count; n += 1) {
+    const id = deviceId(n);
+    ids.push(id);
+    store.data.set(`dev:${id}`, JSON.stringify(seededRecord(reminders(n))));
+  }
+  store.data.set("idx", JSON.stringify(ids));
+  return ids;
+}
+
+function storedRecord(store: MemoryKv, id = DEVICE_ID): DeviceRecord {
+  return JSON.parse(store.data.get(`dev:${id}`) ?? "null") as DeviceRecord;
+}
+
+describe("E10a lost update: a client PUT that lands between the send and the cron write", () => {
+  it("survives the cron write, and the cron's sent mark is merged into it", async () => {
+    seed(kv, seededRecord([instant(KEY, NOW)]));
+    sendMock.mockImplementationOnce(async () => {
+      // The client edits its schedule while the push is in flight.
+      const put = await handleFetch(
+        putRequest([instant(KEY, NOW), instant(KEY2, NOW + HOUR)]),
+        env,
+        NOW,
+      );
+      expect(put.status).toBe(204);
+      return "sent";
+    });
+    const summary = await runTick(env, NOW);
+    expect(summary.sent).toBe(1);
+    const stored = storedRecord(kv);
+    expect(stored.reminders.map((r) => r.key)).toEqual([KEY, KEY2]);
+    expect(Object.keys(stored.sent)).toEqual([KEY]);
+    expect(stored.rev).toBe(2);
+    // And the merged mark holds: no second send on the next tick.
+    await runTick(env, NOW + MINUTE);
+    expect(sendMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resurrect a device the client deleted while its push was in flight", async () => {
+    seed(kv, seededRecord([instant(KEY, NOW)]));
+    sendMock.mockImplementationOnce(async () => {
+      const del = await handleFetch(
+        new Request(`https://worker.example/v1/devices/${DEVICE_ID}`, {
+          method: "DELETE",
+          headers: { Origin: ORIGIN, Authorization: `Bearer ${SECRET}` },
+        }),
+        env,
+        NOW,
+      );
+      expect(del.status).toBe(204);
+      return "sent";
+    });
+    await runTick(env, NOW);
+    expect(kv.data.has(`dev:${DEVICE_ID}`)).toBe(false);
+  });
+
+  it("counts accepted PUTs in rev: 1 on create, +1 per update; a legacy record reads as 0", async () => {
+    await handleFetch(putRequest([instant(KEY, NOW + HOUR)]), env, NOW);
+    expect(storedRecord(kv).rev).toBe(1);
+    await handleFetch(putRequest([instant(KEY2, NOW + HOUR)]), env, NOW);
+    expect(storedRecord(kv).rev).toBe(2);
+    // The cron's own write-back leaves rev alone: it counts client edits, not touches.
+    await runTick(env, NOW + HOUR);
+    expect(storedRecord(kv).rev).toBe(2);
+  });
+});
+
+describe("E10b subrequest ceiling (free plan: 50 per invocation)", () => {
+  it("never exceeds 50 subrequests in a tick, even with 100 devices all due at once", async () => {
+    seedMany(kv, 100, () => [instant(KEY, NOW), instant(KEY2, NOW)]);
+    for (let tick = 0; tick < 15; tick += 1) {
+      const before = subrequests(kv);
+      await expect(runTick(env, NOW + tick * MINUTE)).resolves.toBeDefined();
+      expect(subrequests(kv) - before).toBeLessThanOrEqual(50);
+    }
+  });
+
+  it("reaches every one of 100 devices inside the 15 minute due window, each exactly once per key", async () => {
+    const ids = seedMany(kv, 100, () => [instant(KEY, NOW)]);
+    for (let tick = 0; tick < 15; tick += 1) await runTick(env, NOW + tick * MINUTE);
+    expect(sendMock).toHaveBeenCalledTimes(100);
+    for (const id of ids) expect(Object.keys(storedRecord(kv, id).sent)).toEqual([KEY]);
+  });
+
+  it("reports the devices it left for a later tick", async () => {
+    seedMany(kv, 100, () => [instant("later", NOW + 6 * HOUR)]);
+    const summary = await runTick(env, NOW + MINUTE);
+    expect(summary.devices).toBe(100);
+    expect(summary.deferred).toBeGreaterThan(0);
+  });
+
+  it("keeps going past a device whose KV read throws, and still writes the others' sent marks", async () => {
+    const ids = seedMany(kv, 3, () => [instant(KEY, NOW)]);
+    const realGet = kv.get.bind(kv);
+    kv.get = (key: string) =>
+      key === `dev:${ids[1] ?? ""}` ? Promise.reject(new Error("kv down")) : realGet(key);
+    await expect(runTick(env, NOW)).resolves.toBeDefined();
+    expect(Object.keys(storedRecord(kv, ids[0]).sent)).toEqual([KEY]);
+    expect(Object.keys(storedRecord(kv, ids[2]).sent)).toEqual([KEY]);
+  });
+});
+
+/** Returns a recorded snapshot instead of the current value for the next read of `key`. */
+class StaleKv extends MemoryKv {
+  readonly stale = new Map<string, string>();
+  override get(key: string): Promise<string | null> {
+    const old = this.stale.get(key);
+    if (old !== undefined) {
+      this.stale.delete(key);
+      this.reads += 1;
+      return Promise.resolve(old);
+    }
+    return super.get(key);
+  }
+}
+
+describe("E10c re-send after a stale KV read", () => {
+  it("re-sends under the same reminder key (the notification tag the client dedupes on) and counts the duplicate", async () => {
+    const staleKv = new StaleKv();
+    const staleEnv = makeEnv(staleKv);
+    seed(staleKv, seededRecord([instant(KEY, NOW)]));
+    const before = staleKv.data.get(`dev:${DEVICE_ID}`) ?? "";
+    await runTick(staleEnv, NOW);
+    // A second location still serves the pre-send value once.
+    staleKv.stale.set(`dev:${DEVICE_ID}`, before);
+    const second = await runTick(staleEnv, NOW + MINUTE);
+    expect(sendMock).toHaveBeenCalledTimes(2);
+    const keys = sendMock.mock.calls.map((call) => call[2].key);
+    expect(keys).toEqual([KEY, KEY]);
+    expect(second.duplicates).toBe(1);
+    // The stale tick's write keeps the first send's mark: no third send.
+    await runTick(staleEnv, NOW + 2 * MINUTE);
+    expect(sendMock).toHaveBeenCalledTimes(2);
   });
 });

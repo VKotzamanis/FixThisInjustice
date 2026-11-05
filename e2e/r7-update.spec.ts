@@ -50,3 +50,35 @@ test('R7: a new worker applies itself on resume when no session is open', async 
     writeFileSync(swPath, original);
   }
 });
+
+test('R7: an update found on the very first page after install applies there, no relaunch needed', async ({
+  context,
+}) => {
+  await seedDocument(context, e2eDocument());
+  const page = await openApp(context);
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready;
+  });
+  // The install page: claimed (E09), but loaded with no controller, so workbox-window reports
+  // isUpdate false here and vite-plugin-pwa never asks for the reload. controllerchange must.
+  await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
+  await page.evaluate(() => {
+    Reflect.set(window, '__beforeUpdate', true);
+  });
+  const swPath = 'dist/sw.js';
+  const original = readFileSync(swPath, 'utf8');
+  try {
+    writeFileSync(swPath, `${original}\n// e2e: a new deploy on the first page\n`);
+    await page.evaluate(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, '__beforeUpdate') === true).catch(() => true), {
+        timeout: 30_000, // [ms]
+      })
+      .toBe(false);
+    await expect(page.locator('.banner.update')).toHaveCount(0);
+  } finally {
+    writeFileSync(swPath, original);
+  }
+});
