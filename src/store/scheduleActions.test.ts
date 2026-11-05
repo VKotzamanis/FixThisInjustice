@@ -20,6 +20,7 @@ import {
 } from '../test/scheduleFixtures';
 import { parseState } from '../domain/schema';
 import { projectedCalendar } from '../domain/schedule/calendar';
+import { RUNWAY_SESSIONS } from '../domain/plan/engine';
 import type { AppState } from '../domain/types';
 
 /*
@@ -464,3 +465,58 @@ describe('a documented no-op leaves the standing refusal up', () => {
     expect(h.error()).toBe(refusal);
   });
 });
+
+describe('ROADMAP L6: the programme engine behind the slice', () => {
+  it('a completion keeps the runway, so the six-session plan never finishes', () => {
+    const h = harness(seed());
+    const days = [PREV_MONDAY, '2026-09-02', '2026-09-04', MONDAY, WEDNESDAY, '2026-09-11', '2026-09-14'];
+    for (const date of days) h.actions.completeSession(PROFILE_ID, date, NOW_MS);
+    const s = h.read();
+    const plan = s.plans[PLAN_ID];
+    const cursor = s.cursors[PROFILE_ID];
+    expect(cursor?.nextSessionIndex).toBe(days.length);
+    expect(cursor?.completedOn).toBeNull();
+    expect((plan?.sessions.length ?? 0) - (cursor?.nextSessionIndex ?? 0)).toBeGreaterThanOrEqual(RUNWAY_SESSIONS);
+    expect(h.error()).toBeNull();
+  });
+
+  it('a skip keeps the runway too', () => {
+    const h = harness(seed());
+    h.actions.skipSession(PROFILE_ID, PREV_MONDAY, null);
+    const s = h.read();
+    expect((s.plans[PLAN_ID]?.sessions.length ?? 0) - 1).toBeGreaterThanOrEqual(RUNWAY_SESSIONS);
+  });
+
+  it('the catch-up revives a programme finished under an older build, the gap a closed pause', () => {
+    const finished = seed();
+    const cursor = finished.cursors[PROFILE_ID];
+    if (cursor === undefined) throw new Error('fixture: cursor');
+    const h = harness({
+      ...finished,
+      cursors: { [PROFILE_ID]: { ...cursor, nextSessionIndex: LABELS.length, completedOn: PREV_MONDAY } },
+    });
+    // NOW_MS is Monday 2026-09-07 06:30 UTC, 09:30 in Athens: the profile's civil date is MONDAY.
+    h.actions.ensureRunway(PROFILE_ID, NOW_MS);
+    const s = h.read();
+    expect(s.cursors[PROFILE_ID]).toMatchObject({ nextSessionIndex: LABELS.length, completedOn: null });
+    expect((s.plans[PLAN_ID]?.sessions.length ?? 0) - LABELS.length).toBeGreaterThanOrEqual(RUNWAY_SESSIONS);
+    expect(s.pauses[PROFILE_ID]).toEqual([
+      { id: expect.any(String) as string, from: TUESDAY_BEFORE, to: MONDAY, reason: null },
+    ]);
+    // Idempotent: a second catch-up changes nothing.
+    const again = h.read();
+    h.actions.ensureRunway(PROFILE_ID, NOW_MS + DAY_MS / 24);
+    expect(h.read()).toBe(again);
+  });
+
+  it('the catch-up is a no-op for a profile with no programme yet', () => {
+    const s = seed();
+    const h = harness({ ...s, cursors: {}, plans: {} });
+    const before = h.read();
+    h.actions.ensureRunway(PROFILE_ID, NOW_MS);
+    expect(h.read()).toBe(before);
+  });
+});
+
+/** The day after PREV_MONDAY: the first day the revived programme stood finished. */
+const TUESDAY_BEFORE = '2026-09-01';

@@ -517,6 +517,17 @@ describe('ensureRunway: revival and ceilings', () => {
     expectWellFormed(plan);
     // The old sessions and their ids are untouched.
     expect(plan.sessions.slice(0, old.sessions.length)).toEqual(old.sessions);
+    // Without a clock no pause is written.
+    expect(revived.pauses[PROFILE_ID]).toEqual([]);
+    // With one, the days it stood finished are a closed pause [completedOn + 1, today).
+    const finishedOn = s.cursors[PROFILE_ID]?.completedOn ?? MONDAY;
+    const today = addDays(finishedOn, 30);
+    const withClock = ensureRunway(s, PROFILE_ID, today);
+    expect(withClock.pauses[PROFILE_ID]).toEqual([
+      { id: expect.any(String) as string, from: addDays(finishedOn, 1), to: today, reason: null },
+    ]);
+    // Launched the day after it finished: no gap, no pause.
+    expect(ensureRunway(s, PROFILE_ID, addDays(finishedOn, 1)).pauses[PROFILE_ID]).toEqual([]);
   });
 
   it('stops at the plan ceiling, so a plan there finishes as before', () => {

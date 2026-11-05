@@ -410,12 +410,13 @@ function fitsCeilings(plan: PlanTemplate, count: number, blocksAdded: number): b
  * 2. While fewer than RUNWAY_SESSIONS sessions lie ahead of the cursor, one cycle of BLOCK_WEEKS
  *    weeks is appended: the plan's last week repeated (it already carries the latest evidence),
  *    with fresh ids, ordinals continued and buildBlocks' 3 + 1 layout offset onto the end.
- *    A finished cursor is revived (completedOn cleared, its index unchanged). Appending stops at
- *    the plan ceilings (limits.ts); a plan there finishes exactly as before.
+ *    A finished cursor is revived (completedOn cleared, its index unchanged); with `today` (the
+ *    profile's civil date, from the caller's clock) the days it stood finished become a closed
+ *    pause. Appending stops at the plan ceilings (limits.ts); a plan there finishes as before.
  *
  * Returns `state` itself when nothing changed.
  */
-export function ensureRunway(state: AppState, profileId: string): AppState {
+export function ensureRunway(state: AppState, profileId: string, today?: LocalDate): AppState {
   const cursor = state.cursors[profileId];
   if (cursor === undefined) return state;
   const stored = state.plans[cursor.planId];
@@ -514,12 +515,31 @@ export function ensureRunway(state: AppState, profileId: string): AppState {
   // A plan built before L6 names its length ("Upper / Lower x2, 12 weeks, fat loss"); once it has
   // grown past it the claim is false, so the length goes (copy contract R5 comma kept).
   const named = extended ? { ...plan, name: withoutLength(plan.name) } : plan;
+  const revived = extended && cursor.completedOn !== null;
   return {
     ...state,
     plans: { ...state.plans, [cursor.planId]: named },
-    cursors:
-      extended && cursor.completedOn !== null
-        ? { ...state.cursors, [profileId]: { ...cursor, completedOn: null } }
-        : state.cursors,
+    cursors: revived ? { ...state.cursors, [profileId]: { ...cursor, completedOn: null } } : state.cursors,
+    pauses: revived ? withFinishedGap(state, profileId, cursor.completedOn, today) : state.pauses,
   };
+}
+
+/**
+ * The days a revived programme was finished, [completedOn + 1, today), recorded as a closed pause
+ * so the schedule does not ask for them after the fact: quota.ts askableDays skips paused days,
+ * so the Log grid reads them "paused", never "missed", and no grade or miss popup is owed for
+ * them. Nothing when `today` is unknown, the gap is empty, or a pause is already open.
+ */
+function withFinishedGap(
+  state: AppState,
+  profileId: string,
+  completedOn: LocalDate | null,
+  today: LocalDate | undefined,
+): AppState['pauses'] {
+  if (completedOn === null || today === undefined) return state.pauses;
+  const from = addDays(completedOn, 1);
+  if (compareLocalDate(from, today) >= 0) return state.pauses;
+  const list = state.pauses[profileId] ?? [];
+  if (list.some((p) => p.to === null)) return state.pauses;
+  return { ...state.pauses, [profileId]: [...list, { id: newId(), from, to: today, reason: null }] };
 }
