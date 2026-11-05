@@ -310,6 +310,9 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'advice.outsideEquations'
+  | 'label.checkInDay'
+  | 'hero.intakeHistory'
   | 'hero.editBody'
   | 'quantity.birthYear'
   | 'button.saveProfile'
@@ -1171,6 +1174,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Audit G09: Targets names the input the equations do not cover. Template; FORMAT.withSlots.
+  'advice.outsideEquations': '{field} is outside the range the equations cover.',
+  // Audit G17: intake history and the day a check-in is for.
+  'label.checkInDay': 'Day',
+  'hero.intakeHistory': 'Last Seven Days',
   // Spec R9 / audit G06, G05: the setup facts made editable, and the dated body-fat re-measure.
   'hero.editBody': 'Body And Goal',
   'quantity.birthYear': 'Birth year',

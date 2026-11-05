@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import fc from 'fast-check';
 import { defaultState, parseState } from './schema';
 import {
   BODY_MASS_PLAUSIBLE_FRACTION,
@@ -6,12 +7,14 @@ import {
   latestBodyFatEntry,
   latestBodyMassEntry,
   nutritionInputFor,
+  nutritionDomainIssue,
   nutritionInputForState,
   projectionAnchor,
   trendEntries,
 } from './measurements';
 import { makeProfile } from '../test/fixtures';
 import type { AppState, BodyMassEntry } from './types';
+import { isInDomain, type NutritionInput } from './nutrition';
 
 /** A body-mass entry of profile-1; [kg], [ms] epoch UTC. */
 function entry(patch: Partial<BodyMassEntry> & Pick<BodyMassEntry, 'id' | 'date' | 'massKg'>): BodyMassEntry {
@@ -143,5 +146,37 @@ describe('the role field is additive (rule 7)', () => {
     const list = parsed.state.bodyMass['profile-1'] ?? [];
     expect(list[0]).not.toHaveProperty('role');
     expect(list[1]?.role).toBe('pre');
+  });
+});
+
+describe('nutritionDomainIssue (audit G09: name the field)', () => {
+  const base: NutritionInput = {
+    sex: 'male', ageYears: 30, heightCm: 180, massKg: 80, bodyFatPct: null, activity: 'moderate',
+    activityPal: 1.7, goal: 'maintenance', sessionsPerWeek: 3, creatine: false,
+  };
+
+  it('names the first failing input', () => {
+    expect(nutritionDomainIssue(base)).toBeNull();
+    expect(nutritionDomainIssue({ ...base, massKg: 8.2 })).toBe('massKg'); // [kg] the G03 typo
+    expect(nutritionDomainIssue({ ...base, ageYears: 81 })).toBe('ageYears'); // [year] 80 at setup, 81 on 1 January
+    expect(nutritionDomainIssue({ ...base, sex: 'nd' })).toBe('bodyFatPct'); // decision A1
+    expect(nutritionDomainIssue({ ...base, heightCm: 108 })).toBe('heightCm'); // [cm]
+  });
+
+  it('is null exactly when isInDomain is true (rule 2)', () => {
+    fc.assert(
+      fc.property(
+        fc.record({
+          sex: fc.constantFrom('male' as const, 'female' as const, 'nd' as const),
+          ageYears: fc.integer({ min: 10, max: 90 }),
+          heightCm: fc.double({ min: 100, max: 250, noNaN: true }),
+          massKg: fc.double({ min: 1, max: 400, noNaN: true }),
+          bodyFatPct: fc.option(fc.double({ min: 0, max: 80, noNaN: true }), { nil: null }),
+          sessionsPerWeek: fc.integer({ min: 0, max: 16 }),
+        }),
+        (patch) => (nutritionDomainIssue({ ...base, ...patch }) === null) === isInDomain({ ...base, ...patch }),
+      ),
+      { numRuns: 500, seed: 20261104 },
+    );
   });
 });

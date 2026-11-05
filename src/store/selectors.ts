@@ -9,7 +9,7 @@ import type {
   SessionAssignment,
   WeeklyReview,
 } from '../domain/types';
-import type { NutritionTargets } from '../domain/nutrition';
+import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
 import { computeTargets, isInDomain } from '../domain/nutrition';
 import { todayLocal } from '../domain/dates';
 import { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../domain/measurements';
@@ -89,6 +89,37 @@ export function useLastLoadRaw(): string | null {
 export { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../domain/measurements';
 
 /**
+ * The nutrition input for the active profile, memoised on the records it reads and the civil
+ * date (age runs on the civil year). Null with no active profile.
+ *
+ * @param now [ms] epoch UTC to read the civil date from; defaults to the wall clock.
+ */
+export function useNutritionInput(now: EpochMs = Date.now()): NutritionInput | null {
+  const profile = useAppStore((s) =>
+    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
+  );
+  const latest = useAppStore((s) =>
+    s.activeProfileId === null ? null : latestBodyMassEntry(s, s.activeProfileId),
+  );
+  // Audit G05: the newest body-fat entry, which a later mass without one no longer hides.
+  const latestBodyFat = useAppStore((s) =>
+    s.activeProfileId === null ? null : latestBodyFatEntry(s, s.activeProfileId),
+  );
+  // [sessions/week] Quoted in basis.deficitRule only (nutrition.ts NOTE-FREQ).
+  const sessionsPerWeek = useAppStore((s) =>
+    s.activeProfileId === null ? 0 : weeklyQuota(s, s.activeProfileId), // AM-5: the one weekly target
+  );
+  const todayIso = profile === null ? null : todayLocal(profile.timezone, now);
+  return useMemo(
+    () =>
+      profile === null || todayIso === null
+        ? null
+        : nutritionInputFor(profile, latest, sessionsPerWeek, todayIso, latestBodyFat),
+    [profile, latest, latestBodyFat, sessionsPerWeek, todayIso],
+  );
+}
+
+/**
  * Memoised nutrition targets for the active profile.
  *
  * Null in two cases, neither of which is an error the UI has to handle: no
@@ -116,38 +147,21 @@ export { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../d
  *   store-level clock).
  */
 export function useNutritionTargets(now: EpochMs = Date.now()): NutritionTargets | null {
-  const profile = useAppStore((s) =>
-    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
+  const input = useNutritionInput(now);
+  // isInDomain is asked first, so a throw that still escapes computeTargets is an engine defect.
+  return useMemo(() => (input === null || !isInDomain(input) ? null : computeTargets(input)), [input]);
+}
+
+/**
+ * Audit G13/G20: the active profile's civil date, re-read every minute and whenever the tab
+ * becomes visible (useMinuteClock), so a screen left open overnight moves to the new day.
+ */
+export function useCivilToday(): LocalDate | null {
+  const timezone = useAppStore((s) =>
+    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId]?.timezone ?? null),
   );
-  const latest = useAppStore((s) =>
-    s.activeProfileId === null ? null : latestBodyMassEntry(s, s.activeProfileId),
-  );
-  // Audit G05: the newest body-fat entry, which a later mass without one no longer hides.
-  const latestBodyFat = useAppStore((s) =>
-    s.activeProfileId === null ? null : latestBodyFatEntry(s, s.activeProfileId),
-  );
-  // [sessions/week] 0 until the wizard stores availability. It is inside
-  // NUTRITION_DOMAIN.sessionsPerWeek and changes no number (nutrition.ts
-  // NOTE-FREQ); it reaches the engine only to be quoted in basis.deficitRule.
-  const sessionsPerWeek = useAppStore((s) =>
-    s.activeProfileId === null ? 0 : weeklyQuota(s, s.activeProfileId), // AM-5: the one weekly target
-  );
-  // Outside the memo so it is a dependency rather than a hidden read. It is a
-  // "YYYY-MM-DD" string, so an unchanged day compares equal and re-renders cost
-  // no arithmetic; the day rolling over is what makes the memo recompute.
-  //
-  // todayLocal throws RangeError on an invalid IANA zone, and that throw is now
-  // outside the removed try/catch, so it reaches the caller. That is deliberate
-  // and matches the rule above: Profile.timezone is refined by the schema, so a
-  // profile carrying an unusable zone is a document the loader would have
-  // rejected, i.e. a defect rather than a state the UI should render around.
-  const todayIso = profile === null ? null : todayLocal(profile.timezone, now);
-  return useMemo(() => {
-    if (profile === null || todayIso === null) return null;
-    const input = nutritionInputFor(profile, latest, sessionsPerWeek, todayIso, latestBodyFat);
-    if (!isInDomain(input)) return null;
-    return computeTargets(input);
-  }, [profile, latest, latestBodyFat, sessionsPerWeek, todayIso]);
+  const now = useMinuteClock(); // [ms] epoch UTC
+  return timezone === null ? null : todayLocal(timezone, now);
 }
 
 /**

@@ -94,6 +94,7 @@ import {
   requiredIntegerInRange,
   round1,
 } from './fieldRules';
+import { RMR_EQUATION_NAME } from '../../content/rmrEquations';
 import { useAppStore } from '../../store';
 import {
   BODY_EQUATIONS,
@@ -297,11 +298,6 @@ const AVAILABILITY_DAYS_ERROR_ID = 'f-availability-days-error';
  */
 const BODYFAT_ND_REASON_ID = 'f-bodyfat-nd-reason';
 
-/** Display name of each RMR equation. A proper noun, not skin copy. */
-const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
-  'mifflin-st-jeor': 'Mifflin-St Jeor',
-  cunningham: 'Cunningham',
-};
 
 const WEEKDAYS: { value: IsoWeekday; labelKey: CopyKey }[] = [
   { value: 1, labelKey: 'weekday.monday' },

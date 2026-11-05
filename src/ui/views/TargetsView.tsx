@@ -1,36 +1,31 @@
 import { useMemo, useState, type JSX } from 'react';
 import { displayClass } from '../format/display';
+import { NO_VALUE } from '../format/plan';
 import { AsciiBar } from '../components/AsciiBar';
 import { massUnit, parseDecimal } from '../components/UnitInput';
 import { FORMAT, copy } from '../../content/copy';
 import type { CopyKey } from '../../content/copy';
+import { RMR_EQUATION_NAME } from '../../content/rmrEquations';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
-import { todayLocal } from '../../domain/dates';
+import { addDays } from '../../domain/dates';
+import { nutritionDomainIssue, type DomainField } from '../../domain/measurements';
 import { statedBeverageTargetML, type NutritionTargets } from '../../domain/nutrition';
 import { volumeReport } from '../../domain/plan/generator';
 import { EXERCISES } from '../../domain/plan/library';
 import { IntakeEntrySchema } from '../../domain/schema';
-import type { IntakeEntry, Profile } from '../../domain/types';
+import type { IntakeEntry, LocalDate, Profile } from '../../domain/types';
 import { displayMass, formatBeverageTarget, formatVolume } from '../../domain/units';
 import { useAppStore } from '../../store';
 import {
   useActivePlan,
   useActiveProfile,
+  useCivilToday,
   useIntakeForDate,
+  useMinuteClock,
+  useNutritionInput,
   useNutritionTargets,
 } from '../../store/selectors';
 import './views.css';
-
-/**
- * Display name of each RMR equation. A proper noun, not skin copy, which is why it is not a
- * CopyKey. SetupWizard.tsx holds an identical private map for its review screen: neither file
- * may reach into the other, and these are citations rather than sentences, so they cannot
- * drift in meaning the way a phrasing could.
- */
-const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
-  'mifflin-st-jeor': 'Mifflin-St Jeor',
-  cunningham: 'Cunningham',
-};
 
 /**
  * DOM id of the intake refusal message. Both fields point at it with aria-describedby: the
@@ -38,6 +33,18 @@ const RMR_EQUATION_NAME: Record<'mifflin-st-jeor' | 'cunningham', string> = {
  * would leave the other looking acceptable to a screen reader.
  */
 const INTAKE_ERROR_ID = 'intake-error';
+
+/** [d] The check-in day select and the history list: today and the six days before it. */
+const INTAKE_DAYS = 7;
+
+/** The quantity each domain refusal names (audit G09). */
+const DOMAIN_FIELD_KEY: Record<DomainField, CopyKey> = {
+  massKg: 'quantity.bodyMass',
+  heightCm: 'quantity.height',
+  ageYears: 'quantity.age',
+  bodyFatPct: 'quantity.bodyFat',
+  sessionsPerWeek: 'quantity.weeklySessionTarget',
+};
 
 /**
  * "-0.6 kg/week", or the honest statement that the evidence base gives no rate.
@@ -59,93 +66,141 @@ function rateText(
 }
 
 /**
- * The daily targets, and the one screen that writes against them.
- *
- * Every number here is DERIVED, never stored: `useNutritionTargets` recomputes it from the
- * profile and the latest body-mass entry on every render, so an edit in Settings or a new
- * weigh-in moves these figures with no recalculate control to forget (master plan section 6.3).
- *
- * Copy contract R9: the arithmetic that produced them is not inline. It sits behind the one
- * `why?` disclosure, and the intermediate quantities (RMR, TDEE) sit there with it, because
- * the user acts on the target and not on its inputs.
+ * One day's intake check-in. Keyed on its date by the caller (audit G13): the fields are seeded
+ * from THAT day's stored entry when the form mounts, and a new date is a new form, so a value
+ * typed for one day can never be recorded under another.
  */
-export function TargetsView(): JSX.Element {
+function IntakeCheckIn(props: { profile: Profile; date: LocalDate; targets: NutritionTargets }): JSX.Element {
+  const { profile, date, targets } = props;
   const t = useCopy();
-  const overrides = useCopyOverrides();
-  const profile = useActiveProfile();
-  const targets = useNutritionTargets();
-  const plan = useActivePlan();
-
-  // "" only while there is no profile, in which case nothing below is rendered. Reading the
-  // civil date in the profile's own zone is what makes "today" mean the user's today.
-  const today = profile === null ? '' : todayLocal(profile.timezone);
-  const existing = useIntakeForDate(today);
-
-  // Held as typed, not as a number: rounding the string through Number on every keystroke
-  // makes an in-progress "1." unenterable. Seeded from today's stored entry, so a correction
-  // edits what is already recorded instead of starting blank and replacing it with less.
+  const existing = useIntakeForDate(date);
+  // Held as typed, not as a number: an in-progress "1." must stay enterable.
   const [kcalText, setKcalText] = useState(existing === null ? '' : String(existing.kcal));
-  const [proteinText, setProteinText] = useState(
-    existing === null ? '' : String(existing.proteinG),
-  );
+  const [proteinText, setProteinText] = useState(existing === null ? '' : String(existing.proteinG));
   const [rejected, setRejected] = useState(false);
 
-  // Memoised on the plan object, which setPlan replaces wholesale, so the weekly set counts
-  // are recomputed when the plan changes and not on every keystroke in the check-in form.
-  const volume = useMemo(() => (plan === null ? null : volumeReport(plan, EXERCISES)), [plan]);
-
-  if (profile === null || targets === null) return <p>{t('advice.noProfileSetupFirst')}</p>;
-
-  /*
-   * What the bars and the read-outs report is the STORED entry for today, never the draft in
-   * the fields. A draft is not a record: drawing it moved the bars under every keystroke and,
-   * worse, collapsed them to empty the moment the user cleared a field to correct a total
-   * that is still recorded. Zero here means "nothing recorded today", which is what an empty
-   * bar states.
-   */
+  // The bars report the STORED entry, never the draft: zero means "nothing recorded".
   const loggedKcal = existing?.kcal ?? 0; // [kcal/day]
   const loggedProteinG = existing?.proteinG ?? 0; // [g/day]
 
   const record = (): void => {
-    /*
-     * BOTH fields must hold a finite number before an entry exists at all. parseDecimal
-     * returns null for an empty or non-numeric field, and reading that null as 0 wrote a
-     * total the user never typed: 0 kcal is inside IntakeEntrySchema's bounds, so the
-     * refusal never fired, and logIntake upserts by date, so the zero REPLACED whatever was
-     * already recorded for today. A missing total and a zero total are different facts.
-     */
-    const kcal = parseDecimal(kcalText); // [kcal/day], or null when absent or non-numeric
-    const proteinG = parseDecimal(proteinText); // [g/day], same
+    // BOTH fields must hold a number: a missing total is not a zero total.
+    const kcal = parseDecimal(kcalText); // [kcal/day], or null
+    const proteinG = parseDecimal(proteinText); // [g/day], or null
     if (kcal === null || proteinG === null) {
       setRejected(true);
       return;
     }
-
-    const entry: IntakeEntry = {
-      profileId: profile.id,
-      date: today,
-      kcal, // [kcal/day]
-      proteinG, // [g/day]
-    };
-    /*
-     * Validated against the schema that will have to read it back, not against bounds
-     * repeated here. A daily total outside those bounds is not a display problem: it goes
-     * into the single persisted document, and the next hydrate() would refuse that whole
-     * document over it. Refusing the entry costs the user one correction; accepting it costs
-     * them every record they have.
-     */
+    const entry: IntakeEntry = { profileId: profile.id, date, kcal, proteinG };
+    // Validated against the schema that reads it back: a refused value costs one correction,
+    // a stored one the user's whole document.
     if (!IntakeEntrySchema.safeParse(entry).success) {
       setRejected(true);
       return;
     }
     setRejected(false);
-    // Actions are read through getState() rather than subscribed to: they are created once
-    // and never replaced, so a subscription only adds an unbound method to the render.
     useAppStore.getState().logIntake(profile.id, entry);
   };
 
-  // Carries today's date, a numeral, so displayClass keeps it out of the display cut.
-  const checkInHeading = FORMAT.headingWithDate(t('hero.intakeCheckIn'), today);
+  // Carries the date, a numeral, so displayClass keeps it out of the display cut.
+  const checkInHeading = FORMAT.headingWithDate(t('hero.intakeCheckIn'), date);
+
+  return (
+    <>
+      <h2 className={displayClass(checkInHeading)}>{checkInHeading}</h2>
+      <div className="view-field">
+        <label htmlFor="intake-kcal">{FORMAT.quantityWithUnit(t('quantity.energyIntake'), 'kcal')}</label>
+        <input
+          id="intake-kcal"
+          /* Spec R4: text parsed by parseDecimal, so "2,100" is refused, never read as 2.1. */
+          type="text"
+          inputMode="numeric"
+          aria-invalid={rejected}
+          aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
+          value={kcalText}
+          onChange={(e) => {
+            setKcalText(e.target.value);
+          }}
+        />
+      </div>
+      <div className="view-field">
+        <label htmlFor="intake-protein">{FORMAT.quantityWithUnit(t('quantity.proteinIntake'), 'g')}</label>
+        <input
+          id="intake-protein"
+          /* Spec R4: text parsed by parseDecimal, so "2,100" is refused, never read as 2.1. */
+          type="text"
+          inputMode="numeric"
+          aria-invalid={rejected}
+          aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
+          value={proteinText}
+          onChange={(e) => {
+            setProteinText(e.target.value);
+          }}
+        />
+      </div>
+      {rejected && (
+        <p className="view-error" id={INTAKE_ERROR_ID} role="alert" data-testid="intake-error">
+          {t('advice.intakeRejected')}
+        </p>
+      )}
+      <button type="button" onClick={record}>
+        {t('button.recordIntake')}
+      </button>
+      <p className="view-progress">
+        <AsciiBar value={loggedKcal} target={targets.targetKcal} label={t('label.energyProgress')} testId="kcal-bar" />{' '}
+        <span data-testid="kcal-progress">
+          {FORMAT.valueOfTarget(String(loggedKcal), FORMAT.kcal(targets.targetKcal))}
+        </span>
+      </p>
+      <p className="view-progress">
+        {/* The denominator is the LOWER bound of the protein range: "is the requirement met". */}
+        <AsciiBar value={loggedProteinG} target={targets.proteinG.lo} label={t('label.proteinProgress')} testId="protein-bar" />{' '}
+        <span data-testid="protein-progress">
+          {FORMAT.valueOfTarget(String(loggedProteinG), FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi))}
+        </span>
+      </p>
+    </>
+  );
+}
+
+/**
+ * The daily targets, and the one screen that writes against them. Every number is DERIVED from
+ * the profile and the newest measurements on every render (master plan section 6.3); the
+ * arithmetic sits behind the one `why?` disclosure (copy contract R9).
+ */
+export function TargetsView(): JSX.Element {
+  const t = useCopy();
+  const overrides = useCopyOverrides();
+  const profile = useActiveProfile();
+  // Audit G13: one ticking clock for the age term and the civil date.
+  const now = useMinuteClock(); // [ms] epoch UTC
+  const input = useNutritionInput(now);
+  const targets = useNutritionTargets(now);
+  const plan = useActivePlan();
+  const today = useCivilToday() ?? '';
+  // Audit G17: the day the check-in is for; null follows today, including across midnight.
+  const [pickedDay, setPickedDay] = useState<LocalDate | null>(null);
+  const days = useMemo<LocalDate[]>(
+    () => (today === '' ? [] : Array.from({ length: INTAKE_DAYS }, (_, i) => addDays(today, -i))),
+    [today],
+  );
+  const checkInDay = pickedDay !== null && days.includes(pickedDay) ? pickedDay : today;
+  const intake = useAppStore((s) => (s.activeProfileId === null ? null : (s.intake[s.activeProfileId] ?? null)));
+  // Memoised on the plan object: recomputed when the plan changes, not on every keystroke.
+  const volume = useMemo(() => (plan === null ? null : volumeReport(plan, EXERCISES)), [plan]);
+
+  if (profile === null) return <p>{t('advice.noProfileSetupFirst')}</p>;
+  if (targets === null) {
+    // Audit G09: a profile whose inputs left the equations' domain is told WHICH input.
+    const issue = input === null ? null : nutritionDomainIssue(input);
+    return (
+      <p role="status">
+        {issue === null
+          ? t('advice.noProfileSetupFirst')
+          : FORMAT.withSlots('advice.outsideEquations', { field: t(DOMAIN_FIELD_KEY[issue]) }, overrides)}
+      </p>
+    );
+  }
 
   return (
     <section className="view">
@@ -154,9 +209,7 @@ export function TargetsView(): JSX.Element {
         <dt>{t('label.energy')}</dt>
         <dd data-testid="target-kcal">{FORMAT.kcal(targets.targetKcal)}</dd>
         <dt>{t('label.protein')}</dt>
-        <dd data-testid="target-protein">
-          {FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}
-        </dd>
+        <dd data-testid="target-protein">{FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi)}</dd>
         <dt>{t('label.fluid')}</dt>
         {/* Audit G14: ONE fluid target, the stored and editable one the quick add and the banner
             measure against; the IOM 2005 figure is the reference beside it. */}
@@ -184,97 +237,45 @@ export function TargetsView(): JSX.Element {
             <dt>{t('label.tdee')}</dt>
             <dd>{FORMAT.kcal(targets.tdeeKcal)}</dd>
           </dl>
-          <p>
-            {FORMAT.rmrBasis(RMR_EQUATION_NAME[targets.basis.rmr], targets.basis.activityFactor)}
-          </p>
+          <p>{FORMAT.rmrBasis(RMR_EQUATION_NAME[targets.basis.rmr], targets.basis.activityFactor)}</p>
           <p>{targets.basis.proteinRule}</p>
           <p>{targets.basis.deficitRule}</p>
           <p>{targets.basis.rateRule}</p>
-          {/* Litres derived from the engine's mL/day constant, not restated in the copy
-              table where they could drift from what the app actually prescribes. */}
-          <p>
-            {FORMAT.beverageBasis(statedBeverageTargetML('male'), statedBeverageTargetML('female'))}
-          </p>
+          <p>{FORMAT.beverageBasis(statedBeverageTargetML('male'), statedBeverageTargetML('female'))}</p>
         </div>
       </details>
 
-      <h2 className={displayClass(checkInHeading)}>{checkInHeading}</h2>
       <div className="view-field">
-        <label htmlFor="intake-kcal">
-          {FORMAT.quantityWithUnit(t('quantity.energyIntake'), 'kcal')}
-        </label>
-        <input
-          id="intake-kcal"
-          /* Spec R4: text parsed by parseDecimal, so "2,100" is refused, never read as 2.1. */
-          type="text"
-          /* A daily total is a whole count, so "numeric" (a keypad with no decimal key). */
-          inputMode="numeric"
-          aria-invalid={rejected}
-          aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
-          value={kcalText}
+        <label htmlFor="intake-day">{t('label.checkInDay')}</label>
+        <select
+          id="intake-day"
+          value={checkInDay}
           onChange={(e) => {
-            setKcalText(e.target.value);
+            setPickedDay(e.target.value === today ? null : e.target.value);
           }}
-        />
+        >
+          {days.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
       </div>
-      <div className="view-field">
-        <label htmlFor="intake-protein">
-          {FORMAT.quantityWithUnit(t('quantity.proteinIntake'), 'g')}
-        </label>
-        <input
-          id="intake-protein"
-          /* Spec R4: text parsed by parseDecimal, so "2,100" is refused, never read as 2.1. */
-          type="text"
-          inputMode="numeric"
-          aria-invalid={rejected}
-          aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
-          value={proteinText}
-          onChange={(e) => {
-            setProteinText(e.target.value);
-          }}
-        />
-      </div>
-      {rejected && (
-        /* role="alert" so the refusal is announced when it appears; the button that caused
-           it does not move focus, so nothing else would say it. */
-        <p className="view-error" id={INTAKE_ERROR_ID} role="alert" data-testid="intake-error">
-          {t('advice.intakeRejected')}
-        </p>
+      {checkInDay !== '' && (
+        <IntakeCheckIn key={checkInDay} profile={profile} date={checkInDay} targets={targets} />
       )}
-      <button type="button" onClick={record}>
-        {t('button.recordIntake')}
-      </button>
 
-      <p className="view-progress">
-        <AsciiBar
-          value={loggedKcal}
-          target={targets.targetKcal}
-          label={t('label.energyProgress')}
-          testId="kcal-bar"
-        />{' '}
-        <span data-testid="kcal-progress">
-          {FORMAT.valueOfTarget(String(loggedKcal), FORMAT.kcal(targets.targetKcal))}
-        </span>
-      </p>
-      <p className="view-progress">
-        {/*
-         * The denominator is the LOWER bound of the protein range, not its middle or its top.
-         * The range is a floor with headroom above it, so the bar answers "is the requirement
-         * met", and the read-out beside it carries the whole range.
-         */}
-        <AsciiBar
-          value={loggedProteinG}
-          target={targets.proteinG.lo}
-          label={t('label.proteinProgress')}
-          testId="protein-bar"
-        />{' '}
-        <span data-testid="protein-progress">
-          {FORMAT.valueOfTarget(
-            String(loggedProteinG),
-            FORMAT.gramsRange(targets.proteinG.lo, targets.proteinG.hi),
-          )}
-        </span>
-      </p>
+      <h3>{t('hero.intakeHistory')}</h3>
+      <ul className="view-list" data-testid="intake-history">
+        {days.map((d) => {
+          const e = (intake ?? []).find((x) => x.date === d) ?? null;
+          return (
+            <li key={d}>
+              {`${d}  ${e === null ? NO_VALUE : FORMAT.kcal(e.kcal)}  ${e === null ? NO_VALUE : FORMAT.grams(e.proteinG)}`}
+            </li>
+          );
+        })}
+      </ul>
 
       {volume !== null && (
         <p className="view-note" data-testid="maintenance-only">

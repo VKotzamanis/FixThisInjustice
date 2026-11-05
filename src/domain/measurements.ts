@@ -10,7 +10,7 @@
 // BODY_MASS_PLAUSIBLE_FRACTION, is spec R4's data-entry sanity bound.
 import { bandOfPal, palOf } from './activity';
 import { compareLocalDate } from './dates';
-import type { NutritionInput } from './nutrition';
+import { NUTRITION_DOMAIN, type NutritionInput } from './nutrition';
 import { weeklyQuota } from './schedule/quota';
 import type { AppState, BodyMassEntry, Kg, LocalDate, Profile } from './types';
 
@@ -190,4 +190,28 @@ export function projectionAnchor(
     if (compareLocalDate(c.date, from) <= 0) chosen = c;
   }
   return { date: from, massKg: chosen.massKg }; // [kg]
+}
+
+/** The NutritionInput fields a domain refusal can name (audit G09). */
+export type DomainField = 'massKg' | 'heightCm' | 'ageYears' | 'bodyFatPct' | 'sessionsPerWeek';
+
+function inBound(value: number, bound: { lo: number; hi: number }): boolean {
+  return Number.isFinite(value) && value >= bound.lo && value <= bound.hi;
+}
+
+/**
+ * The first input outside NUTRITION_DOMAIN, or null when computeTargets will accept the input.
+ * The same conditions, in the same terms, as nutrition.ts isInDomain; measurements.test.ts
+ * asserts over generated inputs that the two agree (rule 2), so Targets can name the field.
+ */
+export function nutritionDomainIssue(input: NutritionInput): DomainField | null {
+  if (input.sex === 'nd' && input.bodyFatPct === null) return 'bodyFatPct'; // decision A1
+  if (!inBound(input.massKg, NUTRITION_DOMAIN.massKg)) return 'massKg';
+  if (!inBound(input.heightCm, NUTRITION_DOMAIN.heightCm)) return 'heightCm';
+  if (!inBound(input.ageYears, NUTRITION_DOMAIN.ageYears)) return 'ageYears';
+  if (input.bodyFatPct !== null && !inBound(input.bodyFatPct, NUTRITION_DOMAIN.bodyFatPct)) return 'bodyFatPct';
+  if (!Number.isInteger(input.sessionsPerWeek) || !inBound(input.sessionsPerWeek, NUTRITION_DOMAIN.sessionsPerWeek)) {
+    return 'sessionsPerWeek';
+  }
+  return null;
 }
