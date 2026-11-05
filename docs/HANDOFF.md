@@ -41,7 +41,12 @@ Agent doc. Written 2026-11-05 at the end of the AAA-rebuild session. Replace it 
 9. Nord Glow reference (fonts, effects, licences): `docs/private/design-2026-11-04/phone-glow-reference.md`.
 10. Programme engine: `docs/design/programme-engine.md`, `src/domain/plan/engine.ts`. Form videos: `docs/design/form-videos.md`.
 
-## Job 1: implement the owner's answers to review items 8 and 10 (2026-11-05)
+## Job 1: DONE 2026-11-05 (items 8 and 10; item 11 still open, see below)
+- Commits: 0bb58c6 (static lit renderer `src/ui/effects/litText.ts`: ONE shared offscreen WebGL context, frames cached as 2D canvases, max 64; `--lit-*` tokens; `--panel-glow` on), 3a9aa71 (`LitWord`, BurnWord `rest="lit"`), 41928bf (header brand + title, lime tab labels, rest-over word at rest, rest-sheet eyebrow), fe78282 (counter: bare number, `SessionNumber`, burns once per completed session via `burnMoments.claimSessionAdvance`, named "Session n"; limelight `status.sessionCursor` row removed, fixture updated), 265e796 (glow fade inside the lit canvas; e2e in `e2e/burn.spec.ts`), 6e65668 (glow room in the title/tab clips; `litText.widthMatches` refuses a frame whose width differs from the DOM word), 289b586 (counter at normal width).
+- Decisions: the current tab label stays plain ink on its pink sticker (lime on pink 1.41:1); `status.sessionEyebrow` ("ep. 1, Lower A" on Train) still says "ep.": owner's call; `SessionIndicator` is not mounted anywhere, it only got the bare number through `FORMAT.planPosition`; with `--panel-glow` on, `Echo` words also get the static CSS glow.
+- WebKit canvas has no fontStretch: the 75 % tab labels and the 75 % eyebrow stay plain CSS text (glow shadow) on iOS; the header title, brand, rest-over word and counter (100 %) are lit. Owner still to see both on a phone.
+
+### Original brief (kept for reference)
 - Item 8 (`glow`, "change"): "Can you instead use the font and shader font that we use on (9) but with lime green accents? no burn affect needed."
   - Build a STATIC variant of the burn renderer: same font (Archivo 900 wide, as `BurnWord`) and the faithful shader look (cel bands / halftone / ink outline per `holo-alarm-burn.md`), recoloured to lime accents, with no heat animation and no flames.
   - Use it for the lime words on the black lit-sign panels: header brand and page title, current tab label, rest bar word, panel eyebrows. Never numerals in set entry.
