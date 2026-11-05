@@ -135,9 +135,10 @@ export interface StoreStatus {
   /** Why the last load failed when lastLoadError is set: invalid records or no storage (B17). */
   loadFailure?: 'invalid' | 'unavailable' | undefined;
   /**
-   * Audit B03 / amendment AM-10: another instance wrote the document while this one still had a
-   * change queued, so that change was dropped for the other instance's data. True until the
-   * shell has shown its one notice. Not persisted; optional for the same reason as above.
+   * Audit B03 / amendment AM-10: another instance committed first while this one still had a
+   * change it had not committed, so this one re-read the records (spec R13 revision check) and
+   * that change is gone. True until the shell (StaleSessionNotice) has shown its one notice.
+   * Not persisted; optional for the same reason as above.
    */
   externalWriteReplaced?: boolean | undefined;
 }
@@ -629,7 +630,9 @@ export const useAppStore = create<AppStore>()((set, get) => {
     // Audit B03: another instance committed a newer revision; re-read before anything is written.
     e.stopListening = backend.onAnnounce((revision) => {
       if (engine !== e || revision <= e.revision) return;
-      e.chain = e.chain.then(() => reloadFrom(e));
+      // Anything not yet committed was made on records that are no longer current.
+      const dropped = e.queued !== null || e.dirty !== null || e.flushScheduled;
+      e.chain = e.chain.then(() => reloadFrom(e, dropped));
     });
     engine = e;
   },
@@ -1158,8 +1161,11 @@ function installOutcome(outcome: LoadOutcome): void {
   });
 }
 
-/** Audit B03: re-reads the records another instance changed; this instance's unsaved batch goes. */
-async function reloadFrom(e: Engine): Promise<void> {
+/**
+ * Audit B03: re-reads the records another instance changed; this instance's unsaved batch goes.
+ * `dropped`: a change this window had not committed was discarded, so the user is told once.
+ */
+async function reloadFrom(e: Engine, dropped: boolean): Promise<void> {
   if (engine !== e) return;
   e.queued = null;
   e.dirty = null;
@@ -1168,6 +1174,9 @@ async function reloadFrom(e: Engine): Promise<void> {
   installOutcome(outcome);
   e.revision = outcome.revision;
   e.preserved = outcome.ok ? outcome.preserved : EMPTY_PRESERVED;
+  if (dropped) {
+    useAppStore.setState((s) => ({ status: { ...s.status, externalWriteReplaced: true } }));
+  }
 }
 
 function queueOps(ops: RecordOps): void {
@@ -1210,7 +1219,7 @@ async function commitBatch(e: Engine, batch: RecordOps): Promise<void> {
     return;
   }
   if (result.reason === 'stale') {
-    await reloadFrom(e);
+    await reloadFrom(e, true);
     return;
   }
   // Kept, so the next commit (or Retry) writes it: per-record writes must not lose a change.

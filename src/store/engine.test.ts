@@ -192,6 +192,29 @@ describe('another instance wrote first (B03)', () => {
     await whenPersisted();
     expect(useAppStore.getState().ui.lastView).toBe('atlas');
   });
+
+  it('tells this window once that its unsaved change was replaced (reuses the P1 AM-10 notice)', async () => {
+    const a = createMemoryBackend({ legacy: alphaFixtureJson });
+    await boot(a);
+    const b = createMemoryBackend({ disk: a.disk });
+    const ui = appRecords(a.disk).get('ui') as Record<string, unknown>;
+    await b.commit({ clear: false, puts: [{ store: 'app', key: 'ui', value: { ...ui, lastView: 'atlas' } }], deletes: [] }, 1, 3);
+    useAppStore.getState().setUi({ lastView: 'log' });
+    await whenPersisted();
+    expect(useAppStore.getState().status.externalWriteReplaced).toBe(true);
+    useAppStore.getState().acknowledgeExternalWrite();
+    expect(useAppStore.getState().status.externalWriteReplaced).toBe(false);
+  });
+
+  it('says nothing when the other window changed records and this one had nothing pending', async () => {
+    const a = createMemoryBackend({ legacy: alphaFixtureJson });
+    await boot(a);
+    const b = createMemoryBackend({ disk: a.disk });
+    await b.commit({ clear: false, puts: [], deletes: [] }, 1, 3);
+    b.announce(2);
+    await whenPersisted();
+    expect(useAppStore.getState().status.externalWriteReplaced ?? false).toBe(false);
+  });
 });
 
 describe('the rollback mirror (amendment AM-P2-1)', () => {
