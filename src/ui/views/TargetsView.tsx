@@ -143,7 +143,7 @@ function IntakeCheckIn(props: { profile: Profile; date: LocalDate; targets: Nutr
           {t('advice.intakeRejected')}
         </p>
       )}
-      <button type="button" onClick={record}>
+      <button type="button" className="is-primary" onClick={record}>
         {t('button.recordIntake')}
       </button>
       <p className="view-progress">
@@ -203,7 +203,7 @@ export function TargetsView(): JSX.Element {
   }
 
   return (
-    <section className="view">
+    <section className="view targets">
       <h2 className={displayClass(t('hero.dailyTargets'))}>{t('hero.dailyTargets')}</h2>
       <dl className="view-dl">
         <dt>{t('label.energy')}</dt>

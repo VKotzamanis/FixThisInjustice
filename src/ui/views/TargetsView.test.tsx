@@ -503,3 +503,12 @@ describe('Targets across midnight and outside the equations (audit G13, G09, G17
     expect(useAppStore.getState().intake['p1']?.find((e) => e.date === '2026-08-30')).toMatchObject({ kcal: 1900, proteinG: 125 });
   });
 });
+
+describe('Targets: Record is the sticker (brief 4.3)', () => {
+  it('marks the Record button as the one primary action', () => {
+    const { container } = render(<TargetsView />);
+    const record = screen.getByRole('button', { name: copyFor('limelight', 'button.recordIntake') });
+    expect(record.classList.contains('is-primary')).toBe(true);
+    expect(container.querySelectorAll('.is-primary')).toHaveLength(1);
+  });
+});

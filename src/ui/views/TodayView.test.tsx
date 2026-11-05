@@ -1250,3 +1250,31 @@ describe('the clock ticks on Today (audit G20)', () => {
     expect(screen.getByText(copyFor('limelight', 'advice.capsuleOpenDatePassed'))).toBeTruthy();
   });
 });
+
+describe('Today: Start is the hero (brief 4.1)', () => {
+  it('renders Start as the one sticker, directly after the session name, before the sub line', () => {
+    const { container } = render(<TodayView />);
+    const start = button('button.startSession');
+    expect(start.classList.contains('is-primary')).toBe(true);
+    const name = container.querySelector('.today-hero h1');
+    expect(name?.nextElementSibling).toBe(start);
+    const sub = container.querySelector('.today-hero .today-sub');
+    expect(start.compareDocumentPosition(sub as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelectorAll('.is-primary')).toHaveLength(1);
+  });
+
+  it('puts no label above the hero name: the position line follows it', () => {
+    const { container } = render(<TodayView />);
+    const hero = container.querySelector('.today-hero');
+    const position = hero?.querySelector('.today-position');
+    const name = hero?.querySelector('h1');
+    expect(position).not.toBeNull();
+    expect((name as Node).compareDocumentPosition(position as Node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps Start out of the secondary controls', () => {
+    const { container } = render(<TodayView />);
+    const controls = container.querySelector('.today-controls');
+    expect(controls?.textContent ?? '').not.toContain(copyFor('limelight', 'button.startSession'));
+  });
+});

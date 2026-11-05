@@ -352,44 +352,59 @@ export function TodayView(): JSX.Element {
     setPickerOpen(false);
   };
 
+  /*
+   * Brief 4.1: Start is the hero's own control, the screen's one sticker, directly under the
+   * session name, so it is above the fold and above the tab bar on a 320 x 640 phone.
+   */
+  const startButton =
+    status === 'planned' || canStartAnyway ? (
+      <button type="button" className="is-primary today-start" onClick={onStart}>
+        {/*
+         * P8 Task 13 step 7: the labelled form puts the `nails` icon in front of the string; the
+         * icon carries alt="", so the accessible name is the string alone.
+         */}
+        <SkinLabel copyKey="button.startSession" />
+      </button>
+    ) : null;
+
   let hero: JSX.Element;
   if (status === 'in-progress') {
     hero = (
       <div className="today-hero">
-        <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName text={c('hero.sessionInProgress')} />
         {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
+        <p className="today-position">{position}</p>
       </div>
     );
   } else if (status === 'paused') {
     hero = (
       <div className="today-hero">
-        <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName text={FORMAT.pausedSince(openPause === null ? today : openPause.from, overrides)} />
         <p className="today-sub">{c('advice.pauseHoldsCursor')}</p>
+        <p className="today-position">{position}</p>
       </div>
     );
   } else if (status === 'completed' || status === 'skipped') {
     const reason = day.assignment?.skipReason ?? null;
     hero = (
       <div className="today-hero">
-        <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName
           text={c(status === 'completed' ? 'hero.sessionCompleted' : 'hero.sessionSkipped')}
         />
         {session !== null && <p className="today-sub">{sessionTitle(plan, session)}</p>}
         {reason !== null && <p className="today-sub">{FORMAT.skipReason(reason, overrides)}</p>}
+        <p className="today-position">{position}</p>
       </div>
     );
   } else if (session !== null) {
     hero = (
       <div className="today-hero">
-        <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName text={sessionTitle(plan, session)} />
+        {startButton}
         <p className="today-sub">
           {FORMAT.sessionSummary(
             session.label,
@@ -397,6 +412,7 @@ export function TodayView(): JSX.Element {
             session.exercises.length,
           )}
         </p>
+        <p className="today-position">{position}</p>
         <ul className="session-list">
           {session.exercises.map((ex) => (
             <li key={ex.exerciseId} className="sess-row">
@@ -417,13 +433,13 @@ export function TodayView(): JSX.Element {
   } else if (finished) {
     hero = (
       <div className="today-hero">
-        <p className="today-eyebrow">
-          {FORMAT.planPosition(shown, total, c('status.planComplete'))}
-        </p>
         {mascot}
         <HeroName text={c('hero.programmeComplete')} />
         <p className="today-sub">
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
+        </p>
+        <p className="today-position">
+          {FORMAT.planPosition(shown, total, c('status.planComplete'))}
         </p>
       </div>
     );
@@ -431,9 +447,9 @@ export function TodayView(): JSX.Element {
     const next = nextServedDay(upcoming);
     hero = (
       <div className="today-hero">
-        <p className="today-eyebrow">{position}</p>
         {mascot}
         <HeroName text={c('hero.noSessionToday')} />
+        {startButton}
         <p className="today-sub">
           {next === null || next.slot === null || next.projectedSession === null
             ? c('advice.noSessionIn14Days')
@@ -444,6 +460,7 @@ export function TodayView(): JSX.Element {
                 overrides,
               )}
         </p>
+        <p className="today-position">{position}</p>
       </div>
     );
   }
@@ -459,22 +476,8 @@ export function TodayView(): JSX.Element {
       {hero}
 
       <div className="today-controls">
-        {(status === 'planned' || canStartAnyway) && (
-          <button type="button" onClick={onStart}>
-            {/*
-             * P8 Task 13 step 7: the labelled form, which puts the `nails` icon in front of the
-             * string on limelight and changes nothing on the other two skins. The icon carries
-             * alt="", so the button's accessible name is still the string alone.
-             *
-             * The other three controls on this view are labelled the same way (P9 Task 17):
-             * round three section 4.4 gives `skip` to `skip_today`, `heel` to `train_other` and
-             * `martini` to `pause_plan`, and each was a bare `c(key)` that no icon could reach.
-             */}
-            <SkinLabel copyKey="button.startSession" />
-          </button>
-        )}
         {status === 'in-progress' && (
-          <button type="button" onClick={goTrain}>
+          <button type="button" className="is-primary" onClick={goTrain}>
             {c('button.returnToSession')}
           </button>
         )}

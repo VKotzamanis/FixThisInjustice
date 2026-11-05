@@ -261,6 +261,7 @@
  * 44 px minimum target and the 16 px font size, and the skip-reason field is a
  * `.view input[type='text']` for the same reason. Nothing below overrides either.
  */
+.view.today .today-position,
 .view.today .today-eyebrow {
   margin: 0 0 0.25rem;
   font-size: 0.75rem;
@@ -322,6 +323,26 @@
   display: grid;
   gap: 0.5rem;
   margin: 1rem 0 0;
+}
+
+/* Brief 4.1: the secondary actions two per row, 44 px each; the sticker spans the row. */
+.view.today .today-controls {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.view.today .today-controls > .is-primary,
+.view.today .today-controls > .today-banner {
+  grid-column: 1 / -1;
+}
+
+.view.today .today-start {
+  margin: var(--space-2) 0 var(--space-3);
+}
+
+/* Brief 4.3: the intake fields are 56 px with 20 px tabular digits. */
+.view.targets .view-field input {
+  min-height: var(--tap-primary);
+  font-size: var(--text-lg);
 }
 
 /* The refusal banner. Laid out like the shell's, and never the width of a control. */
