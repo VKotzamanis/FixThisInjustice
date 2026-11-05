@@ -52,7 +52,7 @@ describe('the view registry', () => {
     // an empty screen. The arm is matched as source text because App.tsx exports no routing
     // table to read.
     for (const id of VIEW_IDS) {
-      expect(APP_SOURCE, `App.tsx routes no view '${id}'`).toContain(`view === '${id}'`);
+      expect(APP_SOURCE, `App.tsx routes no view '${id}'`).toContain(`case '${id}':`);
     }
   });
 

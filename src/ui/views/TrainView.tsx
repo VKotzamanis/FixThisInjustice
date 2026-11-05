@@ -53,6 +53,7 @@ import { useActiveProfile, useOpenAssignment, useTodaysSets } from '../../store/
 import { releaseAudio, unlockAudio } from '../audio/chime';
 import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
+import { useViewActive } from '../nav/viewActive';
 import { AddCustomExercise } from './train/AddCustomExercise';
 import { AddLibraryExercise } from './train/AddLibraryExercise';
 import { ExerciseCard, targetSetsFor } from './train/ExerciseCard';
@@ -103,10 +104,12 @@ export function TrainView(): ReactElement {
   const undoToastId = useRef<string | null>(null);
 
 
-  // Held for as long as this view is mounted; released on unmount by the hook. Absence and
-  // refusal are ordinary states (jsdom, Safari < 16.4, a battery saver) and are not surfaced:
-  // a session that cannot dim-lock the screen still has a working timer.
-  useWakeLock(true);
+  // Held while a session is open and this view is on screen (C17: a visited Train view stays
+  // mounted, F02, so "mounted" no longer means "on screen"); released on unmount by the hook.
+  // Absence and refusal are ordinary states (jsdom, Safari < 16.4, a battery saver) and are not
+  // surfaced: a session that cannot dim-lock the screen still has a working timer.
+  const viewActive = useViewActive();
+  useWakeLock(open !== null && viewActive);
 
   useEffect(() => {
     const handler = (): void => {

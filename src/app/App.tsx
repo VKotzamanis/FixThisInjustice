@@ -17,7 +17,9 @@ import {
 } from '../store/selectors';
 import { useActiveCursor } from '../store/scheduleSelectors';
 import { HotkeyProvider, useHotkeys } from '../ui/hotkeys';
-import { SPOTLIGHT_COMBO, VIEWS, VIEW_INSTRUCTIONS, VIEW_TITLES, isViewId } from '../ui/nav/views';
+import { goToView, useHistoryRouter } from '../ui/nav/router';
+import { ViewActiveContext } from '../ui/nav/viewActive';
+import { SPOTLIGHT_COMBO, VIEWS, VIEW_IDS, VIEW_INSTRUCTIONS, VIEW_TITLES, isViewId } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
 import { stepBrowseBlock, stepBrowseWeek } from '../ui/planBrowse';
 import { BootGate } from '../ui/components/Boot';
@@ -80,6 +82,8 @@ import './appShell.css';
 function ViewShell(): ReactElement {
   const stored = useAppStore((s) => s.ui.lastView);
   const view: ViewId = isViewId(stored) ? stored : 'targets';
+  // Spec R6: one history entry per view; Back closes the top overlay, then switches view.
+  useHistoryRouter(view);
 
   /*
    * The hotkey registry's ACTIVE SCOPE is the view on screen, so a key bound to 'plan' is
@@ -166,7 +170,7 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
     };
     for (const v of VIEWS) {
       map[String(v.digit)] = () => {
-        useAppStore.getState().setUi({ lastView: v.id });
+        goToView(v.id);
       };
     }
     return map;
@@ -217,7 +221,7 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
               // Through getState(), like every other action call in this codebase: the store's
               // actions are created once and never replace themselves, so subscribing to one
               // buys nothing and hands the component an unbound method.
-              useAppStore.getState().setUi({ lastView: n.id });
+              goToView(n.id);
             }}
           >
             {c(n.copyKey)}
@@ -234,14 +238,47 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
         />
       </nav>
       <Spotlight open={spotlightOpen} onClose={closeSpotlight} />
-      {view === 'targets' && <TargetsView />}
-      {view === 'settings' && <SettingsView />}
-      {view === 'today' && <TodayView />}
-      {view === 'plan' && <PlanView />}
-      {view === 'train' && <TrainView />}
-      {view === 'log' && <LogView />}
-      {view === 'atlas' && <AtlasView />}
+      <ViewStack view={view} />
       {konami && <KonamiOverlay onClose={closeKonami} />}
+    </>
+  );
+}
+
+/** The component each view id renders. A switch, so a ninth ViewId is a compile error here. */
+function renderView(id: ViewId): ReactElement {
+  switch (id) {
+    case 'targets':
+      return <TargetsView />;
+    case 'settings':
+      return <SettingsView />;
+    case 'today':
+      return <TodayView />;
+    case 'plan':
+      return <PlanView />;
+    case 'train':
+      return <TrainView />;
+    case 'log':
+      return <LogView />;
+    case 'atlas':
+      return <AtlasView />;
+  }
+}
+
+/**
+ * Audit F02: every view visited since launch stays MOUNTED and is hidden when another is shown,
+ * so a half-typed set, a Targets draft or a Settings field survives a tab switch. A view is
+ * mounted on its first visit, never before (cold start pays for one view, not seven).
+ */
+function ViewStack({ view }: { view: ViewId }): ReactElement {
+  const [visited, setVisited] = useState<ReadonlySet<ViewId>>(() => new Set([view]));
+  if (!visited.has(view)) setVisited(new Set([...visited, view]));
+  return (
+    <>
+      {VIEW_IDS.filter((id) => visited.has(id) || id === view).map((id) => (
+        <div key={id} className="view-slot" data-view={id} hidden={id !== view}>
+          <ViewActiveContext value={id === view}>{renderView(id)}</ViewActiveContext>
+        </div>
+      ))}
     </>
   );
 }
