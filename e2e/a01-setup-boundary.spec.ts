@@ -25,14 +25,12 @@ async function confirmThenRelaunch(context: BrowserContext, draft: SetupDraft) {
 }
 
 test('A01: an over-long name cannot be confirmed', async ({ context }) => {
-  test.fail(); // removed by plan Task 15
   const page = await confirmThenRelaunch(context, reviewDraft({ displayName: 'A'.repeat(81) }));
   await page.getByLabel(LABEL.looksGood, { exact: true }).check({ timeout: 10_000, force: true });
   await expect(page.locator('.wiz-nav button').last()).toBeDisabled();
 });
 
 test('A01: a cleared start time cannot be confirmed', async ({ context }) => {
-  test.fail(); // removed by plan Task 15
   const days = { ...REVIEW_DAYS, 1: { enabled: true, startTime: '', durationMin: '60' } };
   const page = await confirmThenRelaunch(context, reviewDraft({ days }));
   await page.getByLabel(LABEL.looksGood, { exact: true }).check({ timeout: 10_000, force: true });

@@ -6,7 +6,6 @@ import { chicago, flushWrites, openApp, readRaw, seedDocument, setClock } from '
 import { MONDAY, e2eDocument, loggedSet } from './support/document';
 
 test('B01: one invalid record opens the recovery screen, never intro or setup', async ({ context }) => {
-  test.fail(); // removed by plan Task 17
   // RPE is recorded in 0.5 steps; 7.3 fails LoggedSetSchema and so the whole document.
   await seedDocument(context, e2eDocument({ sets: [loggedSet({ id: 'bad', rpe: 7.3 })] }));
   await setClock(context, chicago(MONDAY, '10:00'));

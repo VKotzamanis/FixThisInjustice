@@ -11,6 +11,7 @@ import {
   deviceTimeZone,
   groupTimeZones,
   isValidLocalDate,
+  isValidLocalTime,
   isValidTimeZone,
   isoWeekday,
   matchedZoneCities,
@@ -20,6 +21,7 @@ import {
   zoneGroupMatches,
 } from '../../domain/dates';
 import { newId } from '../../domain/ids';
+import { PROFILE_DISPLAY_NAME_MAX_CHARS } from '../../domain/schema';
 import {
   ACTIVITY_FACTOR,
   ACTIVITY_STOPS,
@@ -1578,6 +1580,12 @@ export function SetupWizard(): JSX.Element {
   // bound it failed rather than saying that something is wrong.
 
   const timezoneError = isValidTimeZone(draft.timezone) ? null : t('advice.timezoneInvalid');
+  // Spec R5 / audit A01-A08 (rule 2): the loader refuses a longer name, so the field refuses it
+  // here by the same number. maxLength stops typing; this catches a restored draft.
+  const nameError =
+    draft.displayName.trim().length > PROFILE_DISPLAY_NAME_MAX_CHARS
+      ? FORMAT.withSlots('error.nameTooLong', { max: PROFILE_DISPLAY_NAME_MAX_CHARS }, overrides)
+      : null;
 
   const ageError =
     ageYears === null
@@ -1882,6 +1890,13 @@ export function SetupWizard(): JSX.Element {
       UNIT.minutes,
     );
   }
+  // Audit A01 path 1: a cleared time picker stores '', which the loader's LocalTimeSchema refuses.
+  const startTimeErrors: Record<number, string | null> = {};
+  for (const day of enabledDays) {
+    startTimeErrors[day.value] = isValidLocalTime(draft.days[day.value].startTime)
+      ? null
+      : t('error.startTimeRequired');
+  }
 
   const weeklyTargetError =
     enabledDays.length === 0
@@ -1905,6 +1920,7 @@ export function SetupWizard(): JSX.Element {
     units: false,
     timezone: timezoneError !== null,
     body:
+      nameError !== null ||
       ageError !== null ||
       heightError !== null ||
       massError !== null ||
@@ -1939,7 +1955,8 @@ export function SetupWizard(): JSX.Element {
       weekdayError !== null ||
       availabilityDaysError !== null ||
       weeklyTargetError !== null ||
-      Object.values(durationErrors).some((e) => e !== null),
+      Object.values(durationErrors).some((e) => e !== null) ||
+      Object.values(startTimeErrors).some((e) => e !== null),
     programme: weeksError !== null,
     guidance: false,
     /*
@@ -2507,11 +2524,19 @@ export function SetupWizard(): JSX.Element {
               id="f-name"
               className="wiz-name"
               type="text"
+              maxLength={PROFILE_DISPLAY_NAME_MAX_CHARS}
+              aria-invalid={nameError !== null}
+              aria-describedby={nameError === null ? undefined : 'f-name-error'}
               value={draft.displayName}
               onChange={(e) => {
                 patch({ displayName: e.target.value });
               }}
             />
+            {nameError !== null && (
+              <p className="wiz-error" id="f-name-error">
+                {nameError}
+              </p>
+            )}
           </div>
 
           {/*
@@ -3442,11 +3467,21 @@ export function SetupWizard(): JSX.Element {
                     <input
                       id={`f-start-${d.value}`}
                       type="time"
+                      required
+                      aria-invalid={(startTimeErrors[d.value] ?? null) !== null}
+                      aria-describedby={
+                        (startTimeErrors[d.value] ?? null) === null ? undefined : `f-start-${d.value}-error`
+                      }
                       value={draft.days[d.value].startTime}
                       onChange={(e) => {
                         patchDay(d.value, { startTime: e.target.value });
                       }}
                     />
+                    {(startTimeErrors[d.value] ?? null) !== null && (
+                      <p className="wiz-error" id={`f-start-${d.value}-error`}>
+                        {startTimeErrors[d.value]}
+                      </p>
+                    )}
                   </div>
                   <UnitInput
                     id={`f-duration-${d.value}`}
