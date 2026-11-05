@@ -443,7 +443,8 @@ describe('the limelight table', () => {
       'status.weekDeltaPositive',
       'advice.drinkToThirst',
       'hero.weeklyTargetMissed',
-      'status.sessionCursor',
+      // 'status.sessionCursor' left the table on the owner's answer to review item 10
+      // (2026-11-05): the counter shows the bare number and is named "Session {shown}".
       'button.extendRest',
       'button.skipRest',
       'hero.weekReview',
@@ -542,7 +543,14 @@ describe('the FORMAT frames reach a skin', () => {
   it('reads the session cursor from the table, so a skin reaches the indicator', () => {
     // ROADMAP L6: no "of N"; the programme is open-ended.
     expect(FORMAT.planPositionLabel(12, '')).toBe('Session 12');
-    expect(FORMAT.planPositionLabel(12, '', SKIN_COPY.limelight)).toBe('ep. 12');
+    // Review item 10 (owner, 2026-11-05): limelight carries no row, so the name is the base one.
+    expect(FORMAT.planPositionLabel(12, '', SKIN_COPY.limelight)).toBe('Session 12');
+    expect(FORMAT.planPositionLabel(12, '', { 'status.sessionCursor': 'ep. {shown}' })).toBe('ep. 12');
+  });
+
+  it('shows the counter as the bare number (owner, review item 10)', () => {
+    expect(FORMAT.planPosition(12, '')).toBe('12');
+    expect(FORMAT.planPosition(208, 'wrapped')).toBe('208 wrapped');
   });
 });
 

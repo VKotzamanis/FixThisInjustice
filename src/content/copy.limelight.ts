@@ -57,8 +57,8 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // TrainView, a row here would have rendered nowhere, which is why they arrive now.
   //
   // The eyebrow is the mockup's train system bar, "upper . ep. 12", and the today screen's own
-  // sub-line under the session name; `status.sessionCursor` above already spells a session as
-  // an episode, so the two agree. `{label}` is the PLAN's session name and `{date}` is a
+  // sub-line under the session name. Since review item 10 the counter shows the bare number (no
+  // `status.sessionCursor` row below); whether "ep." goes here too is the owner's call. `{label}` is the PLAN's session name and `{date}` is a
   // LocalDate: a slot filled from the user's own data is outside the copy contract, and this
   // table neither lower-cases nor restates one.
   'status.sessionEyebrow': 'ep. {ordinal}, {label}',
@@ -82,7 +82,9 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   // a lower-cased "no load suggested" would not have qualified; this is a different word.
   'label.noSuggestedLoad': 'unscripted',
   'hero.weeklyTargetMissed': 'the intervention',
-  'status.sessionCursor': 'ep. {shown}', // ROADMAP L6: no "of N"; owner wording call pending
+  // `status.sessionCursor` has no row here since the owner's answer to review item 10
+  // (2026-11-05): the counter shows the bare number (FORMAT.planPosition) and is NAMED with the
+  // base "Session {shown}", because "ep. 12" read aloud and a bare "12" both say nothing.
   // `+30 s`, not `+30s`: the SPACE and the LOWER CASE are the unit, not typography. SI 5.4.3
   // puts a space between the value and the symbol, and `s` is the second while `S` is the
   // siemens, so the shortened form states no quantity at all. This table lower-cases its words;

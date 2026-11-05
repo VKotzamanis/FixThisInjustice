@@ -2508,15 +2508,16 @@ export const FORMAT = {
   // --- session indicator in the top bar (P3 Task 7) ---
 
   /**
-   * "S 12", and "S 208 complete" once the cursor is terminal (only at the plan ceiling). `S` is
-   * the SESSION the plan cursor stands at, never the calendar day: the two diverge the moment a
-   * session is missed. No denominator (ROADMAP L6, programme-horizon.md Q4): the programme is
+   * "12", and "208 complete" once the cursor is terminal (only at the plan ceiling): the bare
+   * number, on the owner's instruction (review item 10, 2026-11-05: "Just change the "EP.12" to
+   * just the number"); it was "S 12". The number is the SESSION the plan cursor stands at, never
+   * the calendar day: the two diverge the moment a session is missed. No denominator (ROADMAP L6, programme-horizon.md Q4): the programme is
    * open-ended, so a total would be the runway and jump at every appended cycle. `shown` is
    * 1-based and already clamped by the caller. `suffix` is a copy key's string
    * (`status.planComplete`) or '', so this frame states no outcome of its own.
    */
   planPosition: (shown: number, suffix: string): string =>
-    suffix === '' ? `S ${shown}` : `S ${shown} ${suffix}`,
+    suffix === '' ? `${shown}` : `${shown} ${suffix}`,
 
   /**
    * The same position spelled out for a screen reader: "Session 12", and "Session 208.

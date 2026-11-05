@@ -1,0 +1,13 @@
+/*
+ * The session counter (owner answer to review item 10; SessionNumber.tsx): the bare number in the
+ * burn's face, Archivo 900 at its widest cut (holo-alarm-burn.md section 5), on the burn's ink
+ * plate (burnWord.css: lime on ink, 10.91:1). Tabular figures: the number changes in a fixed
+ * slot. Tokens only.
+ */
+.session-number-word {
+  font-family: var(--sans);
+  font-weight: 900;
+  font-stretch: 125%;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}

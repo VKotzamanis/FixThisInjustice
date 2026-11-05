@@ -102,11 +102,19 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/**
+ * The hero's counter as the user reads it (owner review item 10: the bare number, "12"). Read
+ * from its own slot: a bare digit is ambiguous as a page-wide text query.
+ */
+function heroPosition(root: ParentNode = document): string | null | undefined {
+  return root.querySelector('.today-position')?.textContent;
+}
+
 describe('TodayView hero: a session is scheduled today', () => {
   it('states the session, the cursor position, the label and the slot time', () => {
     render(<TodayView />);
     expect(screen.getByText('Week 1 Push')).toBeTruthy(); // D09: title from the position
-    expect(screen.getByText(FORMAT.planPosition(1, ''))).toBeTruthy();
+    expect(heroPosition()).toBe(FORMAT.planPosition(1, ''));
     expect(screen.getByText(FORMAT.sessionSummary('Push', '07:00', 2))).toBeTruthy();
   });
 
@@ -250,9 +258,7 @@ describe('TodayView hero: the other states', () => {
     render(<TodayView />);
     expect(screen.getByText(copyFor('limelight', 'hero.programmeComplete'))).toBeTruthy();
     expect(screen.getByText(FORMAT.programmeClosed(TOTAL, MONDAY))).toBeTruthy();
-    expect(
-      screen.getByText(FORMAT.planPosition(TOTAL, copyFor('limelight', 'status.planComplete'))),
-    ).toBeTruthy();
+    expect(heroPosition()).toBe(FORMAT.planPosition(TOTAL, copyFor('limelight', 'status.planComplete')));
   });
 
   it('asks for setup when there is no plan', () => {
@@ -775,7 +781,7 @@ describe('TodayView: one whole training day', () => {
 
     fireEvent.click(button('button.markCompleted'));
     expect(screen.getByText(copyFor('limelight', 'hero.sessionCompleted'))).toBeTruthy();
-    expect(screen.getByText(FORMAT.planPosition(2, ''))).toBeTruthy();
+    expect(heroPosition()).toBe(FORMAT.planPosition(2, ''));
 
     const rows = screen.getAllByTestId('strip-day');
     expect(rows[0]?.getAttribute('data-status')).toBe('completed');
@@ -798,9 +804,7 @@ describe('App wiring', () => {
      * hero. That they agree is the point (both read PlanCursor.nextSessionIndex); a document
      * query would just be ambiguous.
      */
-    expect(
-      within(screen.getByRole('main')).getByText(FORMAT.planPosition(1, '')),
-    ).toBeTruthy();
+    expect(heroPosition(screen.getByRole('main'))).toBe(FORMAT.planPosition(1, ''));
     expect(useAppStore.getState().ui.lastView).toBe('today');
   });
 });

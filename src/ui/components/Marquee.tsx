@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react';
+import { useState, type ReactElement, type ReactNode } from 'react';
 import { Icon } from '../../skins/limelight/Icon';
 import type { LimelightIconName } from '../../skins/limelight/icons';
 import './limelight.css';
@@ -14,6 +14,11 @@ import './limelight.css';
 export interface MarqueeItem {
   readonly icon: LimelightIconName;
   readonly text: string;
+  /**
+   * What the moving track draws in place of `text` (the session counter's bare number in the burn
+   * face, owner review item 10). The static, announced line is always `text`.
+   */
+  readonly visual?: ReactNode;
 }
 
 /**
@@ -78,7 +83,7 @@ export function Marquee({
           {scrolling.map((item, index) => (
             <span className="ll-marquee-item" key={`${String(index)}-${item.text}`}>
               <Icon name={item.icon} />
-              <span className="ll-marquee-text">{item.text}</span>
+              <span className="ll-marquee-text">{item.visual ?? item.text}</span>
               <Icon name="sparklePanel" />
             </span>
           ))}

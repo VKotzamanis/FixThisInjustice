@@ -35,6 +35,9 @@
 //
 // Rows CHANGED on purpose (ROADMAP L6, docs/design/programme-horizon.md Q4: an open-ended
 // programme has no N, so every "of N" goes): `status.bootWeek`, `status.sessionCursor` and `label.weekOfCount`.
+// Owner answer to review item 10 (2026-11-05, "change the EP.12 to just the number"): the
+// limelight `status.sessionCursor` row is gone (the counter's name is the base "Session {shown}",
+// its visible form the bare number).
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import ts from 'typescript';

@@ -23,6 +23,7 @@ import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
 import { HER_PLAY_CYCLES, HER_SHEETS } from '../components/herSheets';
 import { Marquee, type MarqueeItem } from '../components/Marquee';
+import { SessionNumber } from '../components/SessionNumber';
 import { SpriteSheet } from '../components/SpriteSheet';
 import { StatusMark } from '../components/StatusMark';
 import { TimeCapsule } from '../components/TimeCapsule';
@@ -220,7 +221,8 @@ export function TodayView(): JSX.Element {
   // [sessions] 1-based, clamped: the cursor stops AT the plan length, so the last session must
   // not be reported as "S 7/6" once it is closed.
   const shown = Math.min(cursor.nextSessionIndex + 1, total);
-  const position = FORMAT.planPosition(shown, '');
+  // Owner review item 10: the bare number in the burn face, burning once on a completed session.
+  const position = <SessionNumber planId={cursor.planId} shown={shown} />;
   const canRun = status === 'planned' || status === 'in-progress';
   /*
    * Spec R3 (D02): any day without a session of its own can train the cursor's next one. The
@@ -272,7 +274,7 @@ export function TodayView(): JSX.Element {
    * has to survive every other line being scrolled away.
    */
   const marqueeItems: MarqueeItem[] = [
-    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, '', overrides) },
+    { icon: 'barbellPanel', text: FORMAT.planPositionLabel(shown, '', overrides), visual: position },
   ];
   /*
    * THE POPUP OWNS AN UNACKNOWLEDGED MISS, so the ticker stays off it.
@@ -439,7 +441,7 @@ export function TodayView(): JSX.Element {
           {FORMAT.programmeClosed(total, cursor.completedOn ?? today)}
         </p>
         <p className="today-position">
-          {FORMAT.planPosition(shown, c('status.planComplete'))}
+          <SessionNumber planId={cursor.planId} shown={shown} suffix={c('status.planComplete')} />
         </p>
       </div>
     );
