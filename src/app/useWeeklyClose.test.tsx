@@ -26,6 +26,13 @@ beforeEach(() => {
       timezone: TZ_ATHENS,
     }),
   );
+  /*
+   * ROADMAP L6: the hook also keeps the programme's runway. Stubbed here so this suite counts
+   * only closures: a real ensureRunway grows the plan and replaces the state object the
+   * closeWeeks spies below are installed on. The engine is tested in src/domain/plan/engine.test.ts
+   * and the action in src/store/scheduleActions.test.ts.
+   */
+  vi.spyOn(useAppStore.getState(), 'ensureRunway').mockImplementation(() => {});
 });
 
 describe('useWeeklyClose', () => {
@@ -42,6 +49,17 @@ describe('useWeeklyClose', () => {
     document.dispatchEvent(new Event('visibilitychange'));
 
     expect(useAppStore.getState().weeklyReviews[PROFILE_ID]).toHaveLength(1);
+  });
+
+  it('keeps the programme runway after grading, on mount (ROADMAP L6)', () => {
+    // Both stubbed: a real call replaces the state object and would carry the spy past restore.
+    const closeWeeks = vi.spyOn(useAppStore.getState(), 'closeWeeks').mockImplementation(() => {});
+    const ensureRunway = vi.spyOn(useAppStore.getState(), 'ensureRunway').mockImplementation(() => {});
+    renderHook(() => useWeeklyClose());
+    expect(ensureRunway).toHaveBeenCalledWith(PROFILE_ID, NOW_MS);
+    // Graded first, so a programme finished under an older build is graded as finished.
+    // Last calls: a stub installed by beforeEach can carry calls from an earlier test.
+    expect(closeWeeks.mock.invocationCallOrder.at(-1)).toBeLessThan(ensureRunway.mock.invocationCallOrder.at(-1) ?? 0);
   });
 
   it('does nothing without an active profile', () => {
