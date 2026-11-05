@@ -9,20 +9,24 @@ import type {
   Experience,
   LocalDate,
   LoggedSet,
+  PlannedExercise,
   PlannedSession,
   PlanTemplate,
+  Profile,
   SessionEdits,
 } from '../types';
 import { ACCESS_UNLOCKS } from '../types';
 import { emptyState, makeProfile, MONDAY, PROFILE_ID, TZ_ATHENS } from '../../test/scheduleFixtures';
 import { MAX_PLAN_WEEKS } from '../limits';
 import {
+  accessoryAlternates,
   bandForWeek,
   CONSISTENT_SKIP_MIN,
   CONSISTENT_SWAP_MIN,
   cyclesOf,
   ensureRunway,
   INITIAL_WEEKS,
+  rotationOn,
   RUNWAY_SESSIONS,
   withoutLength,
 } from './engine';
@@ -81,6 +85,16 @@ function programme(cell: Cell): AppState {
     pauses: { [PROFILE_ID]: [] },
     assignments: { [PROFILE_ID]: [] },
   };
+}
+
+/** The same state with the Settings rotation switch set (`undefined` removes the key: absent). */
+function withRotation(s: AppState, on: boolean | undefined): AppState {
+  const profile = s.profiles[PROFILE_ID];
+  if (profile === undefined) throw new Error('profile');
+  const next: Profile = { ...profile };
+  if (on === undefined) delete next.rotateAccessories;
+  else next.rotateAccessories = on;
+  return { ...s, profiles: { ...s.profiles, [PROFILE_ID]: next } };
 }
 
 function planOf(s: AppState): PlanTemplate {
@@ -307,35 +321,46 @@ describe('ensureRunway: next cycle from logged data, every day count and tier', 
         for (const set of Object.values(s1.sets)) expect(ids.has(set.sessionId)).toBe(true);
         expect(plan.sessions.slice(0, cycleLen)).toEqual(planOf(s0).sessions.slice(0, cycleLen));
 
-        // Volume: the next cycle's week keeps every in-band muscle in band and no muscle above
-        // the band top or the evidence ceiling that was not already there.
+        // Volume: each derived cycle's week keeps every in-band muscle in band and no muscle above
+        // the band top or the evidence ceiling that was not already there, against the cycle
+        // before it (the rotation's second cycle included).
         const band = bandForWeek(spw);
-        const oldWeek = weeklySetsByMuscle(weekAt(plan, 0), EXERCISES);
-        const newWeek = weeklySetsByMuscle(weekAt(plan, cycleLen), EXERCISES);
-        for (const m of new Set([...Object.keys(oldWeek), ...Object.keys(newWeek)])) {
-          const a = newWeek[m] ?? 0;
-          const b = oldWeek[m] ?? 0;
-          expect(a).toBeLessThanOrEqual(Math.max(band[1], b));
-          if (b >= band[0]) expect(a).toBeGreaterThanOrEqual(band[0]);
+        for (const [from, to] of [[0, cycleLen], [cycleLen, 2 * cycleLen]] as const) {
+          if (to + spw > plan.sessions.length) continue;
+          const oldWeek = weeklySetsByMuscle(weekAt(plan, from), EXERCISES);
+          const newWeek = weeklySetsByMuscle(weekAt(plan, to), EXERCISES);
+          for (const m of new Set([...Object.keys(oldWeek), ...Object.keys(newWeek)])) {
+            const a = newWeek[m] ?? 0;
+            const b = oldWeek[m] ?? 0;
+            expect(a).toBeLessThanOrEqual(Math.max(band[1], b));
+            if (b >= band[0]) expect(a).toBeGreaterThanOrEqual(band[0]);
+          }
+          let topSets = 0;
+          for (const s of weekAt(plan, to)) for (const e of s.exercises) topSets = Math.max(topSets, e.setsHi);
+          expect(topSets).toBeLessThanOrEqual(EVIDENCE_CEILING_SETS);
         }
-        let topSets = 0;
-        for (const s of weekAt(plan, cycleLen)) for (const e of s.exercises) topSets = Math.max(topSets, e.setsHi);
-        expect(topSets).toBeLessThanOrEqual(EVIDENCE_CEILING_SETS);
 
-        // Every cycle after the ended one carries the same derived week.
-        for (let c = cycleLen; c + spw <= plan.sessions.length; c += spw) {
-          expect(weekAt(plan, c).map((s) => s.exercises)).toEqual(weekAt(plan, cycleLen).map((s) => s.exercises));
+        // Every week of a cycle carries that cycle's derived week, and with the accessory rotation
+        // on the cycles after the ended one alternate: cycle k + 2 repeats cycle k.
+        const exercisesOf = (from: number): PlannedExercise[][] => weekAt(plan, from).map((s) => s.exercises);
+        for (const c of cyclesOf(plan).slice(1)) {
+          for (let w = c.start; w + spw <= c.end; w += spw) expect(exercisesOf(w)).toEqual(exercisesOf(c.start));
+          if (c.start >= 3 * cycleLen && c.end - c.start === cycleLen) {
+            expect(exercisesOf(c.start)).toEqual(exercisesOf(c.start - 2 * cycleLen));
+          }
         }
 
         const nextWeek = weekAt(plan, cycleLen);
-        if (JSON.stringify(nextWeek.map((x) => x.exercises)) !== JSON.stringify(firstWeek.map((x) => x.exercises))) {
-          changedCells += 1;
-        }
+        // Census: the user's signals (adoption, skip replacement), not the rotation.
+        const swapSlot = nextWeek.find((s) => s.label === swapLabel)?.exercises[0]?.exerciseId;
+        const skipGone = !(nextWeek.find((s) => s.label === skipLabel)?.exercises ?? []).some((e) => e.exerciseId === skipKey);
+        if ((swapTo !== swapFrom && swapSlot === swapTo) || skipGone) changedCells += 1;
         const swapSession = nextWeek.find((s) => s.label === swapLabel);
         const skipSession = nextWeek.find((s) => s.label === skipLabel);
         const oldSkip = firstWeek[1];
-        // Inventory: every exercise the ENGINE chose (not the user's swap) fits access and inventory.
-        for (const session of nextWeek) {
+        // Inventory: every exercise the ENGINE chose (not the user's swap), the rotation's
+        // alternates included, fits access and inventory, in both derived cycles.
+        for (const session of [...nextWeek, ...weekAt(plan, 2 * cycleLen)]) {
           for (const e of session.exercises) {
             if (e.exerciseId === swapTo) continue;
             const ex = EXERCISE_BY_ID[e.exerciseId];
@@ -377,7 +402,7 @@ describe('ensureRunway: next cycle from logged data, every day count and tier', 
 });
 
 describe('sweep census', () => {
-  it('changed the next cycle in most cells (adoption or replacement fired)', () => {
+  it('changed the next cycle in most cells (adoption or replacement fired, rotation aside)', () => {
     expect(changedCells).toBeGreaterThanOrEqual(DAYS.length * ACCESS.length - 3);
   });
 });
@@ -386,6 +411,8 @@ describe('ensureRunway: the rules, on a full-gym 4-day plan', () => {
   const cell: Cell = { spw: 4, experience: 'intermediate', equipment: 'full-gym', includeCardio: false };
   const cycleLen = BLOCK_WEEKS * 4; // [sessions]
   const s0 = ensureRunway(programme(cell), PROFILE_ID);
+  /** Rotation off: the rules below compare whole sessions, which the rotation would change. */
+  const s0Off = withRotation(s0, false);
   const week0 = weekAt(planOf(s0), 0);
   const upper = week0[0];
   if (upper === undefined) throw new Error('week');
@@ -449,7 +476,7 @@ describe('ensureRunway: the rules, on a full-gym 4-day plan', () => {
 
   it('adopts a swap the user trained in every session of that label', () => {
     expect(toId).not.toBe('');
-    const s1 = trainUntil(s0, 4, cycleLen, swapEdits);
+    const s1 = trainUntil(s0Off, 4, cycleLen, swapEdits);
     const next = weekAt(planOf(s1), cycleLen).find((s) => s.label === upper.label);
     const old = upper.exercises[0];
     expect(next?.exercises[0]).toEqual(substitutePlanned(old!, EXERCISE_BY_ID[toId]!));
@@ -497,11 +524,12 @@ describe('ensureRunway: the rules, on a full-gym 4-day plan', () => {
   });
 
   it('a Finish with no sets is no evidence of a skip', () => {
-    const s1 = trainUntil(s0, 4, cycleLen, () => ({ noSets: true }));
+    const s1 = trainUntil(s0Off, 4, cycleLen, () => ({ noSets: true }));
     expect(weekAt(planOf(s1), cycleLen).map((s) => s.exercises)).toEqual(week0.map((s) => s.exercises));
   });
 
-  it('keeps the exercises after a low-adherence cycle, swaps or not', () => {
+  it('keeps the exercises after a low-adherence cycle, swaps or not, and does not rotate (rotation on)', () => {
+    expect(s0.profiles[PROFILE_ID]?.rotateAccessories).toBeUndefined(); // absent = on
     // One session a fortnight against a quota of four: far below half.
     let state = s0;
     let date = MONDAY;
@@ -517,7 +545,7 @@ describe('ensureRunway: the rules, on a full-gym 4-day plan', () => {
     const key = upper.exercises[1]?.exerciseId ?? '';
     const skipEdits = (session: PlannedSession): DayPlan =>
       session.label === upper.label ? { edits: { swaps: {}, skipped: [key], added: [], order: [] } } : {};
-    const s1 = trainUntil(s0, 4, cycleLen, skipEdits);
+    const s1 = trainUntil(s0Off, 4, cycleLen, skipEdits);
     const derived = weekAt(planOf(s1), cycleLen).map((s) => s.exercises);
     expect(derived).not.toEqual(week0.map((s) => s.exercises));
     // The next session is opened: cycle 1 is now named by a row.
@@ -538,6 +566,209 @@ describe('ensureRunway: the rules, on a full-gym 4-day plan', () => {
     expect(weekAt(plan, 2 * cycleLen).map((s) => s.exercises)).toEqual(derived);
     expect(plan.sessions.map((s) => s.id)).toEqual(planOf(opened).sessions.map((s) => s.id)); // ids kept
   });
+});
+
+describe('ensureRunway: accessory rotation (R-B, R-C), on a full-gym 4-day plan', () => {
+  const cell: Cell = { spw: 4, experience: 'intermediate', equipment: 'full-gym', includeCardio: false };
+  const spw = 4; // [sessions/week]
+  const cycleLen = BLOCK_WEEKS * spw; // [sessions]
+  const s0 = ensureRunway(programme(cell), PROFILE_ID);
+  const home = weekAt(planOf(s0), 0);
+  const upper = home[0];
+  if (upper === undefined) throw new Error('week');
+  const alternates = accessoryAlternates({
+    home,
+    access: 'full-gym',
+    inventory: null,
+    library: EXERCISES,
+    band: bandForWeek(spw),
+  });
+  const upperAlts = alternates.get(upper.label) ?? [];
+  /** The first accessory slot of the upper session that has an alternate. */
+  const slot = upper.exercises.findIndex((e, i) => EXERCISE_BY_ID[e.exerciseId]?.isCompoundPrimary === false && upperAlts[i] != null);
+  const homeId = upper.exercises[slot]?.exerciseId ?? '';
+  const altId = upperAlts[slot]?.id ?? '';
+  /** exerciseId in the upper session's `slot` of the cycle starting at `cycle * cycleLen`. */
+  const slotIn = (s: AppState, cycle: number): string | undefined =>
+    weekAt(planOf(s), cycle * cycleLen).find((x) => x.label === upper.label)?.exercises[slot]?.exerciseId;
+  // Two cycles trained, no edits: cycles 1..3 are materialised (runway 28 past session 32).
+  const trained = trainUntil(s0, spw, 2 * cycleLen);
+
+  it('finds an accessory slot with a same-loadClass alternate', () => {
+    expect(slot).toBeGreaterThanOrEqual(0);
+    expect(altId).not.toBe(homeId);
+    expect(EXERCISE_BY_ID[altId]?.loadClass).toBe(EXERCISE_BY_ID[homeId]?.loadClass);
+    expect(upper.exercises.some((e) => e.exerciseId === altId)).toBe(false); // not already in the session
+  });
+
+  it('alternates a non-primary slot A, B, A, B across cycles 0..3', () => {
+    expect([0, 1, 2, 3].map((c) => slotIn(trained, c))).toEqual([homeId, altId, homeId, altId]);
+    // Every week of a cycle holds that cycle's exercise (never inside a cycle).
+    const plan = planOf(trained);
+    for (let w = cycleLen; w < 2 * cycleLen; w += spw) {
+      expect(weekAt(plan, w).find((x) => x.label === upper.label)?.exercises[slot]?.exerciseId).toBe(altId);
+    }
+    // The alternate's prescription is substitutePlanned's (sets kept, reps at the slot intensity);
+    // home again is the template's entry.
+    const at1 = weekAt(plan, cycleLen).find((x) => x.label === upper.label)?.exercises[slot];
+    expect(at1).toEqual(substitutePlanned(upper.exercises[slot]!, EXERCISE_BY_ID[altId]!));
+    expect(weekAt(plan, 2 * cycleLen).find((x) => x.label === upper.label)?.exercises[slot]).toEqual(upper.exercises[slot]);
+  });
+
+  it('never rotates a compound primary', () => {
+    const plan = planOf(trained);
+    for (let c = 1; c * cycleLen + spw <= plan.sessions.length; c += 1) {
+      for (const session of weekAt(plan, c * cycleLen)) {
+        const homeSession = home.find((h) => h.label === session.label);
+        session.exercises.forEach((e, i) => {
+          const h = homeSession?.exercises[i];
+          if (h !== undefined && EXERCISE_BY_ID[h.exerciseId]?.isCompoundPrimary === true) expect(e).toEqual(h);
+        });
+      }
+    }
+    home.forEach((h) => {
+      h.exercises.forEach((e, i) => {
+        if (EXERCISE_BY_ID[e.exerciseId]?.isCompoundPrimary === true) expect(alternates.get(h.label)?.[i]).toBeNull();
+      });
+    });
+  });
+
+  it('is idempotent: ensureRunway on its own output returns it by identity', () => {
+    expect(ensureRunway(trained, PROFILE_ID)).toBe(trained);
+    const one = trainUntil(s0, spw, cycleLen);
+    expect(ensureRunway(one, PROFILE_ID)).toBe(one);
+  });
+
+  it('switch off: no rotation; absent and true are the same as on', () => {
+    expect(rotationOn({})).toBe(true);
+    expect(rotationOn({ rotateAccessories: true })).toBe(true);
+    expect(rotationOn({ rotateAccessories: false })).toBe(false);
+    const off = trainUntil(withRotation(s0, false), spw, cycleLen);
+    expect(weekAt(planOf(off), cycleLen).map((x) => x.exercises)).toEqual(home.map((x) => x.exercises));
+    const on = trainUntil(withRotation(s0, true), spw, cycleLen);
+    const absent = trainUntil(withRotation(s0, undefined), spw, cycleLen);
+    expect(planOf(on).sessions.slice(cycleLen).map((x) => x.exercises)).toEqual(
+      planOf(absent).sessions.slice(cycleLen).map((x) => x.exercises),
+    );
+    expect(slotIn(on, 1)).toBe(altId);
+  });
+
+  it('toggling re-derives only the untouched future cycles; frozen sessions and every id are unchanged', () => {
+    const one = trainUntil(s0, spw, cycleLen);
+    expect(slotIn(one, 1)).toBe(altId);
+    // Off: the untouched cycle 1 goes back to a copy of the ended cycle.
+    const off = ensureRunway(withRotation(one, false), PROFILE_ID);
+    expect(slotIn(off, 1)).toBe(homeId);
+    expect(planOf(off).sessions.map((x) => x.id)).toEqual(planOf(one).sessions.map((x) => x.id));
+    // On again: back to the alternation.
+    const again = ensureRunway(withRotation(off, true), PROFILE_ID);
+    expect([1, 2].map((c) => slotIn(again, c))).toEqual([altId, homeId]);
+    // A session a row names is frozen: open cycle 1, then turn rotation off.
+    const date = slotDate(spw, cycleLen);
+    const opened = startSession(one, PROFILE_ID, date, Date.parse(`${date}T12:00:00Z`));
+    const frozen = ensureRunway(withRotation(opened, false), PROFILE_ID);
+    expect(planOf(frozen).sessions.slice(0, 2 * cycleLen)).toEqual(planOf(opened).sessions.slice(0, 2 * cycleLen));
+    expect(planOf(frozen).sessions.map((x) => x.id)).toEqual(planOf(opened).sessions.map((x) => x.id));
+    // The untouched cycle after it copies it with rotation off (no further alternation).
+    expect(slotIn(frozen, 2)).toBe(altId);
+  });
+
+  it('an adopted swap wins over the rotation, and the slot then stays the user pick', () => {
+    const others = swapAlternatives({
+      original: EXERCISE_BY_ID[homeId]!,
+      access: 'full-gym',
+      inventory: null,
+      library: EXERCISES,
+      inUse: new Set([...upper.exercises.map((e) => e.exerciseId), altId]),
+    }).suggested.filter((e) => e.id !== homeId);
+    const pick = others[0]?.id ?? '';
+    expect(pick).not.toBe('');
+    const s1 = trainUntil(s0, spw, cycleLen, (session) =>
+      session.label === upper.label ? { edits: { swaps: { [homeId]: pick }, skipped: [], added: [], order: [] } } : {},
+    );
+    expect(slotIn(s1, 1)).toBe(pick);
+    expect(slotIn(s1, 2)).toBe(pick);
+  });
+
+  it('a skip-replaced slot is not rotated in the same derivation', () => {
+    const s1 = trainUntil(s0, spw, cycleLen, (session) =>
+      session.label === upper.label ? { edits: { swaps: {}, skipped: [homeId], added: [], order: [] } } : {},
+    );
+    const now = slotIn(s1, 1);
+    expect(now).not.toBe(homeId);
+    // The replacement is swapAlternatives' first passing entry, not the rotation's choice applied on top.
+    const first = swapAlternatives({
+      original: EXERCISE_BY_ID[homeId]!,
+      access: 'full-gym',
+      inventory: null,
+      library: EXERCISES,
+      inUse: new Set(upper.exercises.map((e) => e.exerciseId)),
+    }).suggested.find((e) => e.id !== homeId)?.id;
+    expect(now).toBe(first);
+  });
+
+  it("the rotated exercise's progression reads its own exerciseId history", () => {
+    const history = Object.values(trained.sets);
+    const profile = trained.profiles[PROFILE_ID]!;
+    const plan = planOf(trained);
+    expect(history.some((x) => x.exerciseId === homeId)).toBe(true);
+    expect(history.some((x) => x.exerciseId === altId)).toBe(true);
+    const block = plan.blocks.find((b) => !b.isDeload && b.firstSessionIndex === 2 * cycleLen);
+    expect(block).toBeDefined();
+    if (block === undefined) return;
+    for (const [id, cycle] of [[homeId, 2], [altId, 3]] as const) {
+      const planned = weekAt(plan, cycle * cycleLen).find((x) => x.label === upper.label)?.exercises[slot];
+      expect(planned?.exerciseId).toBe(id);
+      const ex = EXERCISE_BY_ID[id]!;
+      const own = history.filter((x) => x.exerciseId === id);
+      expect(suggestedProgression(history, planned!, ex, profile, block)).toEqual(
+        suggestedProgression(own, planned!, ex, profile, block),
+      );
+    }
+  });
+});
+
+describe('accessoryAlternates: guard, access and inventory', () => {
+  it('the volume guard blocks an alternate that would add a muscle', () => {
+    const s0 = programme({ spw: 4, experience: 'intermediate', equipment: 'full-gym', includeCardio: false });
+    const home = weekAt(planOf(s0), 0);
+    const band = bandForWeek(4);
+    const base = accessoryAlternates({ home, access: 'full-gym', inventory: null, library: EXERCISES, band });
+    const label = home[0]?.label ?? '';
+    const i = (base.get(label) ?? []).findIndex((a) => a != null);
+    const chosen = base.get(label)?.[i];
+    expect(chosen).toBeDefined();
+    if (chosen == null) return;
+    // The same library with the chosen alternate also loading a muscle no exercise of the week
+    // trains: the band top then caps it (0 sets before, more after, above an open-bottom band).
+    const heavier = EXERCISES.map((e) => (e.id === chosen.id ? { ...e, muscleGroups: [...e.muscleGroups, 'test-muscle'] } : e));
+    const blocked = accessoryAlternates({ home, access: 'full-gym', inventory: null, library: heavier, band: [0, 0] });
+    expect(blocked.get(label)?.[i]?.id).not.toBe(chosen.id);
+  });
+
+  for (const equipment of ACCESS) {
+    it(`${equipment}: every alternate fits access and inventory, shares the home loadClass, and is not in its session`, () => {
+      for (const spw of DAYS) {
+        const s0 = programme({ spw, experience: 'intermediate', equipment, includeCardio: false });
+        const profile = s0.profiles[PROFILE_ID]!;
+        const inventory = inventoryOf(profile);
+        const home = weekAt(planOf(s0), 0);
+        const alts = accessoryAlternates({ home, access: equipment, inventory, library: EXERCISES, band: bandForWeek(spw) });
+        for (const h of home) {
+          const ids = h.exercises.map((e) => e.exerciseId);
+          (alts.get(h.label) ?? []).forEach((a, i) => {
+            if (a === null) return;
+            const homeEx = EXERCISE_BY_ID[ids[i] ?? '']!;
+            expect(homeEx.isCompoundPrimary).toBe(false);
+            expect(a.loadClass).toBe(homeEx.loadClass);
+            expect(ids).not.toContain(a.id);
+            expect(a.equipment.some((t) => ACCESS_UNLOCKS[equipment].includes(t))).toBe(true);
+            expect(fitsInventory(a, equipment, inventory)).toBe(true);
+          });
+        }
+      }
+    });
+  }
 });
 
 describe('ensureRunway: revival and ceilings', () => {
