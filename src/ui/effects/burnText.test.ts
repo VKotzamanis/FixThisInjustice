@@ -5,7 +5,9 @@ import {
   FS,
   createBurn,
   cssColourToLinear,
+  edgeFade,
   envelope,
+  glowFade,
   lookUniforms,
   sdf,
   stretchKeyword,
@@ -88,4 +90,23 @@ describe('burnText (AM-4a-9)', () => {
     expect(FS).toContain('uniform float uHard');
     expect(FS).toContain('uHalo');
   });
+
+  // HANDOFF follow-up: the animated burn showed a flat haze rectangle (glow nonzero at the edge).
+  it('fades glow and flames to zero alpha at the outermost canvas pixels, for burn and lit alike', () => {
+    // Edge distance 0 [cap heights]: the outermost pixel row or column, whatever the distance field.
+    for (const dOverSpread of [-1, 0, 0.1, 0.3, 0.5, 0.7, 1]) expect(glowFade(dOverSpread, 0)).toBe(0);
+    expect(edgeFade(0)).toBe(0);
+    // At the texture clamp (|d| = spread) the glow is zero anywhere, so no flat plateau remains.
+    expect(glowFade(1, 5)).toBe(0);
+    // Inside the glyphs and away from the edge the factor is 1: the approved look is unchanged.
+    expect(glowFade(-0.5, 5)).toBe(1);
+    expect(glowFade(0, 5)).toBe(1);
+    // One shader serves both renderers: no switch left that could turn the fade off for the burn.
+    expect(FS).not.toContain('uFade');
+    // The glow and the flame tongues both carry the edge factor.
+    expect(FS).toMatch(/float edge = [^;]+;/);
+    expect(FS).toMatch(/\* uFlame \* edge;/);
+    expect(FS).toMatch(/uHalo \* fade \*/);
+  });
 });
+

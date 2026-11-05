@@ -61,12 +61,35 @@ export const DPR_CAP = 2;
 const VS =
   'attribute vec2 aP; varying vec2 vUv; void main(){ vUv = vec2(aP.x * 0.5 + 0.5, 0.5 - aP.y * 0.5); gl_Position = vec4(aP, 0.0, 1.0); }';
 
+/**
+ * THE GLOW FADE, one definition for the shader (FS) and its tests. Without it the glow stays
+ * nonzero where the distance texture clamps (|d| = spread) and at the canvas edge, so a flat
+ * rectangle of haze shows round every word, burning or lit. spreadFrom/spreadTo: fraction of
+ * the packed distance range over which the glow falls to zero; edgeCap [cap heights]: distance
+ * from the outermost pixel centre over which glow and flame tongues fall to zero. Both act only
+ * outside the glyphs: inside them (coverage 1) the glow and flames are already zero.
+ */
+const GLOW_FADE = { spreadFrom: 0.5, spreadTo: 0.9, edgeCap: 0.2 } as const;
+
+/** Edge factor 0..1 at edgeOverCap [cap heights] from the outermost pixel centre (0 there). */
+export function edgeFade(edgeOverCap: number): number {
+  return smoothstep(0, GLOW_FADE.edgeCap, edgeOverCap);
+}
+
+/** Glow factor 0..1 at dOverSpread (signed distance / spread, + outside) and edgeOverCap. */
+export function glowFade(dOverSpread: number, edgeOverCap: number): number {
+  return (1 - smoothstep(GLOW_FADE.spreadFrom, GLOW_FADE.spreadTo, Math.max(dOverSpread, 0))) * edgeFade(edgeOverCap);
+}
+
+/** A GLSL float literal (always with a decimal point). */
+const glslFloat = (x: number): string => x.toFixed(3);
+
 // uSize [device px]; uT [s]; uE 0..1; uSpread, uCap, uBase [device px]; uGain linear; uHard and
 // uHalo 0/1 (lookUniforms); uFlame 0/1 (1 = flame tongues above the cap line, 0 = none: the
-// static lit word, litText.ts); uFade 0/1 (1 = the glow fades to zero before the distance
-// field's clamp and the canvas edge, so no flat rectangle of haze shows round a word at rest;
-// the burn keeps 0, unchanged); colours are linear RGB: resting letter (cool), fire deep -> mid
-// -> hot, glow. With uHard 0, uHalo 1, uFlame 1 the arithmetic is the faithful look unchanged.
+// static lit word, litText.ts); colours are linear RGB: resting letter (cool), fire deep -> mid
+// -> hot, glow. The glow and flames fade to zero at the canvas edge (GLOW_FADE, edgeFade,
+// glowFade) for the burn and the lit word alike. With uHard 0, uHalo 1, uFlame 1 the arithmetic
+// inside the glyphs is the faithful look unchanged.
 export const FS = [
   '#ifdef GL_FRAGMENT_PRECISION_HIGH',
   'precision highp float;',
@@ -75,7 +98,7 @@ export const FS = [
   '#endif',
   'uniform sampler2D uTex; uniform vec2 uSize;',
   'uniform float uT, uE, uSpread, uCap, uBase, uSeed, uGain;',
-  'uniform float uHard, uHalo, uFlame, uFade;',
+  'uniform float uHard, uHalo, uFlame;',
   'uniform vec3 uCool, uDeep, uMid, uHot, uGlow;',
   'varying vec2 vUv;',
   // Hash without Sine (c) 2014 David Hoskins, MIT; see the notice at the top of this file.
@@ -97,17 +120,19 @@ export const FS = [
   '  vec3 cel = mix(uCool, uMid, step(0.32, heat) * on); cel = mix(cel, uHot, step(0.68, heat) * on);',
   '  col = mix(col, cel, uHard);',
   '  vec3 c = col * a; float al = a;',
+  // edgeFade: [cap heights] from the outermost pixel centre, so that pixel gets exactly 0.
+  '  vec2 ep = min(px, uSize - px) - 0.5;',
+  `  float edge = smoothstep(0.0, ${glslFloat(GLOW_FADE.edgeCap)}, min(ep.x, ep.y) / uCap);`,
   '  float up = clamp((hy - 0.55) / 0.4, 0.0, 1.0);',
   '  float reach = 0.03 + up * (0.05 + 0.42 * n * n);',
   '  float h2 = 1.0 - dOut / reach;',
-  '  float t2 = mix(smoothstep(0.0, 0.08, h2) * uE, step(0.04, h2) * on, uHard) * (1.0 - a) * uFlame;',
+  '  float t2 = mix(smoothstep(0.0, 0.08, h2) * uE, step(0.04, h2) * on, uHard) * (1.0 - a) * uFlame * edge;',
   '  vec3 f2 = mix(uDeep, uMid, smoothstep(0.05, 0.45, h2)); f2 = mix(f2, uHot, smoothstep(0.55, 0.9, h2));',
   '  f2 = mix(min(f2 * uGain, 1.0), mix(uMid, uHot, step(0.6, h2)), uHard);',
   '  c += f2 * t2; al += t2 * (1.0 - al);',
-  // uFade: zero the glow before |d| reaches uSpread (where the texture clamps) and near the edge.
-  '  float fade = 1.0 - smoothstep(0.5, 0.9, max(d, 0.0) / uSpread);',
-  '  vec2 ed = min(vUv, 1.0 - vUv) * uSize / uCap; fade *= smoothstep(0.0, 0.2, min(ed.x, ed.y));',
-  '  float g = exp(-dOut / 0.32) * uE * uHalo * mix(1.0, fade, uFade) * (1.0 - al); c += uGlow * g; al += g;',
+  // glowFade: zero before |d| reaches uSpread (where the texture clamps) and at the canvas edge.
+  `  float fade = (1.0 - smoothstep(${glslFloat(GLOW_FADE.spreadFrom)}, ${glslFloat(GLOW_FADE.spreadTo)}, max(d, 0.0) / uSpread)) * edge;`,
+  '  float g = exp(-dOut / 0.32) * uE * uHalo * fade * (1.0 - al); c += uGlow * g; al += g;',
   '  if (al < 0.002) discard;',
   '  gl_FragColor = vec4(l2s(c / al) * al, al);',
   '}',
@@ -389,7 +414,7 @@ export function buildProgram(gl: WebGLRenderingContext): BurnProgram | null {
   return { program, buffer, texture, u };
 }
 
-/** Uploads a word and its constants (size, palette, look, seed, flames, glow fade) to a program. */
+/** Uploads a word and its constants (size, palette, look, seed, flames) to a program. */
 export function loadWord(
   gl: WebGLRenderingContext,
   p: BurnProgram,
@@ -398,7 +423,6 @@ export function loadWord(
   look: BurnLook,
   seed: number,
   flame: 0 | 1,
-  fade: 0 | 1,
 ): void {
   gl.bindTexture(gl.TEXTURE_2D, p.texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, r.W, r.H, 0, gl.RGBA, gl.UNSIGNED_BYTE, r.tex);
@@ -412,7 +436,6 @@ export function loadWord(
   gl.uniform1f(p.u('uHard'), l.hard);
   gl.uniform1f(p.u('uHalo'), l.halo);
   gl.uniform1f(p.u('uFlame'), flame);
-  gl.uniform1f(p.u('uFade'), fade);
   for (let i = 0; i < COLOUR_UNIFORMS.length; i++) gl.uniform3fv(p.u(COLOUR_UNIFORMS[i] ?? ''), palette[i] ?? [0, 0, 0]);
   gl.viewport(0, 0, r.W, r.H);
   gl.clearColor(0, 0, 0, 0);
@@ -448,7 +471,7 @@ export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): 
   if (gl === null) return null;
   const p = buildProgram(gl);
   if (p === null) return null;
-  loadWord(gl, p, r, palette, opts.look ?? BURN_LOOK, opts.seed ?? 0.31, 1, 0);
+  loadWord(gl, p, r, palette, opts.look ?? BURN_LOOK, opts.seed ?? 0.31, 1);
   const { program, buffer, texture } = p;
 
   const draw = (t: number): void => {

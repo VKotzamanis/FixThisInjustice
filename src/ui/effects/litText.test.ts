@@ -21,10 +21,10 @@ describe('lit word (review item 8)', () => {
   });
 
   it('is one still frame: full envelope, frozen heat, flames off, glow faded inside the canvas', () => {
-    expect(LIT_FRAME).toEqual({ t: STILL_FRAME_S, e: 1, flame: 0, fade: 1 });
-    expect(FS).toContain('mix(1.0, fade, uFade)');
+    expect(LIT_FRAME).toEqual({ t: STILL_FRAME_S, e: 1, flame: 0 });
+    expect(FS).toMatch(/uHalo \* fade \*/); // the shared glow fade (burnText glowFade)
     expect(FS).toMatch(/uniform float [^;]*\buFlame\b/);
-    expect(FS).toContain('* uFlame;');
+    expect(FS).toContain('* uFlame * edge;');
   });
 
   it('is switched by --panel-glow: none (or unset) keeps the plain text', () => {
