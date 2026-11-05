@@ -170,6 +170,12 @@
   justify-items: center;
   overflow-y: auto;
   overscroll-behavior: contain;
+  /*
+   * A control scrolled into view (keyboard focus, or a script) stops 1.5 rem inside the edge,
+   * not flush with it: measured in e2e A02, a flush stop left Next's bottom 0.03 px past a
+   * 342 px landscape viewport, a subpixel sliver below the fold.
+   */
+  scroll-padding-block: 1.5rem;
   padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
   background: var(--bg);
 }
