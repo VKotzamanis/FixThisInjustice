@@ -10,8 +10,8 @@ working directory unless a step says otherwise.
 The Worker stores three things per device: a random secret, a push subscription, and the
 next three weeks of reminder instants. It stores no name, no body data, and no location.
 
-Every claim about a limit or a command below names the file line or the `REFERENCES.md`
-entry it came from.
+Every claim about a limit or a command below names the file line or the source URL it came
+from (each URL fetched 2026-09-01 or 2026-09-02; re-read before relying on a quota).
 
 ## Who runs this, and when
 
@@ -265,7 +265,7 @@ Let `N` be the number of indexed devices. The cron fires 1440 times a day
 
 **Subrequests per tick: the binding constraint, now capped in code.** The free plan allows 50
 subrequests per invocation (Workers limits page, `50/request` free against `10,000` paid,
-`REFERENCES.md` line 645; platform fact 6 of `docs/plans/2026-09-01-05-reminders.md`).
+<https://developers.cloudflare.com/workers/platform/limits/>; platform fact 6 of `docs/plans/2026-09-01-05-reminders.md`).
 `runTick` in `worker/src/index.ts` counts every KV call and every push `fetch` against
 `SUBREQUEST_BUDGET = 50` and never spends past it (audit E10b):
 
@@ -288,7 +288,7 @@ subrequests per invocation (Workers limits page, `50/request` free against `10,0
 
 **KV reads.** At most `1440 * (1 + min(N, 9))` a day for the visits, plus one re-read per
 device write (bounded by the writes below). At `N >= 9` that is 14,400 plus at most about
-100, against the free tier's 100,000 (`REFERENCES.md` line 35). Reads no longer bound `N`;
+100, against the free tier's 100,000 (<https://developers.cloudflare.com/kv/platform/limits/>). Reads no longer bound `N`;
 before the window they did, at `N <= 68`.
 
 The reaper still matters for the device cap and for latency: a record whose reminders have
@@ -299,8 +299,8 @@ gone `INERT_DEVICE_TTL_MS` without a `PUT` (14 days, `worker/src/schedule.ts`; t
 `N > 9` a reap can wait up to `ceil(N / 9)` reconcile hours.
 
 **KV list requests.** The tick reconciles `idx` against the real key list only at minute 0
-of the hour, so 24 list requests a day. The free tier allows 1,000. `REFERENCES.md` line
-630 records that list requests are counted separately from reads. 24 is 2.4 percent of the
+of the hour, so 24 list requests a day. The free tier allows 1,000. The KV pricing page
+(<https://developers.cloudflare.com/kv/platform/pricing/>) counts list requests separately from reads. 24 is 2.4 percent of the
 quota. `isReconcileTick` in `worker/src/index.ts` states that arithmetic. Reconciling every
 tick would need 1,440 list requests and exceed the quota by 44 percent.
 
@@ -315,9 +315,9 @@ tick would need 1,440 list requests and exceed the quota by 44 percent.
   in steady state, at most 24 a day. A reap removes a device, so it lands in this bullet.
 
 That totals 70 writes a day in steady state, and at most 94 in the worst case. The cap is
-1,000 a day (`REFERENCES.md` line 35). The E10a re-read adds a read per write, not a write.
+1,000 a day (<https://developers.cloudflare.com/kv/platform/limits/>). The E10a re-read adds a read per write, not a write.
 
-**KV deletes.** The free plan allows 1,000 a day (`REFERENCES.md` line 629). Three things
+**KV deletes.** The free plan allows 1,000 a day (<https://developers.cloudflare.com/workers/platform/pricing/>). Three things
 delete a device record: a 404 or 410 from the push service, a value that cannot be parsed,
 and the reaper. The reaper deletes a given record once; it can only return through a `PUT`,
 which stamps `lastSyncedAt` and puts it another 14 days from reapable. At the 100 device cap
@@ -341,7 +341,7 @@ locations.
 
 **Not verified.** Whether Cron Trigger invocations consume the 100,000 requests a day quota.
 The limits page separates the daily request cap from the cron section and never joins them
-(`REFERENCES.md` line 645, re-read 2026-09-02). At 1,440 ticks a day the Worker stays inside
+(<https://developers.cloudflare.com/workers/platform/limits/>, re-read 2026-09-02). At 1,440 ticks a day the Worker stays inside
 the cap either way. Whether KV calls count toward the 50 subrequest ceiling is read
 conservatively: the code counts them.
 
@@ -404,7 +404,7 @@ are not in the guide.
 6. Allow notifications when the system asks.
 
 Steps 1 to 4 are not optional on iOS. Safari delivers Web Push only to a web app installed on
-the Home Screen, from iOS 16.4 (`REFERENCES.md` line 5). This app sets its floor at iOS 18.4
+the Home Screen, from iOS 16.4 (<https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/>). This app sets its floor at iOS 18.4
 for a separate reason: Screen Wake Lock inside an installed web app was broken until that
 release (platform fact 2 of `docs/plans/2026-09-01-05-reminders.md`), and the training screen
 uses it.
