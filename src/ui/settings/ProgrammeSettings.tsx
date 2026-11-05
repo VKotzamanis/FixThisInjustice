@@ -1,6 +1,7 @@
 import { useMemo, useState, type JSX } from 'react';
 import { displayClass } from '../format/display';
 import { useCopy } from '../../content/useCopy';
+import { rotationOn } from '../../domain/plan/engine';
 import { generatePlan } from '../../domain/plan/generator';
 import {
   SESSIONS_PER_WEEK_CHOICES,
@@ -53,6 +54,23 @@ export function ProgrammeSettings(props: { profile: Profile }): JSX.Element {
           ))}
         </select>
       </div>
+      {/* Accessory rotation (docs/design/programme-engine.md, engine-accessory-rotation): a
+          profile field, written at once like Equipment. The runway is re-derived in the same tap,
+          so only the untouched future cycles change (engine.ts ensureRunway; started and logged
+          sessions are frozen). Absent on an older profile = on (engine.ts rotationOn). */}
+      <label className="view-inline">
+        <input
+          type="checkbox"
+          checked={rotationOn(profile)}
+          onChange={(e) => {
+            const store = useAppStore.getState();
+            store.updateProfile(profile.id, { rotateAccessories: e.target.checked });
+            if (plan !== null) store.ensureRunway(profile.id, Date.now()); // [ms] epoch, UTC
+          }}
+        />
+        {t('label.rotateAccessories')}
+      </label>
+      <p className="view-note">{t('advice.rotateAccessories')}</p>
       {/* Keyed by the plan, so a restart reseeds the local choices from the plan it stored. */}
       {plan !== null && (
         <PlanChoices key={plan.id} profile={profile} plan={plan} availability={availability} />

@@ -792,7 +792,10 @@ export type CopyKey =
   | 'advice.programmeRestart'
   | 'advice.programmeLockedInSession'
   | 'button.startNextProgramme'
-  | 'advice.targetReachedMaintenance';
+  | 'advice.targetReachedMaintenance'
+  // --- accessory rotation switch (docs/design/programme-engine.md, engine-accessory-rotation) ---
+  | 'label.rotateAccessories'
+  | 'advice.rotateAccessories';
 
 
 export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
@@ -2268,6 +2271,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // direction) preselected Maintenance. The user can still pick another goal.
   'advice.targetReachedMaintenance':
     'Target body mass reached, so the next programme defaults to maintenance.',
+  // --- accessory rotation switch (docs/design/programme-engine.md, engine-accessory-rotation) ---
+  // Settings, Programme group. Describes what the engine does; no health claim (no source shows
+  // that repeating exercises causes a plateau).
+  'label.rotateAccessories': 'Rotate Accessory Exercises Each Block',
+  'advice.rotateAccessories':
+    'Alternates accessories with a same-muscle alternative each block. Main lifts stay.',
 };
 
 /**
