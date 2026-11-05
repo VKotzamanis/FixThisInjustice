@@ -3,7 +3,7 @@
 // The Log view: what has actually happened, in four readings.
 //
 //   Body mass    the measured series against the projection the nutrition engine expects
-//   Compliance   one row per ISO week since the programme started, one cell per training day
+//   Compliance   one row per ISO week since the programme started, one cell per day (D06)
 //   Best reps    a weekly AMRAP sparkline per bodyweight exercise the log mentions
 //   Records      the heaviest set and the best Epley estimate per exercise
 //
@@ -23,14 +23,13 @@ import { FORMAT } from '../../content/copy';
 import { useCopy } from '../../content/useCopy';
 import { addDays, compareLocalDate, daysBetween, weekStart } from '../../domain/dates';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
+import { complianceWeek, type ComplianceWeek } from '../../domain/schedule/compliance';
 import { finalProgrammeWeek } from '../../domain/schedule/weekly';
 import type {
   BodyMassEntry,
   Exercise,
-  IsoWeekday,
   LocalDate,
   LoggedSet,
-  SessionAssignment,
 } from '../../domain/types';
 import { formatMass } from '../../domain/units';
 import { useAppStore } from '../../store';
@@ -54,7 +53,6 @@ const MAX_WEEKS_SHOWN = 26;
 const MIN_HORIZON_DAYS = 7;
 
 /** Stable empty values, so a profile with no history does not hand a new array down each render. */
-const NO_ASSIGNMENTS: readonly SessionAssignment[] = [];
 const NO_BODY_MASS: readonly BodyMassEntry[] = [];
 
 /**
@@ -89,12 +87,14 @@ export function LogView(): ReactElement {
   const bodyMass = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.bodyMass[s.activeProfileId] ?? null),
   );
-  const assignments = useAppStore((s) =>
-    s.activeProfileId === null ? null : (s.assignments[s.activeProfileId] ?? null),
-  );
-  const availability = useAppStore((s) =>
-    s.activeProfileId === null ? null : (s.availability[s.activeProfileId] ?? null),
-  );
+  // D06: the schedule slices the grid is derived from, each the stored object itself (stable
+  // identity between unrelated updates, so the memo below recomputes only on a schedule change).
+  const availabilityMap = useAppStore((s) => s.availability);
+  const cursorMap = useAppStore((s) => s.cursors);
+  const plans = useAppStore((s) => s.plans);
+  const pauses = useAppStore((s) => s.pauses);
+  const assignmentMap = useAppStore((s) => s.assignments);
+  const weeklyReviews = useAppStore((s) => s.weeklyReviews);
   const customExercises = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.customExercises[s.activeProfileId] ?? null),
   );
@@ -131,11 +131,18 @@ export function LogView(): ReactElement {
     return weeksBetween(startedOn, last);
   }, [startedOn, finalWeek, today]);
 
-  const slotWeekdays = useMemo<IsoWeekday[]>(() => {
-    const seen = new Set<IsoWeekday>();
-    for (const slot of availability?.slots ?? []) seen.add(slot.weekday);
-    return [...seen].sort((a, b) => a - b);
-  }, [availability]);
+  const complianceWeeks = useMemo<ComplianceWeek[]>(() => {
+    if (profileId === null) return [];
+    const source = {
+      availability: availabilityMap,
+      cursors: cursorMap,
+      plans,
+      pauses,
+      assignments: assignmentMap,
+      weeklyReviews,
+    };
+    return weekStarts.map((monday) => complianceWeek(source, profileId, monday, today));
+  }, [availabilityMap, cursorMap, plans, pauses, assignmentMap, weeklyReviews, profileId, weekStarts, today]);
 
   // One sparkline per bodyweight exercise the log actually mentions, named order so the
   // sections do not reshuffle when a set is added.
@@ -196,13 +203,7 @@ export function LogView(): ReactElement {
       </details>
 
       <h3>{t('hero.compliance')}</h3>
-      <ComplianceGrid
-        assignments={assignments ?? NO_ASSIGNMENTS}
-        weekStarts={weekStarts}
-        slotWeekdays={slotWeekdays}
-        today={today}
-        weeklySessionTarget={availability?.weeklySessionTarget ?? 0} // [sessions/week]
-      />
+      <ComplianceGrid weeks={complianceWeeks} />
 
       {bodyweightExercises.length > 0 && (
         <>

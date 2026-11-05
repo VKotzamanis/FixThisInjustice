@@ -434,6 +434,8 @@ export type CopyKey =
   | 'status.markMissed'
   | 'status.markPlanned'
   | 'status.markNotPlanned'
+  | 'status.markPostponed'
+  | 'status.markOutsideProgramme'
   | 'status.noEstimated1RM'
   | 'status.estimated1RM'
   | 'status.complianceWeek'
@@ -1363,6 +1365,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.markMissed': 'Missed',
   'status.markPlanned': 'Planned',
   'status.markNotPlanned': 'Not planned',
+  // D06: Skip Today handed the day back (spec R2); a day outside the programme's span.
+  'status.markPostponed': 'Postponed',
+  'status.markOutsideProgramme': 'Outside the programme',
   // Shown where the Epley equation has no defensible input: no external load, or no set
   // inside its validity domain of ten repetitions.
   'status.noEstimated1RM': 'No estimated 1RM',
