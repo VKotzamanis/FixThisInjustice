@@ -3,7 +3,10 @@ import { startUpdateController, type RegisterOptions, type UpdateControllerDeps 
 import { UPDATE_POLL_INTERVAL_MS } from './updatePolicy';
 
 /** A page whose visibility the test sets, and whose events the test dispatches. */
-function harness(initial: { sessionOpen?: boolean; ready?: boolean } = {}) {
+function harness(initial: { sessionOpen?: boolean; ready?: boolean; controller?: object | null } = {}) {
+  /** navigator.serviceWorker: `controller` is the worker controlling this page, or null. */
+  const sw = new EventTarget() as EventTarget & { controller: object | null };
+  sw.controller = initial.controller === undefined ? { id: 'v1' } : initial.controller;
   const doc = new EventTarget() as EventTarget & { visibilityState: DocumentVisibilityState };
   doc.visibilityState = 'visible';
   let sessionOpen = initial.sessionOpen ?? false;
@@ -28,6 +31,7 @@ function harness(initial: { sessionOpen?: boolean; ready?: boolean } = {}) {
     },
     doc,
     win: window,
+    sw,
   } satisfies UpdateControllerDeps;
   const controller = startUpdateController(deps);
   const opts = (): RegisterOptions => {
@@ -47,6 +51,11 @@ function harness(initial: { sessionOpen?: boolean; ready?: boolean } = {}) {
     },
     newWorkerTookControl: () => {
       opts().onNeedReload();
+    },
+    /** A worker takes control of this page (claim on first install, or an applied update). */
+    controllerChange: (id: string) => {
+      sw.controller = { id };
+      sw.dispatchEvent(new Event('controllerchange'));
     },
     setVisibility: (v: DocumentVisibilityState) => {
       doc.visibilityState = v;
@@ -194,6 +203,46 @@ describe('another window applied the update (audit E01: both windows reloaded)',
     h.setSession(false); // Finish tapped: the user is still on the page
     expect(h.deps.reload).not.toHaveBeenCalled();
     h.setVisibility('hidden');
+    expect(h.deps.reload).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('first launch after install (controllerchange)', () => {
+  it('does not reload when clients.claim() adopts the install page (no controller before)', () => {
+    h = harness({ controller: null });
+    h.controllerChange('v1');
+    expect(h.deps.reload).not.toHaveBeenCalled();
+    expect(h.deps.showBanner).not.toHaveBeenCalled();
+  });
+
+  it('reloads the install page when an update takes control and no session is open', () => {
+    h = harness({ controller: null });
+    h.controllerChange('v1'); // claim
+    h.waiting();
+    expect(h.applyUpdate).toHaveBeenCalledWith(true);
+    // workbox-window reports this `controlling` with isUpdate false on the install page, so
+    // vite-plugin-pwa never calls onNeedReload: only controllerchange can apply it now.
+    h.controllerChange('v2');
+    expect(h.deps.flush).toHaveBeenCalled();
+    expect(h.deps.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('never reloads mid-session: banner instead, reload once the session closes and the page hides', () => {
+    h = harness({ controller: null, sessionOpen: true });
+    h.controllerChange('v1');
+    h.tap();
+    h.controllerChange('v2');
+    expect(h.deps.reload).not.toHaveBeenCalled();
+    expect(h.deps.showBanner).toHaveBeenCalledTimes(1);
+    h.setSession(false);
+    h.setVisibility('hidden');
+    expect(h.deps.reload).toHaveBeenCalledTimes(1);
+  });
+
+  it('reloads once when onNeedReload and controllerchange both report the same takeover', () => {
+    h = harness();
+    h.newWorkerTookControl();
+    h.controllerChange('v2');
     expect(h.deps.reload).toHaveBeenCalledTimes(1);
   });
 });

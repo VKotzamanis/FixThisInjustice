@@ -14,6 +14,12 @@
 //  - ANOTHER WINDOW APPLIED IT. vite-plugin-pwa reloads every window when the new worker takes
 //    control. `onNeedReload` intercepts that: a window with a session open shows the banner and
 //    reloads only on the tap (or when it is next hidden or untouched with the session closed).
+//  - FIRST LAUNCH. On the page that installed the worker, workbox-window fixes isUpdate = false
+//    (no controller at registration), so vite-plugin-pwa never calls onNeedReload and an update
+//    applied there left the old code running until the next launch. The controller therefore
+//    also listens to `controllerchange` itself and treats a worker REPLACING another exactly like
+//    onNeedReload: reload at once with no session open, banner mid-session. A change from no
+//    controller (clients.claim() adopting the install page, E09) is not an update: no reload.
 //
 // Every browser API arrives through `deps`, so updateController.test.ts drives it in jsdom.
 import { decideUpdate, UPDATE_POLL_INTERVAL_MS, type UpdateDecision } from './updatePolicy';
@@ -41,6 +47,12 @@ export interface UpdateControllerDeps {
   subscribeStore: (listener: () => void) => () => void;
   doc: Pick<Document, 'visibilityState' | 'addEventListener' | 'removeEventListener'>;
   win: Pick<Window, 'addEventListener' | 'removeEventListener' | 'setInterval' | 'clearInterval'>;
+  /** navigator.serviceWorker; absent where the browser has none. */
+  sw?: {
+    readonly controller: object | null;
+    addEventListener(type: 'controllerchange', listener: () => void): void;
+    removeEventListener(type: 'controllerchange', listener: () => void): void;
+  } | undefined;
 }
 
 export interface UpdateController {
@@ -53,6 +65,8 @@ export function startUpdateController(deps: UpdateControllerDeps): UpdateControl
   let waiting = false; // a new worker is installed and waiting
   let controlledByNew = false; // the new worker already controls this page (another window applied)
   let applying = false;
+  let reloading = false;
+  let controller: object | null = deps.sw?.controller ?? null;
   let interacted = false;
   let decision: UpdateDecision | null = null;
   let registration: ServiceWorkerRegistration | undefined;
@@ -64,6 +78,24 @@ export function startUpdateController(deps: UpdateControllerDeps): UpdateControl
   const check = (): void => {
     // update() rejects offline or on a fetch error; the next visible/interval tick tries again.
     registration?.update().catch(() => undefined);
+  };
+
+  const reloadNow = (): void => {
+    if (reloading) return;
+    reloading = true;
+    deps.flush();
+    deps.reload();
+  };
+
+  /** A new worker controls this page (this window applied it, another window did, or first launch). */
+  const newWorkerInControl = (): void => {
+    if (reloading || controlledByNew) return;
+    if (applying || !deps.isSessionOpen()) {
+      reloadNow();
+      return;
+    }
+    controlledByNew = true;
+    deps.showBanner(reloadNow);
   };
 
   const apply = (): void => {
@@ -78,10 +110,7 @@ export function startUpdateController(deps: UpdateControllerDeps): UpdateControl
     if (!deps.ready()) return;
     if (controlledByNew) {
       // The page runs the old code under the new worker: reload at the first safe moment.
-      if (!deps.isSessionOpen() && (hidden() || !interacted)) {
-        deps.flush();
-        deps.reload();
-      }
+      if (!deps.isSessionOpen() && (hidden() || !interacted)) reloadNow();
       return;
     }
     if (!waiting) return;
@@ -96,19 +125,8 @@ export function startUpdateController(deps: UpdateControllerDeps): UpdateControl
       waiting = true;
       evaluate();
     },
-    onNeedReload: () => {
-      // This window asked for the update (apply above) or another window did.
-      if (applying || !deps.isSessionOpen()) {
-        deps.flush();
-        deps.reload();
-        return;
-      }
-      controlledByNew = true;
-      deps.showBanner(() => {
-        deps.flush();
-        deps.reload();
-      });
-    },
+    // This window asked for the update (apply above) or another window did.
+    onNeedReload: newWorkerInControl,
     onRegisteredSW: (_url, reg) => {
       registration = reg;
       poll = deps.win.setInterval(() => {
@@ -129,7 +147,14 @@ export function startUpdateController(deps: UpdateControllerDeps): UpdateControl
     check();
     evaluate();
   };
+  const onControllerChange = (): void => {
+    const previous = controller;
+    controller = deps.sw?.controller ?? null;
+    if (previous === null) return; // claim() adopting an uncontrolled page: same code, no update
+    newWorkerInControl();
+  };
   const unsubscribe = deps.subscribeStore(evaluate);
+  deps.sw?.addEventListener('controllerchange', onControllerChange);
 
   deps.win.addEventListener('pointerdown', onInteract, { capture: true, passive: true });
   deps.win.addEventListener('keydown', onInteract, { capture: true, passive: true });
@@ -143,6 +168,7 @@ export function startUpdateController(deps: UpdateControllerDeps): UpdateControl
       deps.win.removeEventListener('pointerdown', onInteract, { capture: true });
       deps.win.removeEventListener('keydown', onInteract, { capture: true });
       deps.doc.removeEventListener('visibilitychange', onVisibility);
+      deps.sw?.removeEventListener('controllerchange', onControllerChange);
     },
   };
 }

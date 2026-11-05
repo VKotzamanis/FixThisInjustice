@@ -68,6 +68,7 @@ startUpdateController({
   subscribeStore: (listener) => useAppStore.subscribe(listener),
   doc: document,
   win: window,
+  sw: 'serviceWorker' in navigator ? navigator.serviceWorker : undefined,
 });
 
 /*
