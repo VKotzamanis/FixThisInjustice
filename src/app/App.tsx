@@ -44,6 +44,7 @@ import { TrainView } from '../ui/views/TrainView';
 import { downloadText } from './download';
 import { LoadRecovery } from './LoadRecovery';
 import { useWeeklyClose } from './useWeeklyClose';
+import { useStorageEstimate } from './useStorageEstimate';
 import { ReminderSync } from './ReminderSync';
 import { UpdatePrompt } from './UpdatePrompt';
 import { StaleSessionNotice } from './StaleSessionNotice';
@@ -379,6 +380,27 @@ function LoadErrorBanner(): ReactElement | null {
   );
 }
 
+/** Audit B05: the origin is near its storage quota; the in-memory export is the backup. */
+function StorageNearlyFullBanner(): ReactElement | null {
+  const nearlyFull = useAppStore((s) => s.status.storageNearlyFull === true);
+  const t = useCopy();
+  if (!nearlyFull) return null;
+  return (
+    <div className="banner" role="status">
+      <span className="banner-tag">{t('banner.storageNearlyFull.tag')}</span>
+      <span>{t('banner.storageNearlyFull.body')}</span>
+      <button
+        type="button"
+        onClick={() => {
+          downloadText('fixthisinjustice-export.json', useAppStore.getState().exportJson());
+        }}
+      >
+        {t('button.exportData')}
+      </button>
+    </div>
+  );
+}
+
 /**
  * One icon per view, for the marquee item TopbarTicker builds from `VIEW_INSTRUCTIONS`.
  *
@@ -550,6 +572,7 @@ export function App(): ReactElement {
    * stable, and it is a no-op until a profile exists.
    */
   useWeeklyClose();
+  useStorageEstimate();
   const profile = useActiveProfile();
   // Audit B01: a refused or unreadable document replaces intro, boot, setup and the views.
   const loadError = useLoadError();
@@ -622,6 +645,7 @@ export function App(): ReactElement {
               <UpdatePrompt />
               <SaveErrorBanner />
               <LoadErrorBanner />
+              <StorageNearlyFullBanner />
 
               {/*
                * The intro sequence (P10 Brief C), AHEAD of the boot sequence below. A fixed

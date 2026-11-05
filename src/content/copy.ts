@@ -43,6 +43,8 @@ export type CopyKey =
   | 'banner.saveUnavailable.body'
   | 'banner.saveFailed.tag'
   | 'banner.saveFailed.body'
+  | 'banner.storageNearlyFull.tag'
+  | 'banner.storageNearlyFull.body'
   | 'banner.loadInvalid.tag'
   | 'banner.loadInvalid.body'
   | 'button.exportData'
@@ -703,6 +705,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'banner.saveUnavailable.body': 'Storage is unavailable here. Export now.',
   'banner.saveFailed.tag': 'SAVE FAILED',
   'banner.saveFailed.body': 'The change could not be saved. The stored copy is unchanged.',
+  // Audit B05: warned before the quota is reached.
+  'banner.storageNearlyFull.tag': 'STORAGE NEARLY FULL',
+  'banner.storageNearlyFull.body': 'Storage is nearly full. Export a backup now.',
   'banner.loadInvalid.tag': 'INVALID DATA',
   // The validation reason is the only value in it, so the row carries the slot rather than an
   // example of one: FORMAT.loadInvalid READS this key (P9 Task 15), which is what lets a skin

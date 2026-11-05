@@ -72,6 +72,7 @@ import type { QuarantinedRecord } from './db/assemble';
 import type { RecordBackend } from './db/backend';
 import { EMPTY_PRESERVED, encodeOps, type Preserved, type Repair } from './db/preserve';
 import { diffStates, isEmptyOps, mergeOps, splitState, type RecordOps } from './db/records';
+import { nearQuota, readStorageEstimate, type StorageReading } from './db/quota';
 
 export type SaveErrorReason = SaveFailure;
 
@@ -141,6 +142,8 @@ export interface StoreStatus {
    * Not persisted; optional for the same reason as above.
    */
   externalWriteReplaced?: boolean | undefined;
+  /** Audit B05: the origin's storage is at or above STORAGE_WARN_RATIO of its quota. */
+  storageNearlyFull?: boolean | undefined;
 }
 
 /**
@@ -1240,6 +1243,15 @@ export async function whenPersisted(): Promise<void> {
     await chain;
     if (engine !== e || (e.chain === chain && !e.flushScheduled)) return;
   }
+}
+
+/** Audit B05: reads the storage estimate and records whether the origin is near its quota. */
+export async function checkStorageEstimate(
+  read: () => Promise<StorageReading | null> = readStorageEstimate,
+): Promise<void> {
+  const near = nearQuota(await read());
+  if ((useAppStore.getState().status.storageNearlyFull ?? false) === near) return;
+  useAppStore.setState((s) => ({ status: { ...s.status, storageNearlyFull: near } }));
 }
 
 /**
