@@ -4,6 +4,7 @@
 // Programme (ROADMAP L5, B1b; docs/design/programme-lifecycle.md).
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useAppStore } from './index';
+import { referencedPlans } from './programme';
 import { importJson as parseDocument } from './persistence';
 import { EXERCISES } from '../domain/plan/library';
 import { generatePlan } from '../domain/plan/generator';
@@ -103,8 +104,9 @@ describe('restartProgramme', () => {
     expect(sameProgramme(after, expected)).toBe(true);
     expect(sameProgramme(after, before)).toBe(false);
     expect(after.weeks).toBe(12); // [weeks]
-    // History stays: the replaced plan, the sets, the body mass.
-    expect(s.plans[before.id]).toBeDefined();
+    // History stays: the sets and the body mass. The replaced plan goes: no set or assignment
+    // names one of its sessions (SET.sessionId is 'any'), so nothing needs it (audit D14).
+    expect(s.plans[before.id]).toBeUndefined();
     expect(s.sets).toEqual({ [SET.id]: SET });
     expect(s.bodyMass['p1']).toEqual([WEIGH_IN]);
     const parsed = parseDocument(s.exportJson());
@@ -166,5 +168,46 @@ describe('restartProgramme', () => {
     expect(() => {
       useAppStore.getState().restartProgramme('p1', {}, '2026-10-14');
     }).toThrow(/no programme/);
+  });
+});
+
+describe('referencedPlans (audit D14)', () => {
+  it('keeps the cursor plan and any plan a set or an assignment names a session of, drops the rest', () => {
+    const plan = (id: string, sessionId: string): PlanTemplate => ({
+      id,
+      version: 1,
+      name: id,
+      sessionsPerWeek: 1, // [sessions/week]
+      weeks: 1, // [weeks]
+      sessions: [{ id: sessionId, ordinal: 1, name: 'A', kind: 'lift', label: 'A', exercises: [] }],
+      blocks: [],
+    });
+    const s = {
+      ...useAppStore.getState(),
+      plans: {
+        current: plan('current', 's-current'),
+        logged: plan('logged', 's-logged'),
+        assigned: plan('assigned', 's-assigned'),
+        orphan: plan('orphan', 's-orphan'),
+      },
+      cursors: { p1: { planId: 'current', nextSessionIndex: 0, startedOn: '2026-09-07', completedOn: null } },
+      sets: { [SET.id]: { ...SET, sessionId: 's-logged' } },
+      assignments: {
+        p1: [
+          {
+            date: '2026-09-07',
+            sessionId: 's-assigned',
+            sourceIndex: 0,
+            status: 'completed' as const,
+            startedAt: 1, // [ms]
+            completedAt: 2, // [ms]
+            skipReason: null,
+          },
+        ],
+      },
+    };
+    expect(Object.keys(referencedPlans(s)).sort()).toEqual(['assigned', 'current', 'logged']);
+    const kept = { ...s, plans: { current: s.plans.current } };
+    expect(referencedPlans(kept)).toBe(kept.plans);
   });
 });

@@ -436,7 +436,7 @@ describe('setPlan', () => {
     expectDocumentConsistent();
   });
 
-  it('resets the cursor onto the new plan and keeps the plan it replaced', () => {
+  it('resets the cursor onto the new plan and keeps a replaced plan its logged sets point into', () => {
     useAppStore.getState().createProfile(profile());
     useAppStore.getState().setPlan('p1', planTemplate(), '2026-09-07');
     const started = useAppStore.getState().cursors['p1'];
@@ -448,6 +448,9 @@ describe('setPlan', () => {
         cursors: { ...s.cursors, p1: { ...started, nextSessionIndex: 5 } },
       }));
     }
+    // A set logged under the first plan is what makes it history worth keeping (audit D14).
+    const loggedUnder = useAppStore.getState().plans[first]?.sessions[0]?.id ?? '';
+    useAppStore.setState({ sets: { 'set-old': loggedSet({ id: 'set-old', sessionId: loggedUnder }) } });
 
     useAppStore.getState().setPlan('p1', replacementTemplate(), '2026-10-05');
 
@@ -939,16 +942,16 @@ describe('useActivePlan', () => {
     expect(result.current?.id).toBe(useAppStore.getState().cursors['p1']?.planId);
   });
 
-  it("returns the cursor's plan while the plans it replaced are still stored", () => {
+  it("returns the cursor's plan after the plans it replaced were pruned", () => {
     useAppStore.getState().createProfile(profile());
     useAppStore.getState().setPlan('p1', planTemplate(), '2026-09-07');
     useAppStore.getState().setPlan('p1', replacementTemplate(), '2026-10-05');
     useAppStore.getState().setPlan('p1', planTemplate({ name: 'Full body' }), '2026-11-02');
 
-    // Three records in `plans`, one of them current. Nothing here searches the
-    // map: the cursor is what makes the answer unambiguous.
+    // Nothing was logged under the two replaced plans, so they were pruned (audit D14); the
+    // cursor alone still makes the answer unambiguous.
     const { result } = renderHook(() => useActivePlan());
-    expect(Object.keys(useAppStore.getState().plans).length).toBe(3);
+    expect(Object.keys(useAppStore.getState().plans).length).toBe(1);
     expect(result.current?.name).toBe('Full body');
     expect(result.current?.id).toBe(useAppStore.getState().cursors['p1']?.planId);
   });

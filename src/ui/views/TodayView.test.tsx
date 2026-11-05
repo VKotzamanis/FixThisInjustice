@@ -1114,7 +1114,7 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
     ).toBeNull();
   });
 
-  it('starts the next programme today on the current goal, keeping the old plan', () => {
+  it('starts the next programme today on the current goal, pruning the old plan nothing points into', () => {
     finished();
     render(<TodayView />);
     fireEvent.click(button('button.startNextProgramme'));
@@ -1134,7 +1134,7 @@ describe('TodayView: after Programme Complete (B1b, L7)', () => {
       completedOn: null,
     });
     expect(s.cursors[PROFILE_ID]?.planId).not.toBe('plan-1');
-    expect(s.plans['plan-1']).toBeDefined();
+    expect(s.plans['plan-1']).toBeUndefined(); // nothing was logged under it: pruned (audit D14)
     expect(s.profiles[PROFILE_ID]?.goal.kind).toBe('recomposition');
     expect(screen.queryByText(copyFor('limelight', 'hero.programmeComplete'))).toBeNull();
   });
