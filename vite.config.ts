@@ -2,35 +2,20 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { cspPlugin } from './build/cspPlugin.ts';
+import { buildInfoPlugin } from './build/buildInfo.ts';
+import { shippedSfx } from './build/sfxManifest.ts';
 
-/*
- * The build date, as YYYY-MM-DD in UTC.
- *
- * The brief's own snippet reads `new Date().toISOString().slice(0, 10)`, which is the same
- * value this expression computes, but eslint.config.js's `no-restricted-syntax` bans
- * `toISOString()` everywhere outside src/domain/dates.ts (it converts to UTC and silently
- * shifts a CIVIL date, master plan section 3): a real rule for a user's own local date, and one
- * this build timestamp does not need to get past, since a build has no time zone to respect.
- * Computed by hand instead, byte-for-byte the same string, so the ban stays whole rather than
- * gaining an exception for a config file.
- */
-const buildDate = new Date();
-const BUILD_DATE_ISO = [
-  buildDate.getUTCFullYear(),
-  String(buildDate.getUTCMonth() + 1).padStart(2, '0'),
-  String(buildDate.getUTCDate()).padStart(2, '0'),
-].join('-');
 
 export default defineConfig({
   // GitHub Pages project site: https://<user>.github.io/FixThisInjustice/
   base: '/FixThisInjustice/',
-  // The three constants src/ui/components/SiteFooter.tsx reads (P10 Brief D), declared in
-  // src/config/build.d.ts. Each is a literal string substitution, never a runtime env read, so
-  // the footer needs no fetch and no build step of its own to know its own version.
+  // The package version SiteFooter reads (declared in src/config/build.d.ts). The commit and the
+  // build date are NOT compiled in (audit E06): they change on every commit and would rehash the
+  // main chunk; build/buildInfo.ts writes them to dist/build-info.json instead.
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
-    __BUILD_COMMIT__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
-    __BUILD_DATE__: JSON.stringify(BUILD_DATE_ISO),
+    // Audit E15: the sound files that ship; the player fetches nothing else.
+    __SFX_FILES__: JSON.stringify(shippedSfx(`${process.cwd()}/public`)),
   },
   build: {
     // The CSP is `font-src 'self'` (master plan section 3). Vite's default
@@ -42,6 +27,7 @@ export default defineConfig({
   plugins: [
     react(),
     cspPlugin(),
+    buildInfoPlugin(),
     VitePWA({
       // Hand-written service worker, Workbox-precached (security constraint 23:
       // do not hand-roll caching; the legacy sw.js is dropped per the port table).
@@ -60,6 +46,14 @@ export default defineConfig({
         name: 'FixThisInjustice',
         short_name: 'FTI',
         description: 'Offline training companion. All data stays on this device.',
+        /*
+         * Audit E15: identity pinned to today's start_url. Without `id` the browser keys the
+         * installed app on start_url, so changing start_url would install a second app. MDN,
+         * manifest `id` (read 2026-11-04): "If id is not specified ... the start_url value is
+         * used"; a relative id is resolved against start_url's origin, so this is the same
+         * identity installed apps already have.
+         */
+        id: '/FixThisInjustice/',
         start_url: '/FixThisInjustice/',
         scope: '/FixThisInjustice/',
         display: 'standalone',
@@ -95,6 +89,12 @@ export default defineConfig({
            * text (a profile name, a capsule note) is not what a precache is sized
            * for - a subset absent from the precache still LOADS over the network
            * when a page asks for it, because the file is still in dist.
+           *
+           * Decision E15 (2026-11-04): kept out. Precaching latin-ext would add 86,240 B and
+           * vietnamese 34,464 B [B, measured woff2] to every install and every font update, for
+           * one case: user-typed text with Central European or Vietnamese letters, opened
+           * OFFLINE before the subset was ever fetched online. That text still renders, in the
+           * system face. Rejected: precache both (cost on every install for a rare glyph case).
            */
           '**/archivo-latin-ext-*',
           '**/archivo-vietnamese-*',

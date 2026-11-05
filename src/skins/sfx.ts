@@ -37,8 +37,16 @@ export const SFX_NAMES: readonly SfxName[] = [
  * are fetched on the first unlock rather than riding in the app shell.
  */
 export function sfxUrl(skin: SkinId, name: SfxName): string {
-  return `${import.meta.env.BASE_URL}sfx/${skin}/${name}.m4a`;
+  return `${import.meta.env.BASE_URL}sfx/${sfxRelativePath(skin, name)}`;
 }
+
+/** The file's path under public/sfx; the one form the URL and the shipped list share (rule 2). */
+export function sfxRelativePath(skin: SkinId, name: SfxName): string {
+  return `${skin}/${name}.m4a`;
+}
+
+/** Audit E15: the files the build found under public/sfx (build/sfxManifest.ts). */
+const SHIPPED_SFX: ReadonlySet<string> = new Set(__SFX_FILES__);
 
 /** The whole map for one skin: every moment keyed by name, pointing at its asset path. */
 export function sfxMap(skin: SkinId): Readonly<Record<SfxName, string>> {
@@ -90,6 +98,11 @@ export interface SfxDeps {
   context(): SfxContext | null;
   fetchAudio(url: string): Promise<ArrayBuffer>;
   isVisible(): boolean;
+  /**
+   * Audit E15: does a file ship for this moment? Absent means "assume it does" (tests). The app
+   * passes the build's list, so an install with no sounds asks the network for none.
+   */
+  shipped?: (skin: SkinId, name: SfxName) => boolean;
 }
 
 export interface SfxPlayer {
@@ -111,6 +124,7 @@ export function createSfxPlayer(deps: SfxDeps): SfxPlayer {
     const urls = sfxMap(skin);
     const next = new Map<SfxName, SfxBuffer>();
     for (const name of SFX_NAMES) {
+      if (deps.shipped !== undefined && !deps.shipped(skin, name)) continue;
       try {
         const data = await deps.fetchAudio(urls[name]);
         next.set(name, await context.decodeAudioData(data));
@@ -256,6 +270,7 @@ export const sfxPlayer: SfxPlayer = createSfxPlayer({
   enabled: () => useAppStore.getState().ui.sounds,
   context: () => getAudioContext(),
   isVisible: () => document.visibilityState === 'visible',
+  shipped: (skin: SkinId, name: SfxName) => SHIPPED_SFX.has(sfxRelativePath(skin, name)),
   fetchAudio: async (url: string): Promise<ArrayBuffer> => {
     const response = await fetch(url);
     if (!response.ok) throw new Error(`sfx ${url}: HTTP ${response.status}`);

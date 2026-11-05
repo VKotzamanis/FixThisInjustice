@@ -373,6 +373,10 @@ export type CopyKey =
   | 'advice.fileUnreadable'
   | 'hero.dataOnDevice'
   | 'advice.dataOnDevice'
+  | 'status.storagePersistent'
+  | 'status.storageBestEffort'
+  | 'status.storageUnknown'
+  | 'button.requestStorage'
   | 'button.wipeAll'
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
   | 'hero.atlas'
@@ -561,6 +565,7 @@ export type CopyKey =
   // --- typed confirmation shell, shared by every destructive action (P7 Task 3 review) ---
   | 'advice.exportBeforeConfirm'
   | 'status.exportTaken'
+  | 'label.backupSaved'
   // --- reminders and Home Screen install (P5 Task 8; appended by that task) ---
   | 'hero.reminders'
   | 'label.remindersEnable'
@@ -1331,6 +1336,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.fileUnreadable': 'The file could not be read.',
   'hero.dataOnDevice': 'Data on This Device',
   'advice.dataOnDevice': 'Everything stays on this device. No account.',
+  // Spec R8 / audit B09: the browser's answer to navigator.storage.persist(), in Settings > Data.
+  // Meanings from MDN "Storage quotas and eviction criteria" (read 2026-11-04).
+  'status.storagePersistent': 'This browser keeps the app data until you delete it.',
+  'status.storageBestEffort': 'This browser may clear the app data when space runs low. Keep a backup.',
+  'status.storageUnknown': 'This browser does not say whether it keeps the app data.',
+  'button.requestStorage': 'Request Persistence',
   'button.wipeAll': 'Wipe All Data',
 
   // --- boot, atlas, capsule, spotlight, transitions (P8) ---
@@ -1637,6 +1648,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // owns that sentence, so the label and the compared word cannot say different things.
   'advice.exportBeforeConfirm': 'Download the backup before confirming.',
   'status.exportTaken': 'Backup downloaded.',
+  // Audit B07: the user's own word that the downloaded backup exists (ConfirmDestructive).
+  'label.backupSaved': 'I Have the Backup File',
   // --- reminders and Home Screen install (P5 Task 8) ---
   'hero.reminders': 'Reminders',
   'label.remindersEnable': 'Enable Reminders',
@@ -2023,8 +2036,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Quiet, and rendered once at the foot of the app shell, from every view. The repository URL,
   // the version, the build commit and the build date are never copy strings (copy.test.ts bans
   // a URL in one, and the other three are compiled constants, not wording a skin retunes): they
-  // are read in src/ui/components/SiteFooter.tsx from `__APP_VERSION__`, `__BUILD_COMMIT__` and
-  // `__BUILD_DATE__` (src/config/build.d.ts), and filled into the two slots below through
+  // are read in src/ui/components/SiteFooter.tsx from `__APP_VERSION__` and
+  // dist/build-info.json (src/app/buildInfo.ts), and filled into the two slots below through
   // FORMAT.footerVersion and FORMAT.footerUpdated.
   'footer.builtBy': 'Built by V. Kotzamanis.',
   'footer.repository': 'Repository',
@@ -3151,8 +3164,8 @@ export const FORMAT = {
   // --- the site footer (P10 Brief D) ---
 
   /**
-   * "Version 3.0.0. Build a1b2c3d." `version` and `commit` are the two build-time constants
-   * vite.config.ts's `define` block injects (`__APP_VERSION__`, `__BUILD_COMMIT__`), read once
+   * "Version 3.0.0. Build a1b2c3d." `version` and `commit` are `__APP_VERSION__` and the commit
+   * from dist/build-info.json, read once
    * in src/ui/components/SiteFooter.tsx. Neither is a number the domain computed, so neither is
    * validated here: an unset commit renders 'local' because that is the literal fallback the
    * define block itself supplies, not a state this frame decides.
@@ -3166,7 +3179,7 @@ export const FORMAT = {
       .replace('{version}', () => version)
       .replace('{commit}', () => commit),
 
-  /** "Last updated 2026-09-04." `date` is `__BUILD_DATE__`, an ISO calendar date (YYYY-MM-DD). */
+  /** "Last updated 2026-09-04." `date` is build-info.json's `date`, an ISO calendar date (YYYY-MM-DD). */
   footerUpdated: (date: string, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('footer.updated', overrides).replace('{date}', () => date),
 

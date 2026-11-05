@@ -55,6 +55,17 @@ self.addEventListener('message', (e: ExtendableMessageEvent) => {
   if (Reflect.get(data, 'type') === 'SKIP_WAITING') void self.skipWaiting();
 });
 
+/*
+ * Audit E09: without claim, the page that installed the worker stays uncontrolled for its whole
+ * life (`navigator.serviceWorker.controller === null` was reproduced), so the first session after
+ * install fetched every lazy chunk from the network. Claiming does not change WHEN an update
+ * applies: a new worker still waits for SKIP_WAITING (src/app/UpdatePrompt.tsx), and claim()
+ * only adopts pages that have no controller.
+ */
+self.addEventListener('activate', (event: ExtendableEvent) => {
+  event.waitUntil(self.clients.claim());
+});
+
 // ---- Web Push (P5) ---------------------------------------------------------
 /*
  * The Worker sends { title, body, tag, url } (master plan section 6.6). Every

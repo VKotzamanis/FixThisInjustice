@@ -1,4 +1,8 @@
-# Publishes dist/ only from a successful CI run on main.
+# Publishes the dist/ that CI built and tested, only for a push to main of this repository, only
+# while that commit is still main's HEAD (or on a deliberate re-run), and only when the published
+# bytes would change. Audit E06, E07, E08, E15. workflow_run accepts only `branches` filters (no
+# `paths`), so the docs-only skip is decided by content: scripts/dist-fingerprint.sh in ci.yml.
+# build/workflows.test.ts fails CI if a job or guard below is removed.
 name: Deploy to GitHub Pages
 
 on:
@@ -11,6 +15,8 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  # Reads the dist artifact CI uploaded in the triggering run.
+  actions: read
 
 concurrency:
   group: pages
@@ -18,33 +24,73 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # E08: `branches: [main]` matches the triggering run's head branch NAME, which a fork's pull
+    # request can also carry. Only a push to this repository may publish.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
     runs-on: ubuntu-latest
-    env:
-      VITE_REMINDER_API: ${{ vars.VITE_REMINDER_API }}
-      VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
+    outputs:
+      publish: ${{ steps.decide.outputs.publish }}
     steps:
-      - uses: actions/checkout@v7
+      # E07: runs complete in any order; an older commit's run finishing after a newer push must
+      # not publish over it. A re-run (attempt > 1) is a deliberate rollback or redeploy
+      # (docs/runbooks/deploy.md) and skips this check.
+      - name: Still main's HEAD?
+        id: head
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          current=$(git ls-remote "$REPO_URL" refs/heads/main | cut -f1)
+          echo "main is $current, this run built $HEAD_SHA, attempt $RUN_ATTEMPT"
+          if [ "$current" = "$HEAD_SHA" ] || [ "$RUN_ATTEMPT" != "1" ]; then
+            echo "head=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "head=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # E15: ship the bytes CI built, linted, tested and checked, never a second build.
+      - name: Download CI's dist
+        if: steps.head.outputs.head == 'true'
+        uses: actions/download-artifact@v8
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          name: dist
+          path: dist
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-
-      - name: Install
-        run: npm ci
-
-      - name: Build
-        run: npm run build
+      # E06: a commit that changes nothing users download (docs only) publishes nothing, so
+      # installed apps see no update. The live fingerprint is fetched with a unique query so the
+      # Pages CDN (max-age=600) cannot answer from cache; no file (first run) means publish.
+      # The query carries the attempt too: github.run_id is the same on a re-run.
+      - name: Would this change the site?
+        id: decide
+        env:
+          HEAD_OK: ${{ steps.head.outputs.head }}
+          SITE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          if [ "$HEAD_OK" != "true" ]; then echo "publish=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          test -f dist/index.html  # the artifact unpacked at the site root
+          built=$(cat dist/content-sha256.txt)  # written by ci.yml (scripts/dist-fingerprint.sh)
+          live=$(curl -fsS "$SITE/content-sha256.txt?run=$RUN_ID-$RUN_ATTEMPT" || true)
+          echo "built $built, live ${live:-none}"
+          if [ "$built" = "$live" ]; then echo "publish=false" >> "$GITHUB_OUTPUT"; else echo "publish=true" >> "$GITHUB_OUTPUT"; fi
 
       - uses: actions/upload-pages-artifact@v5
+        if: steps.decide.outputs.publish == 'true'
         with:
           path: dist
 
   deploy:
     needs: build
+    if: needs.build.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -52,3 +98,23 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
+
+      # E15: a green workflow is not proof (AGENTS.md Deploy). The live stamp must name this
+      # commit. [s] 21 attempts x 30 s = 630 s covers the CDN's 600 s max-age.
+      - name: The live site serves this commit
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          want="${HEAD_SHA:0:7}"
+          for attempt in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21; do
+            got=$(curl -fsS "${PAGE_URL%/}/build-info.json?run=$RUN_ID-$RUN_ATTEMPT-$attempt" | sed -E 's/.*"commit":"([^"]+)".*/\1/' || true)
+            echo "attempt $attempt: live commit ${got:-none}, want $want"
+            if [ "$got" = "$want" ]; then exit 0; fi
+            sleep 30
+          done
+          echo "FAIL: the live build-info.json never named $want"
+          exit 1

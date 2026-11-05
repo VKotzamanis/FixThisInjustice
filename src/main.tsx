@@ -19,6 +19,8 @@ import { RootErrorBoundary } from './app/RootErrorBoundary';
 import { notifyUpdateReady } from './app/UpdatePrompt';
 import { startPersistence, useAppStore } from './store';
 import { createBrowserBackend } from './store/persistence';
+import { startDurabilityWatch } from './app/storageDurability';
+import { isInstalledPwa } from './domain/reminders/client';
 
 const container = document.getElementById('root');
 if (container === null) {
@@ -27,6 +29,16 @@ if (container === null) {
 
 // The store is the only writer; this subscription commits its records (spec R13).
 startPersistence();
+
+// Spec R8: ask the browser to keep the data after setup (and at an installed launch).
+// Standalone detection is the reminders client's isInstalledPwa() until P4b Task 9's
+// runsStandalone() (src/app/installPrompt.ts) lands; swap the import then (one detector).
+startDurabilityWatch({
+  ready: () => useAppStore.getState().status.hydrated,
+  hasProfile: () => useAppStore.getState().activeProfileId !== null,
+  subscribeStore: (listener) => useAppStore.subscribe(listener),
+  standalone: () => isInstalledPwa(),
+});
 
 /*
  * Service-worker registration. vite.config.ts sets injectRegister: false

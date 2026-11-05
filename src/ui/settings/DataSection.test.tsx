@@ -8,6 +8,7 @@ import { useAppStore } from '../../store';
 import { STORAGE_KEY } from '../../store/persistence';
 import { installFakeStorage } from '../../store/testStorage';
 import { CLIP_CLEAR_TIMEOUT_MS, DataSection } from './DataSection';
+import { readDurability, resetDurabilityForTest } from '../../app/storageDurability';
 import { SettingsView } from '../views/SettingsView';
 import type { SkinId } from '../../domain/types';
 
@@ -95,6 +96,11 @@ function panel(): HTMLElement {
   return found;
 }
 
+/** Audit B07: the user confirms the downloaded backup before the gate opens. */
+function confirmSaved(): void {
+  fireEvent.click(within(panel()).getByLabelText(copyFor('limelight', 'label.backupSaved')));
+}
+
 function typeWord(value: string): void {
   fireEvent.change(within(panel()).getByLabelText(FORMAT.typeToConfirm('DELETE')), {
     target: { value },
@@ -141,6 +147,7 @@ describe('SettingsView data section', () => {
     // ... and the export alone is not the gate either.
     typeWord('');
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     expect(downloads.map((d) => d.name)).toEqual([`fti-state-${STAMP}.json`]);
     expect(confirmButton('button.wipeConfirm')).toBeDisabled();
 
@@ -152,6 +159,7 @@ describe('SettingsView data section', () => {
     render(<SettingsView />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -190,6 +198,7 @@ describe('SettingsView data section', () => {
 
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -227,6 +236,7 @@ describe('SettingsView data section', () => {
     render(<DataSection />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -243,6 +253,7 @@ describe('SettingsView data section', () => {
     render(<DataSection />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     fireEvent.click(confirmButton('button.wipeConfirm'));
 
@@ -256,6 +267,7 @@ describe('SettingsView data section', () => {
     render(<SettingsView />);
     click(copyFor('limelight', 'button.wipeAll'));
     click(copyFor('limelight', 'button.downloadBackup'));
+    confirmSaved();
     typeWord('DELETE');
     expect(confirmButton('button.wipeConfirm')).not.toBeDisabled();
 
@@ -297,5 +309,45 @@ describe('SettingsView data section: a device that still holds the old console k
     expect(buttons()).toEqual(without);
     for (const key of OLD_CONSOLE_KEYS) expect(storage.get(key)).toBe('{}');
     expect(storage.get(STORAGE_KEY)).toBe(STORED_DOCUMENT);
+  });
+});
+
+describe('Settings > Data states the storage durability (spec R8, audit B09)', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'storage');
+    resetDurabilityForTest();
+  });
+
+  function stubStorage(persisted: boolean, grant: boolean): { persist: ReturnType<typeof vi.fn> } {
+    const persist = vi.fn(() => Promise.resolve(grant));
+    Object.defineProperty(navigator, 'storage', {
+      value: { persisted: () => Promise.resolve(persisted), persist },
+      configurable: true,
+    });
+    return { persist };
+  }
+
+  it('says best-effort, offers the request, and reports the answer', async () => {
+    const { persist } = stubStorage(false, true);
+    await act(async () => {
+      await readDurability();
+    });
+    render(<DataSection />);
+    expect(screen.getByText(copyFor('limelight', 'status.storageBestEffort'))).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.requestStorage') }));
+      await Promise.resolve();
+    });
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText(copyFor('limelight', 'status.storagePersistent'))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.requestStorage') })).toBeNull();
+  });
+
+  it('says so when the browser reports nothing', async () => {
+    await act(async () => {
+      await readDurability(undefined);
+    });
+    render(<DataSection />);
+    expect(screen.getByText(copyFor('limelight', 'status.storageUnknown'))).toBeInTheDocument();
   });
 });

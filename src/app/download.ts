@@ -6,8 +6,7 @@
  * two places is a bug waiting to happen.
  *
  * An object URL rather than a `data:` URI because the exported document has no
- * size bound, and it is revoked immediately after the synthetic click: the
- * click has already been dispatched by then, so the download is committed.
+ * size bound, and it is revoked DOWNLOAD_URL_LIFETIME_MS after the synthetic click (audit B07).
  * CSP note (master plan section 3): `blob:` appears in img-src and media-src,
  * not in default-src. A download triggered by `<a download>` is not a fetch the
  * policy governs, so no directive has to be widened for this.
@@ -17,6 +16,13 @@
  * so a browser that dispatches on Blob.type rather than the filename extension offers the
  * right handler for it.
  */
+/**
+ * [ms] How long the object URL outlives the click (audit B07). Revoking it synchronously, as
+ * this helper did, can cancel a download a browser starts asynchronously [U: reported for
+ * Safari, not tested here]. The cost is the blob held in memory for this long.
+ */
+export const DOWNLOAD_URL_LIFETIME_MS = 60_000;
+
 export function downloadText(
   filename: string,
   text: string,
@@ -29,5 +35,7 @@ export function downloadText(
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, DOWNLOAD_URL_LIFETIME_MS);
 }

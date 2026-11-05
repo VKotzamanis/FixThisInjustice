@@ -6,8 +6,18 @@ import { useCopy } from '../../content/useCopy';
 import { todayLocal } from '../../domain/dates';
 import { clearAssetStorage } from '../../domain/motivation/assets';
 import { useAppStore, whenPersisted } from '../../store';
+import type { CopyKey } from '../../content/copy';
+import { requestDurability, useDurability, type Durability } from '../../app/storageDurability';
+
 import { ExportView } from '../views/ExportView';
 import { UnreadableRecords } from './UnreadableRecords';
+
+/** What Settings > Data says for each answer (spec R8). 'unknown' (not read yet) says nothing. */
+const DURABILITY_COPY: Readonly<Record<Exclude<Durability, 'unknown'>, CopyKey>> = {
+  persistent: 'status.storagePersistent',
+  'best-effort': 'status.storageBestEffort',
+  unsupported: 'status.storageUnknown',
+};
 
 /**
  * The Data section of Settings: the exports and the wipe (P7 Task 6, master plan section 3).
@@ -71,6 +81,7 @@ type OpenPanel = 'none' | 'wipe';
 
 export function DataSection(): JSX.Element {
   const t = useCopy();
+  const durability = useDurability();
   const profile = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
   );
@@ -123,6 +134,22 @@ export function DataSection(): JSX.Element {
 
       <h2 className={displayClass(t('hero.dataOnDevice'))}>{t('hero.dataOnDevice')}</h2>
       <p className="view-note">{t('advice.dataOnDevice')}</p>
+      {durability !== 'unknown' && (
+        <p className="view-note" data-durability={durability}>
+          {t(DURABILITY_COPY[durability])}
+        </p>
+      )}
+      {durability === 'best-effort' && (
+        <button
+          type="button"
+          onClick={() => {
+            // A tap: Firefox may show its permission popup here, with the reason on screen.
+            void requestDurability();
+          }}
+        >
+          {t('button.requestStorage')}
+        </button>
+      )}
 
       {open === 'wipe' ? (
         <div className="view-field">

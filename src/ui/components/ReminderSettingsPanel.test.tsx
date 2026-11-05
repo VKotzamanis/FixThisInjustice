@@ -448,6 +448,17 @@ describe('states the panel cannot act on', () => {
     expect(subscribeMock).not.toHaveBeenCalled();
   });
 
+  it('leaves the schedule inert on a build with no Worker, even with reminders stored on (E14)', () => {
+    config.configured = false;
+    config.vapid = null;
+    seed({ enabled: true });
+    render(<ReminderSettingsPanel />);
+    expect(screen.getByLabelText(copyFor('limelight', 'label.reminderDayOfTime'))).toBeDisabled();
+    for (const minutes of LEAD_MINUTE_CHOICES) {
+      expect(screen.getByLabelText(FORMAT.reminderLead(minutes))).toBeDisabled();
+    }
+  });
+
   it('renders nothing when no profile is active', () => {
     useAppStore.setState({ activeProfileId: null });
     const { container } = render(<ReminderSettingsPanel />);
