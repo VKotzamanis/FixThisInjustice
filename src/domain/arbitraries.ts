@@ -18,6 +18,7 @@ import type {
   PushDevice,
   ReminderSettings,
   SessionAssignment,
+  SessionEdits,
   SetupAnswers,
   SetupDraft,
   SpecimenInventory,
@@ -302,20 +303,37 @@ export const anyPlanPause: fc.Arbitrary<PlanPause> = fc.record({
   reason: fc.option(anyText, { nil: null }),
 });
 
-export const anySessionAssignment: fc.Arbitrary<SessionAssignment> = fc.record({
-  date: anyLocalDate,
-  sessionId: anyId,
-  sourceIndex: fc.integer({ min: 0, max: 200 }),
-  status: fc.constantFrom(
-    'planned' as const,
-    'in-progress' as const,
-    'completed' as const,
-    'skipped' as const,
-  ),
-  startedAt: fc.option(anyEpochMs, { nil: null }),
-  completedAt: fc.option(anyEpochMs, { nil: null }),
-  skipReason: fc.option(anyText, { nil: null }),
+/**
+ * ROADMAP L1-L4 follow-up (coverage report 2026-11-05): the day's session edits. Ids are short
+ * exercise-like slugs so a swap's key and value can coincide with `skipped`/`order` entries.
+ */
+const anyExerciseKey = fc.constantFrom('barbell-bench-press', 'romanian-deadlift', 'trap-bar-deadlift', 'plank', 'custom-1');
+export const anySessionEdits: fc.Arbitrary<SessionEdits> = fc.record({
+  swaps: fc.dictionary(anyExerciseKey, anyExerciseKey, { maxKeys: 3 }),
+  skipped: fc.array(anyExerciseKey, { maxLength: 3 }),
+  added: fc.array(anyExerciseKey, { maxLength: 3 }),
+  order: fc.array(anyExerciseKey, { maxLength: 5 }),
 });
+
+/** `edits` is optional and has no default (schema.ts): absent and present are both generated. */
+export const anySessionAssignment: fc.Arbitrary<SessionAssignment> = fc.record(
+  {
+    date: anyLocalDate,
+    sessionId: anyId,
+    sourceIndex: fc.integer({ min: 0, max: 200 }),
+    status: fc.constantFrom(
+      'planned' as const,
+      'in-progress' as const,
+      'completed' as const,
+      'skipped' as const,
+    ),
+    startedAt: fc.option(anyEpochMs, { nil: null }),
+    completedAt: fc.option(anyEpochMs, { nil: null }),
+    skipReason: fc.option(anyText, { nil: null }),
+    edits: anySessionEdits,
+  },
+  { requiredKeys: ['date', 'sessionId', 'sourceIndex', 'status', 'startedAt', 'completedAt', 'skipReason'] },
+);
 
 export const anyLoggedSet: fc.Arbitrary<LoggedSet> = fc.record({
   id: anyId,

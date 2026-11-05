@@ -27,9 +27,11 @@ import type {
   PlanTemplate,
   Prescription,
   Profile,
+  SessionAssignment,
 } from '../types';
 import { achievableLoad, formatLoad, stepFor } from '../units';
 import { RPE_ONE_RIR, RPE_ZERO_RIR } from './effort';
+import { swapDayPrescriptions } from './sessionEdits';
 
 /**
  * Fraction of the working load added when the top of the rep range is met on
@@ -125,6 +127,55 @@ export function compareSetOrder(a: LoggedSet, b: LoggedSet): number {
 
 export function sortSetHistory(sets: readonly LoggedSet[]): LoggedSet[] {
   return [...sets].sort(compareSetOrder);
+}
+
+/** Same prescription: kind and every bound. */
+function samePrescription(a: Prescription, b: Prescription): boolean {
+  switch (a.kind) {
+    case 'reps':
+      return b.kind === 'reps' && a.lo === b.lo && a.hi === b.hi;
+    case 'amrap':
+      return b.kind === 'amrap' && a.minimum === b.minimum;
+    case 'time':
+    case 'duration':
+      return b.kind === a.kind && a.targetS === b.targetS;
+    case 'none':
+      return b.kind === 'none';
+  }
+}
+
+/**
+ * ROADMAP R4 (lead ruling 2026-11-05): the sets that may decide `exerciseId`'s progression.
+ *
+ * A set logged on a day the exercise was swapped INTO another slot was performed at that slot's
+ * prescription (sessionEdits.ts substitutePlanned). When that differs from the exercise's OWN
+ * slot in the current plan, the set says nothing about the own range (3 x 40 kg x 8 in a 6-8
+ * Romanian-deadlift slot is not evidence for a 4-6 trap-bar slot), so it is left out here. It
+ * stays in the history, the records and the Log; only this input drops it. An exercise with no
+ * own slot in the current plan keeps every set (behaviour before the ruling). The own range is
+ * the card's own when the card is one of the own slots, else the first own slot's.
+ */
+export function progressionHistory(
+  history: readonly LoggedSet[],
+  planned: PlannedExercise,
+  exerciseId: string,
+  assignments: readonly SessionAssignment[],
+  plans: Readonly<Record<string, PlanTemplate>>,
+  currentPlan: PlanTemplate | null,
+  library: Readonly<Record<string, Exercise>>,
+): LoggedSet[] {
+  const ownSlots = (currentPlan?.sessions ?? []).flatMap((s) => s.exercises.filter((p) => p.exerciseId === exerciseId));
+  const first = ownSlots[0];
+  if (first === undefined) return [...history];
+  const own = ownSlots.some((p) => samePrescription(p.prescription, planned.prescription))
+    ? planned.prescription
+    : first.prescription;
+  const swapDays = swapDayPrescriptions(exerciseId, assignments, plans, library);
+  if (swapDays.size === 0) return [...history];
+  return history.filter((s) => {
+    const logged = swapDays.get(s.assignmentDate);
+    return logged === undefined || samePrescription(logged, own);
+  });
 }
 
 /** Used when a session index falls outside every declared block. */

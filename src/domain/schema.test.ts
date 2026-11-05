@@ -883,6 +883,16 @@ describe('round trip', () => {
     expect(ledgers.length).toBeGreaterThan(0);
   });
 
+  // ROADMAP L1-L4 follow-up: the round trip below must see assignments that carry `edits`, and
+  // ones that do not, or a schema that dropped the optional field would still pass.
+  it('generates assignments both with and without session edits', () => {
+    const assignments = fc
+      .sample(anyAppState, { numRuns: 200, seed: 20260902 })
+      .flatMap((state: AppState) => Object.values(state.assignments).flat());
+    expect(assignments.some((a) => a.edits !== undefined && Object.keys(a.edits.swaps).length > 0)).toBe(true);
+    expect(assignments.some((a) => !('edits' in a))).toBe(true);
+  });
+
   it(
     'parse(serialize(state)) deep-equals state over 500 generated documents',
     () => {
