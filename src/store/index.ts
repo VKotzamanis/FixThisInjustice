@@ -43,6 +43,7 @@ import { createFunActions, type FunActions } from './funActions';
 import { applyReplacePlan, applyRestartProgramme } from './programme';
 import { applyCompleteSetup, applyCreateProfile, applySetAvailability, type SetupResult } from './setup';
 import { parseOrThrow } from './validate';
+import { applyUndoFinish, type FinishSnapshot } from './finishUndo';
 import {
   applyDeleteBodyMass,
   applyRemoveDrink,
@@ -280,6 +281,12 @@ export interface AppActions {
    * @param now [ms] epoch UTC; the caller owns the clock, as everywhere else in this contract.
    */
   undoAvailable(now: EpochMs): boolean;
+  /**
+   * Audit C12: takes back a Finish within its undo window. Restores the snapshot's pre-Finish
+   * assignment row and cursor when nothing they would rewind has moved since; returns whether
+   * it did. Writes nothing when it refuses.
+   */
+  undoFinish(snap: FinishSnapshot): boolean;
   /**
    * Stores one weigh-in and returns its id, so the view can offer an edit or an undo at once.
    * Throws on a value the loader would refuse (spec R5).
@@ -974,6 +981,13 @@ export const useAppStore = create<AppStore>()((set, get) => {
     return pending !== null && now <= pending.expiresAt && !slotTaken(get(), pending.set);
   },
 
+  undoFinish(snap: FinishSnapshot): boolean {
+    const next = applyUndoFinish(selectState(get()), snap);
+    if (next === null) return false;
+    set({ assignments: next.assignments, cursors: next.cursors });
+    return true;
+  },
+
   logBodyMass(entry: Omit<BodyMassEntry, 'id' | 'loggedAt'>, now: EpochMs): string {
     // Minted before the write so it can be returned (same pattern as logSet).
     const id = newId();
@@ -1278,4 +1292,5 @@ export function startPersistence(): () => void {
 
 export { defaultState };
 export type { BodyMassEdit } from './measurements';
+export type { FinishSnapshot } from './finishUndo';
 export type { SetupResult } from './setup';

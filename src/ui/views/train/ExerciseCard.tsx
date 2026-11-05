@@ -87,6 +87,15 @@ export interface ExerciseCardProps {
   children?: ReactNode;
 }
 
+/**
+ * [sets] The sets a card prescribes: the plan's floor scaled by the block's set modifier (a
+ * deload cuts volume, master plan section 6.5), floored at 1 so a block never prescribes no work.
+ * Shared with TrainView's Finish question (audit C12, rule 2).
+ */
+export function targetSetsFor(planned: PlannedExercise, block: PlanBlock): number {
+  return Math.max(1, Math.round(planned.setsLo * block.setModifier));
+}
+
 export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   const {
     t,
@@ -144,7 +153,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
   // The deload block's volume cut is applied HERE, by the caller of the engine, exactly as
   // master plan section 6.5 specifies: the engine reports "deload" and holds the load, and the
   // set count is what the block modifies. Floored at 1, so a block can never prescribe no work.
-  const targetSets = Math.max(1, Math.round(planned.setsLo * block.setModifier)); // [sets]
+  const targetSets = targetSetsFor(planned, block); // [sets]
   // Spec R4: what a new set's load is compared against. The latest loaded set of this exercise
   // today, else the suggestion; null when there is neither. [kg]
   const latestToday = todaysSets.reduce<LoggedSet | null>(

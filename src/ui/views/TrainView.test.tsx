@@ -256,6 +256,13 @@ function logRow(n: number, load: string, reps: string, unit = 'kg'): void {
   fireEvent.keyDown(repsField, { key: 'Enter' });
 }
 
+/** Audit C12: Finish asks once when fewer sets than prescribed were logged; this answers it. */
+function finishSession(): void {
+  fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+  const anyway = screen.queryByRole('button', { name: copyFor('limelight', 'button.finishAnyway') });
+  if (anyway !== null) fireEvent.click(anyway);
+}
+
 /** A body-mass entry an hour before the session started: a valid pre-session mass. */
 function preMass(massKg: number): BodyMassEntry {
   return {
@@ -1051,7 +1058,7 @@ describe('TrainView hydration and body mass', () => {
     // ACSM 2007 threshold. The reference is the pre-session entry, not the profile baseline.
     seedStore({ ...seed({ weighInOptIn: true }), bodyMass: { 'profile-1': [preMass(95)] } });
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`), {
       target: { value: '92' },
@@ -1071,7 +1078,7 @@ describe('TrainView hydration and body mass', () => {
      */
     seedStore({ ...seed({ weighInOptIn: true }), bodyMass: { 'profile-1': [preMass(70)] } });
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`), {
       target: { value: '69.3' },
@@ -1088,7 +1095,7 @@ describe('TrainView hydration and body mass', () => {
       target: { value: '95' },
     });
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.logBodyMass') }));
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
     fireEvent.change(screen.getByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`), {
       target: { value: '92' },
     });
@@ -1355,7 +1362,7 @@ describe('TrainView finish', () => {
       .setRestTimer({ startedAt: NOW, endsAt: NOW + 60_000, durationS: 60 });
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     const after = useAppStore.getState();
     expect(after.assignments['profile-1']?.[0]?.status).toBe('completed');
@@ -1368,7 +1375,7 @@ describe('TrainView finish', () => {
   it('prompts for the post-session mass only when the profile opted in', () => {
     seedStore(seed({ weighInOptIn: false }));
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
     expect(screen.queryByLabelText(`${copyFor('limelight', 'quantity.postSessionBodyMass')} (kg)`)).toBeNull();
   });
 
@@ -1382,7 +1389,7 @@ describe('TrainView finish', () => {
     seedStore(seed());
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
     expect(playSfx).toHaveBeenCalledTimes(1);
@@ -1408,7 +1415,7 @@ describe('TrainView finish', () => {
     }));
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('skipped');
     expect(playSfx).not.toHaveBeenCalled();
@@ -1435,7 +1442,7 @@ describe('TrainView finish', () => {
     useAppStore.setState((s) => ({ ui: { ...s.ui, sounds: true } }));
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     expect(playSfx).toHaveBeenCalledWith('session_done');
     expect(releaseAudio).toHaveBeenCalledWith({ sounds: true });
@@ -1452,7 +1459,7 @@ describe('TrainView finish', () => {
     seedStore(seed()); // seed()'s ui carries the shipped default: sounds off (schema.ts)
     renderTrain();
 
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
 
     expect(releaseAudio).toHaveBeenCalledWith({ sounds: false });
   });
@@ -1942,7 +1949,7 @@ describe('the open session (spec R1; audit C01, C10, C03)', () => {
   it('finishes the open session on its own date', () => {
     seedStore(seedOpenOn(YESTERDAY));
     renderTrain();
-    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    finishSession();
     expect(useAppStore.getState().assignments['profile-1']?.[0]).toMatchObject({
       date: YESTERDAY,
       status: 'completed',
@@ -2060,5 +2067,38 @@ describe('set entry (audit C13, C09)', () => {
     logRow(1, '65', '7');
     expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(2)} (kg)`)).toHaveValue('65');
     expect(screen.getByLabelText(FORMAT.setRepsQuantity(2))).toHaveValue('7');
+  });
+});
+
+describe('Finish (audit C12)', () => {
+  it('asks when fewer sets than prescribed were logged; Cancel keeps the session open', () => {
+    seedStore(seed()); // 3 prescribed sets, none logged
+    renderTrain();
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    // Another live region on the screen is an alert too, so match this one by its text.
+    expect(screen.getAllByRole('alert').map((e) => e.textContent)).toContain(
+      FORMAT.withSlots('advice.finishShort', { logged: 0, prescribed: 3 }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.cancel') }));
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('in-progress');
+  });
+
+  it('Finish Anyway finishes, and Undo puts the open session and the cursor back', () => {
+    seedStore(seed());
+    renderTrain();
+    finishSession();
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') }));
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('in-progress');
+    expect(useAppStore.getState().cursors['profile-1']?.nextSessionIndex).toBe(0);
+  });
+
+  it('finishes at once when every prescribed set is logged', () => {
+    seedStore(seed({ planned: { setsLo: 1, setsHi: 1 } }));
+    renderTrain();
+    logRow(1, '60', '8');
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.finishSession') }));
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.finishAnyway') })).toBeNull();
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.status).toBe('completed');
   });
 });

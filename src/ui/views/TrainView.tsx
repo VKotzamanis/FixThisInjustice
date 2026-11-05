@@ -45,7 +45,8 @@ import {
 } from '../../domain/training/sessionEdits';
 import type { BodyMassRole, Exercise, Kg } from '../../domain/types';
 import { playSfx } from '../../skins/sfx';
-import { useAppStore } from '../../store';
+import { useAppStore, type FinishSnapshot } from '../../store';
+import { UNDO_WINDOW_MS } from '../../store/training';
 import { BodyMassForm } from '../measurements/BodyMassForm';
 import { useActiveProfile, useOpenAssignment, useTodaysSets } from '../../store/selectors';
 import { releaseAudio, unlockAudio } from '../audio/chime';
@@ -53,7 +54,7 @@ import { useToasts } from '../components/ToastQueue';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { AddCustomExercise } from './train/AddCustomExercise';
 import { AddLibraryExercise } from './train/AddLibraryExercise';
-import { ExerciseCard } from './train/ExerciseCard';
+import { ExerciseCard, targetSetsFor } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
 import { RestTimerPanel } from './train/RestTimerPanel';
 import { SessionEditBar } from './train/SessionEditBar';
@@ -93,6 +94,8 @@ export function TrainView(): ReactElement {
   const [openId, setOpenId] = useState<string | null>(null);
   /** [%] The session's fluid loss to one decimal when it exceeded the threshold, else null (G01). */
   const [fluidLossPct, setFluidLossPct] = useState<string | null>(null);
+  /** Audit C12: true while Finish is asking about missing sets. */
+  const [finishQuestion, setFinishQuestion] = useState(false);
   // Audit C10: a finished session is read-only until the user opens it for a forgotten set.
   const [amending, setAmending] = useState(false);
   // Audit C03: the undo offer on screen, withdrawn once its slot is logged again.
@@ -320,7 +323,11 @@ export function TrainView(): ReactElement {
     setOpenId((cur) => (cur === id ? '' : id));
   };
 
-  const onFinish = (): void => {
+  const finishNow = (): void => {
+    // Audit C12: the records an Undo would put back, read at the tap (not from the render).
+    const atTap = useAppStore.getState();
+    const rowBefore = (atTap.assignments[profileId] ?? []).find((a) => a.date === assignment.date) ?? null;
+    const cursorBefore = atTap.cursors[profileId] ?? null;
     const now = Date.now(); // [ms] epoch UTC
     // The store resets the session slice and its mirror itself, and only when the transition
     // actually ended the session (P4 polish item 3). Clearing it here instead threw the
@@ -356,6 +363,36 @@ export function TrainView(): ReactElement {
     if (!profile.hydration.weighInOptIn) {
       useAppStore.getState().setUi({ lastView: 'today' });
     }
+    const after = useAppStore.getState();
+    const rowAfter = (after.assignments[profileId] ?? []).find((a) => a.date === assignment.date) ?? null;
+    const cursorAfter = after.cursors[profileId] ?? null;
+    if (rowBefore !== null && cursorBefore !== null && rowAfter?.status === 'completed' && cursorAfter !== null) {
+      const snap: FinishSnapshot = {
+        profileId,
+        before: { assignment: rowBefore, cursor: cursorBefore },
+        after: { assignment: rowAfter, cursor: cursorAfter, reviews: after.weeklyReviews[profileId] },
+      };
+      push({
+        kind: 'undo',
+        message: c('status.sessionFinished'),
+        deadlineAt: Date.now() + UNDO_WINDOW_MS, // [ms] epoch UTC
+        onUndo: () => {
+          if (useAppStore.getState().undoFinish(snap)) useAppStore.getState().setUi({ lastView: 'train' });
+        },
+      });
+    }
+  };
+
+  // Audit C12: the prescribed sets of the slots still in play (planned or swapped, not skipped).
+  const prescribedSets = lineup
+    .filter((e) => (e.kind === 'planned' || e.kind === 'swapped') && !e.skipped)
+    .reduce((sum, e) => sum + targetSetsFor(e.planned, block), 0); // [sets]
+  const onFinish = (): void => {
+    if (todaysSets.length < prescribedSets) {
+      setFinishQuestion(true);
+      return;
+    }
+    finishNow();
   };
 
   /** Logs one weigh-in of this session, on the session's own date (spec R1). False when refused. */
@@ -512,6 +549,34 @@ export function TrainView(): ReactElement {
         <button type="button" onClick={onFinish}>
           {c('button.finishSession')}
         </button>
+      )}
+      {finishQuestion && !completed && (
+        <div className="finish-question">
+          <p role="alert">
+            {FORMAT.withSlots(
+              'advice.finishShort',
+              { logged: todaysSets.length, prescribed: prescribedSets }, // [sets]
+              overrides,
+            )}
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setFinishQuestion(false);
+              finishNow();
+            }}
+          >
+            {c('button.finishAnyway')}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFinishQuestion(false);
+            }}
+          >
+            {c('button.cancel')}
+          </button>
+        </div>
       )}
 
       {completed && profile.hydration.weighInOptIn && (

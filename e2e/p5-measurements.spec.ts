@@ -51,6 +51,8 @@ test('G01: a pre-session weigh-in after Start makes the 2 % fluid-loss flag fire
   await expect(page.getByLabel(preMassLabel(), { exact: true })).toHaveCount(0);
   await logSet(page, 1, '60', '5');
   await page.getByRole('button', { name: LABEL.finish }).dispatchEvent('click');
+  // Audit C12: 1 of 6 prescribed sets logged, so Finish asks once.
+  await page.getByRole('button', { name: LABEL.finishAnyway, exact: true }).dispatchEvent('click');
   await page.getByLabel(postMassLabel(), { exact: true }).fill('77.5'); // [kg] 3.1 % below 80
   await page.getByRole('button', { name: LABEL.logBodyMass, exact: true }).click();
   await expect(page.getByText(LABEL.fluidLoss)).toBeVisible();

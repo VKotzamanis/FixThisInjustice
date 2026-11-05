@@ -38,6 +38,7 @@ export const LABEL = {
   looksGood: 'Looks Good',
   recoveryHeading: 'Stored Data Could Not Be Read',
   writesPaused: 'Nothing is saved until you import a backup',
+  finishAnyway: 'Finish Anyway',
   logTab: 'the archive',
   logBodyMass: 'Log Body Mass',
   editEntry: 'Edit',
