@@ -1,5 +1,6 @@
 import type { JSX, RefObject } from 'react';
 import type { UnitSystem } from '../../domain/types';
+import { parseDecimalInput } from '../../domain/numberInput';
 import { UNIT_LABEL, toStoredGirthCm, toStoredLoad, toStoredMass } from '../../domain/units';
 import { FORMAT } from '../../content/copy';
 
@@ -35,7 +36,7 @@ export interface UnitInputProps {
   onChange: (next: string) => void;
   /** Visible, specific validation message, or null when the entry is acceptable. */
   error: string | null;
-  /** "any" (default) for a measured quantity; "1" for a count. */
+  /** No longer rendered since spec R4 (a text field has no step); kept so callers compile until the P3 wizard split drops it. */
   step?: string;
   /**
    * DOM id of a message that this field shares with others and that the CALLER renders, for a
@@ -84,9 +85,11 @@ export function UnitInput(props: UnitInputProps): JSX.Element {
       <input
         id={props.id}
         ref={props.inputRef}
-        type="number"
+        // Spec R4 (audit C02): text, not number. A number input drops a decimal comma
+        // ("62,5" became 625) before the app ever sees the text; parseDecimal reads it instead.
+        type="text"
         inputMode={props.inputMode ?? 'decimal'}
-        step={props.step ?? 'any'}
+        autoComplete="off"
         disabled={props.disabled ?? false}
         value={props.value}
         aria-invalid={props.error !== null || sharedErrorId !== null}
@@ -120,9 +123,8 @@ export function loadUnit(units: UnitSystem): string {
  * and only the caller knows which of them blocks progression.
  */
 export function parseDecimal(text: string): number | null {
-  if (text.trim() === '') return null;
-  const value = Number(text);
-  return Number.isFinite(value) ? value : null;
+  // Spec R4: `,` or `.` as the decimal mark; ambiguous text is null (src/domain/numberInput.ts).
+  return parseDecimalInput(text);
 }
 
 /** Body mass as typed in the display unit, converted exactly to canonical kg. */

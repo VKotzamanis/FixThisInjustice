@@ -340,7 +340,7 @@ describe('TargetsView', () => {
       .getState()
       .logIntake('p1', { profileId: 'p1', date: '2026-09-01', kcal: 2000, proteinG: 140 });
     render(<TargetsView />);
-    expect(screen.getByLabelText(/energy consumed today \(kcal\)/i)).toHaveValue(2000);
+    expect(screen.getByLabelText(/energy consumed today \(kcal\)/i)).toHaveValue('2000');
 
     typeIntake('2100', '140');
     fireEvent.click(screen.getByRole('button', { name: 'Record Intake' }));

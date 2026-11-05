@@ -198,11 +198,10 @@ export function TargetsView(): JSX.Element {
         </label>
         <input
           id="intake-kcal"
-          type="number"
+          /* Spec R4: text parsed by parseDecimal, so "2,100" is refused, never read as 2.1. */
+          type="text"
           /* A daily total is a whole count, so "numeric" (a keypad with no decimal key). */
           inputMode="numeric"
-          step="1"
-          min="0"
           aria-invalid={rejected}
           aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
           value={kcalText}
@@ -217,10 +216,9 @@ export function TargetsView(): JSX.Element {
         </label>
         <input
           id="intake-protein"
-          type="number"
+          /* Spec R4: text parsed by parseDecimal, so "2,100" is refused, never read as 2.1. */
+          type="text"
           inputMode="numeric"
-          step="1"
-          min="0"
           aria-invalid={rejected}
           aria-describedby={rejected ? INTAKE_ERROR_ID : undefined}
           value={proteinText}

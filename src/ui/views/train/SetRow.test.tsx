@@ -76,7 +76,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
 
     const load = screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`);
     const reps = screen.getByLabelText(FORMAT.setRepsQuantity(1));
-    expect(load).toHaveValue(60); // UnitInput is a number input
+    expect(load).toHaveValue('60'); // UnitInput is a text input (spec R4)
     expect(reps).toHaveValue('8');
 
     fireEvent.change(load, { target: { value: '62.5' } });
@@ -100,7 +100,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     renderRow({ units: 'imperial', logged: loggedSet({ loadKg: 60 }), onEdit }); // [kg]
     fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
 
-    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (lb)`)).toHaveValue(132.3); // [lb]
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (lb)`)).toHaveValue('132.3'); // [lb]
     fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 
@@ -113,7 +113,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     renderRow({ logged: loggedSet({ loadKg: 61.25 }), onEdit }); // [kg]
     fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
 
-    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue(61.3); // [kg] as shown
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue('61.3'); // [kg] as shown
     fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 
@@ -130,7 +130,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     renderRow({ logged: loggedSet({ loadKg: null }), onEdit });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
 
-    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue(null);
+    expect(screen.getByLabelText(`${FORMAT.setLoadQuantity(1)} (kg)`)).toHaveValue('');
     fireEvent.change(screen.getByLabelText(FORMAT.setRepsQuantity(1)), { target: { value: '7' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 
@@ -165,7 +165,7 @@ describe('SetRow: editing a logged set (ROADMAP L1)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.editSetLabel(1) }));
     const field = screen.getByLabelText(`${FORMAT.setDurationQuantity(1)} (s)`);
-    expect(field).toHaveValue(45); // [s]
+    expect(field).toHaveValue('45'); // [s]
     fireEvent.change(field, { target: { value: '50' } });
     fireEvent.click(screen.getByRole('button', { name: FORMAT.saveSetLabel(1) }));
 

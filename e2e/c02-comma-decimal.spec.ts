@@ -7,7 +7,6 @@ import { MONDAY, e2eDocument } from './support/document';
 test.use({ locale: 'de-DE' });
 
 test('C02: 62,5 typed with a decimal comma is stored as 62.5 kg', async ({ context }) => {
-  test.fail(); // removed by plan Task 13
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '18:00'));
   const page = await openApp(context);

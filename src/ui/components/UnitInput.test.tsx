@@ -143,3 +143,17 @@ describe('UnitInput refusal wiring', () => {
     expect(field.getAttribute('aria-describedby')).toBeNull();
   });
 });
+
+describe('UnitInput is a text field the app parses (spec R4)', () => {
+  it('renders type="text" so the browser never drops a decimal comma', () => {
+    render(
+      <UnitInput id="mass" quantity="Body mass" unit={massUnit('metric')} value="" onChange={() => undefined} error={null} />,
+    );
+    expect(screen.getByLabelText('Body mass (kg)').getAttribute('type')).toBe('text');
+  });
+
+  it('converts a comma entry and refuses an ambiguous one', () => {
+    expect(storedLoadKg('62,5', 'metric')).toBe(62.5); // [kg]
+    expect(parseDecimal('1.234,5')).toBeNull();
+  });
+});

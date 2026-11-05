@@ -306,8 +306,8 @@ describe('unit labelling', () => {
      * dropped the weight-stack field ("Machine increment is standardized anyways"). The seeded
      * NUMBERS are unchanged, which is what this test is about; only the labels moved.
      */
-    expect(screen.getByLabelText(/^plates \(lb\)$/i)).toHaveValue(5);
-    expect(screen.getByLabelText(/^dumbbell \(lb\)$/i)).toHaveValue(10);
+    expect(screen.getByLabelText(/^plates \(lb\)$/i)).toHaveValue('5');
+    expect(screen.getByLabelText(/^dumbbell \(lb\)$/i)).toHaveValue('10');
   });
 });
 
@@ -622,8 +622,13 @@ describe('no free-text medical field exists', () => {
     for (let stepIndex = 0; stepIndex < STEPS.length; stepIndex += 1) {
       unblock(stepIndex);
       expect(container.querySelectorAll('textarea')).toHaveLength(0);
+      // AM-13 / spec R4: numeric fields are text inputs now, so "free text" is a text input
+      // without inputMode="decimal" (or "numeric"); only the display name may be one.
       const freeText = [...container.querySelectorAll('input')].filter(
-        (i) => (i.getAttribute('type') ?? 'text') === 'text',
+        (i) =>
+          (i.getAttribute('type') ?? 'text') === 'text' &&
+          i.getAttribute('inputmode') !== 'decimal' &&
+          i.getAttribute('inputmode') !== 'numeric',
       );
       expect(freeText.map((i) => i.id).sort()).toEqual(
         STEPS[stepIndex] === 'body' ? ['f-name'] : [],
@@ -1169,7 +1174,7 @@ describe('Brief B: the body-fat control reorder (C1.08.1 to C1.08.4, C1.08.7)', 
 
   it('leaves Next enabled with the percentage box blank, because body fat stays optional', () => {
     reachBody();
-    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue('');
     expect(screen.queryByText('Enter a number.')).toBeNull();
     expect(screen.getByRole('button', { name: 'Next' })).not.toHaveAttribute('aria-disabled', 'true');
     next();
@@ -1267,7 +1272,7 @@ describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
     expect(twentyFivePctButtons.length).toBeGreaterThanOrEqual(2); // one per sex row
     fireEvent.click(twentyFivePctButtons[0] as HTMLElement);
     expect(screen.queryByTestId('bodyfat-chart-backdrop')).toBeNull();
-    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(25);
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue('25');
   });
 
   /*
@@ -1314,7 +1319,7 @@ describe('Brief B: the body-fat estimate chart (C1.08.5, C1.08.9)', () => {
     const female = screen.getByRole('group', { name: 'Female' });
     fireEvent.click(within(female).getByRole('button', { name: '45%' }));
     expect(screen.queryByTestId('bodyfat-chart-backdrop')).toBeNull();
-    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(45);
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue('45');
   });
 
   it('lays the chart out as three columns of 44 px targets, the art in ink', () => {
@@ -2130,7 +2135,7 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     expect(known).not.toBeDisabled();
     expect(known.closest('label')?.querySelector('em')).toBeNull();
     setValue(/body fat \(%\)/i, '22');
-    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(22);
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue('22');
   });
 
   it('refuses Not Measured on the same terms, and repairs the mode if the sex is cleared', () => {
@@ -2154,7 +2159,7 @@ describe('decision A1: ND makes the body-fat percentage required', () => {
     pickSex();
     setValue(/body fat \(%\)/i, '22');
     pickSex();
-    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue(22);
+    expect(screen.getByLabelText(/body fat \(%\)/i)).toHaveValue('22');
   });
 
   it('shows the beverage target as a RANGE on review, with the reason, and never one figure', () => {
@@ -3169,7 +3174,7 @@ describe('round 3: the load-step gate and the three controls that moved', () => 
     const heading = screen.getByText('Load Step');
     const row = heading.parentElement?.querySelector('.wiz-row.wiz-row-tight') ?? null;
     expect(row).not.toBeNull();
-    expect(within(row as HTMLElement).getAllByRole('spinbutton')).toHaveLength(2);
+    expect(within(row as HTMLElement).getAllByRole('textbox')).toHaveLength(2);
     expect(setupCss).toMatch(
       /\.wiz-row-tight\s*\{\s*grid-template-columns:\s*minmax\(0, 1fr\) minmax\(0, 1fr\)/,
     );
