@@ -16,7 +16,7 @@ import {
   useUpcoming,
   useWeeklyReviews,
 } from '../../store/scheduleSelectors';
-import { latestBodyMassEntry, useActiveProfile, useOpenAssignment } from '../../store/selectors';
+import { latestBodyMassEntry, useActiveProfile, useMinuteClock, useOpenAssignment } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
 import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
@@ -148,7 +148,9 @@ export function TodayView(): JSX.Element {
   // One clock read per render, passed to every selector that needs a civil date, so the
   // projection and the date it is indexed by cannot straddle a midnight and disagree about
   // which day this is.
-  const now = Date.now(); // [ms] epoch, UTC
+  // Audit G20: the minute clock (every minute, and on return to the tab), not a render-time read,
+  // so a resumed app moves to the new day and the capsule opens on its day without a tap.
+  const now = useMinuteClock(); // [ms] epoch, UTC
   // The skin's words, and the same skin's override table for the frames that carry a value.
   // Both are hooks, so they are read here with the rest and above every early return.
   const c = useCopy();

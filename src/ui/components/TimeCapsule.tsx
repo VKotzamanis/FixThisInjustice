@@ -34,6 +34,7 @@ import {
   todayLocal,
 } from '../../domain/dates';
 import type { EpochMs, LocalDate } from '../../domain/types';
+import { MAX_NOTE_CHARS } from '../../domain/schema';
 import { useAppStore } from '../../store';
 import './timeCapsule.css';
 
@@ -47,11 +48,11 @@ export const CAPSULE_MIN_CHARS = 20;
 /**
  * [characters] The longest note the document can hold.
  *
- * Mirrors MAX_NOTE_CHARS in src/domain/schema.ts, which is module-private there. A note over
+ * Derived from the loader's own note bound (audit G22, rule 2). A note over
  * this bound would pass through the store and fail Zod at the next save, so it is refused at
  * the control.
  */
-export const CAPSULE_MAX_CHARS = 5_000;
+export const CAPSULE_MAX_CHARS = MAX_NOTE_CHARS; // [characters]
 
 /**
  * [d] The nearest open date the form accepts, counted from today in the profile's zone.
@@ -193,7 +194,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
     // @typescript-eslint/unbound-method.
     useAppStore.getState().setCapsule(profileId, {
       note: trimmed,
-      writtenAt: now, // [ms] epoch UTC
+      writtenAt: Date.now(), // [ms] epoch UTC, the tap itself (G20), not the render's clock
       opensOn,
       opened: false,
     });
@@ -215,6 +216,92 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
     </h3>
   );
 
+  // The write dialog, shared by "no capsule yet" and, since audit G16, "opened: write another".
+  const writeDialog = dialog === 'write' && (
+      <ModalShell
+        labelledBy={dialogHeadingId}
+        className="capsule-panel"
+        backdropClassName="capsule-panel-bg"
+        testId="capsule-write-backdrop"
+        onClose={closeDialog}
+      >
+        <h2 className="capsule-panel-h" id={dialogHeadingId}>
+          {t('hero.timeCapsule')}
+        </h2>
+
+        <label className="capsule-label" htmlFor={noteId}>
+          {t('label.capsuleNote')}
+        </label>
+        <textarea
+          id={noteId}
+          className="capsule-note-field"
+          rows={6}
+          maxLength={CAPSULE_MAX_CHARS}
+          value={note}
+          aria-describedby={showRefusal ? refusalId : undefined}
+          aria-invalid={touched && (refusal === 'noteShort' || refusal === 'noteLong')}
+          onChange={(e) => {
+            setNote(e.currentTarget.value);
+            setTouched(true);
+          }}
+          onBlur={() => {
+            setTouched(true);
+          }}
+        />
+        <span className="capsule-count" data-testid="capsule-count">
+          {FORMAT.capsuleCount(trimmed.length, CAPSULE_MAX_CHARS)}
+        </span>
+
+        <label className="capsule-label" htmlFor={dateId}>
+          {t('label.capsuleOpensOn')}
+        </label>
+        <input
+          id={dateId}
+          className="capsule-date-field"
+          type="date"
+          value={opensOn}
+          min={earliest}
+          max={latest}
+          aria-describedby={showRefusal ? refusalId : undefined}
+          aria-invalid={refusal === 'dateRange'}
+          onChange={(e) => {
+            setChosenDate(e.currentTarget.value);
+            setTouched(true);
+          }}
+          onBlur={() => {
+            setTouched(true);
+          }}
+        />
+
+        {/* Informational, not a refusal: the seal control is not blocked by this. Shown
+            only while the field still carries the computed default, so it disappears the
+            moment the writer picks their own date. */}
+        {defaultWasMoved && <p className="capsule-advice">{t('advice.capsuleDefaultMoved')}</p>}
+
+        {/* One line, whichever bound is unmet. role="status" so it is announced when it
+            appears rather than only when the field is next read. */}
+        {showRefusal && (
+          <p className="capsule-refusal" id={refusalId} role="status">
+            {refusalLine}
+          </p>
+        )}
+
+        <div className="capsule-panel-actions">
+          <button type="button" className="capsule-action" onClick={closeDialog}>
+            {t('button.closeModal')}
+          </button>
+          <button
+            type="button"
+            className="capsule-action capsule-seal"
+            disabled={refusal !== null}
+            onClick={seal}
+          >
+            {t('button.sealCapsule')}
+          </button>
+        </div>
+      </ModalShell>
+  );
+
   // ---- no capsule: the writing dialog ------------------------------------------------
   if (capsule === null) {
     return (
@@ -231,90 +318,7 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
           {t('button.writeCapsule')}
         </button>
 
-        {dialog === 'write' && (
-          <ModalShell
-            labelledBy={dialogHeadingId}
-            className="capsule-panel"
-            backdropClassName="capsule-panel-bg"
-            testId="capsule-write-backdrop"
-            onClose={closeDialog}
-          >
-            <h2 className="capsule-panel-h" id={dialogHeadingId}>
-              {t('hero.timeCapsule')}
-            </h2>
-
-            <label className="capsule-label" htmlFor={noteId}>
-              {t('label.capsuleNote')}
-            </label>
-            <textarea
-              id={noteId}
-              className="capsule-note-field"
-              rows={6}
-              maxLength={CAPSULE_MAX_CHARS}
-              value={note}
-              aria-describedby={showRefusal ? refusalId : undefined}
-              aria-invalid={touched && (refusal === 'noteShort' || refusal === 'noteLong')}
-              onChange={(e) => {
-                setNote(e.currentTarget.value);
-                setTouched(true);
-              }}
-              onBlur={() => {
-                setTouched(true);
-              }}
-            />
-            <span className="capsule-count" data-testid="capsule-count">
-              {FORMAT.capsuleCount(trimmed.length, CAPSULE_MAX_CHARS)}
-            </span>
-
-            <label className="capsule-label" htmlFor={dateId}>
-              {t('label.capsuleOpensOn')}
-            </label>
-            <input
-              id={dateId}
-              className="capsule-date-field"
-              type="date"
-              value={opensOn}
-              min={earliest}
-              max={latest}
-              aria-describedby={showRefusal ? refusalId : undefined}
-              aria-invalid={refusal === 'dateRange'}
-              onChange={(e) => {
-                setChosenDate(e.currentTarget.value);
-                setTouched(true);
-              }}
-              onBlur={() => {
-                setTouched(true);
-              }}
-            />
-
-            {/* Informational, not a refusal: the seal control is not blocked by this. Shown
-                only while the field still carries the computed default, so it disappears the
-                moment the writer picks their own date. */}
-            {defaultWasMoved && <p className="capsule-advice">{t('advice.capsuleDefaultMoved')}</p>}
-
-            {/* One line, whichever bound is unmet. role="status" so it is announced when it
-                appears rather than only when the field is next read. */}
-            {showRefusal && (
-              <p className="capsule-refusal" id={refusalId} role="status">
-                {refusalLine}
-              </p>
-            )}
-
-            <div className="capsule-panel-actions">
-              <button type="button" className="capsule-action" onClick={closeDialog}>
-                {t('button.closeModal')}
-              </button>
-              <button
-                type="button"
-                className="capsule-action capsule-seal"
-                disabled={refusal !== null}
-                onClick={seal}
-              >
-                {t('button.sealCapsule')}
-              </button>
-            </div>
-          </ModalShell>
-        )}
+        {writeDialog}
       </section>
     );
   }
@@ -366,6 +370,17 @@ export function TimeCapsule({ now = Date.now() }: { now?: EpochMs }): ReactEleme
       >
         {t('button.readCapsule')}
       </button>
+      {/* Audit G16: not one-shot any more. Sealing a new capsule replaces this opened one. */}
+      <button
+        type="button"
+        className="capsule-action"
+        onClick={() => {
+          setDialog('write');
+        }}
+      >
+        {t('button.writeAnotherCapsule')}
+      </button>
+      {writeDialog}
 
       {dialog === 'read' && (
         <ModalShell

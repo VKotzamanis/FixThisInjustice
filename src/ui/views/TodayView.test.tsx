@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, within } from '@testing-library/react';
+import { addDays, todayLocal } from '../../domain/dates';
 import type { ReactElement } from 'react';
 import { ToastProvider } from '../components/ToastQueue';
 import { App } from '../../app/App';
@@ -1206,5 +1207,25 @@ describe('body mass on Today (spec R9, audit G02)', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday: no preferred slot
     render(<TodayView />);
     expect(screen.getByLabelText(`${copyFor('limelight', 'quantity.bodyMass')} (kg)`)).toBeTruthy();
+  });
+});
+
+describe('the clock ticks on Today (audit G20)', () => {
+  it('opens the capsule on its day without another interaction', () => {
+    const tz = useAppStore.getState().profiles[PROFILE_ID]?.timezone ?? 'Europe/Athens';
+    const tomorrow = addDays(todayLocal(tz, NOW_MS), 1);
+    useAppStore.getState().setCapsule(PROFILE_ID, {
+      note: 'A note long enough for the twenty-character floor.',
+      writtenAt: NOW_MS - DAY_MS, // [ms] epoch UTC
+      opensOn: tomorrow,
+      opened: false,
+    });
+    render(<TodayView />);
+    expect(screen.queryByText(copyFor('limelight', 'advice.capsuleOpenDatePassed'))).toBeNull();
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // the phone slept overnight
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(screen.getByText(copyFor('limelight', 'advice.capsuleOpenDatePassed'))).toBeTruthy();
   });
 });

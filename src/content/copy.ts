@@ -310,6 +310,7 @@ export type CopyKey =
   | 'advice.weekMissed'
   | 'advice.weekMissedNone'
   | 'button.dismiss'
+  | 'button.writeAnotherCapsule'
   | 'advice.outsideEquations'
   | 'label.checkInDay'
   | 'hero.intakeHistory'
@@ -1174,6 +1175,8 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.weekMissed': 'Week of {monday}: {completed} of {target} sessions completed.', // template; FORMAT.weekMissed
   'advice.weekMissedNone': 'Week of {monday}: no sessions completed.', // template; FORMAT.weekMissed
   'button.dismiss': 'Dismiss',
+  // Audit G16: an opened capsule can be followed by a new one, which replaces it.
+  'button.writeAnotherCapsule': 'Write Another',
   // Audit G09: Targets names the input the equations do not cover. Template; FORMAT.withSlots.
   'advice.outsideEquations': '{field} is outside the range the equations cover.',
   // Audit G17: intake history and the day a check-in is for.
