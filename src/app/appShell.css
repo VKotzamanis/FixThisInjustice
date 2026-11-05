@@ -271,3 +271,25 @@ main {
   color: var(--text);
   width: 220px;
 }
+
+/*
+ * The update banner's dock (audit E13). Fixed, so it stays visible however far the view is
+ * scrolled; `top` is set inline to the header's measured bottom edge (UpdatePrompt.tsx), so it
+ * sits directly under the header on any header height (safe-area padding included). One rung
+ * above every modal sheet and scrim, so Reload is tappable with a dialog open; below the
+ * system layers (boot, intro). UpdatePrompt.test.tsx holds the order.
+ */
+.update-dock {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: calc(var(--z-modal) + 1);
+  padding: 0 max(var(--gutter), env(safe-area-inset-right)) 0 max(var(--gutter), env(safe-area-inset-left));
+  pointer-events: none;
+}
+
+.update-dock .banner {
+  max-width: 1280px;
+  margin: var(--space-2) auto 0;
+  pointer-events: auto;
+}
