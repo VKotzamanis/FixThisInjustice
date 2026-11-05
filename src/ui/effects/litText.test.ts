@@ -20,8 +20,9 @@ describe('lit word (review item 8)', () => {
     for (const t of LIT_TOKENS) expect(BURN_TOKENS).not.toContain(t);
   });
 
-  it('is one still frame: full envelope, frozen heat, flames off', () => {
-    expect(LIT_FRAME).toEqual({ t: STILL_FRAME_S, e: 1, flame: 0 });
+  it('is one still frame: full envelope, frozen heat, flames off, glow faded inside the canvas', () => {
+    expect(LIT_FRAME).toEqual({ t: STILL_FRAME_S, e: 1, flame: 0, fade: 1 });
+    expect(FS).toContain('mix(1.0, fade, uFade)');
     expect(FS).toMatch(/uniform float [^;]*\buFlame\b/);
     expect(FS).toContain('* uFlame;');
   });

@@ -63,7 +63,9 @@ const VS =
 
 // uSize [device px]; uT [s]; uE 0..1; uSpread, uCap, uBase [device px]; uGain linear; uHard and
 // uHalo 0/1 (lookUniforms); uFlame 0/1 (1 = flame tongues above the cap line, 0 = none: the
-// static lit word, litText.ts); colours are linear RGB: resting letter (cool), fire deep -> mid
+// static lit word, litText.ts); uFade 0/1 (1 = the glow fades to zero before the distance
+// field's clamp and the canvas edge, so no flat rectangle of haze shows round a word at rest;
+// the burn keeps 0, unchanged); colours are linear RGB: resting letter (cool), fire deep -> mid
 // -> hot, glow. With uHard 0, uHalo 1, uFlame 1 the arithmetic is the faithful look unchanged.
 export const FS = [
   '#ifdef GL_FRAGMENT_PRECISION_HIGH',
@@ -73,7 +75,7 @@ export const FS = [
   '#endif',
   'uniform sampler2D uTex; uniform vec2 uSize;',
   'uniform float uT, uE, uSpread, uCap, uBase, uSeed, uGain;',
-  'uniform float uHard, uHalo, uFlame;',
+  'uniform float uHard, uHalo, uFlame, uFade;',
   'uniform vec3 uCool, uDeep, uMid, uHot, uGlow;',
   'varying vec2 vUv;',
   // Hash without Sine (c) 2014 David Hoskins, MIT; see the notice at the top of this file.
@@ -102,7 +104,10 @@ export const FS = [
   '  vec3 f2 = mix(uDeep, uMid, smoothstep(0.05, 0.45, h2)); f2 = mix(f2, uHot, smoothstep(0.55, 0.9, h2));',
   '  f2 = mix(min(f2 * uGain, 1.0), mix(uMid, uHot, step(0.6, h2)), uHard);',
   '  c += f2 * t2; al += t2 * (1.0 - al);',
-  '  float g = exp(-dOut / 0.32) * uE * uHalo * (1.0 - al); c += uGlow * g; al += g;',
+  // uFade: zero the glow before |d| reaches uSpread (where the texture clamps) and near the edge.
+  '  float fade = 1.0 - smoothstep(0.5, 0.9, max(d, 0.0) / uSpread);',
+  '  vec2 ed = min(vUv, 1.0 - vUv) * uSize / uCap; fade *= smoothstep(0.0, 0.2, min(ed.x, ed.y));',
+  '  float g = exp(-dOut / 0.32) * uE * uHalo * mix(1.0, fade, uFade) * (1.0 - al); c += uGlow * g; al += g;',
   '  if (al < 0.002) discard;',
   '  gl_FragColor = vec4(l2s(c / al) * al, al);',
   '}',
@@ -383,7 +388,7 @@ export function buildProgram(gl: WebGLRenderingContext): BurnProgram | null {
   return { program, buffer, texture, u };
 }
 
-/** Uploads a word and its constants (size, palette, look, seed, flames) to a built program. */
+/** Uploads a word and its constants (size, palette, look, seed, flames, glow fade) to a program. */
 export function loadWord(
   gl: WebGLRenderingContext,
   p: BurnProgram,
@@ -392,6 +397,7 @@ export function loadWord(
   look: BurnLook,
   seed: number,
   flame: 0 | 1,
+  fade: 0 | 1,
 ): void {
   gl.bindTexture(gl.TEXTURE_2D, p.texture);
   gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, r.W, r.H, 0, gl.RGBA, gl.UNSIGNED_BYTE, r.tex);
@@ -405,6 +411,7 @@ export function loadWord(
   gl.uniform1f(p.u('uHard'), l.hard);
   gl.uniform1f(p.u('uHalo'), l.halo);
   gl.uniform1f(p.u('uFlame'), flame);
+  gl.uniform1f(p.u('uFade'), fade);
   for (let i = 0; i < COLOUR_UNIFORMS.length; i++) gl.uniform3fv(p.u(COLOUR_UNIFORMS[i] ?? ''), palette[i] ?? [0, 0, 0]);
   gl.viewport(0, 0, r.W, r.H);
   gl.clearColor(0, 0, 0, 0);
@@ -440,7 +447,7 @@ export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): 
   if (gl === null) return null;
   const p = buildProgram(gl);
   if (p === null) return null;
-  loadWord(gl, p, r, palette, opts.look ?? BURN_LOOK, opts.seed ?? 0.31, 1);
+  loadWord(gl, p, r, palette, opts.look ?? BURN_LOOK, opts.seed ?? 0.31, 1, 0);
   const { program, buffer, texture } = p;
 
   const draw = (t: number): void => {

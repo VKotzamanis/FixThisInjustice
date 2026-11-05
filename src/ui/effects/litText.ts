@@ -35,8 +35,8 @@ import {
 /** The lit palette, in the burn's uniform order: resting letter, deep, mid, hot, glow. */
 export const LIT_TOKENS: PaletteTokens = ['--lit-cool', '--lit-deep', '--lit-mid', '--lit-hot', '--lit-glow'];
 
-/** The one frame a lit word shows: t [s] shader time, e envelope 0..1, flame 0/1. */
-export const LIT_FRAME = { t: STILL_FRAME_S, e: 1, flame: 0 } as const;
+/** The one frame a lit word shows: t [s] shader time, e envelope 0..1, flame 0/1, glow fade 0/1. */
+export const LIT_FRAME = { t: STILL_FRAME_S, e: 1, flame: 0, fade: 1 } as const;
 
 /** [entries] Finished frames kept; a page shows about a dozen lit words. */
 const CACHE_MAX = 64;
@@ -137,7 +137,7 @@ export function renderLit(host: Element, text: string, font: WordFont): HTMLCanv
   ctx.canvas.width = r.W;
   ctx.canvas.height = r.H;
   ctx.gl.useProgram(ctx.program.program);
-  loadWord(ctx.gl, ctx.program, r, palette, BURN_LOOK, LIT_SEED, LIT_FRAME.flame);
+  loadWord(ctx.gl, ctx.program, r, palette, BURN_LOOK, LIT_SEED, LIT_FRAME.flame, LIT_FRAME.fade);
   drawFrame(ctx.gl, ctx.program, LIT_FRAME.t, LIT_FRAME.e);
   const frame = document.createElement('canvas');
   placeCanvas(frame, r);
