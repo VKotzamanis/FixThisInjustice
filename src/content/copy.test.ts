@@ -563,7 +563,7 @@ describe('the converted frames render the base-table string they replaced', () =
     expect(FORMAT.blockLabel(2)).toBe('Block 2');
     expect(FORMAT.blockSessions(4, 6)).toBe('sessions 4\u20136');
     expect(FORMAT.deloadNote(50)).toBe('volume \u2212' + '50 %, load unchanged');
-    expect(FORMAT.weekOfCount(1, 2)).toBe('Week 1 of 2');
+    expect(FORMAT.weekOfCount(1, 2)).toBe('Week 1'); // ROADMAP L6: no total
     expect(FORMAT.videoInstanceOf(2, 6)).toBe('instance 2 of 6');
     expect(FORMAT.complianceWeek('2026-01-05', 2, 3)).toBe('Week of 2026-01-05: 2 of 3 completed');
     expect(FORMAT.estimated1RM('99 kg')).toBe('99 kg estimated 1RM');

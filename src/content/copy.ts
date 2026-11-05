@@ -1407,7 +1407,7 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // the quantity beside it.
   'status.deloadTag': 'DELOAD',
   'label.week': 'Week',
-  'label.weekOfCount': 'Week {Shown} of {Total}', // template; FORMAT.weekOfCount
+  'label.weekOfCount': 'Week {Shown}', // template; FORMAT.weekOfCount. No "of N": open-ended (L6)
   // The cursor marker on the session the plan will serve next. Lower case: it is a mark on a
   // row, not a heading.
   'status.nextSession': 'next',
@@ -2567,7 +2567,10 @@ export const FORMAT = {
   deloadNote: (cutPct: number, overrides?: Partial<Record<CopyKey, string>>): string =>
     copy('status.deloadNote', overrides).replace('{cutPct}', () => String(cutPct)),
 
-  /** "Week 1 of 2". Both are 1-based counts of weeks over the whole plan. */
+  /**
+   * "Week 1". ROADMAP L6: the row no longer prints the total; `total` (the weeks materialised
+   * so far) is still substituted for a skin row that names `{total}`, and none does.
+   */
   weekOfCount: (
     shown: number,
     total: number,

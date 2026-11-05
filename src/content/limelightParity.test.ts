@@ -32,7 +32,7 @@
 // on the wizard review (ROADMAP L6; base table only). No snapshot row was changed to add them.
 //
 // Rows CHANGED on purpose (ROADMAP L6, docs/design/programme-horizon.md Q4: an open-ended
-// programme has no N, so every "of N" goes): `status.bootWeek` and `status.sessionCursor`.
+// programme has no N, so every "of N" goes): `status.bootWeek`, `status.sessionCursor` and `label.weekOfCount`.
 import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import resolvedBefore from './__fixtures__/limelight-resolved.json';

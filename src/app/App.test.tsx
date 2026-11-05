@@ -999,9 +999,11 @@ describe('keyboard', () => {
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
 
-    // j and k move by BLOCK. This plan has one block, so the shown week does not move, which
-    // is the clamped end of the strip rather than a wrap to the other end.
+    // j and k move by BLOCK. The fixture's one block covers weeks 1-2; since ROADMAP L6 the
+    // mount catch-up appends the engine's cycles after it, so j lands on week 3 and k comes back.
     fireEvent.keyDown(window, { key: 'j' });
+    expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(WEEKS + 1, WEEKS));
+    fireEvent.keyDown(window, { key: 'k' });
     expect(screen.getByTestId('week-label').textContent).toBe(FORMAT.weekOfCount(1, WEEKS));
 
     // The same key on another view reaches nothing: the binding is in the 'plan' scope, and
