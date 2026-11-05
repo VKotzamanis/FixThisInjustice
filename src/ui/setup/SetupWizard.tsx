@@ -1760,19 +1760,18 @@ export function SetupWizard(): JSX.Element {
     !tapeIncomplete &&
     tapeEstimate === null;
 
+  /*
+   * Audit A09: each guard sits on the predicate that renders its field. With the load steps
+   * hidden (Body weight only), a value cleared earlier must not block Next with no field to fix.
+   */
+  const loadStepsShown = showsLoadSteps(draft.equipment);
   const stepErrors = {
-    barbell: stepError(
-      copy('quantity.barbellStep', overrides),
-      draft.barbellStep,
-      draft.units,
-      overrides,
-    ),
-    dumbbell: stepError(
-      copy('quantity.dumbbellStep', overrides),
-      draft.dumbbellStep,
-      draft.units,
-      overrides,
-    ),
+    barbell: loadStepsShown
+      ? stepError(copy('quantity.barbellStep', overrides), draft.barbellStep, draft.units, overrides)
+      : null,
+    dumbbell: loadStepsShown
+      ? stepError(copy('quantity.dumbbellStep', overrides), draft.dumbbellStep, draft.units, overrides)
+      : null,
     /*
      * NO `stack` ENTRY, round 3 Task 8. The weight-stack field is off the screen, so an error
      * about it would block Next on a message with no field to correct it in -- the exact defect
@@ -2214,8 +2213,16 @@ export function SetupWizard(): JSX.Element {
     // Idempotent by latch, not by the disabled attribute alone: a double tap can deliver two
     // clicks before React has re-rendered the button, and each one would create a new profile.
     if (submitted || confirmBlocked) return;
-    const barbellKg = storedLoadKg(draft.barbellStep, draft.units); // [kg]
-    const dumbbellPairKg = storedLoadKg(draft.dumbbellStep, draft.units); // [kg]
+    /*
+     * A09: a hidden load step can neither block nor break Confirm. An unusable hidden value is
+     * replaced by the unit's default, the value the field is seeded with.
+     */
+    const loadStepKg = (text: string, fallback: number): number | null =>
+      loadStepsShown || stepError('', text, draft.units, overrides) === null
+        ? storedLoadKg(text, draft.units)
+        : storedLoadKg(String(fallback), draft.units);
+    const barbellKg = loadStepKg(draft.barbellStep, DEFAULT_BARBELL_STEP[draft.units]); // [kg]
+    const dumbbellPairKg = loadStepKg(draft.dumbbellStep, DEFAULT_DUMBBELL_STEP[draft.units]); // [kg]
     const stackKg = storedLoadKg(draft.stackStep, draft.units); // [kg]
     /*
      * Brief I Part 2. Where the body-fat route was open, the stored target mass is the one that
