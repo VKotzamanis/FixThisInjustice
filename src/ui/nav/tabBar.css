@@ -59,6 +59,10 @@
   max-width: 100%;
   white-space: nowrap;
   overflow: hidden;
+  /* Room for the lit word's glow (review item 8) inside the clip; the negative margins give it
+   * back, so the slot's layout does not move. [px] */
+  padding: 4px 3px;
+  margin: -4px -3px;
 }
 
 /* Current: a pink sticker block inset 4 px behind icon and label, ink label (7.75:1). */

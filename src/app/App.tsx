@@ -52,6 +52,7 @@ import { StaleSessionNotice } from './StaleSessionNotice';
 import { AtlasView, IntroGate, LogView, SettingsView, SetupWizard } from './routes';
 import { UnreadableNotice } from './UnreadableNotice';
 import { BRAND_SHORT } from './brand';
+import { LitWord } from '../ui/effects/LitWord';
 import './appShell.css';
 
 /**
@@ -486,7 +487,7 @@ function TopbarTitle(): ReactElement {
 
   return (
     <span className="topbar-title" data-testid="topbar-title">
-      {text()}
+      <LitWord text={text()} />
     </span>
   );
 }
@@ -637,12 +638,19 @@ export function App(): ReactElement {
                * (appShell.css; measured in e2e/p4a-shell.spec.ts). The full name stays in the
                * accessibility tree at every width; the short form is the visual stand-in.
                */}
+              {/*
+               * Owner answer to review item 8: the brand and the title are lit words (the burn's
+               * shader as a still frame in lime accents, src/ui/effects/LitWord.tsx); the plain
+               * text stays underneath as the name and the fallback.
+               */}
               <span className="brand">
                 <span className="brand-full">
-                  FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+                  <LitWord text="FIX·THIS·INJUSTICE">
+                    FIX<span className="acc">·</span>THIS<span className="acc">·</span>INJUSTICE
+                  </LitWord>
                 </span>
                 <span className="brand-short" aria-hidden="true">
-                  {BRAND_SHORT}
+                  <LitWord text={BRAND_SHORT} />
                 </span>
               </span>
               {/*

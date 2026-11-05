@@ -7,6 +7,7 @@
 import type { ReactElement } from 'react';
 import { useCopy } from '../../content/useCopy';
 import { Icon } from '../../skins/limelight/Icon';
+import { LitWord } from '../effects/LitWord';
 import { useAppStore } from '../../store';
 import { goToView } from './router';
 import { MORE_VIEWS, TAB_ICONS, TAB_ORDER, VIEWS, type ViewId } from './views';
@@ -33,6 +34,7 @@ export function TabBar(props: TabBarProps): ReactElement {
         // The More slot is the current one while Plan, Atlas or Settings is shown (brief 2.2).
         const current = slot === 'more' ? MORE_VIEWS.includes(view) : slot === view;
         const icon = TAB_ICONS[slot];
+        const label = c(def === null ? 'nav.more' : def.copyKey);
         return (
           <button
             key={slot}
@@ -47,7 +49,14 @@ export function TabBar(props: TabBarProps): ReactElement {
             }}
           >
             {icon !== undefined && <Icon name={icon} width={32} height={32} />}
-            <span className="tab-label">{c(def === null ? 'nav.more' : def.copyKey)}</span>
+            {/*
+              * Owner answer to review item 8: a lime label on the black bar is a lit word. The
+              * current slot's label is ink on the pink sticker, not lime on black: it stays plain
+              * (lime on pink would be 1.41:1).
+              */}
+            <span className="tab-label">
+              {current ? label : <LitWord text={label} />}
+            </span>
           </button>
         );
       })}

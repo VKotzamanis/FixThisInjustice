@@ -13,6 +13,7 @@ import type { CopyKey } from '../../../content/copy';
 import { REST_GAME_FAMILIES, seededFamily, type RestGameFamily } from '../../../domain/fun/restGames';
 import type { RestTimer } from '../../../domain/training/restTimer';
 import type { UnitSystem } from '../../../domain/types';
+import { LitWord } from '../../effects/LitWord';
 import { REST_GAME_CATALOG } from './restGameCatalog';
 import { rememberRestGameChoice, rememberedRestGameChoice } from './restGameChoice';
 import { RestGameHostContext, type RestGameHost } from './restGameHost';
@@ -112,8 +113,11 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
       {minimised && entry !== null && (
         <div className="rest-sheet-bar">
           {clock !== undefined && <span className="rest-sheet-clock">{clock}</span>}
-          {/* AM-4a-7 effect 4: the game's name on the bar is a panel eyebrow (panelEffects.css). */}
-          <span className="rest-sheet-bar-name ll-eyebrow">{t(entry.titleKey)}</span>
+          {/* AM-4a-7 effect 4: the game's name on the bar is a panel eyebrow (panelEffects.css),
+              lit since the owner's answer to review item 8 (LitWord). */}
+          <span className="rest-sheet-bar-name ll-eyebrow">
+            <LitWord text={t(entry.titleKey)} />
+          </span>
           <button
             type="button"
             className="rest-sheet-show"

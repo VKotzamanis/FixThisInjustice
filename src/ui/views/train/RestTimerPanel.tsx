@@ -160,6 +160,7 @@ export function RestTimerPanel(): ReactElement | null {
             key={timer.endsAt}
             className="rest-over-word"
             text={restOverWord}
+            rest="lit"
             delayMs={reduced ? 0 : START_DELAY_REST_MS}
             burn={now - timer.endsAt <= REST_OVER_GRACE_MS}
           />

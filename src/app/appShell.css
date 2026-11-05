@@ -83,6 +83,10 @@
   margin-left: var(--space-2);
   /* White on the black bar (21:1); --line-2 is ink and vanished there. */
   border-left: 1px solid var(--topbar-text);
+  /* Room for the lit word's glow (review item 8) inside the clip; the margins give it back, so
+   * the 44 px row and the title's place do not move. [px] */
+  padding-block: var(--space-2);
+  margin-block: calc(-1 * var(--space-2));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
