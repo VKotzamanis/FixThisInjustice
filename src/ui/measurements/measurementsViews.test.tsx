@@ -75,6 +75,16 @@ describe('BodyMassLog (spec R9, audit G03)', () => {
     });
   });
 
+  it('keeps the date on the row being edited, so the user sees which weigh-in changes', () => {
+    seed([entry('a', '2026-03-01', 94), entry('typo', '2026-03-02', 9.4)]);
+    withToasts(<BodyMassLog profile={makeProfile()} />);
+    const row = screen.getAllByTestId('mass-entry').find((r) => r.textContent?.includes('2026-03-02'));
+    if (row === undefined) throw new Error('no row for the typo');
+    fireEvent.click(within(row).getByRole('button', { name: copy('button.editEntry') }));
+    expect(row.textContent).toContain('2026-03-02');
+    expect(within(row).getByLabelText(Q)).toBeTruthy();
+  });
+
   it('deletes with a 6 s Undo that restores the identical record', () => {
     const typo = entry('typo', '2026-03-02', 9.4);
     seed([entry('a', '2026-03-01', 94), typo]);

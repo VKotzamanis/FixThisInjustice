@@ -65,33 +65,37 @@ export function BodyMassLog(props: { profile: Profile }): ReactElement | null {
         {shown.map((e) => (
           <li key={e.id} className="mass-log-row" data-testid="mass-entry">
             {editingId === e.id ? (
-              <BodyMassForm
-                profile={profile}
-                idPrefix={`mass-edit-${e.id}`}
-                quantity={c('quantity.bodyMass')}
-                role="choose"
-                referenceKg={referenceFor(e.id)}
-                initialKg={e.massKg}
-                initialRole={e.role ?? null}
-                submitLabel={c('button.saveEntry')}
-                onSubmit={(massKg, role) => {
-                  try {
-                    useAppStore.getState().updateBodyMass(profile.id, e.id, {
-                      massKg, // [kg]
-                      enteredUnit: profile.units,
-                      bodyFatPct: e.bodyFatPct, // [%] unchanged by a mass edit
-                      role,
-                    });
-                  } catch {
-                    return false;
-                  }
-                  setEditingId(null);
-                  return true;
-                }}
-                onCancel={() => {
-                  setEditingId(null);
-                }}
-              />
+              <>
+                {/* Audit G03: the row being corrected still names its day. */}
+                <span className="mass-log-date">{e.date}</span>
+                <BodyMassForm
+                  profile={profile}
+                  idPrefix={`mass-edit-${e.id}`}
+                  quantity={c('quantity.bodyMass')}
+                  role="choose"
+                  referenceKg={referenceFor(e.id)}
+                  initialKg={e.massKg}
+                  initialRole={e.role ?? null}
+                  submitLabel={c('button.saveEntry')}
+                  onSubmit={(massKg, role) => {
+                    try {
+                      useAppStore.getState().updateBodyMass(profile.id, e.id, {
+                        massKg, // [kg]
+                        enteredUnit: profile.units,
+                        bodyFatPct: e.bodyFatPct, // [%] unchanged by a mass edit
+                        role,
+                      });
+                    } catch {
+                      return false;
+                    }
+                    setEditingId(null);
+                    return true;
+                  }}
+                  onCancel={() => {
+                    setEditingId(null);
+                  }}
+                />
+              </>
             ) : (
               <>
                 <span className="mass-log-date">{e.date}</span>
