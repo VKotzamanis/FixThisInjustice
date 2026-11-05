@@ -20,7 +20,8 @@ import { copy } from '../../content/copy';
 // already use: tsconfig.app.json pins `types` to vite/client, so the node builtins have no
 // declarations here. It also makes the read a build-time input, which a rename breaks loudly.
 import APP_SOURCE from '../../app/App.tsx?raw';
-import { VIEWS, VIEW_IDS } from './views';
+import TABBAR_SOURCE from './TabBar.tsx?raw';
+import { MORE_ICONS, MORE_VIEWS, TAB_ICONS, TAB_ORDER, VIEWS, VIEW_IDS } from './views';
 import type { ViewId } from './views';
 
 /**
@@ -85,9 +86,9 @@ describe('the view registry', () => {
      * Asserted as source text for the reason the header of this file gives: what is asserted is
      * the ABSENCE of a call, which is not a value a module can export.
      */
-    expect(APP_SOURCE).not.toMatch(/\{n\.label\}/);
-    expect(APP_SOURCE).toMatch(/n\.copyKey/);
-    expect(APP_SOURCE).not.toMatch(/aria-label=\{copy\(/);
+    expect(TABBAR_SOURCE).not.toMatch(/\.label\}/);
+    expect(TABBAR_SOURCE).toMatch(/def\.copyKey/);
+    expect(TABBAR_SOURCE).not.toMatch(/aria-label=\{copy\(/);
   });
 
   it('numbers the hotkey digits 1..n in registry order, with no gap or repeat', () => {
@@ -98,5 +99,29 @@ describe('the view registry', () => {
 
   it('derives VIEW_IDS from VIEWS rather than restating it', () => {
     expect(VIEW_IDS).toEqual(VIEWS.map((v) => v.id));
+  });
+});
+
+describe('the tab bar order and icons (brief 2.2, section 8)', () => {
+  it('holds four views and More, each once', () => {
+    expect(TAB_ORDER.filter((s) => s === 'more')).toHaveLength(1);
+    expect(new Set(TAB_ORDER).size).toBe(TAB_ORDER.length);
+    expect(TAB_ORDER.filter((s) => s !== 'more')).toHaveLength(4);
+  });
+
+  it('reaches every view exactly once: in the bar or in More (MORE_VIEWS is derived)', () => {
+    const reached = [...TAB_ORDER.filter((s) => s !== 'more'), ...MORE_VIEWS].sort();
+    expect(reached).toEqual([...VIEW_IDS].sort());
+  });
+
+  it('has an icon for every bar slot and every More row, so a reorder names its gap', () => {
+    for (const slot of TAB_ORDER) expect({ slot, icon: TAB_ICONS[slot] !== undefined }).toEqual({ slot, icon: true });
+    for (const row of [...MORE_VIEWS, 'find' as const]) {
+      expect({ row, icon: MORE_ICONS[row] !== undefined }).toEqual({ row, icon: true });
+    }
+  });
+
+  it('bar icons are Panel variants (lime outline on the black bar)', () => {
+    for (const slot of TAB_ORDER) expect(TAB_ICONS[slot]).toMatch(/Panel$/);
   });
 });

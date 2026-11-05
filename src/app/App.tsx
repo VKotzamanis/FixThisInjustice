@@ -18,6 +18,8 @@ import {
 import { useActiveCursor } from '../store/scheduleSelectors';
 import { HotkeyProvider, useHotkeys } from '../ui/hotkeys';
 import { goToView, useHistoryRouter } from '../ui/nav/router';
+import { MoreSheet } from '../ui/nav/MoreSheet';
+import { TabBar } from '../ui/nav/TabBar';
 import { ViewActiveContext } from '../ui/nav/viewActive';
 import { SPOTLIGHT_COMBO, VIEWS, VIEW_IDS, VIEW_INSTRUCTIONS, VIEW_TITLES, isViewId } from '../ui/nav/views';
 import type { ViewId } from '../ui/nav/views';
@@ -30,7 +32,6 @@ import type { MarqueeItem } from '../ui/components/Marquee';
 import { PhaseTransitionGate } from '../ui/components/PhaseTransition';
 import { SiteFooter } from '../ui/components/SiteFooter';
 import { Spotlight } from '../ui/components/Spotlight';
-import { SpotlightButton } from '../ui/components/SpotlightButton';
 import { ToastProvider, ToastQueue } from '../ui/components/ToastQueue';
 import { TrainingModalsProvider } from '../ui/components/TrainingModalsProvider';
 import { MotivationGate } from '../ui/motivation/MotivationGate';
@@ -108,7 +109,7 @@ function ViewShell(): ReactElement {
 function ViewSwitch({ view }: { view: ViewId }): ReactElement {
   /*
    * The spotlight palette is CONTROLLED, and the two things below are the only things that
-   * open it: the tap target, and the one binding on SPOTLIGHT_COMBO. The palette registers no
+   * open it: the More sheet's "find it" row, and the one binding on SPOTLIGHT_COMBO. The palette registers no
    * key listener of its own (code review A54 was two window listeners bound to the same combo,
    * both firing).
    *
@@ -121,26 +122,11 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
     setSpotlightOpen(false);
   }, []);
 
-  /*
-   * The shortcut off switch (WCAG 2.1 SC 2.1.4), read here only to decide what is ANNOUNCED.
-   * The registry does its own read at dispatch time; this one exists because aria-keyshortcuts
-   * is a claim that the key works, and a claim that outlives the shortcut misleads exactly the
-   * users the criterion is written for. A scalar selector, so the snapshot stays referentially
-   * stable between renders.
-   */
-  const hotkeysOn = useAppStore((s) => s.ui.hotkeys);
-
-  /*
-   * The strip's words, resolved at RENDER against the active skin.
-   *
-   * NOT `copy()` and NOT the registry's `label`. Both are the DEFAULT table: `label` is a module
-   * constant src/ui/nav/views.ts bakes at import, so it cannot follow `ui.skin` at all, and the
-   * landmark's name was a bare `copy()` call beside it. Under limelight that left the palette
-   * offering "the run" and the tab beside it still reading "Plan" (P8 review). The registry's
-   * `copyKey` is the row, and this is the reader, which is exactly what
-   * src/ui/components/Spotlight.tsx does with the same rows.
-   */
-  const c = useCopy();
+  // Brief 2.2: the More sheet, opened from the fifth slot.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const closeMore = useCallback(() => {
+    setMoreOpen(false);
+  }, []);
 
   const [konami, setKonami] = useState(false);
   const closeKonami = useCallback(() => {
@@ -158,7 +144,7 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
    * The app's own keys. The digits come from the registry rather than from a list written out
    * here, so a view added there is reachable from the keyboard without a second edit.
    *
-   * Escape is NOT bound. ModalShell already closes an open dialog on Escape from its own
+   * Escape is NOT bound. The overlay stack already closes the top dialog on Escape from its own
    * listener, and ToastQueue already withdraws the front toast on it; a third handler would
    * close two things with one press.
    */
@@ -204,41 +190,25 @@ function ViewSwitch({ view }: { view: ViewId }): ReactElement {
 
   return (
     <>
-      <nav className="viewnav" aria-label={c('nav.label')}>
-        {VIEWS.map((n) => (
-          <button
-            key={n.id}
-            type="button"
-            aria-current={view === n.id}
-            /*
-             * The digit that reaches this tab, read from the registry entry rather than written
-             * out here, so a re-ordered VIEWS list cannot leave the announcement naming the old
-             * key. Absent while the shortcuts are switched off: the attribute is a promise that
-             * the key press does something, and it must not outlive the binding.
-             */
-            aria-keyshortcuts={hotkeysOn ? String(n.digit) : undefined}
-            onClick={() => {
-              // Through getState(), like every other action call in this codebase: the store's
-              // actions are created once and never replace themselves, so subscribing to one
-              // buys nothing and hands the component an unbound method.
-              goToView(n.id);
-            }}
-          >
-            {c(n.copyKey)}
-          </button>
-        ))}
-        {/*
-         * The tap target for the palette. It sits in the nav because SPOTLIGHT_COMBO cannot be
-         * pressed on a phone, which would otherwise leave the palette unreachable there.
-         */}
-        <SpotlightButton
-          onOpen={() => {
+      <Spotlight open={spotlightOpen} onClose={closeSpotlight} />
+      <ViewStack view={view} />
+      {/* Brief 2.2: the fixed bottom bar; More opens the sheet with the other views and the palette. */}
+      <TabBar
+        view={view}
+        moreOpen={moreOpen}
+        onMore={() => {
+          setMoreOpen(true);
+        }}
+      />
+      {moreOpen && (
+        <MoreSheet
+          view={view}
+          onClose={closeMore}
+          onFind={() => {
             setSpotlightOpen(true);
           }}
         />
-      </nav>
-      <Spotlight open={spotlightOpen} onClose={closeSpotlight} />
-      <ViewStack view={view} />
+      )}
       {konami && <KonamiOverlay onClose={closeKonami} />}
     </>
   );

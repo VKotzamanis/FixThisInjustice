@@ -63,6 +63,8 @@
 
 main {
   padding: 24px 28px 80px;
+  /* The fixed tab bar and the home indicator cover the last 56 px + inset (brief 2.2). */
+  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--space-4));
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
@@ -70,7 +72,7 @@ main {
 
 @media (max-width: 820px) {
   main {
-    padding: 18px 14px 40px;
+    padding: 18px 14px calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--space-4));
   }
 }
 
@@ -204,46 +206,4 @@ main {
   border: 1px solid var(--line-2);
   color: var(--text);
   width: 220px;
-}
-
-/*
- * View navigation (P2 Task 8). Horizontally scrollable rather than wrapped: six tabs at the
- * 44 px minimum target do not fit a 320 px phone, and a wrapped second row moves the whole
- * view down by 44 px on the narrowest screens where the space is worth most.
- */
-.viewnav {
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  padding: 0.5rem;
-  /* --line: --line-1 was never defined, so the fallback (a near-white line from the retired
-   * console skin) is what rendered. */
-  border-bottom: 1px solid var(--line);
-}
-
-/* Every tab reserves the 2 px border the active one draws, so selecting a tab moves nothing;
- * the padding gives back the extra pixel per side. */
-.viewnav button {
-  flex: 0 0 auto;
-  min-height: 2.75rem;
-  padding: 0 calc(0.75rem - 1px);
-  color: var(--text-2);
-  background: transparent;
-  border: 2px solid transparent;
-  font-family: inherit;
-  font-size: 16px;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-
-/*
- * The current view is a pink sticker (stylize survey 2026-10-18, item 2): pink fill, ink type,
- * 2 px ink border. It was pink type and a pink border on lime, 1.41:1, so the one tab that says
- * where the user is was the hardest to read. Ink on pink is 7.75:1, and the filled, bordered box
- * marks it by shape as well as colour (WCAG 1.4.1).
- */
-.viewnav button[aria-current='true'] {
-  background: var(--accent);
-  color: var(--ink);
-  border: 2px solid var(--ink);
 }

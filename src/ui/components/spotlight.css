@@ -98,15 +98,3 @@
 .spotlight-empty:empty {
   display: none;
 }
-
-/* The tap target that opens the palette where there is no keyboard to press the combo on. */
-.spotlight-open {
-  padding: 0.4rem 0.7rem;
-  min-height: 2.75rem;
-  border: 1px solid var(--line-2, rgba(220, 230, 240, 0.16));
-  border-radius: 0.25rem;
-  background: var(--bg-2);
-  color: var(--text);
-  font-family: var(--sans, system-ui, sans-serif);
-  cursor: pointer;
-}

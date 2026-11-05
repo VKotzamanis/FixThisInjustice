@@ -1,0 +1,124 @@
+/*
+ * The bottom tab bar and the More sheet's rows (docs/design/p4-design-brief.md 2.2).
+ *
+ * Bar: fixed to the bottom edge on the black panel with a 2 px ink top rule, height --tabbar-h
+ * plus the home-indicator inset. Equal slots (grid-auto-columns), whatever TAB_ORDER's length.
+ * Label: Archivo 12 px, 600, 75 % width, lime on black 10.91:1. Widest owner label "the numbers"
+ * is 57.6 px [brief, measured] in a 64 px slot at 320 px.
+ */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-dock);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  box-sizing: border-box;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  background: var(--panel);
+  border-top: 2px solid var(--ink);
+}
+
+.tabbar .tab {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--tabbar-h);
+  margin: 0;
+  padding: var(--space-1) 2px;
+  background: transparent;
+  color: var(--lime);
+  border: 0;
+  font-family: var(--sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  font-stretch: 75%;
+  letter-spacing: 0.02em;
+  line-height: 1.1;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+/* 32 x 32 pixel art at 1x: integer scale, crisp at 2x and 3x DPR. */
+.tabbar .tab img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.tabbar .tab-label {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Current: a pink sticker block inset 4 px behind icon and label, ink label (7.75:1). */
+.tabbar .tab[aria-current='page'] {
+  color: var(--ink);
+}
+
+.tabbar .tab[aria-current='page']::before {
+  content: '';
+  position: absolute;
+  inset: 4px;
+  z-index: -1;
+  background: var(--accent);
+  border: 2px solid var(--ink);
+}
+
+/* Pressed: icon and label shift 1 px down; no colour flash (brief 2.2). */
+.tabbar .tab:active > * {
+  transform: translateY(1px);
+}
+
+.tabbar .tab:focus-visible {
+  outline: var(--focus-on-panel);
+  outline-offset: -2px;
+}
+
+/* More sheet rows: 44 px, icon + owner label, the current view a sticker. */
+.more-rows {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.more-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap);
+  padding: var(--space-1) var(--space-3);
+  background: var(--lime);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+  font-family: var(--sans);
+  font-size: var(--text-md);
+  text-align: left;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.more-row img {
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.more-row[aria-current='page'] {
+  background: var(--accent);
+  border: 2px solid var(--ink);
+}

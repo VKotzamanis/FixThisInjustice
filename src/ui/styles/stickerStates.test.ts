@@ -7,6 +7,7 @@
 // src/ui/views/train/restGameStyles.test.ts already do.
 import { describe, expect, it } from 'vitest';
 import shellCss from '../../app/appShell.css?raw';
+import tabBarCss from '../nav/tabBar.css?raw';
 import toastCss from '../components/toastQueue.css?raw';
 import motivationCss from '../motivation/motivation.css?raw';
 import viewsCss from '../views/views.css?raw';
@@ -71,16 +72,19 @@ describe('pink is never type on lime in the swept sheets', () => {
 
 describe('pink sticker states: a pink fill with ink type and an ink border', () => {
   const STICKERS: readonly [string, string][] = [
-    ['active nav tab', ".viewnav button[aria-current='true']"],
+    ['active nav tab', ".tabbar .tab[aria-current='page']::before"],
     ['current plan chip', ".view.plan .plan-chip[data-current='true']"],
   ];
 
   it.each(STICKERS)('%s', (_, selector) => {
-    const css = selector.startsWith('.viewnav') ? shellCss : viewsCss;
+    const css = selector.startsWith('.tabbar') ? tabBarCss : viewsCss;
     const { body } = ruleFor(css, selector);
     expect(valueOf(body, 'background')).toBe('var(--accent)');
-    expect(valueOf(body, 'color')).toBe('var(--ink)');
     expect(valueOf(body, 'border')).toBe('2px solid var(--ink)');
+    const type = selector.startsWith('.tabbar')
+      ? valueOf(ruleFor(tabBarCss, ".tabbar .tab[aria-current='page']").body, 'color')
+      : valueOf(body, 'color');
+    expect(type).toBe('var(--ink)');
   });
 
   it('marks the block on screen by shape, not by a black fill that hid its ink type', () => {

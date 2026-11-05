@@ -18,6 +18,7 @@
 // `copy(view.copyKey)` themselves. With no reader left, `label` was dropped.
 
 import type { CopyKey } from '../../content/copy';
+import type { LimelightIconName } from '../../skins/limelight/icons';
 
 /**
  * The views the shell can show.
@@ -114,6 +115,42 @@ export const VIEW_TITLES: Record<ViewId, CopyKey> = {
  * `onClose`) and this string is what the shell binds, through src/ui/hotkeys.tsx, to open it.
  */
 export const SPOTLIGHT_COMBO = 'mod+k';
+
+/** A bottom-bar slot: a view, or 'more', which opens the More sheet (P4 design brief 2.2). */
+export type TabSlot = ViewId | 'more';
+
+/**
+ * The bottom tab bar, left to right (brief 2.2). THE one place the owner reorders the bar. Every
+ * view not listed is reached from the More sheet (MORE_VIEWS, derived below); the hotkey digits
+ * stay VIEWS' positions whatever this order is.
+ */
+export const TAB_ORDER: readonly TabSlot[] = ['today', 'train', 'targets', 'log', 'more'];
+
+/** The views the More sheet lists, in VIEWS order: DERIVED, so a view is in exactly one place. */
+export const MORE_VIEWS: readonly ViewId[] = VIEW_IDS.filter((id) => !TAB_ORDER.includes(id));
+
+/**
+ * THE icon map for the bar and the More sheet (brief section 8). Owner review of `dropPanel`,
+ * `archivePanel`, `morePanel` and the More-row mapping is pending: swapping an icon is one edit
+ * here and nothing else. Bar icons are `Panel` variants (lime outline for the black bar); More
+ * rows are lime-ground icons. Partial on purpose: views.test.ts asserts every slot in TAB_ORDER
+ * and every row in MORE_VIEWS has one, so a reordered bar names its missing icon.
+ */
+export const TAB_ICONS: Readonly<Partial<Record<TabSlot, LimelightIconName>>> = {
+  today: 'crownPanel',
+  train: 'barbellPanel',
+  targets: 'dropPanel',
+  log: 'archivePanel',
+  more: 'morePanel',
+};
+
+/** More-sheet row icons; `find` is the palette row ("find it"). */
+export const MORE_ICONS: Readonly<Partial<Record<ViewId | 'find', LimelightIconName>>> = {
+  plan: 'heel',
+  atlas: 'heart',
+  settings: 'fan',
+  find: 'megaphone',
+};
 
 /** Whether a persisted `lastView` string names a view this build actually has. */
 export function isViewId(value: string): value is ViewId {

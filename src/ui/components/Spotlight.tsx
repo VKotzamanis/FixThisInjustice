@@ -6,10 +6,10 @@
 // own, because code review A54 was two window listeners binding the same key and both running,
 // and P8 Task 9 exists to make exactly one listener possible. The combo that opens it is stated
 // once, as SPOTLIGHT_COMBO in src/ui/nav/views.ts, for that task to bind; the mobile tap target
-// is SpotlightButton.tsx, for a phone with no keyboard to press it on.
+// is the More sheet's "find it" row (src/ui/nav/MoreSheet.tsx), for a phone with no keyboard.
 //
-// Escape is likewise NOT handled here. ModalShell already closes on Escape from a window
-// listener, and handling it in both places would call onClose twice for one key press.
+// Escape is likewise NOT handled here. The overlay stack (via ModalShell) closes on Escape, and
+// handling it in both places would call onClose twice for one key press.
 //
 // Matching is a case-insensitive SUBSTRING of the label, with no fuzzy library: the labels are
 // a view name or an exercise name, both short and both known to the user, and a fuzzy matcher

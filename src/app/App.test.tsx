@@ -378,13 +378,11 @@ describe('view shell', () => {
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
 
     render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: copy('nav.more') }));
     await userEvent.click(screen.getByRole('button', { name: copy('nav.plan') }));
 
     expect(useAppStore.getState().ui.lastView).toBe('plan');
-    expect(screen.getByRole('button', { name: copy('nav.plan') })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: copy('nav.more') })).toHaveAttribute('aria-current', 'page');
   });
 
   it('follows a lastView written by another view', () => {
@@ -664,13 +662,11 @@ describe('spotlight palette', () => {
     useAppStore.setState(seedState({ labels: LABELS, weekdays: [1, 3, 5], startedOn: MONDAY }));
   });
 
-  it('opens from the nav button and closes on Escape (F11: no autofocus on touch)', async () => {
+  it('opens from More, find it, and closes on Escape (F11: no autofocus on touch)', async () => {
     render(<App />);
 
-    const nav = screen.getByRole('navigation', { name: copy('nav.label') });
-    await userEvent.click(
-      within(nav).getByRole('button', { name: copy('button.openSpotlight') }),
-    );
+    await userEvent.click(screen.getByRole('button', { name: copy('nav.more') }));
+    await userEvent.click(screen.getByRole('button', { name: copy('button.openSpotlight') }));
 
     const queryBox = screen.getByRole('combobox', { name: copy('label.spotlightQuery') });
     // F11: jsdom has no matchMedia, which the palette reads as "not a fine pointer": the
@@ -883,10 +879,7 @@ describe('keyboard', () => {
     fireEvent.keyDown(window, { key: digitFor('plan') });
 
     expect(useAppStore.getState().ui.lastView).toBe('plan');
-    expect(screen.getByRole('button', { name: copy('nav.plan') })).toHaveAttribute(
-      'aria-current',
-      'true',
-    );
+    expect(screen.getByRole('button', { name: copy('nav.more') })).toHaveAttribute('aria-current', 'page');
   });
 
   it('opens the spotlight palette on the combo the registry names', () => {
@@ -930,9 +923,9 @@ describe('keyboard', () => {
       'aria-keyshortcuts',
       '1',
     );
-    expect(screen.getByRole('button', { name: copy('nav.plan') })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: copy('nav.train') })).toHaveAttribute(
       'aria-keyshortcuts',
-      digitFor('plan'),
+      digitFor('train'),
     );
   });
 
@@ -949,8 +942,9 @@ describe('keyboard', () => {
     );
   });
 
-  it('reaches the Atlas, which is a tab like any other', async () => {
+  it('reaches the Atlas from More and by its digit', async () => {
     render(<App />);
+    await userEvent.click(screen.getByRole('button', { name: copy('nav.more') }));
     await userEvent.click(screen.getByRole('button', { name: copy('nav.atlas') }));
 
     expect(screen.getByRole('heading', { name: copy('hero.atlas') })).toBeInTheDocument();

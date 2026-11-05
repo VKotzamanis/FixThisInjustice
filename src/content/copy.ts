@@ -641,6 +641,7 @@ export type CopyKey =
   | 'advice.capsuleDefaultMoved'
   // --- one hotkey listener, plan browsing, the Konami overlay (P8 Task 9; appended by that task) ---
   | 'nav.atlas'
+  | 'nav.more'
   | 'status.konami'
   // --- the Settings data section (P7 Task 6; appended by that task) ---
   | 'button.downloadBackup'
@@ -1829,6 +1830,9 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // The eighth tab. One word, like every other tab label, and the name the view already gives
   // itself: the specimen collection, not "cards" or "collection".
   'nav.atlas': 'Atlas',
+  // P4 design brief 2.2: the fifth bottom-bar slot, opening Plan, Atlas, Settings and the
+  // palette. Base table only; the owner words the limelight label (brief section 9).
+  'nav.more': 'More',
   // The whole content of the Konami overlay. Playful, and still the default skin: no emoji
   // (R6), no exclamation mark (R8), no dash as a connector (R5). It states what the sequence
   // did and what it did not buy, which is the only thing the screen is for.
