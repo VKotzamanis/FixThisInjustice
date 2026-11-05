@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { FORMAT, type CopyKey } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import type { CalendarDay } from '../../domain/schedule/calendar';
@@ -16,7 +16,7 @@ import {
   useUpcoming,
   useWeeklyReviews,
 } from '../../store/scheduleSelectors';
-import { latestBodyMassEntry, useActiveProfile } from '../../store/selectors';
+import { latestBodyMassEntry, useActiveProfile, useOpenAssignment } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
 import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
@@ -171,7 +171,17 @@ export function TodayView(): JSX.Element {
   const actionError = useActionError();
 
   const [skipOpen, setSkipOpen] = useState(false);
-  const [skipReason, setSkipReason] = useState('');
+  // Spec R1: the session the user opened and has not finished, on whatever date it was opened.
+  const open = useOpenAssignment();
+  // D01: the refusal banner sits below the controls; bring it into view when one appears.
+  const bannerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (actionError === null) return;
+    const banner = bannerRef.current;
+    if (banner !== null && typeof banner.scrollIntoView === 'function') {
+      banner.scrollIntoView({ block: 'nearest' });
+    }
+  }, [actionError]);
   const [pickerOpen, setPickerOpen] = useState(false);
   // ROADMAP B1b/L7: the goal chosen for the next programme while its panel is open, else null.
   const [nextGoal, setNextGoal] = useState<GoalKind | null>(null);
@@ -192,8 +202,14 @@ export function TodayView(): JSX.Element {
   }
 
   const profileId = profile.id;
-  const status = dayStatus(day);
-  const session = day.projectedSession;
+  /*
+   * Spec R1 (C01/D01): an open session is shown, finished and returned to on its own date,
+   * whatever the clock says, so a session left open overnight is never stranded.
+   */
+  const status: DayStatus = open !== null ? 'in-progress' : dayStatus(day);
+  const session =
+    open !== null ? (plan.sessions.find((s) => s.id === open.sessionId) ?? null) : day.projectedSession;
+  const sessionDate = open !== null ? open.date : today;
   const total = plan.sessions.length; // [sessions]
   const finished = cursor.completedOn !== null;
   // [sessions] 1-based, clamped: the cursor stops AT the plan length, so the last session must
@@ -201,6 +217,15 @@ export function TodayView(): JSX.Element {
   const shown = Math.min(cursor.nextSessionIndex + 1, total);
   const position = FORMAT.planPosition(shown, total, '');
   const canRun = status === 'planned' || status === 'in-progress';
+  /*
+   * Spec R3 (D02): any day without a session of its own can train the cursor's next one. The
+   * forecast places sessions on preferred days; it never forbids the others.
+   */
+  const canStartAnyway =
+    status === 'rest' &&
+    !finished &&
+    openPause === null &&
+    plan.sessions[cursor.nextSessionIndex] !== undefined;
   // The week that closed most recently, or null while the plan is in its first week. The array
   // is the store's own, sorted oldest first by closeWeeks(). A stored week after the one the
   // programme completed in is skipped: builds before ROADMAP B1's fix graded those as misses,
@@ -281,7 +306,10 @@ export function TodayView(): JSX.Element {
      * else, and the start must not wait on an audio permission.
      */
     void unlockAudio();
-    useAppStore.getState().startSession(profileId, today, Date.now()); // [ms] epoch, UTC
+    const startedAt = Date.now(); // [ms] epoch, UTC
+    // Spec R1: anything left open on an earlier day is closed first, so it can never refuse this.
+    useAppStore.getState().closeStaleSessions(profileId, startedAt);
+    useAppStore.getState().startSession(profileId, today, startedAt);
     /*
      * Navigate only on a start that actually happened. startSession has two outcomes that
      * leave the day closed: a REFUSAL (another day still open, the plan paused — the document
@@ -306,15 +334,13 @@ export function TodayView(): JSX.Element {
     }
   };
   const onComplete = (): void => {
-    useAppStore.getState().completeSession(profileId, today, Date.now()); // [ms] epoch, UTC
+    // The open session closes on ITS date (spec R1); otherwise today's.
+    useAppStore.getState().completeSession(profileId, sessionDate, Date.now()); // [ms] epoch, UTC
   };
   const onConfirmSkip = (): void => {
-    // An untyped reason is null, never "": the field is optional, and an empty string would
-    // record that the user gave a reason and it was nothing.
-    const reason = skipReason.trim();
-    useAppStore.getState().skipSession(profileId, today, reason === '' ? null : reason);
+    // Spec R2: Skip Today postpones. The cursor holds, so the same session is next on any later day.
+    useAppStore.getState().postponeSession(profileId, today);
     setSkipOpen(false);
-    setSkipReason('');
   };
   const onPick = (label: string): void => {
     useAppStore.getState().assignToday(profileId, today, label);
@@ -425,43 +451,10 @@ export function TodayView(): JSX.Element {
        */}
       <Marquee items={marqueeItems} label={c('button.pauseTicker')} />
 
-      {actionError !== null && (
-        /*
-         * A refusal, not a failure: the document was left exactly as it was (see the
-         * refusal/defect split in src/store/scheduleActions.ts). role="alert" because it
-         * answers a control the user just pressed.
-         *
-         * P4 review item 4: the domain's own wording is what the STORE holds, and what the
-         * classifier in scheduleActions.ts sorts on, but it is not what the user reads. It
-         * opens with the name of the function the store called ("startSession: the plan is
-         * paused on 2026-03-02"), which names nothing the user did and nothing they can act
-         * on, and it is assembled outside src/content/copy.ts and so outside the skin system.
-         * src/ui/format/refusal.ts maps it onto a copy key with the date as a slot.
-         *
-         * THE OVERLAY IS PASSED (P8 close-out B). The mapper has accepted one since it was
-         * written and this call site did not supply it, so the one sentence on this screen that
-         * reports a refusal rendered the clinical words while every control beside it followed
-         * the skin. The date inside it is the domain's either way: the mapper substitutes into a
-         * slot and no skin can reach the value.
-         */
-        <div className="today-banner" role="alert">
-          <span className="banner-tag">{c('banner.actionRefused.tag')}</span>
-          <span>{refusalLine(actionError, overrides)}</span>
-          <button
-            type="button"
-            onClick={() => {
-              useAppStore.getState().clearActionError();
-            }}
-          >
-            {c('button.dismiss')}
-          </button>
-        </div>
-      )}
-
       {hero}
 
       <div className="today-controls">
-        {status === 'planned' && (
+        {(status === 'planned' || canStartAnyway) && (
           <button type="button" onClick={onStart}>
             {/*
              * P8 Task 13 step 7: the labelled form, which puts the `nails` icon in front of the
@@ -481,19 +474,19 @@ export function TodayView(): JSX.Element {
           </button>
         )}
         {canRun && (
-          <>
-            <button type="button" onClick={onComplete}>
-              {c('button.markCompleted')}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSkipOpen(true);
-              }}
-            >
-              <SkinLabel copyKey="button.skipToday" />
-            </button>
-          </>
+          <button type="button" onClick={onComplete}>
+            {c('button.markCompleted')}
+          </button>
+        )}
+        {status === 'planned' && (
+          <button
+            type="button"
+            onClick={() => {
+              setSkipOpen(true);
+            }}
+          >
+            <SkinLabel copyKey="button.skipToday" />
+          </button>
         )}
         {/*
          * Offered only while the week still has a label this day can take. The list is
@@ -554,6 +547,40 @@ export function TodayView(): JSX.Element {
         )}
       </div>
 
+      {actionError !== null && (
+        /*
+         * A refusal, not a failure, rendered below the control that raised it (D01). The
+         * document was left exactly as it was (see the refusal/defect split in
+         * src/store/scheduleActions.ts). role="alert" because it answers a control the user
+         * just pressed.
+         *
+         * P4 review item 4: the domain's own wording is what the STORE holds, and what the
+         * classifier in scheduleActions.ts sorts on, but it is not what the user reads. It
+         * opens with the name of the function the store called ("startSession: the plan is
+         * paused on 2026-03-02"), which names nothing the user did and nothing they can act
+         * on, and it is assembled outside src/content/copy.ts and so outside the skin system.
+         * src/ui/format/refusal.ts maps it onto a copy key with the date as a slot.
+         *
+         * THE OVERLAY IS PASSED (P8 close-out B). The mapper has accepted one since it was
+         * written and this call site did not supply it, so the one sentence on this screen that
+         * reports a refusal rendered the clinical words while every control beside it followed
+         * the skin. The date inside it is the domain's either way: the mapper substitutes into a
+         * slot and no skin can reach the value.
+         */
+        <div className="today-banner" role="alert" ref={bannerRef}>
+          <span className="banner-tag">{c('banner.actionRefused.tag')}</span>
+          <span>{refusalLine(actionError, overrides)}</span>
+          <button
+            type="button"
+            onClick={() => {
+              useAppStore.getState().clearActionError();
+            }}
+          >
+            {c('button.dismiss')}
+          </button>
+        </div>
+      )}
+
       {finished && nextGoal !== null && (
         <RestartProgramme
           titleKey="button.startNextProgramme"
@@ -590,28 +617,7 @@ export function TodayView(): JSX.Element {
 
       {skipOpen && (
         <div className="today-skip view-field">
-          {/*
-           * Free text, stored verbatim in SessionAssignment.skipReason and never interpreted.
-           * It is deliberately NOT a medical field: it offers no categories, prompts for no
-           * condition, and nothing downstream reads it (master plan section 3 keeps medical
-           * strings out of this app entirely).
-           */}
-          <label htmlFor="skip-reason">{c('label.skipReason')}</label>
-          <input
-            id="skip-reason"
-            type="text"
-            /*
-             * [characters] The bound on a short free-text reason ("shoulder still sore", "away
-             * for work"). It is a UI bound only: the field is stored verbatim and nothing
-             * downstream parses it, so the limit exists to keep an accidental paste out of the
-             * document, not to make the value mean anything.
-             */
-            maxLength={120}
-            value={skipReason}
-            onChange={(e) => {
-              setSkipReason(e.target.value);
-            }}
-          />
+          {/* Spec R2: postpones; nothing is recorded but the date, so no reason is asked. */}
           <button type="button" onClick={onConfirmSkip}>
             {c('button.confirmSkip')}
           </button>
@@ -619,7 +625,6 @@ export function TodayView(): JSX.Element {
             type="button"
             onClick={() => {
               setSkipOpen(false);
-              setSkipReason('');
             }}
           >
             {c('button.cancel')}

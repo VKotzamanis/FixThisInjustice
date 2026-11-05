@@ -5,7 +5,6 @@ import { chicago, openApp, seedDocument, setClock, startFromToday } from './supp
 import { MONDAY, TUESDAY, e2eDocument } from './support/document';
 
 test('O2: Skip Today postpones the session to the next visit', async ({ context }) => {
-  test.fail(); // removed by plan Task 11
   await seedDocument(context, e2eDocument());
   await setClock(context, chicago(MONDAY, '17:00'));
   const monday = await openApp(context);

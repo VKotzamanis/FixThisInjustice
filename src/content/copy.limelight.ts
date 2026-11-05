@@ -249,7 +249,6 @@ export const LIMELIGHT_COPY: Readonly<Partial<Record<CopyKey, string>>> = {
   'status.dayRest': 'day off', // the words `hero.noSessionToday` already uses for an empty day
   // The skip form's free-text field. The parenthesis is the control semantic, not decoration: it
   // states that the field may be left empty, so it survives the rewrite.
-  'label.skipReason': 'the story (optional)',
 
   // --- P9 Task 12: the train screen ---
   'advice.noProfileTrain': 'no profile. setup first, babes.',

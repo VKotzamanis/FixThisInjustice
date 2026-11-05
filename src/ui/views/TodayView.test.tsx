@@ -282,31 +282,28 @@ describe('TodayView controls', () => {
     expect(useAppStore.getState().cursors[PROFILE_ID]?.nextSessionIndex).toBe(1);
   });
 
-  it('Skip today records the optional reason verbatim', () => {
+  it('Skip today postpones: the cursor holds and the session moves to the next preferred day (R2)', () => {
     render(<TodayView />);
     fireEvent.click(button('button.skipToday'));
-    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.skipReason')), {
-      target: { value: 'illness' },
-    });
     fireEvent.click(button('button.confirmSkip'));
-    const a = useAppStore.getState().assignments[PROFILE_ID]?.[0];
-    expect(a?.status).toBe('skipped');
-    expect(a?.skipReason).toBe('illness');
+    const s = useAppStore.getState();
+    expect(s.cursors[PROFILE_ID]?.nextSessionIndex).toBe(0);
+    expect(s.cursors[PROFILE_ID]?.postponed).toEqual([MONDAY]);
+    expect(s.assignments[PROFILE_ID]).toEqual([]);
+    expect(screen.getByText(copyFor('limelight', 'hero.noSessionToday'))).toBeTruthy();
+    expect(screen.getAllByTestId('strip-day')[2]?.textContent).toContain('Push');
+    // Postponed is not forbidden: today can still train the session.
+    expect(button('button.startSession')).toBeTruthy();
   });
 
-  it('Skip today with an empty reason stores null, not an empty string', () => {
-    render(<TodayView />);
-    fireEvent.click(button('button.skipToday'));
-    fireEvent.click(button('button.confirmSkip'));
-    expect(useAppStore.getState().assignments[PROFILE_ID]?.[0]?.skipReason).toBeNull();
-  });
 
   it('Cancel closes the skip form and records nothing', () => {
     render(<TodayView />);
     fireEvent.click(button('button.skipToday'));
     fireEvent.click(button('button.cancel'));
-    expect(screen.queryByLabelText(copyFor('limelight', 'label.skipReason'))).toBeNull();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.confirmSkip') })).toBeNull();
     expect(useAppStore.getState().assignments[PROFILE_ID]).toEqual([]);
+    expect(useAppStore.getState().cursors[PROFILE_ID]?.postponed).toBeUndefined();
   });
 
   it('Pause plan opens a pause from today and holds the cursor', () => {
@@ -346,11 +343,12 @@ describe('TodayView controls', () => {
     expect(useAppStore.getState().pauses[PROFILE_ID]?.[0]?.to).toBe(MONDAY);
   });
 
-  it('bounds the skip reason at 120 characters', () => {
+  it("offers Start on a day with no preferred slot and opens the cursor's next session there (R3)", () => {
+    vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday 09:30 Athens
     render(<TodayView />);
-    fireEvent.click(button('button.skipToday'));
-    // [characters] The UI bound on a short free-text reason; the value is stored verbatim.
-    expect(screen.getByLabelText(copyFor('limelight', 'label.skipReason')).getAttribute('maxlength')).toBe('120');
+    fireEvent.click(button('button.startSession'));
+    const a = useAppStore.getState().assignments[PROFILE_ID]?.[0];
+    expect(a).toMatchObject({ date: TUESDAY, sessionId: 's-1', status: 'in-progress' });
   });
 
   it('Resume plan closes the open pause at today', () => {
@@ -427,45 +425,28 @@ describe('TodayView: a refused action', () => {
     });
   }
 
-  it("reports the domain's own refusal and changes nothing", () => {
+  it('shows a session left open on an earlier day as in progress and finishes it on its own date (R1)', () => {
     openDayLastFriday();
     render(<TodayView />);
-    const before = useAppStore.getState().assignments[PROFILE_ID];
-
-    fireEvent.click(button('button.startSession'));
-
-    const banner = screen.getByRole('alert');
-    expect(banner.textContent).toContain(copyFor('limelight', 'banner.actionRefused.tag'));
-    // P4 review item 4: the banner renders the copy line for the refusal, not the domain's
-    // thrown message. The store still holds the domain's own words, which is what the schedule
-    // slice documents; this is the mapping from those words to the ones the user reads.
-    expect(useAppStore.getState().status.lastActionError).toBe(
-      `startSession: a session is already in progress on ${PREV_FRIDAY}`,
-    );
-    expect(banner.textContent).toContain(
-      FORMAT.withSlots('status.refusalSessionOpen', { date: PREV_FRIDAY }),
-    );
-    expect(banner.textContent).not.toContain('startSession');
-    expect(useAppStore.getState().assignments[PROFILE_ID]).toBe(before);
+    expect(screen.getByText(copyFor('limelight', 'hero.sessionInProgress'))).toBeTruthy();
+    expect(screen.queryByRole('button', { name: copyFor('limelight', 'button.startSession') })).toBeNull();
+    fireEvent.click(button('button.markCompleted'));
+    const friday = useAppStore.getState().assignments[PROFILE_ID]?.find((a) => a.date === PREV_FRIDAY);
+    expect(friday?.status).toBe('completed');
+    expect(useAppStore.getState().status.lastActionError).toBeNull();
   });
 
-  it('stays on Today when the start is refused', () => {
-    openDayLastFriday();
-    render(<TodayView />);
-    const before = useAppStore.getState().ui.lastView;
-
-    fireEvent.click(button('button.startSession'));
-
-    // The refusal left the document exactly as it was, so there is no open session to switch
-    // to: Train would show a day that was never started, and the banner that explains why
-    // would be left behind on a view the user is no longer looking at.
-    const s = useAppStore.getState();
-    expect(s.ui.lastView).toBe(before);
-    expect(s.ui.lastView).not.toBe('train');
-    expect(s.assignments[PROFILE_ID]?.some((a) => a.date === MONDAY)).toBe(false);
-    expect(screen.getByRole('alert').textContent).toContain(
-      FORMAT.withSlots('status.refusalSessionOpen', { date: PREV_FRIDAY }),
-    );
+  it('renders a refusal directly below the controls that raised it (D01)', () => {
+    setState({
+      ...useAppStore.getState(),
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
+    });
+    useAppStore.getState().startSession(PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
+    const { container } = render(<TodayView />);
+    const controls = container.querySelector('.today-controls');
+    const banner = screen.getByRole('alert');
+    expect(controls).not.toBeNull();
+    expect((controls as Element).compareDocumentPosition(banner) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   /*
@@ -528,9 +509,12 @@ describe('TodayView: a refused action', () => {
   });
 
   it('dismisses the banner without making another attempt', () => {
-    openDayLastFriday();
+    setState({
+      ...useAppStore.getState(),
+      pauses: { [PROFILE_ID]: [{ id: 'p', from: MONDAY, to: null, reason: null }] },
+    });
+    useAppStore.getState().startSession(PROFILE_ID, MONDAY, NOW_MS); // [ms] epoch, UTC
     render(<TodayView />);
-    fireEvent.click(button('button.startSession'));
 
     fireEvent.click(
       within(screen.getByRole('alert')).getByRole('button', { name: copyFor('limelight', 'button.dismiss') }),

@@ -354,7 +354,6 @@ export type CopyKey =
   | 'status.dayPaused'
   | 'status.dayPlanned'
   | 'status.dayRest'
-  | 'label.skipReason'
   | 'advice.pauseHoldsCursor'
   | 'banner.actionRefused.tag'
   // --- session indicator in the top bar (P3 Task 7; appended by that task) ---
@@ -1198,7 +1197,6 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'status.dayRest': 'Rest',
   // A short free-text field, and deliberately not a medical one: it is stored verbatim in
   // SessionAssignment.skipReason and never interpreted, so the label states no category.
-  'label.skipReason': 'Reason (Optional)',
   'advice.pauseHoldsCursor': 'Paused days consume no session.',
   // A refusal left the document exactly as it was; the tag says so before the reason does.
   'banner.actionRefused.tag': 'NOT APPLIED',

@@ -86,6 +86,7 @@ const REMOVED_KEYS: Readonly<Record<string, string>> = {
   'label.legacyMassUnitLb': N5,
   'label.legacyUnitKg': N5,
   'label.legacyUnitLb': N5,
+  'label.skipReason': 'Skip Today postpones; no reason field (spec R2)',
 };
 
 const CURRENT_KEYS = Object.keys(DEFAULT_COPY) as CopyKey[];
