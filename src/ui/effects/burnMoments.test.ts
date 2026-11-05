@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { copy, FORMAT, SKIN_COPY, type CopyKey } from '../../content/copy';
 import type { CoachLine } from '../../domain/training/coach';
-import { coachBurns, praiseWordOf, restOverWordOf, splitAround, stampWordOf } from './burnMoments';
+import {
+  claimSessionAdvance,
+  coachBurns,
+  praiseWordOf,
+  resetSessionMoments,
+  restOverWordOf,
+  splitAround,
+  stampWordOf,
+} from './burnMoments';
 
 const LIME = SKIN_COPY.limelight;
 const line = (key: CopyKey): CoachLine => ({ key, params: {}, tone: 'coach' });
@@ -47,5 +55,22 @@ describe('burn moments (AM-4a-9)', () => {
     expect(parts?.[0].endsWith('. ')).toBe(true);
     expect(splitAround('late. ate.', 'ate')).toEqual(['late. ', 'ate', '.']);
     expect(splitAround('plates', 'ate')).toBeNull();
+  });
+
+  it('burns the session counter once per advance, never on the first look (review item 10)', () => {
+    resetSessionMoments();
+    // First observation of a plan: the number is not new to the user, nothing burns.
+    expect(claimSessionAdvance('plan-a', 12)).toBe(false);
+    expect(claimSessionAdvance('plan-a', 12)).toBe(false);
+    // A completed session advances the cursor: the first renderer to see 13 claims the burn ...
+    expect(claimSessionAdvance('plan-a', 13)).toBe(true);
+    // ... and every other renderer of the same moment does not (once per moment).
+    expect(claimSessionAdvance('plan-a', 13)).toBe(false);
+    // A lower or equal number (an undo, a re-render) is no advance.
+    expect(claimSessionAdvance('plan-a', 12)).toBe(false);
+    expect(claimSessionAdvance('plan-a', 13)).toBe(false);
+    // Another plan (Start Next Programme) starts unobserved.
+    expect(claimSessionAdvance('plan-b', 1)).toBe(false);
+    expect(claimSessionAdvance('plan-b', 2)).toBe(true);
   });
 });

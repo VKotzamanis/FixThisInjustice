@@ -100,3 +100,31 @@ export function splitAround(text: string, word: string): [string, string, string
   }
   return null;
 }
+
+/*
+ * THE SESSION COUNTER (owner answer to review item 10, 2026-11-05: "change the EP.12 to just the
+ * number and use the font shade and burn effect from 9"). The counter is the one numeral that
+ * burns, on his instruction: it burns ONCE when the plan cursor advances (it advances only on a
+ * completed session, src/domain/types.ts PlanCursor), never on a first look, a re-render or a
+ * reload. Several renderers show the same number (header ticker, Today); the first to see the
+ * advance claims the moment and the rest do not. Module state, reset by a reload, which is right:
+ * after a reload the moment is past.
+ */
+const lastSeen = new Map<string, number>(); // plan id -> [sessions] highest 1-based number shown
+
+/**
+ * True exactly once per advance of `planId`'s counter to `shown` [sessions, 1-based]: the first
+ * caller to see a number above the highest seen so far claims it. The highest only rises, so an
+ * undo and a redo of the same session do not burn twice.
+ */
+export function claimSessionAdvance(planId: string, shown: number): boolean {
+  const before = lastSeen.get(planId);
+  if (before !== undefined && shown <= before) return false;
+  lastSeen.set(planId, shown);
+  return before !== undefined;
+}
+
+/** Test seam: forget every counter seen. */
+export function resetSessionMoments(): void {
+  lastSeen.clear();
+}

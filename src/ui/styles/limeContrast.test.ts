@@ -121,6 +121,14 @@ describe('the token arithmetic reproduces the ratios tokens.css quotes', () => {
   });
 });
 
+describe('the lit word (review item 8): every glyph tone the still frame paints', () => {
+  // The shader mixes these four (gain clips them brighter, never darker); the glow is outside
+  // the letters. The sweep in e2e/p4a-sweeps.spec.ts reads the DOM colour, --lit-cool's value.
+  it.each(['--lit-cool', '--lit-deep', '--lit-mid', '--lit-hot'])('%s on --panel is >= 4.5:1', (tone) => {
+    expect(ratio(tone, '--panel')).toBeGreaterThanOrEqual(TEXT_MIN);
+  });
+});
+
 /*
  * Text that was pink (or lime on a pink fill) and is ink now. `ground` is the surface the words
  * sit on: a token named here when the rule inherits its ground, or `own` when the rule paints the

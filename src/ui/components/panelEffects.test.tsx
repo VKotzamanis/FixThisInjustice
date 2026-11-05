@@ -54,12 +54,12 @@ describe('panel eyebrow (AM-4a-7 effect 4) and the glow switch (AM-4a-8)', () =>
     expect(b).toMatch(/color:\s*var\(--lime\);/);
   });
 
-  it('declares every effect token in both token blocks, the glow off by default', () => {
+  it('declares every effect token in both token blocks, the glow on (owner, review item 8)', () => {
     for (const [name, value] of [
       ['--eyebrow-size', '12px'],
       ['--eyebrow-tracking', '0.24em'],
       ['--echo-color', 'var(--pink)'],
-      ['--panel-glow', 'none'],
+      ['--panel-glow', '0 0 0.3em var(--lime)'],
     ] as const) {
       const found = [...tokensCss.matchAll(new RegExp(`${name}:\\s*([^;]+);`, 'g'))].map((m) => m[1]);
       expect(found).toEqual([value, value]);

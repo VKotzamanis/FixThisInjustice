@@ -56,14 +56,15 @@ export const STILL_FRAME_S = 0.45;
 /** Linear-light gain before the clip (lyrics-core.js BURN_GAIN, the "HDR clipped" look). */
 const BURN_GAIN = 1.6;
 /** [device px per CSS px] Texture resolution cap: the texture cost grows with its square. */
-const DPR_CAP = 2;
+export const DPR_CAP = 2;
 
 const VS =
   'attribute vec2 aP; varying vec2 vUv; void main(){ vUv = vec2(aP.x * 0.5 + 0.5, 0.5 - aP.y * 0.5); gl_Position = vec4(aP, 0.0, 1.0); }';
 
 // uSize [device px]; uT [s]; uE 0..1; uSpread, uCap, uBase [device px]; uGain linear; uHard and
-// uHalo 0/1 (lookUniforms); colours are linear RGB: resting letter (cool), fire deep -> mid ->
-// hot, glow. With uHard 0, uHalo 1 the arithmetic is the faithful look unchanged.
+// uHalo 0/1 (lookUniforms); uFlame 0/1 (1 = flame tongues above the cap line, 0 = none: the
+// static lit word, litText.ts); colours are linear RGB: resting letter (cool), fire deep -> mid
+// -> hot, glow. With uHard 0, uHalo 1, uFlame 1 the arithmetic is the faithful look unchanged.
 export const FS = [
   '#ifdef GL_FRAGMENT_PRECISION_HIGH',
   'precision highp float;',
@@ -72,7 +73,7 @@ export const FS = [
   '#endif',
   'uniform sampler2D uTex; uniform vec2 uSize;',
   'uniform float uT, uE, uSpread, uCap, uBase, uSeed, uGain;',
-  'uniform float uHard, uHalo;',
+  'uniform float uHard, uHalo, uFlame;',
   'uniform vec3 uCool, uDeep, uMid, uHot, uGlow;',
   'varying vec2 vUv;',
   // Hash without Sine (c) 2014 David Hoskins, MIT; see the notice at the top of this file.
@@ -97,7 +98,7 @@ export const FS = [
   '  float up = clamp((hy - 0.55) / 0.4, 0.0, 1.0);',
   '  float reach = 0.03 + up * (0.05 + 0.42 * n * n);',
   '  float h2 = 1.0 - dOut / reach;',
-  '  float t2 = mix(smoothstep(0.0, 0.08, h2) * uE, step(0.04, h2) * on, uHard) * (1.0 - a);',
+  '  float t2 = mix(smoothstep(0.0, 0.08, h2) * uE, step(0.04, h2) * on, uHard) * (1.0 - a) * uFlame;',
   '  vec3 f2 = mix(uDeep, uMid, smoothstep(0.05, 0.45, h2)); f2 = mix(f2, uHot, smoothstep(0.55, 0.9, h2));',
   '  f2 = mix(min(f2 * uGain, 1.0), mix(uMid, uHot, step(0.6, h2)), uHard);',
   '  c += f2 * t2; al += t2 * (1.0 - al);',
@@ -250,28 +251,54 @@ export interface BurnHandle {
   dispose: () => void;
 }
 
-/** The tokens the shader reads, in uniform order. */
-const TOKENS = ['--burn-cool', '--burn-deep', '--burn-mid', '--burn-hot', '--burn-glow'] as const;
+/** The tokens the burn reads, in uniform order: resting letter, fire deep, mid, hot, glow. */
+export const BURN_TOKENS = ['--burn-cool', '--burn-deep', '--burn-mid', '--burn-hot', '--burn-glow'] as const;
+/** Five colour token names in the shader's uniform order (BURN_TOKENS or litText's LIT_TOKENS). */
+export type PaletteTokens = readonly [string, string, string, string, string];
+/** The colour uniforms, in the order of a PaletteTokens. */
+const COLOUR_UNIFORMS = ['uCool', 'uDeep', 'uMid', 'uHot', 'uGlow'] as const;
+type Linear = [number, number, number];
 
-/** Does this environment offer WebGL 1 at all? (jsdom does not.) */
-export function webglAvailable(): boolean {
-  return typeof window !== 'undefined' && typeof window.WebGLRenderingContext === 'function';
+/** The computed palette at `host` in linear RGB, or null when a token does not resolve. */
+export function readPalette(host: Element, tokens: PaletteTokens): Linear[] | null {
+  const styles = getComputedStyle(host);
+  const out: Linear[] = [];
+  for (const token of tokens) {
+    const colour = cssColourToLinear(styles.getPropertyValue(token));
+    if (colour === null) return null; // a token that does not resolve: plain text, not a guess
+    out.push(colour);
+  }
+  return out;
 }
 
-/**
- * Builds the canvas for `text` over `host` (appended to it, aria-hidden). Returns null without
- * WebGL, without a 2D context, or when a shader fails: the caller then shows the plain text.
- */
-export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): BurnHandle | null {
-  if (!webglAvailable() || text.trim() === '') return null;
+/** The DOM word's font, read from its computed style (CSS px). */
+export type WordFont = Pick<
+  BurnOptions,
+  'fontStyle' | 'fontWeight' | 'fontSizePx' | 'fontFamily' | 'fontStretch' | 'letterSpacingPx'
+>;
+
+/** A word rasterised into the shader's texture: coverage in A, signed distance in R. */
+export interface WordRaster {
+  W: number; // [device px] texture width
+  H: number; // [device px] texture height
+  tex: Uint8Array; // RGBA, W x H
+  cap: number; // [device px] cap height
+  base: number; // [device px] baseline row (y down)
+  padT: number; // [device px] room above the cap line
+  spread: number; // [device px] distance range packed into R
+  dpr: number; // [device px / CSS px]
+}
+
+/** Rasterises `text` in `font` at the capped device pixel ratio; null without a 2D context. */
+export function rasterWord(text: string, font: WordFont): WordRaster | null {
   const dpr = Math.min(window.devicePixelRatio || 1, DPR_CAP); // [device px / CSS px]
-  const sizeDev = opts.fontSizePx * dpr; // [device px]
+  const sizeDev = font.fontSizePx * dpr; // [device px]
   const raster = document.createElement('canvas').getContext('2d');
   if (raster === null) return null;
   const setFont = (): void => {
-    raster.font = `${opts.fontStyle} ${opts.fontWeight} ${String(sizeDev)}px ${opts.fontFamily}`;
-    if ('fontStretch' in raster) raster.fontStretch = stretchKeyword(opts.fontStretch) as CanvasFontStretch;
-    if ('letterSpacing' in raster) raster.letterSpacing = `${String(opts.letterSpacingPx * dpr)}px`;
+    raster.font = `${font.fontStyle} ${font.fontWeight} ${String(sizeDev)}px ${font.fontFamily}`;
+    if ('fontStretch' in raster) raster.fontStretch = stretchKeyword(font.fontStretch) as CanvasFontStretch;
+    if ('letterSpacing' in raster) raster.letterSpacing = `${String(font.letterSpacingPx * dpr)}px`;
   };
   setFont();
   const metrics = raster.measureText(text);
@@ -298,19 +325,30 @@ export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): 
     tex[4 * i] = Math.max(0, Math.min(255, Math.round((0.5 + (dist[i] ?? 0) / (2 * spread)) * 255)));
     tex[4 * i + 3] = alpha[i] ?? 0;
   }
+  return { W, H, tex, cap, base, padT, spread, dpr };
+}
 
-  const canvas = document.createElement('canvas');
-  canvas.width = W;
-  canvas.height = H;
-  canvas.className = 'burn-canvas';
+/** Sizes a canvas to a raster and centres the cap on its host (burn-canvas / lit-canvas CSS). */
+export function placeCanvas(canvas: HTMLCanvasElement, r: WordRaster): void {
+  canvas.width = r.W;
+  canvas.height = r.H;
   canvas.setAttribute('aria-hidden', 'true');
-  canvas.style.width = `${String(W / dpr)}px`;
-  canvas.style.height = `${String(H / dpr)}px`;
+  canvas.style.width = `${String(r.W / r.dpr)}px`; // [CSS px]
+  canvas.style.height = `${String(r.H / r.dpr)}px`; // [CSS px]
   // Cap centre on the host's centre: shift by the canvas centre's distance from the cap centre.
-  canvas.style.marginTop = `${String((H / 2 - (padT + cap / 2)) / dpr)}px`; // [CSS px]
-  const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
-  if (gl === null) return null;
+  canvas.style.marginTop = `${String((r.H / 2 - (r.padT + r.cap / 2)) / r.dpr)}px`; // [CSS px]
+}
 
+/** One compiled burn program on a context, with its quad and its texture. */
+export interface BurnProgram {
+  program: WebGLProgram;
+  buffer: WebGLBuffer | null;
+  texture: WebGLTexture | null;
+  u: (name: string) => WebGLUniformLocation | null;
+}
+
+/** Compiles and binds the burn program on `gl`; null when a shader fails. */
+export function buildProgram(gl: WebGLRenderingContext): BurnProgram | null {
   const shader = (type: number, src: string): WebGLShader | null => {
     const s = gl.createShader(type);
     if (s === null) return null;
@@ -336,37 +374,77 @@ export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): 
   const texture = gl.createTexture();
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, W, H, 0, gl.RGBA, gl.UNSIGNED_BYTE, tex);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   const u = (name: string): WebGLUniformLocation | null => gl.getUniformLocation(program, name);
   gl.uniform1i(u('uTex'), 0);
-  gl.uniform2f(u('uSize'), W, H);
-  gl.uniform1f(u('uSpread'), spread);
-  gl.uniform1f(u('uCap'), cap);
-  gl.uniform1f(u('uBase'), base);
-  gl.uniform1f(u('uSeed'), opts.seed ?? 0.31);
-  const look = lookUniforms(opts.look ?? BURN_LOOK);
-  gl.uniform1f(u('uGain'), look.gain);
-  gl.uniform1f(u('uHard'), look.hard);
-  gl.uniform1f(u('uHalo'), look.halo);
-  const styles = getComputedStyle(host);
-  const uniforms = ['uCool', 'uDeep', 'uMid', 'uHot', 'uGlow'];
-  for (let i = 0; i < TOKENS.length; i++) {
-    const colour = cssColourToLinear(styles.getPropertyValue(TOKENS[i] ?? ''));
-    if (colour === null) return null; // a token that does not resolve: plain text, not a guess
-    gl.uniform3fv(u(uniforms[i] ?? ''), colour);
-  }
-  gl.viewport(0, 0, W, H);
+  return { program, buffer, texture, u };
+}
+
+/** Uploads a word and its constants (size, palette, look, seed, flames) to a built program. */
+export function loadWord(
+  gl: WebGLRenderingContext,
+  p: BurnProgram,
+  r: WordRaster,
+  palette: Linear[],
+  look: BurnLook,
+  seed: number,
+  flame: 0 | 1,
+): void {
+  gl.bindTexture(gl.TEXTURE_2D, p.texture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, r.W, r.H, 0, gl.RGBA, gl.UNSIGNED_BYTE, r.tex);
+  gl.uniform2f(p.u('uSize'), r.W, r.H);
+  gl.uniform1f(p.u('uSpread'), r.spread);
+  gl.uniform1f(p.u('uCap'), r.cap);
+  gl.uniform1f(p.u('uBase'), r.base);
+  gl.uniform1f(p.u('uSeed'), seed);
+  const l = lookUniforms(look);
+  gl.uniform1f(p.u('uGain'), l.gain);
+  gl.uniform1f(p.u('uHard'), l.hard);
+  gl.uniform1f(p.u('uHalo'), l.halo);
+  gl.uniform1f(p.u('uFlame'), flame);
+  for (let i = 0; i < COLOUR_UNIFORMS.length; i++) gl.uniform3fv(p.u(COLOUR_UNIFORMS[i] ?? ''), palette[i] ?? [0, 0, 0]);
+  gl.viewport(0, 0, r.W, r.H);
   gl.clearColor(0, 0, 0, 0);
+}
+
+/** One frame at shader time t [s] and envelope e (0..1). */
+export function drawFrame(gl: WebGLRenderingContext, p: BurnProgram, t: number, e: number): void {
+  gl.uniform1f(p.u('uT'), t); // [s]
+  gl.uniform1f(p.u('uE'), e);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+/** Does this environment offer WebGL 1 at all? (jsdom does not.) */
+export function webglAvailable(): boolean {
+  return typeof window !== 'undefined' && typeof window.WebGLRenderingContext === 'function';
+}
+
+/**
+ * Builds the canvas for `text` over `host` (appended to it, aria-hidden). Returns null without
+ * WebGL, without a 2D context, or when a shader fails: the caller then shows the plain text.
+ */
+export function createBurn(host: HTMLElement, text: string, opts: BurnOptions): BurnHandle | null {
+  if (!webglAvailable() || text.trim() === '') return null;
+  const palette = readPalette(host, BURN_TOKENS);
+  if (palette === null) return null;
+  const r = rasterWord(text, opts);
+  if (r === null) return null;
+  const canvas = document.createElement('canvas');
+  placeCanvas(canvas, r);
+  canvas.className = 'burn-canvas';
+  const gl = canvas.getContext('webgl', { premultipliedAlpha: true, alpha: true, antialias: false });
+  if (gl === null) return null;
+  const p = buildProgram(gl);
+  if (p === null) return null;
+  loadWord(gl, p, r, palette, opts.look ?? BURN_LOOK, opts.seed ?? 0.31, 1);
+  const { program, buffer, texture } = p;
 
   const draw = (t: number): void => {
-    gl.uniform1f(u('uT'), t); // [s]
-    gl.uniform1f(u('uE'), envelope(t));
-    gl.clear(gl.COLOR_BUFFER_BIT);
-    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    drawFrame(gl, p, t, envelope(t));
   };
 
   let raf = 0;

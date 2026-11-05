@@ -157,8 +157,11 @@
    * Panel effects (AM-4a-7, owner adoption 2026-11-05; reference: phone-glow proposals 2-4).
    * Echo: a hard offset hollow copy behind a WORD on a black panel, never digits, never lime
    * ground. Eyebrow: a condensed tracked label on panels, 12 px [px], lime (10.91:1 on black).
-   * --panel-glow is the owner's one switch for a neon text-shadow on lime words inside panels;
-   * default none (AM-4a-8), the alternative is a static shadow, never on digits.
+   * --panel-glow is the owner's one switch for the lit words on panels. ON since his answer to
+   * review item 8 (2026-11-05: the burn's font and shader in lime accents, no burn): the value is
+   * the static glow the plain text keeps when WebGL is absent; while it is not `none`, LitWord
+   * draws the still shader frame (src/ui/effects/litText.ts) from the --lit-* tokens below.
+   * Never on set-entry digits.
    */
   --echo-offset: 0.08em;
   --echo-stroke: 1.5px;
@@ -166,7 +169,7 @@
   --eyebrow-size: 12px;
   --eyebrow-tracking: 0.24em;
   --eyebrow-stretch: 75%;
-  --panel-glow: none;
+  --panel-glow: 0 0 0.3em var(--lime);
   /* The one monospace stack (ASCII bars and art, where # and - must be one width): system faces,
    * not a costume; Archivo stays the UI face (--mono and --sans). */
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -183,6 +186,17 @@
   --burn-mid: #ff4fd8;
   --burn-hot: var(--panel-text);
   --burn-glow: #ee7392;
+  /*
+   * The lit word (review item 8): the burn's shader as one still frame, flames off, in lime
+   * accents. Uniform order as --burn-*: resting letter, deep, mid, hot, glow. Every glyph tone is
+   * >= 4.5:1 on --panel (src/ui/styles/limeContrast.test.ts): lime 10.91, deep 5.42, mid 17.77,
+   * hot 21.
+   */
+  --lit-cool: var(--lime);
+  --lit-deep: #5f8f00;
+  --lit-mid: #c6ff3d;
+  --lit-hot: var(--panel-text);
+  --lit-glow: var(--lime);
   /*
    * ONE z ladder (critique D11). --z-crt is the one rung the brief's table does not list: the
    * opt-in scanline and vignette layers, pointer-events none, over the page and under toasts.
@@ -398,8 +412,11 @@ body {
    * Panel effects (AM-4a-7, owner adoption 2026-11-05; reference: phone-glow proposals 2-4).
    * Echo: a hard offset hollow copy behind a WORD on a black panel, never digits, never lime
    * ground. Eyebrow: a condensed tracked label on panels, 12 px [px], lime (10.91:1 on black).
-   * --panel-glow is the owner's one switch for a neon text-shadow on lime words inside panels;
-   * default none (AM-4a-8), the alternative is a static shadow, never on digits.
+   * --panel-glow is the owner's one switch for the lit words on panels. ON since his answer to
+   * review item 8 (2026-11-05: the burn's font and shader in lime accents, no burn): the value is
+   * the static glow the plain text keeps when WebGL is absent; while it is not `none`, LitWord
+   * draws the still shader frame (src/ui/effects/litText.ts) from the --lit-* tokens below.
+   * Never on set-entry digits.
    */
   --echo-offset: 0.08em;
   --echo-stroke: 1.5px;
@@ -407,7 +424,7 @@ body {
   --eyebrow-size: 12px;
   --eyebrow-tracking: 0.24em;
   --eyebrow-stretch: 75%;
-  --panel-glow: none;
+  --panel-glow: 0 0 0.3em var(--lime);
   /* The one monospace stack (ASCII bars and art, where # and - must be one width): system faces,
    * not a costume; Archivo stays the UI face (--mono and --sans). */
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
@@ -424,6 +441,17 @@ body {
   --burn-mid: #ff4fd8;
   --burn-hot: var(--panel-text);
   --burn-glow: #ee7392;
+  /*
+   * The lit word (review item 8): the burn's shader as one still frame, flames off, in lime
+   * accents. Uniform order as --burn-*: resting letter, deep, mid, hot, glow. Every glyph tone is
+   * >= 4.5:1 on --panel (src/ui/styles/limeContrast.test.ts): lime 10.91, deep 5.42, mid 17.77,
+   * hot 21.
+   */
+  --lit-cool: var(--lime);
+  --lit-deep: #5f8f00;
+  --lit-mid: #c6ff3d;
+  --lit-hot: var(--panel-text);
+  --lit-glow: var(--lime);
   /*
    * ONE z ladder (critique D11). --z-crt is the one rung the brief's table does not list: the
    * opt-in scanline and vignette layers, pointer-events none, over the page and under toasts.
