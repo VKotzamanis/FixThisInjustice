@@ -1,7 +1,8 @@
 import { Component, createRef } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { cancelPendingSave, useAppStore } from '../store';
-import { clearStorage, readRaw } from '../store/persistence';
+import { clearDatabase, clearStorage, readRaw, readStoredText } from '../store/persistence';
+import type { RecordBackend } from '../store/db/backend';
 import { downloadText } from './download';
 
 /**
@@ -13,7 +14,7 @@ import { downloadText } from './download';
  * what is unavailable, and the user's data still has to be recoverable.
  *
  * Clearing is the other way round. Removing the key is not enough on its own —
- * a debounced write already in flight would put the document straight back —
+ * a change still queued for commit would put records straight back —
  * and only the store knows about that write, so the clear goes through
  * wipeAll() and falls back to cancelPendingSave() + clearStorage() when the
  * store cannot be reached.
@@ -42,6 +43,8 @@ interface Props {
   children: ReactNode;
   /** Test seam. Production passes nothing and the real download runs. */
   onDownload?: (filename: string, text: string) => void;
+  /** Spec R13: where the records are. Tests pass the memory backend; the app the browser's. */
+  backend?: RecordBackend;
 }
 
 interface State {
@@ -49,6 +52,8 @@ interface State {
   exported: boolean;
   confirmation: string;
   cleared: boolean;
+  /** Spec R13: the stored records as export text, read when the error was caught. */
+  storedText: string | null;
 }
 
 const CONFIRMATION_WORD = 'DELETE';
@@ -59,6 +64,7 @@ export class RootErrorBoundary extends Component<Props, State> {
     exported: false,
     confirmation: '',
     cleared: false,
+    storedText: null,
   };
 
   /** The recovery container, focused when it replaces the application tree. */
@@ -100,10 +106,15 @@ export class RootErrorBoundary extends Component<Props, State> {
     if (import.meta.env.DEV) {
       console.error('RootErrorBoundary caught', error, info.componentStack);
     }
+    // Read now, while the user reads the screen, so the export click stays a user gesture.
+    void readStoredText(this.props.backend).then((storedText) => {
+      this.setState({ storedText });
+    });
   }
 
   private readonly handleExport = (): void => {
-    const raw = readRaw();
+    // Spec R13 / B04: the database's records; fti.v3 until that read has answered.
+    const raw = this.state.storedText ?? readRaw();
     const text = raw ?? '{}';
     const download = this.props.onDownload ?? downloadText;
     download('fixthisinjustice-recovery.json', text);
@@ -111,12 +122,12 @@ export class RootErrorBoundary extends Component<Props, State> {
   };
 
   /**
-   * Master plan §3: the clear path must cancel any pending debounced write.
+   * Master plan §3: the clear path must cancel any change still queued for commit.
    *
    * wipeAll() does both — it removes the key and drops the queued write — so it
    * is the path taken whenever the store is usable. clearStorage() on its own
-   * lets a write already sitting in the 250 ms window land afterwards and
-   * re-create the document the user just asked to be rid of.
+   * lets a change still queued for commit land afterwards and re-create the
+   * records the user just asked to be rid of (spec R13: one commit per action).
    *
    * The fallback covers the case this boundary exists for: the store is what
    * threw, so its actions may throw again. cancelPendingSave() is a module
@@ -130,6 +141,9 @@ export class RootErrorBoundary extends Component<Props, State> {
       cancelPendingSave();
       clearStorage();
     }
+    // The store's own clear runs only while its engine is up; this one empties the database
+    // whatever state the store is in (spec R13). Both landing is harmless: the second is stale.
+    void clearDatabase(this.props.backend);
     this.setState({ cleared: true });
   };
 

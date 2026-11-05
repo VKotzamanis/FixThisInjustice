@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RootErrorBoundary } from './RootErrorBoundary';
 import { defaultState, useAppStore, whenPersisted } from '../store';
 import { STORAGE_KEY } from '../store/persistence';
 import { bootMemoryStore, storedDocument } from '../store/testBackend';
+import { createMemoryBackend } from '../store/db/memoryBackend';
 import { installFakeStorage } from '../store/testStorage';
 
 /** A child that throws during render, so the boundary catches without the store. */
@@ -170,7 +171,7 @@ describe('RootErrorBoundary', () => {
     useAppStore.getState().setUi({ lastView: 'train' });
 
     render(
-      <RootErrorBoundary onDownload={vi.fn()}>
+      <RootErrorBoundary onDownload={vi.fn()} backend={backend}>
         <Boom />
       </RootErrorBoundary>,
     );
@@ -182,6 +183,47 @@ describe('RootErrorBoundary', () => {
 
     // Master plan section 3: the clear path drops the pending change, so nothing lands after it.
     expect(storedDocument(backend.disk)).toEqual(defaultState());
+    expect(backend.disk.legacy).toBeNull();
+  });
+
+  it('exports the records in the database, not the legacy key (R13, B04)', async () => {
+    silenceReactErrorLog();
+    installFakeStorage({ [STORAGE_KEY]: '{"legacy":true}' });
+    const backend = await bootMemoryStore({ legacy: JSON.stringify(defaultState()) });
+    useAppStore.getState().setUi({ lastView: 'atlas' });
+    await whenPersisted();
+
+    const onDownload = vi.fn();
+    render(
+      <RootErrorBoundary onDownload={onDownload} backend={backend}>
+        <Boom />
+      </RootErrorBoundary>,
+    );
+    await waitFor(() => {
+      fireEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
+      expect(onDownload).toHaveBeenLastCalledWith(
+        'fixthisinjustice-recovery.json',
+        expect.stringContaining('"lastView": "atlas"'),
+      );
+    });
+  });
+
+  it('clears the database even when the store is not running (no engine)', async () => {
+    silenceReactErrorLog();
+    const backend = createMemoryBackend({ legacy: JSON.stringify(defaultState()) });
+    // Records exist on disk; this page never hydrated, so the store has no engine.
+    await backend.commit({ clear: false, puts: [{ store: 'app', key: 'ui', value: defaultState().ui }], deletes: [] }, 0, 3);
+    render(
+      <RootErrorBoundary onDownload={vi.fn()} backend={backend}>
+        <Boom />
+      </RootErrorBoundary>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Export stored data' }));
+    fireEvent.change(screen.getByLabelText(/type DELETE/i), { target: { value: 'DELETE' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Clear stored data' }));
+    await waitFor(() => {
+      expect(backend.disk.records.get('app')?.size ?? 0).toBe(0);
+    });
     expect(backend.disk.legacy).toBeNull();
   });
 });

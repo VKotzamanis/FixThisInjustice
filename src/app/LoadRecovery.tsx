@@ -13,8 +13,11 @@ import { CONFIRM_WORD } from '../ui/settings/DataSection';
 
 export function LoadRecovery(): ReactElement {
   const t = useCopy();
-  // The raw stored text, snapshotted at hydrate; null when storage itself was unreachable (B17).
+  // The raw stored text, snapshotted at hydrate (null when nothing could be read); the export.
   const raw = useAppStore((s) => s.status.lastLoadRaw);
+  // B17: the heading names the cause the load reported, not whether some text was readable: an
+  // unreachable database with a readable fti.v3 is still unavailable storage.
+  const failure = useAppStore((s) => s.status.loadFailure);
   const [importError, setImportError] = useState<string | null>(null);
   const [wipeOpen, setWipeOpen] = useState(false);
 
@@ -35,7 +38,7 @@ export function LoadRecovery(): ReactElement {
   return (
     <section className="view recovery-screen" aria-labelledby="recovery-heading">
       <h1 id="recovery-heading">
-        {t(raw === null ? 'hero.storageUnreadable' : 'hero.storedDataRefused')}
+        {t(failure === 'unavailable' ? 'hero.storageUnreadable' : 'hero.storedDataRefused')}
       </h1>
       <p>{t('status.writesPaused')}</p>
       <div className="view-field">

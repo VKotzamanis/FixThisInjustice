@@ -40,4 +40,12 @@ describe('a refused document opens the recovery screen (B01/B17/B18)', () => {
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.wipeAll') }));
     expect(screen.getByRole('button', { name: copyFor('limelight', 'button.wipeConfirm') })).toBeDisabled();
   });
+
+  it('names an unreachable database as unavailable even when fti.v3 is readable (B17)', async () => {
+    const backend = createMemoryBackend({ legacy: '{"week":999}' });
+    backend.makeUnavailable();
+    await useAppStore.getState().hydrate(backend);
+    render(<App />);
+    expect(screen.getByRole('heading', { name: copyFor('limelight', 'hero.storageUnreadable') })).toBeInTheDocument();
+  });
 });

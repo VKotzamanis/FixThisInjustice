@@ -274,3 +274,27 @@ async function importLegacy(backend: RecordBackend, text: string): Promise<Impor
   if (committed.reason === 'stale') return 'stale';
   return { ok: false, reason: 'unavailable', error: committed.error };
 }
+
+/**
+ * The stored records as export text for a recovery screen (audit B04: the backup is what is
+ * stored, not the in-memory default); fti.v3 while the database holds nothing. Never throws.
+ */
+export async function readStoredText(backend: RecordBackend = createBrowserBackend()): Promise<string | null> {
+  const read = await backend.read();
+  if (read.ok && read.meta !== null) return rawDocumentText(read.meta, read.records);
+  return backend.readLegacy();
+}
+
+/**
+ * Empties every record store and removes fti.v3 without going through the store: the root
+ * boundary's clear, which must work when the store is what failed. Resolves true when the
+ * database clear committed.
+ */
+export async function clearDatabase(backend: RecordBackend = createBrowserBackend()): Promise<boolean> {
+  const read = await backend.read();
+  const base = read.ok ? (read.meta?.revision ?? 0) : 0; // [commits]
+  const result = await backend.commit({ clear: true, puts: [], deletes: [] }, base, CURRENT_SCHEMA_VERSION);
+  backend.removeLegacy();
+  if (result.ok) backend.announce(result.revision);
+  return result.ok;
+}
