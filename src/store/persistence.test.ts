@@ -1,13 +1,19 @@
-import { describe, expect, it, vi } from 'vitest';
+import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   STORAGE_KEY,
   clearStorage,
+  createBrowserBackend,
   exportJson,
   importJson,
   load,
+  loadDocument,
   readRaw,
   save,
 } from './persistence';
+import { resetRecordDbForTests } from './db/idb';
+import { createMemoryBackend } from './db/memoryBackend';
 import { defaultState, parseState } from '../domain/schema';
 // ?raw, as src/domain/alphaFixture.test.ts reads it: tsconfig.app.json pins `types` to the vite
 // client, so node:fs is not available to the suites.
@@ -19,6 +25,12 @@ import {
   makeStorageFull,
   makeStorageUnavailable,
 } from './testStorage';
+
+beforeEach(() => {
+  // fake-indexeddb keeps its databases on the factory, so a fresh factory is a fresh disk.
+  globalThis.indexedDB = new IDBFactory();
+  resetRecordDbForTests();
+});
 
 /*
  * RETIRED SKINS. Documents written while clinical and board shipped carry `ui.skin` set to one
@@ -189,6 +201,62 @@ describe('save', () => {
       throw new Error('something else entirely');
     });
     expect(() => save(defaultState())).not.toThrow();
+  });
+});
+
+describe('loadDocument: the first boot imports fti.v3 (spec R13, rule 7)', () => {
+  it('reports a first run when the database and fti.v3 are both empty', async () => {
+    installFakeStorage();
+    expect(await loadDocument(createBrowserBackend())).toEqual({ ok: false, reason: 'absent', revision: 0 });
+  });
+
+  it('imports the alpha fixture into IndexedDB and leaves the key byte-identical', async () => {
+    const data = installFakeStorage({ [STORAGE_KEY]: alphaFixtureJson });
+    const first = await loadDocument(createBrowserBackend());
+    if (!first.ok) throw new Error(first.reason);
+    expect(first.imported).toBe(true);
+    expect(first.state).toEqual(populatedReference());
+    expect(data.get(STORAGE_KEY)).toBe(alphaFixtureJson);
+    // The second boot reads the database: a changed key is not imported again.
+    data.set(STORAGE_KEY, '{"week":999}');
+    resetRecordDbForTests();
+    const second = await loadDocument(createBrowserBackend());
+    if (!second.ok) throw new Error(second.reason);
+    expect(second.imported).toBe(false);
+    expect(second.state).toEqual(populatedReference());
+  });
+
+  it.each(['clinical', 'board'] as const)(
+    'loads a stored v3 document naming the retired %s skin as limelight, all else unchanged',
+    async (skin) => {
+      installFakeStorage({ [STORAGE_KEY]: withSkin(skin) });
+      const result = await loadDocument(createBrowserBackend());
+      if (!result.ok) throw new Error(result.reason);
+      expect(result.state.ui.skin).toBe('limelight');
+      expect(result.state).toEqual(populatedReference());
+    },
+  );
+
+  it('reports non-JSON text as invalid, imports nothing, and keeps the text for export', async () => {
+    installFakeStorage({ [STORAGE_KEY]: 'not json {' });
+    const backend = createBrowserBackend();
+    const result = await loadDocument(backend);
+    expect(result).toMatchObject({ ok: false, reason: 'invalid', raw: 'not json {' });
+    if (!result.ok && result.reason !== 'absent') expect(result.error).toContain('not JSON');
+    const read = await backend.read();
+    expect(read.ok && read.meta).toBeNull();
+  });
+
+  it('reports a document from a newer build as invalid', async () => {
+    installFakeStorage({ [STORAGE_KEY]: JSON.stringify({ ...FIXTURE, schemaVersion: 4 }) });
+    const result = await loadDocument(createBrowserBackend());
+    expect(result).toMatchObject({ ok: false, reason: 'invalid' });
+  });
+
+  it('reports an unreachable database as unavailable and offers fti.v3 for export (B17)', async () => {
+    const backend = createMemoryBackend({ legacy: '{"week":999}' });
+    backend.makeUnavailable();
+    expect(await loadDocument(backend)).toMatchObject({ ok: false, reason: 'unavailable', raw: '{"week":999}' });
   });
 });
 

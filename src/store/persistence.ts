@@ -1,6 +1,13 @@
 import type { AppState } from '../domain/types';
-import { parseState } from '../domain/schema';
+import { CURRENT_SCHEMA_VERSION, parseState } from '../domain/schema';
 import { isQuotaExceeded, messageOf } from './db/errors';
+import { migrate } from '../domain/migrations';
+import { assembleState, type QuarantinedRecord, type StoredRecords } from './db/assemble';
+import type { MetaRecord, RecordBackend } from './db/backend';
+import { broadcastRevisionChannel } from './db/channel';
+import { idbRecordStore } from './db/idb';
+import type { Preserved, Repair } from './db/preserve';
+import { APP_STORE, MAP_STORES, SINGLETON_KEYS, groupRecords, splitDocument, type RecordPut } from './db/records';
 
 /**
  * The one storage key, owned by the one module allowed to touch Web Storage
@@ -219,3 +226,122 @@ export function importJson(text: string): ImportResult {
  * deleted them were dropped (ROADMAP N5, owner ruling 2026-10-18); a device that still holds
  * them keeps them exactly as stored, because removing a user's data is not this code's decision.
  */
+
+/*
+ * ---- Spec R13: the IndexedDB engine's entry points ----
+ */
+
+/** The legacy-key half of the browser backend: fti.v3 is read once and removed only by a wipe. */
+export function createBrowserBackend(): RecordBackend {
+  const records = idbRecordStore();
+  const channel = broadcastRevisionChannel();
+  return {
+    read: () => records.read(),
+    commit: (ops, base, version) => records.commit(ops, base, version),
+    announce: (revision) => {
+      channel.announce(revision);
+    },
+    onAnnounce: (listener) => channel.subscribe(listener),
+    readLegacy: readRaw,
+    removeLegacy: clearStorage,
+  };
+}
+
+/**
+ * The stored records as one unvalidated document, for the recovery export of a refused load
+ * (audit B04: the backup is what is stored, not the in-memory default). Pretty-printed like
+ * exportJson so a user can read and repair it.
+ */
+export function rawDocumentText(meta: MetaRecord | null, records: StoredRecords): string {
+  const doc: Record<string, unknown> = { schemaVersion: meta?.schemaVersion ?? CURRENT_SCHEMA_VERSION };
+  for (const store of MAP_STORES) doc[store] = Object.fromEntries(records.get(store) ?? new Map<string, unknown>());
+  const app = records.get(APP_STORE) ?? new Map<string, unknown>();
+  for (const key of SINGLETON_KEYS) if (app.has(key)) doc[key] = app.get(key);
+  return `${JSON.stringify(doc, null, 2)}\n`;
+}
+
+export type LoadOutcome =
+  | {
+      ok: true;
+      state: AppState;
+      /** [commits] The stored revision this state was read at; 0 when nothing is stored yet. */
+      revision: number;
+      quarantine: readonly QuarantinedRecord[];
+      repairs: readonly Repair[];
+      preserved: Preserved;
+      /** True when this boot imported fti.v3 into the empty database. */
+      imported: boolean;
+    }
+  | { ok: false; reason: 'absent'; revision: 0 }
+  | { ok: false; reason: 'invalid' | 'unavailable'; error: string; raw: string | null; revision: number };
+
+/**
+ * Reads the stored records into a document (spec R13). On a database nothing has written yet,
+ * imports fti.v3 first, in ONE transaction that refuses if another instance imported meanwhile,
+ * and leaves fti.v3 exactly as it was, as a fallback backup (AGENTS.md rule 7). Never throws.
+ */
+export async function loadDocument(backend: RecordBackend, attempt = 0): Promise<LoadOutcome> {
+  const read = await backend.read();
+  if (!read.ok) {
+    return { ok: false, reason: 'unavailable', error: read.error, raw: backend.readLegacy(), revision: 0 };
+  }
+  if (read.meta === null) {
+    const text = backend.readLegacy();
+    if (text === null) return { ok: false, reason: 'absent', revision: 0 };
+    const imported = await importLegacy(backend, text);
+    if (imported === 'stale' && attempt === 0) return loadDocument(backend, 1);
+    if (imported === 'stale') {
+      return { ok: false, reason: 'unavailable', error: 'the database kept changing during the import', raw: text, revision: 0 };
+    }
+    if (!imported.ok) return { ...imported, raw: text, revision: 0 };
+    const assembled = assembleState(groupRecords(imported.puts));
+    if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error, raw: text, revision: imported.revision };
+    return { ...assembled, revision: imported.revision, imported: true };
+  }
+  const raw = (): string => rawDocumentText(read.meta, read.records);
+  if (read.meta.schemaVersion > CURRENT_SCHEMA_VERSION) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `saved by a newer version of the app (schema ${String(read.meta.schemaVersion)}, this build understands ${String(CURRENT_SCHEMA_VERSION)})`,
+      raw: raw(),
+      revision: read.meta.revision,
+    };
+  }
+  const assembled = assembleState(read.records);
+  if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error, raw: raw(), revision: read.meta.revision };
+  return { ...assembled, revision: read.meta.revision, imported: false };
+}
+
+type ImportOutcome =
+  | { ok: true; revision: number; puts: RecordPut[] }
+  | { ok: false; reason: 'invalid' | 'unavailable'; error: string }
+  | 'stale';
+
+/** fti.v3 -> raw records, written verbatim (unknown keys and invalid records included). */
+async function importLegacy(backend: RecordBackend, text: string): Promise<ImportOutcome> {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(text);
+  } catch (e) {
+    return { ok: false, reason: 'invalid', error: `stored document is not JSON: ${messageOf(e)}` };
+  }
+  if (typeof doc !== 'object' || doc === null || Array.isArray(doc)) {
+    return { ok: false, reason: 'invalid', error: 'not a JSON object' };
+  }
+  const version: unknown = Reflect.get(doc, 'schemaVersion');
+  if (typeof version !== 'number' || !Number.isInteger(version)) {
+    return { ok: false, reason: 'invalid', error: 'missing or non-integer schemaVersion' };
+  }
+  const migrated = migrate(doc, version, CURRENT_SCHEMA_VERSION);
+  if (!migrated.ok) return { ok: false, reason: 'invalid', error: migrated.error };
+  if (typeof migrated.value !== 'object' || migrated.value === null) {
+    return { ok: false, reason: 'invalid', error: 'not a JSON object' };
+  }
+  const split = splitDocument(migrated.value as Record<string, unknown>);
+  if (!split.ok) return { ok: false, reason: 'invalid', error: split.error };
+  const committed = await backend.commit({ clear: false, puts: split.puts, deletes: [] }, 0, CURRENT_SCHEMA_VERSION);
+  if (committed.ok) return { ok: true, revision: committed.revision, puts: split.puts };
+  if (committed.reason === 'stale') return 'stale';
+  return { ok: false, reason: 'unavailable', error: committed.error };
+}
