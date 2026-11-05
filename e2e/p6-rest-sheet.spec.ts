@@ -88,3 +88,21 @@ for (const width of [320, 360, 390, 412]) {
     });
   });
 }
+
+// Spec R6 on both engines: Back closes the open rest-game sheet first and leaves the view on
+// Train; only the next Back leaves Train.
+test('Back closes the rest-game sheet before it leaves Train (R6)', async ({ context }) => {
+  await seedDocument(context, e2eDocument());
+  await setClock(context, chicago(MONDAY, '17:00'));
+  const page = await openApp(context);
+  await startFromToday(page);
+  await logSet(page, 1, '60', '8');
+  await openRestWord(page);
+  expect(page.url()).toContain('#/train');
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Rest Word' })).toHaveCount(0);
+  expect(page.url()).toContain('#/train');
+  await page.goBack();
+  await expect.poll(() => page.url()).not.toContain('#/train');
+  expect(page.url()).toContain('#/today');
+});
