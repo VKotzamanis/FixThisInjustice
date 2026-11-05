@@ -102,6 +102,20 @@ describe('loadDocument: the first boot imports fti.v3 (spec R13, rule 7)', () =>
     expect(read.ok && read.meta).toBeNull();
   });
 
+  it('refuses a document whose profile fails the schema and writes nothing (B01)', async () => {
+    const profiles = FIXTURE.profiles as Record<string, Record<string, unknown>>;
+    const [id, profile] = Object.entries(profiles)[0] ?? [];
+    if (id === undefined || profile === undefined) throw new Error('alpha-fixture.json has a profile');
+    // 81 characters: one over the display-name bound; every other record hangs off the profile.
+    const text = JSON.stringify({ ...FIXTURE, profiles: { ...profiles, [id]: { ...profile, displayName: 'A'.repeat(81) } } });
+    const data = installFakeStorage({ [STORAGE_KEY]: text });
+    const backend = createBrowserBackend();
+    expect(await loadDocument(backend)).toMatchObject({ ok: false, reason: 'invalid', raw: text, revision: 0 });
+    const read = await backend.read();
+    expect(read.ok && read.meta).toBeNull();
+    expect(data.get(STORAGE_KEY)).toBe(text);
+  });
+
   it('reports a document from a newer build as invalid', async () => {
     installFakeStorage({ [STORAGE_KEY]: JSON.stringify({ ...FIXTURE, schemaVersion: 4 }) });
     const result = await loadDocument(createBrowserBackend());

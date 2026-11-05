@@ -7,7 +7,7 @@ import type { MetaRecord, RecordBackend } from './db/backend';
 import { broadcastRevisionChannel } from './db/channel';
 import { idbRecordStore } from './db/idb';
 import type { Preserved, Repair } from './db/preserve';
-import { APP_STORE, MAP_STORES, SINGLETON_KEYS, groupRecords, splitDocument, type RecordPut } from './db/records';
+import { APP_STORE, MAP_STORES, SINGLETON_KEYS, groupRecords, splitDocument } from './db/records';
 
 /**
  * The one storage key, owned by the one module allowed to touch Web Storage
@@ -223,9 +223,7 @@ export async function loadDocument(backend: RecordBackend, attempt = 0): Promise
       return { ok: false, reason: 'unavailable', error: 'the database kept changing during the import', raw: text, revision: 0 };
     }
     if (!imported.ok) return { ...imported, raw: text, revision: 0 };
-    const assembled = assembleState(groupRecords(imported.puts));
-    if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error, raw: text, revision: imported.revision };
-    return { ...assembled, revision: imported.revision, imported: true };
+    return { ...imported.assembled, revision: imported.revision, imported: true };
   }
   const raw = (): string => rawDocumentText(read.meta, read.records);
   if (read.meta.schemaVersion > CURRENT_SCHEMA_VERSION) {
@@ -243,7 +241,7 @@ export async function loadDocument(backend: RecordBackend, attempt = 0): Promise
 }
 
 type ImportOutcome =
-  | { ok: true; revision: number; puts: RecordPut[] }
+  | { ok: true; revision: number; assembled: Extract<ReturnType<typeof assembleState>, { ok: true }> }
   | { ok: false; reason: 'invalid' | 'unavailable'; error: string }
   | 'stale';
 
@@ -269,8 +267,13 @@ async function importLegacy(backend: RecordBackend, text: string): Promise<Impor
   }
   const split = splitDocument(migrated.value as Record<string, unknown>);
   if (!split.ok) return { ok: false, reason: 'invalid', error: split.error };
+  // Audit B01 (e2e/b01-recovery.spec.ts): a document the loader refuses is not imported. The
+  // records are assembled BEFORE the commit, so a refused fti.v3 leaves the database empty
+  // (nothing written) and fti.v3 untouched; a quarantined record still imports as stored.
+  const assembled = assembleState(groupRecords(split.puts));
+  if (!assembled.ok) return { ok: false, reason: 'invalid', error: assembled.error };
   const committed = await backend.commit({ clear: false, puts: split.puts, deletes: [] }, 0, CURRENT_SCHEMA_VERSION);
-  if (committed.ok) return { ok: true, revision: committed.revision, puts: split.puts };
+  if (committed.ok) return { ok: true, revision: committed.revision, assembled };
   if (committed.reason === 'stale') return 'stale';
   return { ok: false, reason: 'unavailable', error: committed.error };
 }
