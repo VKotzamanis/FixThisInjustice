@@ -2,35 +2,17 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { cspPlugin } from './build/cspPlugin.ts';
+import { buildInfoPlugin } from './build/buildInfo.ts';
 
-/*
- * The build date, as YYYY-MM-DD in UTC.
- *
- * The brief's own snippet reads `new Date().toISOString().slice(0, 10)`, which is the same
- * value this expression computes, but eslint.config.js's `no-restricted-syntax` bans
- * `toISOString()` everywhere outside src/domain/dates.ts (it converts to UTC and silently
- * shifts a CIVIL date, master plan section 3): a real rule for a user's own local date, and one
- * this build timestamp does not need to get past, since a build has no time zone to respect.
- * Computed by hand instead, byte-for-byte the same string, so the ban stays whole rather than
- * gaining an exception for a config file.
- */
-const buildDate = new Date();
-const BUILD_DATE_ISO = [
-  buildDate.getUTCFullYear(),
-  String(buildDate.getUTCMonth() + 1).padStart(2, '0'),
-  String(buildDate.getUTCDate()).padStart(2, '0'),
-].join('-');
 
 export default defineConfig({
   // GitHub Pages project site: https://<user>.github.io/FixThisInjustice/
   base: '/FixThisInjustice/',
-  // The three constants src/ui/components/SiteFooter.tsx reads (P10 Brief D), declared in
-  // src/config/build.d.ts. Each is a literal string substitution, never a runtime env read, so
-  // the footer needs no fetch and no build step of its own to know its own version.
+  // The package version SiteFooter reads (declared in src/config/build.d.ts). The commit and the
+  // build date are NOT compiled in (audit E06): they change on every commit and would rehash the
+  // main chunk; build/buildInfo.ts writes them to dist/build-info.json instead.
   define: {
     __APP_VERSION__: JSON.stringify(process.env.npm_package_version ?? '0.0.0'),
-    __BUILD_COMMIT__: JSON.stringify(process.env.GITHUB_SHA?.slice(0, 7) ?? 'local'),
-    __BUILD_DATE__: JSON.stringify(BUILD_DATE_ISO),
   },
   build: {
     // The CSP is `font-src 'self'` (master plan section 3). Vite's default
@@ -42,6 +24,7 @@ export default defineConfig({
   plugins: [
     react(),
     cspPlugin(),
+    buildInfoPlugin(),
     VitePWA({
       // Hand-written service worker, Workbox-precached (security constraint 23:
       // do not hand-roll caching; the legacy sw.js is dropped per the port table).

@@ -12,8 +12,8 @@
 // THE REPOSITORY URL IS A PLAIN CONSTANT, NEVER A COPY STRING. copy.test.ts asserts no copy()
 // value carries a URL, and the brief states the same rule for this file by name. The version,
 // the build commit and the build date are the other three constants a copy string may not hold:
-// each is compiled in by vite.config.ts's `define` block (declared in src/config/build.d.ts)
-// rather than read at runtime, so the footer needs no fetch to know its own version.
+// the version is compiled in (`define`, src/config/build.d.ts); the commit and date are read once
+// from dist/build-info.json (src/app/buildInfo.ts, audit E06).
 //
 // THE DISCLAIMER IS REUSED, NEVER REWORDED. 00-CONTEXT rule 2 bans a new safety statement with
 // no source handed down for it. `INTRO_DISCLAIMER` is the disclaimer the owner wrote for the
@@ -29,6 +29,7 @@ import { emphasise } from '../intro/emphasis';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { useHydrated } from '../../store/selectors';
+import { useBuildInfo } from '../../app/buildInfo';
 
 /** The brief's own constant, verbatim. Never a copy() value: copy.test.ts bans a URL in one. */
 const REPOSITORY_URL = 'https://github.com/VKotzamanis/FixThisInjustice';
@@ -40,6 +41,7 @@ export function SiteFooter(): ReactElement {
   const t = useCopy();
   const overrides = useCopyOverrides();
   const hydrated = useHydrated();
+  const build = useBuildInfo();
 
   return (
     <footer className="site-footer">
@@ -49,8 +51,9 @@ export function SiteFooter(): ReactElement {
           {t('footer.repository')}
         </a>
       </p>
-      <p>{FORMAT.footerVersion(__APP_VERSION__, __BUILD_COMMIT__, overrides)}</p>
-      <p>{FORMAT.footerUpdated(__BUILD_DATE__, overrides)}</p>
+      {/* Audit E06: read from dist/build-info.json; absent offline and in dev, never invented. */}
+      {build !== null && <p>{FORMAT.footerVersion(__APP_VERSION__, build.commit, overrides)}</p>}
+      {build !== null && <p>{FORMAT.footerUpdated(build.date, overrides)}</p>}
       {/*
        * Displaced from the top bar (Brief D part 1): worth knowing once, at the foot, not worth
        * a permanent word at the top of every screen.
