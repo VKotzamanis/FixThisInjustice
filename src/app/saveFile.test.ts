@@ -4,9 +4,15 @@ import { saveFile, shareableFile, shareFile } from './saveFile';
 
 vi.mock('./download', () => ({ downloadText: vi.fn() }));
 
-function stubShare(share: () => Promise<void>, canShare = true): void {
+/** Installs a share stub and returns its mock (read directly: `navigator.share` is a method). */
+function stubShare(
+  share: () => Promise<void>,
+  canShare = true,
+): ReturnType<typeof vi.fn<(data: ShareData) => Promise<void>>> {
+  const mock = vi.fn<(data: ShareData) => Promise<void>>(share);
   Object.defineProperty(navigator, 'canShare', { value: vi.fn(() => canShare), configurable: true });
-  Object.defineProperty(navigator, 'share', { value: vi.fn(share), configurable: true });
+  Object.defineProperty(navigator, 'share', { value: mock, configurable: true });
+  return mock;
 }
 
 afterEach(() => {
@@ -28,12 +34,12 @@ describe('saveFile (audit B07)', () => {
   });
 
   it('shares when it can, and downloads nothing', async () => {
-    stubShare(() => Promise.resolve());
+    const share = stubShare(() => Promise.resolve());
     const result = saveFile('a.json', '{"x":1}');
     expect(result.route).toBe('share');
     if (result.route === 'share') await expect(result.outcome).resolves.toBe('shared');
     expect(downloadText).not.toHaveBeenCalled();
-    const shared = vi.mocked(navigator.share).mock.calls[0]?.[0];
+    const shared = share.mock.calls[0]?.[0];
     expect(shared?.files?.[0]?.name).toBe('a.json');
   });
 
