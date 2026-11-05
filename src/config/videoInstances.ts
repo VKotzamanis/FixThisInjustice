@@ -1,3 +1,6 @@
+/** A YouTube clip id: 11 URL-safe base64 characters. The one gate for every stored or framed id. */
+export const VIDEO_ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
 /** One Invidious front-end that may be framed for exercise-form video. */
 export interface VideoInstance {
   /** Bare hostname, no scheme, no trailing slash. */

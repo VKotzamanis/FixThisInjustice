@@ -27,6 +27,7 @@ import type {
 } from './types';
 import { addDays } from './dates';
 import { MAX_EPOCH_MS } from './schema';
+import { VIDEO_ID_RE } from '../config/videoInstances';
 
 /**
  * fast-check generators for the persisted document.
@@ -252,7 +253,7 @@ export const anyExercise: fc.Arbitrary<Exercise> = fc.record({
     fc.constantFrom('full-gym' as const, 'dumbbells-only' as const, 'bodyweight' as const),
     { maxLength: 3 },
   ),
-  videoQuery: fc.option(anyText, { nil: null }),
+  videoId: fc.option(fc.stringMatching(VIDEO_ID_RE), { nil: null }),
   formCueId: fc.option(anyId, { nil: null }),
   note: fc.option(anyText, { nil: null }),
 });

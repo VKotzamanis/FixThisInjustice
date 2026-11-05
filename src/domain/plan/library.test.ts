@@ -64,8 +64,8 @@ const CANONICAL_IDS = [
 ];
 
 /**
- * The 28 ids P3a added. No cue and no search string yet (wording is out of scope for P3a), so
- * formCueId and videoQuery are null; FORM_CUE_IDS therefore does not move.
+ * The 28 ids P3a added. No cue yet (wording is out of scope for P3a), so formCueId is null;
+ * FORM_CUE_IDS therefore does not move. Their clip ids are formVideos.test.ts's concern.
  */
 const P3A_IDS = [
   'db-reverse-lunge',
@@ -381,7 +381,6 @@ describe('the two exercises added by the master plan section 5 rulings', () => {
       modality: 'bodyweight',
     });
     expect([...chin.equipment].sort()).toEqual(['bodyweight', 'dumbbells-only', 'full-gym']);
-    expect(chin.videoQuery).toBe('chin-up form');
     expect(chin.formCueId).toBeNull();
     // The pronated pull-up keeps the biceps as an assisting mover; a re-tag that merged the two
     // would silently double-count biceps volume for every pull-up in the plan.
@@ -400,7 +399,6 @@ describe('the two exercises added by the master plan section 5 rulings', () => {
       { loadClass: 'upper-compound', compound: true, bw: true },
     );
     expect([...dip.equipment].sort()).toEqual(['bodyweight', 'dumbbells-only', 'full-gym']);
-    expect(dip.videoQuery).toBe('bench dip form');
     expect(dip.formCueId).toBeNull();
     expect(restSFor(dip, MODERATE)).toBe(120); // [s] upper-compound, not the 90 s isolation row
   });
@@ -419,11 +417,10 @@ describe('the two exercises added by the master plan section 5 rulings', () => {
 });
 
 describe('the seven equipment-tier exercises added after the Task 3 review', () => {
-  it('has no cue id yet and a mechanical "<name> form" search string', () => {
+  it('has no cue id yet', () => {
     for (const id of NO_LEGACY_SOURCE_IDS) {
       const e = byId(id);
       expect({ id, cue: e.formCueId, note: e.note }).toEqual({ id, cue: null, note: null });
-      expect(e.videoQuery).toBe(`${e.name.toLowerCase()} form`);
     }
   });
 
@@ -469,13 +466,12 @@ describe('the seven equipment-tier exercises added after the Task 3 review', () 
 });
 
 describe('the 28 P3a basic-pattern exercises', () => {
-  it('carries no cue, no search string and no note (wording is out of scope for P3a)', () => {
+  it('carries no cue and no note (wording is out of scope for P3a)', () => {
     for (const id of P3A_IDS) {
       const e = byId(id);
-      expect({ id, cue: e.formCueId, video: e.videoQuery, note: e.note }).toEqual({
+      expect({ id, cue: e.formCueId, note: e.note }).toEqual({
         id,
         cue: null,
-        video: null,
         note: null,
       });
     }
@@ -728,18 +724,6 @@ describe('content review exclusions and scrubbing', () => {
     }
   });
 
-  it('keeps the ported video search strings and nulls the ones the legacy file never had', () => {
-    expect(byId('barbell-bench-press').videoQuery).toBe('bench press perfect form jeff nippard');
-    expect(byId('face-pull').videoQuery).toBe('face pulls athlean rear delt form');
-    expect(byId('incline-db-press').videoQuery).toBe('incline dumbbell press form jeff nippard');
-    expect(byId('db-single-arm-row').videoQuery).toBe('single arm dumbbell row form meadows');
-    // Split halves the legacy file never carried a search string for.
-    expect(byId('lat-pulldown').videoQuery).toBeNull();
-    expect(byId('leg-press').videoQuery).toBeNull();
-    // The three legacy entries with no `video` field at all; "No training" is dropped.
-    expect(byId('walk').videoQuery).toBeNull();
-    expect(byId('stair-climber').videoQuery).toBeNull();
-  });
 });
 
 describe('rest intervals follow the content review section 9 table', () => {

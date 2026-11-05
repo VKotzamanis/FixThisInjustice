@@ -220,7 +220,7 @@ export type Prescription =
   | { kind: "none" };
 export type Modality = "barbell" | "dumbbell" | "machine" | "cable" | "bodyweight";
 export type LoadClass = "lower-compound" | "upper-compound" | "isolation"; // drives the progression percentage (5 % / 2.5 % / 2.5 %)
-export interface Exercise { id: string; name: string; isBodyweight: boolean; isCompoundPrimary: boolean; modality: Modality; loadClass: LoadClass; muscleGroups: string[]; secondaryMuscles: string[]; equipment: Equipment[]; videoQuery: string | null; formCueId: string | null; note: string | null; } // muscleGroups = direct movers (1.0 set), secondaryMuscles = dynamic assisting movers (0.5 set) for fractional weekly set counting
+export interface Exercise { id: string; name: string; isBodyweight: boolean; isCompoundPrimary: boolean; modality: Modality; loadClass: LoadClass; muscleGroups: string[]; secondaryMuscles: string[]; equipment: Equipment[]; videoId: string | null; formCueId: string | null; note: string | null; } // muscleGroups = direct movers (1.0 set), secondaryMuscles = dynamic assisting movers (0.5 set) for fractional weekly set counting
 // Canonical exercise ids: the 40 slugs listed in docs/plans/2026-09-01-00-master-plan.md §5 (31 ported plus nine equipment-tier additions) plus the 28 P3a basic-pattern ids (docs/plans/2026-11-04-p3a-library.md); src/domain/plan/library.ts is the executable source of truth and its test asserts the set. formCueId === id where a cue exists.
 export interface PlannedExercise { exerciseId: string; setsLo: number; setsHi: number; prescription: Prescription; restS: Seconds; }
 export type SessionKind = "lift" | "cardio";

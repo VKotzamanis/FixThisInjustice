@@ -6,13 +6,23 @@ One YouTube clip per library exercise, played in-app by `src/ui/components/Video
 ## Method (2026-11-05)
 - Candidates: YouTube's own search results page (`youtube.com/results?search_query=<exercise> form`), top 12 per exercise, parsed for id, channel, length and title.
 - Pick: the exact variant in the title (dumbbell vs barbell, lying vs seated, bodyweight vs loaded); a coaching, certification, clinical or equipment-maker channel; a short demo preferred over a long lecture (a longer clip was kept where it came from the movement's specialist, e.g. Squat University, Bret Contreras, Starting Strength).
-- Verify: `GET https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=<id>&format=json` must return 200; title and author below are copied from that response. oEmbed answers 401 for a clip whose owner disabled embedding, 404/400 for a missing id (negative controls `AAAAAAAAAAA` 404, `zzzzzzzzzzz` 400 on 2026-11-05).
+- Verify: `GET https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=<id>&format=json` must return 200; title and author below are copied from that response. A missing id fails (negative controls `AAAAAAAAAAA` 404, `zzzzzzzzzzz` 400 on 2026-11-05). Whether oEmbed also refuses a clip whose owner disabled embedding was not tested.
 - Length: from the search page, not from oEmbed (which carries none).
-- Not checked: that each clip plays inside the app's sandboxed, privacy-enhanced frame on a phone. oEmbed 200 means the clip exists and allows embedding, not that it plays here.
+- Not checked: that each clip plays inside the app's sandboxed, privacy-enhanced frame on a phone. oEmbed 200 means the clip exists and is public, not that it plays here.
 - Re-verify before a release that touches this table: rerun the oEmbed call for every id; a non-200 id becomes `null` (never a guessed replacement) until a new id is verified.
 
 ## Null ids
 - `walk`: no clip picked. The results were gait-correction videos (physiotherapy and posture channels, 0:45 to 12:10), not a demo of the prescribed easy walk. The modal shows the form cues and "no clip yet".
+
+## Title differs from the library row (judged from title and channel; no clip was watched)
+- `db-rear-delt-fly`: "Dumbbell Bent-Over Raise", another name for the same movement.
+- `db-overhead-press`: "Dumbbell Shoulder Press"; the library row does not fix seated or standing.
+- `triceps-overhead-extension`: standing, one dumbbell; the row also allows a cable rope.
+- `calf-raise`: standing with dumbbells; the row also allows a machine or bodyweight on a step.
+- `leg-curl-machine`: lying machine, as the legacy search string ("lying leg curl") had it.
+- `bw-step-up`: "Step Ups/Downs"; the title does not say unloaded.
+- `ab-wheel-rollout`: "Strengthening the core: Ab Wheel".
+- `rower-intervals`, `stair-climber`: machine technique, not an interval session.
 
 ## Table
 

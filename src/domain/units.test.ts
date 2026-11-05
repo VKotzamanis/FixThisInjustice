@@ -35,7 +35,7 @@ function exercise(id: string, modality: Exercise['modality']): Exercise {
     muscleGroups: [],
     secondaryMuscles: [],
     equipment: ['full-gym'],
-    videoQuery: null,
+    videoId: null,
     formCueId: null,
     note: null,
   };

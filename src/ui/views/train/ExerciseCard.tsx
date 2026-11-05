@@ -435,11 +435,11 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
           </details>
 
           <div className="ex-links">
-            {exercise.videoQuery !== null && (
+            {exercise.videoId !== null && (
               <button
                 type="button"
                 onClick={() => {
-                  video.open({ query: exercise.videoQuery, title: exercise.name });
+                  video.open({ query: exercise.videoId, title: exercise.name });
                 }}
               >
                 {t('button.formReference')}

@@ -28,7 +28,7 @@ function hostAt(index: number): string {
 function libraryQuery(id: string): string | null {
   const exercise = EXERCISE_BY_ID[id];
   if (exercise === undefined) throw new Error(`library no longer defines ${id}`);
-  return exercise.videoQuery;
+  return exercise.videoId;
 }
 
 function Opener(props: { query: string | null; title: string }): ReactElement {
