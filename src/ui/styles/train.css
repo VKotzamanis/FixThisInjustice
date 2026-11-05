@@ -334,6 +334,9 @@
 
 .unit-input label {
   font-size: var(--text-xs);
+  /* One-line 12 px label: 1.2 keeps the 12 px floor (brief 3.1) from growing the set row past
+   * the room above the rest sheet at 320-360 px (14.4 px [px] line, was 1.5 = 18 px). */
+  line-height: 1.2;
   letter-spacing: 0.06em;
   color: var(--text-3);
 }
@@ -611,6 +614,9 @@
 
 .set-marker {
   font-size: var(--text-xs);
+  /* One-line 12 px label: 1.2 keeps the 12 px floor (brief 3.1) from growing the set row past
+   * the room above the rest sheet at 320-360 px (14.4 px [px] line, was 1.5 = 18 px). */
+  line-height: 1.2;
   letter-spacing: 0.08em;
   color: var(--text-3);
 }
