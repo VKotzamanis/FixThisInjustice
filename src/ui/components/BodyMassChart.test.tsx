@@ -223,3 +223,26 @@ describe('BodyMassChart', () => {
     expect(labels(container, 'x-label')[1]).toBe('2026-07-24');
   });
 });
+
+describe('the anchored projection (audit G11)', () => {
+  it('starts the dashed line at the anchor date and mass', () => {
+    const { container } = render(
+      <BodyMassChart
+        entries={[entry('2026-02-02', 93, 'a')]} // [kg] a point on the anchor date, at the anchor mass
+        units="metric"
+        {...BASE}
+        projectionFrom={{ date: '2026-02-02', massKg: 93 }}
+      />,
+    );
+    const point = container.querySelector("[data-testid='measured-point']");
+    const d = container.querySelector("[data-testid='projection']")?.getAttribute('d') ?? '';
+    expect(d.startsWith(`M ${point?.getAttribute('cx') ?? ''} ${point?.getAttribute('cy') ?? ''} L`)).toBe(true);
+  });
+
+  it('draws no line when the anchor lies after today', () => {
+    const { container } = render(
+      <BodyMassChart entries={[]} units="metric" {...BASE} projectionFrom={{ date: '2026-07-01', massKg: 90 }} />,
+    );
+    expect(container.querySelector("[data-testid='projection']")).toBeNull();
+  });
+});

@@ -40,6 +40,8 @@ import { BodyMassChart } from '../components/BodyMassChart';
 import { ComplianceGrid } from '../components/ComplianceGrid';
 import { PRList } from '../components/PRList';
 import './views.css';
+import { BodyMassLog } from '../measurements/BodyMassLog';
+import { projectionAnchor, trendEntries } from '../../domain/measurements';
 
 /**
  * [weeks] Most weeks the compliance grid will draw. A programme begun years ago would
@@ -95,6 +97,8 @@ export function LogView(): ReactElement {
   const pauses = useAppStore((s) => s.pauses);
   const assignmentMap = useAppStore((s) => s.assignments);
   const weeklyReviews = useAppStore((s) => s.weeklyReviews);
+  // Audit G12: one trend point per civil date (never a post-session mass) is what is plotted.
+  const trend = useMemo(() => trendEntries(bodyMass ?? NO_BODY_MASS), [bodyMass]);
   const customExercises = useAppStore((s) =>
     s.activeProfileId === null ? null : (s.customExercises[s.activeProfileId] ?? null),
   );
@@ -181,7 +185,13 @@ export function LogView(): ReactElement {
       <h3>{t('hero.bodyMass')}</h3>
       {entries.length === 0 && <p className="view-note">{t('advice.noBodyMassLogged')}</p>}
       <BodyMassChart
-        entries={entries}
+        entries={trend}
+        // Audit G11: the dashed line starts at this programme's start, at the mass measured then.
+        projectionFrom={
+          startedOn === null
+            ? undefined
+            : projectionAnchor(trend, startedOn, { date: baselineDate, massKg: profile.body.baselineMassKg })
+        }
         units={profile.units}
         baselineKg={profile.body.baselineMassKg} // [kg]
         baselineDate={baselineDate}
@@ -201,6 +211,8 @@ export function LogView(): ReactElement {
           {targets !== null && <p>{targets.basis.rateRule}</p>}
         </div>
       </details>
+      {/* Spec R9 / audit G03: every entry editable and deletable with undo. */}
+      <BodyMassLog profile={profile} />
 
       <h3>{t('hero.compliance')}</h3>
       <ComplianceGrid weeks={complianceWeeks} />

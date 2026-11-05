@@ -11,6 +11,7 @@
 // in the week under test, so closeWeeks grades nothing and no missed-week popup opens.
 import type {
   AppState,
+  BodyMassEntry,
   LoggedSet,
   PlannedSession,
   SessionAssignment,
@@ -66,6 +67,10 @@ export interface DocumentOptions {
   sets?: LoggedSet[];
   setupDraft?: SetupDraft | null;
   nextSessionIndex?: number; // [sessions] offset
+  /** The profile's weigh-ins. Default none. */
+  bodyMass?: BodyMassEntry[];
+  /** Pre/post-session weigh-in opt-in. Default false. */
+  weighInOptIn?: boolean;
 }
 
 /** A logged set of the e2e profile, Monday, session 1, squat; patch what the spec needs. */
@@ -83,6 +88,17 @@ export function loggedSet(patch: Partial<LoggedSet> & Pick<LoggedSet, 'id'>): Lo
     durationS: null, // [s]
     rpe: null,
     loggedAt: Date.UTC(2026, 8, 7, 23, 5), // [ms] epoch, UTC = Mon 18:05 CDT
+    ...patch,
+  };
+}
+
+/** A weigh-in of the e2e profile, metric, logged at 12:00 UTC on its date; patch what the spec needs. */
+export function bodyMassEntry(patch: Partial<BodyMassEntry> & Pick<BodyMassEntry, 'id' | 'date' | 'massKg'>): BodyMassEntry {
+  return {
+    profileId: PROFILE_ID,
+    enteredUnit: 'metric',
+    bodyFatPct: null, // [%]
+    loggedAt: Date.parse(`${patch.date}T12:00:00Z`), // [ms] epoch, UTC
     ...patch,
   };
 }
@@ -160,7 +176,7 @@ export function e2eDocument(opts: DocumentOptions = {}): AppState {
         bodyweightEquipment: [],
         goal: { kind: 'maintenance', targetMassKg: null, targetBodyFatPct: null, targetDate: null },
         supplements: { creatine: false },
-        hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: false }, // [mL]
+        hydration: { dailyTargetML: 3000, cupSizeML: 250, weighInOptIn: opts.weighInOptIn ?? false }, // [mL]
         readiness: { screenedAt: null, flagged: false },
       },
     },
@@ -204,7 +220,7 @@ export function e2eDocument(opts: DocumentOptions = {}): AppState {
     },
     pauses: { [PROFILE_ID]: [] },
     assignments: { [PROFILE_ID]: opts.assignments ?? [] },
-    bodyMass: { [PROFILE_ID]: [] },
+    bodyMass: { [PROFILE_ID]: opts.bodyMass ?? [] },
     hydration: { [PROFILE_ID]: [] },
     intake: { [PROFILE_ID]: [] },
     weeklyReviews: { [PROFILE_ID]: [] },

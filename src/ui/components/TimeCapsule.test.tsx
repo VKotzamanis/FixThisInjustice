@@ -24,11 +24,11 @@
 //  4. Assertions quote src/content/copy.ts rather than literals (copy contract), so a reworded
 //     string fails here instead of shipping a view and a test that disagree.
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { FORMAT, copyFor } from '../../content/copy';
 import { addDays, instantOf } from '../../domain/dates';
-import { TimeCapsuleSchema } from '../../domain/schema';
+import { MAX_NOTE_CHARS, TimeCapsuleSchema } from '../../domain/schema';
 import type { EpochMs, LocalDate, LocalTime, TimeCapsule as CapsuleRecord } from '../../domain/types';
 import { useAppStore } from '../../store';
 import { installFakeStorage } from '../../store/testStorage';
@@ -114,6 +114,10 @@ beforeEach(() => {
   pinSkin();
 });
 
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 describe('defaultOpensOn', () => {
   it("returns the plan's last day", () => {
     expect(defaultOpensOn(STARTED_ON, PLAN_WEEKS)).toBe(PLAN_END);
@@ -161,6 +165,8 @@ describe('TimeCapsule, writing', () => {
 
   it('seals the note with the chosen date and shows the sealed card', () => {
     const now = at(STARTED_ON, '09:00');
+    // Audit G20: writtenAt is read at the Seal tap, so the tap's clock is pinned too.
+    vi.spyOn(Date, 'now').mockReturnValue(now);
     render(<TimeCapsule now={now} />);
     openWriteDialog();
     fireEvent.change(noteField(), { target: { value: NOTE } });
@@ -356,5 +362,23 @@ describe('TimeCapsule under a skin', () => {
     expect(
       screen.getByRole('button', { name: copyFor('limelight', 'button.writeCapsule') }),
     ).toBeInTheDocument();
+  });
+});
+
+describe('write another, one length bound (audit G16, G22)', () => {
+  it('caps the note by the loader schema bound', () => {
+    expect(CAPSULE_MAX_CHARS).toBe(MAX_NOTE_CHARS); // [characters]
+  });
+
+  it('offers Write Another once opened, and sealing replaces the opened capsule', () => {
+    seedCapsule({ opensOn: STARTED_ON, opened: true });
+    render(<TimeCapsule now={at('2026-09-20', '09:00')} />);
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.writeAnotherCapsule') }));
+    fireEvent.change(noteField(), { target: { value: 'A second note, written after reading the first one.' } });
+    fireEvent.click(sealButton());
+    expect(capsuleInStore()).toMatchObject({
+      note: 'A second note, written after reading the first one.',
+      opened: false,
+    });
   });
 });

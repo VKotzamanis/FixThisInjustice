@@ -11,7 +11,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { makeSet, resetFixtureIds } from '../../test/fixtures';
 import { e1RM } from './progression';
-import { computeRecords, weeklyAmrapMax } from './records';
+import { computeRecords, isUnloadedSet, weeklyAmrapMax } from './records';
 
 beforeEach(() => {
   resetFixtureIds();
@@ -100,8 +100,8 @@ describe('weeklyAmrapMax', () => {
   it('ignores sets with no rep count', () => {
     const out = weeklyAmrapMax(
       [
-        makeSet({ exerciseId: 'push-up', reps: null, assignmentDate: '2026-01-08' }),
-        makeSet({ exerciseId: 'push-up', reps: 7, assignmentDate: '2026-01-09' }),
+        makeSet({ exerciseId: 'push-up', loadKg: 0, reps: null, assignmentDate: '2026-01-08' }),
+        makeSet({ exerciseId: 'push-up', loadKg: 0, reps: 7, assignmentDate: '2026-01-09' }),
       ],
       'push-up',
     );
@@ -110,5 +110,21 @@ describe('weeklyAmrapMax', () => {
 
   it('returns nothing when the exercise has no logged reps', () => {
     expect(weeklyAmrapMax([], 'push-up')).toEqual([]);
+  });
+});
+
+describe('the AMRAP series counts unloaded sets only (audit G18)', () => {
+  it('uses the same predicate as the records', () => {
+    expect(isUnloadedSet({ loadKg: 0 })).toBe(true); // [kg] bodyweight
+    expect(isUnloadedSet({ loadKg: null })).toBe(true);
+    expect(isUnloadedSet({ loadKg: 20 })).toBe(false); // [kg] a weighted set
+    const series = weeklyAmrapMax(
+      [
+        makeSet({ exerciseId: 'push-up', loadKg: 0, reps: 20, assignmentDate: '2026-01-05' }),
+        makeSet({ exerciseId: 'push-up', loadKg: 20, reps: 30, assignmentDate: '2026-01-05' }), // weighted: excluded
+      ],
+      'push-up',
+    );
+    expect(series).toEqual([{ weekStart: '2026-01-05', reps: 20 }]);
   });
 });

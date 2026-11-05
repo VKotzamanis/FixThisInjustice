@@ -16,6 +16,9 @@ import {
   deleteLabel,
   loadLabel,
   logLabel,
+  massLabel,
+  postMassLabel,
+  preMassLabel,
   repsLabel,
 } from '../../e2e/support/constants';
 import { e2eDocument, reviewDraft } from '../../e2e/support/document';
@@ -54,6 +57,15 @@ describe('the e2e document builder', () => {
     expect(repsLabel(1)).toBe(FORMAT.setRepsQuantity(1));
     expect(logLabel(1)).toBe(FORMAT.logSetLabel(1));
     expect(deleteLabel(1)).toBe(FORMAT.deleteSetLabel(1));
+    expect(LABEL.logTab).toBe(copyFor('limelight', 'nav.log'));
+    expect(LABEL.logBodyMass).toBe(copyFor('limelight', 'button.logBodyMass'));
+    expect(LABEL.editEntry).toBe(copyFor('limelight', 'button.editEntry'));
+    expect(LABEL.saveEntry).toBe(copyFor('limelight', 'button.saveEntry'));
+    expect(LABEL.fluidLoss).toBe(copyFor('limelight', 'advice.fluidLoss'));
+    expect(LABEL.finishAnyway).toBe(copyFor('limelight', 'button.finishAnyway'));
+    expect(massLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.bodyMass'), 'kg'));
+    expect(preMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.preSessionBodyMass'), 'kg'));
+    expect(postMassLabel()).toBe(FORMAT.quantityWithUnit(copyFor('limelight', 'quantity.postSessionBodyMass'), 'kg'));
   });
 
   it('reads the recovery words the app renders (plan Task 17)', () => {

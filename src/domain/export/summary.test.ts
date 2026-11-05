@@ -4,6 +4,9 @@ import { makeExercise } from '../../test/fixtures';
 import { makeBlankState, makeProfile } from '../../test/migrationFactories';
 import type { AppState, BodyMassEntry, LoggedSet, WeeklyReview } from '../types';
 import { buildSummary } from './summary';
+import { localDateOf } from '../dates';
+import { nutritionInputForState } from '../measurements';
+import { computeTargets, isInDomain } from '../nutrition';
 
 const NOW = Date.UTC(2026, 8, 1, 12, 0, 0); // [ms] 2026-09-01T12:00:00Z, 15:00 in Athens
 
@@ -253,5 +256,29 @@ describe('buildSummary', () => {
     const out = buildSummary(withMass(withReview(makeBlankState())), 'p1', NOW);
     expect(out).not.toMatch(/\d{4}-\d{2}-\d{2}T/);
     expect(out).not.toContain('Z\n');
+  });
+});
+
+describe('the summary states the targets the screen states (audit B11)', () => {
+  it('reads the PAL and the newest body-fat entry, through nutritionInputForState', () => {
+    const base = makeBlankState(makeProfile({ activityPal: 2.2 })); // [PAL] a slider stop above the floor
+    const state: AppState = {
+      ...base,
+      bodyMass: {
+        p1: [
+          { id: 'bf', profileId: 'p1', date: '2026-08-01', massKg: 90, enteredUnit: 'metric', bodyFatPct: 22, loggedAt: NOW - 1 }, // [kg], [%]
+          { id: 'm', profileId: 'p1', date: '2026-08-20', massKg: 88, enteredUnit: 'metric', bodyFatPct: null, loggedAt: NOW }, // [kg]
+          { id: 'post', profileId: 'p1', date: '2026-08-21', massKg: 86, enteredUnit: 'metric', bodyFatPct: null, loggedAt: NOW, role: 'post' }, // [kg] never "the" mass
+        ],
+      },
+    };
+    const profile = state.profiles['p1'];
+    if (profile === undefined) throw new Error('fixture has no p1');
+    const input = nutritionInputForState(state, 'p1', localDateOf(NOW, profile.timezone));
+    if (input === null || !isInDomain(input)) throw new Error('fixture is outside the engine domain');
+    expect(input.massKg).toBe(88); // [kg] trend, not the post-session 86
+    expect(input.bodyFatPct).toBe(22); // [%] newest body-fat entry
+    const kcal = computeTargets(input).targetKcal; // [kcal/day]
+    expect(buildSummary(state, 'p1', NOW)).toMatch(new RegExp(`Intake target:\\s+${String(kcal)} kcal`));
   });
 });

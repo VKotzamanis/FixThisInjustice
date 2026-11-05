@@ -375,8 +375,8 @@ describe('review screen', () => {
     expect(within(review).getByTestId('target-kcal')).toHaveTextContent('2440 kcal');
     // Protein, maintenance body-mass row (no body-fat estimate): 1.4-2.0 g/kg of 61.23497 kg.
     expect(within(review).getByTestId('target-protein')).toHaveTextContent('86-122 g');
-    // Fluid: IOM beverage share 3000 mL for a male -> 101 fl oz.
-    expect(within(review).getByTestId('target-fluid')).toHaveTextContent('101 fl oz');
+    // Fluid: IOM beverage share 3000 mL for a male -> 101.4 fl oz (audit G23: 0.1 fl oz).
+    expect(within(review).getByTestId('target-fluid')).toHaveTextContent('101.4 fl oz');
     // Rate: -0.7 %BW/week of 135 lb = -0.945 lb/week -> -0.9 lb/week at 0.1 resolution.
     expect(within(review).getByTestId('target-rate')).toHaveTextContent('-0.9 lb/week');
   });

@@ -150,6 +150,10 @@ export interface SetRowProps {
    * today, else the suggestion; null for none. Optional so existing callers compile.
    */
   referenceKg?: Kg | null;
+  /** [kg] Audit C09: the load a new row opens with. Defaults to `suggestedKg`. */
+  prefillKg?: Kg | null;
+  /** [repetitions] or [s] Audit C09: the count a new row opens with; null for none. */
+  prefillCount?: number | null;
 }
 
 /** The suggested load as the user would type it, or '' when there is nothing to suggest. */
@@ -178,6 +182,8 @@ export function SetRow(props: SetRowProps): ReactElement {
     units,
     prescription,
     suggestedKg,
+    prefillKg = suggestedKg,
+    prefillCount = null,
     logged,
     isBodyweightExercise,
     onLog,
@@ -204,10 +210,12 @@ export function SetRow(props: SetRowProps): ReactElement {
    */
   const timed =
     editing && logged !== null ? logged.durationS !== null : isTimedPrescription(prescription);
-  const [loadText, setLoadText] = useState(() => prefill(suggestedKg, units));
+  const [loadText, setLoadText] = useState(() => prefill(prefillKg, units));
   // One field holds whichever count this row collects; only one of the two is ever rendered,
   // so a single piece of state cannot leave a stale value behind the other.
-  const [countText, setCountText] = useState('');
+  const [countText, setCountText] = useState(() => (prefillCount === null ? '' : String(prefillCount)));
+  /** Audit C09: true once the user typed a count (or opened an edit), so a new prefill never overwrites it. */
+  const countTouched = useRef(false);
   const [countError, setCountError] = useState<string | null>(null);
   const [bodyweight, setBodyweight] = useState(isBodyweightExercise);
   const countRef = useRef<HTMLInputElement | null>(null);
@@ -220,8 +228,12 @@ export function SetRow(props: SetRowProps): ReactElement {
   const touched = useRef(false);
   useEffect(() => {
     if (touched.current) return;
-    setLoadText(prefill(suggestedKg, units));
-  }, [suggestedKg, units]);
+    setLoadText(prefill(prefillKg, units));
+  }, [prefillKg, units]);
+  useEffect(() => {
+    if (countTouched.current) return;
+    setCountText(prefillCount === null ? '' : String(prefillCount));
+  }, [prefillCount]);
 
   /**
    * [kg] The load an edit saves when its field still holds the text the edit opened with: the
@@ -249,16 +261,21 @@ export function SetRow(props: SetRowProps): ReactElement {
     // whole number, so "45.7" is read as 45 exactly as "8.5" reps has always been read as 8.
     const count = Number.parseInt(countText, 10); // [repetitions] or [s]
     if (!Number.isFinite(count) || count <= 0 || (timed && count > MAX_DURATION_S)) {
-      // The timed field says what it wants, wired to the control by UnitInput's own
-      // aria-describedby / aria-invalid pair. The repetition field keeps its silent refusal:
-      // changing it is outside this pass, and a message there would be a second contract.
-      if (timed) setCountError(t('advice.durationNeeded'));
+      // Audit C09: both fields say what they want; a silent refusal read as a broken button.
+      setCountError(t(timed ? 'advice.durationNeeded' : 'advice.repsNeeded'));
       return;
     }
     // A bodyweight set stores 0, never null and never a dropped falsy value (master plan
     // section 8, code review A60): 0 kg is a real load, "not recorded" is a different fact.
     const kept = keptLoadKg(); // [kg], null = not recorded, undefined = not kept
-    const loadKg = kept !== undefined ? kept : bodyweight ? 0 : storedLoadKg(loadText, units); // [kg]
+    // Audit C16: an untouched prefill logs the exact kg it came from, never its 0.1 display value
+    // converted back (137.8 lb -> 62.50503 kg broke LOAD_EQ_TOL_KG). Same rule as review R2's edit.
+    const prefilled =
+      !editing && !bodyweight && prefillKg !== null && loadText === prefill(prefillKg, units)
+        ? prefillKg
+        : undefined; // [kg]
+    const loadKg =
+      kept !== undefined ? kept : prefilled !== undefined ? prefilled : bodyweight ? 0 : storedLoadKg(loadText, units); // [kg]
     if (kept === undefined && (loadKg === null || loadKg < 0)) return;
     // Spec R4: a new set far from its reference is asked about once; the second tap logs it.
     if (!editing && !confirmed && loadKg !== null && implausibleLoad(loadKg, referenceKg)) {
@@ -288,6 +305,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     setCountText('');
     setCountError(null);
     touched.current = false;
+    countTouched.current = false;
     countRef.current?.blur();
   };
 
@@ -296,6 +314,7 @@ export function SetRow(props: SetRowProps): ReactElement {
     if (logged === null) return;
     // Marked as typed, so a suggestion arriving mid-edit cannot overwrite the logged load.
     touched.current = true;
+    countTouched.current = true;
     setLoadText(loggedLoadText(logged.loadKg, units));
     setCountText(String(logged.durationS ?? logged.reps ?? '')); // [s] or [repetitions]
     setBodyweight(logged.loadKg === 0);
@@ -310,9 +329,10 @@ export function SetRow(props: SetRowProps): ReactElement {
     setEditing(false);
     setEditError(null);
     setCountError(null);
-    setCountText('');
+    setCountText(prefillCount === null ? '' : String(prefillCount));
     touched.current = false;
-    setLoadText(prefill(suggestedKg, units));
+    countTouched.current = false;
+    setLoadText(prefill(prefillKg, units));
     setBodyweight(isBodyweightExercise);
   };
 
@@ -412,6 +432,7 @@ export function SetRow(props: SetRowProps): ReactElement {
             step="1"
             value={countText}
             onChange={(next) => {
+              countTouched.current = true;
               setCountText(next);
               setCountError(null);
             }}
@@ -429,8 +450,12 @@ export function SetRow(props: SetRowProps): ReactElement {
             inputMode="numeric"
             autoComplete="off"
             value={countText}
+            aria-invalid={countError !== null}
+            aria-describedby={countError === null ? undefined : `${domIdPrefix}-set-${n}-reps-error`}
             onChange={(e) => {
+              countTouched.current = true;
               setCountText(e.target.value);
+              setCountError(null);
             }}
             onKeyDown={(e) => {
               if (e.key !== 'Enter') return;
@@ -439,6 +464,11 @@ export function SetRow(props: SetRowProps): ReactElement {
             }}
           />
         </div>
+      )}
+      {!timed && countError !== null && (
+        <p className="set-edit-error" id={`${domIdPrefix}-set-${n}-reps-error`} role="alert">
+          {countError}
+        </p>
       )}
       {editing && (
         // Tapping the chosen effort again clears it, so "none" stays reachable from an edit.

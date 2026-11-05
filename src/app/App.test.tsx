@@ -672,13 +672,13 @@ describe('spotlight palette', () => {
       within(nav).getByRole('button', { name: copy('button.openSpotlight') }),
     );
 
-    const queryBox = screen.getByRole('combobox');
+    const queryBox = screen.getByRole('combobox', { name: copy('label.spotlightQuery') });
     // Focus is the palette's whole point: it opens onto a query the user types immediately.
     expect(document.activeElement).toBe(queryBox);
 
     fireEvent.keyDown(queryBox, { key: 'Escape' });
 
-    expect(screen.queryByRole('combobox')).toBeNull();
+    expect(screen.queryByRole('combobox', { name: copy('label.spotlightQuery') })).toBeNull();
   });
 });
 
@@ -893,7 +893,7 @@ describe('keyboard', () => {
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
 
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: copy('label.spotlightQuery') })).toBeInTheDocument();
   });
 
   /*
@@ -913,7 +913,7 @@ describe('keyboard', () => {
     expect(useAppStore.getState().ui.lastView).toBe(before);
 
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: copy('label.spotlightQuery') })).toBeInTheDocument();
   });
 
   /*
@@ -978,13 +978,13 @@ describe('keyboard', () => {
   it('ignores a key while a modal dialog is open', () => {
     render(<App />);
     fireEvent.keyDown(window, { key: 'k', metaKey: true });
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: copy('label.spotlightQuery') })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: digitFor('log') });
 
     // The palette is still the thing on screen, and nothing switched behind it.
     expect(useAppStore.getState().ui.lastView).toBe('today');
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: copy('label.spotlightQuery') })).toBeInTheDocument();
   });
 
   it('browses the plan by week, and only while the Plan view is showing', () => {

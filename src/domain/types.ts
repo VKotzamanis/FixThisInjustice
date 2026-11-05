@@ -270,7 +270,13 @@ export interface SessionAssignment { date: LocalDate; sessionId: string; sourceI
 
 // ---- logs ----
 export interface LoggedSet { id: string; profileId: string; assignmentDate: LocalDate; sessionId: string; exerciseId: string; setNumber: number; isBonus: boolean; loadKg: Kg | null; enteredUnit: UnitSystem; reps: number | null; durationS: Seconds | null; rpe: number | null; loggedAt: EpochMs; } // loadKg 0 is valid (bodyweight); null = not recorded
-export interface BodyMassEntry { id: string; profileId: string; date: LocalDate; massKg: Kg; enteredUnit: UnitSystem; bodyFatPct: number | null; loggedAt: EpochMs; }
+/**
+ * When a body mass was taken (spec R9, audit G01/G12). `morning` is the trend reading, `pre` and
+ * `post` bracket a session for the > 2 % fluid-loss check. Optional and additive (rule 7): an
+ * entry written before the field existed has no role and still counts towards the trend.
+ */
+export type BodyMassRole = 'morning' | 'pre' | 'post';
+export interface BodyMassEntry { id: string; profileId: string; date: LocalDate; massKg: Kg; enteredUnit: UnitSystem; bodyFatPct: number | null; loggedAt: EpochMs; role?: BodyMassRole | undefined; }
 export interface HydrationEntry { profileId: string; date: LocalDate; volumeML: ML; marks: EpochMs[]; }
 export interface IntakeEntry { profileId: string; date: LocalDate; kcal: number; proteinG: number; } // daily totals entered by the user
 

@@ -7,7 +7,7 @@
 // Content review sections 3 and 8: no fixed between-set volume is prescribed. The in-session
 // cue names no amount at all ("Drink to thirst"), and the button's volume is the profile's own
 // editable cup size, which is display granularity rather than a dose.
-import { useEffect, useState, type ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { FORMAT } from '../../../content/copy';
 import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { HYDRATION_COPY_KEY, hydrationCue } from '../../../domain/training/hydration';
@@ -40,17 +40,18 @@ export function HydrationBanner(props: {
    */
   const overrides = useCopyOverrides();
   /*
-   * The whole store snapshot, deliberately: hydrationCue reads profiles, assignments,
-   * hydration and bodyMass, and the store keeps AppState at its top level, so the snapshot IS
-   * an AppState. The no-selector form returns the store's own state object, which is
-   * referentially stable between updates; a selector building `{ profiles, hydration, ... }`
-   * would mint a new object on every notification and loop useSyncExternalStore.
-   *
-   * The cost is that this banner re-renders on any document change. It was NOT measured, and
-   * is recorded as an open limitation in the P4 plan: if it shows up, split the cue into three
-   * narrower selectors rather than memoising this one.
+   * Audit G21: the four records hydrationCue reads, each a stable reference, instead of the whole
+   * store (which re-rendered this banner on every set logged). Combined in a memo so the
+   * snapshot never changes identity between unrelated updates.
    */
-  const state = useAppStore();
+  const profiles = useAppStore((s) => s.profiles);
+  const assignments = useAppStore((s) => s.assignments);
+  const hydration = useAppStore((s) => s.hydration);
+  const bodyMass = useAppStore((s) => s.bodyMass);
+  const records = useMemo(
+    () => ({ profiles, assignments, hydration, bodyMass }),
+    [profiles, assignments, hydration, bodyMass],
+  );
   const [now, setNow] = useState<number>(() => Date.now()); // [ms] epoch UTC
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function HydrationBanner(props: {
     };
   }, []);
 
-  const cue = hydrationCue(state, profile.id, now, sessionActive);
+  const cue = hydrationCue(records, profile.id, now, sessionActive);
   if (cue === null) return null;
 
   const targetML = profile.hydration.dailyTargetML; // [mL/day]
@@ -101,7 +102,7 @@ export function HydrationBanner(props: {
           type="button"
           onClick={() => {
             const at = Date.now(); // [ms] epoch UTC
-            state.addHydration(profile.id, date, profile.hydration.cupSizeML, at); // [mL]
+            useAppStore.getState().addHydration(profile.id, date, profile.hydration.cupSizeML, at); // [mL]
             // The mark restarts the cadence, so the cue is re-evaluated at once rather than
             // at the next minute boundary.
             setNow(at);

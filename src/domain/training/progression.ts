@@ -240,6 +240,11 @@ export function suggestedProgression(
   const prescription = planned.prescription;
   const units = profile.units;
   const base = { prescription, nextPrescription: prescription };
+  // Audit C13: every load this function returns is on the equipment grid, rounded DOWN (master
+  // plan section 3: a suggestion the user cannot assemble is worse than one slightly under), and
+  // the reason line quotes that same number, so the reason, the prefill and the coach agree.
+  const stepKg = stepFor(ex, profile.equipmentSteps); // [kg] smallest achievable increment
+  const onGrid = (kg: Kg): Kg => (stepKg > 0 ? achievableLoad(kg, stepKg) : kg); // [kg]
 
   // Performed, non-bonus sets for this exercise only. Bonus sets are extra work by
   // definition and never decide whether the prescription was met, and never set the
@@ -258,7 +263,7 @@ export function suggestedProgression(
     return {
       ...base,
       kind: 'deload',
-      loadKg: last ? last.loadKg : null, // [kg] 0 is a valid bodyweight load, not "absent"
+      loadKg: last ? onGrid(last.loadKg) : null, // [kg] 0 is a valid bodyweight load, not "absent"
       reason: 'Deload block: set count reduced, load held.',
       why: `Deload block ${block.index}: set modifier ${block.setModifier}, load modifier ${block.loadModifier}. A deload cuts volume and keeps the load (content review section 2.2, Bosquet 2007), so the prescription stays at ${rangeText(prescription)}.`,
     };
@@ -286,7 +291,8 @@ export function suggestedProgression(
   //    and `reps === null`. It is performed work, so it reaches `last` here and the
   //    hold carries the load actually used, instead of reporting no load at all.
   if (prescription.kind !== 'reps') {
-    const heldText = last ? ` at ${formatLoad(last.loadKg, units)}` : '';
+    const heldKg = last ? onGrid(last.loadKg) : null; // [kg]
+    const heldText = heldKg !== null ? ` at ${formatLoad(heldKg, units)}` : '';
     const timedNote =
       prescription.kind === 'time' || prescription.kind === 'duration'
         ? ' A timed set records a duration and no repetition count; it still counts as performed, so the load above is the one last used.'
@@ -294,7 +300,7 @@ export function suggestedProgression(
     return {
       ...base,
       kind: 'hold',
-      loadKg: last ? last.loadKg : null, // [kg] 0 is a valid bodyweight load, not "absent"
+      loadKg: heldKg, // [kg] on the grid; 0 is a valid bodyweight load, not "absent"
       reason: 'No fixed rep range: hold the load.',
       why: `Double progression raises the load only once every prescribed set reaches the top of the range. The "${prescription.kind}" prescription sets no top, so the load is unchanged${heldText}.${timedNote}`,
     };
@@ -318,6 +324,7 @@ export function suggestedProgression(
   // and holds the load: the engine never advances from a load that was not repeated.
   const lastSession = ordered.filter((s) => s.assignmentDate === last.assignmentDate);
   const workingLoadKg = lastSession.reduce((m, s) => Math.max(m, s.loadKg), 0); // [kg]
+  const heldKg = onGrid(workingLoadKg); // [kg] the load a hold suggests (C13)
 
   // Prescribed-set rule (master plan section 6.5: "hold load until every prescribed
   // set of the LAST session reached prescription.hi"). The required count is
@@ -352,8 +359,8 @@ export function suggestedProgression(
     return {
       ...base,
       kind: 'hold',
-      loadKg: workingLoadKg, // [kg]
-      reason: `Hold ${formatLoad(workingLoadKg, units)} until every set reaches ${prescription.hi} repetitions.`,
+      loadKg: heldKg, // [kg]
+      reason: `Hold ${formatLoad(heldKg, units)} until every set reaches ${prescription.hi} repetitions.`,
       why: `${countText}. The load rises only when every prescribed set reaches the top of the range at the working load.`,
     };
   }
@@ -370,13 +377,12 @@ export function suggestedProgression(
     return {
       ...base,
       kind: 'hold',
-      loadKg: workingLoadKg, // [kg] unchanged
-      reason: `Hold ${formatLoad(workingLoadKg, units)}: a top-of-range set had no repetitions left.`,
+      loadKg: heldKg, // [kg] unchanged, on the grid
+      reason: `Hold ${formatLoad(heldKg, units)}: a top-of-range set had no repetitions left.`,
       why: `${countText}. ${spent} of them ${spent === 1 ? 'was' : 'were'} rated above RPE ${RPE_ONE_RIR}, under one repetition in reserve (Zourdos 2016: RPE ${RPE_ZERO_RIR} = 0, RPE ${RPE_ONE_RIR} = 1), so ${reserveCount} of ${prescribedSets} prescribed show a repetition to spare. ACSM 2009 raises the load when the current load can be lifted for one to two repetitions over the target, so the load and the range of ${rangeText(prescription)} hold.`,
     };
   }
 
-  const stepKg = stepFor(ex, profile.equipmentSteps); // [kg] smallest achievable increment
   const nextRange = extendReps(prescription);
   if (!(stepKg > 0)) {
     return {
@@ -399,7 +405,7 @@ export function suggestedProgression(
     return {
       ...base,
       kind: 'extend-reps',
-      loadKg: workingLoadKg, // [kg] unchanged
+      loadKg: heldKg, // [kg] unchanged, on the grid
       nextPrescription: nextRange,
       reason: 'Increment too large: add repetitions instead.',
       why: `The smallest step available (${formatLoad(stepKg, units)}) is ${shareText}, above the ${(STEP_GUARD_FRACTION * 100).toFixed(0)} % guard and outside the 2-10 % band (ACSM 2009). The range rises to ${rangeText(nextRange)} instead.`,
@@ -411,12 +417,16 @@ export function suggestedProgression(
   // Round DOWN to the equipment grid, then floor at one step: a target below one
   // step would otherwise quantise to zero and stall the progression forever.
   const deltaKg = Math.max(achievableLoad(deltaTargetKg, stepKg), stepKg); // [kg]
-  const nextKg = workingLoadKg + deltaKg; // [kg]
+  // C13: an off-grid working load (61 kg on a 2.5 kg bar step) plus the step is off the grid too,
+  // so the sum is rounded down once more; the reason then names the real increase over the last
+  // working load, which is what the user will see between the two sessions.
+  const nextKg = onGrid(workingLoadKg + deltaKg); // [kg]
+  const addedKg = nextKg - workingLoadKg; // [kg] > 0: floor(w + s) on the grid exceeds w
   return {
     ...base,
     kind: 'add-load',
     loadKg: nextKg, // [kg]
-    reason: `Add ${formatLoad(deltaKg, units)} and reset to ${prescription.lo} repetitions.`,
+    reason: `Add ${formatLoad(addedKg, units)} and reset to ${prescription.lo} repetitions.`,
     why: `${countText}. ${(fraction * 100).toFixed(1)} % of the working load is ${formatLoad(deltaTargetKg, units)}, which rounds down to the ${formatLoad(stepKg, units)} equipment step and is floored at one step: ${formatLoad(deltaKg, units)}, giving ${formatLoad(nextKg, units)}. The 2-10 % band is ACSM 2009; the ${(fraction * 100).toFixed(1)} % choice inside it is a heuristic, not a finding.`,
   };
 }

@@ -342,3 +342,11 @@
     display: none;
   }
 }
+
+/* Audit G15: at 320 px the 9rem track fits one 260 px column and the page runs ~4,400 px tall.
+   Two shrinkable columns below 360 px halve it; 360 px and up keep auto-fill. */
+@media (max-width: 359px) {
+  .atlas .atlas-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

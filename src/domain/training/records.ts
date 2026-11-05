@@ -83,6 +83,14 @@ function beatsAmrap(a: BestAmrap, b: BestAmrap): boolean {
 }
 
 /**
+ * Unloaded work: a bodyweight set (0 kg) or one whose load was never recorded. The one predicate
+ * the AMRAP record and the weekly AMRAP series share (audit G18, rule 2).
+ */
+export function isUnloadedSet(s: Pick<LoggedSet, 'loadKg'>): boolean {
+  return s.loadKg === null || s.loadKg === 0; // [kg]
+}
+
+/**
  * Records for every exercise the log mentions, keyed by exercise id.
  *
  * One pass over the sets: the legacy view recomputed a reduction per exercise inside the
@@ -139,7 +147,7 @@ export function computeRecords(sets: readonly LoggedSet[]): Map<string, Exercise
 
     // Unloaded work: an explicit bodyweight set, or one whose load was never recorded. Both
     // are rep records and neither is a load record.
-    if (loadKg === null || loadKg === 0) {
+    if (isUnloadedSet(s)) {
       const a: BestAmrap = { reps: s.reps, date: s.assignmentDate };
       if (rec.bestAmrap === null || beatsAmrap(a, rec.bestAmrap)) rec.bestAmrap = a;
     }
@@ -164,7 +172,9 @@ export interface AmrapWeek {
 export function weeklyAmrapMax(sets: readonly LoggedSet[], exerciseId: string): AmrapWeek[] {
   const best = new Map<LocalDate, number>();
   for (const s of sets) {
-    if (s.exerciseId !== exerciseId || s.reps === null) continue;
+    // Audit G18: unloaded sets only, by the same predicate as bestAmrap; a loaded set's reps are
+    // not an AMRAP of this movement.
+    if (s.exerciseId !== exerciseId || s.reps === null || !isUnloadedSet(s)) continue;
     const wk = weekStart(s.assignmentDate);
     best.set(wk, Math.max(best.get(wk) ?? 0, s.reps)); // [repetitions]
   }

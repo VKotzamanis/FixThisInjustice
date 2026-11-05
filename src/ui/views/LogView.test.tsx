@@ -14,7 +14,9 @@
 // is 11:00 the same day in Athens, so no assertion here depends on the host zone.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render as rtlRender, screen } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { ToastProvider } from '../components/ToastQueue';
 import { FORMAT, copyFor } from '../../content/copy';
 import { computeTargets } from '../../domain/nutrition';
 import { EXERCISE_BY_ID } from '../../domain/plan/library';
@@ -32,6 +34,11 @@ import { latestBodyMassEntry, nutritionInputFor } from '../../store/selectors';
 import { makeProfile, makeSet, resetFixtureIds } from '../../test/fixtures';
 import { LogView, weeksBetween } from './LogView';
 import type { SkinId } from '../../domain/types';
+
+/** P5: the measurement panels raise undo toasts, so every render sits inside the provider. */
+function render(ui: ReactElement): ReturnType<typeof rtlRender> {
+  return rtlRender(<ToastProvider>{ui}</ToastProvider>);
+}
 
 const NOW_MS = Date.UTC(2026, 2, 2, 9, 0); // [ms] epoch, UTC; 2026-03-02 11:00 in Athens
 const TODAY = '2026-03-02'; // Monday
@@ -428,5 +435,22 @@ describe('LogView under a skin', () => {
     render(<LogView />);
     expect(screen.getByText(copyFor('limelight', 'nav.log'))).toBeInTheDocument();
     expect(screen.getByText(copyFor('limelight', 'hero.compliance'))).toBeInTheDocument();
+  });
+});
+
+describe('one body-mass point per day (audit G12)', () => {
+  it('plots a pre/post pair as one point and never the post-session mass', () => {
+    useAppStore.setState(
+      seed({
+        bodyMass: {
+          [PROFILE_ID]: [
+            { ...mass('2026-02-16', 93.5, 'pre'), role: 'pre' }, // [kg]
+            { ...mass('2026-02-16', 91.8, 'post'), role: 'post' }, // [kg] 1.8 % lighter after training
+          ],
+        },
+      }),
+    );
+    const { container } = render(<LogView />);
+    expect(container.querySelectorAll("[data-testid='measured-point']")).toHaveLength(1);
   });
 });

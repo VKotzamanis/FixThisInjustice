@@ -17,7 +17,7 @@ import {
   useUpcoming,
   useWeeklyReviews,
 } from '../../store/scheduleSelectors';
-import { latestBodyMassEntry, useActiveProfile, useOpenAssignment } from '../../store/selectors';
+import { latestBodyMassEntry, useActiveProfile, useMinuteClock, useOpenAssignment } from '../../store/selectors';
 import { unlockAudio } from '../audio/chime';
 import { Intervention, missedWeek } from '../components/Intervention';
 import { GOAL_OPTIONS, RestartProgramme } from '../components/RestartProgramme';
@@ -41,6 +41,8 @@ import { refusalLine } from '../format/refusal';
 import { weekDeltaKey } from '../format/weekDelta';
 import { HERO_SCALE, heroPose, heroStateOf, type DayStatus } from './todayHero';
 import './views.css';
+import { MeasurementsPanel } from '../measurements/MeasurementsPanel';
+import { FluidQuickAdd } from '../measurements/FluidQuickAdd';
 
 /**
  * The Today view.
@@ -147,7 +149,9 @@ export function TodayView(): JSX.Element {
   // One clock read per render, passed to every selector that needs a civil date, so the
   // projection and the date it is indexed by cannot straddle a midnight and disagree about
   // which day this is.
-  const now = Date.now(); // [ms] epoch, UTC
+  // Audit G20: the minute clock (every minute, and on return to the tab), not a render-time read,
+  // so a resumed app moves to the new day and the capsule opens on its day without a tap.
+  const now = useMinuteClock(); // [ms] epoch, UTC
   // The skin's words, and the same skin's override table for the frames that carry a value.
   // Both are hooks, so they are read here with the rest and above every early return.
   const c = useCopy();
@@ -660,6 +664,10 @@ export function TodayView(): JSX.Element {
        * Not after Programme Complete (ROADMAP B1b): the last review stood there until a new plan
        * started, which nothing on screen offered; Start Next Programme above takes its place.
        */}
+      {/* Spec R9 / audit G02: a weigh-in any day, not only inside a session. */}
+      <MeasurementsPanel profile={profile} today={today} />
+      {/* Spec R9 / audit G07: a drink can be logged at any time, not only when a cue is up. */}
+      <FluidQuickAdd profile={profile} today={today} />
       {!finished && <WeekStamp review={lastReview} />}
       {!finished && <Intervention review={lastReview} />}
 

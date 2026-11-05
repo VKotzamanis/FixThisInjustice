@@ -123,10 +123,23 @@ export function formatMass(massKg: Kg, units: UnitSystem): string {
   return `${displayMass(massKg, units).toFixed(1)} ${UNIT_LABEL[units].mass}`;
 }
 
-/** "500 mL" | "17 fl oz" — whole units; volume is never shown to a decimal. */
+/**
+ * A stored volume in the display unit: whole mL, or fl oz to 0.1. Audit G23: whole ounces made a
+ * 250 mL cup read "8 fl oz" and three of them "25 fl oz"; at 0.1 they read 8.5 and 25.4.
+ */
+export function displayVolume(ml: ML, units: UnitSystem): number {
+  if (units === 'metric') return Math.round(ml); // [mL]
+  return Math.round((ml / ML_PER_US_FL_OZ) * 10) / 10; // [fl oz] to 0.1
+}
+
+/** A volume typed in the display unit, stored as the whole mL the schema accepts. [mL] */
+export function toStoredVolume(entered: number, units: UnitSystem): ML {
+  return Math.round(units === 'metric' ? entered : entered * ML_PER_US_FL_OZ); // [mL]
+}
+
+/** "500 mL" | "16.9 fl oz": whole mL, fl oz to 0.1 (displayVolume). */
 export function formatVolume(ml: ML, units: UnitSystem): string {
-  if (units === 'metric') return `${Math.round(ml)} ${UNIT_LABEL.metric.volume}`;
-  return `${Math.round(ml / ML_PER_US_FL_OZ)} ${UNIT_LABEL.imperial.volume}`; // [fl oz]
+  return `${String(displayVolume(ml, units))} ${UNIT_LABEL[units].volume}`;
 }
 
 /**

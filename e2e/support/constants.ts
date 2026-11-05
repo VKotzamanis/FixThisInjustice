@@ -42,6 +42,11 @@ export const LABEL = {
   writesPaused: 'Nothing is saved until you import a backup',
   unreadableHeading: 'Unreadable Records',
   trainTab: 'showtime',
+  finishAnyway: 'Finish Anyway',
+  logBodyMass: 'Log Body Mass',
+  editEntry: 'Edit',
+  saveEntry: 'Save',
+  fluidLoss: 'Fluid loss above 2 %. Replace over the next hours.',
 } as const;
 
 /** "Set 1 load (kg)": FORMAT.quantityWithUnit(FORMAT.setLoadQuantity(n), 'kg'). */
@@ -88,3 +93,17 @@ export const RECORD_MAP_STORES = [
   'notes',
 ] as const;
 export const RECORD_SINGLETONS = ['activeProfileId', 'pushDevice', 'setupDraft', 'ui'] as const;
+/** "Body mass (kg)": FORMAT.quantityWithUnit(copy('quantity.bodyMass'), 'kg'). */
+export function massLabel(): string {
+  return 'Body mass (kg)';
+}
+
+/** "Pre-session body mass (kg)". */
+export function preMassLabel(): string {
+  return 'Pre-session body mass (kg)';
+}
+
+/** "Post-session body mass (kg)". */
+export function postMassLabel(): string {
+  return 'Post-session body mass (kg)';
+}

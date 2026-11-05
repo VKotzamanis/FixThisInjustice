@@ -39,6 +39,7 @@ import {
   dailyBeverageTargetML,
   exceedsDehydrationThreshold,
   hydrationCue,
+  postSessionMass,
   preSessionMass,
 } from './hydration';
 
@@ -460,5 +461,54 @@ describe('no fixed volume is prescribed during a session', () => {
     expect(hydrationSource).not.toMatch(/between\s+sets/i);
     expect(hydrationSource).not.toMatch(/\bper\s+set\b/i);
     expect(hydrationSource).not.toMatch(/\d+\s*m[lL]\b/);
+  });
+});
+
+describe('the weigh-in pair by role (spec R9, audit G01)', () => {
+  const startedAt = AT_1200_LOCAL; // [ms] epoch UTC, stamped by Today's Start tap
+  const completedAt = startedAt + HOUR_MS; // [ms]
+  const tagged = (id: string, massKg: number, loggedAt: EpochMs, role: BodyMassEntry['role']): BodyMassEntry => ({
+    ...massEntry(id, massKg, loggedAt),
+    role,
+  });
+
+  it('counts a pre-tagged mass logged AFTER Start, which the old rule refused', () => {
+    const pre = tagged('pre', 80, startedAt + 30_000, 'pre'); // [kg], 30 s after Start
+    expect(preSessionMass([pre], startedAt, null)?.id).toBe('pre');
+    expect(preSessionMass([pre], startedAt, completedAt)?.id).toBe('pre');
+    // An untagged mass at the same instant still does not count: it may be a mid-session reading.
+    expect(preSessionMass([massEntry('x', 80, startedAt + 30_000)], startedAt)).toBeNull();
+  });
+
+  it('never takes a post mass as the pre mass, and prefers a tagged pre over an untagged one', () => {
+    const post = tagged('post', 78, startedAt - MIN_MS, 'post');
+    const untagged = massEntry('old', 81, startedAt - 2 * MIN_MS);
+    const pre = tagged('pre', 80, startedAt + MIN_MS, 'pre');
+    expect(preSessionMass([post], startedAt)).toBeNull();
+    expect(preSessionMass([untagged, pre], startedAt, completedAt)?.id).toBe('pre');
+  });
+
+  it('refuses a pre mass logged after the session ended or outside the 6 h window', () => {
+    expect(preSessionMass([tagged('late', 80, completedAt + 1, 'pre')], startedAt, completedAt)).toBeNull();
+    expect(
+      preSessionMass([tagged('stale', 80, startedAt - PRE_SESSION_MASS_WINDOW_MS - 1, 'pre')], startedAt, completedAt),
+    ).toBeNull();
+  });
+
+  it('asks for the post mass after a pre mass logged in-session, then stops once a post mass exists', () => {
+    const pre = tagged('pre', 80, startedAt + 30_000, 'pre');
+    const state = (masses: BodyMassEntry[]): AppState =>
+      makeState(
+        {
+          assignments: { [PROFILE_ID]: [completedSession(startedAt, completedAt)] },
+          bodyMass: { [PROFILE_ID]: masses },
+        },
+        makeProfile({ weighInOptIn: true }),
+      );
+    expect(hydrationCue(state([pre]), PROFILE_ID, completedAt + MIN_MS, false)?.kind).toBe('post-session-weigh');
+    // A post mass typed just before Finish counts as the post half.
+    const post = tagged('post', 78, completedAt - MIN_MS, 'post');
+    expect(postSessionMass([pre, post], startedAt, completedAt)?.id).toBe('post');
+    expect(hydrationCue(state([pre, post]), PROFILE_ID, completedAt + MIN_MS, false)).toBeNull();
   });
 });

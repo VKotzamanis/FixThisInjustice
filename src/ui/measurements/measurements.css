@@ -1,0 +1,53 @@
+/* Spec R9: measurement controls. Layout only; every colour comes from tokens.css (rule 5). */
+.mass-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.mass-form .wiz-field,
+.mass-form .view-field {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.mass-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.mass-form-question {
+  flex-basis: 100%;
+}
+
+.measurements {
+  margin: 1rem 0;
+}
+
+.mass-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.mass-log-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.mass-log-value {
+  font-variant-numeric: tabular-nums;
+}
+
+.mass-log-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}

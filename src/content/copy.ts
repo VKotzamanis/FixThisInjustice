@@ -316,6 +316,38 @@ export type CopyKey =
   | 'advice.unreadableRecordsKept'
   | 'button.exportUnreadable'
   | 'status.recordsUnreadable'
+  | 'advice.finishShort'
+  | 'button.finishAnyway'
+  | 'status.sessionFinished'
+  | 'advice.repsNeeded'
+  | 'button.writeAnotherCapsule'
+  | 'advice.outsideEquations'
+  | 'label.checkInDay'
+  | 'hero.intakeHistory'
+  | 'hero.editBody'
+  | 'quantity.birthYear'
+  | 'button.saveProfile'
+  | 'status.profileSaved'
+  | 'hero.bodyFatRemeasure'
+  | 'button.logBodyFat'
+  | 'quantity.drinkVolume'
+  | 'button.logDrink'
+  | 'status.drinkLogged'
+  | 'quantity.cupSize'
+  | 'label.fluidProgress'
+  | 'hero.measurements'
+  | 'status.massLogged'
+  | 'status.massDeleted'
+  | 'button.editEntry'
+  | 'button.deleteEntry'
+  | 'button.saveEntry'
+  | 'button.showAllEntries'
+  | 'label.massRole'
+  | 'option.massRoleMorning'
+  | 'option.massRolePre'
+  | 'option.massRolePost'
+  | 'option.massRoleNone'
+  | 'advice.massLooksOff'
   | 'hero.storedDataRefused'
   | 'hero.storageUnreadable'
   | 'status.writesPaused'
@@ -1225,6 +1257,49 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.unreadableRecordsKept': 'Kept exactly as stored. The app does not use them.',
   'button.exportUnreadable': 'Export Unreadable',
   'status.recordsUnreadable': 'Some stored records could not be read. Settings lists them.',
+  // Audit C12: Finish with sets missing asks once; every Finish can be undone for 6 s.
+  // Template; FORMAT.withSlots. {logged} and {prescribed} are [sets].
+  'advice.finishShort': '{logged} of {prescribed} sets logged. Finish anyway?',
+  'button.finishAnyway': 'Finish Anyway',
+  'status.sessionFinished': 'Session finished.',
+  // Audit C09: an empty repetition count is refused in words, like the timed field.
+  'advice.repsNeeded': 'Enter the repetitions.',
+  // Audit G16: an opened capsule can be followed by a new one, which replaces it.
+  'button.writeAnotherCapsule': 'Write Another',
+  // Audit G09: Targets names the input the equations do not cover. Template; FORMAT.withSlots.
+  'advice.outsideEquations': '{field} is outside the range the equations cover.',
+  // Audit G17: intake history and the day a check-in is for.
+  'label.checkInDay': 'Day',
+  'hero.intakeHistory': 'Last Seven Days',
+  // Spec R9 / audit G06, G05: the setup facts made editable, and the dated body-fat re-measure.
+  'hero.editBody': 'Body And Goal',
+  'quantity.birthYear': 'Birth year',
+  'button.saveProfile': 'Save Profile',
+  'status.profileSaved': 'Profile saved.',
+  'hero.bodyFatRemeasure': 'Re-Measure Body Fat',
+  'button.logBodyFat': 'Log Body Fat',
+  // Spec R9 / audit G07, G14: the always-available fluid quick add and the editable cup.
+  'quantity.drinkVolume': 'Drink volume',
+  'button.logDrink': 'Log Drink',
+  'status.drinkLogged': 'Drink logged.',
+  'quantity.cupSize': 'Cup size',
+  'label.fluidProgress': 'Fluid Against Target',
+  // Spec R9 / audit G02, G03: the weigh-in log on Today and on Log, each with a 6 s Undo.
+  'hero.measurements': 'Weigh-Ins',
+  'status.massLogged': 'Weigh-in logged.',
+  'status.massDeleted': 'Weigh-in deleted.',
+  'button.editEntry': 'Edit',
+  'button.deleteEntry': 'Delete',
+  'button.saveEntry': 'Save',
+  'button.showAllEntries': 'Show All',
+  // Spec R9 / audit G12: when a body mass was taken. The role decides the trend and the 2 % pair.
+  'label.massRole': 'Weighed',
+  'option.massRoleMorning': 'Morning',
+  'option.massRolePre': 'Before Training',
+  'option.massRolePost': 'After Training',
+  'option.massRoleNone': 'Not Set',
+  // Spec R4: the one-tap body-mass plausibility question (more than 10 % from the last weigh-in).
+  'advice.massLooksOff': 'That is far from your last weigh-in. Check it.',
   // Audit B01/B17/B18: the recovery screen that replaces intro and setup on a refused document.
   'hero.storedDataRefused': 'Stored Data Could Not Be Read',
   'hero.storageUnreadable': 'Storage Is Not Available',

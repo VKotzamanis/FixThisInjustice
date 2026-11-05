@@ -852,3 +852,45 @@ describe('suggestedProgression effort rule (ROADMAP L8)', () => {
     }
   });
 });
+
+describe('one quantisation, in the engine (audit C13)', () => {
+  // Barbell step 2.5 kg (makeProfile). 61 kg is off that grid: the last session was loaded with
+  // plates the profile's step cannot assemble again.
+  it('holds an off-grid load at the grid load below it, and the reason names that same load', () => {
+    const advice = suggestedProgression(
+      session('2026-03-02', 3, 61, 6), // [kg], [repetitions]: below the top of 6-8
+      makePlannedExercise(),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('hold');
+    expect(advice.loadKg).toBe(60); // [kg]
+    expect(advice.reason).toContain('60 kg');
+    expect(advice.reason).not.toContain('61');
+  });
+
+  it('adds load onto the grid, and the reason names the real increase over the last load', () => {
+    const advice = suggestedProgression(
+      session('2026-03-02', 3, 61, 8), // [kg], [repetitions]: every set at the top
+      makePlannedExercise(),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.kind).toBe('add-load');
+    expect(advice.loadKg).toBe(62.5); // [kg] floor(61 + 2.5) on the 2.5 kg grid
+    expect(advice.reason).toContain('1.5 kg'); // [kg] 62.5 - 61
+  });
+
+  it('leaves an on-grid load exactly as it was', () => {
+    const advice = suggestedProgression(
+      session('2026-03-02', 3, 60, 6),
+      makePlannedExercise(),
+      makeExercise({ loadClass: 'upper-compound' }),
+      makeProfile(),
+      makeBlock(),
+    );
+    expect(advice.loadKg).toBe(60); // [kg]
+  });
+});

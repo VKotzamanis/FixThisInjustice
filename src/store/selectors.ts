@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type {
-  AppState,
-  BodyMassEntry,
   EpochMs,
   IntakeEntry,
   LocalDate,
@@ -13,7 +11,8 @@ import type {
 } from '../domain/types';
 import type { NutritionInput, NutritionTargets } from '../domain/nutrition';
 import { computeTargets, isInDomain } from '../domain/nutrition';
-import { compareLocalDate, todayLocal } from '../domain/dates';
+import { todayLocal } from '../domain/dates';
+import { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../domain/measurements';
 import { sortSetHistory } from '../domain/training/progression';
 import { pendingMotivation } from '../domain/motivation/trigger';
 import type { RestTimer } from '../domain/training/restTimer';
@@ -81,75 +80,43 @@ export function useLastLoadRaw(): string | null {
   return snapshot ?? readRaw();
 }
 
-/**
- * Newest body-mass entry by civil date, ties broken by the instant it was logged.
- *
- * A plain state function rather than a hook: the targets selector needs it
- * inside a store subscription, and P2's Today view needs it outside one. It
- * returns the stored object itself, so a subscribing selector that calls it
- * stays referentially stable between unrelated store updates.
+/*
+ * Spec R9 / audit B11: "the" body mass (the newest trend point, never a post-session mass), "the"
+ * body fat (the newest entry carrying one) and the nutrition input built from them live in
+ * src/domain/measurements.ts, so the export summary reads the same derivation. Re-exported here
+ * for the callers that already import them from the store.
  */
-export function latestBodyMassEntry(state: AppState, profileId: string): BodyMassEntry | null {
-  const list = state.bodyMass[profileId] ?? [];
-  let best: BodyMassEntry | null = null;
-  for (const e of list) {
-    if (best === null) {
-      best = e;
-      continue;
-    }
-    // Civil date first, then the logging instant: two weigh-ins on one day are
-    // ordered by when they were entered, not by the order of the array.
-    //
-    // compareLocalDate rather than a raw `>`: the two agree today only because
-    // every LocalDate is a zero-padded ISO string, which is an invariant of
-    // dates.ts and not of this comparison. Routing the ordering through the one
-    // function that owns it means a change to the date representation has one
-    // place to be fixed instead of one place plus every inlined string compare.
-    const byDate = compareLocalDate(e.date, best.date);
-    if (byDate > 0 || (byDate === 0 && e.loggedAt > best.loggedAt)) best = e;
-  }
-  return best;
-}
+export { latestBodyFatEntry, latestBodyMassEntry, nutritionInputFor } from '../domain/measurements';
 
 /**
- * Assemble the nutrition input from stored state. The latest logged body mass
- * and body fat win over the profile baseline, which is the content review
- * section 1 instruction: recompute the target at each body-mass re-measure, do
- * not hard-code it.
+ * The nutrition input for the active profile, memoised on the records it reads and the civil
+ * date (age runs on the civil year). Null with no active profile.
+ *
+ * @param now [ms] epoch UTC to read the civil date from; defaults to the wall clock.
  */
-export function nutritionInputFor(
-  profile: Profile,
-  latest: BodyMassEntry | null,
-  sessionsPerWeek: number, // [sessions/week]
-  todayIso: LocalDate,
-): NutritionInput {
-  const massKg = latest?.massKg ?? profile.body.baselineMassKg; // [kg]
-  const bodyFatPct = latest?.bodyFatPct ?? profile.body.baselineBodyFatPct; // [%] or null
-  // Age in whole years as (current year - birth year), read in the profile's own
-  // zone. This is the age the person REACHES during this calendar year, not their
-  // age today: the day of the birthday is not knowable from `birthYear`, because
-  // the year is the only part the profile collects. Before their birthday the
-  // figure therefore runs up to one year high, and Mifflin-St Jeor's age term is
-  // -5 kcal/day per year, so the worst case understates RMR by 5 kcal/day (about
-  // 0.2 % of a 2700 kcal/day target). Collecting a full birth date would remove
-  // the error; it would also collect a date of birth this app has no other use
-  // for, so the bias is accepted and recorded rather than engineered away.
-  const ageYears = Number(todayIso.slice(0, 4)) - profile.body.birthYear; // [year]
-  return {
-    sex: profile.body.sex,
-    ageYears,
-    heightCm: profile.body.heightCm, // [cm]
-    massKg,
-    bodyFatPct,
-    activity: profile.activity,
-    // Brief G: computeTargets prefers this PAL over `activity`'s band floor when it is a
-    // number; `?? null` normalises the field's absence on a profile written before it existed
-    // to the same null computeTargets already treats as "use the floor".
-    activityPal: profile.activityPal ?? null,
-    goal: profile.goal.kind,
-    sessionsPerWeek,
-    creatine: profile.supplements.creatine,
-  };
+export function useNutritionInput(now: EpochMs = Date.now()): NutritionInput | null {
+  const profile = useAppStore((s) =>
+    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
+  );
+  const latest = useAppStore((s) =>
+    s.activeProfileId === null ? null : latestBodyMassEntry(s, s.activeProfileId),
+  );
+  // Audit G05: the newest body-fat entry, which a later mass without one no longer hides.
+  const latestBodyFat = useAppStore((s) =>
+    s.activeProfileId === null ? null : latestBodyFatEntry(s, s.activeProfileId),
+  );
+  // [sessions/week] Quoted in basis.deficitRule only (nutrition.ts NOTE-FREQ).
+  const sessionsPerWeek = useAppStore((s) =>
+    s.activeProfileId === null ? 0 : weeklyQuota(s, s.activeProfileId), // AM-5: the one weekly target
+  );
+  const todayIso = profile === null ? null : todayLocal(profile.timezone, now);
+  return useMemo(
+    () =>
+      profile === null || todayIso === null
+        ? null
+        : nutritionInputFor(profile, latest, sessionsPerWeek, todayIso, latestBodyFat),
+    [profile, latest, latestBodyFat, sessionsPerWeek, todayIso],
+  );
 }
 
 /**
@@ -180,34 +147,21 @@ export function nutritionInputFor(
  *   store-level clock).
  */
 export function useNutritionTargets(now: EpochMs = Date.now()): NutritionTargets | null {
-  const profile = useAppStore((s) =>
-    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId] ?? null),
+  const input = useNutritionInput(now);
+  // isInDomain is asked first, so a throw that still escapes computeTargets is an engine defect.
+  return useMemo(() => (input === null || !isInDomain(input) ? null : computeTargets(input)), [input]);
+}
+
+/**
+ * Audit G13/G20: the active profile's civil date, re-read every minute and whenever the tab
+ * becomes visible (useMinuteClock), so a screen left open overnight moves to the new day.
+ */
+export function useCivilToday(): LocalDate | null {
+  const timezone = useAppStore((s) =>
+    s.activeProfileId === null ? null : (s.profiles[s.activeProfileId]?.timezone ?? null),
   );
-  const latest = useAppStore((s) =>
-    s.activeProfileId === null ? null : latestBodyMassEntry(s, s.activeProfileId),
-  );
-  // [sessions/week] 0 until the wizard stores availability. It is inside
-  // NUTRITION_DOMAIN.sessionsPerWeek and changes no number (nutrition.ts
-  // NOTE-FREQ); it reaches the engine only to be quoted in basis.deficitRule.
-  const sessionsPerWeek = useAppStore((s) =>
-    s.activeProfileId === null ? 0 : weeklyQuota(s, s.activeProfileId), // AM-5: the one weekly target
-  );
-  // Outside the memo so it is a dependency rather than a hidden read. It is a
-  // "YYYY-MM-DD" string, so an unchanged day compares equal and re-renders cost
-  // no arithmetic; the day rolling over is what makes the memo recompute.
-  //
-  // todayLocal throws RangeError on an invalid IANA zone, and that throw is now
-  // outside the removed try/catch, so it reaches the caller. That is deliberate
-  // and matches the rule above: Profile.timezone is refined by the schema, so a
-  // profile carrying an unusable zone is a document the loader would have
-  // rejected, i.e. a defect rather than a state the UI should render around.
-  const todayIso = profile === null ? null : todayLocal(profile.timezone, now);
-  return useMemo(() => {
-    if (profile === null || todayIso === null) return null;
-    const input = nutritionInputFor(profile, latest, sessionsPerWeek, todayIso);
-    if (!isInDomain(input)) return null;
-    return computeTargets(input);
-  }, [profile, latest, sessionsPerWeek, todayIso]);
+  const now = useMinuteClock(); // [ms] epoch UTC
+  return timezone === null ? null : todayLocal(timezone, now);
 }
 
 /**

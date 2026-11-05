@@ -18,7 +18,7 @@
 // of 1.85 kg to 14.05 kg at 5RM, so it is labelled "estimated 1RM" everywhere it appears and
 // is never presented as a measured maximum.
 
-import type { ReactElement } from 'react';
+import { useMemo, type ReactElement } from 'react';
 import { FORMAT } from '../../content/copy';
 import { useCopy, useCopyOverrides } from '../../content/useCopy';
 import { compareLocalDate } from '../../domain/dates';
@@ -45,21 +45,26 @@ export function PRList(props: PRListProps): ReactElement {
   const t = useCopy();
   const overrides = useCopyOverrides();
 
-  const rows: PRRow[] = [...computeRecords(sets).values()]
-    // An exercise whose every set carries no rep count (a timed hold) has no repetition
-    // record. It is counted in totalSets and has nothing to show here.
-    .filter((r) => r.bestSet !== null)
-    .map((r) => ({
-      ...r,
-      // An exercise the library no longer holds is named by its id: ugly and honest, where
-      // throwing would take the view down over a label (the rule ui/format/plan.ts follows).
-      name: library[r.exerciseId]?.name ?? r.exerciseId,
-    }))
-    .sort((a, b) => {
-      const byDate = compareLocalDate(b.bestSet?.date ?? '', a.bestSet?.date ?? '');
-      // Most recent first; the name only breaks a tie, so the order is total and stable.
-      return byDate !== 0 ? byDate : a.name.localeCompare(b.name);
-    });
+  // Audit G21: one scan of the set list per change of it, not per render.
+  const rows: PRRow[] = useMemo(
+    () =>
+      [...computeRecords(sets).values()]
+      // An exercise whose every set carries no rep count (a timed hold) has no repetition
+      // record. It is counted in totalSets and has nothing to show here.
+      .filter((r) => r.bestSet !== null)
+      .map((r) => ({
+        ...r,
+        // An exercise the library no longer holds is named by its id: ugly and honest, where
+        // throwing would take the view down over a label (the rule ui/format/plan.ts follows).
+        name: library[r.exerciseId]?.name ?? r.exerciseId,
+      }))
+      .sort((a, b) => {
+        const byDate = compareLocalDate(b.bestSet?.date ?? '', a.bestSet?.date ?? '');
+        // Most recent first; the name only breaks a tie, so the order is total and stable.
+        return byDate !== 0 ? byDate : a.name.localeCompare(b.name);
+      }),
+    [sets, library],
+  );
 
   if (rows.length === 0) {
     return <p className="view-note">{t('advice.noSetsLogged')}</p>;

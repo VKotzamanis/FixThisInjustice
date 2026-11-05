@@ -46,7 +46,14 @@ function headingsOf(view: ReactElement): { text: string; display: boolean }[] {
 }
 
 const VIEWS: readonly [string, () => ReactElement][] = [
-  ['Today', () => <TodayView />],
+  [
+    'Today',
+    () => (
+      <ToastProvider>
+        <TodayView />
+      </ToastProvider>
+    ),
+  ],
   ['Plan', () => <PlanView />],
   ['Targets', () => <TargetsView />],
   [
@@ -57,7 +64,14 @@ const VIEWS: readonly [string, () => ReactElement][] = [
       </ToastProvider>
     ),
   ],
-  ['Log', () => <LogView />],
+  [
+    'Log',
+    () => (
+      <ToastProvider>
+        <LogView />
+      </ToastProvider>
+    ),
+  ],
   ['Settings (with Export)', () => <SettingsView />],
 ];
 
@@ -75,7 +89,12 @@ describe('brat headings', () => {
 
   it('meets both branches on Today: a worded hero takes it, the strip heading with 14 does not', () => {
     vi.spyOn(Date, 'now').mockReturnValue(NOW_MS + DAY_MS); // Tuesday: a rest day, worded hero
-    const headings = headingsOf(<TodayView />);
+    // P5: Today's measurement panels raise undo toasts, so it renders inside the provider.
+    const headings = headingsOf(
+      <ToastProvider>
+        <TodayView />
+      </ToastProvider>,
+    );
     expect(headings.some((h) => NUMERAL.test(h.text) && !h.display)).toBe(true);
     expect(headings.some((h) => h.display)).toBe(true);
   });

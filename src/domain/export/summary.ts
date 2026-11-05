@@ -27,9 +27,8 @@
 import { FORMAT, copy } from '../../content/copy';
 import { localDateOf } from '../dates';
 import { computeTargets, isInDomain } from '../nutrition';
-import type { NutritionInput } from '../nutrition';
+import { nutritionInputForState, trendEntries } from '../measurements';
 import { EXERCISE_BY_ID } from '../plan/library';
-import { weeklyQuota } from '../schedule/quota';
 import { computeRecords } from '../training/records';
 import type { AppState, EpochMs, Exercise, Kg, UnitSystem } from '../types';
 import { UNIT_LABEL, formatBeverageTarget, formatLoad, formatMass } from '../units';
@@ -84,7 +83,9 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
   const label = UNIT_LABEL[units];
   const today = localDateOf(now, profile.timezone);
   const massLog = state.bodyMass[profileId] ?? [];
-  const latestMassKg: Kg = massLog.at(-1)?.massKg ?? profile.body.baselineMassKg; // [kg]
+  // Spec R9 / audit G12: one trend point per day, never a post-session mass (measurements.ts).
+  const trend = trendEntries(massLog);
+  const latestMassKg: Kg = trend.at(-1)?.massKg ?? profile.body.baselineMassKg; // [kg]
   const sets = Object.values(state.sets).filter((s) => s.profileId === profileId);
   const reviews = [...(state.weeklyReviews[profileId] ?? [])].sort((a, b) =>
     compareCodePoint(a.weekStart, b.weekStart),
@@ -124,20 +125,12 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
    * a summary that silently dropped the block would read as though the profile had no
    * targets, which is a different statement from "they are not estimated for this profile".
    */
-  const input: NutritionInput = {
-    sex: profile.body.sex,
-    ageYears: Number(today.slice(0, 4)) - profile.body.birthYear, // [years]
-    heightCm: profile.body.heightCm, // [cm]
-    massKg: latestMassKg, // [kg]
-    bodyFatPct: profile.body.baselineBodyFatPct, // [%] of body mass
-    activity: profile.activity,
-    goal: profile.goal.kind,
-    sessionsPerWeek: weeklyQuota(state, profileId), // [sessions/week] AM-5: the one weekly target
-    creatine: profile.supplements.creatine,
-  };
+  // Audit B11: the same derivation the Targets screen reads (newest trend mass, newest body-fat
+  // entry, the PAL), so a printed export and the screen cannot state two different targets.
+  const input = nutritionInputForState(state, profileId, today);
 
   lines.push('TARGETS (per day)');
-  if (!isInDomain(input)) {
+  if (input === null || !isInDomain(input)) {
     lines.push(`  ${copy('advice.targetsNotEstimatedForProfile')}`);
   } else {
     const targets = computeTargets(input);
@@ -205,10 +198,12 @@ export function buildSummary(state: AppState, profileId: string, now: EpochMs): 
     lines.push(`  ${copy('advice.noBodyMassLogged')}`);
   } else {
     for (const entry of massLog) {
-      lines.push(`  ${entry.date}   ${formatMass(entry.massKg, units)}`);
+      // The role, when one was recorded (spec R9), so a pre/post pair reads as one.
+      const role = entry.role === undefined ? '' : `   ${entry.role}`;
+      lines.push(`  ${entry.date}   ${formatMass(entry.massKg, units)}${role}`);
     }
-    const first = massLog[0];
-    if (first !== undefined && massLog.length > 1) {
+    const first = trend[0];
+    if (first !== undefined && trend.length > 1) {
       // latest - first, so a negative value is a loss (master plan section 3).
       lines.push(field('Change since the first check-in', formatMass(latestMassKg - first.massKg, units)));
     }

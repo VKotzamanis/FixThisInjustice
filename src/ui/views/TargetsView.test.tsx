@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { App } from '../../app/App';
 import { FORMAT, copyFor } from '../../content/copy';
 import { statedBeverageTargetML } from '../../domain/nutrition';
@@ -178,6 +178,15 @@ describe('asciiBar', () => {
 });
 
 describe('TargetsView', () => {
+  it('states the stored fluid target, with the IOM figure as the reference beside it (G14)', () => {
+    useAppStore.getState().updateProfile('p1', {
+      hydration: { ...PROFILE.hydration, dailyTargetML: 2500 }, // [mL/day] edited in Settings
+    });
+    render(<TargetsView />);
+    expect(screen.getByTestId('target-fluid')).toHaveTextContent('2500 mL');
+    expect(screen.getByTestId('fluid-reference')).toHaveTextContent(FORMAT.beverageDefault('3000 mL'));
+  });
+
   it('shows the computed targets with their units', () => {
     render(<TargetsView />);
     expect(screen.getByTestId('target-kcal')).toHaveTextContent(`${String(TARGET_KCAL)} kcal`);
@@ -419,7 +428,7 @@ describe('App wiring', () => {
     expect(useAppStore.getState().profiles['p1']?.body.baselineMassKg).toBe(80); // [kg]
 
     fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'nav.targets') }));
-    expect(screen.getByTestId('target-fluid')).toHaveTextContent('101 fl oz'); // 3000 mL
+    expect(screen.getByTestId('target-fluid')).toHaveTextContent('101.4 fl oz'); // 3000 mL
   });
 
   it('gives the view navigation an accessible name', () => {
@@ -450,5 +459,43 @@ describe('TargetsView under a skin', () => {
     pinSkin('limelight');
     render(<TargetsView />);
     expect(screen.getByText(copyFor('limelight', 'hero.dailyTargets'))).toBeInTheDocument();
+  });
+});
+
+describe('Targets across midnight and outside the equations (audit G13, G09, G17)', () => {
+  it('moves the check-in to the new day without reusing yesterday’s numbers (G13)', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date('2026-09-04T20:59:00Z')); // 23:59 in Athens (UTC+3)
+    render(<TargetsView />);
+    typeIntake('2000', '150');
+    recordIntake();
+    act(() => {
+      vi.setSystemTime(new Date('2026-09-04T21:01:00Z')); // 00:01 on 2026-09-05
+      vi.advanceTimersByTime(60_000); // the minute clock ticks
+    });
+    expect(screen.getByRole('heading', { name: /2026-09-05/ })).toBeTruthy();
+    expect(kcalField()).toHaveValue('');
+    expect(proteinField()).toHaveValue('');
+  });
+
+  it('names the field that left the equations’ range instead of saying "no profile" (G09)', () => {
+    useAppStore.getState().updateProfile('p1', { body: { ...PROFILE.body, birthYear: 1945 } }); // age 81 in 2026
+    render(<TargetsView />);
+    expect(
+      screen.getByText(FORMAT.withSlots('advice.outsideEquations', { field: copyFor('limelight', 'quantity.age') })),
+    ).toBeTruthy();
+    expect(screen.queryByText(copyFor('limelight', 'advice.noProfileSetupFirst'))).toBeNull();
+  });
+
+  it('shows the last seven days and corrects a past day through the day select (G17)', () => {
+    useAppStore.getState().logIntake('p1', { profileId: 'p1', date: '2026-08-30', kcal: 1800, proteinG: 120 });
+    render(<TargetsView />);
+    expect(screen.getByTestId('intake-history')).toHaveTextContent('2026-08-30');
+    expect(screen.getByTestId('intake-history')).toHaveTextContent('1800');
+    fireEvent.change(screen.getByLabelText(copyFor('limelight', 'label.checkInDay')), { target: { value: '2026-08-30' } });
+    expect(kcalField()).toHaveValue('1800');
+    typeIntake('1900', '125');
+    recordIntake();
+    expect(useAppStore.getState().intake['p1']?.find((e) => e.date === '2026-08-30')).toMatchObject({ kcal: 1900, proteinG: 125 });
   });
 });
