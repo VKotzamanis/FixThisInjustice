@@ -88,6 +88,13 @@ export interface ExerciseCardProps {
   tag?: string | null;
   /** The session-edit controls (SessionEditBar), rendered at the bottom of the open card. */
   children?: ReactNode;
+  /**
+   * Opens the Replace sheet (owner request: replace when you start the exercise). TrainView
+   * passes it only for a planned slot, not skipped, with no set logged on it today; absent, the
+   * header carries no Replace button. Beside the toggle, never inside it: a button in a button is
+   * invalid and would toggle the card on the same tap.
+   */
+  onReplace?: (() => void) | undefined;
 }
 
 /**
@@ -119,6 +126,7 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
     amending = false,
     tag = null,
     children,
+    onReplace,
   } = props;
 
   const history = useExerciseHistory(exercise.id);
@@ -278,20 +286,34 @@ export function ExerciseCard(props: ExerciseCardProps): ReactElement {
 
   return (
     <div className={isOpen ? 'ex-card open' : 'ex-card'}>
-      <button type="button" className="ex-head" onClick={onToggle} aria-expanded={isOpen}>
-        <span className="ex-title">
-          {title}
-          {tag !== null && <span className="ex-tag">{tag}</span>}
-        </span>
-        <span className="ex-sub">
-          {FORMAT.setsBy(
-            String(targetSets),
-            formatPrescription(planned.prescription),
-            overrides,
-          )}
-        </span>
-        <span className="ex-prog">{FORMAT.exerciseProgress(todaysSets.length, targetSets)}</span>
-      </button>
+      <div className={onReplace === undefined ? 'ex-head-row' : 'ex-head-row has-action'}>
+        <button type="button" className="ex-head" onClick={onToggle} aria-expanded={isOpen}>
+          <span className="ex-title">
+            {title}
+            {tag !== null && <span className="ex-tag">{tag}</span>}
+          </span>
+          <span className="ex-sub">
+            {FORMAT.setsBy(
+              String(targetSets),
+              formatPrescription(planned.prescription),
+              overrides,
+            )}
+          </span>
+          <span className="ex-prog">{FORMAT.exerciseProgress(todaysSets.length, targetSets)}</span>
+        </button>
+        {onReplace !== undefined && (
+          <button
+            type="button"
+            className="ex-replace"
+            // "Replace Cable triceps pushdown": the visible word starts the name (WCAG 2.5.3), and
+            // several cards' Replace buttons stay distinguishable to a screen reader.
+            aria-label={FORMAT.withSlots('label.replaceTitle', { name: exercise.name }, overrides)}
+            onClick={onReplace}
+          >
+            {t('button.replaceExercise')}
+          </button>
+        )}
+      </div>
 
       {isOpen && (
         <div className="ex-body">

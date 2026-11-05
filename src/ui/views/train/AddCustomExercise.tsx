@@ -30,7 +30,7 @@ import '../../styles/train.css';
  * DISPLAY ORDER, which a Record cannot express; the two are kept together so the pairing is one
  * edit and not two.
  */
-const MODALITY_KEY: Record<Modality, CopyKey> = {
+export const MODALITY_KEY: Record<Modality, CopyKey> = {
   barbell: 'label.modality.barbell',
   dumbbell: 'label.modality.dumbbell',
   machine: 'label.modality.machine',

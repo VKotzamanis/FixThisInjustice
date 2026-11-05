@@ -40,7 +40,9 @@ import {
   addBlockedIds,
   isBonusEntry,
   isEditable,
+  replaceChoices,
   sessionLineup,
+  type LineupEntry,
   type SessionEditOp,
 } from '../../domain/training/sessionEdits';
 import type { BodyMassRole, Exercise, Kg } from '../../domain/types';
@@ -57,6 +59,7 @@ import { AddCustomExercise } from './train/AddCustomExercise';
 import { AddLibraryExercise } from './train/AddLibraryExercise';
 import { ExerciseCard, targetSetsFor } from './train/ExerciseCard';
 import { HydrationBanner } from './train/HydrationBanner';
+import { ReplaceSheet } from './train/ReplaceSheet';
 import { RestTimerPanel } from './train/RestTimerPanel';
 import { SessionEditBar } from './train/SessionEditBar';
 import { SessionNumber } from '../components/SessionNumber';
@@ -102,6 +105,14 @@ export function TrainView(): ReactElement {
   const [amending, setAmending] = useState(false);
   // Audit C03: the undo offer on screen, withdrawn once its slot is logged again.
   const undoToastId = useRef<string | null>(null);
+  /** The slot key whose Replace sheet is open, or null. */
+  const [replacingKey, setReplacingKey] = useState<string | null>(null);
+  // Stable for ModalShell (its onClose re-runs the overlay effect when it changes).
+  const closeReplace = useCallback(() => {
+    setReplacingKey(null);
+  }, []);
+  // The "Replaced with" Undo offer on screen, withdrawn once a set is logged (Replace is over then).
+  const replaceToastId = useRef<string | null>(null);
 
 
   // Held while a session is open and this view is on screen (C17: a visited Train view stays
@@ -118,6 +129,11 @@ export function TrainView(): ReactElement {
       if (undoToastId.current !== null && useAppStore.getState().session.undo === null) {
         dismiss(undoToastId.current);
         undoToastId.current = null;
+      }
+      // A logged set ends the moment Replace is for; its Undo goes with it.
+      if (replaceToastId.current !== null) {
+        dismiss(replaceToastId.current);
+        replaceToastId.current = null;
       }
       // C08: the coach line is rendered inline by ExerciseCard under the set it is about.
       if (profileId === null) return;
@@ -303,6 +319,45 @@ export function TrainView(): ReactElement {
   };
   const addExercise = (exerciseId: string): boolean => editSession({ kind: 'add', exerciseId });
   const loggedIds = new Set(todaysSets.map((s) => s.exerciseId));
+  /*
+   * Replace in the card header (owner request: "when you start the exercise"): a planned slot
+   * (its planned exercise resolves), not skipped, no set logged on the card today, session open.
+   * Once a set is logged the header button goes and the edit bar's Swap stays, as before.
+   */
+  const canReplace = (entry: LineupEntry): boolean =>
+    editsOpen &&
+    (entry.kind === 'planned' || entry.kind === 'swapped') &&
+    !entry.skipped &&
+    !loggedIds.has(entry.exerciseId) &&
+    library[entry.key] !== undefined;
+  const replacing = replacingKey === null ? undefined : editable.find((e) => e.key === replacingKey);
+  const replacingOriginal = replacing === undefined ? undefined : library[replacing.key];
+  const replacingCurrent = replacing === undefined ? undefined : library[replacing.exerciseId];
+  /** One tap on a sheet row: the same swap op as the edit bar, so R4 progression holds unchanged. */
+  const replaceWith = (entry: LineupEntry, exerciseId: string): boolean => {
+    const previousId = entry.exerciseId;
+    if (!editSession({ kind: 'swap', key: entry.key, exerciseId })) return false;
+    closeReplace();
+    const name = library[exerciseId]?.name ?? exerciseId;
+    if (replaceToastId.current !== null) dismiss(replaceToastId.current);
+    replaceToastId.current = push({
+      kind: 'undo',
+      message: FORMAT.withSlots('status.replacedWith', { name }, overrides),
+      deadlineAt: Date.now() + UNDO_WINDOW_MS, // [ms] epoch UTC
+      onUndo: () => {
+        replaceToastId.current = null;
+        // Read at the tap: once a set is logged on the replacement, Replace (and its Undo) is over.
+        const atTap = useAppStore.getState();
+        const logged = Object.values(atTap.sets).some(
+          (s) => s.profileId === profileId && s.assignmentDate === assignment.date && s.exerciseId === exerciseId,
+        );
+        if (logged) return;
+        // The previous exercise: the planned one (swap to the key clears the swap) or a substitute.
+        editSession({ kind: 'swap', key: entry.key, exerciseId: previousId });
+      },
+    });
+    return true;
+  };
 
   // The first card the user still has to do opens by itself; a skipped one does not.
   const firstKey = lineup.find((e) => !e.skipped)?.key ?? null;
@@ -489,6 +544,13 @@ export function TrainView(): ReactElement {
               onCoach={onSetLogged}
               onDeleted={onDeleted}
               tag={tag}
+              onReplace={
+                canReplace(entry)
+                  ? () => {
+                      setReplacingKey(entry.key);
+                    }
+                  : undefined
+              }
             >
               {editsOpen && isEditable(entry) && (
                 <SessionEditBar
@@ -630,6 +692,26 @@ export function TrainView(): ReactElement {
           </button>
         </div>
       )}
+      {replacing !== undefined &&
+        canReplace(replacing) &&
+        replacingOriginal !== undefined &&
+        replacingCurrent !== undefined && (
+          <ReplaceSheet
+            t={c}
+            overrides={overrides}
+            name={replacingCurrent.name}
+            choices={replaceChoices({
+              original: replacingOriginal,
+              current: replacingCurrent,
+              access: profile.equipment,
+              inventory,
+              library: libraryList,
+              inUse,
+            })}
+            onPick={(exerciseId) => replaceWith(replacing, exerciseId)}
+            onClose={closeReplace}
+          />
+        )}
       {/* C05: docked above the tab bar (train.css); last in reading order. */}
       <RestTimerPanel />
     </div>

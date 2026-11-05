@@ -36,6 +36,7 @@ import type {
   PlanTemplate,
   PlannedExercise,
   Profile,
+  SessionEdits,
   SkinId,
   UnitSystem,
 } from '../../domain/types';
@@ -2115,5 +2116,118 @@ describe('the Train layout (brief 4.2; C08)', () => {
       FORMAT.withSlots('coach.topOfRange', { load: '60 kg', reps: 8 }, SKIN_COPY.limelight),
     );
     expect(screen.queryByTestId('toast')).toBeNull();
+  });
+});
+
+describe('Replace from the card header (owner request: replace when you start the exercise)', () => {
+  const replaceButton = (name: string): HTMLElement | null =>
+    screen.queryByRole('button', { name: FORMAT.withSlots('label.replaceTitle', { name }) });
+  const sheet = (): HTMLElement | null => screen.queryByRole('dialog');
+
+  /** seed() on the bench press with today's assignment carrying `edits`. */
+  function seedEdited(edits: Partial<SessionEdits>): AppState {
+    const state = seed({ exercise: BENCH });
+    const rows = state.assignments['profile-1'] ?? [];
+    return {
+      ...state,
+      assignments: {
+        'profile-1': rows.map((a) => ({
+          ...a,
+          edits: { swaps: {}, skipped: [], added: [], order: [], ...edits },
+        })),
+      },
+    };
+  }
+
+  beforeEach(() => {
+    // The sheet steps back over its own history entry when it closes; the traversal lands at once
+    // without moving, so its popstate is swallowed and no later case inherits one in flight.
+    vi.spyOn(window.history, 'go').mockImplementation(() => {
+      setTimeout(() => {
+        window.dispatchEvent(new PopStateEvent('popstate', { state: window.history.state as unknown }));
+      }, 0);
+    });
+  });
+
+  it('shows Replace on a planned card before a set, and not after one (Swap stays)', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    expect(replaceButton('Barbell bench press')).toBeInTheDocument();
+    expect(replaceButton('Barbell bench press')?.textContent).toBe(copyFor('limelight', 'button.replaceExercise'));
+
+    logRow(1, '60', '5');
+
+    expect(replaceButton('Barbell bench press')).toBeNull();
+    expect(
+      within(screen.getByRole('group', { name: 'Barbell bench press' })).getByRole('button', {
+        name: copyFor('limelight', 'button.swapExercise'),
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('shows no Replace on a skipped card or an added one', () => {
+    seedStore(seedEdited({ skipped: ['barbell-bench-press'], added: ['barbell-curl'] }));
+    renderTrain();
+    expect(screen.getByText('Barbell bench press')).toBeInTheDocument();
+    expect(replaceButton('Barbell bench press')).toBeNull();
+    expect(replaceButton('Barbell curl')).toBeNull();
+  });
+
+  it('opens a sheet whose recommended row swaps the slot in one tap, with an Undo', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    fireEvent.click(replaceButton('Barbell bench press') as HTMLElement);
+
+    const dialog = screen.getByRole('dialog', {
+      name: FORMAT.withSlots('label.replaceTitle', { name: 'Barbell bench press' }),
+    });
+    const recommended = dialog.querySelector<HTMLElement>('.replace-row.is-recommended');
+    // The template's next candidate, on dumbbells: a different implement than the barbell.
+    expect(recommended?.querySelector('.replace-name')?.textContent).toBe('Incline dumbbell press');
+    expect(recommended?.querySelector('.replace-meta')?.textContent).toBe('Dumbbell · chest');
+    expect(within(dialog).queryByRole('combobox')).toBeNull(); // no native select here
+    const more = dialog.querySelector('details.replace-more');
+    expect(more).not.toBeNull();
+    expect((more as HTMLDetailsElement).open).toBe(false);
+
+    fireEvent.click(recommended as HTMLElement);
+
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits?.swaps).toEqual({
+      'barbell-bench-press': 'incline-db-press',
+    });
+    expect(sheet()).toBeNull();
+    expect(screen.getByText('Incline dumbbell press')).toBeInTheDocument();
+    expect(
+      screen.getByText(FORMAT.withSlots('status.replacedWith', { name: 'Incline dumbbell press' })),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: copyFor('limelight', 'button.undo') }));
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits).toBeUndefined();
+    expect(replaceButton('Barbell bench press')).toBeInTheDocument();
+  });
+
+  it('offers Back to the Plan on a swapped slot, which clears the swap', () => {
+    seedStore(seedEdited({ swaps: { 'barbell-bench-press': 'incline-db-press' } }));
+    renderTrain();
+    fireEvent.click(replaceButton('Incline dumbbell press') as HTMLElement);
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: new RegExp(FORMAT.withSlots('label.backToPlan', { name: 'Barbell bench press' })),
+      }),
+    );
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits).toBeUndefined();
+    expect(sheet()).toBeNull();
+    expect(replaceButton('Barbell bench press')).toBeInTheDocument();
+  });
+
+  it('closes on the scrim, changing nothing (Back: ReplaceSheet.test.tsx)', () => {
+    seedStore(seed({ exercise: BENCH }));
+    renderTrain();
+    fireEvent.click(replaceButton('Barbell bench press') as HTMLElement);
+    fireEvent.click(screen.getByTestId('replace-sheet'));
+    expect(sheet()).toBeNull();
+    expect(useAppStore.getState().assignments['profile-1']?.[0]?.edits).toBeUndefined();
+    expect(replaceButton('Barbell bench press')).toBeInTheDocument();
   });
 });

@@ -780,6 +780,12 @@ export type CopyKey =
   | 'button.addToSession'
   | 'button.removeExercise'
   | 'label.fitsEquipment'
+  // --- Replace from the card header (owner: replace an exercise when you start it) ---
+  | 'button.replaceExercise'
+  | 'label.replaceTitle'
+  | 'label.recommended'
+  | 'label.backToPlan'
+  | 'status.replacedWith'
   // --- one-tap effort per set, ROADMAP L8 (src/domain/training/effort.ts) ---
   | 'button.effortEasy'
   | 'button.effortSolid'
@@ -2240,6 +2246,14 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   // Offered only for an added exercise with no sets today; with sets the control is Skip.
   'button.removeExercise': 'Remove Exercise',
   'label.fitsEquipment': 'Fits Your Equipment',
+  // Replace (owner: "you can place replace when you start the exercise and another tricep
+  // exercise would be recommended"): a header button on a planned card with no set logged
+  // today, opening a sheet of rows from replaceChoices (src/domain/training/sessionEdits.ts).
+  'button.replaceExercise': 'Replace',
+  'label.replaceTitle': 'Replace {name}', // template; FORMAT.withSlots, the library name
+  'label.recommended': 'Recommended',
+  'label.backToPlan': 'Back to the Plan: {name}', // template; FORMAT.withSlots, the planned name
+  'status.replacedWith': 'Replaced with {name}.', // template; FORMAT.withSlots; the Undo toast
 
   // --- one-tap effort per set, ROADMAP L8 (src/domain/training/effort.ts) ---
   // Offered under a logged set with no effort recorded; optional. Each stores an RPE on the
