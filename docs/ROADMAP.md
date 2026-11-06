@@ -14,7 +14,7 @@ Owner rulings from the restart audit and review pages (2026-10-17/18; verbatim a
 - P5 OPEN: Rest Word scrolls 15 px inside the sheet at 320/360 x 664 (needs a shorter legend or cap ruling).
 - P6 OPEN: rest-over bar skip button clips at 320 px.
 - P7 OPEN: no tests for the inert tab bar, the drink row, `nextSessionCheckAt`; the contrast sweep skips text inside `aria-hidden` marquee tracks (it missed P1's invisible strip).
-- P9 OPEN (bug, owner 2026-11-06): on the FIRST login the wizard Goal step's dates "don't work" (target-date field + band calendar Realistic/Improbable/Highly Improbable, `src/ui/setup/steps/GoalStep.tsx:489-640`, `targetDateFeasibility` `src/domain/nutrition.ts`). Symptom detail pending from owner; reproduce on a fresh install of the live URL first (`systematic-debugging`).
+- P9 PARTIAL (owner 2026-11-06, goal "Lose fat + Gain muscle"): cause = recomposition has no sourced rate, so `targetDateFeasibility` bands no day (`mass-held`); fat-loss goals reproduced fine on the live site (Chromium + WebKit, kg + lb). DONE (453f536): "Earliest realistic date" line + Use This Date (`earliestRealisticDays`, derived from `FAT_LOSS_RATE_BOUND.hiFraction`), calendar opens on that month, gap reason shown up front with the legend hidden; e2e `e2e/p9-goal-feasibility.spec.ts`. OPEN: recomposition bands, only if `docs/private/evidence/recomposition-rate-2026-11-06.md` finds a source; Settings target date (`ProfileEditor.tsx:192`) has no band check.
 - P8 OPEN (evidence): ACSM 2009 full text may add "on two consecutive training sessions" to the 2-10 % load rule; `progression.ts` raises after one. Unverified; unchanged.
 
 ## 1. Broken now
