@@ -1,5 +1,7 @@
 # Brief I2: the just-in-time scheduler
 
+> SUPERSEDED 2026-11-06 by `docs/design/programme-engine.md` (2026-09 round-3 brief; `00-CONTEXT.md` and its claims are gone).
+
 Read `00-CONTEXT.md` first. Claims C1.12.2, C1.12.4 to C1.12.6. **Round 3's first brief.**
 
 This was Part 5 of brief I. It was split out on 2026-09-09, on brief I's own instruction: "This

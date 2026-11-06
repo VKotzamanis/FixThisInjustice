@@ -1,5 +1,7 @@
 # Asset manifest
 
+> SUPERSEDED 2026-11-06 by `docs/design/asset-spec-2026-10-18.md` and the register `docs/design/2026-09-04-icon-register.csv` (pre-restart asset plan; paths drifted).
+
 Every visual, audio and video asset this app names or implies, as of 2026-09-06. Derived by
 reading the setup wizard, the limelight skin's own asset banks, `docs/sfx.md`,
 `docs/motivation-video.md`, the intro slides, the specimen cards, briefs F and G, the PWA manifest,

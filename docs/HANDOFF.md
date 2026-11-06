@@ -3,7 +3,7 @@
 Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place when your job is done; facts that last belong in `docs/STATUS.md`.
 
 ## State
-- Live: 4a27393 (merge 9456106 + docs), verified 2026-11-05 (CI + Deploy green, `build-info.json` = 4a27393, bundle contains `replaceExercise`). 0d07655's own Pages deployment was cancelled 3x by GitHub (a re-run of a cancelled SHA cannot succeed: `docs/runbooks/deploy.md`); it is live inside 4a27393.
+- Live: 1db89c5, verified 2026-11-06 (CI + Deploy green, `build-info.json` = 1db89c5, bundle contains `nextDrinkReminder`). `docs/STATUS.md` Live line is the source.
 - First action: `gh run list --limit 4`; if CI or Deploy failed on the latest commit, `gh run view <id> --log-failed`, fix and push (owner standing order).
 - Last full Verify (merged tree, 2026-11-05): vitest 1632 + 1486 + 698 (264/264 files), e2e 194 passed + 3 skipped (`p4a-shots`, opt-in), worker 157, tsc/eslint/emoji/private/CSP pass.
 - Worktrees and side branches: none (removed 2026-11-05). New parallel tracks: `git worktree add ../FixThisInjustice-<name> -b <branch>`, `cp -al node_modules`, delete `.tmp`, `.vite`, `.vitest`. Check the path does not already exist first.
@@ -25,6 +25,7 @@ Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place whe
   - Android Back in the installed app (sheets incl. the new Replace sheet, More sheet, rest-game sheet);
   - form-video playback (YouTube player inside the sandboxed frame);
   - the new Replace button and sheet, and the Settings rotation switch, at real size.
+- Open items and their status: `docs/ROADMAP.md` sections 0 and 1b (N8, P5-P8). Device checklist: `docs/runbooks/phone-check.md`.
 - `systematic-debugging` before any fix. Reproduce in Playwright (chromium iphone13/pixel7, webkit-iphone13) where possible; quote his words verbatim into the owner-feedback file.
 - Owner-gated, do not do: form-cue text for 38 exercises (his wording), moving-banner content ("for another time"), reminders (decided skipped; do not deploy the Worker).
 
@@ -33,23 +34,14 @@ Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place whe
 - Engine: 0df36d3 (R-A, 2-session adoption), e32bf91 (R-B rotation + `Profile.rotateAccessories`), d5194b2 (Settings switch), c4d8a48 (docs). Merge 9456106.
 - Evidence: `docs/private/evidence/exercise-variation-2026-11-05.md` (V1-V16, all DOIs Crossref-checked; lead re-checked V1, V2, V3, V16).
 
-## Phone-report batch (2026-11-05, e0cb296..0afda2d, shipped under a 30-min owner deadline: no new tests)
-- Open, agent-fixable:
-  - Rest Word scrolls 15 px inside the sheet at 320/360 x 664 (needs a shorter legend or cap ruling);
-  - rest-over skip button clips at 320 px;
-  - contrast sweep skips text in `aria-hidden` marquee tracks (missed the invisible Today strip);
-  - `DESIGN.md` Burn ("never numerals") and marquee sections stale;
-  - no tests for the inert tab bar, the drink row, `nextSessionCheckAt`; `e2e/p6-rest-sheet.spec.ts` cap/Log checks edited for the trade-off.
-- Owner verbatim + rulings: `docs/private/owner-feedback/phone-week-2026-11-04.md` "Phone report after 4a27393".
+## Phone-report batch (2026-11-05, e0cb296..1db89c5, DONE)
+- What shipped and what is open: `docs/ROADMAP.md` section 1b (P1-P8). Shipped under a 30-min owner deadline: no new tests (P7).
 
-## Known follow-ups (agent-fixable, low priority)
-- Replace sheet quiet line shows raw muscle ids ("front-delt"); no display-name map exists.
+## Known follow-ups (agent-fixable, low priority; tracker items live in `docs/ROADMAP.md`)
 - Rotation edges (programme-engine.md): an adopted swap equal to the slot's alternate re-alternates next cycle (no stored pin); a skip replacement onto home rotates back one cycle later; an alternate the user can no longer use (equipment change) stays; switch off freezes the current A/B state, it does not revert to home.
-- ACSM 2009 "two consecutive training sessions" clause (STATUS decisions log): unverified; `progression.ts` unchanged.
 - `ModalShell` `onClose` is a fresh arrow every render (audit A16 note).
 - Per-record hydrate is 430 ms for 3 years of history in node (budget test 1290 ms); profile on a phone.
 - A rolled-back pre-N4 build quarantines the new `ui` record (no `accent`): ui prefs only.
-- The motivation-clip and sfx runbooks still cite the absent `REFERENCES.md`.
 - `scripts/alpha-fixture.mjs` is not deterministic across runs.
 
 ## Process (what worked)

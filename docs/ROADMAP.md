@@ -3,7 +3,18 @@
 Owner rulings from the restart audit and review pages (2026-10-17/18; verbatim answers in `docs/private/owner-feedback/restart-2026-10-18.md`). Every item was checked against code on 2026-10-17. Order = priority. Design before building anything marked (design).
 
 ## 0. First
-- N1 IN PROGRESS 2026-10-21: owner is using the app on his phone and collecting feedback. Triage each item into this file.
+- N1 IN PROGRESS (since 2026-10-21): owner uses the app on his phone; triage each report here. Rounds so far: 2026-11-04 (AAA rebuild, P0-P8), 2026-11-05 (section 1b).
+- N8 OPEN (owner): real-device checks: iPhone notch/home-bar insets; burn + lit words on iOS; praise-word burn while the reps field keeps focus; Android Back in the installed app (Replace, More, rest-game sheets); form-video playback; Replace sheet, drink row and session numeral at real size. Checklist `docs/runbooks/phone-check.md`.
+
+## 1b. Phone report 2026-11-05 (verbatim in `docs/private/owner-feedback/phone-week-2026-11-04.md`)
+- P1 DONE (e0cb296): session counter was 12-16 px in five places (header ticker, Today marquee, Today line, Train eyebrow); now one numeral per screen at `--burn-word-size` beside the heading; marquees text only; Today strip text was invisible (ink on black), now `--panel-text`.
+- P2 DONE (01abd70, 0afda2d, 1db89c5): drinks are a reminder, not a log (owner): `DrinkReminder` acknowledge-only (memory, no fluid record), 20 min cadence, fixed row below the rest game and under the docked rest bar; Today Fluid card and the 18:00 shortfall cue removed; stored hydration records kept.
+- P3 DONE (0afda2d): rest-game sheet covers the tab bar (Rest Word's third key row was under it, untappable); sheet cap +52 px. Trade-off: Safari tab (390x664) the open sheet covers the next set's Log button; at 844 tall it clears it by 108-126 px.
+- P4 DONE (0afda2d): Targets energy/protein totals on their own line (no wrap at 320).
+- P5 OPEN: Rest Word scrolls 15 px inside the sheet at 320/360 x 664 (needs a shorter legend or cap ruling).
+- P6 OPEN: rest-over bar skip button clips at 320 px.
+- P7 OPEN: no tests for the inert tab bar, the drink row, `nextSessionCheckAt`; the contrast sweep skips text inside `aria-hidden` marquee tracks (it missed P1's invisible strip).
+- P8 OPEN (evidence): ACSM 2009 full text may add "on two consecutive training sessions" to the 2-10 % load rule; `progression.ts` raises after one. Unverified; unchanged.
 
 ## 1. Broken now
 - B1-B6 fixed 2026-10-18 (`git log --grep '^fix(B'`). Follow-ups from B1:

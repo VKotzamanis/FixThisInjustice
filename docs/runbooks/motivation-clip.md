@@ -66,7 +66,7 @@ portrait phone, and it starts silently. Encode for that.
 | 52428800 | 50 MiB | git prints a large-file warning. |
 | 104857600 | 100 MiB | GitHub blocks the push. `scripts/check-media-size.sh` exits 1, and CI fails. |
 
-Sources for all three are recorded in `REFERENCES.md`.
+Sources for all three are recorded in `docs/private/evidence/REFERENCES.md` (gitignored, owner's laptop).
 
 25 MiB is the guidance because of bandwidth, not disk. A published Pages site may be no
 larger than 1 GB and carries a soft limit of 100 GB per month. Every install that triggers

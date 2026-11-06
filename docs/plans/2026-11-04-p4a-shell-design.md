@@ -1,5 +1,7 @@
 # P4a Phone-First Shell and Design Polish Implementation Plan
 
+> SUPERSEDED 2026-11-06 executed plan (P4a shipped). Current design `DESIGN.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Turn the desktop-first shell into a phone-first one (one-line header, fixed bottom tab bar with a More sheet, safe areas, top toasts, a rest bar docked above the tab bar) with real Back behaviour (hash router, one overlay stack), views that keep their drafts and scroll, an app-level rest controller, and the cross-view type, spacing, state and contrast fixes of the P4 design brief, each pinned by a unit or Playwright test.

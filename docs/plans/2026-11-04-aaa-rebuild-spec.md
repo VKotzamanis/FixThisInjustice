@@ -1,5 +1,7 @@
 # AAA rebuild: spec and rulings (2026-11-04)
 
+> 2026-11-06: phases P0-P8 shipped (`docs/STATUS.md`); rulings R1-R13 stay binding.
+
 Agent doc. Source: 7-area engineering audit `docs/private/audit-2026-11-04/{A..G}-*.md` (finding IDs below) + owner phone-week feedback `docs/private/owner-feedback/phone-week-2026-11-04.md`. Engineering only; copy/wording out of scope (owner: "Do not focus on the text").
 
 ## Owner complaints -> root cause

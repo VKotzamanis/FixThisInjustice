@@ -1,5 +1,7 @@
 # P4b Platform: Updates, Durability, Build and Deploy Implementation Plan
 
+> SUPERSEDED 2026-11-06 executed plan (P4b shipped). Deploy and update behaviour: `docs/runbooks/deploy.md`, `src/app/updateController.ts`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A deploy reaches an installed phone without two cold launches and never reloads a live session; a docs-only commit ships nothing; the deploy publishes only the tested bytes of a push to `main` that is still `main`'s HEAD; first load carries only the screens it shows; a backup is proven by the user, not by a returned call; the browser is asked to keep the data; install guidance is shown to everyone who has not installed.

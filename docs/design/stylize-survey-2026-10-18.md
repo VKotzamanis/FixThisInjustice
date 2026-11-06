@@ -1,5 +1,7 @@
 # Stylize survey: FixThisInjustice (limelight), 2026-10-18
 
+> SUPERSEDED 2026-11-06 executed: all 10 items shipped 2026-10-18 (ROADMAP 3b). Kept as history.
+
 Read-only. Tags: [READ file:line], [MEASURED] = ran it here, [INFERRED], [U] = unverified (no device render done).
 Contrast figures are quoted from tokens.css (round-3 section 2.3), not recomputed.
 

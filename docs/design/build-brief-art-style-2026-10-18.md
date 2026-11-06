@@ -1,5 +1,7 @@
 # Build brief: art wiring + styling (owner picks, 2026-10-18)
 
+> SUPERSEDED 2026-11-06 executed: art wired and all 10 survey items shipped (ROADMAP 3b). Current state `docs/STATUS.md`.
+
 Agent-only. Owner approved all art in `src/assets/art/` and ticked all 10 survey items (`docs/design/stylize-survey-2026-10-18.md`, details, file:line, costs). App icons already built in `public/icons/` from the owner's sprite (frame 0 of `agy-artifacts/SpriteAI_Vasileios/Untitled-sprite-40x40px-11f.gif`).
 
 ## Rules for every visual change

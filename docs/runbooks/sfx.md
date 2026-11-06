@@ -140,7 +140,7 @@ audio as readily as tracked audio.
 
 Candidates to audition, not selections, carried over from the round-three design plan
 (`docs/design/round3/2026-09-01-round3-plan.md` section 6.4). Verify the licence per file at the
-moment you download it and record it in `REFERENCES.md`.
+moment you download it and record it in `docs/private/evidence/REFERENCES.md` (gitignored, owner's laptop).
 
 - Kenney, Interface Sounds: <https://kenney.nl/assets/interface-sounds>
 - Kenney, Digital Audio: <https://kenney.nl/assets/digital-audio>
@@ -159,4 +159,4 @@ royalty-free agreement. Its redistribution clause reads:
 > effects to any other person, without the Licensor's prior written permission.
 
 Shipping them in an `sfx/` directory of this repository is exactly that. Fetched from
-<https://sonniss.com/gdc-bundle-license/> on 2026-09-02 and recorded in `REFERENCES.md`.
+<https://sonniss.com/gdc-bundle-license/> on 2026-09-02 and recorded in `docs/private/evidence/REFERENCES.md` (gitignored, owner's laptop).

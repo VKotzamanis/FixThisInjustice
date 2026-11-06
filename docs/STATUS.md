@@ -47,8 +47,8 @@ Single source of current state. Update in place. Last update: 2026-11-05.
 - Nothing tested on iOS Safari/Android hardware by an agent; layout checked only in headless Chromium at 320/400 px. P6 sheet measured 2026-11-04 (e2e/p6-rest-sheet.spec.ts, Chromium iPhone 13/Pixel 7 emulation): keys >= 44 px tall and 26/30/33/35 px wide at 320/360/390/412, no sideways scroll, sheet 466-472 px; since P4a Task 8 (44 px header) the next set's Log button sits above the sheet at all four widths (bottom 181 px vs sheet top 192/195/198/198 px at 320/360/390/412 after the P4a active row, 2026-11-05).
 
 ## Doc drift (known)
-- Older docs cite drifted paths/lines: `docs/design/programme-horizon.md` (planned files never built), `docs/design/2026-09-06-asset-manifest.md`, `docs/design/2026-09-06-asset-prompts.md` (superseded by asset-spec-2026-10-18), `docs/design/2026-09-01-copy-contract.md`, runbooks. Re-derive before trusting a line number.
-- `docs/runbooks/motivation-clip.md` and `sfx.md` still cite `REFERENCES.md`, which lives only in gitignored `docs/private/evidence/` (`reminders.md` now cites URLs).
+- Superseded docs carry a `> SUPERSEDED <date> by ...` line under their title (2026-11-06 sweep: asset manifest + prompts, jit-scheduler brief, art build brief, critique, stylize survey, executed plans P0-P6; earlier: `programme-horizon.md`). Kept for history and for code comments that cite them; never build from them.
+- Still current but drifted: `docs/design/2026-09-01-copy-contract.md` (keep/cut is the owner's call, ROADMAP 5), runbooks. Re-derive before trusting a line number.
 
 ## Decisions log
 - 2026-11-05 L11 (lead rulings on owner item 11): no source shows repeated exercises CAUSE a plateau (evidence Q1; ACSM 2026 "insufficient data"), so rotation is variety, not a plateau fix; A/B per 4-week cycle after Fonseca 2014 (DOI 10.1519/jsc.0000000000000539), primaries never rotate; one-off Replace must not rewrite the next cycle (2-session adoption). Rejected: rotating main lifts, plateau-triggered rotation, random per-session rotation, round-robin over all alternatives.

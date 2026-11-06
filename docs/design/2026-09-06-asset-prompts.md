@@ -1,5 +1,7 @@
 # Asset generation prompts
 
+> SUPERSEDED 2026-11-06 by `docs/design/asset-spec-2026-10-18.md` (verbatim prompts live there). Do not reuse the bare `agy -p` lines below: use `agy-image`.
+
 Ready to paste into `agy` one at a time, per the `image-generation` skill's convention:
 
 ```sh

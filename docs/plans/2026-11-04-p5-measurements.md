@@ -1,5 +1,7 @@
 # P5 Measurements and set-entry engine Implementation Plan
 
+> SUPERSEDED 2026-11-06 executed plan (P5 shipped). Fluid logging later removed from Today (owner, 2026-11-05): drinks are a reminder only (`DESIGN.md` Rest Sign).
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Body mass, body fat and fluid become measurements a user can log any day, correct and undo; targets, the export and the chart read one derivation of them; the profile is editable after setup with the wizard's own rules; and the set row prefills, quantises once and asks before an early Finish.
