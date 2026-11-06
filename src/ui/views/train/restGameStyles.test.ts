@@ -141,8 +141,10 @@ describe('the game sheet (P6, R10, audit C14)', () => {
     expect(sheet).toMatch(/(^|;|\s)right:\s*0;/);
   });
 
-  it('caps its height at 100svh - 12rem, border-box, with a vh fallback first', () => {
-    expect(sheet).toMatch(/max-height:\s*calc\(100vh - 12rem\);[\s\S]*max-height:\s*calc\(100svh - 12rem\);/);
+  it('caps its height at 100svh - 12rem plus the drink row and its gap (G2), border-box, vh fallback first', () => {
+    expect(sheet).toMatch(
+      /max-height:\s*calc\(100vh - 12rem \+ var\(--rest-drink-row-h\) \+ var\(--rest-drink-row-gap\)\);[\s\S]*max-height:\s*calc\(100svh - 12rem \+ var\(--rest-drink-row-h\) \+ var\(--rest-drink-row-gap\)\);/,
+    );
     expect(sheet).toMatch(/box-sizing:\s*border-box;/);
     expect(sheet).toMatch(/overflow-y:\s*auto;/);
   });
@@ -157,7 +159,9 @@ describe('the game sheet (P6, R10, audit C14)', () => {
   it('pads the Train page under an open or a minimised sheet', () => {
     const open = gameRules.find((rule) => rule.selector === 'body.rest-sheet-open .view.train');
     const min = gameRules.find((rule) => rule.selector === 'body.rest-sheet-min .view.train');
-    expect(open?.body).toMatch(/padding-bottom:\s*calc\(min\(100svh - 12rem, 30rem\) \+ 1rem\);/);
+    expect(open?.body).toMatch(
+      /padding-bottom:\s*calc\(min\(100svh - 12rem, 30rem\) \+ var\(--rest-drink-row-h\) \+ var\(--rest-drink-row-gap\) \+ 1rem\);/,
+    );
     expect(min?.body).toMatch(/padding-bottom:/);
   });
 });

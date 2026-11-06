@@ -779,7 +779,9 @@
  */
 .rest-drink-row {
   box-sizing: border-box;
-  height: var(--rest-drink-row-h);
+  /* min-height, not height: equal to the button's --tap floor, so both states are one 44 px row,
+     and a wrapped label grows the row instead of clipping (44 px controls rule). */
+  min-height: var(--rest-drink-row-h);
   margin-top: var(--rest-drink-row-gap);
   display: flex;
   align-items: center;
@@ -793,8 +795,6 @@
 
 .view .rest-drink-row .drink-reminder {
   box-sizing: border-box;
-  height: 100%;
-  min-height: 0;
   border: 2px solid var(--ink);
 }
 
