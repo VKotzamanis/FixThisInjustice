@@ -3,7 +3,7 @@
 Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place when your job is done; facts that last belong in `docs/STATUS.md`.
 
 ## State
-- Live: 1db89c5, verified 2026-11-06 (CI + Deploy green, `build-info.json` = 1db89c5, bundle contains `nextDrinkReminder`). `docs/STATUS.md` Live line is the source.
+- Live: c3fa40e, verified 2026-11-06 (CI + Deploy green, `build-info.json` = c3fa40e). `docs/STATUS.md` Live line is the source.
 - First action: `gh run list --limit 4`; if CI or Deploy failed on the latest commit, `gh run view <id> --log-failed`, fix and push (owner standing order).
 - Last full Verify (merged tree, 2026-11-05): vitest 1632 + 1486 + 698 (264/264 files), e2e 194 passed + 3 skipped (`p4a-shots`, opt-in), worker 157, tsc/eslint/emoji/private/CSP pass.
 - Worktrees and side branches: none (removed 2026-11-05). New parallel tracks: `git worktree add ../FixThisInjustice-<name> -b <branch>`, `cp -al node_modules`, delete `.tmp`, `.vite`, `.vitest`. Check the path does not already exist first.

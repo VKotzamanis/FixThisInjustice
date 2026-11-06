@@ -3,7 +3,7 @@
 Single source of current state. Update in place. Last update: 2026-11-05.
 
 ## Live
-- https://vkotzamanis.github.io/FixThisInjustice/ serves main 1db89c5 (2026-11-06: CI verify + e2e + worker green, Deploy build + deploy green, `build-info.json` = 1db89c5, live bundle contains `nextDrinkReminder`). It includes 0d07655, whose own Pages deployment GitHub cancelled three times (`docs/runbooks/deploy.md`).
+- https://vkotzamanis.github.io/FixThisInjustice/ serves main c3fa40e (2026-11-06: CI verify + e2e + worker green, Deploy green, `build-info.json` = c3fa40e, live bundle contains the recomposition estimate; P9 in ROADMAP 1b). It includes 0d07655, whose own Pages deployment GitHub cancelled three times (`docs/runbooks/deploy.md`).
 - Data lives in each user's browser: IndexedDB `fti` (per-record, quarantine), `fti.v3` kept as first-boot import source and AM-P2-1 rollback mirror. Users install to Home Screen and export JSON backups (share sheet) from Settings → Data.
 
 ## Next job
