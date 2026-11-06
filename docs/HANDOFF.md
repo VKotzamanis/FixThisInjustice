@@ -33,6 +33,15 @@ Agent doc. Written 2026-11-05, end of the Job 3 session. Replace it in place whe
 - Engine: 0df36d3 (R-A, 2-session adoption), e32bf91 (R-B rotation + `Profile.rotateAccessories`), d5194b2 (Settings switch), c4d8a48 (docs). Merge 9456106.
 - Evidence: `docs/private/evidence/exercise-variation-2026-11-05.md` (V1-V16, all DOIs Crossref-checked; lead re-checked V1, V2, V3, V16).
 
+## Phone-report batch (2026-11-05, e0cb296..0afda2d, shipped under a 30-min owner deadline: no new tests)
+- Open, agent-fixable:
+  - Rest Word scrolls 15 px inside the sheet at 320/360 x 664 (needs a shorter legend or cap ruling);
+  - rest-over skip button clips at 320 px;
+  - contrast sweep skips text in `aria-hidden` marquee tracks (missed the invisible Today strip);
+  - `DESIGN.md` Burn ("never numerals") and marquee sections stale;
+  - no tests for the inert tab bar, the drink row, `nextSessionCheckAt`; `e2e/p6-rest-sheet.spec.ts` cap/Log checks edited for the trade-off.
+- Owner verbatim + rulings: `docs/private/owner-feedback/phone-week-2026-11-04.md` "Phone report after 4a27393".
+
 ## Known follow-ups (agent-fixable, low priority)
 - Replace sheet quiet line shows raw muscle ids ("front-delt"); no display-name map exists.
 - Rotation edges (programme-engine.md): an adopted swap equal to the slot's alternate re-alternates next cycle (no stored pin); a skip replacement onto home rotates back one cycle later; an alternate the user can no longer use (equipment change) stays; switch off freezes the current A/B state, it does not revert to home.
