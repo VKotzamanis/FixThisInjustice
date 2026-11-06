@@ -749,6 +749,9 @@ export type CopyKey =
   | 'advice.feasibilityNeedsTarget'
   | 'advice.feasibilityNeedsFuture'
   | 'advice.feasibilityNotALoss'
+  | 'advice.earliestRealisticDate'
+  | 'advice.earliestRealisticPastRange'
+  | 'button.useThisDate'
   | 'button.previousMonth'
   | 'button.nextMonth'
   // --- round 3: the two Settings switches gain a plain description (owner: "I have no idea
@@ -2178,6 +2181,11 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
    */
   'advice.feasibilityNeedsFuture': 'Pick a date after today before this can be judged.',
   'advice.feasibilityNotALoss': 'That target is not below your current body mass.',
+  // P9: the first date the calendar bands Realistic, stated above it (src/domain/nutrition.ts
+  // earliestRealisticDays). {date} is an ISO date, as the calendar cells name theirs.
+  'advice.earliestRealisticDate': 'Earliest realistic date: {date}',
+  'advice.earliestRealisticPastRange': "Earliest realistic date: {date}, past the calendar's range.",
+  'button.useThisDate': 'Use This Date',
   'button.previousMonth': 'Previous Month',
   'button.nextMonth': 'Next Month',
 
@@ -3301,4 +3309,15 @@ export const FORMAT = {
    * a screen reader as well as for a viewer who cannot separate the three pastels.
    */
   calendarDay: (date: string, band: string): string => (band === '' ? date : `${date}, ${band}`),
+
+  /** P9: "Earliest realistic date: 2027-01-20", or the past-the-range variant. `date` is ISO. */
+  earliestRealisticDate: (
+    date: string,
+    pastRange: boolean,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy(pastRange ? 'advice.earliestRealisticPastRange' : 'advice.earliestRealisticDate', overrides).replace(
+      '{date}',
+      () => date,
+    ),
 } as const;

@@ -16,6 +16,7 @@ import {
   isInDomain,
   seedBeverageTargetML,
   statedBeverageTargetML,
+  earliestRealisticDays,
   targetDateFeasibility,
   type NutritionInput,
 } from './nutrition';
@@ -873,5 +874,30 @@ describe('targetDateFeasibility', () => {
     expect(bandAt(edge)).toBe('improbable');
     expect(bandAt(edge * 1.001)).toBe('highly-improbable');
     expect(edge).toBeGreaterThan(FAT_LOSS_RATE_BOUND.hiFraction);
+  });
+});
+
+describe('earliestRealisticDays (P9)', () => {
+  const band = (days: number, currentMassKg: number, targetMassKg: number) => {
+    const f = targetDateFeasibility({ goal: 'fat-loss', currentMassKg, targetMassKg, weeks: days / 7 });
+    return f.assessable ? f.band : f.gap;
+  };
+
+  it.each([
+    [90, 80], // [kg] the owner-scale case
+    [100, 90], // [kg] exactly 70 days at the bound: the bound day itself is realistic
+    [100, 99.5], // [kg] a loss shorter than a week
+  ])('from %d kg to %d kg: that day is realistic and the day before is not', (current, target) => {
+    const days = earliestRealisticDays({ goal: 'fat-loss', currentMassKg: current, targetMassKg: target });
+    expect(days).not.toBeNull();
+    const d = days ?? 0;
+    expect(band(d, current, target)).toBe('realistic');
+    if (d > 1) expect(band(d - 1, current, target)).not.toBe('realistic');
+  });
+
+  it('is null where no date can be banded', () => {
+    expect(earliestRealisticDays({ goal: 'recomposition', currentMassKg: 90, targetMassKg: 80 })).toBeNull();
+    expect(earliestRealisticDays({ goal: 'fat-loss', currentMassKg: 90, targetMassKg: null })).toBeNull();
+    expect(earliestRealisticDays({ goal: 'fat-loss', currentMassKg: 90, targetMassKg: 95 })).toBeNull();
   });
 });

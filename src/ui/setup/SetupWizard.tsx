@@ -99,7 +99,7 @@ export function SetupWizard(): JSX.Element {
   const [bodyNextAttempted, setBodyNextAttempted] = useState(false);
   /* Views of a list and a calendar, not answers: neither tier of the draft, not persisted (r2.09, Brief I). */
   const [zoneQuery, setZoneQuery] = useState('');
-  const [monthOffset, setMonthOffset] = useState(0);
+  const [monthOffset, setMonthOffset] = useState<number | null>(null); // [month] null = auto (P9)
 
   /*
    * Persists the draft on change, debounced (C1.G.1). `draftSaveTimer` is also cleared by

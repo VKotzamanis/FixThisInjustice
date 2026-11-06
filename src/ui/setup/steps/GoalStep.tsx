@@ -10,6 +10,7 @@ import { useCopy, useCopyOverrides } from '../../../content/useCopy';
 import { NAVY_SEE_PCT } from '../../../domain/bodyfat';
 import { addDays, compareLocalDate, daysBetween, isoWeekday } from '../../../domain/dates';
 import {
+  earliestRealisticDays,
   targetDateFeasibility,
   type Feasibility,
   type FeasibilityBand,
@@ -135,6 +136,12 @@ function shiftMonth(date: LocalDate, n: number): LocalDate {
   return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-01`;
 }
 
+/** Whole calendar months from `from`'s month to `to`'s month; the inverse of shiftMonth's `n`. */
+function monthsBetween(from: LocalDate, to: LocalDate): number {
+  const index = (d: LocalDate): number => Number(d.slice(0, 4)) * 12 + Number(d.slice(5, 7)); // [month]
+  return index(to) - index(from);
+}
+
 /** The split select's value parsed against its closed option list, never cast. */
 function pickSessionsPerWeek(raw: string): SessionsPerWeek {
   const value = Number(raw);
@@ -145,9 +152,13 @@ interface GoalStepProps extends ValidatedStepProps {
   patchDay: (weekday: IsoWeekday, next: Partial<DaySlot>) => void;
   /** The civil date in the profile's zone; the calendar and every horizon start here. */
   today: LocalDate;
-  /** The calendar's month offset: a view, not an answer, so the shell keeps it across visits. */
-  monthOffset: number;
-  setMonthOffset: (update: (n: number) => number) => void;
+  /**
+   * The calendar's month offset: a view, not an answer, so the shell keeps it across visits.
+   * Null until an arrow is tapped: the grid then opens on the chosen date's month, else on the
+   * earliest realistic date's month (P9), else on today's.
+   */
+  monthOffset: number | null;
+  setMonthOffset: (n: number) => void;
 }
 
 export function GoalStep(props: GoalStepProps): JSX.Element {
@@ -202,8 +213,38 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
   const targetDateFeasibilityResult: Feasibility | null =
     draft.targetDate !== '' && targetDateError === null ? feasibilityOf(draft.targetDate) : null;
 
+  /**
+   * P9 R2: the reason NO date can be banded (the goal has no rate rule, or there is no target or
+   * no loss), known before any date is picked, so it is stated above the grid at once. Null when
+   * the goal and target can be banded. A positive horizon is passed only because the model needs
+   * one; for these gaps the horizon is never read.
+   */
+  const standingGap: FeasibilityGap | null = (() => {
+    const f = feasibilityOf(addDays(today, 7));
+    return f.assessable ? null : f.gap === 'no-horizon' ? null : f.gap;
+  })();
+
+  /** P9 R1: the first date banded realistic, from FAT_LOSS_RATE_BOUND (src/domain/nutrition.ts). */
+  const earliestDays =
+    massKg === null
+      ? null
+      : earliestRealisticDays({ goal: draft.goalKind, currentMassKg: massKg, targetMassKg: effectiveTargetMassKg }); // [day]
+  const earliestDate: LocalDate | null = earliestDays === null ? null : addDays(today, earliestDays);
+  const earliestPastRange =
+    earliestDate !== null && monthsBetween(today, earliestDate) > CALENDAR_MAX_MONTHS_AHEAD;
+
+  const clampOffset = (n: number): number => Math.min(CALENDAR_MAX_MONTHS_AHEAD, Math.max(0, n)); // [month]
+  const openingOffset = clampOffset(
+    draft.targetDate !== '' && targetDateError === null
+      ? monthsBetween(today, draft.targetDate)
+      : earliestDate !== null
+        ? monthsBetween(today, earliestDate)
+        : 0,
+  ); // [month]
+  const shownOffset = monthOffset ?? openingOffset; // [month]
+
   /** The month the grid is showing, and the days in it, Monday-aligned by leading blanks. */
-  const calendarMonthStart = shiftMonth(today, monthOffset);
+  const calendarMonthStart = shiftMonth(today, shownOffset);
   const calendarDays = monthDays(calendarMonthStart);
   const calendarLeadingBlanks = isoWeekday(calendarMonthStart) - 1;
 
@@ -521,14 +562,34 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
           <p className="wiz-label" id="f-feasibility-label">
             {t('label.feasibility')}
           </p>
+          {earliestDate !== null && (
+            <div className="wiz-field" data-testid="earliest-realistic">
+              <p className="wiz-note">
+                {FORMAT.earliestRealisticDate(earliestDate, earliestPastRange, overrides)}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  patch({ targetDate: earliestDate });
+                }}
+              >
+                {t('button.useThisDate')}
+              </button>
+            </div>
+          )}
+          {standingGap !== null && (
+            <p className="wiz-note" data-testid="feasibility-gap">
+              {t(FEASIBILITY_GAP_KEY[standingGap])}
+            </p>
+          )}
           <div className="wiz-calendar" aria-labelledby="f-feasibility-label">
             <div className="wiz-calendar-head">
               <button
                 type="button"
                 className="wiz-calendar-nav"
-                disabled={monthOffset <= 0}
+                disabled={shownOffset <= 0}
                 onClick={() => {
-                  setMonthOffset((n) => Math.max(0, n - 1));
+                  setMonthOffset(clampOffset(shownOffset - 1));
                 }}
               >
                 {t('button.previousMonth')}
@@ -546,9 +607,9 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
               <button
                 type="button"
                 className="wiz-calendar-nav"
-                disabled={monthOffset >= CALENDAR_MAX_MONTHS_AHEAD}
+                disabled={shownOffset >= CALENDAR_MAX_MONTHS_AHEAD}
                 onClick={() => {
-                  setMonthOffset((n) => Math.min(CALENDAR_MAX_MONTHS_AHEAD, n + 1));
+                  setMonthOffset(clampOffset(shownOffset + 1));
                 }}
               >
                 {t('button.nextMonth')}
@@ -601,16 +662,19 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
             {/*
               WCAG 1.4.1: the three fills never carry the meaning alone. The legend prints each
               band's word beside its own swatch, and every day cell repeats the word in its
-              accessible name.
+              accessible name. P9 R2: hidden while no date can be banded, so a grid of grey
+              days under three coloured swatches does not read as a broken calendar.
             */}
-            <ul className="wiz-calendar-legend">
-              {(['realistic', 'improbable', 'highly-improbable'] as const).map((band) => (
-                <li key={band}>
-                  <span className={`wiz-calendar-swatch ${BAND_CLASS[band]}`} aria-hidden="true" />
-                  {t(BAND_WORD_KEY[band])}
-                </li>
-              ))}
-            </ul>
+            {standingGap === null && (
+              <ul className="wiz-calendar-legend">
+                {(['realistic', 'improbable', 'highly-improbable'] as const).map((band) => (
+                  <li key={band}>
+                    <span className={`wiz-calendar-swatch ${BAND_CLASS[band]}`} aria-hidden="true" />
+                    {t(BAND_WORD_KEY[band])}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/*
@@ -635,7 +699,10 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
                 )}
               </>
             )}
-            {targetDateFeasibilityResult !== null && !targetDateFeasibilityResult.assessable && (
+            {/* A gap already stated above the grid is not repeated here. */}
+            {targetDateFeasibilityResult !== null &&
+              !targetDateFeasibilityResult.assessable &&
+              targetDateFeasibilityResult.gap !== standingGap && (
               <p className="wiz-note">
                 {t(FEASIBILITY_GAP_KEY[targetDateFeasibilityResult.gap])}
               </p>

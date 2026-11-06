@@ -2828,10 +2828,12 @@ describe('Brief I Part 4: the feasibility calendar', () => {
       expect(cell.getAttribute('aria-label')).not.toMatch(/Realistic|Improbable/);
     }
 
-    // And the reason is stated, in the register the basis strings use.
-    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+    // And the reason is stated above the grid (P9 R2), in the register the basis strings use,
+    // and the legend of three bands that cannot appear is hidden.
+    expect(screen.getByTestId('feasibility-gap')).toHaveTextContent(
       'No established weekly rate exists for muscle gain.',
     );
+    expect(document.querySelector('.wiz-calendar-legend')).toBeNull();
     expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
       'An estimate from a prescribed rate, not a prediction about you.',
     );
@@ -2846,14 +2848,14 @@ describe('Brief I Part 4: the feasibility calendar', () => {
     fireEvent.click(screen.getByLabelText('Hold body fat'));
     fireEvent.click(screen.getByLabelText('Hold muscle'));
     expect(colouredCells()).toEqual([]);
-    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+    expect(screen.getByTestId('feasibility-gap')).toHaveTextContent(
       'This goal holds body mass, so no weekly rate applies.',
     );
 
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Gain muscle'));
     expect(colouredCells()).toEqual([]);
-    expect(screen.getByTestId('feasibility-verdict')).toHaveTextContent(
+    expect(screen.getByTestId('feasibility-gap')).toHaveTextContent(
       'This goal holds body mass, so no weekly rate applies.',
     );
   });
@@ -2869,14 +2871,17 @@ describe('Brief I Part 4: the feasibility calendar', () => {
     fillImperialWizardToGoal();
     const dateInput = screen.getByLabelText(/^target date \(optional\)$/i);
     const verdict = (): HTMLElement => screen.getByTestId('feasibility-verdict');
+    // P9 R2: a gap that holds for every date is stated above the grid, before any pick.
+    const gap = (): HTMLElement => screen.getByTestId('feasibility-gap');
+    expect(gap()).toHaveTextContent('Set a target above before these dates can be judged.');
 
     // No target yet, but a valid future date.
     fireEvent.change(dateInput, { target: { value: '2027-01-01' } });
-    expect(verdict()).toHaveTextContent('Set a target above before these dates can be judged.');
+    expect(gap()).toHaveTextContent('Set a target above before these dates can be judged.');
 
     // A target that is a GAIN, under a goal whose only cited rate rule is stated for loss.
     setValue(/target body mass \(lb\)/i, '150'); // [lb] above the fixture's 135 lb
-    expect(verdict()).toHaveTextContent('That target is not below your current body mass.');
+    expect(gap()).toHaveTextContent('That target is not below your current body mass.');
 
     // A real loss, but a date that is not in the future: the required rate is not finite.
     setValue(/target body mass \(lb\)/i, '120');

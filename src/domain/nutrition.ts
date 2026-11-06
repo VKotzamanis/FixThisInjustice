@@ -450,6 +450,32 @@ export function targetDateFeasibility(input: FeasibilityInput): Feasibility {
   return { assessable: true, band, requiredFraction, belowBound: requiredFraction < loFraction };
 }
 
+/**
+ * P9 (owner 2026-11-06: "the calendar is supposed to tell you a realistic 'target date'"): the
+ * fewest whole days from today whose date `targetDateFeasibility` bands `realistic`, or null when
+ * it bands no date at all (any goal but fat loss, no target, or a target that is not a loss).
+ *
+ * Derived from `FAT_LOSS_RATE_BOUND.hiFraction` alone, no number of its own: realistic means
+ * lossFraction / weeks <= hiFraction, so weeks >= lossFraction / hiFraction and
+ * days = ceil(7 * lossFraction / hiFraction). The candidate is then checked against
+ * `targetDateFeasibility` itself and moved by a day if floating-point rounding of the
+ * division put it on the wrong side, so the date shown and the band painted on it cannot disagree.
+ */
+export function earliestRealisticDays(input: Omit<FeasibilityInput, 'weeks'>): number | null {
+  const bandOn = (days: number): Feasibility => targetDateFeasibility({ ...input, weeks: days / 7 }); // [week]
+  const probe = bandOn(7); // any positive horizon: only the goal and the target decide assessability
+  if (!probe.assessable) return null;
+  const isRealistic = (days: number): boolean => {
+    const f = bandOn(days);
+    return f.assessable && f.band === 'realistic';
+  };
+  const lossFraction = (input.currentMassKg - (input.targetMassKg ?? input.currentMassKg)) / input.currentMassKg; // dimensionless
+  let days = Math.max(1, Math.ceil((7 * lossFraction) / FAT_LOSS_RATE_BOUND.hiFraction)); // [day]
+  while (days > 1 && isRealistic(days - 1)) days -= 1;
+  while (!isRealistic(days)) days += 1;
+  return days;
+}
+
 /* ------------------------------------------------------------------ *
  * Protein
  * ------------------------------------------------------------------ */
