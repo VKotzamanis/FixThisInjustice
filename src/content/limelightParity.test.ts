@@ -34,8 +34,9 @@
 // Replace keys `button.replaceExercise`, `label.replaceTitle`, `label.recommended`,
 // `label.backToPlan`, `status.replacedWith` (owner request, card-header Replace; base table only),
 // and `label.rotateAccessories` and `advice.rotateAccessories` for the Settings accessory rotation
-// switch (docs/design/programme-engine.md; base table only). No snapshot row was changed to add
-// them.
+// switch (docs/design/programme-engine.md; base table only), and `status.nextDrinkReminder` for
+// the rest-game sheet's drink row (lead ruling G2, 2026-11-05; base table only). No snapshot row
+// was changed to add them.
 //
 // Rows CHANGED on purpose (ROADMAP L6, docs/design/programme-horizon.md Q4: an open-ended
 // programme has no N, so every "of N" goes): `status.bootWeek`, `status.sessionCursor` and `label.weekOfCount`.

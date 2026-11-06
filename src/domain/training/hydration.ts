@@ -312,10 +312,6 @@ export function hydrationCue(
   const profile = state.profiles[profileId];
   if (profile === undefined) return null;
 
-  const tz = profile.timezone;
-  const today = todayLocal(tz, now);
-  const entry: HydrationEntry | null =
-    (state.hydration[profileId] ?? []).find((e) => e.date === today) ?? null;
   // Found by `startedAt`, not by `date === today`: a session that crosses local
   // midnight keeps its cues. See activeAssignment and SESSION_LOOKBACK_MS.
   const assignment = activeAssignment(state.assignments[profileId] ?? [], now);
@@ -351,33 +347,57 @@ export function hydrationCue(
   }
 
   // 2. In-session cadence. No volume is named; the instruction is to drink to thirst.
-  if (sessionActive && assignment !== null && assignment.startedAt !== null) {
-    /*
-     * The marks of TODAY and of the day the session started on (P4 polish item 9). A hydration
-     * entry is a per-local-day total, so a session
-     * that crosses local midnight had its own drinks filed under the previous day and became
-     * invisible the moment the day rolled over: the anchor fell back to the session start,
-     * hours earlier, and the first prompt after midnight was due at once. Reading the second
-     * day costs one more find over a list with one entry per day.
-     */
-    const startedOn = todayLocal(tz, assignment.startedAt); // the session's own civil day
-    const sessionDayEntry: HydrationEntry | null =
-      startedOn === today
-        ? entry
-        : ((state.hydration[profileId] ?? []).find((e) => e.date === startedOn) ?? null);
-    const anchor = Math.max(
-      assignment.startedAt,
-      latestMark(entry?.marks ?? []),
-      latestMark(sessionDayEntry?.marks ?? []),
-      acknowledgedAt,
-    ); // [ms] epoch UTC
-    if (now - anchor >= SESSION_CHECK_INTERVAL_MS) {
-      return {
-        kind: 'session-check',
-        message: HYDRATION_COPY_KEY['session-check'],
-      };
-    }
+  const dueAt = nextSessionCheckAt(state, profileId, now, sessionActive, acknowledgedAt); // [ms]
+  if (dueAt !== null && now >= dueAt) {
+    return {
+      kind: 'session-check',
+      message: HYDRATION_COPY_KEY['session-check'],
+    };
   }
 
   return null;
+}
+
+/**
+ * [ms] epoch UTC at which the in-session cue (hydrationCue rule 2) is due, or null when no
+ * session is active. The ONE definition of the cadence: hydrationCue fires at or after this
+ * instant, and the rest-game sheet's quiet line counts the minutes to it (owner, 2026-11-05), so
+ * the two can never disagree. Due at anchor + SESSION_CHECK_INTERVAL_MS, where the anchor is the
+ * latest of the session start, a drink mark of today or of the session's own start day, and the
+ * last acknowledgement; see hydrationCue for why each one counts.
+ *
+ * @param acknowledgedAt [ms] epoch UTC, the last tap on the prompt, 0 = none
+ */
+export function nextSessionCheckAt(
+  state: Pick<AppState, 'profiles' | 'assignments' | 'hydration'>,
+  profileId: string,
+  now: EpochMs, // [ms] epoch UTC
+  sessionActive: boolean,
+  acknowledgedAt: EpochMs = 0, // [ms] epoch UTC
+): EpochMs | null {
+  const profile = state.profiles[profileId];
+  if (profile === undefined || !sessionActive) return null;
+  const assignment = activeAssignment(state.assignments[profileId] ?? [], now);
+  if (assignment === null || assignment.startedAt === null) return null;
+  const tz = profile.timezone;
+  const today = todayLocal(tz, now);
+  const entries = state.hydration[profileId] ?? [];
+  const entry: HydrationEntry | null = entries.find((e) => e.date === today) ?? null;
+  /*
+   * The marks of TODAY and of the day the session started on (P4 polish item 9). A hydration
+   * entry is a per-local-day total, so a session that crosses local midnight had its own drinks
+   * filed under the previous day and became invisible the moment the day rolled over: the anchor
+   * fell back to the session start, hours earlier, and the first prompt after midnight was due
+   * at once. Reading the second day costs one more find over a list with one entry per day.
+   */
+  const startedOn = todayLocal(tz, assignment.startedAt); // the session's own civil day
+  const sessionDayEntry: HydrationEntry | null =
+    startedOn === today ? entry : (entries.find((e) => e.date === startedOn) ?? null);
+  const anchor = Math.max(
+    assignment.startedAt,
+    latestMark(entry?.marks ?? []),
+    latestMark(sessionDayEntry?.marks ?? []),
+    acknowledgedAt,
+  ); // [ms] epoch UTC
+  return anchor + SESSION_CHECK_INTERVAL_MS; // [ms] epoch UTC
 }

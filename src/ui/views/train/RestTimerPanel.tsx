@@ -229,6 +229,7 @@ export function RestTimerPanel(): ReactElement | null {
           t={c}
           overrides={overrides}
           clock={clock}
+          now={now}
           onClose={(played) => {
             // A round played spends this rest's one offer; a picker closed unplayed leaves it.
             setGame(played ? { startedAt, phase: 'closed' } : null);

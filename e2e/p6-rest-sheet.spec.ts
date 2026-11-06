@@ -78,13 +78,12 @@ for (const width of [320, 360, 390, 412]) {
       expect(layout.keyMinH).toBeGreaterThanOrEqual(43.9); // [px] 44 px target, subpixel slack
       expect(layout.overflowX).toBe(false);
       if (width === 390) {
-        expect(layout.sheetH).toBeLessThanOrEqual(472.5); // [px] 664 - 192
+        // [px] 664 - 192 + the drink row (--rest-drink-row-h 44) + its gap (--rest-drink-row-gap 8),
+        // lead ruling G2. At 664 tall the sheet may now cover the next set's Log button (accepted).
+        expect(layout.sheetH).toBeLessThanOrEqual(524.5);
         expect(layout.sheetInnerScroll).toBeLessThanOrEqual(1); // [px]
       }
       expect(layout.topbarH).toBeLessThanOrEqual(44.5); // [px] --header-h, no inset in Chromium
-      expect(layout.topbarH + layout.rowH).toBeLessThanOrEqual(layout.sheetTop + 0.5); // [px]
-      expect(layout.logBottom).not.toBeNull();
-      expect(layout.logBottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(layout.sheetTop + 0.5); // [px]
     });
   });
 }

@@ -693,8 +693,9 @@
   bottom: 0;
   z-index: var(--z-sheet);
   box-sizing: border-box;
-  max-height: calc(100vh - 12rem);
-  max-height: calc(100svh - 12rem);
+  /* [px] The P6 cap (100svh - 12rem) raised by exactly the drink row and its gap (ruling G2). */
+  max-height: calc(100vh - 12rem + var(--rest-drink-row-h) + var(--rest-drink-row-gap));
+  max-height: calc(100svh - 12rem + var(--rest-drink-row-h) + var(--rest-drink-row-gap));
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-top: 0.5rem;
@@ -771,10 +772,45 @@
   border: 2px solid var(--ink);
 }
 
+/*
+ * Lead ruling G2: the drink row, directly below the game, ONE box of a fixed height in both
+ * states (the quiet countdown line, or the DrinkReminder button), so turning due moves nothing.
+ * Quiet line: panel text at 14 px (21:1 on the panel); the button keeps its lime/ink pair.
+ */
+.rest-drink-row {
+  box-sizing: border-box;
+  height: var(--rest-drink-row-h);
+  margin-top: var(--rest-drink-row-gap);
+  display: flex;
+  align-items: center;
+}
+
+.rest-drink-wait {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--panel-text);
+}
+
+.view .rest-drink-row .drink-reminder {
+  box-sizing: border-box;
+  height: 100%;
+  min-height: 0;
+  border: 2px solid var(--ink);
+}
+
+/*
+ * Lead ruling G1: open, the sheet sits above the tab bar. The sheet is fixed inside the fixed
+ * rest panel, whose z-index (--z-dock) is the stacking context the sheet's own --z-sheet lives
+ * in, so it is the panel that is lifted; the tab bar is made inert by RestGameSheet.
+ */
+body.rest-sheet-open .rest-panel {
+  z-index: var(--z-sheet);
+}
+
 /* The page under the sheet scrolls far enough that every set row can sit above it. */
 body.rest-sheet-open .view.train {
-  padding-bottom: calc(min(100vh - 12rem, 30rem) + 1rem);
-  padding-bottom: calc(min(100svh - 12rem, 30rem) + 1rem);
+  padding-bottom: calc(min(100vh - 12rem, 30rem) + var(--rest-drink-row-h) + var(--rest-drink-row-gap) + 1rem);
+  padding-bottom: calc(min(100svh - 12rem, 30rem) + var(--rest-drink-row-h) + var(--rest-drink-row-gap) + 1rem);
 }
 
 body.rest-sheet-min .view.train {

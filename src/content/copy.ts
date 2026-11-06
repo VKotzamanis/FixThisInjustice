@@ -281,6 +281,7 @@ export type CopyKey =
   | 'advice.videoOffline'
   | 'advice.noClipRecorded'
   | 'advice.drinkToThirst'
+  | 'status.nextDrinkReminder'
   | 'advice.logPostSessionMass'
   | 'why.postSessionMass'
   | 'advice.fluidLoss'
@@ -1197,6 +1198,10 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.videoOffline': 'Offline. The clip plays once you are back online.',
   'advice.noClipRecorded': 'No clip for this exercise.',
   'advice.drinkToThirst': 'Drink to thirst.',
+  // template; FORMAT.nextDrinkReminder. The rest-game sheet's quiet line under the game while the
+  // drink reminder is not yet due (lead ruling G2, 2026-11-05). {minutes} is whole minutes, at
+  // least 1, counted to hydrationCue's own due instant (nextSessionCheckAt). Names no volume.
+  'status.nextDrinkReminder': 'Drink reminder in {minutes} min',
   'advice.logPostSessionMass': 'Log post-session body mass.',
   'why.postSessionMass':
     'A loss above 2 % of pre-session mass means fluid replacement was inadequate (ACSM 2007).',
@@ -2771,6 +2776,13 @@ export const FORMAT = {
    * fields. THE PADDING STAYS HERE: how many digits a seconds field carries is a property of
    * the readout, not a word, and a skin that dropped it would make the width jump.
    */
+  /**
+   * "Drink reminder in 4 min": the quiet line under a rest game. `minutes` [min] is already
+   * rounded up and floored at 1 by the caller (RestDrinkRow), from nextSessionCheckAt.
+   */
+  nextDrinkReminder: (minutes: number, overrides?: Partial<Record<CopyKey, string>>): string =>
+    copy('status.nextDrinkReminder', overrides).replace('{minutes}', () => String(minutes)),
+
   restRemaining: (
     minutes: number,
     seconds: number,

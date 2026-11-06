@@ -141,6 +141,10 @@
   /* Minimum target; the one primary action per screen is taller. */
   --tap: 44px;
   --tap-primary: 56px;
+  /* The rest-game sheet's drink row (lead ruling G2): one tap-height box under the game and its
+   * gap; the sheet's cap is raised by exactly these two (restGames.css). */
+  --rest-drink-row-h: var(--tap);
+  --rest-drink-row-gap: var(--space-2);
   /* The one overlay backdrop (replaces per-file scrims). */
   --scrim: rgba(0, 0, 0, 0.6);
   --dur-fast: 120ms;
@@ -400,6 +404,10 @@ body {
   /* Minimum target; the one primary action per screen is taller. */
   --tap: 44px;
   --tap-primary: 56px;
+  /* The rest-game sheet's drink row (lead ruling G2): one tap-height box under the game and its
+   * gap; the sheet's cap is raised by exactly these two (restGames.css). */
+  --rest-drink-row-h: var(--tap);
+  --rest-drink-row-gap: var(--space-2);
   /* The one overlay backdrop (replaces per-file scrims). */
   --scrim: rgba(0, 0, 0, 0.6);
   --dur-fast: 120ms;

@@ -12,8 +12,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } 
 import type { CopyKey } from '../../../content/copy';
 import { REST_GAME_FAMILIES, seededFamily, type RestGameFamily } from '../../../domain/fun/restGames';
 import type { RestTimer } from '../../../domain/training/restTimer';
-import type { UnitSystem } from '../../../domain/types';
+import type { EpochMs, UnitSystem } from '../../../domain/types';
 import { LitWord } from '../../effects/LitWord';
+import { RestDrinkRow } from './DrinkReminder';
 import { REST_GAME_CATALOG } from './restGameCatalog';
 import { rememberRestGameChoice, rememberedRestGameChoice } from './restGameChoice';
 import { RestGameHostContext, type RestGameHost } from './restGameHost';
@@ -41,6 +42,8 @@ export interface RestGameSheetProps {
    * scroll inside its 472 px cap (e2e/p6-rest-sheet.spec.ts).
    */
   clock?: string;
+  /** [ms] epoch UTC, the panel's once-a-second clock; the drink row counts down from it. */
+  now?: EpochMs;
 }
 
 /** Classes on <body> that pad the Train page under the sheet (restGames.css, sheet section). */
@@ -52,7 +55,7 @@ interface PickerOpening {
 }
 
 export function RestGameSheet(props: RestGameSheetProps): ReactElement {
-  const { timer, priorWins, soundsEnabled, units, t, overrides, onClose, onWin, clock } = props;
+  const { timer, priorWins, soundsEnabled, units, t, overrides, onClose, onWin, clock, now } = props;
   const context = gameContext(timer, 'RestGameSheet');
   // Read once when the sheet opens, so the list never reorders under the user's thumb.
   const [opening] = useState<PickerOpening>(() => {
@@ -75,6 +78,22 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
     document.body.classList.add(name);
     return () => {
       document.body.classList.remove(name);
+    };
+  }, [minimised]);
+
+  /*
+   * Lead ruling G1: open, the sheet covers the tab bar (restGames.css lifts the rest panel to
+   * --z-sheet), and the bar underneath is inert, so no tap, focus or screen-reader cursor reaches
+   * a control the user cannot see. Minimised, the sheet is one row over the rest bar and the tab
+   * bar is live again. The bar is the shell's (src/ui/nav/TabBar.tsx), found by its class.
+   */
+  useEffect(() => {
+    if (minimised) return;
+    const bar = document.querySelector<HTMLElement>('.tabbar');
+    if (bar === null) return;
+    bar.inert = true;
+    return () => {
+      bar.inert = false;
     };
   }, [minimised]);
 
@@ -156,6 +175,8 @@ export function RestGameSheet(props: RestGameSheetProps): ReactElement {
             />
           </RestGameHostContext>
         )}
+        {/* Lead ruling G2: one fixed-height row directly below the game, always present. */}
+        <RestDrinkRow now={now ?? Date.now()} />
       </div>
     </section>
   );
