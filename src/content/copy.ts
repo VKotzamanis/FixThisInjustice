@@ -752,6 +752,10 @@ export type CopyKey =
   | 'advice.earliestRealisticDate'
   | 'advice.earliestRealisticPastRange'
   | 'button.useThisDate'
+  | 'advice.recompositionEstimate'
+  | 'advice.recompositionEstimatePastRange'
+  | 'advice.recompositionEstimateBasis'
+  | 'advice.recompositionNeedsBodyFat'
   | 'button.previousMonth'
   | 'button.nextMonth'
   // --- round 3: the two Settings switches gain a plain description (owner: "I have no idea
@@ -2186,6 +2190,12 @@ export const DEFAULT_COPY: Readonly<Record<CopyKey, string>> = {
   'advice.earliestRealisticDate': 'Earliest realistic date: {date}',
   'advice.earliestRealisticPastRange': "Earliest realistic date: {date}, past the calendar's range.",
   'button.useThisDate': 'Use This Date',
+  // P9: recomposition's ESTIMATED date (src/domain/nutrition.ts recompositionEstimateWeeks). Never
+  // a band word: no published rate bound exists for recomposition.
+  'advice.recompositionEstimate': 'Estimated date: {date} (about {weeks} weeks)',
+  'advice.recompositionEstimatePastRange': "Estimated date: {date} (about {weeks} weeks), past the calendar's range.",
+  'advice.recompositionEstimateBasis': "One 10-week trial's averages in trained lifters (Vargas-Molina 2026), not a limit.",
+  'advice.recompositionNeedsBodyFat': 'The estimate needs your current and target body-fat %.',
   'button.previousMonth': 'Previous Month',
   'button.nextMonth': 'Next Month',
 
@@ -3309,6 +3319,17 @@ export const FORMAT = {
    * a screen reader as well as for a viewer who cannot separate the three pastels.
    */
   calendarDay: (date: string, band: string): string => (band === '' ? date : `${date}, ${band}`),
+
+  /** P9: "Estimated date: 2027-02-24 (about 16 weeks)", or the past-the-range variant. */
+  recompositionEstimate: (
+    date: string,
+    weeks: string,
+    pastRange: boolean,
+    overrides?: Partial<Record<CopyKey, string>>,
+  ): string =>
+    copy(pastRange ? 'advice.recompositionEstimatePastRange' : 'advice.recompositionEstimate', overrides)
+      .replace('{date}', () => date)
+      .replace('{weeks}', () => weeks),
 
   /** P9: "Earliest realistic date: 2027-01-20", or the past-the-range variant. `date` is ISO. */
   earliestRealisticDate: (

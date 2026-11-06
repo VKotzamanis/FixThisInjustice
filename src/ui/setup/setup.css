@@ -1648,6 +1648,13 @@
   opacity: 0.35;
 }
 
+/* P9: recomposition's estimated day. A dashed outline in the band card's own type colour, inset
+ * so it never collides with the selection border below; no fill, because it is not a band. */
+.wiz .wiz-calendar-estimate {
+  outline: 2px dashed var(--band-surface-text);
+  outline-offset: -5px;
+}
+
 /* Selection is a border, never "darker": darker-on-dark disappears, and on a pastel fill a
  * darker fill would also destroy the ink contrast the fill was measured for. */
 .wiz .wiz-calendar-day[aria-pressed='true'] {

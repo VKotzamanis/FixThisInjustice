@@ -17,6 +17,7 @@ import {
   seedBeverageTargetML,
   statedBeverageTargetML,
   earliestRealisticDays,
+  recompositionEstimateWeeks,
   targetDateFeasibility,
   type NutritionInput,
 } from './nutrition';
@@ -899,5 +900,25 @@ describe('earliestRealisticDays (P9)', () => {
     expect(earliestRealisticDays({ goal: 'recomposition', currentMassKg: 90, targetMassKg: 80 })).toBeNull();
     expect(earliestRealisticDays({ goal: 'fat-loss', currentMassKg: 90, targetMassKg: null })).toBeNull();
     expect(earliestRealisticDays({ goal: 'fat-loss', currentMassKg: 90, targetMassKg: 95 })).toBeNull();
+  });
+});
+
+describe('recompositionEstimateWeeks (P9, Vargas-Molina 2026 R6)', () => {
+  it('80 kg, 25 % to 20 % body fat: the closed form from the trial means', () => {
+    // Independent arithmetic on the printed trial numbers: fat -2.94 kg, lean +1.04 kg, 10 wk, 80.3 kg.
+    const fat = (2.94 / 10 / 80.3) * 80; // [kg/week]
+    const lean = 1.04 / 10; // [kg/week]
+    const expected = (80 * (0.25 - 0.2)) / (fat * (1 - 0.2) + 0.2 * lean); // [week]
+    const weeks = recompositionEstimateWeeks({ currentMassKg: 80, currentBodyFatFraction: 0.25, targetBodyFatFraction: 0.2 });
+    expect(weeks).toBeCloseTo(expected, 9);
+    // And the fat fraction really is the target after that many weeks.
+    const t = weeks ?? 0;
+    expect((80 * 0.25 - fat * t) / (80 - fat * t + lean * t)).toBeCloseTo(0.2, 9);
+  });
+
+  it('is null without both body-fat values or without a lower target', () => {
+    expect(recompositionEstimateWeeks({ currentMassKg: 80, currentBodyFatFraction: null, targetBodyFatFraction: 0.2 })).toBeNull();
+    expect(recompositionEstimateWeeks({ currentMassKg: 80, currentBodyFatFraction: 0.25, targetBodyFatFraction: null })).toBeNull();
+    expect(recompositionEstimateWeeks({ currentMassKg: 80, currentBodyFatFraction: 0.2, targetBodyFatFraction: 0.2 })).toBeNull();
   });
 });

@@ -2855,8 +2855,9 @@ describe('Brief I Part 4: the feasibility calendar', () => {
     fireEvent.click(screen.getByLabelText('Lose fat'));
     fireEvent.click(screen.getByLabelText('Gain muscle'));
     expect(colouredCells()).toEqual([]);
-    expect(screen.getByTestId('feasibility-gap')).toHaveTextContent(
-      'This goal holds body mass, so no weekly rate applies.',
+    // P9: recomposition's estimated date needs both body-fat values; this fixture has none.
+    expect(screen.getByTestId('recomposition-estimate')).toHaveTextContent(
+      'The estimate needs your current and target body-fat %.',
     );
   });
 

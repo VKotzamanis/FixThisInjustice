@@ -477,6 +477,60 @@ export function earliestRealisticDays(input: Omit<FeasibilityInput, 'weeks'>): n
 }
 
 /* ------------------------------------------------------------------ *
+ * Recomposition estimated date
+ * ------------------------------------------------------------------ */
+
+/**
+ * P9, owner ruling 2026-11-06: an ESTIMATED date for recomposition (lose fat while gaining lean
+ * mass), never a band. Recomposition has no published rate bound (evidence review
+ * docs/private/evidence/recomposition-rate-2026-11-06.md, Q2), so this is not a limit and is not
+ * coloured Realistic or Improbable.
+ *
+ * Source: Vargas-Molina S et al. Comparison of two nutritional protocols in body re-composition
+ * of resistance-trained participants. Eur J Appl Physiol 2026. DOI 10.1007/s00421-026-06209-6
+ * (evidence row R6, read from the PMC XML; DOI Crossref-verified by the lead). Deficit arm:
+ * 26 M + 4 F, resistance-trained >= 1 y, DXA, 10 weeks, 250 kcal/day below maintenance.
+ *
+ * The four PRINTED numbers below are GROUP MEANS of one 10-week trial, not limits and not a
+ * prediction for any one person. Rates are derived from them in code, never stored (rule 2).
+ */
+export const RECOMPOSITION_TRIAL = {
+  fatMassChangeKg: -2.94, // [kg] DXA fat mass change over the trial, negative = loss
+  fatFreeMassChangeKg: 1.04, // [kg] DXA fat-free mass change over the trial, positive = gain
+  weeks: 10, // [week] intervention length
+  baselineMassKg: 80.3, // [kg] group mean baseline body mass
+} as const;
+
+/** [1/week] fat-mass loss as a fraction of body mass per week, positive = loss: 2.94 / 10 / 80.3. */
+export const RECOMPOSITION_FAT_LOSS_FRACTION_PER_WEEK =
+  -RECOMPOSITION_TRIAL.fatMassChangeKg / RECOMPOSITION_TRIAL.weeks / RECOMPOSITION_TRIAL.baselineMassKg;
+
+/** [kg/week] fat-free mass gain per week, positive = gain: 1.04 / 10. */
+export const RECOMPOSITION_LEAN_GAIN_KG_PER_WEEK =
+  RECOMPOSITION_TRIAL.fatFreeMassChangeKg / RECOMPOSITION_TRIAL.weeks;
+
+/**
+ * Weeks until body fat reaches the target at the trial's mean rates, or null when either body-fat
+ * value is missing or the target is not below the current value.
+ *
+ * Fat falls by a = f * M0 [kg/week] (f held at the CURRENT mass, as the trial's rate was stated
+ * against its baseline) and lean mass rises by l [kg/week]. Solving
+ *   (F0 - a t) / (M0 - a t + l t) = BFt,  F0 = BF0 * M0,
+ * for t gives t = M0 (BF0 - BFt) / (a (1 - BFt) + BFt l). Fractions are 0..1, not percent.
+ */
+export function recompositionEstimateWeeks(input: {
+  currentMassKg: Kg; // [kg]
+  currentBodyFatFraction: number | null; // [0..1] of body mass
+  targetBodyFatFraction: number | null; // [0..1] of body mass
+}): number | null {
+  const { currentMassKg: m0, currentBodyFatFraction: bf0, targetBodyFatFraction: bft } = input;
+  if (bf0 === null || bft === null || !(bft < bf0)) return null;
+  const fatLossKgPerWeek = RECOMPOSITION_FAT_LOSS_FRACTION_PER_WEEK * m0; // [kg/week]
+  const weeks = (m0 * (bf0 - bft)) / (fatLossKgPerWeek * (1 - bft) + bft * RECOMPOSITION_LEAN_GAIN_KG_PER_WEEK); // [week]
+  return Number.isFinite(weeks) && weeks > 0 ? weeks : null;
+}
+
+/* ------------------------------------------------------------------ *
  * Protein
  * ------------------------------------------------------------------ */
 

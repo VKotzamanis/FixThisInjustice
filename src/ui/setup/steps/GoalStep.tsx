@@ -11,6 +11,7 @@ import { NAVY_SEE_PCT } from '../../../domain/bodyfat';
 import { addDays, compareLocalDate, daysBetween, isoWeekday } from '../../../domain/dates';
 import {
   earliestRealisticDays,
+  recompositionEstimateWeeks,
   targetDateFeasibility,
   type Feasibility,
   type FeasibilityBand,
@@ -165,8 +166,16 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
   const { answers: draft, patch, patchDay, headingRef, validation, today, monthOffset, setMonthOffset } = props;
   const t = useCopy();
   const overrides = useCopyOverrides();
-  const { statedSex, massKg, currentLeanKg, bodyFatTargetAvailable, impliedTargetFatKg, effectiveTargetMassKg } =
-    deriveAnswers(draft);
+  const {
+    statedSex,
+    massKg,
+    bodyFatPct,
+    currentLeanKg,
+    bodyFatTargetAvailable,
+    targetBodyFatPct,
+    impliedTargetFatKg,
+    effectiveTargetMassKg,
+  } = deriveAnswers(draft);
   const massLabelUnit = massUnit(draft.units);
   const targetBodyFatTextValue = targetBodyFatText(draft);
 
@@ -233,13 +242,33 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
   const earliestPastRange =
     earliestDate !== null && monthsBetween(today, earliestDate) > CALENDAR_MAX_MONTHS_AHEAD;
 
+  /**
+   * P9, owner ruling: recomposition gets an ESTIMATED date at the mean rates of one trial
+   * (Vargas-Molina 2026, src/domain/nutrition.ts), marked on the grid but never banded.
+   */
+  const isRecomposition = draft.goalKind === 'recomposition';
+  const recompositionWeeks =
+    isRecomposition && massKg !== null
+      ? recompositionEstimateWeeks({
+          currentMassKg: massKg, // [kg]
+          currentBodyFatFraction: bodyFatPct === null ? null : bodyFatPct / 100, // [0..1]
+          targetBodyFatFraction: targetBodyFatPct === null ? null : targetBodyFatPct / 100, // [0..1]
+        })
+      : null; // [week]
+  const estimateDate: LocalDate | null =
+    recompositionWeeks === null ? null : addDays(today, Math.max(1, Math.ceil(recompositionWeeks * 7))); // [day]
+  const estimatePastRange =
+    estimateDate !== null && monthsBetween(today, estimateDate) > CALENDAR_MAX_MONTHS_AHEAD;
+
   const clampOffset = (n: number): number => Math.min(CALENDAR_MAX_MONTHS_AHEAD, Math.max(0, n)); // [month]
   const openingOffset = clampOffset(
     draft.targetDate !== '' && targetDateError === null
       ? monthsBetween(today, draft.targetDate)
       : earliestDate !== null
         ? monthsBetween(today, earliestDate)
-        : 0,
+        : estimateDate !== null
+          ? monthsBetween(today, estimateDate)
+          : 0,
   ); // [month]
   const shownOffset = monthOffset ?? openingOffset; // [month]
 
@@ -577,7 +606,34 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
               </button>
             </div>
           )}
-          {standingGap !== null && (
+          {isRecomposition && estimateDate !== null && recompositionWeeks !== null && (
+            <div className="wiz-field" data-testid="recomposition-estimate">
+              <p className="wiz-note">
+                {FORMAT.recompositionEstimate(
+                  estimateDate,
+                  String(Math.round(recompositionWeeks)),
+                  estimatePastRange,
+                  overrides,
+                )}
+              </p>
+              <p className="wiz-note">{t('advice.recompositionEstimateBasis')}</p>
+              <button
+                type="button"
+                onClick={() => {
+                  patch({ targetDate: estimateDate });
+                }}
+              >
+                {t('button.useThisDate')}
+              </button>
+            </div>
+          )}
+          {isRecomposition && estimateDate === null && (
+            <p className="wiz-note" data-testid="recomposition-estimate">
+              {t('advice.recompositionNeedsBodyFat')}
+            </p>
+          )}
+          {/* Recomposition's "holds body mass" gap would contradict the estimate beside it. */}
+          {standingGap !== null && !isRecomposition && (
             <p className="wiz-note" data-testid="feasibility-gap">
               {t(FEASIBILITY_GAP_KEY[standingGap])}
             </p>
@@ -643,6 +699,7 @@ export function GoalStep(props: GoalStepProps): JSX.Element {
                       'wiz-calendar-day',
                       result.assessable ? BAND_CLASS[result.band] : 'wiz-band-none',
                       past ? 'wiz-calendar-past' : '',
+                      date === estimateDate ? 'wiz-calendar-estimate' : '',
                     ]
                       .filter((c) => c !== '')
                       .join(' ')}
